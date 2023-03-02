@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::HasDepContext;
+use crate::dep_graph::{HasDepContext, SerializedDepNodeIndex};
 use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -493,6 +493,62 @@ where
 }
 
 #[inline(always)]
+fn load_from_disk_and_cache_in_memory<V, Qcx>(
+    qcx: Qcx,
+    dep_node: &DepNode<Qcx::DepKind>,
+    prev_dep_node_index: SerializedDepNodeIndex,
+    dep_node_index: DepNodeIndex,
+    try_load_from_disk: fn(Qcx, SerializedDepNodeIndex) -> Option<V>,
+    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+) -> Option<(V, DepNodeIndex)>
+where
+    V: Debug,
+    Qcx: QueryContext,
+{
+    let dep_graph = qcx.dep_context().dep_graph();
+    let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
+
+    // The call to `with_query_deserialization` enforces that no new `DepNodes`
+    // are created during deserialization. See the docs of that method for more
+    // details.
+    let result =
+        dep_graph.with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
+
+    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+    if let Some(result) = result {
+        if std::intrinsics::unlikely(
+            qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
+        ) {
+            dep_graph.mark_debug_loaded_from_disk(*dep_node)
+        }
+
+        let prev_fingerprint = qcx
+            .dep_context()
+            .dep_graph()
+            .prev_fingerprint_of(dep_node)
+            .unwrap_or(Fingerprint::ZERO);
+        // If `-Zincremental-verify-ich` is specified, re-hash results from
+        // the cache and make sure that they have the expected fingerprint.
+        //
+        // If not, we still seek to verify a subset of fingerprints loaded
+        // from disk. Re-hashing results is fairly expensive, so we can't
+        // currently afford to verify every hash. This subset should still
+        // give us some coverage of potential bugs though.
+        let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
+        if std::intrinsics::unlikely(
+            try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
+        ) {
+            incremental_verify_ich(*qcx.dep_context(), &result, dep_node, hash_result);
+        }
+
+        Some((result, dep_node_index))
+    } else {
+        None
+    }
+}
+
+#[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -514,51 +570,16 @@ where
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
     if let Some(try_load_from_disk) = query.try_load_from_disk(qcx, &key) {
-        let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
-
-        // The call to `with_query_deserialization` enforces that no new `DepNodes`
-        // are created during deserialization. See the docs of that method for more
-        // details.
-        let result =
-            dep_graph.with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
-
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        if let Some(result) = result {
-            if std::intrinsics::unlikely(
-                qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
-            ) {
-                dep_graph.mark_debug_loaded_from_disk(*dep_node)
-            }
-
-            let prev_fingerprint = qcx
-                .dep_context()
-                .dep_graph()
-                .prev_fingerprint_of(dep_node)
-                .unwrap_or(Fingerprint::ZERO);
-            // If `-Zincremental-verify-ich` is specified, re-hash results from
-            // the cache and make sure that they have the expected fingerprint.
-            //
-            // If not, we still seek to verify a subset of fingerprints loaded
-            // from disk. Re-hashing results is fairly expensive, so we can't
-            // currently afford to verify every hash. This subset should still
-            // give us some coverage of potential bugs though.
-            let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
-            if std::intrinsics::unlikely(
-                try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
-            ) {
-                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
-            }
-
-            return Some((result, dep_node_index));
+        if let Some(value) = load_from_disk_and_cache_in_memory::<Q::Value, Qcx>(
+            qcx,
+            dep_node,
+            prev_dep_node_index,
+            dep_node_index,
+            try_load_from_disk,
+            query.hash_result(),
+        ) {
+            return Some(value);
         }
-
-        // We always expect to find a cached result for things that
-        // can be forced from `DepNode`.
-        debug_assert!(
-            !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for {dep_node:?}"
-        );
     }
 
     // We could not load a result from the on-disk cache, so
