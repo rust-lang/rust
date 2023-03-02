@@ -767,7 +767,7 @@ impl Step for Clippy {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        if add_flags_and_try_run_tests(builder, &mut cargo.into()) {
+        if builder.try_run(&mut cargo.into()) {
             // The tests succeeded; nothing to do.
             return;
         }
