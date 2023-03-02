@@ -444,6 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
                             ty
                         ),
+                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
                     };
 
                     M::abort(self, msg)?;
