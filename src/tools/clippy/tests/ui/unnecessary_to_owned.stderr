@@ -146,16 +146,16 @@ LL |     require_slice(&Cow::from(slice).into_owned());
    |                                    ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> $DIR/unnecessary_to_owned.rs:77:19
+  --> $DIR/unnecessary_to_owned.rs:77:25
    |
 LL |     require_slice(&array.to_owned());
-   |                   ^^^^^^^^^^^^^^^^^ help: use: `array.as_ref()`
+   |                         ^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
   --> $DIR/unnecessary_to_owned.rs:78:19
    |
 LL |     require_slice(&array_ref.to_owned());
-   |                   ^^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref.as_ref()`
+   |                   ^^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
 
 error: unnecessary use of `to_owned`
   --> $DIR/unnecessary_to_owned.rs:79:19
