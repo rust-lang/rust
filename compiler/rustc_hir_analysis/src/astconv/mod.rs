@@ -2399,8 +2399,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
-                                        tcx.erase_regions(impl_.self_ty()),
-                                        tcx.erase_regions(qself_ty),
+                                        impl_.self_ty(),
+                                        // Must fold past escaping bound vars too,
+                                        // since we have those at this point in astconv.
+                                        tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased),
                                     )
                             })
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
