@@ -216,21 +216,24 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         }
     }
 
-    if CiEnv::is_ci() {
+    if is_ci_llvm_modified(config) {
+        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
+        return false;
+    }
+
+    true
+}
+
+/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
+pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
+    CiEnv::is_ci() && {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
         let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
         let head_sha = head_sha.trim();
-        if llvm_sha == head_sha {
-            eprintln!(
-                "Detected LLVM as non-available: running in CI and modified LLVM in this change"
-            );
-            return false;
-        }
+        llvm_sha == head_sha
     }
-
-    true
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
