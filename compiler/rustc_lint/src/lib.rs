@@ -126,7 +126,7 @@ pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);

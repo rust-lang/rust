@@ -46,7 +46,7 @@ use errors::{
     UnnamedItemIsPrivate,
 };
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.

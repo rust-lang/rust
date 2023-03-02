@@ -56,7 +56,7 @@ pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);

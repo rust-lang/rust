@@ -30,4 +30,4 @@ pub use error::LayoutOfDepth;
 pub use error::QueryOverflow;
 pub use values::Value;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

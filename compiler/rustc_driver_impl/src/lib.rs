@@ -64,7 +64,7 @@ use crate::session_diagnostics::{
     RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
 };
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start

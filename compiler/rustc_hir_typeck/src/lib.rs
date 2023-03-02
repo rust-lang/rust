@@ -75,7 +75,7 @@ use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {

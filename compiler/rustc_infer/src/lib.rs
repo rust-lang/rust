@@ -41,4 +41,4 @@ mod errors;
 pub mod infer;
 pub mod traits;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
