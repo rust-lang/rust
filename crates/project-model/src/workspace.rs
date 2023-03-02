@@ -249,10 +249,6 @@ impl ProjectWorkspace {
                 };
 
                 let rustc = match rustc_dir {
-                    Some(rustc_dir) if rustc_dir == cargo_toml => {
-                        tracing::info!(rustc_dir = %rustc_dir.display(), "Workspace is the rustc workspace itself, not adding the rustc workspace separately");
-                        None
-                    }
                     Some(rustc_dir) => {
                         tracing::info!(workspace = %cargo_toml.display(), rustc_dir = %rustc_dir.display(), "Using rustc source");
                         match CargoWorkspace::fetch_metadata(
