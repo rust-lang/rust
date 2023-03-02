@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
@@ -18,7 +19,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::abi::VariantIdx;
 
 impl<'tcx> Cx<'tcx> {
@@ -262,6 +263,7 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
@@ -322,6 +324,34 @@ impl<'tcx> Cx<'tcx> {
                         fn_span: expr.span,
                     }
                 } else {
+                    let attrs = tcx.hir().attrs(expr.hir_id);
+                    if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_box) {
+                        if attrs.len() != 1 {
+                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                span: attrs[0].span,
+                                reason: errors::RustcBoxAttrReason::Attributes,
+                            });
+                        } else if let Some(box_item) = tcx.lang_items().owned_box() {
+                            if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) = fun.kind
+                                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                                && path.res.opt_def_id().map_or(false, |did| did == box_item)
+                                && fn_path.ident.name == sym::new
+                                && let [value] = args
+                            {
+                                return Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: ExprKind::Box { value: self.mirror_expr(value) } }
+                            } else {
+                                tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                    span: expr.span,
+                                    reason: errors::RustcBoxAttrReason::NotBoxNew
+                                });
+                            }
+                        } else {
+                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                span: attrs[0].span,
+                                reason: errors::RustcBoxAttrReason::MissingBox,
+                            });
+                        }
+                    }
                     let adt_data =
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = fun.kind {
                             // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.

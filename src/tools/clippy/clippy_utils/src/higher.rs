@@ -287,15 +287,12 @@ impl<'a> VecArgs<'a> {
                     Some(VecArgs::Repeat(&args[0], &args[1]))
                 } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
-                    if_chain! {
-                        if let hir::ExprKind::Box(boxed) = args[0].kind;
-                        if let hir::ExprKind::Array(args) = boxed.kind;
-                        then {
-                            return Some(VecArgs::Vec(args));
-                        }
+                    if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
+                        && let hir::ExprKind::Array(args) = arg.kind {
+                        Some(VecArgs::Vec(args))
+                    } else {
+                        None
                     }
-
-                    None
                 } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
                     Some(VecArgs::Vec(&[]))
                 } else {

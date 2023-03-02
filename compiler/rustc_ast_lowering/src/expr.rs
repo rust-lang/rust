@@ -2,7 +2,7 @@ use super::errors::{
     AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
     GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
-    RustcBoxAttributeError, UnderscoreExprLhsAssign,
+    UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -83,15 +83,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(f, args) => {
-                    if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
-                        if let [inner] = &args[..] && e.attrs.len() == 1 {
-                            let kind = hir::ExprKind::Box(self.lower_expr(&inner));
-                            return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
-                        } else {
-                            let guar = self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
-                            hir::ExprKind::Err(guar)
-                        }
-                    } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
+                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
                     } else {
                         let f = self.lower_expr(f);
