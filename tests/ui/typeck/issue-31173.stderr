@@ -24,8 +24,17 @@ note: required by a bound in `cloned`
 error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut IntoIter<u8>, [closure@issue-31173.rs:7:21]>>`, but its trait bounds were not satisfied
   --> $DIR/issue-31173.rs:12:10
    |
-LL |         .collect();
-   |          ^^^^^^^ method cannot be called due to unsatisfied trait bounds
+LL |       let temp: Vec<u8> = it
+   |  _________________________-
+LL | |         .take_while(|&x| {
+LL | |             found_e = true;
+LL | |             false
+LL | |         })
+LL | |         .cloned()
+LL | |         .collect();
+   | |         -^^^^^^^ method cannot be called due to unsatisfied trait bounds
+   | |_________|
+   | 
   --> $SRC_DIR/core/src/iter/adapters/take_while.rs:LL:COL
    |
    = note: doesn't satisfy `<_ as Iterator>::Item = &_`
