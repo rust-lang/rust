@@ -1324,7 +1324,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         let mut visitor = FnPtrFinder { visitor: &*self, spans: Vec::new(), tys: Vec::new() };
-        self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty).visit_with(&mut visitor);
+        self.cx
+            .tcx
+            .try_normalize_erasing_regions(self.cx.param_env, ty)
+            .unwrap_or(ty)
+            .visit_with(&mut visitor);
         hir::intravisit::Visitor::visit_ty(&mut visitor, hir_ty);
 
         iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)).collect()
@@ -1348,7 +1352,65 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
     }
 }
 
+impl ImproperCTypesDefinitions {
+    fn check_ty_maybe_containing_foreign_fnptr<'tcx>(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        hir_ty: &'tcx hir::Ty<'_>,
+        ty: Ty<'tcx>,
+    ) {
+        let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
+        for (fn_ptr_ty, span) in vis.find_fn_ptr_ty_with_external_abi(hir_ty, ty) {
+            vis.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, true, false);
+        }
+    }
+}
+
+/// `ImproperCTypesDefinitions` checks items outside of foreign items (e.g. stuff that isn't in
+/// `extern "C" { }` blocks):
+///
+/// - `extern "<abi>" fn` definitions are checked in the same way as the
+///   `ImproperCtypesDeclarations` visitor checks functions if `<abi>` is external (e.g. "C").
+/// - All other items which contain types (e.g. other functions, struct definitions, etc) are
+///   checked for extern fn-ptrs with external ABIs.
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        match item.kind {
+            hir::ItemKind::Static(ty, ..)
+            | hir::ItemKind::Const(ty, ..)
+            | hir::ItemKind::TyAlias(ty, ..) => {
+                self.check_ty_maybe_containing_foreign_fnptr(
+                    cx,
+                    ty,
+                    cx.tcx.type_of(item.owner_id).subst_identity(),
+                );
+            }
+            // See `check_fn`..
+            hir::ItemKind::Fn(..) => {}
+            // See `check_field_def`..
+            hir::ItemKind::Union(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) => {}
+            // Doesn't define something that can contain a external type to be checked.
+            hir::ItemKind::Impl(..)
+            | hir::ItemKind::TraitAlias(..)
+            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::ForeignMod { .. }
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::Macro(..)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::ExternCrate(..) => {}
+        }
+    }
+
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'tcx>) {
+        self.check_ty_maybe_containing_foreign_fnptr(
+            cx,
+            field.ty,
+            cx.tcx.type_of(field.def_id).subst_identity(),
+        );
+    }
+
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
