@@ -512,22 +512,40 @@ fn method_autoderef_steps<'tcx>(
             .include_raw_pointers()
             .silence_errors();
     let mut reached_raw_pointer = false;
-    let mut steps: Vec<_> = autoderef
-        .by_ref()
-        .map(|(ty, d)| {
+    let mut steps = Vec::new();
+    for (ty, d) in &mut autoderef {
+        let step = CandidateStep {
+            self_ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, ty),
+            autoderefs: d,
+            from_unsafe_deref: reached_raw_pointer,
+            unsize: false,
+        };
+        steps.push(step);
+        if let ty::RawPtr(_) = ty.kind() {
+            // all the subsequent steps will be from_unsafe_deref
+            reached_raw_pointer = true;
+        } else if let ty::Array(elem_ty, _) = ty.kind() {
+            // Array implements Deref/DerefMut so we would always deref instead of unsizing the
+            // array without this check. This is fine in theory, but it is currently not possible
+            // to deref in a const context on stable, while unsizing is so to keep that working
+            // we need to still special case the autoderef step handling here.
             let step = CandidateStep {
-                self_ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                    inference_vars,
+                    infcx.tcx.mk_slice(*elem_ty),
+                ),
                 autoderefs: d,
+                // this could be from an unsafe deref if we had
+                // a *mut/const [T; N]
                 from_unsafe_deref: reached_raw_pointer,
-                unsize: false,
+                unsize: true,
             };
-            if let ty::RawPtr(_) = ty.kind() {
-                // all the subsequent steps will be from_unsafe_deref
-                reached_raw_pointer = true;
-            }
-            step
-        })
-        .collect();
+            steps.push(step);
+            // We just added the slice step manually, so break out early. Slices don't deref
+            // into anything so the final type of the autoderef is set up correctly.
+            break;
+        }
+    }
 
     let final_ty = autoderef.final_ty(true);
     let opt_bad_ty = match final_ty.kind() {
@@ -535,23 +553,6 @@ fn method_autoderef_steps<'tcx>(
             reached_raw_pointer,
             ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
         }),
-        ty::Array(elem_ty, _) => {
-            let dereferences = steps.len() - 1;
-
-            steps.push(CandidateStep {
-                self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                    inference_vars,
-                    infcx.tcx.mk_slice(*elem_ty),
-                ),
-                autoderefs: dereferences,
-                // this could be from an unsafe deref if we had
-                // a *mut/const [T; N]
-                from_unsafe_deref: reached_raw_pointer,
-                unsize: true,
-            });
-
-            None
-        }
         _ => None,
     };
 

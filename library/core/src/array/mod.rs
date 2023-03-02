@@ -15,6 +15,8 @@ use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
+#[cfg(not(bootstrap))]
+use crate::ops::{Deref, DerefMut};
 use crate::slice::{Iter, IterMut};
 
 mod drain;
@@ -184,6 +186,28 @@ impl<T, const N: usize> const Borrow<[T]> for [T; N] {
 impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "array_deref", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_array_deref", issue = "none")]
+impl<T, const N: usize> const Deref for [T; N] {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: self points to `N` consecutive properly initialized values of type `T`.
+        unsafe { core::slice::from_raw_parts(self as *const [T] as *const T, N) }
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "array_deref", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_array_deref", issue = "none")]
+impl<T, const N: usize> const DerefMut for [T; N] {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY: self points to `N` consecutive properly initialized values of type `T`.
+        unsafe { core::slice::from_raw_parts_mut(self as *mut [T] as *mut T, N) }
     }
 }
 
