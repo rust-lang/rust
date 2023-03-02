@@ -17,6 +17,10 @@ use crate::sealed::Sealed;
 #[allow(unused_imports)]
 use io::{Read, Write};
 
+// Tests for this module
+#[cfg(test)]
+mod tests;
+
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
