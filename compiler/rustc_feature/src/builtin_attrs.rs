@@ -405,7 +405,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Debugging
     ungated!(
-        debugger_visualizer, Normal, 
+        debugger_visualizer, Normal,
         template!(List: r#"natvis_file = "...", gdb_script_file = "...""#), DuplicatesOk
     ),
 
