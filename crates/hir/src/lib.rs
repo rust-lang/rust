@@ -489,7 +489,7 @@ impl Module {
     }
 
     /// Finds nearest non-block ancestor `Module` (`self` included).
-    fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
+    pub fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
         let mut id = self.id;
         loop {
             let def_map = id.def_map(db.upcast());
