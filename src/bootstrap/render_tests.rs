@@ -57,6 +57,7 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 struct Renderer<'a> {
     stdout: BufReader<ChildStdout>,
     failures: Vec<TestOutcome>,
+    benches: Vec<BenchOutcome>,
     builder: &'a Builder<'a>,
     tests_count: Option<usize>,
     executed_tests: usize,
@@ -67,6 +68,7 @@ impl<'a> Renderer<'a> {
     fn new(stdout: ChildStdout, builder: &'a Builder<'a>) -> Self {
         Self {
             stdout: BufReader::new(stdout),
+            benches: Vec::new(),
             failures: Vec::new(),
             builder,
             tests_count: None,
@@ -104,7 +106,7 @@ impl<'a> Renderer<'a> {
         self.builder.metrics.record_test(
             &test.name,
             match outcome {
-                Outcome::Ok => crate::metrics::TestOutcome::Passed,
+                Outcome::Ok | Outcome::BenchOk => crate::metrics::TestOutcome::Passed,
                 Outcome::Failed => crate::metrics::TestOutcome::Failed,
                 Outcome::Ignored { reason } => crate::metrics::TestOutcome::Ignored {
                     ignore_reason: reason.map(|s| s.to_string()),
@@ -169,6 +171,26 @@ impl<'a> Renderer<'a> {
             }
         }
 
+        if !self.benches.is_empty() {
+            println!("\nbenchmarks:");
+
+            let mut rows = Vec::new();
+            for bench in &self.benches {
+                rows.push((
+                    &bench.name,
+                    format!("{:.2?}/iter", Duration::from_nanos(bench.median)),
+                    format!("+/- {:.2?}", Duration::from_nanos(bench.deviation)),
+                ));
+            }
+
+            let max_0 = rows.iter().map(|r| r.0.len()).max().unwrap_or(0);
+            let max_1 = rows.iter().map(|r| r.1.len()).max().unwrap_or(0);
+            let max_2 = rows.iter().map(|r| r.2.len()).max().unwrap_or(0);
+            for row in &rows {
+                println!("    {:<max_0$} {:>max_1$} {:>max_2$}", row.0, row.1, row.2);
+            }
+        }
+
         println!(
             "\ntest result: {}. {} passed; {} failed; {} ignored; {} measured; \
              {} filtered out; finished in {:.2?}\n",
@@ -196,6 +218,21 @@ impl<'a> Renderer<'a> {
             Message::Suite(SuiteMessage::Failed(outcome)) => {
                 self.render_suite_outcome(Outcome::Failed, &outcome);
             }
+            Message::Bench(outcome) => {
+                // The formatting for benchmarks doesn't replicate 1:1 the formatting libtest
+                // outputs, mostly because libtest's formatting is broken in terse mode, which is
+                // the default used by our monorepo. We use a different formatting instead:
+                // successful benchmarks are just showed as "benchmarked"/"b", and the details are
+                // outputted at the bottom like failures.
+                let fake_test_outcome = TestOutcome {
+                    name: outcome.name.clone(),
+                    exec_time: None,
+                    stdout: None,
+                    reason: None,
+                };
+                self.render_test_outcome(Outcome::BenchOk, &fake_test_outcome);
+                self.benches.push(outcome);
+            }
             Message::Test(TestMessage::Ok(outcome)) => {
                 self.render_test_outcome(Outcome::Ok, &outcome);
             }
@@ -210,13 +247,13 @@ impl<'a> Renderer<'a> {
                 self.failures.push(outcome);
             }
             Message::Test(TestMessage::Started) => {} // Not useful
-            Message::Test(TestMessage::Bench) => todo!("benchmarks are not supported yet"),
         }
     }
 }
 
 enum Outcome<'a> {
     Ok,
+    BenchOk,
     Failed,
     Ignored { reason: Option<&'a str> },
 }
@@ -225,6 +262,7 @@ impl Outcome<'_> {
     fn short(&self, builder: &Builder<'_>) -> String {
         match self {
             Outcome::Ok => builder.color_for_stdout(Color::Green, "."),
+            Outcome::BenchOk => builder.color_for_stdout(Color::Cyan, "b"),
             Outcome::Failed => builder.color_for_stdout(Color::Red, "F"),
             Outcome::Ignored { .. } => builder.color_for_stdout(Color::Yellow, "i"),
         }
@@ -233,6 +271,7 @@ impl Outcome<'_> {
     fn long(&self, builder: &Builder<'_>) -> String {
         match self {
             Outcome::Ok => builder.color_for_stdout(Color::Green, "ok"),
+            Outcome::BenchOk => builder.color_for_stdout(Color::Cyan, "benchmarked"),
             Outcome::Failed => builder.color_for_stdout(Color::Red, "FAILED"),
             Outcome::Ignored { reason: None } => builder.color_for_stdout(Color::Yellow, "ignored"),
             Outcome::Ignored { reason: Some(reason) } => {
@@ -247,6 +286,7 @@ impl Outcome<'_> {
 enum Message {
     Suite(SuiteMessage),
     Test(TestMessage),
+    Bench(BenchOutcome),
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -273,9 +313,14 @@ enum TestMessage {
     Ok(TestOutcome),
     Failed(TestOutcome),
     Ignored(TestOutcome),
-    // Ignored messages:
-    Bench,
     Started,
+}
+
+#[derive(serde_derive::Deserialize)]
+struct BenchOutcome {
+    name: String,
+    median: u64,
+    deviation: u64,
 }
 
 #[derive(serde_derive::Deserialize)]
