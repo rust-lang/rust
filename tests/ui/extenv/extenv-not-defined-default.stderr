@@ -1,9 +1,10 @@
-error: environment variable `__HOPEFULLY_NOT_DEFINED__` not defined
+error: environment variable `CARGO__HOPEFULLY_NOT_DEFINED__` not defined at compile time
   --> $DIR/extenv-not-defined-default.rs:2:5
    |
-LL |     env!("__HOPEFULLY_NOT_DEFINED__");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     env!("CARGO__HOPEFULLY_NOT_DEFINED__");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: Cargo sets build script variables at run time. Use `std::env::var("CARGO__HOPEFULLY_NOT_DEFINED__")` instead
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
