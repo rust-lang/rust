@@ -42,10 +42,7 @@ pub trait AllocBytes:
 
     /// Create a zeroed `AllocBytes` of the specified size and alignment;
     /// call the callback error handler if there is an error in allocating the memory.
-    fn zeroed(
-        size: Size,
-        _align: Align,
-    ) -> Option<Self>;
+    fn zeroed(size: Size, _align: Align) -> Option<Self>;
 }
 
 // Default `bytes` for `Allocation` is a `Box<[u8]>`.
@@ -58,10 +55,7 @@ impl AllocBytes for Box<[u8]> {
         Box::<[u8]>::from(slice.into())
     }
 
-    fn zeroed(
-        size: Size,
-        _align: Align,
-    ) -> Option<Self> {
+    fn zeroed(size: Size, _align: Align) -> Option<Self> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
