@@ -2,10 +2,12 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
 use rustc_index::{Idx, IndexVec};
+use rustc_span::def_id::CrateNum;
+use rustc_span::def_id::DefId;
+use rustc_span::def_id::DefIndex;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -207,6 +209,63 @@ where
             for (k, v) in map.iter_enumerated() {
                 if let Some(v) = v {
                     f(&k, &v.0, v.1);
+                }
+            }
+        }
+    }
+}
+
+pub struct DefIdCacheSelector;
+
+impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for DefIdCacheSelector {
+    type Cache = DefIdCache< V>
+    where
+        V: Copy;
+}
+
+pub struct DefIdCache<V> {
+    cache: Sharded<IndexVec<CrateNum, FxHashMap<DefIndex, (V, DepNodeIndex)>>>,
+}
+
+impl<V> Default for DefIdCache<V> {
+    fn default() -> Self {
+        Self { cache: Default::default() }
+    }
+}
+
+impl<V> QueryCache for DefIdCache<V>
+where
+    V: Copy,
+{
+    type Key = DefId;
+    type Value = V;
+
+    #[inline(always)]
+    fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
+        let key_hash = sharded::make_hash(&key.index);
+        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        if let Some(defs) = lock.get(key.krate) {
+            let result = defs.raw_entry().from_key_hashed_nocheck(key_hash, &key.index);
+            if let Some((_, value)) = result { Some(*value) } else { None }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn complete(&self, key: DefId, value: V, index: DepNodeIndex) {
+        let key_hash = sharded::make_hash(&key.index);
+        let mut lock = self.cache.get_shard_by_hash(key_hash).lock();
+        lock.ensure_contains_elem(key.krate, || FxHashMap::default());
+        lock[key.krate].insert(key.index, (value, index));
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let shards = self.cache.lock_shards();
+        for shard in shards.iter() {
+            for (k, v) in shard.iter_enumerated() {
+                for (&index, v) in v.iter() {
+                    f(&DefId { krate: k, index }, &v.0, v.1);
                 }
             }
         }

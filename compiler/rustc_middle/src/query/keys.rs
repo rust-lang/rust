@@ -9,7 +9,9 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
-use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
+use rustc_query_system::query::{
+    DefIdCacheSelector, DefaultCacheSelector, SingleCacheSelector, VecCacheSelector,
+};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
@@ -153,7 +155,7 @@ impl Key for LocalDefId {
 }
 
 impl Key for DefId {
-    type CacheSelector = DefaultCacheSelector<Self>;
+    type CacheSelector = DefIdCacheSelector;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(*self)
