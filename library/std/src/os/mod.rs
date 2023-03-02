@@ -127,6 +127,8 @@ pub mod l4re;
 pub mod macos;
 #[cfg(target_os = "netbsd")]
 pub mod netbsd;
+#[cfg(target_os = "nto")]
+pub mod nto;
 #[cfg(target_os = "openbsd")]
 pub mod openbsd;
 #[cfg(target_os = "redox")]

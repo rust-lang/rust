@@ -53,7 +53,12 @@ const fn max_iov() -> usize {
     libc::IOV_MAX as usize
 }
 
-#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+#[cfg(any(
+    target_os = "android",
+    target_os = "emscripten",
+    target_os = "linux",
+    target_os = "nto",
+))]
 const fn max_iov() -> usize {
     libc::UIO_MAXIOV as usize
 }
@@ -67,6 +72,7 @@ const fn max_iov() -> usize {
     target_os = "linux",
     target_os = "macos",
     target_os = "netbsd",
+    target_os = "nto",
     target_os = "openbsd",
     target_os = "horizon",
     target_os = "watchos",
@@ -207,7 +213,8 @@ impl FileDesc {
         target_os = "linux",
         target_os = "haiku",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "nto",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -225,7 +232,8 @@ impl FileDesc {
         target_os = "linux",
         target_os = "haiku",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "nto",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

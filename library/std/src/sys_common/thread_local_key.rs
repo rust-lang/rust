@@ -117,9 +117,15 @@ pub struct Key {
 /// This value specifies no destructor by default.
 pub const INIT: StaticKey = StaticKey::new(None);
 
-// Define a sentinel value that is unlikely to be returned
-// as a TLS key (but it may be returned).
+// Define a sentinel value that is likely not to be returned
+// as a TLS key.
+#[cfg(not(target_os = "nto"))]
 const KEY_SENTVAL: usize = 0;
+// On QNX Neutrino, 0 is always returned when currently not in use.
+// Using 0 would mean to always create two keys and remote the first
+// one (with value of 0) immediately afterwards.
+#[cfg(target_os = "nto")]
+const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
 impl StaticKey {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]

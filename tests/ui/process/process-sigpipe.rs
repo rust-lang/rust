@@ -15,6 +15,7 @@
 // ignore-emscripten no threads support
 // ignore-vxworks no 'sh'
 // ignore-fuchsia no 'sh'
+// ignore-nto no 'yes'
 
 use std::process;
 use std::thread;
