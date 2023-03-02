@@ -1,5 +1,5 @@
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:21:5
+  --> $DIR/safe-calls.rs:23:5
    |
 LL |     sse2();
    |     ^^^^^^ call to function with `#[target_feature]`
@@ -7,7 +7,7 @@ LL |     sse2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:24:5
+  --> $DIR/safe-calls.rs:26:5
    |
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
@@ -15,7 +15,7 @@ LL |     avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:27:5
+  --> $DIR/safe-calls.rs:29:5
    |
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
@@ -23,7 +23,7 @@ LL |     Quux.avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:34:5
+  --> $DIR/safe-calls.rs:36:5
    |
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
@@ -31,7 +31,7 @@ LL |     avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:37:5
+  --> $DIR/safe-calls.rs:39:5
    |
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
@@ -39,7 +39,7 @@ LL |     Quux.avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:44:5
+  --> $DIR/safe-calls.rs:46:5
    |
 LL |     sse2();
    |     ^^^^^^ call to function with `#[target_feature]`
@@ -47,7 +47,7 @@ LL |     sse2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:47:5
+  --> $DIR/safe-calls.rs:49:5
    |
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
@@ -55,7 +55,7 @@ LL |     avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:50:5
+  --> $DIR/safe-calls.rs:52:5
    |
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
@@ -63,7 +63,7 @@ LL |     Quux.avx_bmi2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:58:5
+  --> $DIR/safe-calls.rs:60:5
    |
 LL |     sse2();
    |     ^^^^^^ call to function with `#[target_feature]`
@@ -71,7 +71,7 @@ LL |     sse2();
    = note: can only be called if the required target features are available
 
 error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
-  --> $DIR/safe-calls.rs:63:18
+  --> $DIR/safe-calls.rs:65:18
    |
 LL | const name: () = sse2();
    |                  ^^^^^^ call to function with `#[target_feature]`

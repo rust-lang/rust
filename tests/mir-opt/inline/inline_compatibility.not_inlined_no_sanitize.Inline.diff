@@ -9,7 +9,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/inline_compatibility.rs:+1:5: +1:18
           _1 = no_sanitize() -> bb1;       // scope 0 at $DIR/inline_compatibility.rs:+1:5: +1:18
                                            // mir::Constant
-                                           // + span: $DIR/inline_compatibility.rs:28:5: 28:16
+                                           // + span: $DIR/inline_compatibility.rs:29:5: 29:16
                                            // + literal: Const { ty: unsafe fn() {no_sanitize}, val: Value(<ZST>) }
       }
   

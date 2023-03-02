@@ -510,6 +510,8 @@ declare_features! (
     (active, strict_provenance, "1.61.0", Some(95228), None),
     /// Allows string patterns to dereference values to match them.
     (active, string_deref_patterns, "1.67.0", Some(87121), None),
+    /// Allows the use of `#[target_feature]` on safe functions.
+    (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.
     (active, thread_local, "1.0.0", Some(29594), None),
     /// Allows defining `trait X = A + B;` alias items.

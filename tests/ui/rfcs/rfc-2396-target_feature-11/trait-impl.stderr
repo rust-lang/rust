@@ -1,5 +1,5 @@
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:11:5
+  --> $DIR/trait-impl.rs:13:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
