@@ -237,6 +237,9 @@ pub struct LocalVarId(pub hir::HirId);
 /// A THIR expression.
 #[derive(Clone, Debug, HashStable)]
 pub struct Expr<'tcx> {
+    /// kind of expression
+    pub kind: ExprKind<'tcx>,
+
     /// The type of this expression
     pub ty: Ty<'tcx>,
 
@@ -246,9 +249,6 @@ pub struct Expr<'tcx> {
 
     /// span of the expression in the source
     pub span: Span,
-
-    /// kind of expression
-    pub kind: ExprKind<'tcx>,
 }
 
 #[derive(Clone, Debug, HashStable)]
