@@ -353,7 +353,8 @@ where
     pub(super) fn get_place_alloc(
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
@@ -364,7 +365,8 @@ where
     pub(super) fn get_place_alloc_mut(
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
