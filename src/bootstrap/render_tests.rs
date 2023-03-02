@@ -7,9 +7,11 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use crate::builder::Builder;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
+
+const TERSE_TESTS_PER_LINE: usize = 88;
 
 pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if builder.config.dry_run() {
@@ -36,7 +38,8 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 
     let mut process = cmd.spawn().unwrap();
     let stdout = process.stdout.take().unwrap();
-    let handle = std::thread::spawn(move || Renderer::new(stdout).render_all());
+    let verbose = builder.config.verbose_tests;
+    let handle = std::thread::spawn(move || Renderer::new(stdout, verbose).render_all());
 
     let result = process.wait().unwrap();
     handle.join().expect("test formatter thread failed");
@@ -54,11 +57,22 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 struct Renderer {
     stdout: BufReader<ChildStdout>,
     failures: Vec<TestOutcome>,
+    verbose: bool,
+    tests_count: Option<usize>,
+    executed_tests: usize,
+    terse_tests_in_line: usize,
 }
 
 impl Renderer {
-    fn new(stdout: ChildStdout) -> Self {
-        Self { stdout: BufReader::new(stdout), failures: Vec::new() }
+    fn new(stdout: ChildStdout, verbose: bool) -> Self {
+        Self {
+            stdout: BufReader::new(stdout),
+            failures: Vec::new(),
+            verbose,
+            tests_count: None,
+            executed_tests: 0,
+            terse_tests_in_line: 0,
+        }
     }
 
     fn render_all(mut self) {
@@ -83,9 +97,13 @@ impl Renderer {
         }
     }
 
-    fn render_test_outcome(&self, outcome: Outcome<'_>, test: &TestOutcome) {
-        // TODO: add support for terse output
-        self.render_test_outcome_verbose(outcome, test);
+    fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
+        self.executed_tests += 1;
+        if self.verbose {
+            self.render_test_outcome_verbose(outcome, test);
+        } else {
+            self.render_test_outcome_terse(outcome, test);
+        }
     }
 
     fn render_test_outcome_verbose(&self, outcome: Outcome<'_>, test: &TestOutcome) {
@@ -100,7 +118,35 @@ impl Renderer {
         }
     }
 
+    fn render_test_outcome_terse(&mut self, outcome: Outcome<'_>, _: &TestOutcome) {
+        if self.terse_tests_in_line != 0 && self.terse_tests_in_line % TERSE_TESTS_PER_LINE == 0 {
+            if let Some(total) = self.tests_count {
+                let total = total.to_string();
+                let executed = format!("{:>width$}", self.executed_tests - 1, width = total.len());
+                print!(" {executed}/{total}");
+            }
+            println!();
+            self.terse_tests_in_line = 0;
+        }
+
+        self.terse_tests_in_line += 1;
+        print!(
+            "{}",
+            match outcome {
+                Outcome::Ok => ".",
+                Outcome::Failed => "F",
+                Outcome::Ignored { .. } => "i",
+            }
+        );
+        let _ = std::io::stdout().flush();
+    }
+
     fn render_suite_outcome(&self, outcome: Outcome<'_>, suite: &SuiteOutcome) {
+        // The terse output doesn't end with a newline, so we need to add it ourselves.
+        if !self.verbose {
+            println!();
+        }
+
         if !self.failures.is_empty() {
             println!("\nfailures:\n");
             for failure in &self.failures {
@@ -132,6 +178,9 @@ impl Renderer {
         match message {
             Message::Suite(SuiteMessage::Started { test_count }) => {
                 println!("\nrunning {test_count} tests");
+                self.executed_tests = 0;
+                self.terse_tests_in_line = 0;
+                self.tests_count = Some(test_count);
             }
             Message::Suite(SuiteMessage::Ok(outcome)) => {
                 self.render_suite_outcome(Outcome::Ok, &outcome);
