@@ -99,6 +99,19 @@ impl<'a> Renderer<'a> {
 
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
         self.executed_tests += 1;
+
+        #[cfg(feature = "build-metrics")]
+        self.builder.metrics.record_test(
+            &test.name,
+            match outcome {
+                Outcome::Ok => crate::metrics::TestOutcome::Passed,
+                Outcome::Failed => crate::metrics::TestOutcome::Failed,
+                Outcome::Ignored { reason } => crate::metrics::TestOutcome::Ignored {
+                    ignore_reason: reason.map(|s| s.to_string()),
+                },
+            },
+        );
+
         if self.builder.config.verbose_tests {
             self.render_test_outcome_verbose(outcome, test);
         } else {
