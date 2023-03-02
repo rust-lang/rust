@@ -1417,12 +1417,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
 
-    fn in_task<OP, R>(&mut self, op: OP) -> (R, DepNodeIndex)
+    fn in_task<OP, R>(&mut self, mut op: OP) -> (R, DepNodeIndex)
     where
-        OP: FnOnce(&mut Self) -> R,
+        OP: FnMut(&mut Self) -> R,
     {
         let (result, dep_node) =
-            self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
+            self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, &mut || op(self));
         self.tcx().dep_graph.read_index(dep_node);
         (result, dep_node)
     }

@@ -52,7 +52,31 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     }
 }
 
-impl QueryContext for QueryCtxt<'_> {
+impl<'tcx> QueryCtxt<'tcx> {
+    // Define this closure separately from the one passed to `with_related_context` so it only has to be monomorphized once.
+    fn make_icx<'a>(
+        self,
+        token: QueryJobId,
+        depth_limit: bool,
+        diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
+        current_icx: &ImplicitCtxt<'a, 'tcx>,
+    ) -> ImplicitCtxt<'a, 'tcx> {
+        if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
+            self.depth_limit_error(token);
+        }
+
+        // Update the `ImplicitCtxt` to point to our new query job.
+        ImplicitCtxt {
+            tcx: *self,
+            query: Some(token),
+            diagnostics,
+            query_depth: current_icx.query_depth + depth_limit as usize,
+            task_deps: current_icx.task_deps,
+        }
+    }
+}
+
+impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
             NonZeroU64::new(
@@ -110,21 +134,11 @@ impl QueryContext for QueryCtxt<'_> {
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(*self, move |current_icx| {
-            if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
-                self.depth_limit_error(token);
-            }
-
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: *self,
-                query: Some(token),
-                diagnostics,
-                query_depth: current_icx.query_depth + depth_limit as usize,
-                task_deps: current_icx.task_deps,
-            };
-
             // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, compute)
+            tls::enter_context(
+                &self.make_icx(token, depth_limit, diagnostics, current_icx),
+                compute,
+            )
         })
     }
 

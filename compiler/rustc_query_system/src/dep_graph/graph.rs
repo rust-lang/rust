@@ -377,14 +377,14 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(
+    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, R>(
         &self,
         cx: Tcx,
         dep_kind: K,
-        op: OP,
+        op: &mut dyn FnMut() -> R,
     ) -> (R, DepNodeIndex)
-    where
-        OP: FnOnce() -> R,
+// where
+    //     OP: FnOnce() -> R,
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 

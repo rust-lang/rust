@@ -458,7 +458,7 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
-                return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
+                return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), &mut || {
                     query.compute(qcx, key)
                 });
             }
