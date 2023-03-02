@@ -89,14 +89,11 @@ impl LintcheckConfig {
             if markdown { "md" } else { "txt" }
         ));
 
-        // look at the --threads arg, if 0 is passed, ask rayon rayon how many threads it would spawn and
-        // use half of that for the physical core count
-        // by default use a single thread
+        // look at the --threads arg, if 0 is passed, use the threads count
         let max_jobs = match clap_config.get_one::<usize>("threads") {
             Some(&0) => {
                 // automatic choice
-                // Rayon seems to return thread count so half that for core count
-                rayon::current_num_threads() / 2
+                std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
             },
             Some(&threads) => threads,
             // no -j passed, use a single thread
