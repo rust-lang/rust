@@ -1461,10 +1461,27 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else {
             return
         };
-        if let hir::TyKind::OpaqueDef(..) = ty.kind {
-            // Bounds are respected for `type X = impl Trait`
+        
+        // Bounds are respected for types with opaque types
+        use rustc_hir::intravisit::{self, Visitor};
+        struct OpaqueVisitor {
+            has_opaque: bool,
+        }
+        impl<'tcx> Visitor<'tcx> for OpaqueVisitor {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+                if let hir::TyKind::OpaqueDef(..) = ty.kind {
+                    self.has_opaque = true;
+                } else {
+                    intravisit::walk_ty(self, ty);
+                }
+            }
+        }
+        let mut opaque_visitor = OpaqueVisitor { has_opaque: false };
+        opaque_visitor.visit_ty(ty);
+        if opaque_visitor.has_opaque {
             return;
         }
+        
         // There must not be a where clause
         if type_alias_generics.predicates.is_empty() {
             return;
