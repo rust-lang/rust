@@ -144,7 +144,7 @@ function initSearch(rawSearchIndex) {
     function itemTypeFromName(typename) {
         const index = itemTypes.findIndex(i => i === typename);
         if (index < 0) {
-            throw new Error("Unknown type filter `" + typename + "`");
+            throw ["Unknown type filter ", typename];
         }
         return index;
     }
@@ -164,21 +164,21 @@ function initSearch(rawSearchIndex) {
      */
     function getStringElem(query, parserState, isInGenerics) {
         if (isInGenerics) {
-            throw new Error("`\"` cannot be used in generics");
+            throw ["Unexpected ", "\"", " in generics"];
         } else if (query.literalSearch) {
-            throw new Error("Cannot have more than one literal search element");
+            throw ["Cannot have more than one literal search element"];
         } else if (parserState.totalElems - parserState.genericsElems > 0) {
-            throw new Error("Cannot use literal search when there is more than one element");
+            throw ["Cannot use literal search when there is more than one element"];
         }
         parserState.pos += 1;
         const start = parserState.pos;
         const end = getIdentEndPosition(parserState);
         if (parserState.pos >= parserState.length) {
-            throw new Error("Unclosed `\"`");
+            throw ["Unclosed ", "\""];
         } else if (parserState.userQuery[end] !== "\"") {
-            throw new Error(`Unexpected \`${parserState.userQuery[end]}\` in a string element`);
+            throw ["Unexpected ", parserState.userQuery[end], " in a string element"];
         } else if (start === end) {
-            throw new Error("Cannot have empty string element");
+            throw ["Cannot have empty string element"];
         }
         // To skip the quote at the end.
         parserState.pos += 1;
@@ -257,7 +257,7 @@ function initSearch(rawSearchIndex) {
             return;
         }
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
-            throw new Error("You cannot have more than one element if you use quotes");
+            throw ["You cannot have more than one element if you use quotes"];
         }
         const pathSegments = name.split("::");
         if (pathSegments.length > 1) {
@@ -266,17 +266,17 @@ function initSearch(rawSearchIndex) {
 
                 if (pathSegment.length === 0) {
                     if (i === 0) {
-                        throw new Error("Paths cannot start with `::`");
+                        throw ["Paths cannot start with ", "::"];
                     } else if (i + 1 === len) {
-                        throw new Error("Paths cannot end with `::`");
+                        throw ["Paths cannot end with ", "::"];
                     }
-                    throw new Error("Unexpected `::::`");
+                    throw ["Unexpected ", "::::"];
                 }
             }
         }
         // In case we only have something like `<p>`, there is no name.
         if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "")) {
-            throw new Error("Found generics without a path");
+            throw ["Found generics without a path"];
         }
         parserState.totalElems += 1;
         if (isInGenerics) {
@@ -308,15 +308,15 @@ function initSearch(rawSearchIndex) {
             if (!isIdentCharacter(c)) {
                 if (c === "!") {
                     if (foundExclamation !== -1) {
-                        throw new Error("Cannot have more than one `!` in an ident");
+                        throw ["Cannot have more than one ", "!", " in an ident"];
                     } else if (parserState.pos + 1 < parserState.length &&
                         isIdentCharacter(parserState.userQuery[parserState.pos + 1])
                     ) {
-                        throw new Error("`!` can only be at the end of an ident");
+                        throw ["Unexpected ", "!", ": it can only be at the end of an ident"];
                     }
                     foundExclamation = parserState.pos;
                 } else if (isErrorCharacter(c)) {
-                    throw new Error(`Unexpected \`${c}\``);
+                    throw ["Unexpected ", c];
                 } else if (
                     isStopCharacter(c) ||
                     isSpecialStartCharacter(c) ||
@@ -329,7 +329,7 @@ function initSearch(rawSearchIndex) {
                     }
                     if (foundExclamation !== -1) {
                         if (start <= (end - 2)) {
-                            throw new Error("Cannot have associated items in macros");
+                            throw ["Cannot have associated items in macros"];
                         } else {
                             // if start == end - 1, we got the never type
                             // while the never type has no associated macros, we still
@@ -340,7 +340,7 @@ function initSearch(rawSearchIndex) {
                     // Skip current ":".
                     parserState.pos += 1;
                 } else {
-                    throw new Error(`Unexpected \`${c}\``);
+                    throw ["Unexpected ", c];
                 }
             }
             parserState.pos += 1;
@@ -351,8 +351,13 @@ function initSearch(rawSearchIndex) {
             if (parserState.typeFilter === null) {
                 parserState.typeFilter = "macro";
             } else if (parserState.typeFilter !== "macro") {
-                throw new Error("Invalid search type: macro `!` and " +
-                    `\`${parserState.typeFilter}\` both specified`);
+                throw [
+                    "Invalid search type: macro ",
+                    "!",
+                    " and ",
+                    parserState.typeFilter,
+                    " both specified",
+                ];
             }
             end = foundExclamation;
         }
@@ -382,9 +387,9 @@ function initSearch(rawSearchIndex) {
             parserState.userQuery[parserState.pos] === "<"
         ) {
             if (isInGenerics) {
-                throw new Error("Unexpected `<` after `<`");
+                throw ["Unexpected ", "<", " after ", "<"];
             } else if (start >= end) {
-                throw new Error("Found generics without a path");
+                throw ["Found generics without a path"];
             }
             parserState.pos += 1;
             getItemsBefore(query, parserState, generics, ">");
@@ -428,21 +433,39 @@ function initSearch(rawSearchIndex) {
                 foundStopChar = true;
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
-                throw new Error("Unexpected `::`: paths cannot start with `::`");
+                throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
             } else if (c === ":" || isEndCharacter(c)) {
                 let extra = "";
                 if (endChar === ">") {
-                    extra = "`<`";
+                    extra = "<";
                 } else if (endChar === "") {
-                    extra = "`->`";
+                    extra = "->";
+                } else {
+                    extra = endChar;
                 }
-                throw new Error("Unexpected `" + c + "` after " + extra);
+                throw ["Unexpected ", c, " after ", extra];
             }
             if (!foundStopChar) {
                 if (endChar !== "") {
-                    throw new Error(`Expected \`,\`, \` \` or \`${endChar}\`, found \`${c}\``);
+                    throw [
+                        "Expected ",
+                        ",", // comma
+                        ", ",
+                        "&nbsp;", // whitespace
+                        " or ",
+                        endChar,
+                        ", found ",
+                        c,
+                    ];
                 }
-                throw new Error(`Expected \`,\` or \` \`, found \`${c}\``);
+                throw [
+                    "Expected ",
+                    ",", // comma
+                    " or ",
+                    "&nbsp;", // whitespace
+                    ", found ",
+                    c,
+                ];
             }
             const posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
@@ -470,7 +493,7 @@ function initSearch(rawSearchIndex) {
 
         for (let pos = 0; pos < parserState.pos; ++pos) {
             if (!isIdentCharacter(query[pos]) && !isWhitespaceCharacter(query[pos])) {
-                throw new Error(`Unexpected \`${query[pos]}\` in type filter`);
+                throw ["Unexpected ", query[pos], " in type filter"];
             }
         }
     }
@@ -496,19 +519,19 @@ function initSearch(rawSearchIndex) {
                     if (isReturnArrow(parserState)) {
                         break;
                     }
-                    throw new Error(`Unexpected \`${c}\` (did you mean \`->\`?)`);
+                    throw ["Unexpected ", c, " (did you mean ", "->", "?)"];
                 }
-                throw new Error(`Unexpected \`${c}\``);
+                throw ["Unexpected ", c];
             } else if (c === ":" && !isPathStart(parserState)) {
                 if (parserState.typeFilter !== null) {
-                    throw new Error("Unexpected `:`");
+                    throw ["Unexpected ", ":"];
                 }
                 if (query.elems.length === 0) {
-                    throw new Error("Expected type filter before `:`");
+                    throw ["Expected type filter before ", ":"];
                 } else if (query.elems.length !== 1 || parserState.totalElems !== 1) {
-                    throw new Error("Unexpected `:`");
+                    throw ["Unexpected ", ":"];
                 } else if (query.literalSearch) {
-                    throw new Error("You cannot use quotes on type filter");
+                    throw ["You cannot use quotes on type filter"];
                 }
                 checkExtraTypeFilterCharacters(parserState);
                 // The type filter doesn't count as an element since it's a modifier.
@@ -521,9 +544,29 @@ function initSearch(rawSearchIndex) {
             }
             if (!foundStopChar) {
                 if (parserState.typeFilter !== null) {
-                    throw new Error(`Expected \`,\`, \` \` or \`->\`, found \`${c}\``);
+                    throw [
+                        "Expected ",
+                        ",", // comma
+                        ", ",
+                        "&nbsp;", // whitespace
+                        " or ",
+                        "->", // arrow
+                        ", found ",
+                        c,
+                    ];
                 }
-                throw new Error(`Expected \`,\`, \` \`, \`:\` or \`->\`, found \`${c}\``);
+                throw [
+                    "Expected ",
+                    ",", // comma
+                    ", ",
+                    "&nbsp;", // whitespace
+                    ", ",
+                    ":", // colon
+                    " or ",
+                    "->", // arrow
+                    ", found ",
+                    c,
+                ];
             }
             const before = query.elems.length;
             getNextElem(query, parserState, query.elems, false);
@@ -540,7 +583,7 @@ function initSearch(rawSearchIndex) {
                 getItemsBefore(query, parserState, query.returned, "");
                 // Nothing can come afterward!
                 if (query.returned.length === 0) {
-                    throw new Error("Expected at least one item after `->`");
+                    throw ["Expected at least one item after ", "->"];
                 }
                 break;
             } else {
@@ -694,7 +737,7 @@ function initSearch(rawSearchIndex) {
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
-            query.error = err.message;
+            query.error = err;
             query.typeFilter = -1;
             return query;
         }
@@ -1760,7 +1803,16 @@ function initSearch(rawSearchIndex) {
 
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
-            output += `<h3>Query parser error: "${results.query.error}".</h3>`;
+            const error = results.query.error;
+            error.forEach((value, index) => {
+                value = value.split("<").join("&lt;").split(">").join("&gt;");
+                if (index % 2 !== 0) {
+                    error[index] = `<code>${value}</code>`;
+                } else {
+                    error[index] = value;
+                }
+            });
+            output += `<h3 class="error">Query parser error: "${error.join("")}".</h3>`;
             output += "<div id=\"search-tabs\">" +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 "</div>";
