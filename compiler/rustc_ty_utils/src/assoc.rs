@@ -53,9 +53,37 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
                 )
             }
         }
-        hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
-            impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id()),
-        ),
+        hir::ItemKind::Impl(ref impl_) => {
+            if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty {
+                // We collect RPITITs for each trait method's return type, on the impl side too and
+                // create a corresponding associated item using
+                // associated_items_for_impl_trait_in_trait query.
+                tcx.arena.alloc_from_iter(
+                    impl_
+                        .items
+                        .iter()
+                        .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
+                        .chain(impl_.of_trait.iter().flat_map(|_| {
+                            impl_
+                                .items
+                                .iter()
+                                .filter(|impl_item_ref| {
+                                    matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
+                                })
+                                .flat_map(|impl_item_ref| {
+                                    let impl_fn_def_id =
+                                        impl_item_ref.id.owner_id.def_id.to_def_id();
+                                    tcx.associated_items_for_impl_trait_in_trait(impl_fn_def_id)
+                                })
+                                .map(|def_id| *def_id)
+                        })),
+                )
+            } else {
+                tcx.arena.alloc_from_iter(
+                    impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id()),
+                )
+            }
+        }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
     }
 }
@@ -290,8 +318,40 @@ fn impl_associated_item_for_impl_trait_in_trait(
 ) -> LocalDefId {
     let impl_def_id = tcx.local_parent(impl_fn_def_id);
 
-    let span = tcx.def_span(trait_assoc_def_id);
+    // FIXME fix the span, we probably want the def_id of the return type of the function
+    let span = tcx.def_span(impl_fn_def_id);
     let impl_assoc_ty = tcx.at(span).create_def(impl_def_id, DefPathData::ImplTraitAssocTy);
 
-    impl_assoc_ty.def_id()
+    let local_def_id = impl_assoc_ty.def_id();
+    let def_id = local_def_id.to_def_id();
+
+    impl_assoc_ty.opt_def_kind(Some(DefKind::AssocTy));
+
+    // There's no HIR associated with this new synthesized `def_id`, so feed
+    // `opt_local_def_id_to_hir_id` with `None`.
+    impl_assoc_ty.opt_local_def_id_to_hir_id(None);
+
+    // Add the def_id of the function that generated this synthesized associated type.
+    impl_assoc_ty.opt_rpitit_info(Some(ImplTraitInTraitData::Impl {
+        fn_def_id: impl_fn_def_id.to_def_id(),
+    }));
+
+    impl_assoc_ty.associated_item(ty::AssocItem {
+        name: kw::Empty,
+        kind: ty::AssocKind::Type,
+        def_id,
+        trait_item_def_id: Some(trait_assoc_def_id.to_def_id()),
+        container: ty::ImplContainer,
+        fn_has_self_parameter: false,
+    });
+
+    // Copy impl_defaultness of the containing function.
+    impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
+
+    // Copy generics_of the trait's associated item.
+    // FIXME: This is not correct, in particular the parent is going to be wrong. So we would need
+    // to copy from trait_assoc_def_id and adjust things.
+    impl_assoc_ty.generics_of(tcx.generics_of(trait_assoc_def_id).clone());
+
+    local_def_id
 }
