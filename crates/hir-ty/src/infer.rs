@@ -354,6 +354,8 @@ pub struct InferenceResult {
     pub type_of_pat: ArenaMap<PatId, Ty>,
     pub type_of_binding: ArenaMap<BindingId, Ty>,
     pub type_of_rpit: ArenaMap<RpitId, Ty>,
+    /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
+    pub type_of_for_iterator: ArenaMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
@@ -547,6 +549,9 @@ impl<'a> InferenceContext<'a> {
             *ty = table.resolve_completely(ty.clone());
         }
         for ty in result.type_of_rpit.values_mut() {
+            *ty = table.resolve_completely(ty.clone());
+        }
+        for ty in result.type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
         for mismatch in result.type_mismatches.values_mut() {

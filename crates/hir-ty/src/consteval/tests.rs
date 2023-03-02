@@ -416,6 +416,43 @@ fn loops() {
 }
 
 #[test]
+fn for_loops() {
+    check_number(
+        r#"
+    //- minicore: iterator
+
+    struct Range {
+        start: u8,
+        end: u8,
+    }
+
+    impl Iterator for Range {
+        type Item = u8;
+        fn next(&mut self) -> Option<u8> {
+            if self.start >= self.end {
+                None
+            } else {
+                let r = self.start;
+                self.start = self.start + 1;
+                Some(r)
+            }
+        }
+    }
+
+    const GOAL: u8 = {
+        let mut sum = 0;
+        let ar = Range { start: 1, end: 11 };
+        for i in ar {
+            sum = sum + i;
+        }
+        sum
+    };
+        "#,
+        55,
+    );
+}
+
+#[test]
 fn recursion() {
     check_number(
         r#"
@@ -515,6 +552,33 @@ fn tuples() {
     };
         "#,
         5,
+    );
+}
+
+#[test]
+fn path_pattern_matching() {
+    check_number(
+        r#"
+    enum Season {
+        Spring,
+        Summer,
+        Fall,
+        Winter,
+    }
+
+    use Season::*;
+
+    const fn f(x: Season) -> i32 {
+        match x {
+            Spring => 1,
+            Summer => 2,
+            Fall => 3,
+            Winter => 4,
+        }
+    }
+    const GOAL: i32 = f(Spring) + 10 * f(Summer) + 100 * f(Fall) + 1000 * f(Winter);
+        "#,
+        4321,
     );
 }
 

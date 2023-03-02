@@ -510,4 +510,20 @@ fn f(x: i32) {
 "#,
         );
     }
+
+    #[test]
+    fn for_loop() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators
+fn f(x: [(i32, u8); 10]) {
+    for (a, mut b) in x {
+          //^^^^^ 💡 weak: remove this `mut`
+        a = 2;
+      //^^^^^ 💡 error: cannot mutate immutable variable `a`
+    }
+}
+"#,
+        );
+    }
 }

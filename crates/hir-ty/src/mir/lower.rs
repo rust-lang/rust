@@ -9,6 +9,7 @@ use hir_def::{
         Array, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm, Pat, PatId,
         RecordLitField,
     },
+    lang_item::{LangItem, LangItemTarget},
     layout::LayoutError,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, EnumVariantId, HasModule,
@@ -17,8 +18,8 @@ use la_arena::ArenaMap;
 
 use crate::{
     consteval::ConstEvalError, db::HirDatabase, display::HirDisplay, infer::TypeMismatch,
-    inhabitedness::is_ty_uninhabited_from, layout::layout_of_ty, mapping::ToChalk, utils::generics,
-    Adjust, AutoBorrow, CallableDefId, TyBuilder, TyExt,
+    inhabitedness::is_ty_uninhabited_from, layout::layout_of_ty, mapping::ToChalk, static_lifetime,
+    utils::generics, Adjust, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
 
 use super::*;
@@ -59,6 +60,7 @@ pub enum MirLowerError {
     Loop,
     /// Something that should never happen and is definitely a bug, but we don't want to panic if it happened
     ImplementationError(&'static str),
+    LangItemNotFound(LangItem),
 }
 
 macro_rules! not_supported {
@@ -484,13 +486,64 @@ impl MirLowerCtx<'_> {
                     Ok(())
                 })
             }
-            Expr::For { .. } => not_supported!("for loop"),
+            &Expr::For { iterable, pat, body, label } => {
+                let into_iter_fn = self.resolve_lang_item(LangItem::IntoIterIntoIter)?
+                    .as_function().ok_or(MirLowerError::LangItemNotFound(LangItem::IntoIterIntoIter))?;
+                let iter_next_fn = self.resolve_lang_item(LangItem::IteratorNext)?
+                    .as_function().ok_or(MirLowerError::LangItemNotFound(LangItem::IteratorNext))?;
+                let option_some = self.resolve_lang_item(LangItem::OptionSome)?
+                    .as_enum_variant().ok_or(MirLowerError::LangItemNotFound(LangItem::OptionSome))?;
+                let option = option_some.parent;
+                let into_iter_fn_op = Operand::const_zst(
+                    TyKind::FnDef(
+                        self.db.intern_callable_def(CallableDefId::FunctionId(into_iter_fn)).into(),
+                        Substitution::from1(Interner, self.expr_ty(iterable))
+                    ).intern(Interner));
+                let iter_next_fn_op = Operand::const_zst(
+                    TyKind::FnDef(
+                        self.db.intern_callable_def(CallableDefId::FunctionId(iter_next_fn)).into(),
+                        Substitution::from1(Interner, self.expr_ty(iterable))
+                    ).intern(Interner));
+                let iterator_ty = &self.infer.type_of_for_iterator[expr_id];
+                let ref_mut_iterator_ty = TyKind::Ref(Mutability::Mut, static_lifetime(), iterator_ty.clone()).intern(Interner);
+                let item_ty = &self.infer.type_of_pat[pat];
+                let option_item_ty = TyKind::Adt(chalk_ir::AdtId(option.into()), Substitution::from1(Interner, item_ty.clone())).intern(Interner);
+                let iterator_place: Place = self.temp(iterator_ty.clone())?.into();
+                let option_item_place: Place = self.temp(option_item_ty.clone())?.into();
+                let ref_mut_iterator_place: Place = self.temp(ref_mut_iterator_ty)?.into();
+                let Some(current) = self.lower_call_and_args(into_iter_fn_op, Some(iterable).into_iter(), iterator_place.clone(), current, false)?
+                else {
+                    return Ok(None);
+                };
+                self.push_assignment(current, ref_mut_iterator_place.clone(), Rvalue::Ref(BorrowKind::Mut { allow_two_phase_borrow: false }, iterator_place), expr_id.into());
+                self.lower_loop(current, label, |this, begin| {
+                    this.push_storage_live(pat, begin)?;
+                    let Some(current) = this.lower_call(iter_next_fn_op, vec![Operand::Copy(ref_mut_iterator_place)], option_item_place.clone(), begin, false)?
+                    else {
+                        return Ok(());
+                    };
+                    let end = this.current_loop_end()?;
+                    let (current, _) = this.pattern_matching_variant(
+                        option_item_ty.clone(),
+                        BindingAnnotation::Unannotated,
+                        option_item_place.into(),
+                        option_some.into(),
+                        current,
+                        pat.into(),
+                        Some(end),
+                        &[pat], &None)?;
+                    if let (_, Some(block)) = this.lower_expr_to_some_place(body, current)? {
+                        this.set_goto(block, begin);
+                    }
+                    Ok(())
+                })
+            },
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
                 match &callee_ty.data(Interner).kind {
                     chalk_ir::TyKind::FnDef(..) => {
                         let func = Operand::from_bytes(vec![], callee_ty.clone());
-                        self.lower_call(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
+                        self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
                     }
                     TyKind::Scalar(_)
                     | TyKind::Tuple(_, _)
@@ -527,7 +580,7 @@ impl MirLowerCtx<'_> {
                 )
                 .intern(Interner);
                 let func = Operand::from_bytes(vec![], ty);
-                self.lower_call(
+                self.lower_call_and_args(
                     func,
                     iter::once(*receiver).chain(args.iter().copied()),
                     place,
@@ -962,7 +1015,7 @@ impl MirLowerCtx<'_> {
         Ok(prev_block)
     }
 
-    fn lower_call(
+    fn lower_call_and_args(
         &mut self,
         func: Operand,
         args: impl Iterator<Item = ExprId>,
@@ -983,6 +1036,17 @@ impl MirLowerCtx<'_> {
         else {
             return Ok(None);
         };
+        self.lower_call(func, args, place, current, is_uninhabited)
+    }
+
+    fn lower_call(
+        &mut self,
+        func: Operand,
+        args: Vec<Operand>,
+        place: Place,
+        current: BasicBlockId,
+        is_uninhabited: bool,
+    ) -> Result<Option<BasicBlockId>> {
         let b = if is_uninhabited { None } else { Some(self.new_basic_block()) };
         self.set_terminator(
             current,
@@ -1112,7 +1176,22 @@ impl MirLowerCtx<'_> {
             Pat::Record { .. } => not_supported!("record pattern"),
             Pat::Range { .. } => not_supported!("range pattern"),
             Pat::Slice { .. } => not_supported!("slice pattern"),
-            Pat::Path(_) => not_supported!("path pattern"),
+            Pat::Path(_) => {
+                let Some(variant) = self.infer.variant_resolution_for_pat(pattern) else {
+                    not_supported!("unresolved variant");
+                };
+                self.pattern_matching_variant(
+                    cond_ty,
+                    binding_mode,
+                    cond_place,
+                    variant,
+                    current,
+                    pattern.into(),
+                    current_else,
+                    &[],
+                    &None,
+                )?
+            }
             Pat::Lit(l) => {
                 let then_target = self.new_basic_block();
                 let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
@@ -1183,79 +1262,98 @@ impl MirLowerCtx<'_> {
                 let Some(variant) = self.infer.variant_resolution_for_pat(pattern) else {
                     not_supported!("unresolved variant");
                 };
-                pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
-                let subst = match cond_ty.kind(Interner) {
-                    TyKind::Adt(_, s) => s,
-                    _ => {
-                        return Err(MirLowerError::TypeError(
-                            "non adt type matched with tuple struct",
-                        ))
-                    }
-                };
-                let fields_type = self.db.field_types(variant);
-                match variant {
-                    VariantId::EnumVariantId(v) => {
-                        let e = self.db.const_eval_discriminant(v)? as u128;
-                        let next = self.new_basic_block();
-                        let tmp = self.discr_temp_place();
-                        self.push_assignment(
-                            current,
-                            tmp.clone(),
-                            Rvalue::Discriminant(cond_place.clone()),
-                            pattern.into(),
-                        );
-                        let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
-                        self.set_terminator(
-                            current,
-                            Terminator::SwitchInt {
-                                discr: Operand::Copy(tmp),
-                                targets: SwitchTargets::static_if(e, next, else_target),
-                            },
-                        );
-                        let enum_data = self.db.enum_data(v.parent);
-                        let fields =
-                            enum_data.variants[v.local_id].variant_data.fields().iter().map(
-                                |(x, _)| {
-                                    (
-                                        PlaceElem::Field(FieldId { parent: v.into(), local_id: x }),
-                                        fields_type[x].clone().substitute(Interner, subst),
-                                    )
-                                },
-                            );
-                        self.pattern_match_tuple_like(
-                            next,
-                            Some(else_target),
-                            args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
-                            *ellipsis,
-                            &cond_place,
-                            binding_mode,
-                        )?
-                    }
-                    VariantId::StructId(s) => {
-                        let struct_data = self.db.struct_data(s);
-                        let fields = struct_data.variant_data.fields().iter().map(|(x, _)| {
-                            (
-                                PlaceElem::Field(FieldId { parent: s.into(), local_id: x }),
-                                fields_type[x].clone().substitute(Interner, subst),
-                            )
-                        });
-                        self.pattern_match_tuple_like(
-                            current,
-                            current_else,
-                            args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
-                            *ellipsis,
-                            &cond_place,
-                            binding_mode,
-                        )?
-                    }
-                    VariantId::UnionId(_) => {
-                        return Err(MirLowerError::TypeError("pattern matching on union"))
-                    }
-                }
+                self.pattern_matching_variant(
+                    cond_ty,
+                    binding_mode,
+                    cond_place,
+                    variant,
+                    current,
+                    pattern.into(),
+                    current_else,
+                    args,
+                    ellipsis,
+                )?
             }
             Pat::Ref { .. } => not_supported!("& pattern"),
             Pat::Box { .. } => not_supported!("box pattern"),
             Pat::ConstBlock(_) => not_supported!("const block pattern"),
+        })
+    }
+
+    fn pattern_matching_variant(
+        &mut self,
+        mut cond_ty: Ty,
+        mut binding_mode: BindingAnnotation,
+        mut cond_place: Place,
+        variant: VariantId,
+        current: BasicBlockId,
+        span: MirSpan,
+        current_else: Option<BasicBlockId>,
+        args: &[PatId],
+        ellipsis: &Option<usize>,
+    ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
+        pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
+        let subst = match cond_ty.kind(Interner) {
+            TyKind::Adt(_, s) => s,
+            _ => return Err(MirLowerError::TypeError("non adt type matched with tuple struct")),
+        };
+        let fields_type = self.db.field_types(variant);
+        Ok(match variant {
+            VariantId::EnumVariantId(v) => {
+                let e = self.db.const_eval_discriminant(v)? as u128;
+                let next = self.new_basic_block();
+                let tmp = self.discr_temp_place();
+                self.push_assignment(
+                    current,
+                    tmp.clone(),
+                    Rvalue::Discriminant(cond_place.clone()),
+                    span,
+                );
+                let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
+                self.set_terminator(
+                    current,
+                    Terminator::SwitchInt {
+                        discr: Operand::Copy(tmp),
+                        targets: SwitchTargets::static_if(e, next, else_target),
+                    },
+                );
+                let enum_data = self.db.enum_data(v.parent);
+                let fields =
+                    enum_data.variants[v.local_id].variant_data.fields().iter().map(|(x, _)| {
+                        (
+                            PlaceElem::Field(FieldId { parent: v.into(), local_id: x }),
+                            fields_type[x].clone().substitute(Interner, subst),
+                        )
+                    });
+                self.pattern_match_tuple_like(
+                    next,
+                    Some(else_target),
+                    args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
+                    *ellipsis,
+                    &cond_place,
+                    binding_mode,
+                )?
+            }
+            VariantId::StructId(s) => {
+                let struct_data = self.db.struct_data(s);
+                let fields = struct_data.variant_data.fields().iter().map(|(x, _)| {
+                    (
+                        PlaceElem::Field(FieldId { parent: s.into(), local_id: x }),
+                        fields_type[x].clone().substitute(Interner, subst),
+                    )
+                });
+                self.pattern_match_tuple_like(
+                    current,
+                    current_else,
+                    args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
+                    *ellipsis,
+                    &cond_place,
+                    binding_mode,
+                )?
+            }
+            VariantId::UnionId(_) => {
+                return Err(MirLowerError::TypeError("pattern matching on union"))
+            }
         })
     }
 
@@ -1383,6 +1481,11 @@ impl MirLowerCtx<'_> {
             self.push_statement(current, StatementKind::StorageLive(l).with_span(span));
         });
         Ok(())
+    }
+
+    fn resolve_lang_item(&self, item: LangItem) -> Result<LangItemTarget> {
+        let crate_id = self.owner.module(self.db.upcast()).krate();
+        self.db.lang_item(crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
     }
 }
 

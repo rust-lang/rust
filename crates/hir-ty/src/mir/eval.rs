@@ -1122,7 +1122,12 @@ impl Evaluator<'_> {
     }
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
-        lang_attr(self.db.upcast(), def)
+        let candidate = lang_attr(self.db.upcast(), def)?;
+        // filter normal lang functions out
+        if [LangItem::IntoIterIntoIter, LangItem::IteratorNext].contains(&candidate) {
+            return None;
+        }
+        Some(candidate)
     }
 
     fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals<'_>) -> Result<MemoryMap> {

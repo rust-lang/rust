@@ -83,6 +83,10 @@ impl Operand {
     fn from_bytes(data: Vec<u8>, ty: Ty) -> Self {
         Operand::from_concrete_const(data, MemoryMap::default(), ty)
     }
+
+    fn const_zst(ty: Ty) -> Operand {
+        Self::from_bytes(vec![], ty)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
