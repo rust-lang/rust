@@ -442,6 +442,8 @@ def to_toml(value):
             return value
         else:
             return "'" + value + "'"
+    elif isinstance(value, dict):
+        return "{" + ", ".join(map(lambda a: "{} = {}".format(to_toml(a[0]), to_toml(a[1])), value.items())) + "}"
     else:
         raise RuntimeError('no toml')
 
