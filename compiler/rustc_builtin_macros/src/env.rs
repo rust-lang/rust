@@ -53,7 +53,7 @@ pub fn expand_env<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, tts) {
-        Some(exprs) if exprs.is_empty() => {
+        Some(exprs) if exprs.is_empty() || exprs.len() > 2 => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::any(sp);
         }
@@ -64,28 +64,48 @@ pub fn expand_env<'cx>(
     let Some((var, _style)) = expr_to_string(cx, exprs.next().unwrap(), "expected string literal") else {
         return DummyResult::any(sp);
     };
-    let msg = match exprs.next() {
-        None => Symbol::intern(&format!("environment variable `{}` not defined", var)),
+
+    let custom_msg = match exprs.next() {
+        None => None,
         Some(second) => match expr_to_string(cx, second, "expected string literal") {
             None => return DummyResult::any(sp),
-            Some((s, _style)) => s,
+            Some((s, _style)) => Some(s),
         },
     };
-
-    if exprs.next().is_some() {
-        cx.span_err(sp, "env! takes 1 or 2 arguments");
-        return DummyResult::any(sp);
-    }
 
     let sp = cx.with_def_site_ctxt(sp);
     let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            cx.span_err(sp, msg.as_str());
+            let (msg, help) = match custom_msg {
+                None => (
+                    format!("environment variable `{var}` not defined at compile time"),
+                    Some(help_for_missing_env_var(var.as_str())),
+                ),
+                Some(s) => (s.to_string(), None),
+            };
+            let mut diag = cx.struct_span_err(sp, &msg);
+            if let Some(help) = help {
+                diag.help(help);
+            }
+            diag.emit();
             return DummyResult::any(sp);
         }
         Some(value) => cx.expr_str(sp, value),
     };
     MacEager::expr(e)
+}
+
+fn help_for_missing_env_var(var: &str) -> String {
+    if var.starts_with("CARGO_")
+        || var.starts_with("DEP_")
+        || matches!(var, "OUT_DIR" | "OPT_LEVEL" | "PROFILE" | "HOST" | "TARGET")
+    {
+        format!(
+            "Cargo sets build script variables at run time. Use `std::env::var(\"{var}\")` instead"
+        )
+    } else {
+        format!("Use `std::env::var(\"{var}\")` to read the variable at run time")
+    }
 }
