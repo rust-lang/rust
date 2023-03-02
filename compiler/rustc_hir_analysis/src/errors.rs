@@ -333,6 +333,15 @@ pub(crate) struct StartTrackCaller {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_start_not_target_feature)]
+pub(crate) struct StartTargetFeature {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_start_not_async, code = "E0752")]
 pub(crate) struct StartAsync {
     #[primary_span]
