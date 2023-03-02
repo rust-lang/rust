@@ -283,6 +283,11 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
+    if !tcx.codegen_fn_attrs(main_def_id).target_features.is_empty() {
+        tcx.sess.emit_err(errors::TargetFeatureOnMain { main: main_span });
+        error = true;
+    }
+
     if error {
         return;
     }
