@@ -18,4 +18,7 @@ fn input_immutable(#[dup] x: &f32, y: &f32) -> f32;
 #[autodiff(d_sin, Reverse, Active)]
 fn output_mutable(#[dup] x: &mut f32, y: &mut f32) -> f32;
 
+#[autodiff(d_sin, Reverse, Active)]
+fn dupnoneed_input(#[dup_noneed] x: &f32, y: &f32) -> f32;
+
 fn main() {}

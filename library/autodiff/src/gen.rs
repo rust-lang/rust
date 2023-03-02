@@ -1,6 +1,7 @@
 use quote::{quote, format_ident};
-use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote, Pat};
+use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote, Pat, Ident};
 use crate::parser::{DiffItem, Activity, Mode};
+use proc_macro_error::abort;
 use proc_macro2::TokenStream;
 use crate::{parser, parser::{PrimalSig, is_ref_mut}};
 
@@ -18,19 +19,26 @@ pub(crate) fn generate_header(item: &DiffItem) -> TokenStream {
 pub(crate) fn primal_fnc(item: &mut DiffItem) -> TokenStream {
     // construct body of primal if not given
     let body = item.block.clone().map(|x| quote!(x)).unwrap_or_else(|| {
-        let primal_wrapper = format_ident!("primal_{}", item.primal.ident);
-        item.primal.ident = primal_wrapper.clone();
-        let inputs = &item.primal.inputs;
+        let header_fnc = &item.header.name;
+        //let primal_wrapper = format_ident!("primal_{}", item.primal.ident);
+        //item.primal.ident = primal_wrapper.clone();
+        let inputs = item.primal.inputs.iter().map(|x| only_ident(x)).collect::<Vec<_>>();
 
         quote!({
-            #primal_wrapper(#(#inputs,)*)
+            #header_fnc(#(#inputs,)*)
         })
     });
 
-    let (sig, body) = (&item.primal, &item.block);
+    let sig = &item.primal;
     let PrimalSig {
         ident, inputs, output
     } = sig;
+
+    let ident = if item.block.is_some() {
+        ident.clone()
+    } else {
+        format_ident!("primal_{}", ident)
+    };
 
     let sig = quote!(fn #ident(#(#inputs,)*) #output);
 
@@ -39,6 +47,16 @@ pub(crate) fn primal_fnc(item: &mut DiffItem) -> TokenStream {
         #sig
         #body
     )
+}
+
+fn only_ident(arg: &FnArg) -> Ident {
+    match arg {
+        FnArg::Receiver(_) => format_ident!("self"),
+        FnArg::Typed(t) => match &*t.pat {
+            Pat::Ident(ident) => ident.ident.clone(),
+            _ => panic!(""),
+        },
+    }
 }
 
 fn only_type(arg: &FnArg) -> Type {
@@ -90,8 +108,8 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     let mut outputs: Vec<Type> = Vec::new();
     let out_type = 
         match &item.primal.output {
-            ReturnType::Type(_, x) => *x.clone(),
-            _ => panic!(""),
+            ReturnType::Type(_, x) => Some(*x.clone()),
+            _ => None,
         };
 
     let PrimalSig {
@@ -109,14 +127,14 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
             (Mode::Forward, Activity::Duplicated, Some(false)) => {
                 res_inputs.push(as_ref_mut(&input, "grad", false));
                 add_inputs.push(as_ref_mut(&input, "grad", false));
-                outputs.push(out_type.clone());
+                outputs.push(out_type.clone().unwrap());
             },
             (Mode::Forward, Activity::Duplicated, None) => outputs.push(only_type(&input)),
             (Mode::Reverse, Activity::Duplicated, Some(false)) => {
                 res_inputs.push(as_ref_mut(&input, "grad", true));
                 add_inputs.push(as_ref_mut(&input, "grad", true));
             },
-            (Mode::Reverse, Activity::Duplicated, Some(true)) => {
+            (Mode::Reverse, Activity::Duplicated | Activity::DuplicatedNoNeed, Some(true)) => {
                 res_inputs.push(as_ref_mut(&input, "grad", false));
                 add_inputs.push(as_ref_mut(&input, "grad", false));
             },
@@ -137,7 +155,22 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
         _ => {}
     }
 
-    let adjoint_ident = &item.header.name;
+    // for adjoint function -> take header if primal
+    //                      -> take ident of primal function 
+    let adjoint_ident = if item.block.is_some() {
+        if let Some(ident) = item.header.name.get_ident() {
+            ident.clone()
+        } else {
+            abort!(
+                item.header.name,
+                "not a function name";
+                help = "`#[autodiff]` function name should be a single word instead of path"
+            );
+        }
+    } else {
+        item.primal.ident.clone()
+    };
+
     let output = match outputs.len() {
         0 => quote!(),
         1 => {
@@ -159,8 +192,15 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     }).collect::<Vec<_>>();
 
     let call_ident = match item.block.is_some() {
-        false => format_ident!("primal_{}", ident),
-        true => ident.clone(),
+        false => {
+            let ident = format_ident!("primal_{}", ident);
+            if item.header.name.segments.first().unwrap().ident == "Self" {
+                quote!(Self::#ident)
+            } else {
+                quote!(#ident)
+            }
+        },
+        true => quote!(#ident),
     };
 
     let body = quote!({

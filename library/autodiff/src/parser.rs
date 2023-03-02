@@ -288,6 +288,12 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                     "type not behind reference";
                     help = "`#[autodiff]` duplicated parameters should be behind reference in reverse mode"
                 ),
+            (Mode::Reverse, Some(false), Activity::DuplicatedNoNeed) => 
+                abort!(
+                    arg,
+                    "use duplicated instead";
+                    help = "`#[autodiff]` input parameter cannot be declared as duplicatednoneed"
+                ),
             (Mode::Forward, Some(false), Activity::Duplicated) |
                 (Mode::Reverse, None, Activity::Active) => ret.push(ret_arg(&arg)),
             (Mode::Forward, Some(true), Activity::Duplicated | Activity::DuplicatedNoNeed) |
@@ -316,6 +322,8 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
             },
             ReturnType::Default => vec![],
         };
+
+
 
         match (header.mode, header.ret_act) {
             (Mode::Forward, Activity::Duplicated) => {
@@ -411,9 +419,16 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
         sig.output.clone()
     };
 
+    let sig = if is_adjoint {
+        // header is used for calling if we are adjoint
+        format_ident!("wrapper_{}", sig.ident)
+    } else {
+        sig.ident.clone()
+    };
+
     (
         PrimalSig {
-            ident: sig.ident.clone(),
+            ident: sig,
             inputs: args,
             output: ret,
         },
