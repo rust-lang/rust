@@ -259,10 +259,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
         expr_finder.visit_expr(body.value);
 
-        let fudge_equals_found_ty = |use_ty: Ty<'tcx>| {
+        let fudge_ty = |ty: Ty<'tcx>| {
             use rustc_infer::infer::type_variable::*;
             use rustc_middle::infer::unify_key::*;
-            let use_ty = use_ty.fold_with(&mut BottomUpFolder {
+            ty.fold_with(&mut BottomUpFolder {
                 tcx: self.tcx,
                 ty_op: |ty| {
                     if let ty::Infer(infer) = ty.kind() {
@@ -293,7 +293,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ct
                     }
                 },
-            });
+            })
+        };
+
+        let fudge_equals_found_ty = |use_ty: Ty<'tcx>| {
+            let use_ty = fudge_ty(use_ty);
             self.can_eq(self.param_env, expected_ty, use_ty)
         };
 
@@ -303,18 +307,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         for window in expr_finder.uses.windows(2) {
             let [binding, next_usage] = *window else { continue; };
-            let Some(next_use_ty) = self.node_ty_opt(next_usage.hir_id) else { continue; };
-            if !fudge_equals_found_ty(next_use_ty) {
-                err.span_label(
-                    binding.span,
-                    format!("here the type of `{ident}` is inferred to be `{next_use_ty}`"),
-                );
-                return true;
-            }
 
-            if next_usage.hir_id == expr.hir_id {
+            // Don't go past the binding (always gonna be a nonsense label if so)
+            if binding.hir_id == expr.hir_id {
                 break;
             }
+
+            let Some(next_use_ty) = self.node_ty_opt(next_usage.hir_id) else { continue; };
+
+            // If the type is not constrained in a way making it not possible to
+            // equate with `expected_ty` by this point, skip.
+            if fudge_equals_found_ty(next_use_ty) {
+                continue;
+            }
+
+            if let hir::Node::Expr(parent_expr) = hir.get_parent(binding.hir_id)
+                && let hir::ExprKind::MethodCall(segment, rcvr, args, _) = parent_expr.kind
+                && rcvr.hir_id == binding.hir_id
+            {
+                let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
+                let rcvr_ty = fudge_ty(rcvr_ty);
+                if let Ok(method) =
+                    self.lookup_method(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                {
+                    for (expected_arg_ty, arg_expr) in std::iter::zip(&method.sig.inputs()[1..], args) {
+                        let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
+                        let arg_ty = fudge_ty(arg_ty);
+                        let _ = self.try_coerce(arg_expr, arg_ty, *expected_arg_ty, AllowTwoPhase::No, None);
+                        if !self.can_eq(self.param_env, rcvr_ty, expected_ty) {
+                            err.span_label(
+                                arg_expr.span,
+                                format!("this argument has type `{arg_ty}`...")
+                            );
+                            err.span_label(
+                                binding.span,
+                                format!("... which constrains `{ident}` to have type `{next_use_ty}`")
+                            );
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            err.span_label(
+                binding.span,
+                format!("here the type of `{ident}` is inferred to be `{next_use_ty}`"),
+            );
+            return true;
         }
 
         // We must've not found something that constrained the expr.
