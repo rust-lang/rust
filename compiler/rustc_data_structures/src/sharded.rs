@@ -13,7 +13,7 @@ struct CacheAligned<T>(T);
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
 // but this should be tested on higher core count CPUs. How the `Sharded` type gets used
 // may also affect the ideal number of shards.
-const SHARD_BITS: usize = 5;
+const SHARD_BITS: usize = 0;
 
 #[cfg(not(parallel_compiler))]
 const SHARD_BITS: usize = 0;
