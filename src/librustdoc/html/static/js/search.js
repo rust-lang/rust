@@ -446,6 +446,15 @@ function initSearch(rawSearchIndex) {
             }
             const posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
+            if (endChar !== "") {
+                if (parserState.pos >= parserState.length) {
+                    throw new Error("Unclosed `<`");
+                }
+                const c2 = parserState.userQuery[parserState.pos];
+                if (!isSeparatorCharacter(c2) && c2 !== endChar) {
+                    throw new Error(`Expected \`${endChar}\`, found \`${c2}\``);
+                }
+            }
             // This case can be encountered if `getNextElem` encountered a "stop character" right
             // from the start. For example if you have `,,` or `<>`. In this case, we simply move up
             // the current position to continue the parsing.
@@ -454,7 +463,10 @@ function initSearch(rawSearchIndex) {
             }
             foundStopChar = false;
         }
-        // We are either at the end of the string or on the `endChar`` character, let's move forward
+        if (parserState.pos >= parserState.length && endChar !== "") {
+            throw new Error("Unclosed `<`");
+        }
+        // We are either at the end of the string or on the `endChar` character, let's move forward
         // in any case.
         parserState.pos += 1;
     }
