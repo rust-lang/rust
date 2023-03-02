@@ -1,5 +1,7 @@
 // only-x86_64
 
+#![feature(target_feature_11)]
+
 trait Foo {
     fn foo(&self);
     unsafe fn unsf_foo(&self);

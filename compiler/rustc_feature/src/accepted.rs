@@ -314,8 +314,6 @@ declare_features! (
     (accepted, struct_variant, "1.0.0", None, None),
     /// Allows `#[target_feature(...)]`.
     (accepted, target_feature, "1.27.0", None, None),
-    /// Allows the use of `#[target_feature]` on safe functions.
-    (accepted, target_feature_11, "CURRENT_RUSTC_VERSION", Some(69098), None),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301), None),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).

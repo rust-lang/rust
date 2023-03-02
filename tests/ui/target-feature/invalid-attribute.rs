@@ -26,6 +26,12 @@
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
+//~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+//~| NOTE see issue #69098
+fn bar() {}
+//~^ NOTE not an `unsafe` function
+
+#[target_feature(enable = "sse2")]
 //~^ ERROR attribute should be applied to a function
 mod another {}
 //~^ NOTE not a function
@@ -69,8 +75,8 @@ trait Quux {
 
 impl Quux for Foo {
     #[target_feature(enable = "sse2")]
-    //~^ ERROR `#[target_feature(..)]` cannot be applied to safe trait method
-    //~| NOTE cannot be applied to safe trait method
+    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+    //~| NOTE see issue #69098
     fn foo() {}
     //~^ NOTE not an `unsafe` function
 }
@@ -80,8 +86,9 @@ fn main() {
     //~^ ERROR attribute should be applied to a function
     unsafe {
         foo();
+        bar();
     }
-    //~^^^ NOTE not a function
+    //~^^^^ NOTE not a function
 
     #[target_feature(enable = "sse2")]
     //~^ ERROR attribute should be applied to a function

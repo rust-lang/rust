@@ -5,7 +5,7 @@ LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[target_feature(enable = "name")]`
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:28:1
+  --> $DIR/invalid-attribute.rs:34:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | mod another {}
    | -------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:33:1
+  --> $DIR/invalid-attribute.rs:39:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | const FOO: usize = 7;
    | --------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:38:1
+  --> $DIR/invalid-attribute.rs:44:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | struct Foo;
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:43:1
+  --> $DIR/invalid-attribute.rs:49:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL | enum Bar {}
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:48:1
+  --> $DIR/invalid-attribute.rs:54:1
    |
 LL |   #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL | | }
    | |_- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:56:1
+  --> $DIR/invalid-attribute.rs:62:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,18 +63,19 @@ LL | trait Baz {}
    | ------------ not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:79:5
+  --> $DIR/invalid-attribute.rs:85:5
    |
 LL |       #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | /     unsafe {
 LL | |         foo();
+LL | |         bar();
 LL | |     }
    | |_____- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:86:5
+  --> $DIR/invalid-attribute.rs:93:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,20 +101,36 @@ error: malformed `target_feature` attribute input
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/invalid-attribute.rs:28:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn bar() {}
+   | -------- not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
+
 error: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:61:1
+  --> $DIR/invalid-attribute.rs:67:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/invalid-attribute.rs:71:5
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/invalid-attribute.rs:77:5
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     fn foo() {}
    |     -------- not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
