@@ -241,7 +241,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let value =
             if layout.size == Size::ZERO {
                 let value = self.const_usize(alloc.inner().align.bytes());
-                self.context.new_cast(None, value, ty)
+                self.const_bitcast(value, ty)
             }
             else {
                 let init = const_alloc_to_gcc(self, alloc);
