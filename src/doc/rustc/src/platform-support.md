@@ -13,6 +13,8 @@ for targets at each tier, see the [Target Tier Policy](target-tier-policy.md).
 Targets are identified by their "target triple" which is the string to inform
 the compiler what kind of output should be produced.
 
+Component availability is tracked [here](https://rust-lang.github.io/rustup-components-history/).
+
 ## Tier 1 with Host Tools
 
 Tier 1 targets can be thought of as "guaranteed to work". The Rust project
