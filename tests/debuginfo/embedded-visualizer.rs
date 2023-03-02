@@ -60,7 +60,7 @@
 // gdb-check:$4 = "Person A" is 10 years old.
 
 #![allow(unused_variables)]
-#![feature(debugger_visualizer)]
+#![cfg_attr(bootstrap, feature(debugger_visualizer))]
 #![debugger_visualizer(natvis_file = "embedded-visualizer.natvis")]
 #![debugger_visualizer(gdb_script_file = "embedded-visualizer.py")]
 

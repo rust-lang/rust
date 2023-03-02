@@ -2,7 +2,7 @@
 // ignore-lldb
 // no-prefer-dynamic
 
-#![feature(debugger_visualizer)]
+#![cfg_attr(bootstrap, feature(debugger_visualizer))]
 #![debugger_visualizer(natvis_file = "dependency-with-embedded-visualizers.natvis")]
 #![debugger_visualizer(gdb_script_file = "dependency-with-embedded-visualizers.py")]
 #![crate_type = "rlib"]
