@@ -12,6 +12,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -36,6 +47,7 @@ dependencies = [
 name = "bootstrap"
 version = "0.0.0"
 dependencies = [
+ "atty",
  "build_helper",
  "cc",
  "cmake",
@@ -59,6 +71,7 @@ dependencies = [
  "walkdir",
  "winapi",
  "xz2",
+ "yansi-term",
 ]
 
 [[package]]
@@ -800,3 +813,12 @@ name = "yansi"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
+
+[[package]]
+name = "yansi-term"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe5c30ade05e61656247b2e334a031dfd0cc466fadef865bdcdea8d537951bf1"
+dependencies = [
+ "winapi",
+]

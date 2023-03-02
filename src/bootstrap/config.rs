@@ -87,6 +87,9 @@ pub struct Config {
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
 
+    pub stdout_is_tty: bool,
+    pub stderr_is_tty: bool,
+
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
@@ -821,6 +824,9 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.deny_warnings = true;
         config.bindir = "bin".into();
+
+        config.stdout_is_tty = atty::is(atty::Stream::Stdout);
+        config.stderr_is_tty = atty::is(atty::Stream::Stderr);
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));

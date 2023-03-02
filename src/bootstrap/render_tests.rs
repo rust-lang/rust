@@ -10,6 +10,7 @@ use crate::builder::Builder;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
+use yansi_term::Color;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
@@ -37,13 +38,12 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     builder.verbose(&format!("running: {cmd:?}"));
 
     let mut process = cmd.spawn().unwrap();
-    let stdout = process.stdout.take().unwrap();
-    let verbose = builder.config.verbose_tests;
-    let handle = std::thread::spawn(move || Renderer::new(stdout, verbose).render_all());
+
+    // This runs until the stdout of the child is closed, which means the child exited. We don't
+    // run this on another thread since the builder is not Sync.
+    Renderer::new(process.stdout.take().unwrap(), builder).render_all();
 
     let result = process.wait().unwrap();
-    handle.join().expect("test formatter thread failed");
-
     if !result.success() && builder.is_verbose() {
         println!(
             "\n\ncommand did not execute successfully: {cmd:?}\n\
@@ -54,21 +54,21 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     result.success()
 }
 
-struct Renderer {
+struct Renderer<'a> {
     stdout: BufReader<ChildStdout>,
     failures: Vec<TestOutcome>,
-    verbose: bool,
+    builder: &'a Builder<'a>,
     tests_count: Option<usize>,
     executed_tests: usize,
     terse_tests_in_line: usize,
 }
 
-impl Renderer {
-    fn new(stdout: ChildStdout, verbose: bool) -> Self {
+impl<'a> Renderer<'a> {
+    fn new(stdout: ChildStdout, builder: &'a Builder<'a>) -> Self {
         Self {
             stdout: BufReader::new(stdout),
             failures: Vec::new(),
-            verbose,
+            builder,
             tests_count: None,
             executed_tests: 0,
             terse_tests_in_line: 0,
@@ -99,7 +99,7 @@ impl Renderer {
 
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
         self.executed_tests += 1;
-        if self.verbose {
+        if self.builder.config.verbose_tests {
             self.render_test_outcome_verbose(outcome, test);
         } else {
             self.render_test_outcome_terse(outcome, test);
@@ -109,12 +109,13 @@ impl Renderer {
     fn render_test_outcome_verbose(&self, outcome: Outcome<'_>, test: &TestOutcome) {
         if let Some(exec_time) = test.exec_time {
             println!(
-                "test {} ... {outcome} (in {:.2?})",
+                "test {} ... {} (in {:.2?})",
                 test.name,
+                outcome.long(self.builder),
                 Duration::from_secs_f64(exec_time)
             );
         } else {
-            println!("test {} ... {outcome}", test.name);
+            println!("test {} ... {}", test.name, outcome.long(self.builder));
         }
     }
 
@@ -130,20 +131,13 @@ impl Renderer {
         }
 
         self.terse_tests_in_line += 1;
-        print!(
-            "{}",
-            match outcome {
-                Outcome::Ok => ".",
-                Outcome::Failed => "F",
-                Outcome::Ignored { .. } => "i",
-            }
-        );
+        print!("{}", outcome.short(self.builder));
         let _ = std::io::stdout().flush();
     }
 
     fn render_suite_outcome(&self, outcome: Outcome<'_>, suite: &SuiteOutcome) {
         // The terse output doesn't end with a newline, so we need to add it ourselves.
-        if !self.verbose {
+        if !self.builder.config.verbose_tests {
             println!();
         }
 
@@ -163,8 +157,9 @@ impl Renderer {
         }
 
         println!(
-            "\ntest result: {outcome}. {} passed; {} failed; {} ignored; {} measured; \
+            "\ntest result: {}. {} passed; {} failed; {} ignored; {} measured; \
              {} filtered out; finished in {:.2?}\n",
+            outcome.long(self.builder),
             suite.passed,
             suite.failed,
             suite.ignored,
@@ -213,13 +208,23 @@ enum Outcome<'a> {
     Ignored { reason: Option<&'a str> },
 }
 
-impl std::fmt::Display for Outcome<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Outcome<'_> {
+    fn short(&self, builder: &Builder<'_>) -> String {
         match self {
-            Outcome::Ok => f.write_str("ok"),
-            Outcome::Failed => f.write_str("FAILED"),
-            Outcome::Ignored { reason: None } => f.write_str("ignored"),
-            Outcome::Ignored { reason: Some(reason) } => write!(f, "ignored, {reason}"),
+            Outcome::Ok => builder.color_for_stdout(Color::Green, "."),
+            Outcome::Failed => builder.color_for_stdout(Color::Red, "F"),
+            Outcome::Ignored { .. } => builder.color_for_stdout(Color::Yellow, "i"),
+        }
+    }
+
+    fn long(&self, builder: &Builder<'_>) -> String {
+        match self {
+            Outcome::Ok => builder.color_for_stdout(Color::Green, "ok"),
+            Outcome::Failed => builder.color_for_stdout(Color::Red, "FAILED"),
+            Outcome::Ignored { reason: None } => builder.color_for_stdout(Color::Yellow, "ignored"),
+            Outcome::Ignored { reason: Some(reason) } => {
+                builder.color_for_stdout(Color::Yellow, &format!("ignored, {reason}"))
+            }
         }
     }
 }

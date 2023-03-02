@@ -89,6 +89,7 @@ pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
+use yansi_term::Color;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -1574,6 +1575,23 @@ to download LLVM rather than building it.
         }
 
         self.config.ninja_in_file
+    }
+
+    pub fn color_for_stdout(&self, color: Color, message: &str) -> String {
+        self.color_for_inner(color, message, self.config.stdout_is_tty)
+    }
+
+    pub fn color_for_stderr(&self, color: Color, message: &str) -> String {
+        self.color_for_inner(color, message, self.config.stderr_is_tty)
+    }
+
+    fn color_for_inner(&self, color: Color, message: &str, is_tty: bool) -> String {
+        let use_color = match self.config.color {
+            flags::Color::Always => true,
+            flags::Color::Never => false,
+            flags::Color::Auto => is_tty,
+        };
+        if use_color { color.paint(message).to_string() } else { message.to_string() }
     }
 }
 
