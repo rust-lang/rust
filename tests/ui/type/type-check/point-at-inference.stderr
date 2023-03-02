@@ -18,6 +18,10 @@ note: function defined here
    |
 LL | fn bar(_: Vec<i32>) {}
    |    ^^^ -----------
+help: consider dereferencing the borrow
+   |
+LL |         foo.push(*i);
+   |                  +
 
 error: aborting due to previous error
 

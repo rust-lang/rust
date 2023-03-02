@@ -259,49 +259,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
         expr_finder.visit_expr(body.value);
 
-        let fudge_ty = |ty: Ty<'tcx>| {
-            use rustc_infer::infer::type_variable::*;
-            use rustc_middle::infer::unify_key::*;
-            ty.fold_with(&mut BottomUpFolder {
-                tcx: self.tcx,
-                ty_op: |ty| {
-                    if let ty::Infer(infer) = ty.kind() {
-                        match infer {
-                            ty::InferTy::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span: DUMMY_SP,
-                            }),
-                            ty::InferTy::IntVar(_) => self.next_int_var(),
-                            ty::InferTy::FloatVar(_) => self.next_float_var(),
-                            _ => bug!(),
-                        }
-                    } else {
-                        ty
+        use rustc_infer::infer::type_variable::*;
+        use rustc_middle::infer::unify_key::*;
+
+        let mut fudger = BottomUpFolder {
+            tcx: self.tcx,
+            ty_op: |ty| {
+                if let ty::Infer(infer) = ty.kind() {
+                    match infer {
+                        ty::InferTy::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: DUMMY_SP,
+                        }),
+                        ty::InferTy::IntVar(_) => self.next_int_var(),
+                        ty::InferTy::FloatVar(_) => self.next_float_var(),
+                        _ => bug!(),
                     }
-                },
-                lt_op: |_| self.tcx.lifetimes.re_erased,
-                ct_op: |ct| {
-                    if let ty::ConstKind::Infer(_) = ct.kind() {
-                        self.next_const_var(
-                            ct.ty(),
-                            ConstVariableOrigin {
-                                kind: ConstVariableOriginKind::MiscVariable,
-                                span: DUMMY_SP,
-                            },
-                        )
-                    } else {
-                        ct
-                    }
-                },
-            })
+                } else {
+                    ty
+                }
+            },
+            lt_op: |_| self.tcx.lifetimes.re_erased,
+            ct_op: |ct| {
+                if let ty::ConstKind::Infer(_) = ct.kind() {
+                    self.next_const_var(
+                        ct.ty(),
+                        ConstVariableOrigin {
+                            kind: ConstVariableOriginKind::MiscVariable,
+                            span: DUMMY_SP,
+                        },
+                    )
+                } else {
+                    ct
+                }
+            },
         };
 
-        let fudge_equals_found_ty = |use_ty: Ty<'tcx>| {
-            let use_ty = fudge_ty(use_ty);
-            self.can_eq(self.param_env, expected_ty, use_ty)
-        };
-
-        if !fudge_equals_found_ty(init_ty) {
+        if !self.can_eq(self.param_env, expected_ty, init_ty.fold_with(&mut fudger)) {
             return false;
         }
 
@@ -317,7 +311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If the type is not constrained in a way making it not possible to
             // equate with `expected_ty` by this point, skip.
-            if fudge_equals_found_ty(next_use_ty) {
+            if self.can_eq(self.param_env, expected_ty, next_use_ty.fold_with(&mut fudger)) {
                 continue;
             }
 
@@ -326,26 +320,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && rcvr.hir_id == binding.hir_id
             {
                 let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
-                let rcvr_ty = fudge_ty(rcvr_ty);
-                if let Ok(method) =
+                let rcvr_ty = rcvr_ty.fold_with(&mut fudger);
+                let Ok(method) =
                     self.lookup_method(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                else {
+                    continue;
+                };
+
+                // NOTE: For future removers of `fudge_inference_if_ok`, you
+                // can replace  this with another call to `lookup_method` but
+                // using `expected_ty` as the rcvr.
+                let ideal_method_sig: Result<_, TypeError<'tcx>> = self.fudge_inference_if_ok(|| {
+                    let _ = self.at(&ObligationCause::dummy(), self.param_env).eq(rcvr_ty, expected_ty)?;
+                    Ok(method.sig)
+                });
+
+                for (idx, (expected_arg_ty, arg_expr)) in
+                    std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
                 {
-                    for (expected_arg_ty, arg_expr) in std::iter::zip(&method.sig.inputs()[1..], args) {
-                        let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
-                        let arg_ty = fudge_ty(arg_ty);
-                        let _ = self.try_coerce(arg_expr, arg_ty, *expected_arg_ty, AllowTwoPhase::No, None);
-                        if !self.can_eq(self.param_env, rcvr_ty, expected_ty) {
-                            err.span_label(
-                                arg_expr.span,
-                                format!("this argument has type `{arg_ty}`...")
-                            );
-                            err.span_label(
-                                binding.span,
-                                format!("... which constrains `{ident}` to have type `{next_use_ty}`")
-                            );
-                            return true;
-                        }
+                    let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
+                    let arg_ty = arg_ty.fold_with(&mut fudger);
+                    let _ = self.try_coerce(
+                        arg_expr,
+                        arg_ty,
+                        *expected_arg_ty,
+                        AllowTwoPhase::No,
+                        None,
+                    );
+                    if self.can_eq(self.param_env, rcvr_ty, expected_ty) {
+                        continue;
                     }
+                    err.span_label(
+                        arg_expr.span,
+                        format!("this argument has type `{arg_ty}`..."),
+                    );
+                    err.span_label(
+                        binding.span,
+                        format!(
+                            "... which constrains `{ident}` to have type `{next_use_ty}`"
+                        ),
+                    );
+                    if let Ok(ideal_method_sig) = ideal_method_sig {
+                        self.emit_type_mismatch_suggestions(
+                            err,
+                            arg_expr,
+                            arg_ty,
+                            ideal_method_sig.inputs()[idx + 1],
+                            None,
+                            None,
+                        );
+                    }
+                    return true;
                 }
             }
 
