@@ -55,6 +55,7 @@ mod format;
 mod install;
 mod metadata;
 mod native;
+mod render_tests;
 mod run;
 mod sanity;
 mod setup;

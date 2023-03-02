@@ -1616,9 +1616,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--verbose");
         }
 
-        if !builder.config.verbose_tests {
-            cmd.arg("--quiet");
-        }
+        cmd.arg("--json");
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -1769,7 +1767,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             suite, mode, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cmd);
+        crate::render_tests::try_run_tests(builder, &mut cmd);
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -1778,7 +1776,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 suite, mode, compare_mode, &compiler.host, target
             ));
             let _time = util::timeit(&builder);
-            try_run(builder, &mut cmd);
+            crate::render_tests::try_run_tests(builder, &mut cmd);
         }
     }
 }
