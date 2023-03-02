@@ -14,6 +14,15 @@ use yansi_term::Color;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
+pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
+    if cmd.get_args().position(|arg| arg == "--").is_none() {
+        cmd.arg("--");
+    }
+    cmd.args(&["-Z", "unstable-options", "--format", "json"]);
+
+    try_run_tests(builder, cmd)
+}
+
 pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if builder.config.dry_run() {
         return true;
