@@ -263,12 +263,14 @@ impl Evaluator<'_> {
         for proj in &p.projection {
             match proj {
                 ProjectionElem::Deref => {
-                    match &ty.data(Interner).kind {
-                        TyKind::Ref(_, _, inner) => {
-                            ty = inner.clone();
+                    ty = match &ty.data(Interner).kind {
+                        TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
+                        _ => {
+                            return Err(MirEvalError::TypeError(
+                                "Overloaded deref in MIR is disallowed",
+                            ))
                         }
-                        _ => not_supported!("dereferencing smart pointers"),
-                    }
+                    };
                     let x = from_bytes!(usize, self.read_memory(addr, self.ptr_size())?);
                     addr = Address::from_usize(x);
                 }

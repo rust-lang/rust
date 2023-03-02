@@ -526,4 +526,32 @@ fn f(x: [(i32, u8); 10]) {
 "#,
         );
     }
+
+    #[test]
+    fn overloaded_deref() {
+        check_diagnostics(
+            r#"
+//- minicore: deref_mut
+use core::ops::{Deref, DerefMut};
+
+struct Foo;
+impl Deref for Foo {
+    type Target = i32;
+    fn deref(&self) -> &i32 {
+        &5
+    }
+}
+impl DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut i32 {
+        &mut 5
+    }
+}
+fn f() {
+    // FIXME: remove this mut and detect error
+    let mut x = Foo;
+    let y = &mut *x;
+}
+"#,
+        );
+    }
 }

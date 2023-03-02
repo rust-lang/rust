@@ -129,6 +129,12 @@ impl MirLowerCtx<'_> {
             }
             Expr::UnaryOp { expr, op } => match op {
                 hir_def::expr::UnaryOp::Deref => {
+                    if !matches!(
+                        self.expr_ty(*expr).kind(Interner),
+                        TyKind::Ref(..) | TyKind::Raw(..)
+                    ) {
+                        return None;
+                    }
                     let mut r = self.lower_expr_as_place(*expr)?;
                     r.projection.push(ProjectionElem::Deref);
                     Some(r)
@@ -210,7 +216,7 @@ impl MirLowerCtx<'_> {
                         Adjust::Deref(None) => {
                             r.projection.push(ProjectionElem::Deref);
                         }
-                        Adjust::Deref(Some(_)) => not_supported!("overloaded dereference"),
+                        Adjust::Deref(Some(_)) => not_supported!("implicit overloaded dereference"),
                         Adjust::Borrow(AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m)) => {
                             let tmp = self.temp(adjustment.target.clone())?;
                             self.push_assignment(
@@ -757,6 +763,9 @@ impl MirLowerCtx<'_> {
             Expr::Box { .. } => not_supported!("box expression"),
             Expr::UnaryOp { expr, op } => match op {
                 hir_def::expr::UnaryOp::Deref => {
+                    if !matches!(self.expr_ty(*expr).kind(Interner), TyKind::Ref(..) | TyKind::Raw(..)) {
+                        not_supported!("explicit overloaded deref");
+                    }
                     let (mut tmp, Some(current)) = self.lower_expr_to_some_place(*expr, current)? else {
                         return Ok(None);
                     };
