@@ -130,6 +130,9 @@ hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[
 hir_analysis_start_not_track_caller = `start` is not allowed to be `#[track_caller]`
     .label = `start` is not allowed to be `#[track_caller]`
 
+hir_analysis_start_not_target_feature = `start` is not allowed to have `#[target_feature]`
+    .label = `start` is not allowed to have `#[target_feature]`
+
 hir_analysis_start_not_async = `start` is not allowed to be `async`
     .label = `start` is not allowed to be `async`
 
