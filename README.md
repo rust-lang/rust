@@ -104,7 +104,6 @@ See [the rustc-dev-guide for more info][sysllvm].
    ```sh
    ./configure --set changelog-seen=2 --set profile=user
    ```
-cpmfog/tp
    If you plan to use `x.py install` to create an installation, it is
    recommended that you set the `prefix` value in the `[install]` section to a
    directory.
