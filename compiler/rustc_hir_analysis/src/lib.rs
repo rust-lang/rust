@@ -378,6 +378,13 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                             });
                             error = true;
                         }
+                        if attr.has_name(sym::target_feature) {
+                            tcx.sess.emit_err(errors::StartTargetFeature {
+                                span: attr.span,
+                                start: start_span,
+                            });
+                            error = true;
+                        }
                     }
 
                     if error {
