@@ -21,8 +21,9 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    alloc_range, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc, InterpCx,
-    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
+    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg,
+    GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance,
+    Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -114,16 +115,16 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
 #[derive(Copy, Clone)]
-pub struct AllocRef<'a, 'tcx, Prov: Provenance, Extra> {
-    alloc: &'a Allocation<Prov, Extra>,
+pub struct AllocRef<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes = Box<[u8]>> {
+    alloc: &'a Allocation<Prov, Extra, Bytes>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 }
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
-pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra> {
-    alloc: &'a mut Allocation<Prov, Extra>,
+pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes = Box<[u8]>> {
+    alloc: &'a mut Allocation<Prov, Extra, Bytes>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
@@ -483,7 +484,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         id: AllocId,
         is_write: bool,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::Provenance, M::AllocExtra, M::Bytes>>> {
         let (alloc, def_id) = match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
@@ -526,6 +527,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
+    /// Get the base address for the bytes in an `Allocation` specified by the
+    /// `AllocID` passed in; error if no such allocation exists.
+    ///
+    /// It is up to the caller to take sufficient care when using this address:
+    /// there could be provenance or uninit memory in there, and other memory
+    /// accesses could invalidate the exposed pointer.
+    pub fn alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, *const u8> {
+        let alloc = self.get_alloc_raw(id)?;
+        Ok(alloc.base_addr())
+    }
+
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
     /// The caller is responsible for calling the access hooks!
     ///
@@ -533,7 +545,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn get_alloc_raw(
         &self,
         id: AllocId,
-    ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra>> {
+    ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra, M::Bytes>> {
         // The error type of the inner closure here is somewhat funny. We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
@@ -569,7 +581,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         let ptr_and_alloc = self.check_and_deref_ptr(
             ptr,
             size,
@@ -612,7 +625,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn get_alloc_raw_mut(
         &mut self,
         id: AllocId,
-    ) -> InterpResult<'tcx, (&mut Allocation<M::Provenance, M::AllocExtra>, &mut M)> {
+    ) -> InterpResult<'tcx, (&mut Allocation<M::Provenance, M::AllocExtra, M::Bytes>, &mut M)> {
         // We have "NLL problem case #3" here, which cannot be worked around without loss of
         // efficiency even for the common case where the key is in the map.
         // <https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions>
@@ -641,7 +654,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         let parts = self.get_ptr_access(ptr, size, align)?;
         if let Some((alloc_id, offset, prov)) = parts {
             let tcx = *self.tcx;
@@ -840,11 +854,11 @@ pub struct DumpAllocs<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 'mir, 'tcx, M> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Cannot be a closure because it is generic in `Prov`, `Extra`.
-        fn write_allocation_track_relocs<'tcx, Prov: Provenance, Extra>(
+        fn write_allocation_track_relocs<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             fmt: &mut std::fmt::Formatter<'_>,
             tcx: TyCtxt<'tcx>,
             allocs_to_print: &mut VecDeque<AllocId>,
-            alloc: &Allocation<Prov, Extra>,
+            alloc: &Allocation<Prov, Extra, Bytes>,
         ) -> std::fmt::Result {
             for alloc_id in alloc.provenance().provenances().filter_map(|prov| prov.get_alloc_id())
             {
@@ -912,7 +926,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Prov: Provenance, Extra> AllocRefMut<'a, 'tcx, Prov, Extra> {
+impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
+    AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
+{
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn write_scalar(&mut self, range: AllocRange, val: Scalar<Prov>) -> InterpResult<'tcx> {
         let range = self.range.subrange(range);
@@ -937,7 +953,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRefMut<'a, 'tcx, Prov, Extra> {
     }
 }
 
-impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
+impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn read_scalar(
         &self,

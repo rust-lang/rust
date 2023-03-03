@@ -67,7 +67,7 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: "a<\"p\">",
-        error: "`\"` cannot be used in generics",
+        error: "Unexpected `\"` in generics",
     },
     {
         elems: [],
@@ -373,7 +373,7 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: "a!a",
-        error: '`!` can only be at the end of an ident',
+        error: 'Unexpected `!`: it can only be at the end of an ident',
     },
     {
         elems: [],

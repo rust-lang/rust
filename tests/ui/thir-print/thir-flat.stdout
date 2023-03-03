@@ -17,21 +17,16 @@ Thir {
     ],
     exprs: [
         Expr {
-            ty: (),
-            temp_lifetime: Some(
-                Node(2),
-            ),
-            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
             kind: Block {
                 block: b0,
             },
-        },
-        Expr {
             ty: (),
             temp_lifetime: Some(
                 Node(2),
             ),
             span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+        },
+        Expr {
             kind: Scope {
                 region_scope: Node(2),
                 lint_level: Explicit(
@@ -39,18 +34,23 @@ Thir {
                 ),
                 value: e0,
             },
-        },
-        Expr {
             ty: (),
             temp_lifetime: Some(
                 Node(2),
             ),
             span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+        },
+        Expr {
             kind: Scope {
                 region_scope: Destruction(2),
                 lint_level: Inherited,
                 value: e1,
             },
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
         },
     ],
     stmts: [],

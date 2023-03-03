@@ -1,9 +1,10 @@
-error: environment variable `NON_EXISTENT` not defined
+error: environment variable `NON_EXISTENT` not defined at compile time
   --> $DIR/issue-55897.rs:11:22
    |
 LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |                      ^^^^^^^^^^^^^^^^^^^^
    |
+   = help: Use `std::env::var("NON_EXISTENT")` to read the variable at run time
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: suffixes on string literals are invalid

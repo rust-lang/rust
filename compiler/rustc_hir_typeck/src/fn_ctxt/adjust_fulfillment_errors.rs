@@ -714,12 +714,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.parent(expr_ctor_def_id)
                 }
                 hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, hir::def::CtorKind::Fn) => {
-                    // If this is a variant, its parent is the type definition.
-                    if in_ty_adt.did() != self.tcx.parent(expr_ctor_def_id) {
+                    // For a typical enum like
+                    // `enum Blah<T> { Variant(T) }`
+                    // we get the following resolutions:
+                    // - expr_ctor_def_id :::                                   DefId(0:29 ~ source_file[b442]::Blah::Variant::{constructor#0})
+                    // - self.tcx.parent(expr_ctor_def_id) :::                  DefId(0:28 ~ source_file[b442]::Blah::Variant)
+                    // - self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) ::: DefId(0:26 ~ source_file[b442]::Blah)
+
+                    // Therefore, we need to go up once to obtain the variant and up twice to obtain the type.
+                    // Note that this pattern still holds even when we `use` a variant or `use` an enum type to rename it, or chain `use` expressions
+                    // together; this resolution is handled automatically by `qpath_res`.
+
+                    // FIXME: Deal with type aliases?
+                    if in_ty_adt.did() == self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) {
+                        // The constructor definition refers to the "constructor" of the variant:
+                        // For example, `Some(5)` triggers this case.
+                        self.tcx.parent(expr_ctor_def_id)
+                    } else {
                         // FIXME: Deal with type aliases?
                         return Err(expr);
                     }
-                    expr_ctor_def_id
                 }
                 _ => {
                     return Err(expr);
