@@ -79,7 +79,7 @@ infer_subtype = ...so that the {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] #[start]` function has the correct type
+    [fn_start_correct_type] `#[start]` function has the correct type
     [intristic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
@@ -92,7 +92,7 @@ infer_subtype_2 = ...so that {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] #[start]` function has the correct type
+    [fn_start_correct_type] `#[start]` function has the correct type
     [intristic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
@@ -277,7 +277,7 @@ infer_tid_consider_borrowing = consider borrowing this type parameter in the tra
 infer_tid_param_help = the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
 
 infer_dtcs_has_lifetime_req_label = this has an implicit `'static` lifetime requirement
-infer_dtcs_introduces_requirement = calling this method introduces the `impl`'s 'static` requirement
+infer_dtcs_introduces_requirement = calling this method introduces the `impl`'s `'static` requirement
 infer_dtcs_has_req_note = the used `impl` has a `'static` requirement
 infer_dtcs_suggestion = consider relaxing the implicit `'static` requirement
 
@@ -313,7 +313,7 @@ infer_but_needs_to_satisfy = {$has_param_name ->
         [false] ...and is required to live as long as `'static` here
     }
     .used_here = ...is used here...
-    .introduced_by_bound = 'static` lifetime requirement introduced by this bound
+    .introduced_by_bound = `'static` lifetime requirement introduced by this bound
 
 infer_more_targeted = {$has_param_name ->
     [true] `{$param_name}`
