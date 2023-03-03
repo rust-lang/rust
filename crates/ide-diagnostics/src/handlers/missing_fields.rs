@@ -5,7 +5,7 @@ use hir::{
 };
 use ide_db::{
     assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
-    source_change::SourceChange, use_trivial_contructor::use_trivial_constructor, FxHashMap,
+    source_change::SourceChange, use_trivial_constructor::use_trivial_constructor, FxHashMap,
 };
 use stdx::format_to;
 use syntax::{
