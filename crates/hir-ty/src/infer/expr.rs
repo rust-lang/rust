@@ -398,7 +398,7 @@ impl<'a> InferenceContext<'a> {
                 for arm in arms.iter() {
                     self.diverges = Diverges::Maybe;
                     let input_ty = self.resolve_ty_shallow(&input_ty);
-                    let _pat_ty = self.infer_top_pat(arm.pat, &input_ty);
+                    self.infer_top_pat(arm.pat, &input_ty);
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
                             guard_expr,
