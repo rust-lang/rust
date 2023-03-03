@@ -305,6 +305,50 @@ impl AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
 
+    /// Creates a new `AtomicBool` from a pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// use std::sync::atomic::{self, AtomicBool};
+    /// use std::mem::align_of;
+    ///
+    /// // Get a pointer to an allocated value
+    /// let ptr: *mut bool = Box::into_raw(Box::new(false));
+    ///
+    /// assert!(ptr.is_aligned_to(align_of::<AtomicBool>()));
+    ///
+    /// {
+    ///     // Create an atomic view of the allocated value
+    ///     let atomic = unsafe { AtomicBool::from_ptr(ptr) };
+    ///
+    ///     // Use `atomic` for atomic operations, possibly share it with other threads
+    ///     atomic.store(true, atomic::Ordering::Relaxed);
+    /// }
+    ///
+    /// // It's ok to non-atomically access the value behind `ptr`,
+    /// // since the reference to the atomic ended its lifetime in the block above
+    /// assert_eq!(unsafe { *ptr }, true);
+    ///
+    /// // Deallocate the value
+    /// unsafe { drop(Box::from_raw(ptr)) }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
+    /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
+    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    ///
+    /// [valid]: crate::ptr#safety
+    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
+        // SAFETY: guaranteed by the caller
+        unsafe { &*ptr.cast() }
+    }
+
     /// Returns a mutable reference to the underlying [`bool`].
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
@@ -1015,6 +1059,50 @@ impl<T> AtomicPtr<T> {
     #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
+    }
+
+    /// Creates a new `AtomicPtr` from a pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// use std::sync::atomic::{self, AtomicPtr};
+    /// use std::mem::align_of;
+    ///
+    /// // Get a pointer to an allocated value
+    /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(std::ptr::null_mut()));
+    ///
+    /// assert!(ptr.is_aligned_to(align_of::<AtomicPtr<u8>>()));
+    ///
+    /// {
+    ///     // Create an atomic view of the allocated value
+    ///     let atomic = unsafe { AtomicPtr::from_ptr(ptr) };
+    ///
+    ///     // Use `atomic` for atomic operations, possibly share it with other threads
+    ///     atomic.store(std::ptr::NonNull::dangling().as_ptr(), atomic::Ordering::Relaxed);
+    /// }
+    ///
+    /// // It's ok to non-atomically access the value behind `ptr`,
+    /// // since the reference to the atomic ended its lifetime in the block above
+    /// assert!(!unsafe { *ptr }.is_null());
+    ///
+    /// // Deallocate the value
+    /// unsafe { drop(Box::from_raw(ptr)) }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this can be bigger than `align_of::<*mut T>()`).
+    /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
+    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    ///
+    /// [valid]: crate::ptr#safety
+    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
+        // SAFETY: guaranteed by the caller
+        unsafe { &*ptr.cast() }
     }
 
     /// Returns a mutable reference to the underlying pointer.
@@ -1957,6 +2045,53 @@ macro_rules! atomic_int {
             pub const fn new(v: $int_type) -> Self {
                 Self {v: UnsafeCell::new(v)}
             }
+
+            /// Creates a new reference to an atomic integer from a pointer.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
+            /// use std::mem::align_of;
+            ///
+            /// // Get a pointer to an allocated value
+            #[doc = concat!("let ptr: *mut ", stringify!($int_type), " = Box::into_raw(Box::new(0));")]
+            ///
+            #[doc = concat!("assert!(ptr.is_aligned_to(align_of::<", stringify!($atomic_type), ">()));")]
+            ///
+            /// {
+            ///     // Create an atomic view of the allocated value
+            // SAFETY: this is a doc comment, tidy, it can't hurt you (also guaranteed by the construction of `ptr` and the assert above)
+            #[doc = concat!("    let atomic = unsafe {", stringify!($atomic_type), "::from_ptr(ptr) };")]
+            ///
+            ///     // Use `atomic` for atomic operations, possibly share it with other threads
+            ///     atomic.store(1, atomic::Ordering::Relaxed);
+            /// }
+            ///
+            /// // It's ok to non-atomically access the value behind `ptr`,
+            /// // since the reference to the atomic ended its lifetime in the block above
+            /// assert_eq!(unsafe { *ptr }, 1);
+            ///
+            /// // Deallocate the value
+            /// unsafe { drop(Box::from_raw(ptr)) }
+            /// ```
+            ///
+            /// # Safety
+            ///
+            /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
+            #[doc = concat!(" * `ptr` must be aligned to `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
+            /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
+            /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+            ///
+            /// [valid]: crate::ptr#safety
+            #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+            #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+            pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
+                // SAFETY: guaranteed by the caller
+                unsafe { &*ptr.cast() }
+            }
+
 
             /// Returns a mutable reference to the underlying integer.
             ///
