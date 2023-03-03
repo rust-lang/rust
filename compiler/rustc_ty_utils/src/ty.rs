@@ -3,8 +3,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::ty::{
-    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, Binder, EarlyBinder, ImplTraitInTraitData, Predicate, PredicateKind, ToPredicate, Ty,
+    TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
@@ -117,6 +117,15 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    // When computing the param_env of an RPITIT, copy param_env of the containing function. The
+    // synthesized associated type doesn't have extra predicates to assume.
+    let def_id =
+        if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+            fn_def_id
+        } else {
+            def_id
+        };
+
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);

@@ -342,6 +342,10 @@ fn impl_associated_item_for_impl_trait_in_trait(
         fn_has_self_parameter: false,
     });
 
+    // Copy param_env of the containing function. The synthesized associated type doesn't have
+    // extra predicates to assume.
+    impl_assoc_ty.param_env(tcx.param_env(impl_fn_def_id));
+
     // Copy impl_defaultness of the containing function.
     impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
 
