@@ -83,6 +83,14 @@ impl From<NoHashHashMap<FileId, TextEdit>> for SourceChange {
     }
 }
 
+impl FromIterator<(FileId, TextEdit)> for SourceChange {
+    fn from_iter<T: IntoIterator<Item = (FileId, TextEdit)>>(iter: T) -> Self {
+        let mut this = SourceChange::default();
+        this.extend(iter);
+        this
+    }
+}
+
 pub struct SourceChangeBuilder {
     pub edit: TextEditBuilder,
     pub file_id: FileId,

@@ -89,7 +89,7 @@ pub use crate::{
         MissingMatchArms, MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
         UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedModule, UnresolvedProcMacro,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1437,6 +1437,26 @@ impl DefWithBody {
                             name: name.clone(),
                             receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
                             method_with_same_name_exists: *method_with_same_name_exists,
+                        }
+                        .into(),
+                    )
+                }
+                hir_ty::InferenceDiagnostic::UnresolvedMethodCall {
+                    expr,
+                    receiver,
+                    name,
+                    field_with_same_name,
+                } => {
+                    let expr = expr_syntax(*expr);
+
+                    acc.push(
+                        UnresolvedMethodCall {
+                            expr,
+                            name: name.clone(),
+                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                            field_with_same_name: field_with_same_name
+                                .clone()
+                                .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
                         }
                         .into(),
                     )

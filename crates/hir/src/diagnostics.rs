@@ -51,6 +51,7 @@ diagnostics![
     UnresolvedField,
     UnresolvedImport,
     UnresolvedMacroCall,
+    UnresolvedMethodCall,
     UnresolvedModule,
     UnresolvedProcMacro,
 ];
@@ -144,6 +145,14 @@ pub struct UnresolvedField {
     pub receiver: Type,
     pub name: Name,
     pub method_with_same_name_exists: bool,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedMethodCall {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub field_with_same_name: Option<Type>,
 }
 
 #[derive(Debug)]
