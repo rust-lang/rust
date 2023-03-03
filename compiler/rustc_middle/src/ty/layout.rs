@@ -93,7 +93,7 @@ impl IntegerExt for Integer {
             if discr < fit {
                 bug!(
                     "Integer::repr_discr: `#[repr]` hint too small for \
-                      discriminant range of enum `{}",
+                      discriminant range of enum `{}`",
                     ty
                 )
             }

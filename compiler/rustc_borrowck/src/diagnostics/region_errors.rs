@@ -949,7 +949,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement",
+                    "calling this method introduces the `impl`'s `'static` requirement",
                 );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
