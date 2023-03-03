@@ -2187,7 +2187,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Actually intern type lists as lists of `GenericArg`s.
         //
         // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
-        // as explained in ty_slice_as_generic_arg`. With this,
+        // as explained in `ty_slice_as_generic_arg`. With this,
         // we guarantee that even when transmuting between `List<Ty<'tcx>>`
         // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
         // lists is upheld.

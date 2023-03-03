@@ -225,7 +225,7 @@ impl AssocOp {
             AssignOp(_) | // `{ 42 } +=`
             As | // `{ 42 } as usize`
             // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
-            // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
+            // NotEqual | // `{ 42 } != { 42 }` struct literals parser recovery.
             Colon, // `{ 42 }: usize`
         )
     }

@@ -710,7 +710,7 @@ impl<'tcx> Predicate<'tcx> {
         //   The substitution from the input trait-ref is therefore going to be
         //   `'a => 'x` (where `'x` has a DB index of 1).
         // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
-        //   early-bound parameter and `'b' is a late-bound parameter with a
+        //   early-bound parameter and `'b` is a late-bound parameter with a
         //   DB index of 1.
         // - If we replace `'a` with `'x` from the input, it too will have
         //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`

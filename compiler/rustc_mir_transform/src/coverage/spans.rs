@@ -407,7 +407,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 if self.prev().is_macro_expansion() && self.curr().is_macro_expansion() {
                     // Macros that expand to include branching (such as
                     // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
-                    // `trace!()) typically generate callee spans with identical
+                    // `trace!()`) typically generate callee spans with identical
                     // ranges (typically the full span of the macro) for all
                     // `BasicBlocks`. This makes it impossible to distinguish
                     // the condition (`if val1 != val2`) from the optional

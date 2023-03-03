@@ -235,7 +235,7 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
     // the lower bits no matter the endianness. This allows the compiler to turn that `Hash` impl
-    // into a direct call to 'u64::hash(_)`.
+    // into a direct call to `u64::hash(_)`.
     #[cfg(not(all(target_pointer_width = "64", target_endian = "big")))]
     pub index: DefIndex,
     pub krate: CrateNum,
