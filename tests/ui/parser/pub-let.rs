@@ -1,0 +1,9 @@
+// run-rustfix
+
+#![allow(unused_variables)]
+
+fn main() {
+    pub let x = 1;
+    //~^ ERROR visibility `pub` is not followed by an item
+    //~^^ ERROR visibility does not apply to `let` statement
+}

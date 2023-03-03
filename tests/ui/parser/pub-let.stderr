@@ -1,0 +1,16 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/pub-let.rs:6:5
+   |
+LL |     pub let x = 1;
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+
+error: visibility does not apply to `let` statement
+  --> $DIR/pub-let.rs:6:5
+   |
+LL |     pub let x = 1;
+   |     ^^^^^^^ help: remove pub: `let`
+
+error: aborting due to 2 previous errors
+
