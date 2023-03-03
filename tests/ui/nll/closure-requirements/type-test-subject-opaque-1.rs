@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #107426
+// Regression test for #107426.
+// check-pass
 
 use std::marker::PhantomData;
 #[derive(Clone, Copy)]
