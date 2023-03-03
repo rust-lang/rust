@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime tha
   --> $DIR/issue-105227.rs:7:5
    |
 LL | fn chars0(v :(& str, &str)) -> impl Iterator<Item = char> {
-   |               ----- hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
+   |               -----            -------------------------- opaque type defined here
+   |               |
+   |               hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
 LL |
 LL |     v.0.chars().chain(v.1.chars())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +18,9 @@ error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime tha
   --> $DIR/issue-105227.rs:13:5
    |
 LL | fn chars1(v0 : & str, v1 : &str) -> impl Iterator<Item = char> {
-   |                ----- hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
+   |                -----                -------------------------- opaque type defined here
+   |                |
+   |                hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
 LL |
 LL |     v0.chars().chain(v1.chars())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +35,10 @@ error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime tha
    |
 LL | fn chars2<'b>(v0 : &str, v1 : &'_ str, v2 : &'b str) ->
    |                    ---- hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
-...
+LL |
+LL |     (impl Iterator<Item = char>, &'b str)
+   |      -------------------------- opaque type defined here
+LL | {
 LL |     (v0.chars().chain(v1.chars()), v2)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not a
   --> $DIR/hidden-lifetimes.rs:29:5
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-   |                 -- hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
+   |                 --                                   -------------- opaque type defined here
+   |                 |
+   |                 hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
 LL |     x
    |     ^
    |
@@ -15,7 +17,9 @@ error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not a
   --> $DIR/hidden-lifetimes.rs:46:5
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-   |                        -- hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
+   |                        --                                            -------------- opaque type defined here
+   |                        |
+   |                        hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
 LL |     x
    |     ^
    |
