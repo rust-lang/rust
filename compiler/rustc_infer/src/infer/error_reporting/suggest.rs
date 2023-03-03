@@ -14,8 +14,8 @@ use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
     ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
-    FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAsRefWhereAppropriate,
-    SuggestRemoveSemiOrReturnBinding,
+    FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAccessingField,
+    SuggestAsRefWhereAppropriate, SuggestRemoveSemiOrReturnBinding,
 };
 
 use super::TypeErrCtxt;
@@ -264,15 +264,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub fn suggest_await_on_future(&self, diag: &mut Diagnostic, sp: Span) {
-        diag.span_suggestion_verbose(
-            sp.shrink_to_hi(),
-            "consider `await`ing on the `Future`",
-            ".await",
-            Applicability::MaybeIncorrect,
-        );
-    }
-
     pub(super) fn suggest_accessing_field_where_appropriate(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -299,21 +290,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         let suggestion = if expected_def.is_struct() {
-                            format!("{}.{}", snippet, name)
+                            SuggestAccessingField::Safe { span, snippet, name, ty }
                         } else if expected_def.is_union() {
-                            format!("unsafe {{ {}.{} }}", snippet, name)
+                            SuggestAccessingField::Unsafe { span, snippet, name, ty }
                         } else {
                             return;
                         };
-                        diag.span_suggestion(
-                            span,
-                            &format!(
-                                "you might have meant to use field `{}` whose type is `{}`",
-                                name, ty
-                            ),
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
+                        diag.subdiagnostic(suggestion);
                     }
                 }
             }

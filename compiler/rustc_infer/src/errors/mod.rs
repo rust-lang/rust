@@ -1289,3 +1289,31 @@ pub enum SuggestAsRefWhereAppropriate<'a> {
         snippet: &'a str,
     },
 }
+
+#[derive(Subdiagnostic)]
+pub enum SuggestAccessingField<'a> {
+    #[suggestion(
+        infer_suggest_accessing_field,
+        code = "{snippet}.{name}",
+        applicability = "maybe-incorrect"
+    )]
+    Safe {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+        name: Symbol,
+        ty: Ty<'a>,
+    },
+    #[suggestion(
+        infer_suggest_accessing_field,
+        code = "unsafe {{ {snippet}.{name} }}",
+        applicability = "maybe-incorrect"
+    )]
+    Unsafe {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+        name: Symbol,
+        ty: Ty<'a>,
+    },
+}

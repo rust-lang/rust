@@ -360,3 +360,5 @@ infer_fn_consider_casting = consider casting the fn item to a fn pointer: `{$cas
 
 infer_sarwa_option = you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`
 infer_sarwa_result = you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`
+
+infer_suggest_accessing_field = you might have meant to use field `{$name}` whose type is `{$ty}`
