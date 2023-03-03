@@ -82,7 +82,7 @@ The next statement asserts that said boolean is `0`. In case the assertion
 fails, its error message is used for reporting a compile-time error.
 
 Since it does not fail, `Operand::Immediate(Immediate::Scalar(Scalar::Raw {
-data: 4054, .. }))` is stored in the virtual memory was allocated before the
+data: 4054, .. }))` is stored in the virtual memory it was allocated before the
 evaluation. `_0` always refers to that location directly.
 
 After the evaluation is done, the return value is converted from [`Operand`] to
