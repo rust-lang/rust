@@ -66,8 +66,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     let mut ctx = InferenceContext::new(db, def, &body, resolver);
 
     match def {
+        DefWithBodyId::FunctionId(f) => {
+            ctx.collect_fn(f);
+        }
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
-        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
@@ -165,7 +167,8 @@ pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
     PrivateField { expr: ExprId, field: FieldId },
     PrivateAssocItem { id: ExprOrPatId, item: AssocItemId },
-    BreakOutsideOfLoop { expr: ExprId, is_break: bool },
+    // FIXME: Make this proper
+    BreakOutsideOfLoop { expr: ExprId, is_break: bool, bad_value_break: bool },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
 }
 
@@ -392,9 +395,12 @@ pub(crate) struct InferenceContext<'a> {
     /// currently within one.
     ///
     /// We might consider using a nested inference context for checking
-    /// closures, but currently this is the only field that will change there,
-    /// so it doesn't make sense.
+    /// closures so we can swap all shared things out at once.
     return_ty: Ty,
+    /// If `Some`, this stores coercion information for returned
+    /// expressions. If `None`, this is in a context where return is
+    /// inappropriate, such as a const expression.
+    return_coercion: Option<CoerceMany>,
     /// The resume type and the yield type, respectively, of the generator being inferred.
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
@@ -406,7 +412,7 @@ struct BreakableContext {
     /// Whether this context contains at least one break expression.
     may_break: bool,
     /// The coercion target of the context.
-    coerce: CoerceMany,
+    coerce: Option<CoerceMany>,
     /// The optional label of the context.
     label: Option<name::Name>,
     kind: BreakableKind,
@@ -462,6 +468,7 @@ impl<'a> InferenceContext<'a> {
             trait_env,
             return_ty: TyKind::Error.intern(Interner), // set in collect_* calls
             resume_yield_tys: None,
+            return_coercion: None,
             db,
             owner,
             body,
@@ -595,10 +602,19 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.return_ty = self.normalize_associated_types_in(return_ty);
+        self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr_coerce(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
+        match self.return_coercion {
+            Some(_) => self.infer_return(self.body.body_expr),
+            None => {
+                _ = self.infer_expr_coerce(
+                    self.body.body_expr,
+                    &Expectation::has_type(self.return_ty.clone()),
+                )
+            }
+        }
     }
 
     fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
