@@ -617,10 +617,8 @@ fn f() -> i32 {
             r#"
 fn f() {
     let &() = &mut ();
-      //^^^ error: expected &mut (), found &()
     match &() {
         &9 => ()
-      //^^ error: expected &(), found &i32
        //^ error: expected (), found i32
     }
 }

@@ -273,20 +273,15 @@ enum Either2 { C, D }
 fn main() {
     match Either::A {
         Either2::C => (),
-     // ^^^^^^^^^^  error: expected Either, found Either2
         Either2::D => (),
-     // ^^^^^^^^^^  error: expected Either, found Either2
     }
     match (true, false) {
         (true, false, true) => (),
-     // ^^^^^^^^^^^^^^^^^^^  error: expected (bool, bool), found (bool, bool, bool)
         (true) => (),
       // ^^^^  error: expected (bool, bool), found bool
     }
     match (true, false) { (true,) => {} }
-                       // ^^^^^^^  error: expected (bool, bool), found (bool,)
     match (0) { () => () }
-             // ^^  error: expected i32, found ()
     match Unresolved::Bar { Unresolved::Baz => () }
 }
         "#,
@@ -300,9 +295,7 @@ fn main() {
             r#"
 fn main() {
     match false { true | () => {} }
-                      // ^^  error: expected bool, found ()
     match (false,) { (true | (),) => {} }
-                          // ^^  error: expected bool, found ()
 }
 "#,
         );
@@ -1050,7 +1043,6 @@ fn main() {
 fn main() {
     match (&false,) {
         (true,) => {}
-     // ^^^^^^^  error: expected (&bool,), found (bool,)
     }
     match (&false,) {
         (&true,) => {}
