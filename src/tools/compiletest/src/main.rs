@@ -422,7 +422,7 @@ pub fn run_tests(config: Config) {
             // easy to miss which tests failed, and as such fail to reproduce
             // the failure locally.
 
-            eprintln!(
+            println!(
                 "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
                 config.suite,
                 config.compare_mode.map(|c| format!(" compare_mode={:?}", c)).unwrap_or_default(),

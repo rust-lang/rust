@@ -7,7 +7,7 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use crate::builder::Builder;
-use std::io::{BufRead, BufReader, Cursor, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 use yansi_term::Color;
@@ -43,7 +43,6 @@ pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 
 fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
 
     builder.verbose(&format!("running: {cmd:?}"));
 
@@ -61,10 +60,6 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
             result.status
         );
     }
-
-    // Show the stderr emitted by the test runner at the end. As of 2023-03-02 this is only the
-    // message at the end of a failed compiletest run.
-    std::io::copy(&mut Cursor::new(&result.stderr), &mut std::io::stderr().lock()).unwrap();
 
     result.status.success()
 }
