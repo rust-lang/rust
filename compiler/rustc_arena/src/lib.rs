@@ -11,6 +11,7 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
+#![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
@@ -30,11 +31,11 @@ use smallvec::SmallVec;
 
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, NonNull};
 use std::slice;
+use std::{cmp, intrinsics};
 
 #[inline(never)]
 #[cold]
@@ -363,6 +364,20 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
 
 unsafe impl<T: Send> Send for TypedArena<T> {}
 
+#[inline(always)]
+fn align_down(val: usize, align: usize) -> usize {
+    assert!(align.is_power_of_two());
+    val & !(align - 1)
+}
+
+#[inline(always)]
+fn align(val: usize, align: usize) -> usize {
+    assert!(align.is_power_of_two());
+    (val + align - 1) & !(align - 1)
+}
+
+const DROPLESS_ALIGNMENT: usize = mem::align_of::<usize>();
+
 /// An arena that can hold objects of multiple different types that impl `Copy`
 /// and/or satisfy `!mem::needs_drop`.
 pub struct DroplessArena {
@@ -395,8 +410,6 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
-    #[inline(never)]
-    #[cold]
     fn grow(&self, additional: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
@@ -418,9 +431,28 @@ impl DroplessArena {
 
             let mut chunk = ArenaChunk::new(new_cap);
             self.start.set(chunk.start());
-            self.end.set(chunk.end());
+
+            // Align the end to DROPLESS_ALIGNMENT
+            let end = align_down(chunk.end().addr(), DROPLESS_ALIGNMENT);
+            // Make sure we don't go past `start`
+            let end = cmp::max(chunk.start().addr(), end);
+            self.end.set(chunk.end().with_addr(end));
+
             chunks.push(chunk);
         }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn grow_and_alloc_raw(&self, layout: Layout) -> *mut u8 {
+        self.grow(layout.size());
+        self.alloc_raw(layout)
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn grow_and_alloc<T>(&self) -> *mut u8 {
+        self.grow_and_alloc_raw(Layout::new::<T>())
     }
 
     /// Allocates a byte slice with specified layout from the current memory
@@ -432,10 +464,13 @@ impl DroplessArena {
         let old_end = self.end.get();
         let end = old_end.addr();
 
-        let align = layout.align();
-        let bytes = layout.size();
+        // Align allocated bytes so that `self.end` stays aligned to DROPLESS_ALIGNMENT
+        let bytes = align(layout.size(), DROPLESS_ALIGNMENT);
 
-        let new_end = end.checked_sub(bytes)? & !(align - 1);
+        // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT
+        unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
+
+        let new_end = align_down(end.checked_sub(bytes)?, layout.align());
         if start <= new_end {
             let new_end = old_end.with_addr(new_end);
             self.end.set(new_end);
@@ -448,21 +483,26 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
         assert!(layout.size() != 0);
-        loop {
-            if let Some(a) = self.alloc_raw_without_grow(layout) {
-                break a;
-            }
-            // No free space left. Allocate a new chunk to satisfy the request.
-            // On failure the grow will panic or abort.
-            self.grow(layout.size());
+        if let Some(a) = self.alloc_raw_without_grow(layout) {
+            return a;
         }
+        // No free space left. Allocate a new chunk to satisfy the request.
+        // On failure the grow will panic or abort.
+        self.grow_and_alloc_raw(layout)
     }
 
     #[inline]
     pub fn alloc<T>(&self, object: T) -> &mut T {
         assert!(!mem::needs_drop::<T>());
+        assert!(mem::size_of::<T>() != 0);
 
-        let mem = self.alloc_raw(Layout::for_value::<T>(&object)) as *mut T;
+        let mem = if let Some(a) = self.alloc_raw_without_grow(Layout::for_value::<T>(&object)) {
+            a
+        } else {
+            // No free space left. Allocate a new chunk to satisfy the request.
+            // On failure the grow will panic or abort.
+            self.grow_and_alloc::<T>()
+        } as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
