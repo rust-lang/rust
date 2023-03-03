@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #107516
+// Resgression test for #107516.
+// check-pass
 
 fn iter1<'a: 'a>() -> impl Iterator<Item = &'static str> {
     None.into_iter()
