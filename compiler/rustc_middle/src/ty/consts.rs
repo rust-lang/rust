@@ -16,7 +16,7 @@ pub use int::*;
 pub use kind::*;
 pub use valtree::*;
 
-/// Use this rather than `ConstData, whenever possible.
+/// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, ConstData<'tcx>>);

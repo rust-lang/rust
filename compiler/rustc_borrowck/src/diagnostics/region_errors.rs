@@ -415,7 +415,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     /// ```
     ///
-    /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
+    /// Here we would be invoked with `fr = 'a` and `outlived_fr = 'b`.
     pub(crate) fn report_region_error(
         &mut self,
         fr: RegionVid,
@@ -949,7 +949,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement",
+                    "calling this method introduces the `impl`'s `'static` requirement",
                 );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(

@@ -192,7 +192,7 @@ impl<'a> AstValidator<'a> {
                 // We allow these:
                 //  - `Option<impl Trait>`
                 //  - `option::Option<impl Trait>`
-                //  - `option::Option<T>::Foo<impl Trait>
+                //  - `option::Option<T>::Foo<impl Trait>`
                 //
                 // But not these:
                 //  - `<impl Trait>::Foo`

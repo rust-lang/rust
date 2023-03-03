@@ -50,7 +50,7 @@ where
     ///
     /// - Covariant means `a <: b`.
     /// - Contravariant means `b <: a`.
-    /// - Invariant means `a == b.
+    /// - Invariant means `a == b`.
     /// - Bivariant means that it doesn't matter.
     ambient_variance: ty::Variance,
 

@@ -646,7 +646,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     // `UseTree` has one inline use (in `ast::ItemKind::Use`) and one
-    // non-inline use (in `ast::UseTreeKind::Nested). The former case is more
+    // non-inline use (in `ast::UseTreeKind::Nested`). The former case is more
     // common, so we don't implement `visit_use_tree` and tolerate the missed
     // coverage in the latter case.
 

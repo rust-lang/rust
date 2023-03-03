@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, List, TyCtxt};
 use rustc_span::source_map::Span;
 
 pub use rustc_middle::infer::canonical::*;
-use substitute::CanonicalExt;
+pub use substitute::CanonicalExt;
 
 mod canonicalizer;
 pub mod query_response;
@@ -100,7 +100,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// variable for it. If this is an existentially quantified
     /// variable, then you'll get a new inference variable; if it is a
     /// universally quantified variable, you get a placeholder.
-    fn instantiate_canonical_var(
+    ///
+    /// FIXME(-Ztrait-solver=next): This is public because it's used by the
+    /// new trait solver which has a different canonicalization routine.
+    /// We should somehow deduplicate all of this.
+    pub fn instantiate_canonical_var(
         &self,
         span: Span,
         cv_info: CanonicalVarInfo<'tcx>,

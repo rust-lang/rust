@@ -248,7 +248,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_promoted()`, which steals
-    // from `mir_const(), forces this query to execute before
+    // from `mir_const()`, forces this query to execute before
     // performing the steal.
     let body = &tcx.mir_const(def).borrow();
 

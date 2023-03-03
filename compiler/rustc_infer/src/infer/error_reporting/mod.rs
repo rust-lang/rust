@@ -1690,7 +1690,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 format!("{name} is defined in the current crate")
                             } else {
                                 let crate_name = self.tcx.crate_name(defid.krate);
-                                format!("{name} is defined in crate `{crate_name}")
+                                format!("{name} is defined in crate `{crate_name}`")
                             };
                             diagnostic.span_note(def_span, msg);
                         };
