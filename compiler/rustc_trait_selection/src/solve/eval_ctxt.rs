@@ -19,8 +19,17 @@ use super::Goal;
 pub struct EvalCtxt<'a, 'tcx> {
     // FIXME: should be private.
     pub(super) infcx: &'a InferCtxt<'tcx>,
-
     pub(super) var_values: CanonicalVarValues<'tcx>,
+    /// The highest universe index nameable by the caller.
+    ///
+    /// When we enter a new binder inside of the query we create new universes
+    /// which the caller cannot name. We have to be careful with variables from
+    /// these new universes when creating the query response.
+    ///
+    /// Both because these new universes can prevent us from reaching a fixpoint
+    /// if we have a coinductive cycle and because that's the only way we can return
+    /// new placeholders to the caller.
+    pub(super) max_input_universe: ty::UniverseIndex,
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
