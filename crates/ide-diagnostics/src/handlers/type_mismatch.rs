@@ -54,7 +54,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
             remove_semicolon(ctx, d, expr_ptr, &mut fixes);
             str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
         }
-        Either::Right(_pat_ptr) => (),
+        Either::Right(_pat_ptr) => {}
     }
 
     if fixes.is_empty() {
@@ -62,14 +62,6 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
     } else {
         Some(fixes)
     }
-}
-fn add_reference_pat(
-    ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
-    expr_ptr: &InFile<AstPtr<ast::Pat>>,
-    acc: &mut Vec<Assist>,
-) -> Option<()> {
-    None
 }
 
 fn add_reference(
@@ -629,7 +621,6 @@ fn f() {
     match &() {
         &9 => ()
       //^^ error: expected &(), found &i32
-       //^ error: expected (), found i32
        //^ error: expected (), found i32
     }
 }

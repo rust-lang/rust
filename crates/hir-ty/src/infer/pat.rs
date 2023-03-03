@@ -181,8 +181,8 @@ impl<'a> InferenceContext<'a> {
             .intern(Interner)
     }
 
-    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty) -> Ty {
-        self.infer_pat(pat, expected, BindingMode::default())
+    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty) {
+        self.infer_pat(pat, expected, BindingMode::default());
     }
 
     fn infer_pat(&mut self, pat: PatId, expected: &Ty, mut default_bm: BindingMode) -> Ty {
@@ -260,7 +260,12 @@ impl<'a> InferenceContext<'a> {
                 let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
                 self.infer_expr(*end, &Expectation::has_type(start_ty))
             }
-            &Pat::Lit(expr) => self.infer_lit_pat(expr, &expected),
+            &Pat::Lit(expr) => {
+                // Don't emit type mismatches again, the expression lowering already did that.
+                let ty = self.infer_lit_pat(expr, &expected);
+                self.write_pat_ty(pat, ty.clone());
+                return ty;
+            }
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
                     let (inner_ty, alloc_ty) = match expected.as_adt() {
