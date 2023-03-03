@@ -152,9 +152,7 @@ impl FileDesc {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "illumos",
-        target_os = "ios",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -170,6 +168,7 @@ impl FileDesc {
     }
 
     #[cfg(not(any(
+        target_os = "android",
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -188,7 +187,7 @@ impl FileDesc {
     //
     // On 32-bit targets, we don't want to deal with weird ABI issues around
     // passing 64-bits parameters to syscalls, so we fallback to the default
-    // implementation.
+    // implementation if `preadv` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         super::weak::syscall! {
@@ -211,7 +210,13 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(all(target_os = "android", target_pointer_width = "32"))]
+    // We support old MacOS and iOS versions that do not have `preadv`. There is
+    // no `syscall` possible in these platform.
+    #[cfg(any(
+        all(target_os = "android", target_pointer_width = "32"),
+        target_os = "ios",
+        target_os = "macos",
+    ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
@@ -286,9 +291,7 @@ impl FileDesc {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "illumos",
-        target_os = "ios",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
@@ -304,6 +307,7 @@ impl FileDesc {
     }
 
     #[cfg(not(any(
+        target_os = "android",
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -322,7 +326,7 @@ impl FileDesc {
     //
     // On 32-bit targets, we don't want to deal with weird ABI issues around
     // passing 64-bits parameters to syscalls, so we fallback to the default
-    // implementation.
+    // implementation if `pwritev` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         super::weak::syscall! {
@@ -345,7 +349,13 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(all(target_os = "android", target_pointer_width = "32"))]
+    // We support old MacOS and iOS versions that do not have `pwritev`. There is
+    // no `syscall` possible in these platform.
+    #[cfg(any(
+        all(target_os = "android", target_pointer_width = "32"),
+        target_os = "ios",
+        target_os = "macos",
+    ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         super::weak::weak!(fn pwritev64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
