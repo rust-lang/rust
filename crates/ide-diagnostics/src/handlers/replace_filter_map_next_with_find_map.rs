@@ -55,7 +55,18 @@ fn fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::{
+        tests::{check_diagnostics_with_config, check_fix},
+        DiagnosticsConfig,
+    };
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("inactive-code".to_string());
+        config.disabled.insert("unresolved-method".to_string());
+        check_diagnostics_with_config(config, ra_fixture)
+    }
 
     #[test]
     fn replace_filter_map_next_with_find_map2() {

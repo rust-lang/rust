@@ -27,6 +27,7 @@
 
 mod handlers {
     pub(crate) mod break_outside_of_loop;
+    pub(crate) mod expected_function;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
     pub(crate) mod invalid_derive_target;
@@ -43,6 +44,8 @@ mod handlers {
     pub(crate) mod type_mismatch;
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unresolved_extern_crate;
+    pub(crate) mod unresolved_field;
+    pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_import;
     pub(crate) mod unresolved_macro_call;
     pub(crate) mod unresolved_module;
@@ -248,6 +251,7 @@ pub fn diagnostics(
         #[rustfmt::skip]
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
             AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),
@@ -267,6 +271,8 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::InvalidDeriveTarget(d) => handlers::invalid_derive_target::invalid_derive_target(&ctx, &d),
+            AnyDiagnostic::UnresolvedField(d) => handlers::unresolved_field::unresolved_field(&ctx, &d),
+            AnyDiagnostic::UnresolvedMethodCall(d) => handlers::unresolved_method::unresolved_method(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,

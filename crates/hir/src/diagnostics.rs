@@ -31,6 +31,7 @@ macro_rules! diagnostics {
 
 diagnostics![
     BreakOutsideOfLoop,
+    ExpectedFunction,
     InactiveCode,
     IncorrectCase,
     InvalidDeriveTarget,
@@ -47,8 +48,10 @@ diagnostics![
     TypeMismatch,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
+    UnresolvedField,
     UnresolvedImport,
     UnresolvedMacroCall,
+    UnresolvedMethodCall,
     UnresolvedModule,
     UnresolvedProcMacro,
 ];
@@ -128,6 +131,28 @@ pub struct PrivateAssocItem {
     pub expr_or_pat:
         InFile<Either<AstPtr<ast::Expr>, Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>>>,
     pub item: AssocItem,
+}
+
+#[derive(Debug)]
+pub struct ExpectedFunction {
+    pub call: InFile<AstPtr<ast::Expr>>,
+    pub found: Type,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedField {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub method_with_same_name_exists: bool,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedMethodCall {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub field_with_same_name: Option<Type>,
 }
 
 #[derive(Debug)]

@@ -84,12 +84,12 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
-        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
+        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
+        MissingMatchArms, MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-        UnresolvedProcMacro,
+        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1375,10 +1375,11 @@ impl DefWithBody {
 
         let infer = db.infer(self.into());
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
+        let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
         for d in &infer.diagnostics {
             match d {
-                hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
-                    let field = source_map.field_syntax(*expr);
+                &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                    let field = source_map.field_syntax(expr);
                     acc.push(NoSuchField { field }.into())
                 }
                 &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
@@ -1386,35 +1387,23 @@ impl DefWithBody {
                     is_break,
                     bad_value_break,
                 } => {
-                    let expr = source_map
-                        .expr_syntax(expr)
-                        .expect("break outside of loop in synthetic syntax");
+                    let expr = expr_syntax(expr);
                     acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
-                hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    match source_map.expr_syntax(*call_expr) {
-                        Ok(source_ptr) => acc.push(
-                            MismatchedArgCount {
-                                call_expr: source_ptr,
-                                expected: *expected,
-                                found: *found,
-                            }
+                &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    acc.push(
+                        MismatchedArgCount { call_expr: expr_syntax(call_expr), expected, found }
                             .into(),
-                        ),
-                        Err(SyntheticSyntax) => (),
-                    }
+                    )
                 }
                 &hir_ty::InferenceDiagnostic::PrivateField { expr, field } => {
-                    let expr = source_map.expr_syntax(expr).expect("unexpected synthetic");
+                    let expr = expr_syntax(expr);
                     let field = field.into();
                     acc.push(PrivateField { expr, field }.into())
                 }
                 &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
-                        ExprOrPatId::ExprId(expr) => source_map
-                            .expr_syntax(expr)
-                            .expect("unexpected synthetic")
-                            .map(Either::Left),
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
                         ExprOrPatId::PatId(pat) => source_map
                             .pat_syntax(pat)
                             .expect("unexpected synthetic")
@@ -1422,6 +1411,55 @@ impl DefWithBody {
                     };
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
+                }
+                hir_ty::InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
+                    let call_expr = expr_syntax(*call_expr);
+
+                    acc.push(
+                        ExpectedFunction {
+                            call: call_expr,
+                            found: Type::new(db, DefWithBodyId::from(self), found.clone()),
+                        }
+                        .into(),
+                    )
+                }
+                hir_ty::InferenceDiagnostic::UnresolvedField {
+                    expr,
+                    receiver,
+                    name,
+                    method_with_same_name_exists,
+                } => {
+                    let expr = expr_syntax(*expr);
+
+                    acc.push(
+                        UnresolvedField {
+                            expr,
+                            name: name.clone(),
+                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                            method_with_same_name_exists: *method_with_same_name_exists,
+                        }
+                        .into(),
+                    )
+                }
+                hir_ty::InferenceDiagnostic::UnresolvedMethodCall {
+                    expr,
+                    receiver,
+                    name,
+                    field_with_same_name,
+                } => {
+                    let expr = expr_syntax(*expr);
+
+                    acc.push(
+                        UnresolvedMethodCall {
+                            expr,
+                            name: name.clone(),
+                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                            field_with_same_name: field_with_same_name
+                                .clone()
+                                .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
+                        }
+                        .into(),
+                    )
                 }
             }
         }
