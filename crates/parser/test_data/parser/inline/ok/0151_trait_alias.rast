@@ -1,5 +1,5 @@
 SOURCE_FILE
-  TRAIT
+  TRAIT_ALIAS
     TRAIT_KW "trait"
     WHITESPACE " "
     NAME

@@ -110,6 +110,7 @@ impl<'a> Ctx<'a> {
             ast::Item::Const(ast) => self.lower_const(ast).into(),
             ast::Item::Module(ast) => self.lower_module(ast)?.into(),
             ast::Item::Trait(ast) => self.lower_trait(ast)?.into(),
+            ast::Item::TraitAlias(_) => return None,
             ast::Item::Impl(ast) => self.lower_impl(ast)?.into(),
             ast::Item::Use(ast) => self.lower_use(ast)?.into(),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?.into(),
