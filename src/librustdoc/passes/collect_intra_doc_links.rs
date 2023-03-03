@@ -1018,7 +1018,7 @@ impl LinkCollector<'_, '_> {
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
-                    ambiguity_error(self.cx, diag_info, path_str, candidates);
+                    ambiguity_error(self.cx, diag_info, path_str, candidates, module_id);
                     return None;
                 }
             }
@@ -1304,7 +1304,13 @@ impl LinkCollector<'_, '_> {
                     if ignore_macro {
                         candidates.macro_ns = None;
                     }
-                    ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
+                    ambiguity_error(
+                        self.cx,
+                        diag,
+                        path_str,
+                        candidates.present_items().collect(),
+                        base_node,
+                    );
                     None
                 }
             }
@@ -1888,15 +1894,73 @@ fn report_malformed_generics(
     );
 }
 
+fn get_matching_items(
+    cx: &DocContext<'_>,
+    item_name: &str,
+    candidates: &mut Vec<Res>,
+    def_id: DefId,
+) {
+    let assoc_items = cx.tcx.associated_items(def_id);
+    for assoc_item in assoc_items.in_definition_order() {
+        if assoc_item.name.as_str() == item_name {
+            candidates.push(Res::Def(assoc_item.kind.as_def_kind(), assoc_item.def_id));
+        }
+    }
+}
+
 /// Report an ambiguity error, where there were multiple possible resolutions.
 fn ambiguity_error(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     diag_info: DiagnosticInfo<'_>,
     path_str: &str,
-    candidates: Vec<Res>,
+    mut candidates: Vec<Res>,
+    module_id: DefId,
 ) {
     let mut msg = format!("`{}` is ", path_str);
+    let mut def_id_counts = FxHashMap::default();
+    let mut need_dedup = false;
 
+    // If the item is an impl block or a trait, we need to disambiguate even further, otherwise
+    // `Res` will always tell it's an impl/trait.
+    for candidate in &candidates {
+        if let Some(def_id) = candidate.def_id(cx.tcx) {
+            def_id_counts
+                .entry(def_id)
+                .and_modify(|(count, _)| {
+                    *count += 1;
+                    need_dedup = true;
+                })
+                .or_insert((1, *candidate));
+        }
+    }
+    if need_dedup && let Some(item_name) = path_str.split("::").last() {
+        candidates.clear();
+        for (def_id, (count, candidate)) in def_id_counts.into_iter() {
+            if count > 1 {
+                if matches!(cx.tcx.def_kind(def_id), DefKind::Trait | DefKind::Impl { .. }) {
+                    // If it's a trait or an impl block, we can directly get the items from it.
+                    get_matching_items(cx, item_name, &mut candidates, def_id);
+                } else {
+                    // We go through the type's impl blocks.
+                    for impl_ in cx.tcx.inherent_impls(def_id) {
+                        get_matching_items(cx, item_name, &mut candidates, *impl_);
+                    }
+
+                    // We now go through trait impls.
+                    let trait_impls = trait_impls_for(
+                        cx,
+                        cx.tcx.type_of(def_id).subst_identity(),
+                        module_id,
+                    );
+                    for (impl_, _) in trait_impls {
+                        get_matching_items(cx, item_name, &mut candidates, impl_);
+                    }
+                }
+            } else {
+                candidates.push(candidate);
+            }
+        }
+    }
     match candidates.as_slice() {
         [first_def, second_def] => {
             msg += &format!(
