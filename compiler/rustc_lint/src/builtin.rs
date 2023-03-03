@@ -1462,35 +1462,68 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             return
         };
 
-        // Bounds are respected for types with opaque types
-        use rustc_hir::intravisit::{self, Visitor};
-        struct OpaqueVisitor {
-            has_opaque: bool,
-        }
-        impl<'tcx> Visitor<'tcx> for OpaqueVisitor {
-            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-                if let hir::TyKind::OpaqueDef(..) = ty.kind {
-                    self.has_opaque = true;
-                } else {
-                    intravisit::walk_ty(self, ty);
-                }
-            }
-        }
-        let mut opaque_visitor = OpaqueVisitor { has_opaque: false };
-        opaque_visitor.visit_ty(ty);
-        if opaque_visitor.has_opaque {
-            return;
-        }
-
         // There must not be a where clause
         if type_alias_generics.predicates.is_empty() {
             return;
         }
 
+        // Collects generic parameters used in non-opaque types
+        use rustc_hir::intravisit::{self, Visitor};
+        struct NonOpaqueVisitor {
+            ty_params: FxHashSet<DefId>,
+            lifetimes: FxHashSet<Symbol>,
+        }
+        impl<'tcx> Visitor<'tcx> for NonOpaqueVisitor {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+                // if ty is not an opaque type, we need to check its children
+                if !matches!(ty.kind, hir::TyKind::OpaqueDef(..)) {
+                    intravisit::walk_ty(self, ty);
+                }
+ 
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ty.kind {
+                    if let Res::Def(DefKind::TyParam, def_id) = path.res {
+                        // collect ty parameters
+                        self.ty_params.insert(def_id.clone());
+                    }
+                }
+            }
+
+            fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
+                // collect lifetime parameters
+                self.lifetimes.insert(lifetime.ident.name.clone());
+            }
+        }
+
+        let mut non_opaque_visitor = NonOpaqueVisitor {
+            ty_params: FxHashSet::default(),
+            lifetimes: FxHashSet::default(),
+        };
+        non_opaque_visitor.visit_ty(ty);
+
+        let NonOpaqueVisitor {
+            ty_params, 
+            lifetimes ,
+        } = non_opaque_visitor;
+
         let mut where_spans = Vec::new();
         let mut inline_spans = Vec::new();
         let mut inline_sugg = Vec::new();
         for p in type_alias_generics.predicates {
+            // Skip the predicate that is not used in non-opaque types
+            if let hir::WherePredicate::BoundPredicate(ref bound_pred) = p {
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = bound_pred.bounded_ty.kind {
+                    if let Res::Def(DefKind::TyParam, def_id) = path.res {
+                        if !ty_params.contains(&def_id) {
+                            continue;
+                        }
+                    }
+                }
+            } else if let hir::WherePredicate::RegionPredicate(ref region_pred) = p {
+                if !lifetimes.contains(&region_pred.lifetime.ident.name) {
+                    continue;
+                }
+            }
+
             let span = p.span();
             if p.in_where_clause() {
                 where_spans.push(span);
