@@ -68,16 +68,17 @@ impl<'a> Parser<'a> {
         }
 
         if !self.eat(term) {
-            let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
-                let msg = &format!("expected item, found {token_str}");
-                let mut err = self.struct_span_err(self.token.span, msg);
-                let label = if self.is_kw_followed_by_ident(kw::Let) {
-                    "consider using `const` or `static` instead of `let` for global variables"
-                } else {
-                    "expected item"
-                };
-                err.span_label(self.token.span, label);
+                if self.is_kw_followed_by_ident(kw::Let) {
+                    let err = self
+                        .sess
+                        .create_err(errors::InvalidLetOutsideFunction { span: self.token.span });
+                    return Err(err);
+                }
+                let token_str = super::token_descr(&self.token);
+                let mut err = self
+                    .struct_span_err(self.token.span, &format!("expected item, found {token_str}"));
+                err.span_label(self.token.span, "expected item");
                 return Err(err);
             }
         }

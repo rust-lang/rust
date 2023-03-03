@@ -442,6 +442,10 @@ parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by a
 parse_visibility_followed_by_let = visibility does not apply to `let` statement
     .suggestion = remove pub
 
+parse_invalid_let_outside_function = `let` is invalid outside of a function
+    .suggestion_static = consider using `static` instead of `let`
+    .suggestion_const = consider using `const` instead of `let`
+
 parse_default_not_followed_by_item = `default` is not followed by an item
     .label = the `default` qualifier
     .note = only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`

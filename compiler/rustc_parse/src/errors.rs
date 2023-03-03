@@ -1412,6 +1412,25 @@ pub(crate) struct VisibilityFollowedByLet {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_invalid_let_outside_function)]
+pub(crate) struct InvalidLetOutsideFunction {
+    #[primary_span]
+    #[suggestion(
+        parse_suggestion_static,
+        style = "verbose",
+        code = "static",
+        applicability = "machine-applicable"
+    )]
+    #[suggestion(
+        parse_suggestion_const,
+        style = "verbose",
+        code = "const",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_default_not_followed_by_item)]
 #[note]
 pub(crate) struct DefaultNotFollowedByItem {
