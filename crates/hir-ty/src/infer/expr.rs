@@ -552,71 +552,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 ty
             }
-            Expr::Field { expr, name } => {
-                let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
-
-                let mut autoderef = Autoderef::new(&mut self.table, receiver_ty);
-                let mut private_field = None;
-                let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
-                    let (field_id, parameters) = match derefed_ty.kind(Interner) {
-                        TyKind::Tuple(_, substs) => {
-                            return name.as_tuple_index().and_then(|idx| {
-                                substs
-                                    .as_slice(Interner)
-                                    .get(idx)
-                                    .map(|a| a.assert_ty_ref(Interner))
-                                    .cloned()
-                            });
-                        }
-                        TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
-                            let local_id = self.db.struct_data(*s).variant_data.field(name)?;
-                            let field = FieldId { parent: (*s).into(), local_id };
-                            (field, parameters.clone())
-                        }
-                        TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
-                            let local_id = self.db.union_data(*u).variant_data.field(name)?;
-                            let field = FieldId { parent: (*u).into(), local_id };
-                            (field, parameters.clone())
-                        }
-                        _ => return None,
-                    };
-                    let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
-                        .is_visible_from(self.db.upcast(), self.resolver.module());
-                    if !is_visible {
-                        if private_field.is_none() {
-                            private_field = Some(field_id);
-                        }
-                        return None;
-                    }
-                    // can't have `write_field_resolution` here because `self.table` is borrowed :(
-                    self.result.field_resolutions.insert(tgt_expr, field_id);
-                    let ty = self.db.field_types(field_id.parent)[field_id.local_id]
-                        .clone()
-                        .substitute(Interner, &parameters);
-                    Some(ty)
-                });
-                let ty = match ty {
-                    Some(ty) => {
-                        let adjustments = auto_deref_adjust_steps(&autoderef);
-                        self.write_expr_adj(*expr, adjustments);
-                        let ty = self.insert_type_vars(ty);
-                        let ty = self.normalize_associated_types_in(ty);
-                        ty
-                    }
-                    _ => {
-                        // Write down the first private field resolution if we found no field
-                        // This aids IDE features for private fields like goto def
-                        if let Some(field) = private_field {
-                            self.result.field_resolutions.insert(tgt_expr, field);
-                            self.result
-                                .diagnostics
-                                .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
-                        }
-                        self.err_ty()
-                    }
-                };
-                ty
-            }
+            Expr::Field { expr, name } => self.infer_field_access(tgt_expr, *expr, name),
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
@@ -1274,6 +1210,92 @@ impl<'a> InferenceContext<'a> {
                 TyBuilder::unit()
             }
         }
+    }
+
+    fn infer_field_access(&mut self, tgt_expr: ExprId, expr: ExprId, name: &Name) -> Ty {
+        let receiver_ty = self.infer_expr_inner(expr, &Expectation::none());
+
+        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone());
+        let mut private_field = None;
+        let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
+            let (field_id, parameters) = match derefed_ty.kind(Interner) {
+                TyKind::Tuple(_, substs) => {
+                    return name.as_tuple_index().and_then(|idx| {
+                        substs
+                            .as_slice(Interner)
+                            .get(idx)
+                            .map(|a| a.assert_ty_ref(Interner))
+                            .cloned()
+                    });
+                }
+                TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
+                    let local_id = self.db.struct_data(*s).variant_data.field(name)?;
+                    let field = FieldId { parent: (*s).into(), local_id };
+                    (field, parameters.clone())
+                }
+                TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
+                    let local_id = self.db.union_data(*u).variant_data.field(name)?;
+                    let field = FieldId { parent: (*u).into(), local_id };
+                    (field, parameters.clone())
+                }
+                _ => return None,
+            };
+            let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
+                .is_visible_from(self.db.upcast(), self.resolver.module());
+            if !is_visible {
+                if private_field.is_none() {
+                    private_field = Some(field_id);
+                }
+                return None;
+            }
+            // can't have `write_field_resolution` here because `self.table` is borrowed :(
+            self.result.field_resolutions.insert(tgt_expr, field_id);
+            let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                .clone()
+                .substitute(Interner, &parameters);
+            Some(ty)
+        });
+        let ty = match ty {
+            Some(ty) => {
+                let adjustments = auto_deref_adjust_steps(&autoderef);
+                self.write_expr_adj(expr, adjustments);
+                let ty = self.insert_type_vars(ty);
+                let ty = self.normalize_associated_types_in(ty);
+                ty
+            }
+            _ => {
+                // Write down the first private field resolution if we found no field
+                // This aids IDE features for private fields like goto def
+                if let Some(field) = private_field {
+                    self.result.field_resolutions.insert(tgt_expr, field);
+                    // FIXME: Merge this diagnostic into UnresolvedField
+                    self.result
+                        .diagnostics
+                        .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
+                } else {
+                    // no field found, try looking for a method of the same name
+                    let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
+                    let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
+
+                    let resolved = method_resolution::lookup_method(
+                        self.db,
+                        &canonicalized_receiver.value,
+                        self.trait_env.clone(),
+                        &traits_in_scope,
+                        VisibleFromModule::Filter(self.resolver.module()),
+                        name,
+                    );
+                    self.result.diagnostics.push(InferenceDiagnostic::UnresolvedField {
+                        expr: tgt_expr,
+                        receiver: receiver_ty,
+                        name: name.clone(),
+                        method_with_same_name_exists: resolved.is_some(),
+                    });
+                }
+                self.err_ty()
+            }
+        };
+        ty
     }
 
     fn infer_method_call(

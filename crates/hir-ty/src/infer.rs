@@ -31,7 +31,7 @@ use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
     ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
-use hir_expand::name::name;
+use hir_expand::name::{name, Name};
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::always;
@@ -167,6 +167,7 @@ pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
     PrivateField { expr: ExprId, field: FieldId },
     PrivateAssocItem { id: ExprOrPatId, item: AssocItemId },
+    UnresolvedField { expr: ExprId, receiver: Ty, name: Name, method_with_same_name_exists: bool },
     // FIXME: Make this proper
     BreakOutsideOfLoop { expr: ExprId, is_break: bool, bad_value_break: bool },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
@@ -506,14 +507,17 @@ impl<'a> InferenceContext<'a> {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
         }
-        for diagnostic in &mut result.diagnostics {
-            match diagnostic {
-                InferenceDiagnostic::ExpectedFunction { found, .. } => {
-                    *found = table.resolve_completely(found.clone())
+        result.diagnostics.retain_mut(|diagnostic| {
+            if let InferenceDiagnostic::ExpectedFunction { found: ty, .. }
+            | InferenceDiagnostic::UnresolvedField { receiver: ty, .. } = diagnostic
+            {
+                *ty = table.resolve_completely(ty.clone());
+                if ty.is_unknown() {
+                    return false;
                 }
-                _ => (),
             }
-        }
+            true
+        });
         for (_, subst) in result.method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
         }

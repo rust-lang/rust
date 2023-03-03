@@ -48,6 +48,7 @@ diagnostics![
     TypeMismatch,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
+    UnresolvedField,
     UnresolvedImport,
     UnresolvedMacroCall,
     UnresolvedModule,
@@ -135,6 +136,14 @@ pub struct PrivateAssocItem {
 pub struct ExpectedFunction {
     pub call: InFile<AstPtr<ast::Expr>>,
     pub found: Type,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedField {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub method_with_same_name_exists: bool,
 }
 
 #[derive(Debug)]
