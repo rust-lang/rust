@@ -54,7 +54,6 @@ use crate::errors::TupleTrailingCommaSuggestion;
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
-use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     PredicateObligation,
@@ -1912,10 +1911,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let span = trace.cause.span();
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
-            FailureCode::Error0038(did) => {
-                let violations = self.tcx.object_safety_violations(did);
-                report_object_safety_error(self.tcx, span, did, violations)
-            }
             FailureCode::Error0317(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             }
@@ -2825,7 +2820,6 @@ impl<'tcx> InferCtxt<'tcx> {
 }
 
 pub enum FailureCode {
-    Error0038(DefId),
     Error0317(&'static str),
     Error0580(&'static str),
     Error0308(&'static str),
