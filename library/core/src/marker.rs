@@ -277,9 +277,9 @@ marker_impls! {
         bool,
         char,
         str /* Technically requires `[u8]: StructuralEq` */,
-        {T: ConstParamTy, const N: usize} [T; N],
-        {T: ConstParamTy} [T],
-        {T: ConstParamTy} &T,
+        {T: StructuralEq, const N: usize} [T; N],
+        {T: StructuralEq} [T],
+        {T: ?Sized + StructuralEq} &T,
 }
 
 /// Types whose values can be duplicated simply by copying bits.
@@ -998,7 +998,7 @@ marker_impls! {
         str /* Technically requires `[u8]: ConstParamTy` */,
         {T: ConstParamTy, const N: usize} [T; N],
         {T: ConstParamTy} [T],
-        {T: ConstParamTy} &T,
+        {T: ?Sized + ConstParamTy} &T,
 }
 
 /// A common trait implemented by all function pointers.
