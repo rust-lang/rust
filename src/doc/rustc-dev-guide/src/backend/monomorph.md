@@ -99,7 +99,7 @@ are relatively rare in functions, but closures inherit the generic
 parameters of their parent function and it is common for closures to not
 use those inherited parameters. Without polymorphization, a copy of these
 closures would be created for each copy of the parent function. By
-creating fewer copies, less LLVM IR is generated and needs processed.
+creating fewer copies, less LLVM IR is generated; therefore less needs to be processed.
 
 `unused_generic_params` returns a `FiniteBitSet<u64>` where a bit is set if
 the generic parameter of the corresponding index is unused. Any parameters
