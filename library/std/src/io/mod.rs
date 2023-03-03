@@ -1393,7 +1393,7 @@ pub trait Write {
     /// an [`Err`] variant.
     ///
     /// If this method consumed `n > 0` bytes of `buf` it must return [`Ok(n)`].
-    /// If the return value is `Ok(n)` it must hold than `n <= buf.len()`.
+    /// If the return value is `Ok(n)` then `n` must satisfy `n <= buf.len()`.
     /// Unless `buf` is empty, this function shouldn’t return `Ok(0)` since the
     /// caller may interpret that as an error.  To indicate lack of space,
     /// implementors should return [`ErrorKind::StorageFull`] error instead.
