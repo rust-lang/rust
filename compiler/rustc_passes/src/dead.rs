@@ -243,6 +243,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
 
+            if self.tcx.opt_rpitit_info(id).is_some() {
+                self.live_symbols.insert(id);
+                continue;
+            }
+
             // in the case of tuple struct constructors we want to check the item, not the generated
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
