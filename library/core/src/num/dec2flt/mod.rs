@@ -152,7 +152,7 @@ macro_rules! from_str_float_impl {
             // Since `dec2flt` is generic, a normal inline attribute on this function
             // with `dec2flt` having no attributes results in heavily repeated
             // generation of `dec2flt`, despite the fact only a maximum of 2
-            // possible instances. Adding #[inline(never)] avoids this.
+            // possible instances can ever exist. Adding #[inline(never)] avoids this.
             #[inline(never)]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 dec2flt(src)
