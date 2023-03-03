@@ -11,7 +11,6 @@ use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutabili
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
-use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
@@ -393,11 +392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(self.typeck_results.borrow().node_substs(expr.hir_id).type_at(1))
             }
         };
-        let arg_tys = match arg_ty {
-            None => &[],
-            Some(ref ty) => slice::from_ref(ty),
-        };
-
+        let arg_tys = arg_ty.as_slice();
         let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
