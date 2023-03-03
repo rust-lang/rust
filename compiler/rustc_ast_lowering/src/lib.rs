@@ -1607,7 +1607,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
     }
 
-    /// Given a `parent_def_id`, a list of `lifetimes_in_bounds and a `remapping` hash to be
+    /// Given a `parent_def_id`, a list of `lifetimes_in_bounds` and a `remapping` hash to be
     /// filled, this function creates new definitions for `Param` and `Fresh` lifetimes, inserts the
     /// new definition, adds it to the remapping with the definition of the given lifetime and
     /// returns a list of lifetimes to be lowered afterwards.

@@ -889,7 +889,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// from a universe it can't name; at present, the only way for
     /// this to be true is if `scc` outlives `'static`. This is
     /// actually stricter than necessary: ideally, we'd support bounds
-    /// like `for<'a: 'b`>` that might then allow us to approximate
+    /// like `for<'a: 'b>` that might then allow us to approximate
     /// `'a` with `'b` and not `'static`. But it will have to do for
     /// now.
     fn add_incompatible_universe(&mut self, scc: ConstraintSccIndex) {

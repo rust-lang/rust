@@ -2223,7 +2223,7 @@ fn determine_place_ancestry_relation<'tcx>(
 ///     || drop(&*m.a.field_of_a)
 ///     // Here we really do want to capture `*m.a` because that outlives `'static`
 ///
-///     // If we capture `m`, then the closure no longer outlives `'static'
+///     // If we capture `m`, then the closure no longer outlives `'static`
 ///     // it is constrained to `'a`
 /// }
 /// ```

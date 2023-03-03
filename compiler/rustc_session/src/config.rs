@@ -2792,7 +2792,7 @@ pub enum PpMode {
     HirTree,
     /// `-Zunpretty=thir-tree`
     ThirTree,
-    /// `-Zunpretty=`thir-flat`
+    /// `-Zunpretty=thir-flat`
     ThirFlat,
     /// `-Zunpretty=mir`
     Mir,
