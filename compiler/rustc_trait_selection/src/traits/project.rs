@@ -1175,7 +1175,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 /// paths you want to take. To make things worse, it was possible for
 /// cycles to arise, where you basically had a setup like `<MyType<$0>
 /// as Trait>::Foo == $0`. Here, normalizing `<MyType<$0> as
-/// Trait>::Foo> to `[type error]` would lead to an obligation of
+/// Trait>::Foo>` to `[type error]` would lead to an obligation of
 /// `<MyType<[type error]> as Trait>::Foo`. We are supposed to report
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for

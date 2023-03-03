@@ -694,7 +694,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// `prev.span.hi()` will be greater than (further right of) `prev_original_span.hi()`.
     /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
     /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
-    /// not as important as knowing that `prev()` **used to have the same span** as `curr(),
+    /// not as important as knowing that `prev()` **used to have the same span** as `curr()`,
     /// which means their sort order is still meaningful for determining the dominator
     /// relationship.
     ///

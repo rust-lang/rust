@@ -1288,7 +1288,7 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Explains corresponding feature flag must be enabled for the `#[track_caller] attribute to
+    /// Explains corresponding feature flag must be enabled for the `#[track_caller]` attribute to
     /// do anything
     UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
 );

@@ -151,7 +151,7 @@ struct TraitObligationStack<'prev, 'tcx> {
     /// you don't want to cache that `B: AutoTrait` or `A: AutoTrait`
     /// is `EvaluatedToOk`; this is because they were only considered
     /// ok on the premise that if `A: AutoTrait` held, but we indeed
-    /// encountered a problem (later on) with `A: AutoTrait. So we
+    /// encountered a problem (later on) with `A: AutoTrait`. So we
     /// currently set a flag on the stack node for `B: AutoTrait` (as
     /// well as the second instance of `A: AutoTrait`) to suppress
     /// caching.

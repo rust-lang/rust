@@ -2444,7 +2444,7 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Check if the given `DefId` is `#\[automatically_derived\], *and*
+    /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*
     /// whether it was produced by expanding a builtin derive macro.
     pub fn is_builtin_derived(self, def_id: DefId) -> bool {
         if self.is_automatically_derived(def_id)
