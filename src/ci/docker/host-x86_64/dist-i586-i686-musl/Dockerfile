@@ -21,22 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-1.24.sh /scripts/
-RUN sh /scripts/crosstool-ng-1.24.sh
-
-COPY scripts/rustbuild-setup.sh /scripts/
-RUN sh /scripts/rustbuild-setup.sh
-WORKDIR /tmp
-
-COPY host-x86_64/dist-i586-gnu-i586-i686-musl/i586-linux-gnu.config \
-     host-x86_64/dist-i586-gnu-i586-i686-musl/build-i586-gnu-toolchain.sh \
-     /tmp/
-RUN su rustbuild -c ./build-i586-gnu-toolchain.sh
-ENV PATH=$PATH:/x-tools/i586-unknown-linux-gnu/bin
-ENV \
-    CC_i586_unknown_linux_gnu=i586-unknown-linux-gnu-gcc \
-    AR_i586_unknown_linux_gnu=i586-unknown-linux-gnu-ar
-
 WORKDIR /build/
 COPY scripts/musl.sh /build/
 RUN CC=gcc CFLAGS="-m32 -Wa,-mrelax-relocations=no" \
@@ -68,10 +52,9 @@ ENV RUST_CONFIGURE_ARGS \
 #
 # See: https://github.com/rust-lang/rust/issues/34978
 ENV CFLAGS_i686_unknown_linux_musl=-Wa,-mrelax-relocations=no
-ENV CFLAGS_i586_unknown_linux_gnu=-Wa,-mrelax-relocations=no
 ENV CFLAGS_i586_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
-ENV TARGETS=i586-unknown-linux-gnu,i686-unknown-linux-musl
+ENV TARGETS=i686-unknown-linux-musl
 
 ENV SCRIPT \
       python3 ../x.py --stage 2 test --host='' --target $TARGETS && \

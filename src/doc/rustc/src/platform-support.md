@@ -86,6 +86,7 @@ target | notes
 `arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 `armv7-unknown-linux-gnueabihf` | ARMv7 Linux, hardfloat (kernel 3.2, glibc 2.17)
+`i586-unknown-linux-gnu` | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
 `mips-unknown-linux-gnu` | MIPS Linux (kernel 4.4, glibc 2.23)
 `mips64-unknown-linux-gnuabi64` | MIPS64 Linux, n64 ABI (kernel 4.4, glibc 2.23)
 `mips64el-unknown-linux-gnuabi64` | MIPS64 (LE) Linux, n64 ABI (kernel 4.4, glibc 2.23)
@@ -146,7 +147,6 @@ target | std | notes
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
-`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD

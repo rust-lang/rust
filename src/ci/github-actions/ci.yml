@@ -347,7 +347,10 @@ jobs:
           - name: dist-armv7-linux
             <<: *job-linux-xl
 
-          - name: dist-i586-gnu-i586-i686-musl
+          - name: dist-i586-i686-musl
+            <<: *job-linux-xl
+
+          - name: dist-i586-linux
             <<: *job-linux-xl
 
           - name: dist-i686-linux
