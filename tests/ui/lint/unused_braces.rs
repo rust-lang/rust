@@ -6,6 +6,10 @@
 
 fn consume<T>(_: T) {}
 
+macro_rules! brace_expr {
+    ($expr:expr) => ({$expr})
+}
+
 fn main() {
     let _ = (7);
     //~^WARN unnecessary parentheses
@@ -70,4 +74,10 @@ fn main() {
             2
         }
     };
+
+    // Do not lint as it is a macro argument
+    let _ = brace_expr!({
+        7
+    });
+
 }

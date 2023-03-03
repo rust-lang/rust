@@ -1,5 +1,5 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/unused_braces.rs:10:13
+  --> $DIR/unused_braces.rs:14:13
    |
 LL |     let _ = (7);
    |             ^ ^
@@ -16,7 +16,7 @@ LL +     let _ = 7;
    |
 
 warning: unnecessary braces around `if` condition
-  --> $DIR/unused_braces.rs:26:8
+  --> $DIR/unused_braces.rs:30:8
    |
 LL |     if { true } {
    |        ^^    ^^
@@ -33,7 +33,7 @@ LL +     if true {
    |
 
 warning: unnecessary braces around `while` condition
-  --> $DIR/unused_braces.rs:30:11
+  --> $DIR/unused_braces.rs:34:11
    |
 LL |     while { false } {
    |           ^^     ^^
@@ -45,7 +45,7 @@ LL +     while false {
    |
 
 warning: unnecessary braces around const expression
-  --> $DIR/unused_braces.rs:34:17
+  --> $DIR/unused_braces.rs:38:17
    |
 LL |     let _: [u8; { 3 }];
    |                 ^^ ^^
@@ -57,7 +57,7 @@ LL +     let _: [u8; 3];
    |
 
 warning: unnecessary braces around function argument
-  --> $DIR/unused_braces.rs:37:13
+  --> $DIR/unused_braces.rs:41:13
    |
 LL |     consume({ 7 });
    |             ^^ ^^
@@ -69,7 +69,7 @@ LL +     consume(7);
    |
 
 warning: unnecessary braces around `return` value
-  --> $DIR/unused_braces.rs:55:12
+  --> $DIR/unused_braces.rs:59:12
    |
 LL |     return { println!("!") };
    |            ^^             ^^
@@ -80,5 +80,23 @@ LL -     return { println!("!") };
 LL +     return println!("!");
    |
 
-warning: 6 warnings emitted
+warning: unnecessary braces around block return value
+  --> $DIR/unused_braces.rs:79:25
+   |
+LL |        let _ = brace_expr!({
+   |  __________________________^
+LL | |          7
+   | | ________^_^
+   | ||________|
+   |  |
+LL |  |     });
+   |  |_____^
+   |
+help: remove these braces
+   |
+LL -     let _ = brace_expr!({
+LL +     let _ = brace_expr!(7);
+   |
+
+warning: 7 warnings emitted
 
