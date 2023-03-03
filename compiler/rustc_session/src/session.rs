@@ -1392,6 +1392,7 @@ pub fn build_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
     cfg_version: &'static str,
+    ice_file: Option<PathBuf>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1440,6 +1441,7 @@ pub fn build_session(
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
         sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings),
+        ice_file,
     );
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
@@ -1731,7 +1733,7 @@ pub struct EarlyErrorHandler {
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter) }
+        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter, None) }
     }
 
     pub fn abort_if_errors(&self) {
@@ -1745,7 +1747,7 @@ impl EarlyErrorHandler {
         self.handler.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = Handler::with_emitter(true, None, emitter);
+        self.handler = Handler::with_emitter(true, None, emitter, None);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

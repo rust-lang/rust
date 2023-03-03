@@ -40,7 +40,7 @@ fn check_rust_syntax(
     let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let handler = Handler::with_emitter(false, None, Box::new(emitter));
+    let handler = Handler::with_emitter(false, None, Box::new(emitter), None);
     let source = dox[code_block.code].to_owned();
     let sess = ParseSess::with_span_handler(handler, sm);
 

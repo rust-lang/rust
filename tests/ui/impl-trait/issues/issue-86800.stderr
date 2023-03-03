@@ -1,5 +1,5 @@
 error: unconstrained opaque type
-  --> $DIR/issue-86800.rs:31:34
+  --> $DIR/issue-86800.rs:32:34
    |
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

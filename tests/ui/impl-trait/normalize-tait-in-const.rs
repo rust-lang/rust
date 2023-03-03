@@ -4,6 +4,7 @@
 // normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
 // normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
 // rustc-env:RUST_BACKTRACE=0
+// rustc-env:RUSTC_ICE=0
 
 #![feature(type_alias_impl_trait)]
 #![feature(const_trait_impl)]

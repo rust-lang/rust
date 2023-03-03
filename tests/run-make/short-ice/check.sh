@@ -1,5 +1,5 @@
 #!/bin/sh
-
+export RUSTC_ICE=0
 RUST_BACKTRACE=1 $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-1.log 2>&1
 RUST_BACKTRACE=full $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-2.log 2>&1
 

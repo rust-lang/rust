@@ -1,4 +1,5 @@
 // compile-flags: -Zvalidate-mir -Ztreat-err-as-bug
+// rustc-env:RUSTC_ICE=0
 // failure-status: 101
 // error-pattern: broken MIR in
 // error-pattern: StorageLive(_1) which already has storage here
