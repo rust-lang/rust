@@ -62,7 +62,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
 
         if !suggested {
-            self.note_source_of_type_mismatch_constraint(err, expr, expected);
+            self.note_source_of_type_mismatch_constraint(
+                err,
+                expr,
+                TypeMismatchSource::Ty(expected),
+            );
         }
     }
 
@@ -222,7 +226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        expected_ty: Ty<'tcx>,
+        source: TypeMismatchSource<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
 
@@ -295,6 +299,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
+        let expected_ty = match source {
+            TypeMismatchSource::Ty(expected_ty) => expected_ty,
+            TypeMismatchSource::Arg(call_expr, idx) => {
+                let hir::ExprKind::MethodCall(segment, _, args, _) = call_expr.kind else {
+                    return false;
+                };
+                let Some(arg_ty) = self.node_ty_opt(args[idx].hir_id) else {
+                    return false;
+                };
+                let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
+                    let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
+                    let method = self
+                        .lookup_method(
+                            possible_rcvr_ty,
+                            segment,
+                            DUMMY_SP,
+                            call_expr,
+                            binding,
+                            args,
+                        )
+                        .ok()?;
+                    let _ = self
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
+                        .ok()?;
+                    self.select_obligations_where_possible(|errs| {
+                        // Yeet the errors, we're already reporting errors.
+                        errs.clear();
+                    });
+                    Some(self.resolve_vars_if_possible(possible_rcvr_ty))
+                });
+                if let Some(rcvr_ty) = possible_rcvr_ty {
+                    rcvr_ty
+                } else {
+                    return false;
+                }
+            }
+        };
+
         if !self.can_eq(self.param_env, expected_ty, init_ty.fold_with(&mut fudger)) {
             return false;
         }
@@ -360,7 +404,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "... which constrains `{ident}` to have type `{next_use_ty}`"
                         ),
                     );
-                    if let Ok(ideal_method_sig) = ideal_method_sig {
+                    if matches!(source, TypeMismatchSource::Ty(_))
+                        && let Ok(ideal_method_sig) = ideal_method_sig
+                    {
                         self.emit_type_mismatch_suggestions(
                             err,
                             arg_expr,
@@ -2043,4 +2089,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return,
         }
     }
+}
+
+pub enum TypeMismatchSource<'tcx> {
+    Ty(Ty<'tcx>),
+    Arg(&'tcx hir::Expr<'tcx>, usize),
 }
