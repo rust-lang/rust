@@ -302,9 +302,6 @@ fn associated_item_for_impl_trait_in_trait(
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
 
-    // FIXME implement this.
-    trait_assoc_ty.explicit_item_bounds(&[]);
-
     local_def_id
 }
 
