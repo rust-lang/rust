@@ -381,3 +381,21 @@ pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
     pub span: Span,
     pub conventions: &'a str,
 }
+
+#[derive(Diagnostic)]
+pub(crate) enum CannotCaptureLateBoundInAnonConst {
+    #[diag(hir_analysis_cannot_capture_late_bound_ty_in_anon_const)]
+    Type {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
+    #[diag(hir_analysis_cannot_capture_late_bound_const_in_anon_const)]
+    Const {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
+}
