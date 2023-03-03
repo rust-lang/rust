@@ -5,7 +5,7 @@ session_incorrect_cgu_reuse_type =
     }`{$expected_reuse}`
 
 session_cgu_not_recorded =
-    CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded`
+    CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
 
 session_feature_gate_error = {$explain}
 

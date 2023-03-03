@@ -457,7 +457,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 assert!(
                     index < dest_len,
-                    "Index `{}` must be in bounds of vector with length {}`",
+                    "Index `{}` must be in bounds of vector with length `{}`",
                     index,
                     dest_len
                 );
