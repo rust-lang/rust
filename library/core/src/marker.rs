@@ -986,6 +986,8 @@ pub trait PointerLike {}
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy: StructuralEq {}
 
+// FIXME(generic_const_parameter_types): handle `ty::FnDef`/`ty::Closure`
+// FIXME(generic_const_parameter_types): handle `ty::Tuple`
 marker_impls! {
     #[unstable(feature = "adt_const_params", issue = "95174")]
     ConstParamTy for
