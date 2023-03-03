@@ -125,16 +125,13 @@ impl<'a> Parser<'a> {
             return Ok(Some(item.into_inner()));
         };
 
-        let mut unclosed_delims = vec![];
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
                 let item =
                     this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                unclosed_delims.append(&mut this.unclosed_delims);
                 Ok((item?, TrailingToken::None))
             })?;
 
-        self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
     }
 
@@ -1960,21 +1957,12 @@ impl<'a> Parser<'a> {
         // FIXME: This will make us not emit the help even for declarative
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
-            if self.unclosed_delims.is_empty() {
-                let DelimSpan { open, close } = args.dspan;
-                err.multipart_suggestion(
-                    "change the delimiters to curly braces",
-                    vec![(open, "{".to_string()), (close, '}'.to_string())],
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.span_suggestion(
-                    span,
-                    "change the delimiters to curly braces",
-                    " { /* items */ }",
-                    Applicability::HasPlaceholders,
-                );
-            }
+            let DelimSpan { open, close } = args.dspan;
+            err.multipart_suggestion(
+                "change the delimiters to curly braces",
+                vec![(open, "{".to_string()), (close, '}'.to_string())],
+                Applicability::MaybeIncorrect,
+            );
             err.span_suggestion(
                 span.shrink_to_hi(),
                 "add a semicolon",

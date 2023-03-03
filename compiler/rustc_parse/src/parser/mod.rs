@@ -146,10 +146,7 @@ pub struct Parser<'a> {
     /// See the comments in the `parse_path_segment` function for more details.
     unmatched_angle_bracket_count: u32,
     max_angle_bracket_count: u32,
-    /// A list of all unclosed delimiters found by the lexer. If an entry is used for error recovery
-    /// it gets removed from here. Every entry left at the end gets emitted as an independent
-    /// error.
-    pub(super) unclosed_delims: Vec<UnmatchedDelim>,
+
     last_unexpected_token_span: Option<Span>,
     /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
     /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
@@ -168,7 +165,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 312);
+rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -213,12 +210,6 @@ struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
     inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
-}
-
-impl<'a> Drop for Parser<'a> {
-    fn drop(&mut self) {
-        emit_unclosed_delims(&mut self.unclosed_delims, &self.sess);
-    }
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -478,7 +469,6 @@ impl<'a> Parser<'a> {
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
-            unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
@@ -859,7 +849,6 @@ impl<'a> Parser<'a> {
         let mut recovered = false;
         let mut trailing = false;
         let mut v = ThinVec::new();
-        let unclosed_delims = !self.unclosed_delims.is_empty();
 
         while !self.expect_any_with_type(kets, expect) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
@@ -901,7 +890,7 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     // Attempt to keep parsing if it was a similar separator.
                                     if let Some(tokens) = t.similar_tokens() {
-                                        if tokens.contains(&self.token.kind) && !unclosed_delims {
+                                        if tokens.contains(&self.token.kind) {
                                             self.bump();
                                         }
                                     }
