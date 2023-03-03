@@ -241,6 +241,8 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                     ),
                 _ => {}
             }
+
+            continue;
         }
 
         // parse current attribute macro
@@ -322,8 +324,6 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
             },
             ReturnType::Default => vec![],
         };
-
-
 
         match (header.mode, header.ret_act) {
             (Mode::Forward, Activity::Duplicated) => {
@@ -421,7 +421,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 
     let sig = if is_adjoint {
         // header is used for calling if we are adjoint
-        format_ident!("wrapper_{}", sig.ident)
+        format_ident!("{}", sig.ident)
     } else {
         sig.ident.clone()
     };

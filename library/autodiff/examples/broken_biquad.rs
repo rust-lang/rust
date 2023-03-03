@@ -12,7 +12,7 @@ impl<const N: usize> Biquad<N> {
         }
     }
 
-    pub fn process(&self, mut samples: &[f32], target: &[f32]) -> f32 {
+    pub fn process(&self, samples: &[f32], target: &[f32]) -> f32 {
         let mut samples = samples.to_vec();
         for coeff_set in self.coeffs {
             samples = samples.windows(5).map(|x| 
@@ -22,41 +22,18 @@ impl<const N: usize> Biquad<N> {
         samples.into_iter().zip(target.into_iter()).map(|(a, b)| a-b).sum()
     }
 
-    #[autodiff_into]
-    fn _diff_deriv(&self, samples: &[f32], target: &[f32]) -> f32 {
-        Self::process(self, samples, target)
-    }
-    #[autodiff_into(Reverse, Active, Duplicated, Const, Const)]
-    fn deriv(&self, params: &mut Self, samples: &[f32], target: &[f32], ret_adj: f32) {
-        std::hint::black_box((
-            Self::_diff_deriv(self, samples, target),
-            &params,
-            &self,
-            &samples,
-            &target,
-            &ret_adj,
-        ));
-    }
-
-    //#[autodiff(Self::process, Reverse, Active)]
-    //pub fn deriv(
-    //    #[dup] &self, params: &mut Self,
-    //    samples: &[f32], target: &[f32], ret_adj: f32);
+    #[autodiff(Self::process, Reverse, Active)]
+    pub fn deriv(
+        #[dup] &self, params: &mut Self,
+        samples: &[f32], target: &[f32], ret_adj: f32);
 }
 
 fn main() {
     let biquad = Biquad::<10>::new();
-    let mut dbiquad = Biquad::<20>::new();
+    let mut dbiquad = Biquad::<10>::new();
     let signal = vec![0.0; 1024];
     let target = vec![0.0; 1024];
 
     biquad.process(&signal, &target);
     biquad.deriv(&mut dbiquad, &signal, &target, 1.0);
-}
-
-fn main() {
-    let biquad1 = Biquad::<10>::new();
-    let biquad2 = Biquad::<20>::new();
-
-    assert!(size_of(biquad1) != size_of(biquad2))
 }
