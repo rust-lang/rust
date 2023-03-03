@@ -12,8 +12,9 @@ use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
-    Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location, ReturnConstraint, TerminatorKind,
+    Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureOutlivesSubjectTy,
+    ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,
+    TerminatorKind,
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -1084,18 +1085,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         true
     }
 
-    /// When we promote a type test `T: 'r`, we have to convert the
-    /// type `T` into something we can store in a query result (so
-    /// something allocated for `'tcx`). This is problematic if `ty`
-    /// contains regions. During the course of NLL region checking, we
-    /// will have replaced all of those regions with fresh inference
-    /// variables. To create a test subject, we want to replace those
-    /// inference variables with some region from the closure
-    /// signature -- this is not always possible, so this is a
-    /// fallible process. Presuming we do find a suitable region, we
-    /// will use it's *external name*, which will be a `RegionKind`
-    /// variant that can be used in query responses such as
-    /// `ReEarlyBound`.
+    /// When we promote a type test `T: 'r`, we have to replace all region
+    /// variables in the type `T` with an equal universal region from the
+    /// closure signature.
+    /// This is not always possible, so this is a fallible process.
     #[instrument(level = "debug", skip(self, infcx))]
     fn try_promote_type_test_subject(
         &self,
@@ -1144,22 +1137,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // find an equivalent.
             let upper_bound = self.non_local_universal_upper_bound(region_vid);
             if self.region_contains(region_vid, upper_bound) {
-                self.definitions[upper_bound].external_name.unwrap_or(r)
+                tcx.mk_re_var(upper_bound)
             } else {
-                // In the case of a failure, use a `ReVar` result. This will
-                // cause the `needs_infer` later on to return `None`.
-                r
+                // In the case of a failure, use `ReErased`. We will eventually
+                // return `None` in this case.
+                tcx.lifetimes.re_erased
             }
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
-        // `needs_infer` will only be true if we failed to promote some region.
-        if ty.needs_infer() {
+        // This will be true if we failed to promote some region.
+        if ty.has_erased_regions() {
             return None;
         }
 
-        Some(ClosureOutlivesSubject::Ty(ty))
+        Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::new(tcx, ty)))
     }
 
     /// Given some universal or existential region `r`, finds a
