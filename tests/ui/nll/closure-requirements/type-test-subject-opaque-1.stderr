@@ -1,0 +1,8 @@
+error: `make_fn::{opaque#0}<'_>` does not live long enough
+  --> $DIR/type-test-subject-opaque-1.rs:15:8
+   |
+LL |     || event(cx, open_toggle);
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
