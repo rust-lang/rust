@@ -1371,3 +1371,19 @@ impl AddToDiagnostic for SuggestTuplePatternMany {
         );
     }
 }
+
+#[derive(Subdiagnostic)]
+pub enum TupleTrailingCommaSuggestion {
+    #[suggestion(infer_tuple_trailing_comma, code = ",", applicability = "machine-applicable")]
+    OnlyComma {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(infer_tuple_trailing_comma, applicability = "machine-applicable")]
+    AlsoParentheses {
+        #[suggestion_part(code = "(")]
+        span_low: Span,
+        #[suggestion_part(code = ",)")]
+        span_high: Span,
+    },
+}

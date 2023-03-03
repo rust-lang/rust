@@ -50,6 +50,7 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
 use crate::errors;
+use crate::errors::TupleTrailingCommaSuggestion;
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
@@ -2110,22 +2111,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
             else { return };
 
-        let msg = "use a trailing comma to create a tuple with one element";
-        if code.starts_with('(') && code.ends_with(')') {
+        let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);
-            err.span_suggestion(
-                span.with_hi(before_close).shrink_to_hi(),
-                msg,
-                ",",
-                Applicability::MachineApplicable,
-            );
+            TupleTrailingCommaSuggestion::OnlyComma {
+                span: span.with_hi(before_close).shrink_to_hi(),
+            }
         } else {
-            err.multipart_suggestion(
-                msg,
-                vec![(span.shrink_to_lo(), "(".into()), (span.shrink_to_hi(), ",)".into())],
-                Applicability::MachineApplicable,
-            );
-        }
+            TupleTrailingCommaSuggestion::AlsoParentheses {
+                span_low: span.shrink_to_lo(),
+                span_high: span.shrink_to_hi(),
+            }
+        };
+        err.subdiagnostic(sugg);
     }
 
     fn values_str(

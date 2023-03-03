@@ -368,3 +368,5 @@ infer_sbfrit_box_return_expr = if you change the return type to expect trait obj
 
 infer_stp_wrap_one = try wrapping the pattern in `{$variant}`
 infer_stp_wrap_many = try wrapping the pattern in a variant of `{$path}`
+
+infer_tuple_trailing_comma = use a trailing comma to create a tuple with one element
