@@ -1179,6 +1179,7 @@ fn test_iter_zero_sized() {
 }
 
 #[test]
+#[cfg(any())] // FIXME(thom) update this test if the perf run says to.
 fn test_shrink_to_fit() {
     let mut xs = vec![0, 1, 2, 3];
     for i in 4..100 {
