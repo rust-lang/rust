@@ -191,30 +191,11 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             }
         }
 
-        for (pat, mismatch) in inference_result.pat_type_mismatches() {
-            let node = match pat_node(&body_source_map, pat, &db) {
-                Some(value) => value,
-                None => continue,
-            };
-            let range = node.as_ref().original_file_range(&db);
-            let actual = format!(
-                "expected {}, got {}",
-                mismatch.expected.display_test(&db),
-                mismatch.actual.display_test(&db)
-            );
-            match mismatches.remove(&range) {
-                Some(annotation) => assert_eq!(actual, annotation),
-                None => format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual),
-            }
-        }
-        for (expr, mismatch) in inference_result.expr_type_mismatches() {
-            let node = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
-                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
-                }
-                Err(SyntheticSyntax) => continue,
-            };
+        for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
+            let Some(node) = (match expr_or_pat {
+                hir_def::expr::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
+                hir_def::expr::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
+            }) else { continue; };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
                 "expected {}, got {}",

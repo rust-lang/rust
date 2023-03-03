@@ -144,44 +144,6 @@ impl Default for BindingMode {
     }
 }
 
-/// Used to generalize patterns and assignee expressions.
-trait PatLike: Into<ExprOrPatId> + Copy {
-    type BindingMode: Copy;
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        default_bm: Self::BindingMode,
-    ) -> Ty;
-}
-
-impl PatLike for ExprId {
-    type BindingMode = ();
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        _: Self::BindingMode,
-    ) -> Ty {
-        this.infer_assignee_expr(id, expected_ty)
-    }
-}
-
-impl PatLike for PatId {
-    type BindingMode = BindingMode;
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        default_bm: Self::BindingMode,
-    ) -> Ty {
-        this.infer_pat(id, expected_ty, default_bm)
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct InferOk<T> {
     value: T,
@@ -389,15 +351,12 @@ impl InferenceResult {
     pub fn type_mismatch_for_pat(&self, pat: PatId) -> Option<&TypeMismatch> {
         self.type_mismatches.get(&pat.into())
     }
+    pub fn type_mismatches(&self) -> impl Iterator<Item = (ExprOrPatId, &TypeMismatch)> {
+        self.type_mismatches.iter().map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
+    }
     pub fn expr_type_mismatches(&self) -> impl Iterator<Item = (ExprId, &TypeMismatch)> {
         self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
             ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
-            _ => None,
-        })
-    }
-    pub fn pat_type_mismatches(&self) -> impl Iterator<Item = (PatId, &TypeMismatch)> {
-        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
-            ExprOrPatId::PatId(pat) => Some((pat, mismatch)),
             _ => None,
         })
     }
@@ -584,7 +543,7 @@ impl<'a> InferenceContext<'a> {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 
-            self.infer_pat(*pat, &ty, BindingMode::default());
+            self.infer_top_pat(*pat, &ty);
         }
         let error_ty = &TypeRef::Error;
         let return_ty = if data.has_async_kw() {

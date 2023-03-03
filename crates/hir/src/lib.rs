@@ -1413,14 +1413,22 @@ impl DefWithBody {
                 }
             }
         }
-        for (expr, mismatch) in infer.expr_type_mismatches() {
-            let expr = match source_map.expr_syntax(expr) {
-                Ok(expr) => expr,
-                Err(SyntheticSyntax) => continue,
+        for (pat_or_expr, mismatch) in infer.type_mismatches() {
+            let expr_or_pat = match pat_or_expr {
+                ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),
+                ExprOrPatId::PatId(pat) => source_map.pat_syntax(pat).map(Either::Right),
             };
+            let expr_or_pat = match expr_or_pat {
+                Ok(Either::Left(expr)) => Either::Left(expr),
+                Ok(Either::Right(InFile { file_id, value: Either::Left(pat) })) => {
+                    Either::Right(InFile { file_id, value: pat })
+                }
+                Ok(Either::Right(_)) | Err(SyntheticSyntax) => continue,
+            };
+
             acc.push(
                 TypeMismatch {
-                    expr,
+                    expr_or_pat,
                     expected: Type::new(db, DefWithBodyId::from(self), mismatch.expected.clone()),
                     actual: Type::new(db, DefWithBodyId::from(self), mismatch.actual.clone()),
                 }

@@ -771,6 +771,15 @@ impl<T> InFile<Option<T>> {
     }
 }
 
+impl<L, R> InFile<Either<L, R>> {
+    pub fn transpose(self) -> Either<InFile<L>, InFile<R>> {
+        match self.value {
+            Either::Left(l) => Either::Left(InFile::new(self.file_id, l)),
+            Either::Right(r) => Either::Right(InFile::new(self.file_id, r)),
+        }
+    }
+}
+
 impl<'a> InFile<&'a SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
