@@ -9,7 +9,8 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, DefIdTree, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -244,6 +245,21 @@ fn get_path_containing_arg_in_pat<'hir>(
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
+    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+        match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
+            Ok(map) => {
+                let assoc_item = tcx.associated_item(def_id);
+                return ty::EarlyBinder(map[&assoc_item.trait_item_def_id.unwrap()]);
+            }
+            Err(_) => {
+                return ty::EarlyBinder(tcx.ty_error_with_message(
+                    DUMMY_SP,
+                    "Could not collect return position impl trait in trait tys",
+                ));
+            }
+        }
+    }
+
     let def_id = def_id.expect_local();
     use rustc_hir::*;
 
