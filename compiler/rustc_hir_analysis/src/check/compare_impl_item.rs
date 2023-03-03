@@ -1996,13 +1996,17 @@ pub(super) fn check_type_bounds<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let impl_ty_span = match tcx.hir().get_by_def_id(impl_ty_def_id) {
-        hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Type(_, Some(ty)),
-            ..
-        }) => ty.span,
-        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
-        _ => bug!(),
+    let impl_ty_span = if tcx.opt_rpitit_info(impl_ty_def_id).is_some() {
+        tcx.def_span(impl_ty_def_id)
+    } else {
+        match tcx.hir().get_by_def_id(impl_ty_def_id) {
+            hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Type(_, Some(ty)),
+                ..
+            }) => ty.span,
+            hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
+            _ => bug!(),
+        }
     };
     let assumed_wf_types = ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty_def_id);
 
