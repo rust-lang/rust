@@ -1,0 +1,39 @@
+warning: bounds on generic parameters are not enforced in type aliases
+  --> $DIR/type-alias-bounds.rs:9:12
+   |
+LL | type T1<T: Debug> = (impl Debug, T);
+   |            ^^^^^
+   |
+   = note: `#[warn(type_alias_bounds)]` on by default
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL - type T1<T: Debug> = (impl Debug, T);
+LL + type T1<T> = (impl Debug, T);
+   |
+
+warning: bounds on generic parameters are not enforced in type aliases
+  --> $DIR/type-alias-bounds.rs:22:12
+   |
+LL | type T3<T: Debug> = (impl Bar<T>, T);
+   |            ^^^^^
+   |
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL - type T3<T: Debug> = (impl Bar<T>, T);
+LL + type T3<T> = (impl Bar<T>, T);
+   |
+
+warning: bounds on generic parameters are not enforced in type aliases
+  --> $DIR/type-alias-bounds.rs:32:13
+   |
+LL | type T5<'a: 'a, T: Debug> = (impl Debug, &'a usize);
+   |             ^^
+   |
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL - type T5<'a: 'a, T: Debug> = (impl Debug, &'a usize);
+LL + type T5<'a, T: Debug> = (impl Debug, &'a usize);
+   |
+
+warning: 3 warnings emitted
+
