@@ -2439,6 +2439,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn trait_solver_next(self) -> bool {
         self.sess.opts.unstable_opts.trait_solver == rustc_session::config::TraitSolver::Next
     }
+
+    pub fn lower_impl_trait_in_trait_to_assoc_ty(self) -> bool {
+        self.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

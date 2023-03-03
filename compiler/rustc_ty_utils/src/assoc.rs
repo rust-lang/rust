@@ -23,7 +23,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     let item = tcx.hir().expect_item(def_id.expect_local());
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty {
+            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type and create a
                 // corresponding associated item using associated_items_for_impl_trait_in_trait
                 // query.
@@ -54,7 +54,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             }
         }
         hir::ItemKind::Impl(ref impl_) => {
-            if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty {
+            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type, on the impl side too and
                 // create a corresponding associated item using
                 // associated_items_for_impl_trait_in_trait query.
