@@ -814,7 +814,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.note_source_of_type_mismatch_constraint(
                     &mut err,
                     rcvr,
-                    crate::demand::TypeMismatchSource::Arg(call_expr, provided_idx.as_usize()),
+                    crate::demand::TypeMismatchSource::Arg {
+                        call_expr,
+                        incompatible_arg: provided_idx.as_usize(),
+                    },
                 );
             }
 

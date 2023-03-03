@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Notes the point at which a variable is constrained to some type incompatible
-    /// with `expected_ty`.
+    /// with some expectation given by `source`.
     pub fn note_source_of_type_mismatch_constraint(
         &self,
         err: &mut Diagnostic,
@@ -265,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         use rustc_infer::infer::type_variable::*;
         use rustc_middle::infer::unify_key::*;
-
+        // Replaces all of the variables in the given type with a fresh inference variable.
         let mut fudger = BottomUpFolder {
             tcx: self.tcx,
             ty_op: |ty| {
@@ -301,7 +301,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expected_ty = match source {
             TypeMismatchSource::Ty(expected_ty) => expected_ty,
-            TypeMismatchSource::Arg(call_expr, idx) => {
+            // Try to deduce what the possible value of `expr` would be if the
+            // incompatible arg were compatible. For example, given `Vec<i32>`
+            // and `vec.push(1u32)`, we ideally want to deduce that the type of
+            // `vec` *should* have been `Vec<u32>`. This will allow us to then
+            // run the subsequent code with this expectation, finding out exactly
+            // when this type diverged from our expectation.
+            TypeMismatchSource::Arg { call_expr, incompatible_arg: idx } => {
                 let hir::ExprKind::MethodCall(segment, _, args, _) = call_expr.kind else {
                     return false;
                 };
@@ -310,6 +316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
                     let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    // Fudge the receiver, so we can do new inference on it.
                     let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
                     let method = self
                         .lookup_method(
@@ -321,6 +328,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             args,
                         )
                         .ok()?;
+                    // Unify the method signature with our incompatible arg, to
+                    // do inference in the *opposite* direction and to find out
+                    // what our ideal rcvr ty would look like.
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
                         .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
@@ -339,11 +349,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        // If our expected_ty does not equal init_ty, then it *began* as incompatible.
+        // No need to note in this case...
         if !self.can_eq(self.param_env, expected_ty, init_ty.fold_with(&mut fudger)) {
             return false;
         }
 
         for window in expr_finder.uses.windows(2) {
+            // Bindings always update their recorded type after the fact, so we
+            // need to look at the *following* usage's type to see when the
+            // binding became incompatible.
             let [binding, next_usage] = *window else { continue; };
 
             // Don't go past the binding (always gonna be a nonsense label if so)
@@ -363,6 +378,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let hir::ExprKind::MethodCall(segment, rcvr, args, _) = parent_expr.kind
                 && rcvr.hir_id == binding.hir_id
             {
+                // If our binding became incompatible while it was a receiver
+                // to a method call, we may be able to make a better guess to
+                // the source of a type mismatch.
                 let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
                 let rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let Ok(method) =
@@ -371,14 +389,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 };
 
-                // NOTE: For future removers of `fudge_inference_if_ok`, you
-                // can replace  this with another call to `lookup_method` but
-                // using `expected_ty` as the rcvr.
-                let ideal_method_sig: Result<_, TypeError<'tcx>> = self.fudge_inference_if_ok(|| {
-                    let _ = self.at(&ObligationCause::dummy(), self.param_env).eq(rcvr_ty, expected_ty)?;
-                    Ok(method.sig)
-                });
+                let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
+                let ideal_method = self
+                    .lookup_method(ideal_rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                    .ok()
+                    .and_then(|method| {
+                        let _ = self.at(&ObligationCause::dummy(), self.param_env)
+                            .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
+                            .ok()?;
+                        Some(method)
+                    });
 
+                // Find what argument caused our rcvr to become incompatible
+                // with the expected ty.
                 for (idx, (expected_arg_ty, arg_expr)) in
                     std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
                 {
@@ -391,27 +414,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         AllowTwoPhase::No,
                         None,
                     );
+                    self.select_obligations_where_possible(|errs| {
+                        // Yeet the errors, we're already reporting errors.
+                        errs.clear();
+                    });
+                    // If our rcvr, after inference due to unifying the signature
+                    // with the expected argument type, is still compatible with
+                    // the rcvr, then it must've not been the source of blame.
                     if self.can_eq(self.param_env, rcvr_ty, expected_ty) {
                         continue;
                     }
-                    err.span_label(
-                        arg_expr.span,
-                        format!("this argument has type `{arg_ty}`..."),
-                    );
+                    err.span_label(arg_expr.span, format!("this argument has type `{arg_ty}`..."));
                     err.span_label(
                         binding.span,
-                        format!(
-                            "... which constrains `{ident}` to have type `{next_use_ty}`"
-                        ),
+                        format!("... which causes `{ident}` to have type `{next_use_ty}`"),
                     );
+                    // Using our "ideal" method signature, suggest a fix to this
+                    // blame arg, if possible. Don't do this if we're coming from
+                    // arg mismatch code, because we'll possibly suggest a mutually
+                    // incompatible fix at the original mismatch site.
                     if matches!(source, TypeMismatchSource::Ty(_))
-                        && let Ok(ideal_method_sig) = ideal_method_sig
+                        && let Some(ideal_method) = ideal_method
                     {
                         self.emit_type_mismatch_suggestions(
                             err,
                             arg_expr,
                             arg_ty,
-                            ideal_method_sig.inputs()[idx + 1],
+                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1]),
                             None,
                             None,
                         );
@@ -419,7 +448,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-
             err.span_label(
                 binding.span,
                 format!("here the type of `{ident}` is inferred to be `{next_use_ty}`"),
@@ -2092,6 +2120,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 pub enum TypeMismatchSource<'tcx> {
+    /// Expected the binding to have the given type, but it was found to have
+    /// a different type. Find out when that type first became incompatible.
     Ty(Ty<'tcx>),
-    Arg(&'tcx hir::Expr<'tcx>, usize),
+    /// When we fail during method argument checking, try to find out if a previous
+    /// expression has constrained the method's receiver in a way that makes the
+    /// argument's type incompatible.
+    Arg { call_expr: &'tcx hir::Expr<'tcx>, incompatible_arg: usize },
 }
