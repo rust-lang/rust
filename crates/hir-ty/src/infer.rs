@@ -167,7 +167,8 @@ pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
     PrivateField { expr: ExprId, field: FieldId },
     PrivateAssocItem { id: ExprOrPatId, item: AssocItemId },
-    BreakOutsideOfLoop { expr: ExprId, is_break: bool },
+    // FIXME: Make this proper
+    BreakOutsideOfLoop { expr: ExprId, is_break: bool, bad_value_break: bool },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
 }
 
@@ -411,7 +412,7 @@ struct BreakableContext {
     /// Whether this context contains at least one break expression.
     may_break: bool,
     /// The coercion target of the context.
-    coerce: CoerceMany,
+    coerce: Option<CoerceMany>,
     /// The optional label of the context.
     label: Option<name::Name>,
     kind: BreakableKind,

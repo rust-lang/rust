@@ -1373,11 +1373,15 @@ impl DefWithBody {
                     let field = source_map.field_syntax(*expr);
                     acc.push(NoSuchField { field }.into())
                 }
-                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break } => {
+                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
+                    expr,
+                    is_break,
+                    bad_value_break,
+                } => {
                     let expr = source_map
                         .expr_syntax(expr)
                         .expect("break outside of loop in synthetic syntax");
-                    acc.push(BreakOutsideOfLoop { expr, is_break }.into())
+                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
                 hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     match source_map.expr_syntax(*call_expr) {

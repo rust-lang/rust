@@ -133,7 +133,7 @@ impl<'a> InferenceContext<'a> {
                         let break_ty = self.table.new_type_var();
                         let (breaks, ty) = self.with_breakable_ctx(
                             BreakableKind::Block,
-                            break_ty.clone(),
+                            Some(break_ty.clone()),
                             *label,
                             |this| {
                                 this.infer_block(
@@ -153,7 +153,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Unsafe { body } => self.infer_expr(*body, expected),
             Expr::Const { body } => {
-                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
                     this.infer_expr(*body, expected)
                 })
                 .1
@@ -169,7 +169,7 @@ impl<'a> InferenceContext<'a> {
                 let ok_ty =
                     self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_output());
 
-                self.with_breakable_ctx(BreakableKind::Block, ok_ty.clone(), None, |this| {
+                self.with_breakable_ctx(BreakableKind::Block, Some(ok_ty.clone()), None, |this| {
                     this.infer_expr(*body, &Expectation::has_type(ok_ty));
                 });
 
@@ -183,7 +183,7 @@ impl<'a> InferenceContext<'a> {
                     mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty.clone())));
 
                 let (_, inner_ty) =
-                    self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                    self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
                         this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty))
                     });
 
@@ -203,7 +203,7 @@ impl<'a> InferenceContext<'a> {
                 // let ty = expected.coercion_target_type(&mut self.table);
                 let ty = self.table.new_type_var();
                 let (breaks, ()) =
-                    self.with_breakable_ctx(BreakableKind::Loop, ty, label, |this| {
+                    self.with_breakable_ctx(BreakableKind::Loop, Some(ty), label, |this| {
                         this.infer_expr(body, &Expectation::HasType(TyBuilder::unit()));
                     });
 
@@ -216,7 +216,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             &Expr::While { condition, body, label } => {
-                self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
+                self.with_breakable_ctx(BreakableKind::Loop, None, label, |this| {
                     this.infer_expr(
                         condition,
                         &Expectation::HasType(this.result.standard_types.bool_.clone()),
@@ -236,7 +236,7 @@ impl<'a> InferenceContext<'a> {
                     self.resolve_associated_type(into_iter_ty, self.resolve_iterator_item());
 
                 self.infer_top_pat(pat, &pat_ty);
-                self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
+                self.with_breakable_ctx(BreakableKind::Loop, None, label, |this| {
                     this.infer_expr(body, &Expectation::HasType(TyBuilder::unit()));
                 });
 
@@ -321,7 +321,7 @@ impl<'a> InferenceContext<'a> {
                 let prev_resume_yield_tys =
                     mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
-                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
                     this.infer_return(*body);
                 });
 
@@ -439,42 +439,50 @@ impl<'a> InferenceContext<'a> {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                         is_break: false,
+                        bad_value_break: false,
                     });
                 };
                 self.result.standard_types.never.clone()
             }
             Expr::Break { expr, label } => {
                 let val_ty = if let Some(expr) = *expr {
-                    let opt_coerce_to = find_breakable(&mut self.breakables, label.as_ref())
-                        .map(|ctxt| ctxt.coerce.expected_ty());
-                    self.infer_expr_inner(
-                        expr,
-                        &Expectation::HasType(opt_coerce_to.unwrap_or_else(|| self.err_ty())),
-                    )
+                    let opt_coerce_to = match find_breakable(&mut self.breakables, label.as_ref()) {
+                        Some(ctxt) => match &ctxt.coerce {
+                            Some(coerce) => coerce.expected_ty(),
+                            None => {
+                                self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                                    expr: tgt_expr,
+                                    is_break: true,
+                                    bad_value_break: true,
+                                });
+                                self.err_ty()
+                            }
+                        },
+                        None => self.err_ty(),
+                    };
+                    self.infer_expr_inner(expr, &Expectation::HasType(opt_coerce_to))
                 } else {
                     TyBuilder::unit()
                 };
 
                 match find_breakable(&mut self.breakables, label.as_ref()) {
-                    Some(ctxt) => {
-                        // avoiding the borrowck
-                        let mut coerce = mem::replace(
-                            &mut ctxt.coerce,
-                            CoerceMany::new(expected.coercion_target_type(&mut self.table)),
-                        );
+                    Some(ctxt) => match ctxt.coerce.take() {
+                        Some(mut coerce) => {
+                            coerce.coerce(self, *expr, &val_ty);
 
-                        // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
-                        coerce.coerce(self, *expr, &val_ty);
-
-                        let ctxt = find_breakable(&mut self.breakables, label.as_ref())
-                            .expect("breakable stack changed during coercion");
-                        ctxt.coerce = coerce;
-                        ctxt.may_break = true;
-                    }
+                            // Avoiding borrowck
+                            let ctxt = find_breakable(&mut self.breakables, label.as_ref())
+                                .expect("breakable stack changed during coercion");
+                            ctxt.may_break = true;
+                            ctxt.coerce = Some(coerce);
+                        }
+                        None => ctxt.may_break = true,
+                    },
                     None => {
                         self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                             expr: tgt_expr,
                             is_break: true,
+                            bad_value_break: false,
                         });
                     }
                 }
@@ -1712,16 +1720,16 @@ impl<'a> InferenceContext<'a> {
     fn with_breakable_ctx<T>(
         &mut self,
         kind: BreakableKind,
-        ty: Ty,
+        ty: Option<Ty>,
         label: Option<LabelId>,
         cb: impl FnOnce(&mut Self) -> T,
     ) -> (Option<Ty>, T) {
         self.breakables.push({
             let label = label.map(|label| self.body[label].name.clone());
-            BreakableContext { kind, may_break: false, coerce: CoerceMany::new(ty), label }
+            BreakableContext { kind, may_break: false, coerce: ty.map(CoerceMany::new), label }
         });
         let res = cb(self);
         let ctx = self.breakables.pop().expect("breakable stack broken");
-        (ctx.may_break.then(|| ctx.coerce.complete(self)), res)
+        (if ctx.may_break { ctx.coerce.map(|ctx| ctx.complete(self)) } else { None }, res)
     }
 }
