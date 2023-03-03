@@ -247,7 +247,7 @@ impl Thread {
                 // [FINISHED → JOINED]
                 // To synchronize with the child task's memory accesses to
                 // `inner` up to the point of the assignment of `FINISHED`,
-                // `Ordering::Acquire` must be used for the above `swap` call`.
+                // `Ordering::Acquire` must be used for the above `swap` call.
             }
             _ => unsafe { hint::unreachable_unchecked() },
         }

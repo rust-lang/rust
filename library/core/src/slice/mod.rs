@@ -2955,7 +2955,7 @@ impl<T> [T] {
         // This operation is still `O(n)`.
         //
         // Example: We start in this state, where `r` represents "next
-        // read" and `w` represents "next_write`.
+        // read" and `w` represents "next_write".
         //
         //           r
         //     +---+---+---+---+---+---+

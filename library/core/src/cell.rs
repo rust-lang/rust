@@ -632,7 +632,7 @@ pub struct RefCell<T: ?Sized> {
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
-    // in the generated `BorrowError/`BorrowMutError`
+    // in the generated `BorrowError`/`BorrowMutError`
     #[cfg(feature = "debug_refcell")]
     borrowed_at: Cell<Option<&'static crate::panic::Location<'static>>>,
     value: UnsafeCell<T>,

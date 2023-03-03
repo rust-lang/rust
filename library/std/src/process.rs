@@ -1416,7 +1416,7 @@ impl From<fs::File> for Stdio {
     /// use std::fs::File;
     /// use std::process::Command;
     ///
-    /// // With the `foo.txt` file containing `Hello, world!"
+    /// // With the `foo.txt` file containing "Hello, world!"
     /// let file = File::open("foo.txt").unwrap();
     ///
     /// let reverse = Command::new("rev")
