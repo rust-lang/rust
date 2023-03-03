@@ -30,6 +30,7 @@
     allow_internal_unstable,
     decl_macro,
     asm_const,
+    target_feature_11,
     inline_const,
     generic_arg_infer
 )]
