@@ -426,6 +426,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             // nodes. Therefore we use a `while` loop.
             let mut index = 0;
             while let Some(node) = self.nodes.get_mut(index) {
+                // This test is extremely hot.
                 if node.state.get() != NodeState::Pending
                     || !processor.needs_process_obligation(&node.obligation)
                 {
@@ -439,6 +440,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 // out of sync with `nodes`. It's not very common, but it does
                 // happen, and code in `compress` has to allow for it.
 
+                // This code is much less hot.
                 match processor.process_obligation(&mut node.obligation) {
                     ProcessResult::Unchanged => {
                         // No change in state.

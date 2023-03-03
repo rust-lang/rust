@@ -345,3 +345,6 @@ infer_prlf_defined_without_sub = the lifetime defined here...
 infer_prlf_must_oultive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
 infer_prlf_must_oultive_without_sup = ...must outlive the lifetime defined here
 infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+infer_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
+    .label = opaque type defined here
