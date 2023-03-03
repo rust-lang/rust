@@ -454,6 +454,7 @@ pub(super) fn definition(
             Some(body.to_string())
         }),
         Definition::Trait(it) => label_and_docs(db, it),
+        Definition::TraitAlias(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_docs(db, it),
         Definition::BuiltinType(it) => {
             return famous_defs

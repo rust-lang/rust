@@ -522,6 +522,10 @@ impl<'a> TyLoweringContext<'a> {
                 };
                 return (ty, None);
             }
+            TypeNs::TraitAliasId(_) => {
+                // FIXME(trait_alias): Implement trait alias.
+                return (TyKind::Error.intern(Interner), None);
+            }
             TypeNs::GenericParam(param_id) => {
                 let generics = generics(
                     self.db.upcast(),
@@ -877,6 +881,7 @@ impl<'a> TyLoweringContext<'a> {
     ) -> Option<TraitRef> {
         let resolved =
             match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path.mod_path())? {
+                // FIXME(trait_alias): We need to handle trait alias here.
                 TypeNs::TraitId(tr) => tr,
                 _ => return None,
             };
@@ -1442,6 +1447,7 @@ pub(crate) fn trait_environment_query(
         GenericDefId::FunctionId(f) => Some(f.lookup(db.upcast()).container),
         GenericDefId::AdtId(_) => None,
         GenericDefId::TraitId(_) => None,
+        GenericDefId::TraitAliasId(_) => None,
         GenericDefId::TypeAliasId(t) => Some(t.lookup(db.upcast()).container),
         GenericDefId::ImplId(_) => None,
         GenericDefId::EnumVariantId(_) => None,

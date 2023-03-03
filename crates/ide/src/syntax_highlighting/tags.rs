@@ -150,6 +150,7 @@ impl HlTag {
                 SymbolKind::Struct => "struct",
                 SymbolKind::ToolModule => "tool_module",
                 SymbolKind::Trait => "trait",
+                SymbolKind::TraitAlias => "trait_alias",
                 SymbolKind::TypeAlias => "type_alias",
                 SymbolKind::TypeParam => "type_param",
                 SymbolKind::Union => "union",
