@@ -11,7 +11,9 @@ use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};
 
-pub(super) trait CanonicalExt<'tcx, V> {
+/// FIXME(-Ztrait-solver=next): This or public because it is shared with the
+/// new trait solver implementation. We should deduplicate canonicalization.
+pub trait CanonicalExt<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
     fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
