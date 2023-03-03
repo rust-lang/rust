@@ -380,5 +380,11 @@ fn impl_associated_item_for_impl_trait_in_trait(
         }
     });
 
+    // There are no predicates for the synthesized associated type.
+    impl_assoc_ty.explicit_predicates_of(ty::GenericPredicates {
+        parent: Some(impl_def_id),
+        predicates: &[],
+    });
+
     local_def_id
 }
