@@ -234,7 +234,16 @@ where
     *hook = Hook::Custom(Box::new(move |info| hook_fn(&prev, info)));
 }
 
+/// The default panic handler.
 fn default_hook(info: &PanicInfo<'_>) {
+    panic_hook_with_disk_dump(info, None)
+}
+
+#[unstable(feature = "ice_to_disk", issue = "none")]
+/// The implementation of the default panic handler.
+///
+/// It can also write the backtrace to a given `path`. This functionality is used only by `rustc`.
+pub fn panic_hook_with_disk_dump(info: &PanicInfo<'_>, path: Option<&crate::path::Path>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
     let backtrace = if panic_count::get_count() >= 2 {
@@ -256,7 +265,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
-    let write = |err: &mut dyn crate::io::Write| {
+    let write = |err: &mut dyn crate::io::Write, backtrace: Option<BacktraceStyle>| {
         let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
@@ -270,10 +279,19 @@ fn default_hook(info: &PanicInfo<'_>) {
             }
             Some(BacktraceStyle::Off) => {
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
-                    let _ = writeln!(
-                        err,
-                        "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
-                    );
+                    if let Some(path) = path {
+                        let _ = writeln!(
+                            err,
+                            "note: a backtrace for this error was stored at `{}`",
+                            path.display(),
+                        );
+                    } else {
+                        let _ = writeln!(
+                            err,
+                            "note: run with `RUST_BACKTRACE=1` environment variable to display a \
+                             backtrace"
+                        );
+                    }
                 }
             }
             // If backtraces aren't supported, do nothing.
@@ -281,11 +299,17 @@ fn default_hook(info: &PanicInfo<'_>) {
         }
     };
 
+    if let Some(path) = path
+        && let Ok(mut out) = crate::fs::File::options().create(true).write(true).open(&path)
+    {
+        write(&mut out, BacktraceStyle::full());
+    }
+
     if let Some(local) = set_output_capture(None) {
-        write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
+        write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()), backtrace);
         set_output_capture(Some(local));
     } else if let Some(mut out) = panic_output() {
-        write(&mut out);
+        write(&mut out, backtrace);
     }
 }
 

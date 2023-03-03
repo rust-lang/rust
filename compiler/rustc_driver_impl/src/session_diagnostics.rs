@@ -1,4 +1,4 @@
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_unable_to_read)]
@@ -54,6 +54,27 @@ pub(crate) struct IceBugReport<'a> {
 pub(crate) struct IceVersion<'a> {
     pub version: &'a str,
     pub triple: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(driver_impl_ice_path)]
+pub(crate) struct IcePath {
+    pub path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(driver_impl_ice_path_error)]
+pub(crate) struct IcePathError {
+    pub path: String,
+    pub error: String,
+    #[subdiagnostic]
+    pub env_var: Option<IcePathErrorEnv>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(driver_impl_ice_path_error_env)]
+pub(crate) struct IcePathErrorEnv {
+    pub env_var: String,
 }
 
 #[derive(Diagnostic)]

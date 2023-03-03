@@ -47,9 +47,10 @@ use std::borrow::Cow;
 use std::error::Report;
 use std::fmt;
 use std::hash::Hash;
+use std::io::Write;
 use std::num::NonZeroUsize;
 use std::panic;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use termcolor::{Color, ColorSpec};
 
@@ -461,6 +462,10 @@ struct HandlerInner {
     ///
     /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
     fulfilled_expectations: FxHashSet<LintExpectationId>,
+
+    /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
+    /// stored along side the main panic backtrace.
+    ice_file: Option<PathBuf>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -550,6 +555,7 @@ impl Handler {
         sm: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
+        ice_file: Option<PathBuf>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
@@ -557,6 +563,7 @@ impl Handler {
             fluent_bundle,
             fallback_bundle,
             HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
+            ice_file,
         )
     }
 
@@ -566,6 +573,7 @@ impl Handler {
         fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
         flags: HandlerFlags,
+        ice_file: Option<PathBuf>,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(
             color_config,
@@ -579,23 +587,26 @@ impl Handler {
             flags.track_diagnostics,
             TerminalUrl::No,
         ));
-        Self::with_emitter_and_flags(emitter, flags)
+        Self::with_emitter_and_flags(emitter, flags, ice_file)
     }
 
     pub fn with_emitter(
         can_emit_warnings: bool,
         treat_err_as_bug: Option<NonZeroUsize>,
         emitter: Box<dyn Emitter + sync::Send>,
+        ice_file: Option<PathBuf>,
     ) -> Self {
         Handler::with_emitter_and_flags(
             emitter,
             HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
+            ice_file,
         )
     }
 
     pub fn with_emitter_and_flags(
         emitter: Box<dyn Emitter + sync::Send>,
         flags: HandlerFlags,
+        ice_file: Option<PathBuf>,
     ) -> Self {
         Self {
             flags,
@@ -618,6 +629,7 @@ impl Handler {
                 check_unstable_expect_diagnostics: false,
                 unstable_expect_diagnostics: Vec::new(),
                 fulfilled_expectations: Default::default(),
+                ice_file,
             }),
         }
     }
@@ -1657,8 +1669,21 @@ impl HandlerInner {
         explanation: impl Into<DiagnosticMessage> + Copy,
     ) {
         let mut no_bugs = true;
+        // If backtraces are enabled, also print the query stack
+        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
         for bug in bugs {
-            let mut bug = bug.decorate();
+            if let Some(file) = self.ice_file.as_ref()
+                && let Ok(mut out) = std::fs::File::options().append(true).open(file)
+            {
+                let _ = write!(
+                    &mut out,
+                    "\n\ndelayed span bug: {}\n{}",
+                    bug.inner.styled_message().iter().filter_map(|(msg, _)| msg.as_str()).collect::<String>(),
+                    &bug.note
+                );
+            }
+            let mut bug =
+                if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
