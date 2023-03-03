@@ -1158,6 +1158,14 @@ pub struct OpaqueCapturesLifetime<'tcx> {
     pub opaque_ty: Ty<'tcx>,
 }
 
+pub struct DiagArg<T>(pub T);
+
+impl<T: ToString> IntoDiagnosticArg for DiagArg<T> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.0.to_string().into_diagnostic_arg()
+    }
+}
+
 #[derive(Subdiagnostic)]
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
@@ -1212,8 +1220,72 @@ pub enum FunctionPointerSuggestion<'a> {
         #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
+    #[suggestion(
+        infer_fps_cast_both,
+        code = "{fn_name} as {found_sig}",
+        style = "hidden",
+        applicability = "maybe-incorrect"
+    )]
+    CastBoth {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        found_sig: Binder<'a, FnSig<'a>>,
+        expected_sig: DiagArg<Binder<'a, FnSig<'a>>>,
+    },
+    #[suggestion(
+        infer_fps_cast_both,
+        code = "&({fn_name} as {found_sig})",
+        style = "hidden",
+        applicability = "maybe-incorrect"
+    )]
+    CastBothRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        found_sig: Binder<'a, FnSig<'a>>,
+        expected_sig: DiagArg<Binder<'a, FnSig<'a>>>,
+    },
 }
 
 #[derive(Subdiagnostic)]
 #[note(infer_fps_items_are_distinct)]
 pub struct FnItemsAreDistinct;
+
+#[derive(Subdiagnostic)]
+#[note(infer_fn_uniq_types)]
+pub struct FnUniqTypes;
+
+#[derive(Subdiagnostic)]
+#[help(infer_fn_uniq_types)]
+pub struct FnConsiderCasting {
+    pub casting: String,
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestAsRefWhereAppropriate<'a> {
+    #[suggestion(
+        infer_sarwa_option,
+        code = "{snippet}.as_ref()",
+        applicability = "machine-applicable"
+    )]
+    Option {
+        #[primary_span]
+        span: Span,
+        snippet: &'a str,
+    },
+    #[suggestion(
+        infer_sarwa_result,
+        code = "{snippet}.as_ref()",
+        applicability = "machine-applicable"
+    )]
+    Result {
+        #[primary_span]
+        span: Span,
+        snippet: &'a str,
+    },
+}

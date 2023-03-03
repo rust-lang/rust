@@ -353,3 +353,10 @@ infer_fps_use_ref = consider using a reference
 infer_fps_remove_ref = consider removing the reference
 infer_fps_cast = consider casting to a fn pointer
 infer_fps_items_are_distinct = fn items are distinct from fn pointers
+infer_fps_cast_both = consider casting both fn items to fn pointers using `as {$expected_sig}`
+
+infer_fn_uniq_types = different fn items have unique types, even if their signatures are the same
+infer_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
+
+infer_sarwa_option = you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`
+infer_sarwa_result = you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`

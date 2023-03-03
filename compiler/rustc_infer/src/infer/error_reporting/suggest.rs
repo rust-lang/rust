@@ -13,11 +13,18 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
-    ConsiderAddingAwait, FnItemsAreDistinct, FunctionPointerSuggestion, SuggAddLetForLetChains,
+    ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
+    FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAsRefWhereAppropriate,
     SuggestRemoveSemiOrReturnBinding,
 };
 
 use super::TypeErrCtxt;
+
+#[derive(Clone, Copy)]
+pub enum SuggestAsRefKind {
+    Option,
+    Result,
+}
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub(super) fn suggest_remove_semi_or_return_binding(
@@ -322,15 +329,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         diag: &mut Diagnostic,
     ) {
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-            && let Some(msg) = self.should_suggest_as_ref(exp_found.expected, exp_found.found)
+            && let Some(msg) = self.should_suggest_as_ref_kind(exp_found.expected, exp_found.found)
         {
-            diag.span_suggestion(
-                span,
-                msg,
-                // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
-                format!("{}.as_ref()", snippet.trim_start_matches('&')),
-                Applicability::MachineApplicable,
-            );
+            // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
+            let snippet = snippet.trim_start_matches('&');
+            let subdiag = match msg {
+                SuggestAsRefKind::Option => SuggestAsRefWhereAppropriate::Option { span, snippet },
+                SuggestAsRefKind::Result => SuggestAsRefWhereAppropriate::Result { span, snippet },
+            };
+            diag.subdiagnostic(subdiag);
         }
     }
 
@@ -384,7 +391,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).subst(self.tcx, substs2));
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
-                    diag.note("different fn items have unique types, even if their signatures are the same");
+                    diag.subdiagnostic(FnUniqTypes);
                 }
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
@@ -398,16 +405,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 let fn_name = self.tcx.def_path_str_with_substs(*did2, substs2);
                 let sug = if found.is_ref() {
-                    format!("&({fn_name} as {found_sig})")
+                    FunctionPointerSuggestion::CastBothRef {
+                        span,
+                        fn_name,
+                        found_sig: *found_sig,
+                        expected_sig: DiagArg(*expected_sig),
+                    }
                 } else {
-                    format!("{fn_name} as {found_sig}")
+                    FunctionPointerSuggestion::CastBoth {
+                        span,
+                        fn_name,
+                        found_sig: *found_sig,
+                        expected_sig: DiagArg(*expected_sig),
+                    }
                 };
 
-                let msg = format!(
-                    "consider casting both fn items to fn pointers using `as {expected_sig}`"
-                );
-
-                diag.span_suggestion_hidden(span, msg, sug, Applicability::MaybeIncorrect);
+                diag.subdiagnostic(sug);
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig)) => {
                 let expected_sig =
@@ -426,7 +439,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     format!("{fn_name} as {found_sig}")
                 };
 
-                diag.help(&format!("consider casting the fn item to a fn pointer: `{}`", casting));
+                diag.subdiagnostic(FnConsiderCasting { casting });
             }
             _ => {
                 return;
@@ -434,23 +447,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
     }
 
-    pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
+    pub fn should_suggest_as_ref_kind(
+        &self,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> Option<SuggestAsRefKind> {
         if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
         {
             if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
                 if exp_def == &found_def {
                     let have_as_ref = &[
-                        (
-                            sym::Option,
-                            "you can convert from `&Option<T>` to `Option<&T>` using \
-                        `.as_ref()`",
-                        ),
-                        (
-                            sym::Result,
-                            "you can convert from `&Result<T, E>` to \
-                        `Result<&T, &E>` using `.as_ref()`",
-                        ),
+                        (sym::Option, SuggestAsRefKind::Option),
+                        (sym::Result, SuggestAsRefKind::Result),
                     ];
                     if let Some(msg) = have_as_ref.iter().find_map(|(name, msg)| {
                         self.tcx.is_diagnostic_item(*name, exp_def.did()).then_some(msg)
@@ -484,6 +493,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         None
     }
 
+    // FIXME: Remove once rustc_hir_typeck is migrated to Diagnostics
+    pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
+        match self.should_suggest_as_ref_kind(expected, found) {
+            Some(SuggestAsRefKind::Option) => Some(
+                "you can convert from `&Option<T>` to `Option<&T>` using \
+            `.as_ref()`",
+            ),
+            Some(SuggestAsRefKind::Result) => Some(
+                "you can convert from `&Result<T, E>` to \
+            `Result<&T, &E>` using `.as_ref()`",
+            ),
+            None => None,
+        }
+    }
     /// Try to find code with pattern `if Some(..) = expr`
     /// use a `visitor` to mark the `if` which its span contains given error span,
     /// and then try to find a assignment in the `cond` part, which span is equal with error span
