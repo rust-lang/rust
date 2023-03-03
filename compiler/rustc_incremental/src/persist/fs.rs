@@ -297,10 +297,12 @@ pub fn prepare_session_directory(
 /// renaming it to `s-{timestamp}-{svh}` and releasing the file lock.
 /// If there have been compilation errors, however, this function will just
 /// delete the presumably invalid session directory.
-pub fn finalize_session_directory(sess: &Session, svh: Svh) {
+pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     if sess.opts.incremental.is_none() {
         return;
     }
+    // The svh is always produced when incr. comp. is enabled.
+    let svh = svh.unwrap();
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
