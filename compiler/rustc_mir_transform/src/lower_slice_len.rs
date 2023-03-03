@@ -68,8 +68,11 @@ fn lower_slice_len_call<'tcx>(
                 ty::FnDef(fn_def_id, _) if fn_def_id == &slice_len_fn_item_def_id => {
                     // perform modifications
                     // from something like `_5 = core::slice::<impl [u8]>::len(move _6) -> bb1`
-                    // into `_5 = Len(*_6)
+                    // into:
+                    // ```
+                    // _5 = Len(*_6)
                     // goto bb1
+                    // ```
 
                     // make new RValue for Len
                     let deref_arg = tcx.mk_place_deref(arg);

@@ -335,7 +335,7 @@ impl TokenCursor {
             num_of_hashes = cmp::max(num_of_hashes, count);
         }
 
-        // `/// foo` becomes `doc = r"foo".
+        // `/// foo` becomes `doc = r"foo"`.
         let delim_span = DelimSpan::from_single(span);
         let body = TokenTree::Delimited(
             delim_span,

@@ -70,7 +70,7 @@ pub enum RegionResolutionError<'tcx> {
     /// `o` requires that `a <= b`, but this does not hold
     ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
 
-    /// `GenericBoundFailure(p, s, a)
+    /// `GenericBoundFailure(p, s, a)`:
     ///
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).

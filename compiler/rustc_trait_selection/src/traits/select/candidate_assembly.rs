@@ -339,7 +339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Essentially any user-written impl will match with an error type,
         // so creating `ImplCandidates` isn't useful. However, we might
-        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized)
+        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized`)
         // This helps us avoid overflow: see issue #72839
         // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.

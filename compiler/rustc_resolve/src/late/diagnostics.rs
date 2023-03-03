@@ -878,7 +878,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         );
         let is_assoc_fn = self.self_type_is_available();
         if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
-            // The current function has a `self' parameter, but we were unable to resolve
+            // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
             if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {

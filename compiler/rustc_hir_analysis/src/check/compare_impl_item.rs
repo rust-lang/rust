@@ -1873,7 +1873,7 @@ pub(super) fn check_type_bounds<'tcx>(
     //     type Bar<C> =...
     // }
     //
-    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>
+    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
     // - `impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
     // - `rebased_substs` would be `[(A, B), u32, ^0.0]`, combining the substs from
     //    the *trait* with the generic associated type parameters (as bound vars).
