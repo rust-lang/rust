@@ -41,7 +41,7 @@ impl Alignment {
     /// Returns the alignment for a type.
     ///
     /// This provides the same numerical value as [`mem::align_of`],
-    /// but in an `Alignment` instead of a `usize.
+    /// but in an `Alignment` instead of a `usize`.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn of<T>() -> Self {
