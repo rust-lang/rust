@@ -364,7 +364,13 @@ impl<'a> InferenceContext<'a> {
                         }
                         (params, ret_ty)
                     }
-                    None => (Vec::new(), self.err_ty()), // FIXME diagnostic
+                    None => {
+                        self.result.diagnostics.push(InferenceDiagnostic::ExpectedFunction {
+                            call_expr: tgt_expr,
+                            found: callee_ty.clone(),
+                        });
+                        (Vec::new(), self.err_ty())
+                    }
                 };
                 let indices_to_skip = self.check_legacy_const_generics(derefed_callee, args);
                 self.register_obligations_for_call(&callee_ty);

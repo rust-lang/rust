@@ -170,6 +170,7 @@ pub enum InferenceDiagnostic {
     // FIXME: Make this proper
     BreakOutsideOfLoop { expr: ExprId, is_break: bool, bad_value_break: bool },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
+    ExpectedFunction { call_expr: ExprId, found: Ty },
 }
 
 /// A mismatch between an expected and an inferred type.
@@ -504,6 +505,14 @@ impl<'a> InferenceContext<'a> {
         for mismatch in result.type_mismatches.values_mut() {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
+        }
+        for diagnostic in &mut result.diagnostics {
+            match diagnostic {
+                InferenceDiagnostic::ExpectedFunction { found, .. } => {
+                    *found = table.resolve_completely(found.clone())
+                }
+                _ => (),
+            }
         }
         for (_, subst) in result.method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());

@@ -27,6 +27,7 @@
 
 mod handlers {
     pub(crate) mod break_outside_of_loop;
+    pub(crate) mod expected_function;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
     pub(crate) mod invalid_derive_target;
@@ -248,6 +249,7 @@ pub fn diagnostics(
         #[rustfmt::skip]
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
             AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),

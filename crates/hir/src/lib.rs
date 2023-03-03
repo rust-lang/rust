@@ -84,9 +84,9 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
-        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
+        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
+        MissingMatchArms, MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
         UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
         UnresolvedProcMacro,
@@ -1377,8 +1377,8 @@ impl DefWithBody {
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         for d in &infer.diagnostics {
             match d {
-                hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
-                    let field = source_map.field_syntax(*expr);
+                &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                    let field = source_map.field_syntax(expr);
                     acc.push(NoSuchField { field }.into())
                 }
                 &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
@@ -1391,15 +1391,10 @@ impl DefWithBody {
                         .expect("break outside of loop in synthetic syntax");
                     acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
-                hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    match source_map.expr_syntax(*call_expr) {
+                &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    match source_map.expr_syntax(call_expr) {
                         Ok(source_ptr) => acc.push(
-                            MismatchedArgCount {
-                                call_expr: source_ptr,
-                                expected: *expected,
-                                found: *found,
-                            }
-                            .into(),
+                            MismatchedArgCount { call_expr: source_ptr, expected, found }.into(),
                         ),
                         Err(SyntheticSyntax) => (),
                     }
@@ -1422,6 +1417,18 @@ impl DefWithBody {
                     };
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
+                }
+                hir_ty::InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
+                    let call_expr =
+                        source_map.expr_syntax(*call_expr).expect("unexpected synthetic");
+
+                    acc.push(
+                        ExpectedFunction {
+                            call: call_expr,
+                            found: Type::new(db, DefWithBodyId::from(self), found.clone()),
+                        }
+                        .into(),
+                    )
                 }
             }
         }

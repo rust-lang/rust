@@ -31,6 +31,7 @@ macro_rules! diagnostics {
 
 diagnostics![
     BreakOutsideOfLoop,
+    ExpectedFunction,
     InactiveCode,
     IncorrectCase,
     InvalidDeriveTarget,
@@ -128,6 +129,12 @@ pub struct PrivateAssocItem {
     pub expr_or_pat:
         InFile<Either<AstPtr<ast::Expr>, Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>>>,
     pub item: AssocItem,
+}
+
+#[derive(Debug)]
+pub struct ExpectedFunction {
+    pub call: InFile<AstPtr<ast::Expr>>,
+    pub found: Type,
 }
 
 #[derive(Debug)]
