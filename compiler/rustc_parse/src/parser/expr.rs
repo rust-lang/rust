@@ -1210,8 +1210,13 @@ impl<'a> Parser<'a> {
                         // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
                         self.restore_snapshot(snapshot);
                         let close_paren = self.prev_token.span;
-                        let span = lo.to(self.prev_token.span);
-                        if !fields.is_empty() {
+                        let span = lo.to(close_paren);
+                        if !fields.is_empty() &&
+                            // `token.kind` should not be compared here.
+                            // This is because the `snapshot.token.kind` is treated as the same as
+                            // that of the open delim in `TokenTreesReader::parse_token_tree`, even if they are different.
+                            self.span_to_snippet(close_paren).map_or(false, |snippet| snippet == ")")
+                        {
                             let mut replacement_err = errors::ParenthesesWithStructFields {
                                 span,
                                 r#type: path,
