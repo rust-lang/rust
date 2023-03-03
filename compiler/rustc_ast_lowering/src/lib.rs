@@ -482,7 +482,7 @@ enum ParamMode {
 }
 
 enum ParenthesizedGenericArgs {
-    Ok,
+    ParenSugar,
     Err,
 }
 
