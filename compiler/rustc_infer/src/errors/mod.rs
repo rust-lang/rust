@@ -1335,3 +1335,39 @@ pub enum SuggestBoxingForReturnImplTrait {
         ends: Vec<Span>,
     },
 }
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(infer_stp_wrap_one, applicability = "maybe-incorrect")]
+pub struct SuggestTuplePatternOne {
+    pub variant: String,
+    #[suggestion_part(code = "{variant}(")]
+    pub span_low: Span,
+    #[suggestion_part(code = ")")]
+    pub span_high: Span,
+}
+
+pub struct SuggestTuplePatternMany {
+    pub path: String,
+    pub cause_span: Span,
+    pub compatible_variants: Vec<String>,
+}
+
+impl AddToDiagnostic for SuggestTuplePatternMany {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.set_arg("path", self.path);
+        let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());
+        diag.multipart_suggestions(
+            message,
+            self.compatible_variants.into_iter().map(|variant| {
+                vec![
+                    (self.cause_span.shrink_to_lo(), format!("{}(", variant)),
+                    (self.cause_span.shrink_to_hi(), ")".to_string()),
+                ]
+            }),
+            rustc_errors::Applicability::MaybeIncorrect,
+        );
+    }
+}

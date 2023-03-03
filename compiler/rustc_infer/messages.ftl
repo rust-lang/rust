@@ -365,3 +365,6 @@ infer_suggest_accessing_field = you might have meant to use field `{$name}` whos
 
 infer_sbfrit_change_return_type = you could change the return type to be a boxed trait object
 infer_sbfrit_box_return_expr = if you change the return type to expect trait objects, box the returned expressions
+
+infer_stp_wrap_one = try wrapping the pattern in `{$variant}`
+infer_stp_wrap_many = try wrapping the pattern in a variant of `{$path}`

@@ -1,7 +1,7 @@
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -16,7 +16,7 @@ use crate::errors::{
     ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAccessingField,
     SuggestAsRefWhereAppropriate, SuggestBoxingForReturnImplTrait,
-    SuggestRemoveSemiOrReturnBinding,
+    SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany, SuggestTuplePatternOne,
 };
 
 use super::TypeErrCtxt;
@@ -134,30 +134,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 match &compatible_variants[..] {
                     [] => {}
                     [variant] => {
-                        diag.multipart_suggestion_verbose(
-                            &format!("try wrapping the pattern in `{}`", variant),
-                            vec![
-                                (cause.span.shrink_to_lo(), format!("{}(", variant)),
-                                (cause.span.shrink_to_hi(), ")".to_string()),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
+                        let sugg = SuggestTuplePatternOne {
+                            variant: variant.to_owned(),
+                            span_low: cause.span.shrink_to_lo(),
+                            span_high: cause.span.shrink_to_hi(),
+                        };
+                        diag.subdiagnostic(sugg);
                     }
                     _ => {
                         // More than one matching variant.
-                        diag.multipart_suggestions(
-                            &format!(
-                                "try wrapping the pattern in a variant of `{}`",
-                                self.tcx.def_path_str(expected_adt.did())
-                            ),
-                            compatible_variants.into_iter().map(|variant| {
-                                vec![
-                                    (cause.span.shrink_to_lo(), format!("{}(", variant)),
-                                    (cause.span.shrink_to_hi(), ")".to_string()),
-                                ]
-                            }),
-                            Applicability::MaybeIncorrect,
-                        );
+                        let sugg = SuggestTuplePatternMany {
+                            path: self.tcx.def_path_str(expected_adt.did()),
+                            cause_span: cause.span,
+                            compatible_variants,
+                        };
+                        diag.subdiagnostic(sugg);
                     }
                 }
             }
