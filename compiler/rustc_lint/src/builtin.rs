@@ -1479,7 +1479,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 if !matches!(ty.kind, hir::TyKind::OpaqueDef(..)) {
                     intravisit::walk_ty(self, ty);
                 }
- 
+
                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ty.kind {
                     if let Res::Def(DefKind::TyParam, def_id) = path.res {
                         // collect ty parameters
@@ -1494,16 +1494,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             }
         }
 
-        let mut non_opaque_visitor = NonOpaqueVisitor {
-            ty_params: FxHashSet::default(),
-            lifetimes: FxHashSet::default(),
-        };
+        let mut non_opaque_visitor =
+            NonOpaqueVisitor { ty_params: FxHashSet::default(), lifetimes: FxHashSet::default() };
         non_opaque_visitor.visit_ty(ty);
 
-        let NonOpaqueVisitor {
-            ty_params, 
-            lifetimes ,
-        } = non_opaque_visitor;
+        let NonOpaqueVisitor { ty_params, lifetimes } = non_opaque_visitor;
 
         let mut where_spans = Vec::new();
         let mut inline_spans = Vec::new();
@@ -1511,7 +1506,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         for p in type_alias_generics.predicates {
             // Skip the predicate that is not used in non-opaque types
             if let hir::WherePredicate::BoundPredicate(ref bound_pred) = p {
-                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = bound_pred.bounded_ty.kind {
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
+                    bound_pred.bounded_ty.kind
+                {
                     if let Res::Def(DefKind::TyParam, def_id) = path.res {
                         if !ty_params.contains(&def_id) {
                             continue;
