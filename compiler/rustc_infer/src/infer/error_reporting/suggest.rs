@@ -15,7 +15,8 @@ use rustc_target::abi::FieldIdx;
 use crate::errors::{
     ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAccessingField,
-    SuggestAsRefWhereAppropriate, SuggestRemoveSemiOrReturnBinding,
+    SuggestAsRefWhereAppropriate, SuggestBoxingForReturnImplTrait,
+    SuggestRemoveSemiOrReturnBinding,
 };
 
 use super::TypeErrCtxt;
@@ -80,25 +81,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         return_sp: Span,
         arm_spans: impl Iterator<Item = Span>,
     ) {
-        err.multipart_suggestion(
-            "you could change the return type to be a boxed trait object",
-            vec![
-                (return_sp.with_hi(return_sp.lo() + BytePos(4)), "Box<dyn".to_string()),
-                (return_sp.shrink_to_hi(), ">".to_string()),
-            ],
-            Applicability::MaybeIncorrect,
-        );
-        let sugg = arm_spans
-            .flat_map(|sp| {
-                [(sp.shrink_to_lo(), "Box::new(".to_string()), (sp.shrink_to_hi(), ")".to_string())]
-                    .into_iter()
-            })
-            .collect::<Vec<_>>();
-        err.multipart_suggestion(
-            "if you change the return type to expect trait objects, box the returned expressions",
-            sugg,
-            Applicability::MaybeIncorrect,
-        );
+        let sugg = SuggestBoxingForReturnImplTrait::ChangeReturnType {
+            start_sp: return_sp.with_hi(return_sp.lo() + BytePos(4)),
+            end_sp: return_sp.shrink_to_hi(),
+        };
+        err.subdiagnostic(sugg);
+
+        let mut starts = Vec::new();
+        let mut ends = Vec::new();
+        for span in arm_spans {
+            starts.push(span.shrink_to_lo());
+            ends.push(span.shrink_to_hi());
+        }
+        let sugg = SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends };
+        err.subdiagnostic(sugg);
     }
 
     pub(super) fn suggest_tuple_pattern(

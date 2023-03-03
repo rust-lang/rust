@@ -362,3 +362,6 @@ infer_sarwa_option = you can convert from `&Option<T>` to `Option<&T>` using `.a
 infer_sarwa_result = you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`
 
 infer_suggest_accessing_field = you might have meant to use field `{$name}` whose type is `{$ty}`
+
+infer_sbfrit_change_return_type = you could change the return type to be a boxed trait object
+infer_sbfrit_box_return_expr = if you change the return type to expect trait objects, box the returned expressions

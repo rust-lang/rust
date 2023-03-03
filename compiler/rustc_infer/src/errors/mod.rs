@@ -1261,7 +1261,7 @@ pub struct FnItemsAreDistinct;
 pub struct FnUniqTypes;
 
 #[derive(Subdiagnostic)]
-#[help(infer_fn_uniq_types)]
+#[help(infer_fn_consider_casting)]
 pub struct FnConsiderCasting {
     pub casting: String,
 }
@@ -1315,5 +1315,23 @@ pub enum SuggestAccessingField<'a> {
         snippet: String,
         name: Symbol,
         ty: Ty<'a>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestBoxingForReturnImplTrait {
+    #[multipart_suggestion(infer_sbfrit_change_return_type, applicability = "maybe-incorrect")]
+    ChangeReturnType {
+        #[suggestion_part(code = "Box<dyn")]
+        start_sp: Span,
+        #[suggestion_part(code = ">")]
+        end_sp: Span,
+    },
+    #[multipart_suggestion(infer_sbfrit_box_return_expr, applicability = "maybe-incorrect")]
+    BoxReturnExpr {
+        #[suggestion_part(code = "Box::new(")]
+        starts: Vec<Span>,
+        #[suggestion_part(code = ")")]
+        ends: Vec<Span>,
     },
 }
