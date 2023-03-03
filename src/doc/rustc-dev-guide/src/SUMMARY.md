@@ -146,7 +146,7 @@
     - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
     - [Translation](./diagnostics/translation.md)
     - [`LintStore`](./diagnostics/lintstore.md)
-    - [Diagnostic codes](./diagnostics/diagnostic-codes.md)
+    - [Error codes](./diagnostics/error-codes.md)
     - [Diagnostic items](./diagnostics/diagnostic-items.md)
     - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
 

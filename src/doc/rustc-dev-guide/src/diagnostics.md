@@ -69,17 +69,12 @@ surrounded with backticks:
 error: the identifier `foo.bar` is invalid
 ```
 
-### Error explanations
+### Error codes and explanations
 
-Some errors include long form descriptions. They may be viewed with the
-`--explain` flag, or via the [error index]. Each explanation comes with an
-example of how to trigger it and advice on how to fix it.
-
-Please read [RFC 1567] for details on how to format and write long error
-codes.
-
-The descriptions are written in Markdown, and all of them are linked in the
-[`rustc_error_codes`] crate.
+Most errors have an associated error code. Error codes are linked to long-form
+explanations which contains an example of how to trigger the error and in-depth
+details about the error. They may be viewed with the `--explain` flag, or via
+the [error index].
 
 As a general rule, give an error a code (with an associated explanation) if the
 explanation would give more information than the error itself. A lot of the time
@@ -89,12 +84,15 @@ triggers to include useful information for all cases in the error, in which case
 it's a good idea to add an explanation.[^estebank]
 As always, if you are not sure, just ask your reviewer!
 
+If you decide to add a new error with an associated error code, please read
+[this section][error-codes] for a guide and important details about the
+process.
+
 [^estebank]: This rule of thumb was suggested by **@estebank** [here][estebank-comment].
 
-[`rustc_error_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_codes/error_codes/index.html
 [error index]: https://doc.rust-lang.org/error-index.html
-[RFC 1567]: https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md
 [estebank-comment]: https://github.com/rust-lang/rustc-dev-guide/pull/967#issuecomment-733218283
+[error-codes]: ./diagnostics/error-codes.md
 
 ### Lints versus fixed diagnostics
 
