@@ -1,6 +1,5 @@
-let X: i32 = 12;
+let a = 1;
 //~^ ERROR `let` is invalid outside of a function
 
 fn main() {
-    println!("{}", X);
 }

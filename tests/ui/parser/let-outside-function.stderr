@@ -1,16 +1,16 @@
 error: `let` is invalid outside of a function
-  --> $DIR/suggest-const-for-global-var.rs:1:1
+  --> $DIR/let-outside-function.rs:1:1
    |
-LL | let X: i32 = 12;
+LL | let a = 1;
    | ^^^
    |
 help: consider using `static` instead of `let`
    |
-LL | static X: i32 = 12;
+LL | static a = 1;
    | ~~~~~~
 help: consider using `const` instead of `let`
    |
-LL | const X: i32 = 12;
+LL | const a = 1;
    | ~~~~~
 
 error: aborting due to previous error
