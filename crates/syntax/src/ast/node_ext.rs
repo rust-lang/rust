@@ -680,6 +680,36 @@ impl TypeOrConstParam {
     }
 }
 
+impl AstNode for TypeOrConstParam {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        matches!(kind, SyntaxKind::TYPE_PARAM | SyntaxKind::CONST_PARAM)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let res = match syntax.kind() {
+            SyntaxKind::TYPE_PARAM => TypeOrConstParam::Type(ast::TypeParam { syntax }),
+            SyntaxKind::CONST_PARAM => TypeOrConstParam::Const(ast::ConstParam { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            TypeOrConstParam::Type(it) => it.syntax(),
+            TypeOrConstParam::Const(it) => it.syntax(),
+        }
+    }
+}
+
+impl HasAttrs for TypeOrConstParam {}
+
 #[derive(Debug, Clone)]
 pub enum TraitOrAlias {
     Trait(ast::Trait),
