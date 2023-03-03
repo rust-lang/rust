@@ -111,6 +111,11 @@ impl<'a> Parser<'a> {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
+        } else if self.prev_token.is_keyword(kw::Pub) && self.token.is_keyword(kw::Let) {
+            let err = self.sess.create_err(errors::VisibilityFollowedByLet {
+                span: self.prev_token.span.to(self.token.span),
+            });
+            return Err(err);
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
             let e = match force_collect {

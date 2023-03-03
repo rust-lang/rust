@@ -1404,6 +1404,14 @@ pub(crate) struct VisibilityNotFollowedByItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_visibility_followed_by_let)]
+pub(crate) struct VisibilityFollowedByLet {
+    #[primary_span]
+    #[suggestion(code = "let", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_default_not_followed_by_item)]
 #[note]
 pub(crate) struct DefaultNotFollowedByItem {

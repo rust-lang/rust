@@ -439,6 +439,9 @@ parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by a
     .label = the visibility
     .help = you likely meant to define an item, e.g., `{$vis} fn foo() {"{}"}`
 
+parse_visibility_followed_by_let = visibility does not apply to `let` statement
+    .suggestion = remove pub
+
 parse_default_not_followed_by_item = `default` is not followed by an item
     .label = the `default` qualifier
     .note = only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
