@@ -32,7 +32,7 @@ use emitter::{is_case_difference, Emitter, EmitterWriter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{self, Lock, Lrc};
+use rustc_data_structures::sync::{self, IntoDyn, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
@@ -409,7 +409,7 @@ struct HandlerInner {
     err_count: usize,
     warn_count: usize,
     deduplicated_err_count: usize,
-    emitter: Box<dyn Emitter + sync::Send>,
+    emitter: IntoDyn<Box<dyn Emitter + sync::Send>>,
     delayed_span_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
@@ -605,7 +605,7 @@ impl Handler {
                 warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
-                emitter,
+                emitter: IntoDyn(emitter),
                 delayed_span_bugs: Vec::new(),
                 delayed_good_path_bugs: Vec::new(),
                 suppressed_expected_diag: false,

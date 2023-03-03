@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
@@ -148,11 +148,6 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_module_items(module).items()
-    }
-
-    #[inline]
-    pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
-        par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
 
     pub fn def_key(self, def_id: LocalDefId) -> DefKey {
@@ -502,7 +497,7 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + Sync + Send) {
+    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
         par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
@@ -640,7 +635,7 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
         let crate_items = self.tcx.hir_crate_items(());
         par_for_each_in(&crate_items.submodules[..], |module| f(module.def_id))
     }

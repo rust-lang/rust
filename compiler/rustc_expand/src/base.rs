@@ -653,13 +653,13 @@ pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
-        Box<dyn BangProcMacro + sync::Sync + sync::Send>,
+        Box<dyn BangProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based function-like macro.
     LegacyBang(
         /// An expander with signature TokenStream -> AST.
-        Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
+        Box<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
 
     /// A token-based attribute macro.
@@ -667,7 +667,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
         /// The first TokenSteam is the attribute itself, the second is the annotated item.
         /// The produced TokenSteam replaces the input TokenSteam.
-        Box<dyn AttrProcMacro + sync::Sync + sync::Send>,
+        Box<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based attribute macro.
@@ -675,7 +675,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
-        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// A trivial attribute "macro" that does nothing,
@@ -692,14 +692,14 @@ pub enum SyntaxExtensionKind {
         /// is handled identically to `LegacyDerive`. It should be migrated to
         /// a token-based representation like `Bang` and `Attr`, instead of
         /// using `MultiItemModifier`.
-        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based derive macro.
     LegacyDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
-        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 }
 

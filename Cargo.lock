@@ -3299,6 +3299,7 @@ dependencies = [
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
+ "rustc_arena",
  "rustc_graphviz",
  "rustc_index",
  "rustc_macros",

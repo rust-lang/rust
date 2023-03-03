@@ -14,7 +14,7 @@ pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
+use rustc_data_structures::sync::{AtomicU32, IntoDyn, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::hash::Hash;
 use std::path::{self, Path, PathBuf};
@@ -176,7 +176,7 @@ pub struct SourceMap {
     used_address_space: AtomicU32,
 
     files: RwLock<SourceMapFiles>,
-    file_loader: Box<dyn FileLoader + Sync + Send>,
+    file_loader: IntoDyn<Box<dyn FileLoader + Sync + Send>>,
     // This is used to apply the file path remapping as specified via
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
@@ -202,7 +202,7 @@ impl SourceMap {
         SourceMap {
             used_address_space: AtomicU32::new(0),
             files: Default::default(),
-            file_loader,
+            file_loader: IntoDyn(file_loader),
             path_mapping,
             hash_kind,
         }

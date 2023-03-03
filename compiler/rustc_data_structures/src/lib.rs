@@ -26,9 +26,11 @@
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
+#![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(lint_reasons)]
-#![feature(unwrap_infallible)]
+#![feature(unwrap_infallible)]#![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![feature(strict_provenance)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
@@ -77,6 +79,7 @@ pub mod sorted_map;
 pub mod stable_hasher;
 mod atomic_ref;
 pub mod fingerprint;
+pub mod marker;
 pub mod profiling;
 pub mod sharded;
 pub mod stack;

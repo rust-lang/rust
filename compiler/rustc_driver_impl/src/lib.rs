@@ -255,6 +255,9 @@ fn run_compiler(
 
     let sopts = config::build_session_options(&matches);
 
+    // Set parallel mode before thread pool creation as the session will already create locks.
+    interface::set_parallel_mode(&sopts.unstable_opts);
+
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(diagnostics_registry(), code, sopts.error_format);
         return Ok(());

@@ -496,7 +496,7 @@ pub struct GlobalCtxt<'tcx> {
     ///
     /// FIXME(Centril): consider `dyn LintStoreMarker` once
     /// we can upcast to `Any` for some additional type safety.
-    pub lint_store: Lrc<dyn Any + sync::Sync + sync::Send>,
+    pub lint_store: Lrc<dyn Any + sync::DynSync + sync::DynSend>,
 
     pub dep_graph: DepGraph,
 
@@ -648,7 +648,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
+        lint_store: Lrc<dyn Any + sync::DynSend + sync::DynSync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,

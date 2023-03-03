@@ -16,6 +16,7 @@ libc = "0.2"
 measureme = "10.0.0"
 rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc-rayon = { version = "0.5.0", optional = true }
+rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }

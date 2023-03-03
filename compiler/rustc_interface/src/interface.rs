@@ -60,6 +60,11 @@ impl Compiler {
     }
 }
 
+#[allow(rustc::bad_opt_access)]
+pub fn set_parallel_mode(sopts: &config::UnstableOptions) {
+    rustc_data_structures::sync::set(sopts.threads > 1);
+}
+
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     rustc_span::create_default_session_if_not_set_then(move |_| {

@@ -48,14 +48,15 @@ pub enum TokenTree {
     Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
-// Ensure all fields of `TokenTree` is `Send` and `Sync`.
+// Ensure all fields of `TokenTree` is `DynSend` and `DynSync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
 where
-    Token: Send + Sync,
-    DelimSpan: Send + Sync,
-    Delimiter: Send + Sync,
-    TokenStream: Send + Sync,
+    Token: sync::DynSend + sync::DynSync,
+    Spacing: sync::DynSend + sync::DynSync,
+    DelimSpan: sync::DynSend + sync::DynSync,
+    Delimiter: sync::DynSend + sync::DynSync,
+    TokenStream: sync::DynSend + sync::DynSync,
 {
 }
 
@@ -118,7 +119,7 @@ where
     }
 }
 
-pub trait ToAttrTokenStream: sync::Send + sync::Sync {
+pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
     fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
 

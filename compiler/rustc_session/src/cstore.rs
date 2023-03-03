@@ -207,7 +207,7 @@ pub trait MetadataLoader: std::fmt::Debug {
     fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
 }
 
-pub type MetadataLoaderDyn = dyn MetadataLoader + Send + Sync;
+pub type MetadataLoaderDyn = dyn MetadataLoader + Send + Sync + sync::DynSend + sync::DynSync;
 
 /// A store of Rust crates, through which their metadata can be accessed.
 ///
@@ -252,7 +252,7 @@ pub trait CrateStore: std::fmt::Debug {
     fn import_source_files(&self, sess: &Session, cnum: CrateNum);
 }
 
-pub type CrateStoreDyn = dyn CrateStore + sync::Sync + sync::Send;
+pub type CrateStoreDyn = dyn CrateStore + sync::DynSync + sync::DynSend;
 
 pub struct Untracked {
     pub cstore: RwLock<Box<CrateStoreDyn>>,

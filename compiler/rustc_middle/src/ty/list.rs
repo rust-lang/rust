@@ -199,6 +199,12 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
 
 unsafe impl<T: Sync> Sync for List<T> {}
 
+// We need this since `List` uses extern type `OpaqueListContents`
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::DynSync;
+#[cfg(parallel_compiler)]
+unsafe impl<T: DynSync> DynSync for List<T> {}
+
 // Safety:
 // Layouts of `Equivalent<T>` and `List<T>` are the same, modulo opaque tail,
 // thus aligns of `Equivalent<T>` and `List<T>` must be the same.
