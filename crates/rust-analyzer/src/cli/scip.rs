@@ -15,7 +15,7 @@ use ide::{
     TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustcSource};
 use scip::types as scip_types;
 use std::env;
 
@@ -29,7 +29,8 @@ impl flags::Scip {
     pub fn run(self) -> Result<()> {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
-        let cargo_config = CargoConfig::default();
+        let mut cargo_config = CargoConfig::default();
+        cargo_config.sysroot = Some(RustcSource::Discover);
 
         let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
         let load_cargo_config = LoadCargoConfig {
