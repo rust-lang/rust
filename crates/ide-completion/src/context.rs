@@ -416,6 +416,7 @@ impl<'a> CompletionContext<'a> {
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),
+                hir::ModuleDef::TraitAlias(it) => self.is_visible(it),
                 hir::ModuleDef::TypeAlias(it) => self.is_visible(it),
                 hir::ModuleDef::Macro(it) => self.is_visible(it),
                 hir::ModuleDef::BuiltinType(_) => Visible::Yes,

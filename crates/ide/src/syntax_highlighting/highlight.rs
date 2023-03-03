@@ -410,6 +410,7 @@ fn highlight_def(
             h
         }
         Definition::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
+        Definition::TraitAlias(_) => Highlight::new(HlTag::Symbol(SymbolKind::TraitAlias)),
         Definition::TypeAlias(type_) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
 

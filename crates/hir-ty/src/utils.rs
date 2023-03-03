@@ -315,7 +315,10 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
         GenericDefId::ConstId(it) => it.lookup(db).container,
         GenericDefId::EnumVariantId(it) => return Some(it.parent.into()),
-        GenericDefId::AdtId(_) | GenericDefId::TraitId(_) | GenericDefId::ImplId(_) => return None,
+        GenericDefId::AdtId(_)
+        | GenericDefId::TraitId(_)
+        | GenericDefId::ImplId(_)
+        | GenericDefId::TraitAliasId(_) => return None,
     };
 
     match container {

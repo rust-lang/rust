@@ -178,6 +178,7 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::StaticId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ConstId(cid) => Some(cid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::TraitId(tid) => Some(tid.lookup(self.db.upcast()).container.into()),
+                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ImplId(iid) => Some(iid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ExternBlockId(id) => Some(id.lookup(self.db.upcast()).container.into()),
                 // These warnings should not explore macro definitions at all

@@ -191,6 +191,7 @@ pub enum SymbolKind {
     Struct,
     ToolModule,
     Trait,
+    TraitAlias,
     TypeAlias,
     TypeParam,
     Union,
@@ -221,6 +222,7 @@ impl From<FileSymbolKind> for SymbolKind {
             FileSymbolKind::Static => SymbolKind::Static,
             FileSymbolKind::Struct => SymbolKind::Struct,
             FileSymbolKind::Trait => SymbolKind::Trait,
+            FileSymbolKind::TraitAlias => SymbolKind::TraitAlias,
             FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
             FileSymbolKind::Union => SymbolKind::Union,
         }

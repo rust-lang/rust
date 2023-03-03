@@ -192,6 +192,7 @@ impl TryToNav for Definition {
             Definition::Const(it) => it.try_to_nav(db),
             Definition::Static(it) => it.try_to_nav(db),
             Definition::Trait(it) => it.try_to_nav(db),
+            Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::BuiltinType(_) => None,
             Definition::ToolModule(_) => None,
@@ -212,6 +213,7 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Const(it) => it.try_to_nav(db),
             hir::ModuleDef::Static(it) => it.try_to_nav(db),
             hir::ModuleDef::Trait(it) => it.try_to_nav(db),
+            hir::ModuleDef::TraitAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::Macro(it) => it.try_to_nav(db),
             hir::ModuleDef::BuiltinType(_) => None,
@@ -248,6 +250,9 @@ impl ToNavFromAst for hir::TypeAlias {
 }
 impl ToNavFromAst for hir::Trait {
     const KIND: SymbolKind = SymbolKind::Trait;
+}
+impl ToNavFromAst for hir::TraitAlias {
+    const KIND: SymbolKind = SymbolKind::TraitAlias;
 }
 
 impl<D> TryToNav for D

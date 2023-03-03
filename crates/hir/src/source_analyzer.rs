@@ -51,7 +51,7 @@ use syntax::{
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
     BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
-    Struct, ToolModule, Trait, Type, TypeAlias, Variant,
+    Struct, ToolModule, Trait, TraitAlias, Type, TypeAlias, Variant,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -978,6 +978,7 @@ fn resolve_hir_path_(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
+            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
         };
         match unresolved {
             Some(unresolved) => resolver
@@ -1065,6 +1066,7 @@ fn resolve_hir_path_qualifier(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
+            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
         })
         .or_else(|| {
             resolver

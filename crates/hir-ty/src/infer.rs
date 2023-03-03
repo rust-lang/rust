@@ -868,7 +868,10 @@ impl<'a> InferenceContext<'a> {
                 // FIXME potentially resolve assoc type
                 (self.err_ty(), None)
             }
-            TypeNs::AdtId(AdtId::EnumId(_)) | TypeNs::BuiltinType(_) | TypeNs::TraitId(_) => {
+            TypeNs::AdtId(AdtId::EnumId(_))
+            | TypeNs::BuiltinType(_)
+            | TypeNs::TraitId(_)
+            | TypeNs::TraitAliasId(_) => {
                 // FIXME diagnostic
                 (self.err_ty(), None)
             }

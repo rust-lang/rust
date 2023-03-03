@@ -119,6 +119,7 @@ impl Definition {
             Definition::Const(it) => name_range(it, sema),
             Definition::Static(it) => name_range(it, sema),
             Definition::Trait(it) => name_range(it, sema),
+            Definition::TraitAlias(it) => name_range(it, sema),
             Definition::TypeAlias(it) => name_range(it, sema),
             Definition::Local(local) => {
                 let src = local.source(sema.db);

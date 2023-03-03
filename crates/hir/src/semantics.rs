@@ -68,7 +68,8 @@ impl PathResolution {
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
                 | ModuleDef::Static(_)
-                | ModuleDef::Trait(_),
+                | ModuleDef::Trait(_)
+                | ModuleDef::TraitAlias(_),
             ) => None,
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
@@ -1330,6 +1331,7 @@ impl<'db> SemanticsImpl<'db> {
                 })
             }
             ChildContainer::TraitId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::TraitAliasId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ImplId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ModuleId(it) => it.resolver(self.db.upcast()),
             ChildContainer::EnumId(it) => it.resolver(self.db.upcast()),
@@ -1556,6 +1558,7 @@ to_def_impls![
     (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
     (crate::Trait, ast::Trait, trait_to_def),
+    (crate::TraitAlias, ast::TraitAlias, trait_alias_to_def),
     (crate::Impl, ast::Impl, impl_to_def),
     (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
     (crate::Const, ast::Const, const_to_def),

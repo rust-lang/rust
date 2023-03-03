@@ -110,7 +110,7 @@ impl<'a> Ctx<'a> {
             ast::Item::Const(ast) => self.lower_const(ast).into(),
             ast::Item::Module(ast) => self.lower_module(ast)?.into(),
             ast::Item::Trait(ast) => self.lower_trait(ast)?.into(),
-            ast::Item::TraitAlias(_) => return None,
+            ast::Item::TraitAlias(ast) => self.lower_trait_alias(ast)?.into(),
             ast::Item::Impl(ast) => self.lower_impl(ast)?.into(),
             ast::Item::Use(ast) => self.lower_use(ast)?.into(),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?.into(),
@@ -446,20 +446,39 @@ impl<'a> Ctx<'a> {
             self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
-        let items = trait_def.assoc_item_list().map(|list| {
-            list.assoc_items()
-                .filter_map(|item| {
-                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
-                    self.lower_assoc_item(&item).map(|item| {
-                        self.add_attrs(ModItem::from(item).into(), attrs);
-                        item
-                    })
-                })
-                .collect()
-        });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let res = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
-        Some(id(self.data().traits.alloc(res)))
+
+        let items = trait_def
+            .assoc_item_list()
+            .into_iter()
+            .flat_map(|list| list.assoc_items())
+            .filter_map(|item| {
+                let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
+                self.lower_assoc_item(&item).map(|item| {
+                    self.add_attrs(ModItem::from(item).into(), attrs);
+                    item
+                })
+            })
+            .collect();
+
+        let def = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
+        Some(id(self.data().traits.alloc(def)))
+    }
+
+    fn lower_trait_alias(
+        &mut self,
+        trait_alias_def: &ast::TraitAlias,
+    ) -> Option<FileItemTreeId<TraitAlias>> {
+        let name = trait_alias_def.name()?.as_name();
+        let visibility = self.lower_visibility(trait_alias_def);
+        let generic_params = self.lower_generic_params(
+            HasImplicitSelf::Yes(trait_alias_def.type_bound_list()),
+            trait_alias_def,
+        );
+        let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
+
+        let alias = TraitAlias { name, visibility, generic_params, ast_id };
+        Some(id(self.data().trait_aliases.alloc(alias)))
     }
 
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {

@@ -187,6 +187,7 @@ impl GenericParams {
             GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
             GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
             GenericDefId::TraitId(id) => id_to_generics!(id),
+            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
             GenericDefId::TypeAliasId(id) => id_to_generics!(id),
             GenericDefId::ImplId(id) => id_to_generics!(id),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
@@ -427,6 +428,10 @@ fn file_id_and_params_of(
             let src = it.lookup(db).source(db);
             (src.file_id, src.value.generic_param_list())
         }
+        GenericDefId::TraitAliasId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
         GenericDefId::TypeAliasId(it) => {
             let src = it.lookup(db).source(db);
             (src.file_id, src.value.generic_param_list())
@@ -441,7 +446,7 @@ fn file_id_and_params_of(
 }
 
 impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
-    type Value = Either<ast::TypeOrConstParam, ast::Trait>;
+    type Value = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
     fn child_source(
         &self,
         db: &dyn DefDatabase,
@@ -453,11 +458,20 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
 
         let mut params = ArenaMap::default();
 
-        // For traits the first type index is `Self`, we need to add it before the other params.
-        if let GenericDefId::TraitId(id) = *self {
-            let trait_ref = id.lookup(db).source(db).value;
-            let idx = idx_iter.next().unwrap();
-            params.insert(idx, Either::Right(trait_ref));
+        // For traits and trait aliases the first type index is `Self`, we need to add it before
+        // the other params.
+        match *self {
+            GenericDefId::TraitId(id) => {
+                let trait_ref = id.lookup(db).source(db).value;
+                let idx = idx_iter.next().unwrap();
+                params.insert(idx, Either::Right(ast::TraitOrAlias::Trait(trait_ref)));
+            }
+            GenericDefId::TraitAliasId(id) => {
+                let alias = id.lookup(db).source(db).value;
+                let idx = idx_iter.next().unwrap();
+                params.insert(idx, Either::Right(ast::TraitOrAlias::TraitAlias(alias)));
+            }
+            _ => {}
         }
 
         if let Some(generic_params_list) = generic_params_list {

@@ -300,6 +300,7 @@ impl AttrsWithOwner {
                 AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             },
             AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::TraitAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::MacroId(it) => match it {
                 MacroId::Macro2Id(it) => attrs_from_item_tree(it.lookup(db).id, db),
                 MacroId::MacroRulesId(it) => attrs_from_item_tree(it.lookup(db).id, db),
@@ -392,6 +393,7 @@ impl AttrsWithOwner {
             AttrDefId::StaticId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::ConstId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::TraitId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
+            AttrDefId::TraitAliasId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::TypeAliasId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::MacroId(id) => match id {
                 MacroId::Macro2Id(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
