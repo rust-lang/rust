@@ -430,6 +430,10 @@ mod mut_ptr;
 /// done automatically by the compiler. This means the fields of packed structs
 /// are not dropped in-place.
 ///
+/// [`drop_in_place()`] does not modify the pointed-to value beyond any changes
+/// performed by [`Drop::drop()`]. As far as the compiler is concerned, the value
+/// will still contain a valid bit pattern for type `T`.
+///
 /// [`ptr::read`]: self::read
 /// [`ptr::read_unaligned`]: self::read_unaligned
 /// [pinned]: crate::pin
@@ -446,10 +450,15 @@ mod mut_ptr;
 ///   additional invariants - this is type-dependent.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
-/// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
+/// calling `drop_in_place` may cause undefined behavior. Note that `*to_drop =
 /// foo` counts as a use because it will cause the value to be dropped
 /// again. [`write()`] can be used to overwrite data without causing it to be
-/// dropped.
+/// dropped. Read operations may be UB based on library invariants of that type,
+/// for example reading the value pointed to by a dropped `Box<T>` is a use-after-free.
+///
+/// Having an `&` or `&mut` reference to the pointed-to value after calling [`drop_in_place()`]
+/// is still sound as long as it is not read from (in which case the soundness of the operation
+/// depends on the specific type).
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
