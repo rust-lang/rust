@@ -594,7 +594,7 @@ impl Wtf8 {
     }
 
     /// Returns the code point at `position` if it is in the ASCII range,
-    /// or `b'\xFF' otherwise.
+    /// or `b'\xFF'` otherwise.
     ///
     /// # Panics
     ///

@@ -6,7 +6,7 @@ fn no_lookup_host_duplicates() {
     let mut addrs = HashMap::new();
     let lh = match LookupHost::try_from(("localhost", 0)) {
         Ok(lh) => lh,
-        Err(e) => panic!("couldn't resolve `localhost': {e}"),
+        Err(e) => panic!("couldn't resolve `localhost`: {e}"),
     };
     for sa in lh {
         *addrs.entry(sa).or_insert(0) += 1;
