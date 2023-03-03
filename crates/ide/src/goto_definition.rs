@@ -766,6 +766,13 @@ trait Foo$0 { }
 
         check(
             r#"
+trait Foo$0 = ;
+    //^^^
+"#,
+        );
+
+        check(
+            r#"
 mod bar$0 { }
   //^^^
 "#,
@@ -1423,7 +1430,6 @@ include!("included.rs$0");
         );
     }
 
-    #[cfg(test)]
     mod goto_impl_of_trait_fn {
         use super::check;
         #[test]

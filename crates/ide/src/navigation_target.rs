@@ -549,6 +549,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             ast::Struct(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Enum(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Trait(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::TraitAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Module(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::TypeAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Const(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
