@@ -1098,51 +1098,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let tcx = infcx.tcx;
 
         let ty = tcx.fold_regions(ty, |r, _depth| {
-            let region_vid = self.to_region_vid(r);
+            let r_vid = self.to_region_vid(r);
+            let r_scc = self.constraint_sccs.scc(r_vid);
 
             // The challenge if this. We have some region variable `r`
             // whose value is a set of CFG points and universal
             // regions. We want to find if that set is *equivalent* to
             // any of the named regions found in the closure.
-            //
-            // To do so, we compute the
-            // `non_local_universal_upper_bound`. This will be a
-            // non-local, universal region that is greater than `r`.
-            // However, it might not be *contained* within `r`, so
-            // then we further check whether this bound is contained
-            // in `r`. If so, we can say that `r` is equivalent to the
-            // bound.
-            //
-            // Let's work through a few examples. For these, imagine
-            // that we have 3 non-local regions (I'll denote them as
-            // `'static`, `'a`, and `'b`, though of course in the code
-            // they would be represented with indices) where:
-            //
-            // - `'static: 'a`
-            // - `'static: 'b`
-            //
-            // First, let's assume that `r` is some existential
-            // variable with an inferred value `{'a, 'static}` (plus
-            // some CFG nodes). In this case, the non-local upper
-            // bound is `'static`, since that outlives `'a`. `'static`
-            // is also a member of `r` and hence we consider `r`
-            // equivalent to `'static` (and replace it with
-            // `'static`).
-            //
-            // Now let's consider the inferred value `{'a, 'b}`. This
-            // means `r` is effectively `'a | 'b`. I'm not sure if
-            // this can come about, actually, but assuming it did, we
-            // would get a non-local upper bound of `'static`. Since
-            // `'static` is not contained in `r`, we would fail to
-            // find an equivalent.
-            let upper_bound = self.non_local_universal_upper_bound(region_vid);
-            if self.region_contains(region_vid, upper_bound) {
-                tcx.mk_re_var(upper_bound)
-            } else {
+            // To do so, we simply check every candidate `u_r` for equality.
+            self.scc_values
+                .universal_regions_outlived_by(r_scc)
+                .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
+                .find(|&u_r| self.eval_equal(u_r, r_vid))
+                .map(|u_r| tcx.mk_re_var(u_r))
                 // In the case of a failure, use `ReErased`. We will eventually
                 // return `None` in this case.
-                tcx.lifetimes.re_erased
-            }
+                .unwrap_or(tcx.lifetimes.re_erased)
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
@@ -1153,35 +1124,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::new(tcx, ty)))
-    }
-
-    /// Given some universal or existential region `r`, finds a
-    /// non-local, universal region `r+` that outlives `r` at entry to (and
-    /// exit from) the closure. In the worst case, this will be
-    /// `'static`.
-    ///
-    /// This is used for two purposes. First, if we are propagated
-    /// some requirement `T: r`, we can use this method to enlarge `r`
-    /// to something we can encode for our creator (which only knows
-    /// about non-local, universal regions). It is also used when
-    /// encoding `T` as part of `try_promote_type_test_subject` (see
-    /// that fn for details).
-    ///
-    /// This is based on the result `'y` of `universal_upper_bound`,
-    /// except that it converts further takes the non-local upper
-    /// bound of `'y`, so that the final result is non-local.
-    fn non_local_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!("non_local_universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
-
-        let lub = self.universal_upper_bound(r);
-
-        // Grow further to get smallest universal region known to
-        // creator.
-        let non_local_lub = self.universal_region_relations.non_local_upper_bound(lub);
-
-        debug!("non_local_universal_upper_bound: non_local_lub={:?}", non_local_lub);
-
-        non_local_lub
     }
 
     /// Returns a universally quantified region that outlives the

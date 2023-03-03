@@ -1,5 +1,5 @@
-// chek-fail
-// known-bug: #108639
+// See #108639 for description.
+// check-pass
 
 trait Trait {
     type Item<'a>: 'a;
