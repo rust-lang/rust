@@ -25,7 +25,9 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef::{self, Autoderef},
     consteval,
-    infer::{coerce::CoerceMany, find_continuable, BreakableKind},
+    infer::{
+        coerce::CoerceMany, find_continuable, pat::contains_explicit_ref_binding, BreakableKind,
+    },
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
@@ -39,8 +41,8 @@ use crate::{
 };
 
 use super::{
-    coerce::auto_deref_adjust_steps, find_breakable, BindingMode, BreakableContext, Diverges,
-    Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch,
+    coerce::auto_deref_adjust_steps, find_breakable, BreakableContext, Diverges, Expectation,
+    InferenceContext, InferenceDiagnostic, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -111,7 +113,7 @@ impl<'a> InferenceContext<'a> {
             }
             &Expr::Let { pat, expr } => {
                 let input_ty = self.infer_expr(expr, &Expectation::none());
-                self.infer_pat(pat, &input_ty, BindingMode::default());
+                self.infer_top_pat(pat, &input_ty);
                 self.result.standard_types.bool_.clone()
             }
             Expr::Block { statements, tail, label, id: _ } => {
@@ -223,7 +225,7 @@ impl<'a> InferenceContext<'a> {
                 let pat_ty =
                     self.resolve_associated_type(into_iter_ty, self.resolve_iterator_item());
 
-                self.infer_pat(pat, &pat_ty, BindingMode::default());
+                self.infer_top_pat(pat, &pat_ty);
                 self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
                     this.infer_expr(body, &Expectation::HasType(TyBuilder::unit()));
                 });
@@ -298,7 +300,7 @@ impl<'a> InferenceContext<'a> {
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
-                    self.infer_pat(*arg_pat, &arg_ty, BindingMode::default());
+                    self.infer_top_pat(*arg_pat, &arg_ty);
                 }
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
@@ -395,7 +397,8 @@ impl<'a> InferenceContext<'a> {
 
                 for arm in arms.iter() {
                     self.diverges = Diverges::Maybe;
-                    let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
+                    let input_ty = self.resolve_ty_shallow(&input_ty);
+                    let _pat_ty = self.infer_top_pat(arm.pat, &input_ty);
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
                             guard_expr,
@@ -1142,27 +1145,33 @@ impl<'a> InferenceContext<'a> {
                     let decl_ty = type_ref
                         .as_ref()
                         .map(|tr| self.make_ty(tr))
-                        .unwrap_or_else(|| self.err_ty());
+                        .unwrap_or_else(|| self.table.new_type_var());
 
-                    // Always use the declared type when specified
-                    let mut ty = decl_ty.clone();
-
-                    if let Some(expr) = initializer {
-                        let actual_ty =
-                            self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()));
-                        if decl_ty.is_unknown() {
-                            ty = actual_ty;
+                    let ty = if let Some(expr) = initializer {
+                        let ty = if contains_explicit_ref_binding(&self.body, *pat) {
+                            self.infer_expr(*expr, &Expectation::has_type(decl_ty.clone()))
+                        } else {
+                            self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()))
+                        };
+                        if type_ref.is_some() {
+                            decl_ty
+                        } else {
+                            ty
                         }
-                    }
+                    } else {
+                        decl_ty
+                    };
+
+                    self.infer_top_pat(*pat, &ty);
 
                     if let Some(expr) = else_branch {
+                        let previous_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                         self.infer_expr_coerce(
                             *expr,
                             &Expectation::HasType(self.result.standard_types.never.clone()),
                         );
+                        self.diverges = previous_diverges;
                     }
-
-                    self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr { expr, .. } => {
                     self.infer_expr(*expr, &Expectation::none());

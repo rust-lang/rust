@@ -85,7 +85,7 @@ pub enum ResolveValueResult {
     Partial(TypeNs, usize),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ValueNs {
     ImplSelf(ImplId),
     LocalBinding(PatId),

@@ -606,14 +606,13 @@ fn a() {
     }
 
     #[test]
-    fn bug() {
+    fn let_stmt_explicit_ty() {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
 fn main() {
-    // These should be identical, but they are not...
-
     let () = return;
+           //^^^^^^<never-to-any>
     let (): () = return;
                //^^^^^^<never-to-any>
 }
