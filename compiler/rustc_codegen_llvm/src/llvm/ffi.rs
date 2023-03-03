@@ -1814,8 +1814,6 @@ extern "C" {
     /// Creates a legacy pass manager -- only used for final codegen.
     pub fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
 
-    pub fn LLVMInitializePasses();
-
     pub fn LLVMTimeTraceProfilerInitialize();
 
     pub fn LLVMTimeTraceProfilerFinishThread();
