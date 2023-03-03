@@ -268,6 +268,7 @@ pub trait StructuralEq {
     // Empty.
 }
 
+// FIXME: Remove special cases of these types from the compiler pattern checking code and always check `T: StructuralEq` instead
 marker_impls! {
     #[unstable(feature = "structural_match", issue = "31434")]
     StructuralEq for
@@ -275,6 +276,10 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
+        str /* Technically requires `[u8]: StructuralEq` */,
+        {T: ConstParamTy, const N: usize} [T; N],
+        {T: ConstParamTy} [T],
+        {T: ConstParamTy} &T,
 }
 
 /// Types whose values can be duplicated simply by copying bits.
@@ -988,6 +993,10 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
+        str /* Technically requires `[u8]: ConstParamTy` */,
+        {T: ConstParamTy, const N: usize} [T; N],
+        {T: ConstParamTy} [T],
+        {T: ConstParamTy} &T,
 }
 
 /// A common trait implemented by all function pointers.

@@ -93,7 +93,14 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
     let (adt, substs) = match self_type.kind() {
         // `core` provides these impls.
-        ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => return Ok(()),
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Char
+        | ty::Str
+        | ty::Array(..)
+        | ty::Slice(_)
+        | ty::Ref(.., hir::Mutability::Not) => return Ok(()),
 
         &ty::Adt(adt, substs) => (adt, substs),
 
