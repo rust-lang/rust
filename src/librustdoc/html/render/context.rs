@@ -600,9 +600,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
-        if shared.cache.crate_version.is_some() {
-            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
-        };
+        write!(sidebar, "<h2 class=\"location\"><a href=\"#\">Crate {}</a></h2>", crate_name);
 
         let mut items = Buffer::html();
         sidebar_module_like(&mut items, all.item_sections());
