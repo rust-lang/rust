@@ -2,6 +2,7 @@
 // known-bug: #105197
 // failure-status:101
 // dont-check-compiler-stderr
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 #![feature(async_fn_in_trait)]
 #![feature(return_position_impl_trait_in_trait)]

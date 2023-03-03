@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/default-body-type-err.rs:9:9
+   |
+LL |     fn lol(&self) -> impl Deref<Target = String> {
+   |                      --------------------------- expected `Foo::{opaque#0}` because of return type
+LL |
+LL |         &1i32
+   |         ^^^^^ expected associated type, found `&i32`
+   |
+   = note: expected associated type `Foo::{opaque#0}`
+                    found reference `&i32`
+   = help: consider constraining the associated type `Foo::{opaque#0}` to `&i32` or calling a method that returns `Foo::{opaque#0}`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error[E0277]: the size for values of type `Foo::{opaque#0}` cannot be known at compilation time
+  --> $DIR/default-body-type-err.rs:7:22
+   |
+LL |     fn lol(&self) -> impl Deref<Target = String> {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Foo::{opaque#0}`
+   = note: the return type of a function must have a statically known size
+help: consider further restricting the associated type
+   |
+LL |     fn lol(&self) -> impl Deref<Target = String> where Foo::{opaque#0}: Sized {
+   |                                                  ++++++++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

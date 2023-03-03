@@ -2030,6 +2030,9 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Ztrait-solver=chalk"]);
             }
+            Some(CompareMode::LowerImplTraitInTraitToAssocTy) => {
+                rustc.args(&["-Zlower-impl-trait-in-trait-to-assoc-ty"]);
+            }
             Some(CompareMode::NextSolver) => {
                 rustc.args(&["-Ztrait-solver=next"]);
             }

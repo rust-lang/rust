@@ -1,0 +1,66 @@
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/missing-send-bound.rs:3:12
+   |
+LL | #![feature(async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the size for values of type `Foo::{opaque#0}` cannot be known at compilation time
+  --> $DIR/missing-send-bound.rs:11:13
+   |
+LL |     T::bar().await;
+   |     --------^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     this call returns `Foo::{opaque#0}`
+   |
+   = help: the trait `Sized` is not implemented for `Foo::{opaque#0}`
+   = note: required for `Foo::{opaque#0}` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     T::bar().await;
+LL +     T::bar();
+   |
+help: consider further restricting the associated type
+   |
+LL | async fn test<T: Foo>() where Foo::{opaque#0}: Sized {
+   |                         ++++++++++++++++++++++++++++
+
+error[E0277]: `Foo::{opaque#0}` is not a future
+  --> $DIR/missing-send-bound.rs:11:13
+   |
+LL |     T::bar().await;
+   |     --------^^^^^^ `Foo::{opaque#0}` is not a future
+   |     |
+   |     this call returns `Foo::{opaque#0}`
+   |
+   = help: the trait `Future` is not implemented for `Foo::{opaque#0}`
+   = note: Foo::{opaque#0} must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `Foo::{opaque#0}` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     T::bar().await;
+LL +     T::bar();
+   |
+help: consider further restricting the associated type
+   |
+LL | async fn test<T: Foo>() where Foo::{opaque#0}: Future {
+   |                         +++++++++++++++++++++++++++++
+
+error[E0277]: the size for values of type `Foo::{opaque#0}` cannot be known at compilation time
+  --> $DIR/missing-send-bound.rs:11:5
+   |
+LL |     T::bar().await;
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Foo::{opaque#0}`
+   = note: the return type of a function must have a statically known size
+help: consider further restricting the associated type
+   |
+LL | async fn test<T: Foo>() where Foo::{opaque#0}: Sized {
+   |                         ++++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

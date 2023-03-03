@@ -1,0 +1,23 @@
+error[E0191]: the value of the associated type `` (from trait `Foo`) must be specified
+  --> $DIR/object-safety.rs:17:41
+   |
+LL |     fn baz(&self) -> impl Debug;
+   |                      ---------- `` defined here
+...
+LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
+   |                                         ^^^ help: specify the associated type: `Foo< = Type>`
+
+error[E0277]: the size for values of type `Foo::{opaque#0}` cannot be known at compilation time
+  --> $DIR/object-safety.rs:20:9
+   |
+LL |     let s = i.baz();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Foo::{opaque#0}`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0191, E0277.
+For more information about an error, try `rustc --explain E0191`.

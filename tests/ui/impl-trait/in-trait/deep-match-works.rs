@@ -1,4 +1,5 @@
 // check-pass
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 #![feature(return_position_impl_trait_in_trait)]
 #![allow(incomplete_features)]
@@ -10,7 +11,9 @@ trait Foo {
 }
 
 impl Foo for () {
-    fn bar() -> Wrapper<i32> { Wrapper(0) }
+    fn bar() -> Wrapper<i32> {
+        Wrapper(0)
+    }
 }
 
 fn main() {}

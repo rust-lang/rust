@@ -1,0 +1,81 @@
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/dont-project-to-specializable-projection.rs:4:12
+   |
+LL | #![feature(async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/dont-project-to-specializable-projection.rs:14:35
+   |
+LL |     default async fn foo(_: T) -> &'static str {
+   |                                   ^^^^^^^^^^^^ expected associated type, found future
+   |
+note: type in trait
+  --> $DIR/dont-project-to-specializable-projection.rs:10:27
+   |
+LL |     async fn foo(_: T) -> &'static str;
+   |                           ^^^^^^^^^^^^
+   = note: expected signature `fn(_) -> MyTrait<T>::{opaque#0}`
+              found signature `fn(_) -> impl Future<Output = &'static str>`
+
+error[E0277]: the size for values of type `MyTrait<T>::{opaque#0}` cannot be known at compilation time
+  --> $DIR/dont-project-to-specializable-projection.rs:33:37
+   |
+LL |     <MyStruct as MyTrait<T>>::foo(x).await
+   |     --------------------------------^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     this call returns `MyTrait<T>::{opaque#0}`
+   |
+   = help: the trait `Sized` is not implemented for `MyTrait<T>::{opaque#0}`
+   = note: required for `MyTrait<T>::{opaque#0}` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     <MyStruct as MyTrait<T>>::foo(x).await
+LL +     <MyStruct as MyTrait<T>>::foo(x)
+   |
+help: consider further restricting the associated type
+   |
+LL | async fn indirection<T>(x: T) -> &'static str where MyTrait<T>::{opaque#0}: Sized {
+   |                                               +++++++++++++++++++++++++++++++++++
+
+error[E0277]: `MyTrait<T>::{opaque#0}` is not a future
+  --> $DIR/dont-project-to-specializable-projection.rs:33:37
+   |
+LL |     <MyStruct as MyTrait<T>>::foo(x).await
+   |     --------------------------------^^^^^^ `MyTrait<T>::{opaque#0}` is not a future
+   |     |
+   |     this call returns `MyTrait<T>::{opaque#0}`
+   |
+   = help: the trait `Future` is not implemented for `MyTrait<T>::{opaque#0}`
+   = note: MyTrait<T>::{opaque#0} must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `MyTrait<T>::{opaque#0}` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     <MyStruct as MyTrait<T>>::foo(x).await
+LL +     <MyStruct as MyTrait<T>>::foo(x)
+   |
+help: consider further restricting the associated type
+   |
+LL | async fn indirection<T>(x: T) -> &'static str where MyTrait<T>::{opaque#0}: Future {
+   |                                               ++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the size for values of type `MyTrait<T>::{opaque#0}` cannot be known at compilation time
+  --> $DIR/dont-project-to-specializable-projection.rs:33:5
+   |
+LL |     <MyStruct as MyTrait<T>>::foo(x).await
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `MyTrait<T>::{opaque#0}`
+   = note: the return type of a function must have a statically known size
+help: consider further restricting the associated type
+   |
+LL | async fn indirection<T>(x: T) -> &'static str where MyTrait<T>::{opaque#0}: Sized {
+   |                                               +++++++++++++++++++++++++++++++++++
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0053, E0277.
+For more information about an error, try `rustc --explain E0053`.

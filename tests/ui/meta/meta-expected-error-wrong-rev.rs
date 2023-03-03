@@ -1,4 +1,5 @@
 // ignore-compare-mode-polonius
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 // revisions: a
 // should-fail
@@ -13,4 +14,4 @@ fn foo() {
     let x: u32 = 22_usize; //[b]~ ERROR mismatched types
 }
 
-fn main() { }
+fn main() {}

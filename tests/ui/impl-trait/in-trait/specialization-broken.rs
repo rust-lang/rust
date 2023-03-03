@@ -1,3 +1,5 @@
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
+
 // FIXME(compiler-errors): I'm not exactly sure if this is expected to pass or not.
 // But we fixed an ICE anyways.
 

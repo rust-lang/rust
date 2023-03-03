@@ -1,5 +1,6 @@
 // check-pass
 // aux-build: rpitit.rs
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 extern crate rpitit;
 

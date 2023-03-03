@@ -1,4 +1,5 @@
 // edition:2015
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 async fn foo() {} //~ ERROR `async fn` is not permitted in Rust 2015
 

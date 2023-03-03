@@ -1,4 +1,5 @@
 // check-pass
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 // This didn't work in the previous default RPITIT method hack attempt
 

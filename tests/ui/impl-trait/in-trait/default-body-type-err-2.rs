@@ -1,4 +1,5 @@
 // edition:2021
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 
 #![allow(incomplete_features)]
 #![feature(async_fn_in_trait)]

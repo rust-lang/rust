@@ -1,3 +1,4 @@
+// ignore-compare-mode-lower-impl-trait-in-trait-to-assoc-ty
 // edition:2018
 trait T {
     async fn foo() {} //~ ERROR functions in traits cannot be declared `async`
