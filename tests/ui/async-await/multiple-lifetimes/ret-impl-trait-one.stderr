@@ -17,8 +17,9 @@ error[E0700]: hidden type for `impl Trait<'a>` captures lifetime that does not a
   --> $DIR/ret-impl-trait-one.rs:16:80
    |
 LL |   async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
-   |  ____________________________________--__________________________________________^
-   | |                                    |
+   |  ____________________________________--___________________________--------------_^
+   | |                                    |                            |
+   | |                                    |                            opaque type defined here
    | |                                    hidden type `(&'a u8, &'b u8)` captures the lifetime `'b` as defined here
 LL | |
 LL | |     (a, b)

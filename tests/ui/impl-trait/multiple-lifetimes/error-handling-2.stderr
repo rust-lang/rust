@@ -1,6 +1,9 @@
 error[E0700]: hidden type for `E<'b, 'c>` captures lifetime that does not appear in bounds
   --> $DIR/error-handling-2.rs:22:5
    |
+LL | type E<'a, 'b> = impl Sized;
+   |                  ---------- opaque type defined here
+LL |
 LL | fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    |        -- hidden type `*mut &'a i32` captures the lifetime `'a` as defined here
 ...

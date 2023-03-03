@@ -1147,3 +1147,13 @@ pub enum PlaceholderRelationLfNotSatisfied {
         note: (),
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(infer_opaque_captures_lifetime, code = "E0700")]
+pub struct OpaqueCapturesLifetime<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub opaque_ty_span: Span,
+    pub opaque_ty: Ty<'tcx>,
+}

@@ -4,6 +4,7 @@ error[E0700]: hidden type for `impl Iterator<Item = u8>` captures lifetime that 
 LL | impl<'a> Foo<'a> {
    |      -- hidden type `Copied<std::slice::Iter<'a, u8>>` captures the lifetime `'a` as defined here
 LL |     fn make_it(&self) -> impl Iterator<Item = u8> {
+   |                          ------------------------ opaque type defined here
 LL |         self.0.iter().copied()
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
