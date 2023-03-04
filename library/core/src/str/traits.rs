@@ -204,6 +204,12 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
             assert_unsafe_precondition!(
                 "str::get_unchecked requires that the range is within the string slice",
                 (this: ops::Range<usize>, slice: *const [u8]) =>
+                // We'd like to check that the bounds are on char boundaries,
+                // but there's not really a way to do so without reading
+                // behind the pointer, which has aliasing implications.
+                // It's also not possible to move this check up to
+                // `str::get_unchecked` without adding a special function
+                // to `SliceIndex` just for this.
                 this.end >= this.start && this.end <= slice.len()
             );
             slice.as_ptr().add(self.start)
