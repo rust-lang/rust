@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
@@ -65,7 +65,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
 
-        let member_constraints: FxHashMap<_, _> = self
+        let member_constraints: FxIndexMap<_, _> = self
             .member_constraints
             .all_indices()
             .map(|ci| (self.member_constraints[ci].key, ci))
@@ -364,7 +364,7 @@ fn check_opaque_type_parameter_valid(
         OpaqueTyOrigin::TyAlias => {}
     }
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
-    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+    let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
