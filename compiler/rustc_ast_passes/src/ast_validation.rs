@@ -12,7 +12,7 @@ use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -643,7 +643,7 @@ fn validate_generic_param_order(
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
-    let mut out_of_order = FxHashMap::default();
+    let mut out_of_order = FxIndexMap::default();
     let mut param_idents = Vec::with_capacity(generics.len());
 
     for (idx, param) in generics.iter().enumerate() {
