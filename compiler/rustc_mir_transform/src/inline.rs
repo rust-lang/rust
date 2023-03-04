@@ -95,7 +95,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         changed: false,
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
-    this.process_blocks(body, blocks);
+    this.process_blocks(body, blocks, 0);
     this.changed
 }
 
@@ -115,10 +115,15 @@ struct Inliner<'tcx> {
 }
 
 impl<'tcx> Inliner<'tcx> {
-    fn process_blocks(&mut self, caller_body: &mut Body<'tcx>, blocks: Range<BasicBlock>) {
+    fn process_blocks(
+        &mut self,
+        caller_body: &mut Body<'tcx>,
+        blocks: Range<BasicBlock>,
+        depth: usize,
+    ) {
         // How many callsites in this body are we allowed to inline? We need to limit this in order
         // to prevent super-linear growth in MIR size
-        let inline_limit = match self.history.len() {
+        let inline_limit = match depth {
             0 => usize::MAX,
             1..=TOP_DOWN_DEPTH_LIMIT => 1,
             _ => return,
@@ -137,26 +142,35 @@ impl<'tcx> Inliner<'tcx> {
             let span = trace_span!("process_blocks", %callsite.callee, ?bb);
             let _guard = span.enter();
 
-            match self.try_inlining(caller_body, &callsite) {
+            let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
+            let inline_always = matches!(callee_attrs.inline, InlineAttr::Always);
+
+            if inlined_count >= inline_limit && !inline_always {
+                debug!("inline count reached");
+                continue;
+            }
+
+            let new_blocks = match self.try_inlining(caller_body, &callsite, callee_attrs) {
+                Ok(new_blocks) => new_blocks,
                 Err(reason) => {
                     debug!("not-inlined {} [{}]", callsite.callee, reason);
                     continue;
                 }
-                Ok(new_blocks) => {
-                    debug!("inlined {}", callsite.callee);
-                    self.changed = true;
+            };
 
-                    self.history.push(callsite.callee.def_id());
-                    self.process_blocks(caller_body, new_blocks);
-                    self.history.pop();
+            debug!("inlined {}", callsite.callee);
+            self.changed = true;
 
-                    inlined_count += 1;
-                    if inlined_count == inline_limit {
-                        debug!("inline count reached");
-                        return;
-                    }
-                }
-            }
+            let new_depth = if inline_always {
+                // This call was `inline(always)`. Do not count it in the inline cost.
+                depth
+            } else {
+                inlined_count += 1;
+                depth + 1
+            };
+            self.history.push(callsite.callee.def_id());
+            self.process_blocks(caller_body, new_blocks, new_depth);
+            self.history.pop();
         }
     }
 
@@ -167,8 +181,8 @@ impl<'tcx> Inliner<'tcx> {
         &self,
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
+        callee_attrs: &CodegenFnAttrs,
     ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
-        let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
 
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();

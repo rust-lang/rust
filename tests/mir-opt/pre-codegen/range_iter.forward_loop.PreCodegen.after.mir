@@ -9,15 +9,15 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     let mut _5: std::ops::Range<u32>;    // in scope 0 at $DIR/range_iter.rs:+1:14: +1:24
     let mut _6: &mut std::ops::Range<u32>; // in scope 0 at $DIR/range_iter.rs:+1:14: +1:24
     let mut _12: std::option::Option<u32>; // in scope 0 at $DIR/range_iter.rs:+1:14: +1:24
-    let mut _15: isize;                  // in scope 0 at $DIR/range_iter.rs:+1:5: +3:6
-    let mut _17: &impl Fn(u32);          // in scope 0 at $DIR/range_iter.rs:+2:9: +2:10
-    let mut _18: (u32,);                 // in scope 0 at $DIR/range_iter.rs:+2:9: +2:13
-    let _19: ();                         // in scope 0 at $DIR/range_iter.rs:+1:14: +1:24
+    let mut _16: isize;                  // in scope 0 at $DIR/range_iter.rs:+1:5: +3:6
+    let mut _18: &impl Fn(u32);          // in scope 0 at $DIR/range_iter.rs:+2:9: +2:10
+    let mut _19: (u32,);                 // in scope 0 at $DIR/range_iter.rs:+2:9: +2:13
+    let _20: ();                         // in scope 0 at $DIR/range_iter.rs:+1:14: +1:24
     scope 1 {
         debug iter => _5;                // in scope 1 at $DIR/range_iter.rs:+1:14: +1:24
-        let _16: u32;                    // in scope 1 at $DIR/range_iter.rs:+1:9: +1:10
+        let _17: u32;                    // in scope 1 at $DIR/range_iter.rs:+1:9: +1:10
         scope 2 {
-            debug x => _16;              // in scope 2 at $DIR/range_iter.rs:+1:9: +1:10
+            debug x => _17;              // in scope 2 at $DIR/range_iter.rs:+1:9: +1:10
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) { // at $DIR/range_iter.rs:21:14: 21:24
             debug self => _6;            // in scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
@@ -27,10 +27,23 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
                 let mut _8: &u32;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
                 let mut _11: bool;       // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
                 let _13: u32;            // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-                let mut _14: u32;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _15: u32;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
                 scope 6 {
                     debug old => _13;    // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
                     scope 7 {
+                        scope 9 (inlined <u32 as Step>::forward_unchecked) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                            debug start => _13; // in scope 9 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                            debug n => const 1_usize; // in scope 9 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                            let mut _14: u32; // in scope 9 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                            scope 10 {
+                                scope 11 (inlined core::num::<impl u32>::unchecked_add) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                    debug self => _13; // in scope 11 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                    debug rhs => const 1_u32; // in scope 11 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                    scope 12 {
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 scope 8 (inlined cmp::impls::<impl PartialOrd for u32>::lt) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
@@ -56,7 +69,6 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb1: {
         StorageLive(_12);                // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
         _6 = &mut _5;                    // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
-        StorageLive(_13);                // scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         StorageLive(_11);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         StorageLive(_7);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         _7 = &((*_6).0: u32);            // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
@@ -81,25 +93,27 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
 
     bb3: {
         _13 = ((*_6).0: u32);            // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-        StorageLive(_14);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-        _14 = <u32 as Step>::forward_unchecked(_13, const 1_usize) -> [return: bb4, unwind: bb11]; // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_15);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_14);                // scope 10 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _14 = const 1_u32;               // scope 10 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _15 = unchecked_add::<u32>(_13, _14) -> [return: bb4, unwind unreachable]; // scope 12 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                          // mir::Constant
-                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
-                                         // + literal: Const { ty: unsafe fn(u32, usize) -> u32 {<u32 as Step>::forward_unchecked}, val: Value(<ZST>) }
+                                         // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32, u32) -> u32 {unchecked_add::<u32>}, val: Value(<ZST>) }
     }
 
     bb4: {
-        ((*_6).0: u32) = move _14;       // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-        StorageDead(_14);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_14);                // scope 10 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        ((*_6).0: u32) = move _15;       // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_15);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         _12 = Option::<u32>::Some(_13);  // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         goto -> bb5;                     // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
     }
 
     bb5: {
         StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-        StorageDead(_13);                // scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-        _15 = discriminant(_12);         // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
-        switchInt(move _15) -> [0: bb6, 1: bb8, otherwise: bb10]; // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
+        _16 = discriminant(_12);         // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
+        switchInt(move _16) -> [0: bb6, 1: bb8, otherwise: bb12]; // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
     }
 
     bb6: {
@@ -113,33 +127,33 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb8: {
-        _16 = ((_12 as Some).0: u32);    // scope 1 at $DIR/range_iter.rs:+1:9: +1:10
-        StorageLive(_17);                // scope 2 at $DIR/range_iter.rs:+2:9: +2:10
-        _17 = &_3;                       // scope 2 at $DIR/range_iter.rs:+2:9: +2:10
-        StorageLive(_18);                // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
-        _18 = (_16,);                    // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
-        _19 = <impl Fn(u32) as Fn<(u32,)>>::call(move _17, move _18) -> [return: bb9, unwind: bb11]; // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
+        _17 = ((_12 as Some).0: u32);    // scope 1 at $DIR/range_iter.rs:+1:9: +1:10
+        StorageLive(_18);                // scope 2 at $DIR/range_iter.rs:+2:9: +2:10
+        _18 = &_3;                       // scope 2 at $DIR/range_iter.rs:+2:9: +2:10
+        StorageLive(_19);                // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
+        _19 = (_17,);                    // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
+        _20 = <impl Fn(u32) as Fn<(u32,)>>::call(move _18, move _19) -> [return: bb9, unwind: bb10]; // scope 2 at $DIR/range_iter.rs:+2:9: +2:13
                                          // mir::Constant
                                          // + span: $DIR/range_iter.rs:22:9: 22:10
                                          // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a impl Fn(u32), (u32,)) -> <impl Fn(u32) as FnOnce<(u32,)>>::Output {<impl Fn(u32) as Fn<(u32,)>>::call}, val: Value(<ZST>) }
     }
 
     bb9: {
+        StorageDead(_19);                // scope 2 at $DIR/range_iter.rs:+2:12: +2:13
         StorageDead(_18);                // scope 2 at $DIR/range_iter.rs:+2:12: +2:13
-        StorageDead(_17);                // scope 2 at $DIR/range_iter.rs:+2:12: +2:13
         StorageDead(_12);                // scope 1 at $DIR/range_iter.rs:+3:5: +3:6
         goto -> bb1;                     // scope 1 at $DIR/range_iter.rs:+1:5: +3:6
     }
 
-    bb10: {
-        unreachable;                     // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
+    bb10 (cleanup): {
+        drop(_3) -> [return: bb11, unwind terminate]; // scope 0 at $DIR/range_iter.rs:+4:1: +4:2
     }
 
     bb11 (cleanup): {
-        drop(_3) -> [return: bb12, unwind terminate]; // scope 0 at $DIR/range_iter.rs:+4:1: +4:2
+        resume;                          // scope 0 at $DIR/range_iter.rs:+0:1: +4:2
     }
 
-    bb12 (cleanup): {
-        resume;                          // scope 0 at $DIR/range_iter.rs:+0:1: +4:2
+    bb12: {
+        unreachable;                     // scope 1 at $DIR/range_iter.rs:+1:14: +1:24
     }
 }

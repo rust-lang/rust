@@ -6,6 +6,7 @@
       let _1: (!, !);                      // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
 +     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
 +     let mut _8: ();                      // in scope 0 at $DIR/inline_diverging.rs:27:13: 27:16
++     let mut _9: ();                      // in scope 0 at $DIR/inline_diverging.rs:28:13: 28:16
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) { // at $DIR/inline_diverging.rs:22:5: 22:22
 +         debug f => _2;                   // in scope 1 at $DIR/inline_diverging.rs:26:36: 26:37
 +         let mut _3: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
@@ -17,6 +18,10 @@
 +             debug a => _4;               // in scope 2 at $DIR/inline_diverging.rs:27:9: 27:10
 +             scope 3 {
 +                 debug b => _6;           // in scope 3 at $DIR/inline_diverging.rs:28:9: 28:10
++             }
++             scope 6 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) { // at $DIR/inline_diverging.rs:28:13: 28:16
++                 scope 7 (inlined sleep) { // at $SRC_DIR/core/src/ops/function.rs:LL:COL
++                 }
 +             }
 +         }
 +         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) { // at $DIR/inline_diverging.rs:27:13: 27:16
