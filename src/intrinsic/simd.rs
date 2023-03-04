@@ -1,10 +1,13 @@
-#[cfg_attr(not(feature="master"), allow(unused_imports))]
-use gccjit::{ToRValue, ComparisonOp, UnaryOp};
+#[cfg(feature="master")]
+use gccjit::{ComparisonOp, UnaryOp};
+use gccjit::ToRValue;
 use gccjit::{BinaryOp, RValue, Type};
 
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
+#[cfg(feature="master")]
+use rustc_codegen_ssa::errors::ExpectedPointerMutability;
+use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
@@ -18,9 +21,11 @@ use rustc_target::abi::Align;
 use crate::builder::Builder;
 #[cfg(feature="master")]
 use crate::context::CodegenCx;
+#[cfg(feature="master")]
+use crate::errors::{InvalidMonomorphizationExpectedSignedUnsigned, InvalidMonomorphizationInsertedType};
 use crate::errors::{
-    InvalidMonomorphizationExpectedSignedUnsigned, InvalidMonomorphizationExpectedSimd,
-    InvalidMonomorphizationInsertedType, InvalidMonomorphizationInvalidBitmask,
+    InvalidMonomorphizationExpectedSimd,
+    InvalidMonomorphizationInvalidBitmask,
     InvalidMonomorphizationInvalidFloatVector, InvalidMonomorphizationMaskType,
     InvalidMonomorphizationMismatchedLengths, InvalidMonomorphizationNotFloat,
     InvalidMonomorphizationReturnElement, InvalidMonomorphizationReturnIntegerType,
