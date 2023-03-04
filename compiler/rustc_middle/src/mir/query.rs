@@ -394,23 +394,26 @@ pub enum ClosureOutlivesSubject<'tcx> {
 
 /// Represents a `ty::Ty` for use in [`ClosureOutlivesSubject`].
 ///
-/// This indirection is necessary because the type may include `ReVar` regions,
-/// which is what we use internally within NLL code,
-/// and we can't use `ReVar`s in a query response.
+/// This abstraction is necessary because the type may include `ReVar` regions,
+/// which is what we use internally within NLL code, and they can't be used in
+/// a query response.
+///
+/// DO NOT implement `TypeVisitable` or `TypeFoldable` traits, because this
+/// type is not recognized as a binder for late-bound region.
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ClosureOutlivesSubjectTy<'tcx> {
     inner: Ty<'tcx>,
 }
 
 impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
-    // All regions of `ty` must be of kind `ReVar`
-    // and must point to an early-bound region in the closure's signature.
-    pub fn new(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+    /// All regions of `ty` must be of kind `ReVar` and must represent
+    /// universal regions *external* to the closure.
+    pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
         let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::new(vid.index()),
-                    kind: ty::BrAnon(0u32, None),
+                    kind: ty::BrAnon(vid.as_u32(), None),
                 };
                 tcx.mk_re_late_bound(depth, br)
             }

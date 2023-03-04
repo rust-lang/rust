@@ -1153,7 +1153,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::new(tcx, ty)))
+        Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
     }
 
     /// Returns a universally quantified region that outlives the
