@@ -109,6 +109,26 @@ pub enum Expr {
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
+    TryBlock {
+        id: BlockId,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
+    },
+    Async {
+        id: BlockId,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
+    },
+    Const {
+        id: BlockId,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
+    },
+    Unsafe {
+        id: BlockId,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
+    },
     Loop {
         body: ExprId,
         label: Option<LabelId>,
@@ -172,15 +192,6 @@ pub enum Expr {
     Try {
         expr: ExprId,
     },
-    TryBlock {
-        body: ExprId,
-    },
-    Async {
-        body: ExprId,
-    },
-    Const {
-        body: ExprId,
-    },
     Cast {
         expr: ExprId,
         type_ref: Interned<TypeRef>,
@@ -221,9 +232,6 @@ pub enum Expr {
     Tuple {
         exprs: Box<[ExprId]>,
         is_assignee_expr: bool,
-    },
-    Unsafe {
-        body: ExprId,
     },
     Array(Array),
     Literal(Literal),
@@ -290,11 +298,18 @@ impl Expr {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
-            Expr::Block { statements, tail, .. } => {
+            Expr::Block { statements, tail, .. }
+            | Expr::TryBlock { statements, tail, .. }
+            | Expr::Unsafe { statements, tail, .. }
+            | Expr::Async { statements, tail, .. }
+            | Expr::Const { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
-                        Statement::Let { initializer, .. } => {
+                        Statement::Let { initializer, else_branch, .. } => {
                             if let &Some(expr) = initializer {
+                                f(expr);
+                            }
+                            if let &Some(expr) = else_branch {
                                 f(expr);
                             }
                         }
@@ -305,10 +320,6 @@ impl Expr {
                     f(expr);
                 }
             }
-            Expr::TryBlock { body }
-            | Expr::Unsafe { body }
-            | Expr::Async { body }
-            | Expr::Const { body } => f(*body),
             Expr::Loop { body, .. } => f(*body),
             Expr::While { condition, body, .. } => {
                 f(*condition);

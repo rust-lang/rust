@@ -37,7 +37,7 @@ use crate::{
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockLoc, ModuleDefId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, ModuleDefId, UnresolvedMacro,
 };
 
 pub struct LowerCtx<'a> {
@@ -238,33 +238,32 @@ impl ExprCollector<'_> {
             }
             ast::Expr::BlockExpr(e) => match e.modifier() {
                 Some(ast::BlockModifier::Try(_)) => {
-                    let body = self.collect_block(e);
-                    self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
+                    self.collect_block_(e, |id, statements, tail| Expr::TryBlock {
+                        id,
+                        statements,
+                        tail,
+                    })
                 }
                 Some(ast::BlockModifier::Unsafe(_)) => {
-                    let body = self.collect_block(e);
-                    self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
+                    self.collect_block_(e, |id, statements, tail| Expr::Unsafe {
+                        id,
+                        statements,
+                        tail,
+                    })
                 }
-                // FIXME: we need to record these effects somewhere...
                 Some(ast::BlockModifier::Label(label)) => {
                     let label = self.collect_label(label);
-                    let res = self.collect_block(e);
-                    match &mut self.body.exprs[res] {
-                        Expr::Block { label: block_label, .. } => {
-                            *block_label = Some(label);
-                        }
-                        _ => unreachable!(),
-                    }
-                    res
+                    self.collect_block_(e, |id, statements, tail| Expr::Block {
+                        id,
+                        statements,
+                        tail,
+                        label: Some(label),
+                    })
                 }
-                Some(ast::BlockModifier::Async(_)) => {
-                    let body = self.collect_block(e);
-                    self.alloc_expr(Expr::Async { body }, syntax_ptr)
-                }
-                Some(ast::BlockModifier::Const(_)) => {
-                    let body = self.collect_block(e);
-                    self.alloc_expr(Expr::Const { body }, syntax_ptr)
-                }
+                Some(ast::BlockModifier::Async(_)) => self
+                    .collect_block_(e, |id, statements, tail| Expr::Async { id, statements, tail }),
+                Some(ast::BlockModifier::Const(_)) => self
+                    .collect_block_(e, |id, statements, tail| Expr::Const { id, statements, tail }),
                 None => self.collect_block(e),
             },
             ast::Expr::LoopExpr(e) => {
@@ -737,6 +736,19 @@ impl ExprCollector<'_> {
     }
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
+        self.collect_block_(block, |id, statements, tail| Expr::Block {
+            id,
+            statements,
+            tail,
+            label: None,
+        })
+    }
+
+    fn collect_block_(
+        &mut self,
+        block: ast::BlockExpr,
+        mk_block: impl FnOnce(BlockId, Box<[Statement]>, Option<ExprId>) -> Expr,
+    ) -> ExprId {
         let file_local_id = self.ast_id_map.ast_id(&block);
         let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
         let block_loc =
@@ -769,15 +781,8 @@ impl ExprCollector<'_> {
         });
 
         let syntax_node_ptr = AstPtr::new(&block.into());
-        let expr_id = self.alloc_expr(
-            Expr::Block {
-                id: block_id,
-                statements: statements.into_boxed_slice(),
-                tail,
-                label: None,
-            },
-            syntax_node_ptr,
-        );
+        let expr_id = self
+            .alloc_expr(mk_block(block_id, statements.into_boxed_slice(), tail), syntax_node_ptr);
 
         self.expander.def_map = prev_def_map;
         self.expander.module = prev_local_module;

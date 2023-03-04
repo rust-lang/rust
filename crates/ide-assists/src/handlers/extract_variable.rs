@@ -287,7 +287,7 @@ fn foo() {
             extract_variable,
             r"
 fn foo() {
-    $0{ let x = 0; x }$0
+    $0{ let x = 0; x }$0;
     something_else();
 }",
             r"

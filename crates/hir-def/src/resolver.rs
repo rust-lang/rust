@@ -294,8 +294,8 @@ impl Resolver {
             }
         }
 
-        if let res @ Some(_) = self.module_scope.resolve_path_in_value_ns(db, path) {
-            return res;
+        if let Some(res) = self.module_scope.resolve_path_in_value_ns(db, path) {
+            return Some(res);
         }
 
         // If a path of the shape `u16::from_le_bytes` failed to resolve at all, then we fall back
