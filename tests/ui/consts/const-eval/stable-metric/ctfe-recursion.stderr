@@ -20,6 +20,28 @@ note: inside `X`
 LL | const X: u32 = recurse(19);
    |                ^^^^^^^^^^^
 
+note: erroneous constant used
+  --> $DIR/ctfe-recursion.rs:15:16
+   |
+LL |     println!("{X}");
+   |                ^
+
+note: erroneous constant used
+  --> $DIR/ctfe-recursion.rs:15:16
+   |
+LL |     println!("{X}");
+   |                ^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant used
+  --> $DIR/ctfe-recursion.rs:15:16
+   |
+LL |     println!("{X}");
+   |                ^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

@@ -4,6 +4,18 @@ error[E0080]: evaluation of constant value failed
 LL |     let x = [0_u8; (1 << 47) - 1];
    |             ^^^^^^^^^^^^^^^^^^^^^ tried to allocate more memory than available to compiler
 
+note: erroneous constant used
+  --> $DIR/large_const_alloc.rs:16:13
+   |
+LL |     let _ = FOO;
+   |             ^^^
+
+note: erroneous constant used
+  --> $DIR/large_const_alloc.rs:16:13
+   |
+LL |     let _ = FOO;
+   |             ^^^
+
 error[E0080]: could not evaluate static initializer
   --> $DIR/large_const_alloc.rs:11:13
    |

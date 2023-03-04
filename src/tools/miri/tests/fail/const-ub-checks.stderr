@@ -4,6 +4,12 @@ error[E0080]: evaluation of constant value failed
 LL |     ptr.read();
    |     ^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
 
+note: erroneous constant used
+  --> $DIR/const-ub-checks.rs:LL:CC
+   |
+LL |     let _x = UNALIGNED_READ;
+   |              ^^^^^^^^^^^^^^
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

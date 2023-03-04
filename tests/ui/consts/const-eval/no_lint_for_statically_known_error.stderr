@@ -1,0 +1,10 @@
+error: this arithmetic operation will overflow
+  --> $DIR/no_lint_for_statically_known_error.rs:12:24
+   |
+LL |         println!("{}", x - 10);
+   |                        ^^^^^^ attempt to compute `5_u32 - 10_u32`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: aborting due to previous error
+

@@ -1,0 +1,20 @@
+error: item has unused generic parameters
+  --> $DIR/unsized_cast2.rs:14:15
+   |
+LL | fn foo2<T: Default>() {
+   |         - generic parameter `T` is unused
+...
+LL |         call(&|| {}, ());
+   |               ^^
+
+error: item has unused generic parameters
+  --> $DIR/unsized_cast2.rs:11:6
+   |
+LL | fn foo2<T: Default>() {
+   |         - generic parameter `T` is unused
+LL |     let _: T = Default::default();
+LL |     (|| {
+   |      ^^
+
+error: aborting due to 2 previous errors
+

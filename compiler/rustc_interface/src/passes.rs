@@ -817,6 +817,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         return Err(reported);
     }
 
+    // FIXME: move this before the `sess.has_errors()` above or just remove the early abort,
+    // it is causing too much confusion
+    sess.time("MIR_effect_checking2", || {
+        for def_id in tcx.hir().body_owners() {
+            tcx.ensure()
+                .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+        }
+    });
+
     sess.time("misc_checking_3", || {
         parallel!(
             {

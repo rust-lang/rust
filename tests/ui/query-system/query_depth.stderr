@@ -1,5 +1,5 @@
 error: queries overflow the depth limit!
-  --> $DIR/query_depth.rs:28:1
+  --> $DIR/query_depth.rs:26:1
    |
 LL | fn main() {
    | ^^^^^^^^^

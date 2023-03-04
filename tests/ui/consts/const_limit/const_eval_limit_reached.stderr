@@ -7,6 +7,28 @@ LL | |         x += 1;
 LL | |     }
    | |_____^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
+note: erroneous constant used
+  --> $DIR/const_eval_limit_reached.rs:15:16
+   |
+LL |     assert_eq!(X, 1000);
+   |                ^
+
+note: erroneous constant used
+  --> $DIR/const_eval_limit_reached.rs:15:5
+   |
+LL |     assert_eq!(X, 1000);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant used
+  --> $DIR/const_eval_limit_reached.rs:15:5
+   |
+LL |     assert_eq!(X, 1000);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

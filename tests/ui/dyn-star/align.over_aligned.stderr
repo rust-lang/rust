@@ -1,5 +1,5 @@
 warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/align.rs:4:12
+  --> $DIR/align.rs:8:12
    |
 LL | #![feature(dyn_star)]
    |            ^^^^^^^^
@@ -8,9 +8,9 @@ LL | #![feature(dyn_star)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: `AlignedUsize` needs to have the same alignment and size as a pointer
-  --> $DIR/align.rs:15:13
+  --> $DIR/align.rs:20:13
    |
-LL |     let x = AlignedUsize(12) as dyn* Debug;
+LL |     let x = AlignedUsize(12) as dyn *Debug;
    |             ^^^^^^^^^^^^^^^^ `AlignedUsize` needs to be a pointer-like type
    |
    = help: the trait `PointerLike` is not implemented for `AlignedUsize`
