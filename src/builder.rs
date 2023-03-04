@@ -1108,7 +1108,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let vector_type = vec.get_type().unqualified().dyncast_vector().expect("Called extract_element on a non-vector type");
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
-        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as u64);
         let array = self.context.new_bitcast(None, vec, array_type).to_rvalue();
         self.context.new_array_access(None, array, idx).to_rvalue()
     }
