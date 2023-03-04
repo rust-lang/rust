@@ -97,7 +97,7 @@ macro_rules! add_impl {
         impl Add for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn add(self, other: $t) -> $t { self + other }
         }
@@ -205,7 +205,7 @@ macro_rules! sub_impl {
         impl Sub for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn sub(self, other: $t) -> $t { self - other }
         }
@@ -334,7 +334,7 @@ macro_rules! mul_impl {
         impl Mul for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn mul(self, other: $t) -> $t { self * other }
         }
@@ -473,7 +473,7 @@ macro_rules! div_impl_integer {
         impl Div for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             fn div(self, other: $t) -> $t { self / other }
         }
 
@@ -492,7 +492,7 @@ macro_rules! div_impl_float {
         impl Div for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             fn div(self, other: $t) -> $t { self / other }
         }
 
@@ -574,7 +574,7 @@ macro_rules! rem_impl_integer {
         impl Rem for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             fn rem(self, other: $t) -> $t { self % other }
         }
 
@@ -608,7 +608,7 @@ macro_rules! rem_impl_float {
         impl Rem for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             fn rem(self, other: $t) -> $t { self % other }
         }
 
@@ -682,7 +682,7 @@ macro_rules! neg_impl {
         impl Neg for $t {
             type Output = $t;
 
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn neg(self) -> $t { -self }
         }
@@ -748,7 +748,7 @@ macro_rules! add_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for $t {
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn add_assign(&mut self, other: $t) { *self += other }
         }
@@ -814,7 +814,7 @@ macro_rules! sub_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for $t {
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn sub_assign(&mut self, other: $t) { *self -= other }
         }
@@ -871,7 +871,7 @@ macro_rules! mul_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for $t {
-            #[inline]
+            #[inline(always)]
             #[rustc_inherit_overflow_checks]
             fn mul_assign(&mut self, other: $t) { *self *= other }
         }
@@ -928,7 +928,7 @@ macro_rules! div_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for $t {
-            #[inline]
+            #[inline(always)]
             fn div_assign(&mut self, other: $t) { *self /= other }
         }
 
@@ -988,7 +988,7 @@ macro_rules! rem_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for $t {
-            #[inline]
+            #[inline(always)]
             fn rem_assign(&mut self, other: $t) { *self %= other }
         }
 

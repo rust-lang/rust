@@ -30,7 +30,7 @@ macro_rules! forward_ref_binop {
         impl<'a> $imp<$u> for &'a $t {
             type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
+            #[inline(always)]
             fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(*self, other)
             }
@@ -40,7 +40,7 @@ macro_rules! forward_ref_binop {
         impl $imp<&$u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
+            #[inline(always)]
             fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(self, *other)
             }
@@ -50,7 +50,7 @@ macro_rules! forward_ref_binop {
         impl $imp<&$u> for &$t {
             type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
+            #[inline(always)]
             fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(*self, *other)
             }
@@ -68,7 +68,7 @@ macro_rules! forward_ref_op_assign {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
         impl $imp<&$u> for $t {
-            #[inline]
+            #[inline(always)]
             fn $method(&mut self, other: &$u) {
                 $imp::$method(self, *other);
             }

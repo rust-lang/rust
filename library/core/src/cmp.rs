@@ -1275,9 +1275,9 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialEq for $t {
-                #[inline]
+                #[inline(always)]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
-                #[inline]
+                #[inline(always)]
                 fn ne(&self, other: &$t) -> bool { (*self) != (*other) }
             }
         )*)
@@ -1285,11 +1285,11 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialEq for () {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, _other: &()) -> bool {
             true
         }
-        #[inline]
+        #[inline(always)]
         fn ne(&self, _other: &()) -> bool {
             false
         }
@@ -1335,7 +1335,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for () {
-        #[inline]
+        #[inline(always)]
         fn partial_cmp(&self, _: &()) -> Option<Ordering> {
             Some(Equal)
         }
@@ -1343,7 +1343,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for bool {
-        #[inline]
+        #[inline(always)]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
             Some(self.cmp(other))
         }
@@ -1355,7 +1355,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
-                #[inline]
+                #[inline(always)]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
                     Some(self.cmp(other))
                 }
@@ -1385,7 +1385,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for () {
-        #[inline]
+        #[inline(always)]
         fn cmp(&self, _other: &()) -> Ordering {
             Equal
         }
@@ -1412,7 +1412,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, _: &!) -> bool {
             *self
         }
@@ -1423,7 +1423,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialOrd for ! {
-        #[inline]
+        #[inline(always)]
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
@@ -1431,7 +1431,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl Ord for ! {
-        #[inline]
+        #[inline(always)]
         fn cmp(&self, _: &!) -> Ordering {
             *self
         }
@@ -1444,11 +1444,11 @@ mod impls {
     where
         A: PartialEq<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, other: &&B) -> bool {
             PartialEq::eq(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ne(&self, other: &&B) -> bool {
             PartialEq::ne(*self, *other)
         }
@@ -1458,23 +1458,23 @@ mod impls {
     where
         A: PartialOrd<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn lt(&self, other: &&B) -> bool {
             PartialOrd::lt(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn le(&self, other: &&B) -> bool {
             PartialOrd::le(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn gt(&self, other: &&B) -> bool {
             PartialOrd::gt(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ge(&self, other: &&B) -> bool {
             PartialOrd::ge(*self, *other)
         }
@@ -1484,7 +1484,7 @@ mod impls {
     where
         A: Ord,
     {
-        #[inline]
+        #[inline(always)]
         fn cmp(&self, other: &Self) -> Ordering {
             Ord::cmp(*self, *other)
         }
@@ -1499,11 +1499,11 @@ mod impls {
     where
         A: PartialEq<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, other: &&mut B) -> bool {
             PartialEq::eq(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ne(&self, other: &&mut B) -> bool {
             PartialEq::ne(*self, *other)
         }
@@ -1513,23 +1513,23 @@ mod impls {
     where
         A: PartialOrd<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn lt(&self, other: &&mut B) -> bool {
             PartialOrd::lt(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn le(&self, other: &&mut B) -> bool {
             PartialOrd::le(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn gt(&self, other: &&mut B) -> bool {
             PartialOrd::gt(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ge(&self, other: &&mut B) -> bool {
             PartialOrd::ge(*self, *other)
         }
@@ -1539,7 +1539,7 @@ mod impls {
     where
         A: Ord,
     {
-        #[inline]
+        #[inline(always)]
         fn cmp(&self, other: &Self) -> Ordering {
             Ord::cmp(*self, *other)
         }
@@ -1552,11 +1552,11 @@ mod impls {
     where
         A: PartialEq<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, other: &&mut B) -> bool {
             PartialEq::eq(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ne(&self, other: &&mut B) -> bool {
             PartialEq::ne(*self, *other)
         }
@@ -1567,11 +1567,11 @@ mod impls {
     where
         A: PartialEq<B>,
     {
-        #[inline]
+        #[inline(always)]
         fn eq(&self, other: &&B) -> bool {
             PartialEq::eq(*self, *other)
         }
-        #[inline]
+        #[inline(always)]
         fn ne(&self, other: &&B) -> bool {
             PartialEq::ne(*self, *other)
         }
