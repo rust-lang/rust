@@ -1839,6 +1839,12 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         } else {
             let size = layout.size.bytes() - tag_size;
             write!(w, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" },);
+            if layout.abi.is_uninhabited() {
+                write!(
+                    w,
+                    " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
+                );
+            }
         }
     }
 
