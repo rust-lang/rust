@@ -172,8 +172,7 @@ impl<'tcx> Inliner<'tcx> {
         self.check_codegen_attributes(callsite, callee_attrs)?;
 
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
-        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
-        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        let TerminatorKind::Call { args, .. } = &terminator.kind else { bug!() };
         for arg in args {
             if !arg.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.param_env) {
                 // We do not allow inlining functions with unsized params. Inlining these functions
@@ -200,45 +199,7 @@ impl<'tcx> Inliner<'tcx> {
             return Err("failed to normalize callee body");
         };
 
-        // Check call signature compatibility.
-        // Normally, this shouldn't be required, but trait normalization failure can create a
-        // validation ICE.
-        let output_type = callee_body.return_ty();
-        if !util::is_subtype(self.tcx, self.param_env, output_type, destination_ty) {
-            trace!(?output_type, ?destination_ty);
-            return Err("failed to normalize return type");
-        }
-        if callsite.fn_sig.abi() == Abi::RustCall {
-            let (arg_tuple, skipped_args) = match &args[..] {
-                [arg_tuple] => (arg_tuple, 0),
-                [_, arg_tuple] => (arg_tuple, 1),
-                _ => bug!("Expected `rust-call` to have 1 or 2 args"),
-            };
-
-            let arg_tuple_ty = arg_tuple.ty(&caller_body.local_decls, self.tcx);
-            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
-                bug!("Closure arguments are not passed as a tuple");
-            };
-
-            for (arg_ty, input) in
-                arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
-            {
-                let input_type = callee_body.local_decls[input].ty;
-                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
-                    trace!(?arg_ty, ?input_type);
-                    return Err("failed to normalize tuple argument type");
-                }
-            }
-        } else {
-            for (arg, input) in args.iter().zip(callee_body.args_iter()) {
-                let input_type = callee_body.local_decls[input].ty;
-                let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
-                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
-                    trace!(?arg_ty, ?input_type);
-                    return Err("failed to normalize argument type");
-                }
-            }
-        }
+        self.check_subst_body(caller_body, callsite, &callee_body)?;
 
         let old_blocks = caller_body.basic_blocks.next_index();
         self.inline_call(caller_body, &callsite, callee_body);
@@ -490,6 +451,58 @@ impl<'tcx> Inliner<'tcx> {
             debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
             Err("cost above threshold")
         }
+    }
+
+    /// Check call signature compatibility.
+    /// Normally, this shouldn't be required, but trait normalization failure can create a
+    /// validation ICE.
+    fn check_subst_body(
+        &self,
+        caller_body: &Body<'tcx>,
+        callsite: &CallSite<'tcx>,
+        callee_body: &Body<'tcx>,
+    ) -> Result<(), &'static str> {
+        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
+        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        let output_type = callee_body.return_ty();
+        if !util::is_subtype(self.tcx, self.param_env, output_type, destination_ty) {
+            trace!(?output_type, ?destination_ty);
+            return Err("failed to normalize return type");
+        }
+        if callsite.fn_sig.abi() == Abi::RustCall {
+            let (arg_tuple, skipped_args) = match &args[..] {
+                [arg_tuple] => (arg_tuple, 0),
+                [_, arg_tuple] => (arg_tuple, 1),
+                _ => bug!("Expected `rust-call` to have 1 or 2 args"),
+            };
+
+            let arg_tuple_ty = arg_tuple.ty(&caller_body.local_decls, self.tcx);
+            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+
+            for (arg_ty, input) in
+                arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
+            {
+                let input_type = callee_body.local_decls[input].ty;
+                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize tuple argument type");
+                }
+            }
+        } else {
+            for (arg, input) in args.iter().zip(callee_body.args_iter()) {
+                let input_type = callee_body.local_decls[input].ty;
+                let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
+                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize argument type");
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn inline_call(
