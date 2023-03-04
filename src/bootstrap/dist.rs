@@ -1907,7 +1907,7 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
 }
 
 fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
-    if source.as_os_str().is_empty() {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -2048,8 +2048,6 @@ impl Step for BoltInstrument {
         run.never()
     }
 
-    fn make_run(_run: RunConfig<'_>) {}
-
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.build.config.dry_run() {
             return self.file.clone();
@@ -2101,8 +2099,6 @@ impl Step for BoltOptimize {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
-
-    fn make_run(_run: RunConfig<'_>) {}
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.build.config.dry_run() {
