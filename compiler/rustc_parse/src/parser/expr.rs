@@ -1394,19 +1394,6 @@ impl<'a> Parser<'a> {
             self.parse_expr_let()
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore))
-        } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-            // Don't complain about bare semicolons after unclosed braces
-            // recovery in order to keep the error count down. Fixing the
-            // delimiters will possibly also fix the bare semicolon found in
-            // expression context. For example, silence the following error:
-            //
-            //     error: expected expression, found `;`
-            //      --> file.rs:2:13
-            //       |
-            //     2 |     foo(bar(;
-            //       |             ^ expected expression
-            self.bump();
-            Ok(self.mk_expr_err(self.token.span))
         } else if self.token.uninterpolated_span().rust_2018() {
             // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
