@@ -456,10 +456,6 @@ mod mut_ptr;
 /// dropped. Read operations may be UB based on library invariants of that type,
 /// for example reading the value pointed to by a dropped `Box<T>` is a use-after-free.
 ///
-/// Having an `&` or `&mut` reference to the pointed-to value after calling [`drop_in_place()`]
-/// is still sound as long as it is not read from (in which case the soundness of the operation
-/// depends on the specific type).
-///
 /// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
