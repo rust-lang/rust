@@ -5797,3 +5797,26 @@ mod m {
         "#]],
     );
 }
+
+#[test]
+fn field_as_method_call_fallback() {
+    check(
+        r#"
+struct S { f: u32 }
+fn test() {
+    S { f: 0 }.f$0();
+}
+"#,
+        expect![[r#"
+            *f*
+
+            ```rust
+            test::S
+            ```
+
+            ```rust
+            f: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
+    );
+}

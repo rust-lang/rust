@@ -12,7 +12,7 @@ use hir_def::{
     macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
     db::AstDatabase,
@@ -364,6 +364,16 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         self.imp.resolve_method_call(call).map(Function::from)
+    }
+
+    /// Attempts to resolve this call expression as a method call falling back to resolving it as a field.
+    pub fn resolve_method_call_field_fallback(
+        &self,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Either<Function, Field>> {
+        self.imp
+            .resolve_method_call_fallback(call)
+            .map(|it| it.map_left(Function::from).map_right(Field::from))
     }
 
     pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
@@ -1144,6 +1154,13 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call)
+    }
+
+    fn resolve_method_call_fallback(
+        &self,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Either<FunctionId, FieldId>> {
+        self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
     fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<FunctionId> {
