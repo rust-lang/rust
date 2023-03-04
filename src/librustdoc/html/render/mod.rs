@@ -46,6 +46,7 @@ use std::rc::Rc;
 use std::str;
 use std::string::ToString;
 
+use askama::Template;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -417,7 +418,7 @@ fn document(
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
-    document_item_info(w, cx, item, parent);
+    document_item_info(cx, item, parent).render_into(w).unwrap();
     if parent.is_none() {
         document_full_collapsible(w, item, cx, heading_offset);
     } else {
@@ -459,7 +460,7 @@ fn document_short(
     parent: &clean::Item,
     show_def_docs: bool,
 ) {
-    document_item_info(w, cx, item, Some(parent));
+    document_item_info(cx, item, Some(parent)).render_into(w).unwrap();
     if !show_def_docs {
         return;
     }
@@ -531,25 +532,23 @@ fn document_full_inner(
     }
 }
 
+#[derive(Template)]
+#[template(path = "item_info.html")]
+struct ItemInfo {
+    items: Vec<ShortItemInfo>,
+}
 /// Add extra information about an item such as:
 ///
 /// * Stability
 /// * Deprecated
 /// * Required features (through the `doc_cfg` feature)
 fn document_item_info(
-    w: &mut Buffer,
     cx: &mut Context<'_>,
     item: &clean::Item,
     parent: Option<&clean::Item>,
-) {
-    let item_infos = short_item_info(item, cx, parent);
-    if !item_infos.is_empty() {
-        w.write_str("<span class=\"item-info\">");
-        for info in item_infos {
-            w.write_str(&info);
-        }
-        w.write_str("</span>");
-    }
+) -> ItemInfo {
+    let items = short_item_info(item, cx, parent);
+    ItemInfo { items }
 }
 
 fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<String> {
@@ -567,7 +566,25 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
         cfg
     );
 
-    Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
+    Some(cfg?.render_long_html())
+}
+
+#[derive(Template)]
+#[template(path = "short_item_info.html")]
+enum ShortItemInfo {
+    /// A message describing the deprecation of this item
+    Deprecation {
+        message: String,
+    },
+    /// The feature corresponding to an unstable item, and optionally
+    /// a tracking issue URL and number.
+    Unstable {
+        feature: String,
+        tracking: Option<(String, u32)>,
+    },
+    Portability {
+        message: String,
+    },
 }
 
 /// Render the stability, deprecation and portability information that is displayed at the top of
@@ -576,7 +593,7 @@ fn short_item_info(
     item: &clean::Item,
     cx: &mut Context<'_>,
     parent: Option<&clean::Item>,
-) -> Vec<String> {
+) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
 
     if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
@@ -602,15 +619,10 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let html = MarkdownItemInfo(note, &mut cx.id_map);
-            message.push_str(&format!(": {}", html.into_string()));
+            message.push_str(": ");
+            message.push_str(&html.into_string());
         }
-        extra_info.push(format!(
-            "<div class=\"stab deprecated\">\
-                 <span class=\"emoji\">👎</span>\
-                 <span>{}</span>\
-             </div>",
-            message,
-        ));
+        extra_info.push(ShortItemInfo::Deprecation { message });
     }
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
@@ -621,26 +633,17 @@ fn short_item_info(
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
     {
-        let mut message = "<span class=\"emoji\">🔬</span>\
-             <span>This is a nightly-only experimental API."
-            .to_owned();
-
-        let mut feature = format!("<code>{}</code>", Escape(feature.as_str()));
-        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
-            feature.push_str(&format!(
-                "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
-                url = url,
-                issue = issue
-            ));
-        }
-
-        message.push_str(&format!(" ({})</span>", feature));
-
-        extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
+        let tracking = if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue)
+        {
+            Some((url.clone(), issue.get()))
+        } else {
+            None
+        };
+        extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
     }
 
-    if let Some(portability) = portability(item, parent) {
-        extra_info.push(portability);
+    if let Some(message) = portability(item, parent) {
+        extra_info.push(ShortItemInfo::Portability { message });
     }
 
     extra_info
@@ -1472,7 +1475,9 @@ fn render_impl(
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
-                            document_item_info(&mut info_buffer, cx, it, Some(parent));
+                            document_item_info(cx, it, Some(parent))
+                                .render_into(&mut info_buffer)
+                                .unwrap();
                             document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                             short_documented = false;
                         } else {
@@ -1489,7 +1494,9 @@ fn render_impl(
                         }
                     }
                 } else {
-                    document_item_info(&mut info_buffer, cx, item, Some(parent));
+                    document_item_info(cx, item, Some(parent))
+                        .render_into(&mut info_buffer)
+                        .unwrap();
                     if rendering_params.show_def_docs {
                         document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                         short_documented = false;
@@ -1862,7 +1869,11 @@ pub(crate) fn render_impl_summary(
     let is_trait = inner_impl.trait_.is_some();
     if is_trait {
         if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-            write!(w, "<span class=\"item-info\">{}</span>", portability);
+            write!(
+                w,
+                "<span class=\"item-info\"><div class=\"stab portability\">{}</div></span>",
+                portability
+            );
         }
     }
 
