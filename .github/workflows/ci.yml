@@ -201,7 +201,10 @@ jobs:
           - name: dist-armv7-linux
             os: ubuntu-20.04-xl
             env: {}
-          - name: dist-i586-gnu-i586-i686-musl
+          - name: dist-i586-i686-musl
+            os: ubuntu-20.04-xl
+            env: {}
+          - name: dist-i586-linux
             os: ubuntu-20.04-xl
             env: {}
           - name: dist-i686-linux
