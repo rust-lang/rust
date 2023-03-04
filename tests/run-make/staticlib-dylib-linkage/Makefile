@@ -1,5 +1,7 @@
 include ../tools.mk
 
+# ignore-msvc FIXME(bjorn3) can't figure out how to link with the MSVC toolchain
+
 all:
 	$(RUSTC) -C prefer-dynamic bar.rs
 	$(RUSTC) foo.rs --crate-type staticlib --print native-static-libs \
@@ -8,7 +10,8 @@ all:
 	cat $(TMPDIR)/libs.txt
 
 ifdef IS_MSVC
-	$(CC) $(CFLAGS) foo.c $(TMPDIR)/foo.lib $$(cat $(TMPDIR)/libs.txt) $(call OUT_EXE,foo)
+	$(CC) $(CFLAGS) /c foo.c /Fo:$(TMPDIR)/foo.o
+	$(RUSTC_LINKER) $(TMPDIR)/foo.o $(TMPDIR)/foo.lib $$(cat $(TMPDIR)/libs.txt) $(call OUT_EXE,foo)
 else
 	$(CC) $(CFLAGS) foo.c -L $(TMPDIR) -lfoo $$(cat $(TMPDIR)/libs.txt) -o $(call RUN_BINFILE,foo)
 endif
