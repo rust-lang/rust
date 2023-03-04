@@ -2220,7 +2220,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // - `BuiltinDerivedObligation` with a generator witness (A)
         // - `BuiltinDerivedObligation` with a generator (A)
         // - `BuiltinDerivedObligation` with `impl std::future::Future` (A)
-        // - `BindingObligation` with `impl_send (Send requirement)
+        // - `BindingObligation` with `impl_send` (Send requirement)
         //
         // The first obligation in the chain is the most useful and has the generator that captured
         // the type. The last generator (`outer_generator` below) has information about where the

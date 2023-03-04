@@ -1886,6 +1886,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // let place = Foo::new();
         // match place { Foo { .. } if { let tmp1 = &place; inspect(*tmp1) }
         //     => { let tmp2 = place; feed(tmp2) }, ... }
+        // ```
         //
         // And an input like:
         //
