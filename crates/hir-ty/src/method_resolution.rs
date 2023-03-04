@@ -579,8 +579,8 @@ impl ReceiverAdjustments {
                     ty = new_ty.clone();
                     adjust.push(Adjustment {
                         kind: Adjust::Deref(match kind {
-                            // FIXME should we know the mutability here?
-                            AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+                            // FIXME should we know the mutability here, when autoref is `None`?
+                            AutoderefKind::Overloaded => Some(OverloadedDeref(self.autoref)),
                             AutoderefKind::Builtin => None,
                         }),
                         target: new_ty,

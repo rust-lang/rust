@@ -422,13 +422,6 @@ impl Body {
         }
     }
 
-    pub fn walk_child_bindings(&self, pat: PatId, f: &mut impl FnMut(BindingId)) {
-        if let Pat::Bind { id, .. } = self[pat] {
-            f(id)
-        }
-        self[pat].walk_child_pats(|p| self.walk_child_bindings(p, f));
-    }
-
     pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {
         pretty::print_body_hir(db, self, owner)
     }

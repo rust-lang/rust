@@ -11,7 +11,8 @@ use syntax::ast;
 
 use crate::{
     db::HirDatabase, Adt, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam,
-    LocalSource, Macro, Module, Static, Struct, Trait, TypeAlias, TraitAlias, TypeOrConstParam, Union, Variant,
+    LocalSource, Macro, Module, Static, Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam,
+    Union, Variant,
 };
 
 pub trait HasSource {

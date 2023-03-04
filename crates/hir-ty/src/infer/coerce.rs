@@ -693,7 +693,7 @@ pub(super) fn auto_deref_adjust_steps(autoderef: &Autoderef<'_, '_>) -> Vec<Adju
         .iter()
         .map(|(kind, _source)| match kind {
             // We do not know what kind of deref we require at this point yet
-            AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+            AutoderefKind::Overloaded => Some(OverloadedDeref(None)),
             AutoderefKind::Builtin => None,
         })
         .zip(targets)

@@ -1103,7 +1103,10 @@ impl<'db> SemanticsImpl<'db> {
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
-                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
+                            // FIXME: Should we handle unknown mutability better?
+                            Adjust::Deref(Some(OverloadedDeref(
+                                m.map(mutability).unwrap_or(Mutability::Shared),
+                            )))
                         }
                         hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {

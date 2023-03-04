@@ -85,12 +85,12 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
-        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
+        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
+        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut,
+        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},

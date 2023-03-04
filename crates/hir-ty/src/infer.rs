@@ -291,8 +291,10 @@ pub enum Adjust {
 /// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
+///
+/// Mutability is `None` when we are not sure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OverloadedDeref(pub Mutability);
+pub struct OverloadedDeref(pub Option<Mutability>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AutoBorrow {
@@ -355,7 +357,7 @@ pub struct InferenceResult {
     pub type_of_binding: ArenaMap<BindingId, Ty>,
     pub type_of_rpit: ArenaMap<RpitId, Ty>,
     /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
-    pub type_of_for_iterator: ArenaMap<ExprId, Ty>,
+    pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,

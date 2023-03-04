@@ -529,6 +529,7 @@ fn f(x: [(i32, u8); 10]) {
 
     #[test]
     fn overloaded_deref() {
+        // FIXME: check for false negative
         check_diagnostics(
             r#"
 //- minicore: deref_mut
@@ -547,9 +548,42 @@ impl DerefMut for Foo {
     }
 }
 fn f() {
-    // FIXME: remove this mut and detect error
+    let x = Foo;
+    let y = &*x;
+    let x = Foo;
     let mut x = Foo;
-    let y = &mut *x;
+    let y: &mut i32 = &mut x;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn or_pattern() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+fn f(_: i32) {}
+fn main() {
+    let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7));
+             //^^^^^ 💡 weak: remove this `mut`
+    f(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn respect_allow_unused_mut() {
+        // FIXME: respect
+        check_diagnostics(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    #[allow(unused_mut)]
+    let mut x = 2;
+      //^^^^^ 💡 weak: remove this `mut`
+    f(x);
 }
 "#,
         );

@@ -149,6 +149,60 @@ fn reference_autoderef() {
 }
 
 #[test]
+fn overloaded_deref() {
+    // FIXME: We should support this.
+    check_fail(
+        r#"
+    //- minicore: deref_mut
+    struct Foo;
+
+    impl core::ops::Deref for Foo {
+        type Target = i32;
+        fn deref(&self) -> &i32 {
+            &5
+        }
+    }
+
+    const GOAL: i32 = {
+        let x = Foo;
+        let y = &*x;
+        *y + *x
+    };
+    "#,
+        ConstEvalError::MirLowerError(MirLowerError::NotSupported(
+            "explicit overloaded deref".into(),
+        )),
+    );
+}
+
+#[test]
+fn overloaded_deref_autoref() {
+    check_number(
+        r#"
+    //- minicore: deref_mut
+    struct Foo;
+    struct Bar;
+
+    impl core::ops::Deref for Foo {
+        type Target = Bar;
+        fn deref(&self) -> &Bar {
+            &Bar
+        }
+    }
+
+    impl Bar {
+        fn method(&self) -> i32 {
+            5
+        }
+    }
+
+    const GOAL: i32 = Foo.method();
+    "#,
+        5,
+    );
+}
+
+#[test]
 fn function_call() {
     check_number(
         r#"
