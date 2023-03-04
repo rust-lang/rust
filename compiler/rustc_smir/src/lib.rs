@@ -13,7 +13,3 @@
 #![cfg_attr(not(feature = "default"), feature(rustc_private))]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-
-pub mod mir;
-
-pub mod very_unstable;
