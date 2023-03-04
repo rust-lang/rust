@@ -482,12 +482,21 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
         if let AssocConstraintKind::Bound { .. } = constraint.kind {
-            gate_feature_post!(
-                &self,
-                associated_type_bounds,
-                constraint.span,
-                "associated type bounds are unstable"
-            )
+            if constraint.gen_args.as_ref().map_or(false, |args| args.is_parenthesized()) {
+                gate_feature_post!(
+                    &self,
+                    return_type_notation,
+                    constraint.span,
+                    "return type notation is unstable"
+                )
+            } else {
+                gate_feature_post!(
+                    &self,
+                    associated_type_bounds,
+                    constraint.span,
+                    "associated type bounds are unstable"
+                )
+            }
         }
         visit::walk_assoc_constraint(self, constraint)
     }

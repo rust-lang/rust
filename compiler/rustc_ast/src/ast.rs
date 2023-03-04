@@ -174,6 +174,10 @@ impl GenericArgs {
         matches!(self, AngleBracketed(..))
     }
 
+    pub fn is_parenthesized(&self) -> bool {
+        matches!(self, Parenthesized(..))
+    }
+
     pub fn span(&self) -> Span {
         match self {
             AngleBracketed(data) => data.span,
