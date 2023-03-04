@@ -19,7 +19,6 @@ use crate::errors::{
 };
 
 use crate::fluent_generated as fluent;
-use crate::lexer::UnmatchedDelim;
 use crate::parser;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -220,7 +219,6 @@ impl MultiSugg {
 /// is dropped.
 pub struct SnapshotParser<'a> {
     parser: Parser<'a>,
-    unclosed_delims: Vec<UnmatchedDelim>,
 }
 
 impl<'a> Deref for SnapshotParser<'a> {
@@ -255,27 +253,15 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    /// Replace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
-    /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
+    /// Replace `self` with `snapshot.parser`.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
-        self.unclosed_delims.extend(snapshot.unclosed_delims);
-    }
-
-    pub fn unclosed_delims(&self) -> &[UnmatchedDelim] {
-        &self.unclosed_delims
     }
 
     /// Create a snapshot of the `Parser`.
     pub fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
-        let mut snapshot = self.clone();
-        let unclosed_delims = self.unclosed_delims.clone();
-        // Clear `unclosed_delims` in snapshot to avoid
-        // duplicate errors being emitted when the `Parser`
-        // is dropped (which may or may not happen, depending
-        // if the parsing the snapshot is created for is successful)
-        snapshot.unclosed_delims.clear();
-        SnapshotParser { parser: snapshot, unclosed_delims }
+        let snapshot = self.clone();
+        SnapshotParser { parser: snapshot }
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
@@ -579,21 +565,6 @@ impl<'a> Parser<'a> {
         } else {
             label_sp
         };
-        match self.recover_closing_delimiter(
-            &expected
-                .iter()
-                .filter_map(|tt| match tt {
-                    TokenType::Token(t) => Some(t.clone()),
-                    _ => None,
-                })
-                .collect::<Vec<_>>(),
-            err,
-        ) {
-            Err(e) => err = e,
-            Ok(recovered) => {
-                return Ok(recovered);
-            }
-        }
 
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
@@ -1573,12 +1544,6 @@ impl<'a> Parser<'a> {
         );
         let mut err = self.struct_span_err(sp, &msg);
         let label_exp = format!("expected `{token_str}`");
-        match self.recover_closing_delimiter(&[t.clone()], err) {
-            Err(e) => err = e,
-            Ok(recovered) => {
-                return Ok(recovered);
-            }
-        }
         let sm = self.sess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
             // When the spans are in the same line, it means that the only content
@@ -1792,81 +1757,6 @@ impl<'a> Parser<'a> {
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
                 self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
             }
-        }
-    }
-
-    pub(super) fn recover_closing_delimiter(
-        &mut self,
-        tokens: &[TokenKind],
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) -> PResult<'a, bool> {
-        let mut pos = None;
-        // We want to use the last closing delim that would apply.
-        for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
-            if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
-                && Some(self.token.span) > unmatched.unclosed_span
-            {
-                pos = Some(i);
-            }
-        }
-        match pos {
-            Some(pos) => {
-                // Recover and assume that the detected unclosed delimiter was meant for
-                // this location. Emit the diagnostic and act as if the delimiter was
-                // present for the parser's sake.
-
-                // Don't attempt to recover from this unclosed delimiter more than once.
-                let unmatched = self.unclosed_delims.remove(pos);
-                let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
-                if unmatched.found_delim.is_none() {
-                    // We encountered `Eof`, set this fact here to avoid complaining about missing
-                    // `fn main()` when we found place to suggest the closing brace.
-                    *self.sess.reached_eof.borrow_mut() = true;
-                }
-
-                // We want to suggest the inclusion of the closing delimiter where it makes
-                // the most sense, which is immediately after the last token:
-                //
-                //  {foo(bar {}}
-                //      ^      ^
-                //      |      |
-                //      |      help: `)` may belong here
-                //      |
-                //      unclosed delimiter
-                if let Some(sp) = unmatched.unclosed_span {
-                    let mut primary_span: Vec<Span> =
-                        err.span.primary_spans().iter().cloned().collect();
-                    primary_span.push(sp);
-                    let mut primary_span: MultiSpan = primary_span.into();
-                    for span_label in err.span.span_labels() {
-                        if let Some(label) = span_label.label {
-                            primary_span.push_span_label(span_label.span, label);
-                        }
-                    }
-                    err.set_span(primary_span);
-                    err.span_label(sp, "unclosed delimiter");
-                }
-                // Backticks should be removed to apply suggestions.
-                let mut delim = delim.to_string();
-                delim.retain(|c| c != '`');
-                err.span_suggestion_short(
-                    self.prev_token.span.shrink_to_hi(),
-                    &format!("`{delim}` may belong here"),
-                    delim,
-                    Applicability::MaybeIncorrect,
-                );
-                if unmatched.found_delim.is_none() {
-                    // Encountered `Eof` when lexing blocks. Do not recover here to avoid knockdown
-                    // errors which would be emitted elsewhere in the parser and let other error
-                    // recovery consume the rest of the file.
-                    Err(err)
-                } else {
-                    err.emit();
-                    self.expected_tokens.clear(); // Reduce the number of errors.
-                    Ok(true)
-                }
-            }
-            _ => Err(err),
         }
     }
 
