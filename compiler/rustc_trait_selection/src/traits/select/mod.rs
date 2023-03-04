@@ -2149,7 +2149,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
-            // We can make this an ICE if/once we actually instantiate the trait obligation.
+            // We can make this an ICE if/once we actually instantiate the trait obligation eagerly.
             ty::Bound(..) => None,
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -2257,7 +2257,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Alias(..) | ty::Param(..) => {
+            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -2269,9 +2269,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ambiguous
             }
 
-            ty::Placeholder(..)
-            | ty::Bound(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            // We can make this an ICE if/once we actually instantiate the trait obligation eagerly.
+            ty::Bound(..) => None,
+
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
