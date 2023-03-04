@@ -390,3 +390,10 @@ pub(crate) struct ProcMacroPanicked {
 pub(crate) struct ProcMacroPanickedHelp {
     pub message: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_proc_macro_derive_tokens)]
+pub struct ProcMacroDeriveTokens {
+    #[primary_span]
+    pub span: Span,
+}
