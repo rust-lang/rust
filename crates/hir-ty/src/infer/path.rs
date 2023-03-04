@@ -40,20 +40,14 @@ impl<'a> InferenceContext<'a> {
         id: ExprOrPatId,
     ) -> Option<Ty> {
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
-            if path.segments().is_empty() {
-                // This can't actually happen syntax-wise
-                return None;
-            }
+            let Some(last) = path.segments().last() else { return None };
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ctx = crate::lower::TyLoweringContext::new(self.db, resolver);
             let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
-            self.resolve_ty_assoc_item(
-                ty,
-                path.segments().last().expect("path had at least one segment").name,
-                id,
-            )?
+            self.resolve_ty_assoc_item(ty, last.name, id)?
         } else {
+            // FIXME: report error, unresolved first path segment
             let value_or_partial =
                 resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
 
@@ -66,10 +60,13 @@ impl<'a> InferenceContext<'a> {
         };
 
         let typable: ValueTyDefId = match value {
-            ValueNs::LocalBinding(pat) => {
-                let ty = self.result.type_of_pat.get(pat)?.clone();
-                return Some(ty);
-            }
+            ValueNs::LocalBinding(pat) => match self.result.type_of_pat.get(pat) {
+                Some(ty) => return Some(ty.clone()),
+                None => {
+                    never!("uninferred pattern?");
+                    return None;
+                }
+            },
             ValueNs::FunctionId(it) => it.into(),
             ValueNs::ConstId(it) => it.into(),
             ValueNs::StaticId(it) => it.into(),
@@ -91,7 +88,7 @@ impl<'a> InferenceContext<'a> {
                     let ty = self.db.value_ty(struct_id.into()).substitute(Interner, &substs);
                     return Some(ty);
                 } else {
-                    // FIXME: diagnostic, invalid Self reference
+                    // FIXME: report error, invalid Self reference
                     return None;
                 }
             }

@@ -130,7 +130,7 @@ impl<'a> InferenceContext<'a> {
                 );
                 let ty = match label {
                     Some(_) => {
-                        let break_ty = self.table.new_type_var();
+                        let break_ty = expected.coercion_target_type(&mut self.table);
                         let (breaks, ty) = self.with_breakable_ctx(
                             BreakableKind::Block,
                             Some(break_ty.clone()),
@@ -403,37 +403,47 @@ impl<'a> InferenceContext<'a> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let expected = expected.adjust_for_branches(&mut self.table);
-
-                let result_ty = if arms.is_empty() {
+                if arms.is_empty() {
+                    self.diverges = Diverges::Always;
                     self.result.standard_types.never.clone()
                 } else {
-                    expected.coercion_target_type(&mut self.table)
-                };
-                let mut coerce = CoerceMany::new(result_ty);
-
-                let matchee_diverges = self.diverges;
-                let mut all_arms_diverge = Diverges::Always;
-
-                for arm in arms.iter() {
-                    self.diverges = Diverges::Maybe;
-                    let input_ty = self.resolve_ty_shallow(&input_ty);
-                    self.infer_top_pat(arm.pat, &input_ty);
-                    if let Some(guard_expr) = arm.guard {
-                        self.infer_expr(
-                            guard_expr,
-                            &Expectation::HasType(self.result.standard_types.bool_.clone()),
-                        );
+                    let matchee_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+                    let mut all_arms_diverge = Diverges::Always;
+                    for arm in arms.iter() {
+                        let input_ty = self.resolve_ty_shallow(&input_ty);
+                        self.infer_top_pat(arm.pat, &input_ty);
                     }
 
-                    let arm_ty = self.infer_expr_inner(arm.expr, &expected);
-                    all_arms_diverge &= self.diverges;
-                    coerce.coerce(self, Some(arm.expr), &arm_ty);
+                    let expected = expected.adjust_for_branches(&mut self.table);
+                    let result_ty = match &expected {
+                        // We don't coerce to `()` so that if the match expression is a
+                        // statement it's branches can have any consistent type.
+                        Expectation::HasType(ty) if *ty != self.result.standard_types.unit => {
+                            ty.clone()
+                        }
+                        _ => self.table.new_type_var(),
+                    };
+                    let mut coerce = CoerceMany::new(result_ty);
+
+                    for arm in arms.iter() {
+                        if let Some(guard_expr) = arm.guard {
+                            self.diverges = Diverges::Maybe;
+                            self.infer_expr(
+                                guard_expr,
+                                &Expectation::HasType(self.result.standard_types.bool_.clone()),
+                            );
+                        }
+                        self.diverges = Diverges::Maybe;
+
+                        let arm_ty = self.infer_expr_inner(arm.expr, &expected);
+                        all_arms_diverge &= self.diverges;
+                        coerce.coerce(self, Some(arm.expr), &arm_ty);
+                    }
+
+                    self.diverges = matchee_diverges | all_arms_diverge;
+
+                    coerce.complete(self)
                 }
-
-                self.diverges = matchee_diverges | all_arms_diverge;
-
-                coerce.complete(self)
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1179,8 +1189,15 @@ impl<'a> InferenceContext<'a> {
                         self.diverges = previous_diverges;
                     }
                 }
-                Statement::Expr { expr, .. } => {
-                    self.infer_expr(*expr, &Expectation::none());
+                &Statement::Expr { expr, has_semi } => {
+                    self.infer_expr(
+                        expr,
+                        &if has_semi {
+                            Expectation::none()
+                        } else {
+                            Expectation::HasType(self.result.standard_types.unit.clone())
+                        },
+                    );
                 }
             }
         }
