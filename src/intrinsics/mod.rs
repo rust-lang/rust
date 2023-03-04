@@ -21,7 +21,8 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -634,37 +635,35 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (); intrinsic);
 
             let ty = substs.type_at(0);
-            let layout = fx.layout_of(ty);
-            let do_panic = match intrinsic {
-                sym::assert_inhabited => layout.abi.is_uninhabited(),
-                sym::assert_zero_valid => !fx
+
+            let requirement = ValidityRequirement::from_intrinsic(intrinsic);
+
+            if let Some(requirement) = requirement {
+                let do_panic = !fx
                     .tcx
-                    .permits_zero_init(fx.param_env().and(ty))
-                    .expect("expected to have layout during codegen"),
-                sym::assert_mem_uninitialized_valid => !fx
-                    .tcx
-                    .permits_uninit_init(fx.param_env().and(ty))
-                    .expect("expected to have layout during codegen"),
-                _ => unreachable!(),
-            };
-            if do_panic {
-                let msg_str = with_no_visible_paths!({
-                    with_no_trimmed_paths!({
-                        if layout.abi.is_uninhabited() {
-                            // Use this error even for the other intrinsics as it is more precise.
-                            format!("attempted to instantiate uninhabited type `{}`", ty)
-                        } else if intrinsic == sym::assert_zero_valid {
-                            format!("attempted to zero-initialize type `{}`, which is invalid", ty)
-                        } else {
-                            format!(
-                                "attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
-                            )
-                        }
-                    })
-                });
-                crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
-                return;
+                    .check_validity_requirement((requirement, fx.param_env().and(ty)))
+                    .expect("expect to have layout during codegen");
+
+                if do_panic {
+                    let layout = fx.layout_of(ty);
+                    let msg_str = with_no_visible_paths!({
+                        with_no_trimmed_paths!({
+                            if layout.abi.is_uninhabited() {
+                                // Use this error even for the other intrinsics as it is more precise.
+                                format!("attempted to instantiate uninhabited type `{}`", ty)
+                            } else if intrinsic == sym::assert_zero_valid {
+                                format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                            } else {
+                                format!(
+                                    "attempted to leave type `{}` uninitialized, which is invalid",
+                                    ty
+                                )
+                            }
+                        })
+                    });
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
+                    return;
+                }
             }
         }
 
