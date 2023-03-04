@@ -1132,6 +1132,10 @@ impl File {
         self.0.read_buf(cursor)
     }
 
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        self.0.read_vectored_at(bufs, offset)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -1147,6 +1151,10 @@ impl File {
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.0.write_at(buf, offset)
+    }
+
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        self.0.write_vectored_at(bufs, offset)
     }
 
     pub fn flush(&self) -> io::Result<()> {

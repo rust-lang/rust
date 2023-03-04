@@ -98,7 +98,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
-                bufs.as_ptr() as *const libc::iovec,
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as libc::c_int,
             )
         })?;
@@ -107,7 +107,7 @@ impl FileDesc {
 
     #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        return crate::io::default_read_vectored(|b| self.read(b), bufs);
+        io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
@@ -153,6 +153,95 @@ impl FileDesc {
         Ok(())
     }
 
+    #[cfg(any(
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+    ))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::preadv(
+                self.as_raw_fd(),
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(not(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    )))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        io::default_read_vectored(|b| self.read_at(b, offset), bufs)
+    }
+
+    // We support some old Android versions that do not have `preadv` in libc,
+    // so we use weak linkage and fallback to a direct syscall if not available.
+    //
+    // On 32-bit targets, we don't want to deal with weird ABI issues around
+    // passing 64-bits parameters to syscalls, so we fallback to the default
+    // implementation if `preadv` is not available.
+    #[cfg(all(target_os = "android", target_pointer_width = "64"))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::syscall! {
+            fn preadv(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t
+            ) -> isize
+        }
+
+        let ret = cvt(unsafe {
+            preadv(
+                self.as_raw_fd(),
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    // We support old MacOS and iOS versions that do not have `preadv`. There is
+    // no `syscall` possible in these platform.
+    #[cfg(any(
+        all(target_os = "android", target_pointer_width = "32"),
+        target_os = "ios",
+        target_os = "macos",
+    ))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+
+        match preadv64.get() {
+            Some(preadv) => {
+                let ret = cvt(unsafe {
+                    preadv(
+                        self.as_raw_fd(),
+                        bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        offset as _,
+                    )
+                })?;
+                Ok(ret as usize)
+            }
+            None => io::default_read_vectored(|b| self.read_at(b, offset), bufs),
+        }
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(
@@ -178,7 +267,7 @@ impl FileDesc {
 
     #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        return crate::io::default_write_vectored(|b| self.write(b), bufs);
+        io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
@@ -200,6 +289,95 @@ impl FileDesc {
                 offset as off64_t,
             ))
             .map(|n| n as usize)
+        }
+    }
+
+    #[cfg(any(
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+    ))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::pwritev(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(not(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    )))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        io::default_write_vectored(|b| self.write_at(b, offset), bufs)
+    }
+
+    // We support some old Android versions that do not have `pwritev` in libc,
+    // so we use weak linkage and fallback to a direct syscall if not available.
+    //
+    // On 32-bit targets, we don't want to deal with weird ABI issues around
+    // passing 64-bits parameters to syscalls, so we fallback to the default
+    // implementation if `pwritev` is not available.
+    #[cfg(all(target_os = "android", target_pointer_width = "64"))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::syscall! {
+            fn pwritev(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t
+            ) -> isize
+        }
+
+        let ret = cvt(unsafe {
+            pwritev(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    // We support old MacOS and iOS versions that do not have `pwritev`. There is
+    // no `syscall` possible in these platform.
+    #[cfg(any(
+        all(target_os = "android", target_pointer_width = "32"),
+        target_os = "ios",
+        target_os = "macos",
+    ))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::weak!(fn pwritev64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+
+        match pwritev64.get() {
+            Some(pwritev) => {
+                let ret = cvt(unsafe {
+                    pwritev(
+                        self.as_raw_fd(),
+                        bufs.as_ptr() as *const libc::iovec,
+                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        offset as _,
+                    )
+                })?;
+                Ok(ret as usize)
+            }
+            None => io::default_write_vectored(|b| self.write_at(b, offset), bufs),
         }
     }
 
