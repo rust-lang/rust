@@ -22,8 +22,6 @@ tests/ui/simd/intrinsic/inlining-issue67557.rs
 tests/ui/simd/monomorphize-shuffle-index.rs
 tests/ui/simd/shuffle.rs
 tests/ui/simd/simd-bitmask.rs
-tests/ui/binding/fn-arg-incomplete-pattern-drop-order.rs
-tests/ui/drop/dynamic-drop.rs
 tests/ui/generator/resume-after-return.rs
 tests/ui/iterators/iter-step-overflow-debug.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs
@@ -36,6 +34,5 @@ tests/ui/async-await/async-fn-size-uninit-locals.rs
 tests/ui/cfg/cfg-panic.rs
 tests/ui/generator/size-moved-locals.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
-tests/ui/runtime/rt-explody-panic-payloads.rs
 tests/ui/simd/intrinsic/generic-gather-pass.rs
 tests/ui/simd/issue-85915-simd-ptrs.rs
