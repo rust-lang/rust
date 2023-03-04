@@ -83,10 +83,12 @@ cfg_if::cfg_if! {
         pub use crate::android::log2f32;
         pub use crate::android::log2f64;
     } else {
+        #[inline]
         pub fn log2f32(n: f32) -> f32 {
             unsafe { crate::intrinsics::log2f32(n) }
         }
 
+        #[inline]
         pub fn log2f64(n: f64) -> f64 {
             unsafe { crate::intrinsics::log2f64(n) }
         }
@@ -97,28 +99,29 @@ cfg_if::cfg_if! {
 // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
 // of expected NaN).
 #[cfg(not(test))]
-cfg_if::cfg_if! {
-    if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
-        pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
-            if n.is_finite() {
-                if n > 0.0 {
-                    log_fn(n)
-                } else if n == 0.0 {
-                    f64::NEG_INFINITY // log(0) = -Inf
-                } else {
-                    f64::NAN // log(-n) = NaN
-                }
-            } else if n.is_nan() {
-                n // log(NaN) = NaN
-            } else if n > 0.0 {
-                n // log(Inf) = Inf
-            } else {
-                f64::NAN // log(-Inf) = NaN
-            }
-        }
-    } else {
-        pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[inline]
+pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
+    if n.is_finite() {
+        if n > 0.0 {
             log_fn(n)
+        } else if n == 0.0 {
+            f64::NEG_INFINITY // log(0) = -Inf
+        } else {
+            f64::NAN // log(-n) = NaN
         }
+    } else if n.is_nan() {
+        n // log(NaN) = NaN
+    } else if n > 0.0 {
+        n // log(Inf) = Inf
+    } else {
+        f64::NAN // log(-Inf) = NaN
     }
+}
+
+#[cfg(not(test))]
+#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+#[inline]
+pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
+    log_fn(n)
 }
