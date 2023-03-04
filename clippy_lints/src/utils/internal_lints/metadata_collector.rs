@@ -26,7 +26,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
-use std::collections::BinaryHeap;
+use std::collections::{BTreeSet, BinaryHeap};
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
@@ -264,6 +264,9 @@ struct LintMetadata {
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
     applicability: Option<ApplicabilityInfo>,
+    /// All the past names of lints which have been renamed.
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    former_ids: BTreeSet<String>,
 }
 
 impl LintMetadata {
@@ -283,6 +286,7 @@ impl LintMetadata {
             version,
             docs,
             applicability: None,
+            former_ids: BTreeSet::new(),
         }
     }
 }
@@ -901,6 +905,7 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
                         if name == lint_name;
                         if let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
                         then {
+                            lint.former_ids.insert(past_name.to_owned());
                             writeln!(collected, "* `{past_name}`").unwrap();
                             names.push(past_name.to_string());
                         }
