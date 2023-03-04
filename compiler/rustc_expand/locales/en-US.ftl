@@ -133,3 +133,6 @@ expand_trace_macro = trace_macro
 expand_proc_macro_panicked =
     proc macro panicked
     .help = message: {$message}
+
+expand_proc_macro_derive_tokens =
+    proc-macro derive produced unparseable tokens
