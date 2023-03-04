@@ -39,6 +39,7 @@ const QUERY = [
     "a!!",
     "mod:a!",
     "a!::a",
+    "a<",
 ];
 
 const PARSED = [
@@ -401,5 +402,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "a!::a",
         error: 'Cannot have associated items in macros',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a<",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a<",
+        error: "Unclosed `<`",
     },
 ];

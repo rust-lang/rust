@@ -170,13 +170,17 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
-/// Used in `might_permit_raw_init` to indicate the kind of initialisation
+/// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum ValidityRequirement {
     Inhabited,
     Zero,
+    /// The return value of mem::uninitialized, 0x01
+    /// (unless -Zstrict-init-checks is on, in which case it's the same as Uninit).
     UninitMitigated0x01Fill,
+    /// True uninitialized memory.
+    Uninit,
 }
 
 impl ValidityRequirement {
@@ -196,6 +200,7 @@ impl fmt::Display for ValidityRequirement {
             Self::Inhabited => f.write_str("is inhabited"),
             Self::Zero => f.write_str("allows being left zeroed"),
             Self::UninitMitigated0x01Fill => f.write_str("allows being filled with 0x01"),
+            Self::Uninit => f.write_str("allows being left uninitialized"),
         }
     }
 }

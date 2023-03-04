@@ -30,7 +30,7 @@ pub fn check_validity_requirement<'tcx>(
         return Ok(!layout.abi.is_uninhabited());
     }
 
-    if tcx.sess.opts.unstable_opts.strict_init_checks {
+    if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
         might_permit_raw_init_strict(layout, tcx, kind)
     } else {
         let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
@@ -98,6 +98,9 @@ fn might_permit_raw_init_lax<'tcx>(
                     val = (val << 8) | 0x01;
                 }
                 s.valid_range(cx).contains(val)
+            }
+            ValidityRequirement::Uninit => {
+                bug!("ValidityRequirement::Uninit should have been handled above")
             }
         }
     };
