@@ -194,6 +194,16 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             scopes.set_scope(expr, scope);
             compute_block_scopes(statements, *tail, body, scopes, &mut scope);
         }
+        Expr::Unsafe { id, statements, tail }
+        | Expr::Async { id, statements, tail }
+        | Expr::Const { id, statements, tail }
+        | Expr::TryBlock { id, statements, tail } => {
+            let mut scope = scopes.new_block_scope(*scope, *id, None);
+            // Overwrite the old scope for the block expr, so that every block scope can be found
+            // via the block itself (important for blocks that only contain items, no expressions).
+            scopes.set_scope(expr, scope);
+            compute_block_scopes(statements, *tail, body, scopes, &mut scope);
+        }
         Expr::For { iterable, pat, body: body_expr, label } => {
             compute_expr_scopes(*iterable, body, scopes, scope);
             let mut scope = scopes.new_labeled_scope(*scope, make_label(label));

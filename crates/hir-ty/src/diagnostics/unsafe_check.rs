@@ -95,7 +95,7 @@ fn walk_unsafe(
             }
         }
         Expr::Unsafe { .. } => {
-            expr.walk_child_exprs(|child| {
+            return expr.walk_child_exprs(|child| {
                 walk_unsafe(db, infer, def, body, child, true, unsafe_expr_cb);
             });
         }
