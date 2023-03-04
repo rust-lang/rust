@@ -251,6 +251,7 @@ mod question_mark_used;
 mod ranges;
 mod rc_clone_in_vec_init;
 mod read_zero_byte_vec;
+mod redundant_async_block;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -928,6 +929,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
+    store.register_early_pass(|| Box::new(redundant_async_block::RedundantAsyncBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
