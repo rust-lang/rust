@@ -28,6 +28,7 @@ fn is_item_raw<'tcx>(
     item: LangItem,
 ) -> bool {
     let (param_env, ty) = query.into_parts();
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
     let trait_def_id = tcx.require_lang_item(item, None);
     let infcx = tcx.infer_ctxt().build();
     traits::type_known_to_meet_bound_modulo_regions(&infcx, param_env, ty, trait_def_id, DUMMY_SP)
