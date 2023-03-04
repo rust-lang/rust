@@ -8,7 +8,7 @@ all:
 	cat $(TMPDIR)/libs.txt
 
 ifdef IS_MSVC
-	$(CC) $(CFLAGS) foo.c $(TMPDIR)/foo.lib $$(cat $(TMPDIR)/libs.txt) $(call OUT_EXE,foo)
+	$(CC) $(CFLAGS) foo.c $(TMPDIR)/foo.lib $(call OUT_EXE,foo) /link $$(cat $(TMPDIR)/libs.txt)
 else
 	$(CC) $(CFLAGS) foo.c -L $(TMPDIR) -lfoo $$(cat $(TMPDIR)/libs.txt) -o $(call RUN_BINFILE,foo)
 endif
