@@ -11,7 +11,7 @@ publish = false
 
 [dependencies]
 cargo_metadata = "0.15.3"
-clap = "4.1.4"
+clap = { version = "4.1.8", features = ["derive", "env"] }
 crossbeam-channel = "0.5.6"
 flate2 = "1.0"
 rayon = "1.5.1"
