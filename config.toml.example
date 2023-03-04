@@ -164,6 +164,7 @@ changelog-seen = 2
 # General build configuration options
 # =============================================================================
 [build]
+
 # The default stage to use for the `check` subcommand
 #check-stage = 0
 

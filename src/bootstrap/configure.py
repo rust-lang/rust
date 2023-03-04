@@ -488,6 +488,22 @@ for section_key, section_config in config.items():
     else:
         configure_section(sections[section_key], section_config)
 
+def write_uncommented(target, f):
+    block = []
+    is_comment = True
+
+    for line in target:
+        block.append(line)
+        if len(line) == 0:
+            if not is_comment:
+                for l in block:
+                    f.write(l + "\n")
+            block = []
+            is_comment = True
+            continue
+        is_comment = is_comment and line.startswith('#')
+    return f
+
 # Now that we've built up our `config.toml`, write it all out in the same
 # order that we read it in.
 p("")
@@ -496,11 +512,9 @@ with bootstrap.output('config.toml') as f:
     for section in section_order:
         if section == 'target':
             for target in targets:
-                for line in targets[target]:
-                    f.write(line + "\n")
+                f = write_uncommented(targets[target], f)
         else:
-            for line in sections[section]:
-                f.write(line + "\n")
+            f = write_uncommented(sections[section], f)
 
 with bootstrap.output('Makefile') as f:
     contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
