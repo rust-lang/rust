@@ -61,22 +61,27 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
     Some(tracing::subscriber::set_default(subscriber))
 }
 
+#[track_caller]
 fn check_types(ra_fixture: &str) {
     check_impl(ra_fixture, false, true, false)
 }
 
+#[track_caller]
 fn check_types_source_code(ra_fixture: &str) {
     check_impl(ra_fixture, false, true, true)
 }
 
+#[track_caller]
 fn check_no_mismatches(ra_fixture: &str) {
     check_impl(ra_fixture, true, false, false)
 }
 
+#[track_caller]
 fn check(ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
 }
 
+#[track_caller]
 fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);

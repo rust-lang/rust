@@ -124,41 +124,18 @@ impl<'a> InferenceContext<'a> {
                 self.result.standard_types.bool_.clone()
             }
             Expr::Block { statements, tail, label, id: _ } => {
-                let old_resolver = mem::replace(
-                    &mut self.resolver,
-                    resolver_for_expr(self.db.upcast(), self.owner, tgt_expr),
-                );
-                let ty = match label {
-                    Some(_) => {
-                        let break_ty = expected.coercion_target_type(&mut self.table);
-                        let (breaks, ty) = self.with_breakable_ctx(
-                            BreakableKind::Block,
-                            Some(break_ty.clone()),
-                            *label,
-                            |this| {
-                                this.infer_block(
-                                    tgt_expr,
-                                    statements,
-                                    *tail,
-                                    &Expectation::has_type(break_ty),
-                                )
-                            },
-                        );
-                        breaks.unwrap_or(ty)
-                    }
-                    None => self.infer_block(tgt_expr, statements, *tail, expected),
-                };
-                self.resolver = old_resolver;
-                ty
+                self.infer_block(tgt_expr, statements, *tail, *label, expected)
             }
-            Expr::Unsafe { body } => self.infer_expr(*body, expected),
-            Expr::Const { body } => {
+            Expr::Unsafe { id: _, statements, tail } => {
+                self.infer_block(tgt_expr, statements, *tail, None, expected)
+            }
+            Expr::Const { id: _, statements, tail } => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                    this.infer_expr(*body, expected)
+                    this.infer_block(tgt_expr, statements, *tail, None, expected)
                 })
                 .1
             }
-            Expr::TryBlock { body } => {
+            Expr::TryBlock { id: _, statements, tail } => {
                 // The type that is returned from the try block
                 let try_ty = self.table.new_type_var();
                 if let Some(ty) = expected.only_has_type(&mut self.table) {
@@ -169,13 +146,16 @@ impl<'a> InferenceContext<'a> {
                 let ok_ty =
                     self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_output());
 
-                self.with_breakable_ctx(BreakableKind::Block, Some(ok_ty.clone()), None, |this| {
-                    this.infer_expr(*body, &Expectation::has_type(ok_ty));
-                });
-
+                self.infer_block(
+                    tgt_expr,
+                    statements,
+                    *tail,
+                    None,
+                    &Expectation::has_type(ok_ty.clone()),
+                );
                 try_ty
             }
-            Expr::Async { body } => {
+            Expr::Async { id: _, statements, tail } => {
                 let ret_ty = self.table.new_type_var();
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
@@ -184,7 +164,13 @@ impl<'a> InferenceContext<'a> {
 
                 let (_, inner_ty) =
                     self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                        this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty))
+                        this.infer_block(
+                            tgt_expr,
+                            statements,
+                            *tail,
+                            None,
+                            &Expectation::has_type(ret_ty),
+                        )
                     });
 
                 self.diverges = prev_diverges;
@@ -193,7 +179,8 @@ impl<'a> InferenceContext<'a> {
 
                 // Use the first type parameter as the output type of future.
                 // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
-                let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
+                let impl_trait_id =
+                    crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, tgt_expr);
                 let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                 TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, inner_ty))
                     .intern(Interner)
@@ -1153,80 +1140,102 @@ impl<'a> InferenceContext<'a> {
         expr: ExprId,
         statements: &[Statement],
         tail: Option<ExprId>,
+        label: Option<LabelId>,
         expected: &Expectation,
     ) -> Ty {
-        for stmt in statements {
-            match stmt {
-                Statement::Let { pat, type_ref, initializer, else_branch } => {
-                    let decl_ty = type_ref
-                        .as_ref()
-                        .map(|tr| self.make_ty(tr))
-                        .unwrap_or_else(|| self.table.new_type_var());
+        let coerce_ty = expected.coercion_target_type(&mut self.table);
+        let old_resolver =
+            mem::replace(&mut self.resolver, resolver_for_expr(self.db.upcast(), self.owner, expr));
 
-                    let ty = if let Some(expr) = initializer {
-                        let ty = if contains_explicit_ref_binding(&self.body, *pat) {
-                            self.infer_expr(*expr, &Expectation::has_type(decl_ty.clone()))
-                        } else {
-                            self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()))
-                        };
-                        if type_ref.is_some() {
-                            decl_ty
-                        } else {
-                            ty
+        let (break_ty, ty) =
+            self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty.clone()), label, |this| {
+                for stmt in statements {
+                    match stmt {
+                        Statement::Let { pat, type_ref, initializer, else_branch } => {
+                            let decl_ty = type_ref
+                                .as_ref()
+                                .map(|tr| this.make_ty(tr))
+                                .unwrap_or_else(|| this.table.new_type_var());
+
+                            let ty = if let Some(expr) = initializer {
+                                let ty = if contains_explicit_ref_binding(&this.body, *pat) {
+                                    this.infer_expr(*expr, &Expectation::has_type(decl_ty.clone()))
+                                } else {
+                                    this.infer_expr_coerce(
+                                        *expr,
+                                        &Expectation::has_type(decl_ty.clone()),
+                                    )
+                                };
+                                if type_ref.is_some() {
+                                    decl_ty
+                                } else {
+                                    ty
+                                }
+                            } else {
+                                decl_ty
+                            };
+
+                            this.infer_top_pat(*pat, &ty);
+
+                            if let Some(expr) = else_branch {
+                                let previous_diverges =
+                                    mem::replace(&mut this.diverges, Diverges::Maybe);
+                                this.infer_expr_coerce(
+                                    *expr,
+                                    &Expectation::HasType(this.result.standard_types.never.clone()),
+                                );
+                                this.diverges = previous_diverges;
+                            }
                         }
-                    } else {
-                        decl_ty
-                    };
-
-                    self.infer_top_pat(*pat, &ty);
-
-                    if let Some(expr) = else_branch {
-                        let previous_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
-                        self.infer_expr_coerce(
-                            *expr,
-                            &Expectation::HasType(self.result.standard_types.never.clone()),
-                        );
-                        self.diverges = previous_diverges;
+                        &Statement::Expr { expr, has_semi } => {
+                            this.infer_expr(
+                                expr,
+                                &if has_semi {
+                                    Expectation::none()
+                                } else {
+                                    Expectation::HasType(this.result.standard_types.unit.clone())
+                                },
+                            );
+                        }
                     }
                 }
-                &Statement::Expr { expr, has_semi } => {
-                    self.infer_expr(
-                        expr,
-                        &if has_semi {
-                            Expectation::none()
-                        } else {
-                            Expectation::HasType(self.result.standard_types.unit.clone())
-                        },
-                    );
-                }
-            }
-        }
 
-        if let Some(expr) = tail {
-            self.infer_expr_coerce(expr, expected)
-        } else {
-            // Citing rustc: if there is no explicit tail expression,
-            // that is typically equivalent to a tail expression
-            // of `()` -- except if the block diverges. In that
-            // case, there is no value supplied from the tail
-            // expression (assuming there are no other breaks,
-            // this implies that the type of the block will be
-            // `!`).
-            if self.diverges.is_always() {
-                // we don't even make an attempt at coercion
-                self.table.new_maybe_never_var()
-            } else if let Some(t) = expected.only_has_type(&mut self.table) {
-                if self.coerce(Some(expr), &TyBuilder::unit(), &t).is_err() {
-                    self.result.type_mismatches.insert(
-                        expr.into(),
-                        TypeMismatch { expected: t.clone(), actual: TyBuilder::unit() },
-                    );
+                // FIXME: This should make use of the breakable CoerceMany
+                if let Some(expr) = tail {
+                    this.infer_expr_coerce(expr, expected)
+                } else {
+                    // Citing rustc: if there is no explicit tail expression,
+                    // that is typically equivalent to a tail expression
+                    // of `()` -- except if the block diverges. In that
+                    // case, there is no value supplied from the tail
+                    // expression (assuming there are no other breaks,
+                    // this implies that the type of the block will be
+                    // `!`).
+                    if this.diverges.is_always() {
+                        // we don't even make an attempt at coercion
+                        this.table.new_maybe_never_var()
+                    } else if let Some(t) = expected.only_has_type(&mut this.table) {
+                        if this
+                            .coerce(Some(expr), &this.result.standard_types.unit.clone(), &t)
+                            .is_err()
+                        {
+                            this.result.type_mismatches.insert(
+                                expr.into(),
+                                TypeMismatch {
+                                    expected: t.clone(),
+                                    actual: this.result.standard_types.unit.clone(),
+                                },
+                            );
+                        }
+                        t
+                    } else {
+                        this.result.standard_types.unit.clone()
+                    }
                 }
-                t
-            } else {
-                TyBuilder::unit()
-            }
-        }
+            });
+        self.resolver = old_resolver;
+
+        break_ty.unwrap_or(ty)
     }
 
     fn lookup_field(

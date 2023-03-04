@@ -331,56 +331,11 @@ impl MirLowerCtx<'_> {
                 }
                 Ok(result)
             }
+            Expr::Unsafe { id: _, statements, tail } => {
+                self.lower_block_to_place(None, statements, current, *tail, place)
+            }
             Expr::Block { id: _, statements, tail, label } => {
-                if label.is_some() {
-                    not_supported!("block with label");
-                }
-                for statement in statements.iter() {
-                    match statement {
-                        hir_def::expr::Statement::Let {
-                            pat,
-                            initializer,
-                            else_branch,
-                            type_ref: _,
-                        } => match initializer {
-                            Some(expr_id) => {
-                                let else_block;
-                                let init_place;
-                                (init_place, current) =
-                                    self.lower_expr_to_some_place(*expr_id, current)?;
-                                (current, else_block) = self.pattern_match(
-                                    current,
-                                    None,
-                                    init_place,
-                                    self.expr_ty(*expr_id),
-                                    *pat,
-                                    BindingAnnotation::Unannotated,
-                                )?;
-                                match (else_block, else_branch) {
-                                    (None, _) => (),
-                                    (Some(else_block), None) => {
-                                        self.set_terminator(else_block, Terminator::Unreachable);
-                                    }
-                                    (Some(else_block), Some(else_branch)) => {
-                                        let (_, b) = self
-                                            .lower_expr_to_some_place(*else_branch, else_block)?;
-                                        self.set_terminator(b, Terminator::Unreachable);
-                                    }
-                                }
-                            }
-                            None => continue,
-                        },
-                        hir_def::expr::Statement::Expr { expr, has_semi: _ } => {
-                            let ty = self.expr_ty(*expr);
-                            let temp = self.temp(ty)?;
-                            current = self.lower_expr_to_place(*expr, temp.into(), current)?;
-                        }
-                    }
-                }
-                match tail {
-                    Some(tail) => self.lower_expr_to_place(*tail, place, current),
-                    None => Ok(current),
-                }
+                self.lower_block_to_place(*label, statements, current, *tail, place)
             }
             Expr::Loop { body, label } => self.lower_loop(current, *label, |this, begin, _| {
                 let (_, block) = this.lower_expr_to_some_place(*body, begin)?;
@@ -686,7 +641,6 @@ impl MirLowerCtx<'_> {
                 self.push_assignment(current, place, r);
                 Ok(current)
             }
-            Expr::Unsafe { body } => self.lower_expr_to_place(*body, place, current),
             Expr::Array(l) => match l {
                 Array::ElementList { elements, .. } => {
                     let elem_ty = match &self.expr_ty(expr_id).data(Interner).kind {
@@ -720,6 +674,62 @@ impl MirLowerCtx<'_> {
                 Ok(current)
             }
             Expr::Underscore => not_supported!("underscore"),
+        }
+    }
+
+    fn lower_block_to_place(
+        &mut self,
+        label: Option<LabelId>,
+        statements: &[hir_def::expr::Statement],
+        mut current: BasicBlockId,
+        tail: Option<ExprId>,
+        place: Place,
+    ) -> Result<BasicBlockId> {
+        if label.is_some() {
+            not_supported!("block with label");
+        }
+        for statement in statements.iter() {
+            match statement {
+                hir_def::expr::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
+                    match initializer {
+                        Some(expr_id) => {
+                            let else_block;
+                            let init_place;
+                            (init_place, current) =
+                                self.lower_expr_to_some_place(*expr_id, current)?;
+                            (current, else_block) = self.pattern_match(
+                                current,
+                                None,
+                                init_place,
+                                self.expr_ty(*expr_id),
+                                *pat,
+                                BindingAnnotation::Unannotated,
+                            )?;
+                            match (else_block, else_branch) {
+                                (None, _) => (),
+                                (Some(else_block), None) => {
+                                    self.set_terminator(else_block, Terminator::Unreachable);
+                                }
+                                (Some(else_block), Some(else_branch)) => {
+                                    let (_, b) =
+                                        self.lower_expr_to_some_place(*else_branch, else_block)?;
+                                    self.set_terminator(b, Terminator::Unreachable);
+                                }
+                            }
+                        }
+                        None => continue,
+                    }
+                }
+                hir_def::expr::Statement::Expr { expr, has_semi: _ } => {
+                    let ty = self.expr_ty(*expr);
+                    let temp = self.temp(ty)?;
+                    current = self.lower_expr_to_place(*expr, temp.into(), current)?;
+                }
+            }
+        }
+        match tail {
+            Some(tail) => self.lower_expr_to_place(tail, place, current),
+            None => Ok(current),
         }
     }
 
