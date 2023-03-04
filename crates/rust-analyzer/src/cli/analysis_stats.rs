@@ -486,8 +486,10 @@ impl flags::AnalysisStats {
             percentage(num_pats_partially_unknown, num_pats),
             num_pat_type_mismatches
         );
-        report_metric("unknown type", num_exprs_unknown + num_pats_unknown, "#");
-        report_metric("type mismatches", num_expr_type_mismatches + num_pat_type_mismatches, "#");
+        report_metric("unknown type", num_exprs_unknown, "#");
+        report_metric("type mismatches", num_expr_type_mismatches, "#");
+        report_metric("pattern unknown type", num_pats_unknown, "#");
+        report_metric("pattern type mismatches", num_pat_type_mismatches, "#");
 
         eprintln!("{:<20} {}", "Inference:", inference_sw.elapsed());
     }
