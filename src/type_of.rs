@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
+use rustc_target::abi::{self, Abi, Align, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiGccExt, GccType};
@@ -47,6 +47,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ty::UintTy::U64 => self.type_i64(),
             ty::UintTy::U128 => self.type_i128(),
         }
+    }
+}
+
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
+    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
+        self.layout_of(ty).align.abi
     }
 }
 

@@ -13,6 +13,7 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRan
 
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -28,6 +29,21 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // SIMD builtins require a constant value.
         self.bitcast_if_needed(value, typ)
     }
+}
+
+fn set_global_alignment<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, gv: LValue<'gcc>, mut align: Align) {
+    // The target may require greater alignment for globals than the type does.
+    // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
+    // which can force it to be smaller. Rust doesn't support this yet.
+    if let Some(min) = cx.sess().target.min_global_align {
+        match Align::from_bits(min) {
+            Ok(min) => align = align.max(min),
+            Err(err) => {
+                cx.sess().emit_err(InvalidMinimumAlignment { err });
+            }
+        }
+    }
+    gv.set_alignment(align.bytes() as i32);
 }
 
 impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
@@ -81,7 +97,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let gcc_type = self.layout_of(ty).gcc_type(self);
 
-        // TODO(antoyo): set alignment.
+        set_global_alignment(self, global, self.align_of(ty));
 
         let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);

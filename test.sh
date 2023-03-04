@@ -225,6 +225,9 @@ rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-12 || which FileCheck-13 || which FileCheck-14`"
+
+[llvm]
+download-ci-llvm = false
 EOF
 
     rustc -V | cut -d' ' -f3 | tr -d '('

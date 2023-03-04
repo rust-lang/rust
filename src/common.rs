@@ -36,7 +36,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let context = &cx.context;
     let byte_type = context.new_type::<u8>();
-    let typ = context.new_array_type(None, byte_type, bytes.len() as i32);
+    let typ = context.new_array_type(None, byte_type, bytes.len() as u64);
     let elements: Vec<_> =
         bytes.iter()
         .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))

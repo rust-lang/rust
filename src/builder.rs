@@ -1228,12 +1228,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     #[cfg(feature="master")]
     fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
-        // TODO(antoyo): check if this is normal that we need to dereference the value.
-        // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
-        // pointer of pointer that is later dereferenced.
-        let exn_type = exn0.get_type().make_pointer();
+        let exn_type = exn0.get_type();
         let exn = self.context.new_cast(None, exn0, exn_type);
-        let exn = exn.dereference(None).to_rvalue();
         let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
         self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
         self.unreachable();
