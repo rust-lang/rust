@@ -16,9 +16,9 @@ pub(super) enum Semicolon {
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser<'_>) -> bool {
+pub(super) fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    expr_bp(p, None, r, 1).is_some()
+    expr_bp(p, None, r, 1).map(|(m, _)| m)
 }
 
 pub(super) fn expr_stmt(
@@ -120,16 +120,32 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
             // fn f() { let x: i32; }
             types::ascription(p);
         }
+
+        let mut is_block_like_expr_after_eq = false;
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            expressions::expr(p);
+            let expr = expressions::expr(p);
+
+            if let Some(expr) = expr {
+                is_block_like_expr_after_eq = match expr.kind() {
+                    IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => true,
+                    _ => false,
+                };
+            }
         }
 
         if p.at(T![else]) {
+            // test_err let_else_right_curly_brace
+            // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
+            if is_block_like_expr_after_eq {
+                p.error(
+                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
+                )
+            }
+
             // test let_else
             // fn f() { let Some(x) = opt else { return }; }
-
             let m = p.start();
             p.bump(T![else]);
             block_expr(p);
@@ -578,7 +594,14 @@ fn arg_list(p: &mut Parser<'_>) {
     // fn main() {
     //     foo(#[attr] 92)
     // }
-    delimited(p, T!['('], T![')'], T![,], EXPR_FIRST.union(ATTRIBUTE_FIRST), expr);
+    delimited(
+        p,
+        T!['('],
+        T![')'],
+        T![,],
+        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        |p: &mut Parser<'_>| expr(p).is_some(),
+    );
     m.complete(p, ARG_LIST);
 }
 

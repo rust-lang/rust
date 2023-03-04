@@ -188,7 +188,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
         // test tuple_attrs
         // const A: (i64, i64) = (1, #[cfg(test)] 2);
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 
@@ -221,7 +221,7 @@ fn array_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
         // test array_attrs
         // const A: &[i64] = &[1, #[cfg(test)] 2];
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 
