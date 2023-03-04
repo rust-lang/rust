@@ -2287,6 +2287,7 @@ dependencies = [
  "anyhow",
  "clap 4.1.4",
  "fs-err",
+ "rustc-hash",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -4850,6 +4851,7 @@ dependencies = [
 name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
+ "rustc-hash",
  "serde",
  "serde_json",
 ]
