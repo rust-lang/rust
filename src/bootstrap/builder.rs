@@ -284,7 +284,7 @@ impl StepDescription {
         }
     }
 
-    /// This might run the builder. If the any of the `pathsets` are excluded by `self.is_excluded`
+    /// This might run `self`. If the any of the `pathsets` are excluded by `self.is_excluded`
     /// it will not run but will return true.
     /// If no target can be determined it will not run and will return false.
     /// Else it will run and return true.
@@ -341,8 +341,8 @@ impl StepDescription {
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
-                    ran =
-                        desc.maybe_run(builder, should_run.paths.iter().cloned().collect()) || ran;
+                    ran |= desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
+
                 }
             }
         }
@@ -356,7 +356,7 @@ impl StepDescription {
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if let Some(suite) = should_run.is_suite_path(&path) {
-                    ran = desc.maybe_run(builder, vec![suite.clone()]) || ran;
+                    ran |= desc.maybe_run(builder, vec![suite.clone()]);
                     return false;
                 }
             }
@@ -371,7 +371,7 @@ impl StepDescription {
         for (desc, should_run) in v.iter().zip(&should_runs) {
             let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
             if !pathsets.is_empty() {
-                ran = desc.maybe_run(builder, pathsets) || ran;
+                ran |= desc.maybe_run(builder, pathsets);
             }
         }
 
