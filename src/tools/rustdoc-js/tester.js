@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 function loadContent(content) {
-    var Module = module.constructor;
-    var m = new Module();
+    const Module = module.constructor;
+    const m = new Module();
     m._compile(content, "tmp.js");
     m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1 ||
         content.startsWith("// ignore-order\n");
@@ -26,8 +26,8 @@ function contentToDiffLine(key, value) {
 // the diff between the two items.
 function betterLookingDiff(entry, data) {
     let output = ' {\n';
-    let spaces = '     ';
-    for (let key in entry) {
+    const spaces = '     ';
+    for (const key in entry) {
         if (!entry.hasOwnProperty(key)) {
             continue;
         }
@@ -35,7 +35,7 @@ function betterLookingDiff(entry, data) {
             output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
             continue;
         }
-        let value = data[key];
+        const value = data[key];
         if (value !== entry[key]) {
             output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
             output += '+' + spaces + contentToDiffLine(key, value) + '\n';
@@ -47,19 +47,19 @@ function betterLookingDiff(entry, data) {
 }
 
 function lookForEntry(entry, data) {
-    for (var i = 0; i < data.length; ++i) {
-        var allGood = true;
-        for (var key in entry) {
+    return data.findIndex(data_entry => {
+        let allGood = true;
+        for (const key in entry) {
             if (!entry.hasOwnProperty(key)) {
                 continue;
             }
-            var value = data[i][key];
+            let value = data_entry[key];
             // To make our life easier, if there is a "parent" type, we add it to the path.
-            if (key === 'path' && data[i]['parent'] !== undefined) {
+            if (key === 'path' && data_entry['parent'] !== undefined) {
                 if (value.length > 0) {
-                    value += '::' + data[i]['parent']['name'];
+                    value += '::' + data_entry['parent']['name'];
                 } else {
-                    value = data[i]['parent']['name'];
+                    value = data_entry['parent']['name'];
                 }
             }
             if (value !== entry[key]) {
@@ -67,11 +67,8 @@ function lookForEntry(entry, data) {
                 break;
             }
         }
-        if (allGood === true) {
-            return i;
-        }
-    }
-    return null;
+        return allGood === true;
+    });
 }
 
 // This function checks if `expected` has all the required fields needed for the checks.
@@ -97,13 +94,12 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
     } else {
         fieldsToCheck = [];
     }
-    for (var i = 0; i < fieldsToCheck.length; ++i) {
-        const field = fieldsToCheck[i];
+    for (const field of fieldsToCheck) {
         if (!expected.hasOwnProperty(field)) {
             let text = `${queryName}==> Mandatory key \`${field}\` is not present`;
             if (fullPath.length > 0) {
                 text += ` in field \`${fullPath}\``;
-                if (position != null) {
+                if (position !== null) {
                     text += ` (position ${position})`;
                 }
             }
@@ -114,7 +110,8 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
 
 function valueCheck(fullPath, expected, result, error_text, queryName) {
     if (Array.isArray(expected)) {
-        for (var i = 0; i < expected.length; ++i) {
+        let i;
+        for (i = 0; i < expected.length; ++i) {
             checkNeededFields(fullPath, expected[i], error_text, queryName, i);
             if (i >= result.length) {
                 error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
@@ -154,8 +151,8 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
             valueCheck(obj_path, expected[key], result_v, error_text, queryName);
         }
     } else {
-        expectedValue = JSON.stringify(expected);
-        resultValue = JSON.stringify(result);
+        const expectedValue = JSON.stringify(expected);
+        const resultValue = JSON.stringify(result);
         if (expectedValue != resultValue) {
             error_text.push(`${queryName}==> Different values for field \`${fullPath}\`:\n` +
                 `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``);
@@ -164,7 +161,7 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
 }
 
 function runParser(query, expected, parseQuery, queryName) {
-    var error_text = [];
+    const error_text = [];
     checkNeededFields("", expected, error_text, queryName, null);
     if (error_text.length === 0) {
         valueCheck('', expected, parseQuery(query), error_text, queryName);
@@ -176,10 +173,10 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
 
-    var results = doSearch(query, loadedFile.FILTER_CRATE);
-    var error_text = [];
+    const results = doSearch(query, loadedFile.FILTER_CRATE);
+    const error_text = [];
 
-    for (var key in expected) {
+    for (const key in expected) {
         if (!expected.hasOwnProperty(key)) {
             continue;
         }
@@ -187,37 +184,37 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
             error_text.push('==> Unknown key "' + key + '"');
             break;
         }
-        var entry = expected[key];
+        const entry = expected[key];
 
         if (exact_check == true && entry.length !== results[key].length) {
             error_text.push(queryName + "==> Expected exactly " + entry.length +
                             " results but found " + results[key].length + " in '" + key + "'");
         }
 
-        var prev_pos = -1;
-        for (var i = 0; i < entry.length; ++i) {
-            var entry_pos = lookForEntry(entry[i], results[key]);
-            if (entry_pos === null) {
+        let prev_pos = -1;
+        entry.forEach((elem, index) => {
+            const entry_pos = lookForEntry(elem, results[key]);
+            if (entry_pos === -1) {
                 error_text.push(queryName + "==> Result not found in '" + key + "': '" +
-                                JSON.stringify(entry[i]) + "'");
+                                JSON.stringify(elem) + "'");
                 // By default, we just compare the two first items.
                 let item_to_diff = 0;
-                if ((ignore_order === false || exact_check === true) && i < results[key].length) {
-                    item_to_diff = i;
+                if ((!ignore_order || exact_check) && index < results[key].length) {
+                    item_to_diff = index;
                 }
                 error_text.push("Diff of first error:\n" +
-                    betterLookingDiff(entry[i], results[key][item_to_diff]));
+                    betterLookingDiff(elem, results[key][item_to_diff]));
             } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
                 error_text.push(queryName + "==> Exact check failed at position " + (prev_pos + 1) +
-                                ": expected '" + JSON.stringify(entry[i]) + "' but found '" +
-                                JSON.stringify(results[key][i]) + "'");
+                                ": expected '" + JSON.stringify(elem) + "' but found '" +
+                                JSON.stringify(results[key][index]) + "'");
             } else if (ignore_order === false && entry_pos < prev_pos) {
-                error_text.push(queryName + "==> '" + JSON.stringify(entry[i]) + "' was supposed " +
+                error_text.push(queryName + "==> '" + JSON.stringify(elem) + "' was supposed " +
                                 "to be before '" + JSON.stringify(results[key][entry_pos]) + "'");
             } else {
                 prev_pos = entry_pos;
             }
-        }
+        });
     }
     return error_text;
 }
@@ -252,15 +249,15 @@ function runCheck(loadedFile, key, callback) {
             console.log(`==> QUERY variable should have the same length as ${key}`);
             return 1;
         }
-        for (var i = 0; i < query.length; ++i) {
-            var error_text = callback(query[i], expected[i], "[ query `" + query[i] + "`]");
+        for (let i = 0; i < query.length; ++i) {
+            const error_text = callback(query[i], expected[i], "[ query `" + query[i] + "`]");
             if (checkResult(error_text, loadedFile, false) !== 0) {
                 return 1;
             }
         }
         console.log("OK");
     } else {
-        var error_text = callback(query, expected, "");
+        const error_text = callback(query, expected, "");
         if (checkResult(error_text, loadedFile, true) !== 0) {
             return 1;
         }
@@ -269,9 +266,9 @@ function runCheck(loadedFile, key, callback) {
 }
 
 function runChecks(testFile, doSearch, parseQuery) {
-    var checkExpected = false;
-    var checkParsed = false;
-    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;';
+    let checkExpected = false;
+    let checkParsed = false;
+    let testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;';
 
     if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
         testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
@@ -294,7 +291,7 @@ function runChecks(testFile, doSearch, parseQuery) {
     }
 
     const loadedFile = loadContent(testFileContent);
-    var res = 0;
+    let res = 0;
 
     if (checkExpected) {
         res += runCheck(loadedFile, "EXPECTED", (query, expected, text) => {
@@ -323,8 +320,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
     const searchIndex = require(searchIndexJs);
 
     const staticFiles = path.join(doc_folder, "static.files");
-    const searchJs = fs.readdirSync(staticFiles).find(
-        f => f.match(/search.*\.js$/));
+    const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
     const searchModule = require(path.join(staticFiles, searchJs));
     const searchWords = searchModule.initSearch(searchIndex.searchIndex);
 
@@ -334,7 +330,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
                 filterCrate, currentCrate);
         },
         parseQuery: searchModule.parseQuery,
-    }
+    };
 }
 
 function showHelp() {
@@ -349,14 +345,14 @@ function showHelp() {
 }
 
 function parseOptions(args) {
-    var opts = {
+    const opts = {
         "crate_name": "",
         "resource_suffix": "",
         "doc_folder": "",
         "test_folder": "",
         "test_file": [],
     };
-    var correspondences = {
+    const correspondences = {
         "--resource-suffix": "resource_suffix",
         "--doc-folder": "doc_folder",
         "--test-folder": "test_folder",
@@ -364,7 +360,7 @@ function parseOptions(args) {
         "--crate-name": "crate_name",
     };
 
-    for (var i = 0; i < args.length; ++i) {
+    for (let i = 0; i < args.length; ++i) {
         if (correspondences.hasOwnProperty(args[i])) {
             i += 1;
             if (i >= args.length) {
@@ -398,17 +394,18 @@ function parseOptions(args) {
 }
 
 function main(argv) {
-    var opts = parseOptions(argv.slice(2));
+    const opts = parseOptions(argv.slice(2));
     if (opts === null) {
         return 1;
     }
 
-    let parseAndSearch = loadSearchJS(
+    const parseAndSearch = loadSearchJS(
         opts["doc_folder"],
-        opts["resource_suffix"]);
-    var errors = 0;
+        opts["resource_suffix"]
+    );
+    let errors = 0;
 
-    let doSearch = function (queryStr, filterCrate) {
+    const doSearch = function (queryStr, filterCrate) {
         return parseAndSearch.doSearch(queryStr, filterCrate, opts["crate_name"]);
     };
 
