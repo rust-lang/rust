@@ -86,7 +86,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(1, 'b)>>::AssocType: '_#3r
+   = note: where <T as Anything<'_#2r>>::AssocType: '_#3r
 
 note: no external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:52:1
