@@ -84,6 +84,30 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
+    pub(super) fn infer_expr_coerce_never(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+        let ty = self.infer_expr_inner(expr, expected);
+        // While we don't allow *arbitrary* coercions here, we *do* allow
+        // coercions from ! to `expected`.
+        if ty.is_never() {
+            if let Some(adjustments) = self.result.expr_adjustments.get(&expr) {
+                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &**adjustments {
+                    target.clone()
+                } else {
+                    self.err_ty()
+                };
+            }
+
+            let adj_ty = self.table.new_type_var();
+            self.write_expr_adj(
+                expr,
+                vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty.clone() }],
+            );
+            adj_ty
+        } else {
+            ty
+        }
+    }
+
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         self.db.unwind_if_cancelled();
 
@@ -91,7 +115,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
                 let expected = &expected.adjust_for_branches(&mut self.table);
-                self.infer_expr(
+                self.infer_expr_coerce_never(
                     condition,
                     &Expectation::HasType(self.result.standard_types.bool_.clone()),
                 );
@@ -415,7 +439,7 @@ impl<'a> InferenceContext<'a> {
                     for arm in arms.iter() {
                         if let Some(guard_expr) = arm.guard {
                             self.diverges = Diverges::Maybe;
-                            self.infer_expr(
+                            self.infer_expr_coerce_never(
                                 guard_expr,
                                 &Expectation::HasType(self.result.standard_types.bool_.clone()),
                             );
@@ -1146,7 +1170,6 @@ impl<'a> InferenceContext<'a> {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let old_resolver =
             mem::replace(&mut self.resolver, resolver_for_expr(self.db.upcast(), self.owner, expr));
-
         let (break_ty, ty) =
             self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty.clone()), label, |this| {
                 for stmt in statements {
@@ -1188,14 +1211,14 @@ impl<'a> InferenceContext<'a> {
                             }
                         }
                         &Statement::Expr { expr, has_semi } => {
-                            this.infer_expr(
-                                expr,
-                                &if has_semi {
-                                    Expectation::none()
-                                } else {
-                                    Expectation::HasType(this.result.standard_types.unit.clone())
-                                },
-                            );
+                            if has_semi {
+                                this.infer_expr(expr, &Expectation::none());
+                            } else {
+                                this.infer_expr_coerce(
+                                    expr,
+                                    &Expectation::HasType(this.result.standard_types.unit.clone()),
+                                );
+                            }
                         }
                     }
                 }
