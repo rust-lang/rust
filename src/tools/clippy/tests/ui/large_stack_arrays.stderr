@@ -31,5 +31,13 @@ LL |         [E::T(0); 5000],
    |
    = help: consider allocating on the heap with `vec![E::T(0); 5000].into_boxed_slice()`
 
-error: aborting due to 4 previous errors
+error: allocating a local array larger than 512000 bytes
+  --> $DIR/large_stack_arrays.rs:27:9
+   |
+LL |         [0u8; usize::MAX],
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![0u8; usize::MAX].into_boxed_slice()`
+
+error: aborting due to 5 previous errors
 
