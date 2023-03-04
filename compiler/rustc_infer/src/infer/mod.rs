@@ -94,10 +94,10 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 /// call to `start_snapshot` and `rollback_to`.
 #[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
-    /// Cache for projections. This cache is snapshotted along with the infcx.
+    /// Cache for projections.
     ///
-    /// Public so that `traits::project` can use it.
-    pub projection_cache: traits::ProjectionCacheStorage<'tcx>,
+    /// This cache is snapshotted along with the infcx.
+    projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
     /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
