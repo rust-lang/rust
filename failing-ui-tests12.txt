@@ -36,3 +36,5 @@ tests/ui/generator/size-moved-locals.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
 tests/ui/simd/intrinsic/generic-gather-pass.rs
 tests/ui/simd/issue-85915-simd-ptrs.rs
+tests/ui/issues/issue-68010-large-zst-consts.rs
+tests/ui/rust-2018/proc-macro-crate-in-paths.rs
