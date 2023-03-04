@@ -1,0 +1,21 @@
+warning: the feature `return_position_impl_trait_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:1:12
+   |
+LL | #![feature(return_position_impl_trait_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:9:1
+   |
+LL |     fn foo(&self) -> impl Sized;
+   |     ---------------------------- `foo` from trait
+...
+LL | impl MyTrait for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0046`.
