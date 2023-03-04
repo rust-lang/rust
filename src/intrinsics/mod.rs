@@ -652,7 +652,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
                                 // Use this error even for the other intrinsics as it is more precise.
                                 format!("attempted to instantiate uninhabited type `{}`", ty)
                             } else if intrinsic == sym::assert_zero_valid {
-                                format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                                format!(
+                                    "attempted to zero-initialize type `{}`, which is invalid",
+                                    ty
+                                )
                             } else {
                                 format!(
                                     "attempted to leave type `{}` uninitialized, which is invalid",
