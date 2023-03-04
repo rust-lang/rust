@@ -11,7 +11,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: late-bound region is '_#4r
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType: '_#3r
+   = note: where <T as Anything<'_#1r, '_#2r>>::AssocType: '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:34:1
@@ -23,14 +23,14 @@ LL | |     T: Anything<'b, 'c>,
    |
    = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>
 
-error[E0309]: the associated type `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType` may not live long enough
+error[E0309]: the associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:38:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType: 'a`...
-   = note: ...so that the type `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType` will meet its required lifetime bounds
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r, '_#6r>>::AssocType: 'a`...
+   = note: ...so that the type `<T as Anything<'_#5r, '_#6r>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -44,7 +44,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where <T as Anything<'_#2r, '_#3r>>::AssocType: '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:43:1
@@ -57,14 +57,14 @@ LL | |     'a: 'a,
    |
    = note: defining type: no_relationships_early::<'_#1r, '_#2r, '_#3r, T>
 
-error[E0309]: the associated type `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType` may not live long enough
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: 'a`...
-   = note: ...so that the type `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType` will meet its required lifetime bounds
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: 'a`...
+   = note: ...so that the type `<T as Anything<'_#6r, '_#7r>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29
@@ -78,7 +78,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where <T as Anything<'_#2r, '_#3r>>::AssocType: '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:53:1
@@ -103,7 +103,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where <T as Anything<'_#2r, '_#3r>>::AssocType: '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
@@ -128,7 +128,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where <T as Anything<'_#2r, '_#3r>>::AssocType: '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:74:1
@@ -154,7 +154,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: late-bound region is '_#3r
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(0, 'b)>>::AssocType: '_#2r
+   = note: where <T as Anything<'_#1r, '_#1r>>::AssocType: '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:83:1
@@ -194,7 +194,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(1, 'b)>>::AssocType: '_#3r
+   = note: where <T as Anything<'_#2r, '_#2r>>::AssocType: '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:92:1
@@ -219,7 +219,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 3
-   = note: where <T as Anything<ReEarlyBound(0, 'a), ReEarlyBound(0, 'a)>>::AssocType: '_#2r
+   = note: where <T as Anything<'_#1r, '_#1r>>::AssocType: '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:101:1
