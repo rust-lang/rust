@@ -430,7 +430,12 @@ pub fn check(path: &Path, bad: &mut bool) {
                     err(DOUBLE_SPACE_AFTER_DOT)
                 }
 
-                if line.contains("//") {
+                if filename.ends_with(".ftl") {
+                    let line_backticks = line.chars().filter(|ch| *ch == '`').count();
+                    if line_backticks % 2 == 1 {
+                        suppressible_tidy_err!(err, skip_odd_backticks, "odd number of backticks");
+                    }
+                } else if line.contains("//") {
                     let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
                     let line_backticks = line.chars().filter(|ch| *ch == '`').count();
                     let comment_text = line.split("//").nth(1).unwrap();
