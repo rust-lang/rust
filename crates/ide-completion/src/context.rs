@@ -387,8 +387,7 @@ pub(crate) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
-        // check kind of macro-expanded token, but use range of original token
-        let kind = self.token.kind();
+        let kind = self.original_token.kind();
         match kind {
             CHAR => {
                 // assume we are completing a lifetime but the user has only typed the '
