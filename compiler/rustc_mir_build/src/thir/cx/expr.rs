@@ -34,8 +34,6 @@ impl<'tcx> Cx<'tcx> {
 
     #[instrument(level = "trace", skip(self, hir_expr))]
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        let temp_lifetime =
-            self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
@@ -68,7 +66,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Next, wrap this up in the expr's scope.
         expr = Expr {
-            temp_lifetime,
+            temp_lifetime: expr.temp_lifetime,
             ty: expr.ty,
             span: hir_expr.span,
             kind: ExprKind::Scope {
@@ -83,7 +81,7 @@ impl<'tcx> Cx<'tcx> {
             self.region_scope_tree.opt_destruction_scope(hir_expr.hir_id.local_id)
         {
             expr = Expr {
-                temp_lifetime,
+                temp_lifetime: expr.temp_lifetime,
                 ty: expr.ty,
                 span: hir_expr.span,
                 kind: ExprKind::Scope {
