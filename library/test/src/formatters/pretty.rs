@@ -3,7 +3,7 @@ use std::{io, io::prelude::Write};
 use super::OutputFormatter;
 use crate::{
     bench::fmt_bench_samples,
-    console::{ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
     term,
     test_result::TestResult,
     time,
@@ -181,6 +181,33 @@ impl<T: Write> PrettyFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for PrettyFormatter<T> {
+    fn write_discovery_start(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()> {
+        self.write_plain(format!("{}: {test_type}\n", desc.name))
+    }
+
+    fn write_discovery_finish(&mut self, state: &ConsoleTestDiscoveryState) -> io::Result<()> {
+        fn plural(count: usize, s: &str) -> String {
+            match count {
+                1 => format!("1 {s}"),
+                n => format!("{n} {s}s"),
+            }
+        }
+
+        if state.tests != 0 || state.benchmarks != 0 {
+            self.write_plain("\n")?;
+        }
+
+        self.write_plain(format!(
+            "{}, {}\n",
+            plural(state.tests, "test"),
+            plural(state.benchmarks, "benchmark")
+        ))
+    }
+
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         let noun = if test_count != 1 { "tests" } else { "test" };
         let shuffle_seed_msg = if let Some(shuffle_seed) = shuffle_seed {

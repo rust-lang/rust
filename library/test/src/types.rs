@@ -119,6 +119,16 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub ignore_message: Option<&'static str>,
+    #[cfg(not(bootstrap))]
+    pub source_file: &'static str,
+    #[cfg(not(bootstrap))]
+    pub start_line: usize,
+    #[cfg(not(bootstrap))]
+    pub start_col: usize,
+    #[cfg(not(bootstrap))]
+    pub end_line: usize,
+    #[cfg(not(bootstrap))]
+    pub end_col: usize,
     pub should_panic: options::ShouldPanic,
     pub compile_fail: bool,
     pub no_run: bool,
