@@ -431,14 +431,14 @@ pub fn check(path: &Path, bad: &mut bool) {
                 }
 
                 if filename.ends_with(".ftl") {
-                    let line_backticks = line.chars().filter(|ch| *ch == '`').count();
+                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
                     if line_backticks % 2 == 1 {
                         suppressible_tidy_err!(err, skip_odd_backticks, "odd number of backticks");
                     }
-                } else if line.contains("//") {
+                } else if trimmed.contains("//") {
                     let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
-                    let line_backticks = line.chars().filter(|ch| *ch == '`').count();
-                    let comment_text = line.split("//").nth(1).unwrap();
+                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
+                    let comment_text = trimmed.split("//").nth(1).unwrap();
                     // This check ensures that we don't lint for code that has `//` in a string literal
                     if line_backticks % 2 == 1 {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
