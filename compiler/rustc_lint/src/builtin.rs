@@ -1470,6 +1470,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         // Collects generic parameters used in non-opaque types
         use rustc_hir::intravisit::{self, Visitor};
         struct NonOpaqueVisitor {
+            has_opaque: bool,
             ty_params: FxHashSet<DefId>,
             lifetimes: FxHashSet<Symbol>,
         }
@@ -1478,6 +1479,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 // if ty is not an opaque type, we need to check its children
                 if !matches!(ty.kind, hir::TyKind::OpaqueDef(..)) {
                     intravisit::walk_ty(self, ty);
+                } else {
+                    self.has_opaque = true;
                 }
 
                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ty.kind {
@@ -1495,28 +1498,33 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         }
 
         let mut non_opaque_visitor =
-            NonOpaqueVisitor { ty_params: FxHashSet::default(), lifetimes: FxHashSet::default() };
+            NonOpaqueVisitor { has_opaque: false, ty_params: FxHashSet::default(), lifetimes: FxHashSet::default() };
         non_opaque_visitor.visit_ty(ty);
 
-        let NonOpaqueVisitor { ty_params, lifetimes } = non_opaque_visitor;
+        let NonOpaqueVisitor { has_opaque, ty_params, lifetimes } = non_opaque_visitor;
 
         let mut where_spans = Vec::new();
         let mut inline_spans = Vec::new();
         let mut inline_sugg = Vec::new();
         for p in type_alias_generics.predicates {
-            // Skip the predicate that is not used in non-opaque types
-            if let hir::WherePredicate::BoundPredicate(ref bound_pred) = p {
-                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
-                    bound_pred.bounded_ty.kind
-                {
-                    if let Res::Def(DefKind::TyParam, def_id) = path.res {
-                        if !ty_params.contains(&def_id) {
-                            continue;
+            // Warn bounds if there is no opaque type
+            if has_opaque {
+                // Warn bounds whose ty is a generic-param used directly in non-opaque types when there is an opaque type
+                let mut is_generic_param_used_in_non_opaque_ty = false;
+                if let hir::WherePredicate::BoundPredicate(ref bound_pred) = p {
+                    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = bound_pred.bounded_ty.kind {
+                        if let Res::Def(DefKind::TyParam, def_id) = path.res {
+                            if ty_params.contains(&def_id) {
+                                is_generic_param_used_in_non_opaque_ty = true;
+                            }
                         }
                     }
+                } else if let hir::WherePredicate::RegionPredicate(ref region_pred) = p {
+                    if lifetimes.contains(&region_pred.lifetime.ident.name) {
+                        is_generic_param_used_in_non_opaque_ty = true;
+                    }
                 }
-            } else if let hir::WherePredicate::RegionPredicate(ref region_pred) = p {
-                if !lifetimes.contains(&region_pred.lifetime.ident.name) {
+                if !is_generic_param_used_in_non_opaque_ty {
                     continue;
                 }
             }
