@@ -1497,8 +1497,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             }
         }
 
-        let mut non_opaque_visitor =
-            NonOpaqueVisitor { has_opaque: false, ty_params: FxHashSet::default(), lifetimes: FxHashSet::default() };
+        let mut non_opaque_visitor = NonOpaqueVisitor {
+            has_opaque: false,
+            ty_params: FxHashSet::default(),
+            lifetimes: FxHashSet::default(),
+        };
         non_opaque_visitor.visit_ty(ty);
 
         let NonOpaqueVisitor { has_opaque, ty_params, lifetimes } = non_opaque_visitor;
@@ -1512,7 +1515,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 // Warn bounds whose ty is a generic-param used directly in non-opaque types when there is an opaque type
                 let mut is_generic_param_used_in_non_opaque_ty = false;
                 if let hir::WherePredicate::BoundPredicate(ref bound_pred) = p {
-                    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = bound_pred.bounded_ty.kind {
+                    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
+                        bound_pred.bounded_ty.kind
+                    {
                         if let Res::Def(DefKind::TyParam, def_id) = path.res {
                             if ty_params.contains(&def_id) {
                                 is_generic_param_used_in_non_opaque_ty = true;
