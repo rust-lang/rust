@@ -13,10 +13,10 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
-    ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
-    FunctionPointerSuggestion, SuggAddLetForLetChains, SuggestAccessingField,
-    SuggestAsRefWhereAppropriate, SuggestBoxingForReturnImplTrait,
-    SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany, SuggestTuplePatternOne,
+    ConsiderAddingAwait, DiagArg, Error0308Subdiags, FnConsiderCasting, FnItemsAreDistinct,
+    FnUniqTypes, FunctionPointerSuggestion, SuggestAccessingField, SuggestAsRefWhereAppropriate,
+    SuggestBoxingForReturnImplTrait, SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany,
+    SuggestTuplePatternOne,
 };
 
 use super::TypeErrCtxt;
@@ -482,10 +482,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// and then try to find a assignment in the `cond` part, which span is equal with error span
     pub(super) fn suggest_let_for_letchains(
         &self,
-        err: &mut Diagnostic,
         cause: &ObligationCause<'_>,
         span: Span,
-    ) {
+    ) -> Option<Error0308Subdiags> {
         let hir = self.tcx.hir();
         if let Some(node) = self.tcx.hir().find_by_def_id(cause.body_id) &&
             let hir::Node::Item(hir::Item {
@@ -532,9 +531,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
         visitor.visit_body(&body);
         if visitor.result {
-                err.subdiagnostic(SuggAddLetForLetChains{span: span.shrink_to_lo()});
+                return Some(Error0308Subdiags::AddLetForLetChains{span: span.shrink_to_lo()});
             }
         }
+        None
     }
 }
 

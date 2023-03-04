@@ -184,18 +184,6 @@ pub enum SourceKindMultiSuggestion<'a> {
     },
 }
 
-#[derive(Subdiagnostic)]
-#[suggestion(
-    infer_suggest_add_let_for_letchains,
-    style = "verbose",
-    applicability = "machine-applicable",
-    code = "let "
-)]
-pub(crate) struct SuggAddLetForLetChains {
-    #[primary_span]
-    pub span: Span,
-}
-
 impl<'a> SourceKindMultiSuggestion<'a> {
     pub fn new_fully_qualified(
         span: Span,
@@ -1373,17 +1361,172 @@ impl AddToDiagnostic for SuggestTuplePatternMany {
 }
 
 #[derive(Subdiagnostic)]
-pub enum TupleTrailingCommaSuggestion {
+pub enum Error0308Subdiags {
+    #[suggestion(
+        infer_meant_byte_literal,
+        code = "b'{code}'",
+        applicability = "machine-applicable"
+    )]
+    MeantByteLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_meant_char_literal,
+        code = "'{code}'",
+        applicability = "machine-applicable"
+    )]
+    MeantCharLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_meant_str_literal,
+        code = "\"{code}\"",
+        applicability = "machine-applicable"
+    )]
+    MeantStrLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_consider_specifying_length,
+        code = "{length}",
+        applicability = "maybe-incorrect"
+    )]
+    ConsiderSpecifyingLength {
+        #[primary_span]
+        span: Span,
+        length: u64,
+    },
+    #[note(infer_try_cannot_convert)]
+    TryCannotConvert { found: String, expected: String },
     #[suggestion(infer_tuple_trailing_comma, code = ",", applicability = "machine-applicable")]
-    OnlyComma {
+    TupleOnlyComma {
         #[primary_span]
         span: Span,
     },
     #[multipart_suggestion(infer_tuple_trailing_comma, applicability = "machine-applicable")]
-    AlsoParentheses {
+    TupleAlsoParentheses {
         #[suggestion_part(code = "(")]
         span_low: Span,
         #[suggestion_part(code = ",)")]
         span_high: Span,
+    },
+    #[suggestion(
+        infer_suggest_add_let_for_letchains,
+        style = "verbose",
+        applicability = "machine-applicable",
+        code = "let "
+    )]
+    AddLetForLetChains {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+pub enum FailureCodeDiagnostics {
+    #[diag(infer_oc_method_compat, code = "E0308")]
+    MethodCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_type_compat, code = "E0308")]
+    TypeCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_const_compat, code = "E0308")]
+    ConstCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_try_compat, code = "E0308")]
+    TryCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_match_compat, code = "E0308")]
+    MatchCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_if_else_different, code = "E0308")]
+    IfElseDifferent {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_no_else, code = "E0317")]
+    NoElse {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_no_diverge, code = "E0308")]
+    NoDiverge {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_fn_main_correct_type, code = "E0580")]
+    FnMainCorrectType {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_fn_start_correct_type, code = "E0308")]
+    FnStartCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_intristic_correct_type, code = "E0308")]
+    IntristicCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_method_correct_type, code = "E0308")]
+    MethodCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_closure_selfref, code = "E0644")]
+    ClosureSelfref {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_cant_coerce, code = "E0308")]
+    CantCoerce {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
+    },
+    #[diag(infer_oc_generic, code = "E0308")]
+    Generic {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<Error0308Subdiags>,
     },
 }
