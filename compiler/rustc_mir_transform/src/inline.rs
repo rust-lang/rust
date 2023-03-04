@@ -183,7 +183,7 @@ impl<'tcx> Inliner<'tcx> {
 
         self.check_mir_is_available(caller_body, &callsite.callee)?;
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
-        self.check_mir_body(callsite, callee_body, callee_attrs)?;
+        self.check_mir_body(caller_body, callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
@@ -198,8 +198,6 @@ impl<'tcx> Inliner<'tcx> {
         ) else {
             return Err("failed to normalize callee body");
         };
-
-        self.check_subst_body(caller_body, callsite, &callee_body)?;
 
         let old_blocks = caller_body.basic_blocks.next_index();
         self.inline_call(caller_body, &callsite, callee_body);
@@ -370,6 +368,7 @@ impl<'tcx> Inliner<'tcx> {
     #[instrument(level = "debug", skip(self, callee_body))]
     fn check_mir_body(
         &self,
+        caller_body: &Body<'tcx>,
         callsite: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
@@ -440,32 +439,21 @@ impl<'tcx> Inliner<'tcx> {
         // Abort if type validation found anything fishy.
         checker.validation?;
 
-        let cost = checker.cost;
-        if let InlineAttr::Always = callee_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
-        } else if cost <= threshold {
-            debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-            Ok(())
-        } else {
-            debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-            Err("cost above threshold")
-        }
-    }
+        let substitute = |ty| {
+            let ty = ty::EarlyBinder::bind(ty);
+            callsite
+                .callee
+                .try_subst_mir_and_normalize_erasing_regions(self.tcx, self.param_env, ty)
+                .map_err(|_| "failed to normalize callee body")
+        };
 
-    /// Check call signature compatibility.
-    /// Normally, this shouldn't be required, but trait normalization failure can create a
-    /// validation ICE.
-    fn check_subst_body(
-        &self,
-        caller_body: &Body<'tcx>,
-        callsite: &CallSite<'tcx>,
-        callee_body: &Body<'tcx>,
-    ) -> Result<(), &'static str> {
+        // Check call signature compatibility.
+        // Normally, this shouldn't be required, but trait normalization failure can create a
+        // validation ICE.
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
         let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
-        let output_type = callee_body.return_ty();
+        let output_type = substitute(callee_body.return_ty())?;
         if !util::is_subtype(self.tcx, self.param_env, output_type, destination_ty) {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
@@ -485,7 +473,7 @@ impl<'tcx> Inliner<'tcx> {
             for (arg_ty, input) in
                 arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
             {
-                let input_type = callee_body.local_decls[input].ty;
+                let input_type = substitute(callee_body.local_decls[input].ty)?;
                 if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize tuple argument type");
@@ -493,7 +481,7 @@ impl<'tcx> Inliner<'tcx> {
             }
         } else {
             for (arg, input) in args.iter().zip(callee_body.args_iter()) {
-                let input_type = callee_body.local_decls[input].ty;
+                let input_type = substitute(callee_body.local_decls[input].ty)?;
                 let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
                 if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
@@ -502,7 +490,17 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        Ok(())
+        let cost = checker.cost;
+        if let InlineAttr::Always = callee_attrs.inline {
+            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
+            Ok(())
+        } else if cost <= threshold {
+            debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
+            Ok(())
+        } else {
+            debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
+            Err("cost above threshold")
+        }
     }
 
     fn inline_call(
