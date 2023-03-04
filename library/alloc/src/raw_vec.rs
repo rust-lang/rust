@@ -394,9 +394,12 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
-        // This guarantees exponential growth. The doubling cannot overflow
-        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap + (self.cap / 2), required_cap);
+        // Increase the capacity by 1.5x each time (exponential growth). The
+        // `(self.cap <= 1) as usize` is to ensure in the case that self.cap is
+        // 1, we still grow by 1 (without introducing an additional branch on
+        // most processors).
+        let next_cap = self.cap + (self.cap / 2) + (self.cap <= 1) as usize;
+        let cap = cmp::max(next_cap, required_cap);
         let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
