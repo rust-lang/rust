@@ -1,0 +1,18 @@
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+   |
+   = note: overflow executing `unchecked_sub`
+   |
+note: inside `<std::ops::Range<usize> as SliceIndex<[()]>>::get_unchecked`
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+note: inside `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>`
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+note: inside `B`
+  --> $DIR/ub-slice-get-unchecked.rs:7:27
+   |
+LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.
