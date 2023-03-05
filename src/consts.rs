@@ -1,8 +1,8 @@
-use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
+#[cfg(feature = "master")]
+use gccjit::FnAttribute;
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
-use rustc_hir as hir;
-use rustc_hir::Node;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::span_bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -13,6 +13,7 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRan
 
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -28,6 +29,21 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // SIMD builtins require a constant value.
         self.bitcast_if_needed(value, typ)
     }
+}
+
+fn set_global_alignment<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, gv: LValue<'gcc>, mut align: Align) {
+    // The target may require greater alignment for globals than the type does.
+    // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
+    // which can force it to be smaller. Rust doesn't support this yet.
+    if let Some(min) = cx.sess().target.min_global_align {
+        match Align::from_bits(min) {
+            Ok(min) => align = align.max(min),
+            Err(err) => {
+                cx.sess().emit_err(InvalidMinimumAlignment { err });
+            }
+        }
+    }
+    gv.set_alignment(align.bytes() as i32);
 }
 
 impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
@@ -79,9 +95,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         let instance = Instance::mono(self.tcx, def_id);
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-        let gcc_type = self.layout_of(ty).gcc_type(self, true);
+        let gcc_type = self.layout_of(ty).gcc_type(self);
 
-        // TODO(antoyo): set alignment.
+        set_global_alignment(self, global, self.align_of(ty));
 
         let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);
@@ -158,12 +174,19 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn add_compiler_used_global(&self, _global: RValue<'gcc>) {
-        // TODO(antoyo)
+    fn add_compiler_used_global(&self, global: RValue<'gcc>) {
+        // NOTE: seems like GCC does not make the distinction between compiler.used and used.
+        self.add_used_global(global);
     }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    #[cfg_attr(not(feature="master"), allow(unused_variables))]
+    pub fn add_used_function(&self, function: Function<'gcc>) {
+        #[cfg(feature = "master")]
+        function.add_attribute(FnAttribute::Used);
+    }
+
     pub fn static_addr_of_mut(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
         let global =
             match kind {
@@ -208,82 +231,59 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let sym = self.tcx.symbol_name(instance).name;
 
         let global =
-            if let Some(def_id) = def_id.as_local() {
-                let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                let llty = self.layout_of(ty).gcc_type(self, true);
-                // FIXME: refactor this to work without accessing the HIR
-                let global = match self.tcx.hir().get(id) {
-                    Node::Item(&hir::Item { span, kind: hir::ItemKind::Static(..), .. }) => {
-                        if let Some(global) = self.get_declared_value(&sym) {
-                            if self.val_ty(global) != self.type_ptr_to(llty) {
-                                span_bug!(span, "Conflicting types for static");
-                            }
-                        }
-
-                        let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(
-                            &sym,
-                            llty,
-                            GlobalKind::Exported,
-                            is_tls,
-                            fn_attrs.link_section,
-                        );
-
-                        if !self.tcx.is_reachable_non_generic(def_id) {
-                            // TODO(antoyo): set visibility.
-                        }
-
-                        global
-                    }
-
-                    Node::ForeignItem(&hir::ForeignItem {
-                        span: _,
-                        kind: hir::ForeignItemKind::Static(..),
-                        ..
-                    }) => {
-                        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                        check_and_apply_linkage(&self, &fn_attrs, ty, sym)
-                    }
-
-                    item => bug!("get_static: expected static, found {:?}", item),
-                };
-
-                global
-            }
-            else {
-                // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-                //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
-
-                let attrs = self.tcx.codegen_fn_attrs(def_id);
-                let global = check_and_apply_linkage(&self, &attrs, ty, sym);
-
-                let needs_dll_storage_attr = false; // TODO(antoyo)
-
-                // If this assertion triggers, there's something wrong with commandline
-                // argument validation.
-                debug_assert!(
-                    !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                        && self.tcx.sess.target.options.is_like_msvc
-                        && self.tcx.sess.opts.cg.prefer_dynamic)
-                );
-
-                if needs_dll_storage_attr {
-                    // This item is external but not foreign, i.e., it originates from an external Rust
-                    // crate. Since we don't know whether this crate will be linked dynamically or
-                    // statically in the final application, we always mark such symbols as 'dllimport'.
-                    // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
-                    // to make things work.
-                    //
-                    // However, in some scenarios we defer emission of statics to downstream
-                    // crates, so there are cases where a static with an upstream DefId
-                    // is actually present in the current crate. We can find out via the
-                    // is_codegened_item query.
-                    if !self.tcx.is_codegened_item(def_id) {
-                        unimplemented!();
-                    }
+            if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
+            let llty = self.layout_of(ty).gcc_type(self);
+            if let Some(global) = self.get_declared_value(sym) {
+                if self.val_ty(global) != self.type_ptr_to(llty) {
+                    span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                 }
-                global
-            };
+            }
+
+            let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+            let global = self.declare_global(
+                &sym,
+                llty,
+                GlobalKind::Exported,
+                is_tls,
+                fn_attrs.link_section,
+            );
+
+            if !self.tcx.is_reachable_non_generic(def_id) {
+                // TODO(antoyo): set visibility.
+            }
+
+            global
+        } else {
+            check_and_apply_linkage(&self, &fn_attrs, ty, sym)
+        };
+
+        if !def_id.is_local() {
+            let needs_dll_storage_attr = false; // TODO(antoyo)
+
+            // If this assertion triggers, there's something wrong with commandline
+            // argument validation.
+            debug_assert!(
+                !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
+                    && self.tcx.sess.target.options.is_like_msvc
+                    && self.tcx.sess.opts.cg.prefer_dynamic)
+            );
+
+            if needs_dll_storage_attr {
+                // This item is external but not foreign, i.e., it originates from an external Rust
+                // crate. Since we don't know whether this crate will be linked dynamically or
+                // statically in the final application, we always mark such symbols as 'dllimport'.
+                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
+                // to make things work.
+                //
+                // However, in some scenarios we defer emission of statics to downstream
+                // crates, so there are cases where a static with an upstream DefId
+                // is actually present in the current crate. We can find out via the
+                // is_codegened_item query.
+                if !self.tcx.is_codegened_item(def_id) {
+                    unimplemented!();
+                }
+            }
+        }
 
         // TODO(antoyo): set dll storage class.
 
@@ -357,7 +357,7 @@ pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id
 
 fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-    let llty = cx.layout_of(ty).gcc_type(cx, true);
+    let gcc_type = cx.layout_of(ty).gcc_type(cx);
     if let Some(linkage) = attrs.import_linkage {
         // Declare a symbol `foo` with the desired linkage.
         let global1 = cx.declare_global_with_linkage(&sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
@@ -370,9 +370,10 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // zero.
         let mut real_name = "_rust_extern_with_linkage_".to_string();
         real_name.push_str(&sym);
-        let global2 = cx.define_global(&real_name, llty, is_tls, attrs.link_section);
+        let global2 = cx.define_global(&real_name, gcc_type, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
-        global2.global_set_initializer_rvalue(global1.get_address(None));
+        let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
+        global2.global_set_initializer_rvalue(value);
         // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     }
@@ -386,6 +387,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, llty, GlobalKind::Imported, is_tls, attrs.link_section)
+        cx.declare_global(&sym, gcc_type, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }

@@ -1,4 +1,4 @@
-name: CI
+name: stdarch tests with sysroot compiled in release mode
 
 on:
   - push
@@ -13,27 +13,16 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", extra: "", env_extra: "", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", extra: "", env_extra: "", artifacts_branch: "master-without-128bit-integers" }
-          - { gcc: "libgccjit12.so", extra: "--no-default-features", env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests'", artifacts_branch: "gcc12" }
+          - { gcc: "libgccjit.so", artifacts_branch: "master" }
         commands: [
-          "--mini-tests",
-          "--std-tests",
-          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
-          # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests",
-          "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
-          "--test-failing-rustc",
         ]
 
     steps:
@@ -45,15 +34,9 @@ jobs:
         path: llvm
 
     - name: Install packages
-      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools
-
-    - name: Install libgccjit12
-      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: sudo apt-get install libgccjit-12-dev
+      run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
@@ -65,11 +48,6 @@ jobs:
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
-      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
-
-    - name: Setup path to libgccjit
-      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           echo $(readlink -f gcc-build) > gcc_path
           # NOTE: the filename is still libgccjit.so even when the artifact name is different.
@@ -108,20 +86,11 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
-    #- name: Cache rust repository
-      ## We only clone the rust repository for rustc tests
-      #if: ${{ contains(matrix.commands, 'rustc') }}
-      #uses: actions/cache@v3
-      #id: cache-rust-repository
-      #with:
-        #path: rust
-        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
-
     - name: Build
       run: |
         ./prepare_build.sh
-        ${{ matrix.libgccjit_version.env_extra }} ./build.sh ${{ matrix.libgccjit_version.extra }}
-        ${{ matrix.libgccjit_version.env_extra }} cargo test ${{ matrix.libgccjit_version.extra }}
+        ./build.sh --release --release-sysroot
+        cargo test
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -137,16 +106,11 @@ jobs:
         command: build
         args: --release
 
-    - name: Add more failing tests for GCC 12
-      if: ${{ matrix.libgccjit_version.gcc == 'libgccjit12.so' }}
-      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
-
     - name: Run tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
+        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
 
-  duplicates:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: python tools/check_intrinsics_duplicates.py
+    - name: Run stdarch tests
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        CHANNEL=release TARGET=x86_64-unknown-linux-gnu ../../../../cargo.sh test
