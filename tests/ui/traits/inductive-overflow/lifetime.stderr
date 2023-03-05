@@ -1,18 +1,14 @@
-error[E0275]: overflow evaluating the requirement `X<C<'_>>: NotAuto`
+error[E0275]: overflow evaluating the requirement `Box<X<C<'static>>>: NotAuto`
   --> $DIR/lifetime.rs:29:5
    |
 LL |     is_send::<X<C<'static>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: required for `Box<X<C<'_>>>` to implement `NotAuto`
-  --> $DIR/lifetime.rs:18:18
+note: required for `X<C<'static>>` to implement `NotAuto`
+  --> $DIR/lifetime.rs:19:12
    |
-LL | impl<T: NotAuto> NotAuto for Box<T> {}
-   |         -------  ^^^^^^^     ^^^^^^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 3 redundant requirements hidden
-   = note: required for `X<C<'static>>` to implement `NotAuto`
+LL | impl<T: Y> NotAuto for X<T> where T::P: NotAuto {}
+   |            ^^^^^^^     ^^^^             ------- unsatisfied trait bound introduced here
 note: required by a bound in `is_send`
   --> $DIR/lifetime.rs:23:15
    |
