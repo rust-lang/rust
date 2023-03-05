@@ -651,6 +651,7 @@ symbols! {
         edition_panic,
         eh_catch_typeinfo,
         eh_personality,
+        emit,
         emit_enum,
         emit_enum_variant,
         emit_enum_variant_arg,
