@@ -163,7 +163,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 } else {
                     ty.display_test(&db).to_string()
                 };
-                assert_eq!(actual, expected);
+                assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
         }
 
@@ -179,7 +179,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 } else {
                     ty.display_test(&db).to_string()
                 };
-                assert_eq!(actual, expected);
+                assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
             if let Some(expected) = adjustments.remove(&range) {
                 let adjustments = inference_result

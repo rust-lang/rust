@@ -706,7 +706,6 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        // FIXME use right resolver for block
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let ty = ctx.lower_ty(type_ref);
         let ty = self.insert_type_vars(ty);
@@ -822,12 +821,11 @@ impl<'a> InferenceContext<'a> {
             Some(path) => path,
             None => return (self.err_ty(), None),
         };
-        let resolver = &self.resolver;
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         let (resolution, unresolved) = if value_ns {
-            match resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
                 Some(ResolveValueResult::ValueNs(value)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
@@ -848,7 +846,7 @@ impl<'a> InferenceContext<'a> {
                 None => return (self.err_ty(), None),
             }
         } else {
-            match resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
                 None => return (self.err_ty(), None),
             }

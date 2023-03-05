@@ -3,7 +3,7 @@
 use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
-    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+    resolver::{ResolveValueResult, TypeNs, ValueNs},
     AdtId, AssocItemId, EnumVariantId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
@@ -21,35 +21,25 @@ use crate::{
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a> InferenceContext<'a> {
-    pub(super) fn infer_path(
-        &mut self,
-        resolver: &Resolver,
-        path: &Path,
-        id: ExprOrPatId,
-    ) -> Option<Ty> {
-        let ty = self.resolve_value_path(resolver, path, id)?;
+    pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
+        let ty = self.resolve_value_path(path, id)?;
         let ty = self.insert_type_vars(ty);
         let ty = self.normalize_associated_types_in(ty);
         Some(ty)
     }
 
-    fn resolve_value_path(
-        &mut self,
-        resolver: &Resolver,
-        path: &Path,
-        id: ExprOrPatId,
-    ) -> Option<Ty> {
+    fn resolve_value_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
             let Some(last) = path.segments().last() else { return None };
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ctx = crate::lower::TyLoweringContext::new(self.db, resolver);
+            let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
             let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(ty, last.name, id)?
         } else {
             // FIXME: report error, unresolved first path segment
             let value_or_partial =
-                resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
+                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
