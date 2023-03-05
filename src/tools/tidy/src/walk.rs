@@ -1,6 +1,6 @@
 use ignore::DirEntry;
 
-use std::{fs, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
@@ -48,9 +48,12 @@ pub fn walk(
     skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
+    let mut contents = Vec::new();
     walk_no_read(path, skip, &mut |entry| {
-        let contents = t!(fs::read(entry.path()), entry.path());
-        let contents_str = match String::from_utf8(contents) {
+        contents.clear();
+        let mut file = t!(File::open(entry.path()), entry.path());
+        t!(file.read_to_end(&mut contents), entry.path());
+        let contents_str = match std::str::from_utf8(&contents) {
             Ok(s) => s,
             Err(_) => return, // skip this file
         };
