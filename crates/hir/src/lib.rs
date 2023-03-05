@@ -60,6 +60,7 @@ use hir_ty::{
     all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
+    display::HexifiedConst,
     layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
     mir::interpret_mir,
@@ -1883,8 +1884,18 @@ impl Const {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<hir_ty::Const, ConstEvalError> {
-        db.const_eval(self.id)
+    pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id)?;
+        let r = format!("{}", HexifiedConst(c).display(db));
+        // We want to see things like `<utf8-error>` and `<layout-error>` as they are probably bug in our
+        // implementation, but there is no need to show things like `<enum-not-supported>` or `<ref-not-supported>` to
+        // the user.
+        if r.contains("not-supported>") {
+            return Err(ConstEvalError::MirEvalError(MirEvalError::NotSupported(
+                "rendering complex constants".to_string(),
+            )));
+        }
+        return Ok(r);
     }
 }
 
