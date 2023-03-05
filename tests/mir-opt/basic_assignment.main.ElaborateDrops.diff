@@ -1,0 +1,85 @@
+- // MIR for `main` before ElaborateDrops
++ // MIR for `main` after ElaborateDrops
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/basic_assignment.rs:+0:11: +0:11
+      let _1: bool;                        // in scope 0 at $DIR/basic_assignment.rs:+1:9: +1:17
+      let mut _3: bool;                    // in scope 0 at $DIR/basic_assignment.rs:+6:16: +6:24
+      let mut _6: std::option::Option<std::boxed::Box<u32>>; // in scope 0 at $DIR/basic_assignment.rs:+13:14: +13:20
+      scope 1 {
+          debug nodrop_x => _1;            // in scope 1 at $DIR/basic_assignment.rs:+1:9: +1:17
+          let _2: bool;                    // in scope 1 at $DIR/basic_assignment.rs:+2:9: +2:17
+          scope 2 {
+              debug nodrop_y => _2;        // in scope 2 at $DIR/basic_assignment.rs:+2:9: +2:17
+              let _4: std::option::Option<std::boxed::Box<u32>>; // in scope 2 at $DIR/basic_assignment.rs:+8:9: +8:15
+              scope 3 {
+                  debug drop_x => _4;      // in scope 3 at $DIR/basic_assignment.rs:+8:9: +8:15
+                  let _5: std::option::Option<std::boxed::Box<u32>>; // in scope 3 at $DIR/basic_assignment.rs:+9:9: +9:15
+                  scope 4 {
+                      debug drop_y => _5;  // in scope 4 at $DIR/basic_assignment.rs:+9:9: +9:15
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:+1:9: +1:17
+          _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:+1:20: +1:25
+          StorageLive(_2);                 // scope 1 at $DIR/basic_assignment.rs:+2:9: +2:17
+          StorageLive(_3);                 // scope 2 at $DIR/basic_assignment.rs:+6:16: +6:24
+          _3 = _1;                         // scope 2 at $DIR/basic_assignment.rs:+6:16: +6:24
+          _2 = move _3;                    // scope 2 at $DIR/basic_assignment.rs:+6:5: +6:24
+          StorageDead(_3);                 // scope 2 at $DIR/basic_assignment.rs:+6:23: +6:24
+          StorageLive(_4);                 // scope 2 at $DIR/basic_assignment.rs:+8:9: +8:15
+          _4 = Option::<Box<u32>>::None;   // scope 2 at $DIR/basic_assignment.rs:+8:36: +8:40
+          StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:+9:9: +9:15
+          StorageLive(_6);                 // scope 4 at $DIR/basic_assignment.rs:+13:14: +13:20
+          _6 = move _4;                    // scope 4 at $DIR/basic_assignment.rs:+13:14: +13:20
+-         drop(_5) -> [return: bb1, unwind: bb2]; // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
++         goto -> bb1;                     // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
+      }
+  
+      bb1: {
+          _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
+-         drop(_6) -> [return: bb3, unwind: bb6]; // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
++         goto -> bb3;                     // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+      }
+  
+      bb2 (cleanup): {
+          _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
+          drop(_6) -> bb6;                 // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+      }
+  
+      bb3: {
+          StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+          _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:+0:11: +14:2
+          drop(_5) -> [return: bb4, unwind: bb7]; // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+      }
+  
+      bb4: {
+          StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+-         drop(_4) -> bb5;                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
++         goto -> bb5;                     // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+      }
+  
+      bb5: {
+          StorageDead(_4);                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+          StorageDead(_2);                 // scope 1 at $DIR/basic_assignment.rs:+14:1: +14:2
+          StorageDead(_1);                 // scope 0 at $DIR/basic_assignment.rs:+14:1: +14:2
+          return;                          // scope 0 at $DIR/basic_assignment.rs:+14:2: +14:2
+      }
+  
+      bb6 (cleanup): {
+          drop(_5) -> bb7;                 // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+      }
+  
+      bb7 (cleanup): {
+-         drop(_4) -> bb8;                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
++         goto -> bb8;                     // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+      }
+  
+      bb8 (cleanup): {
+          resume;                          // scope 0 at $DIR/basic_assignment.rs:+0:1: +14:2
+      }
+  }
+  
