@@ -1004,4 +1004,26 @@ impl f64 {
     pub fn gamma(self) -> f64 {
         unsafe { cmath::tgamma(self) }
     }
+
+    /// Returns the natural logarithm of the gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 2.0f64;
+    ///
+    /// let abs_difference = (x.ln_gamma().0 - 0.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "99842")]
+    #[inline]
+    pub fn ln_gamma(self) -> (f64, i32) {
+        let mut signgamp: i32 = 0;
+        let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
+        (x, signgamp)
+    }
 }

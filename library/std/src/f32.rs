@@ -978,4 +978,26 @@ impl f32 {
     pub fn gamma(self) -> f32 {
         unsafe { cmath::tgammaf(self) }
     }
+
+    /// Returns the natural logarithm of the gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 2.0f32;
+    ///
+    /// let abs_difference = (x.ln_gamma().0 - 0.0).abs();
+    ///
+    /// assert!(abs_difference <= f32::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "99842")]
+    #[inline]
+    pub fn ln_gamma(self) -> (f32, i32) {
+        let mut signgamp: i32 = 0;
+        let x = unsafe { cmath::lgammaf_r(self, &mut signgamp) };
+        (x, signgamp)
+    }
 }

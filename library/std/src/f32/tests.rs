@@ -672,6 +672,18 @@ fn test_gamma() {
 }
 
 #[test]
+fn test_ln_gamma() {
+    assert_approx_eq!(1.0f32.ln_gamma().0, 0.0f32);
+    assert_eq!(1.0f32.ln_gamma().1, 1);
+    assert_approx_eq!(2.0f32.ln_gamma().0, 0.0f32);
+    assert_eq!(2.0f32.ln_gamma().1, 1);
+    assert_approx_eq!(3.0f32.ln_gamma().0, 2.0f32.ln());
+    assert_eq!(3.0f32.ln_gamma().1, 1);
+    assert_approx_eq!((-0.5f32).ln_gamma().0, (2.0 * consts::PI.sqrt()).ln());
+    assert_eq!((-0.5f32).ln_gamma().1, -1);
+}
+
+#[test]
 fn test_real_consts() {
     use super::consts;
 
