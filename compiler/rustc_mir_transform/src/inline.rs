@@ -453,9 +453,7 @@ impl<'tcx> Inliner<'tcx> {
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind }
-            | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } = term.kind
-            {
+            if let TerminatorKind::Drop { ref place, target, unwind } = term.kind {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
@@ -815,8 +813,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let tcx = self.tcx;
         match terminator.kind {
-            TerminatorKind::Drop { ref place, unwind, .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind, .. } => {
+            TerminatorKind::Drop { ref place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instance.subst_mir(tcx, &place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
@@ -1120,8 +1117,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *tgt = self.map_block(*tgt);
                 }
             }
-            TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
+            TerminatorKind::Drop { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
             }

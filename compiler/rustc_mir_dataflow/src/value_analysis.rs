@@ -230,7 +230,7 @@ pub trait ValueAnalysis<'tcx> {
             TerminatorKind::Drop { place, .. } => {
                 state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
-            TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
+            TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
