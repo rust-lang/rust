@@ -16,7 +16,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::bolt::{instrument_with_bolt_inplace, optimize_library_with_bolt_inplace};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
 use crate::config::{Config, TargetSelection};
@@ -523,32 +522,10 @@ impl Step for Llvm {
             }
         }
 
-        // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file
-        // in place. This is fine, because currently we do not support incrementally rebuilding
-        // LLVM after a configuration change, so to rebuild it the build files have to be removed,
-        // which will also remove these modified files.
-        if builder.config.llvm_bolt_profile_generate {
-            instrument_with_bolt_inplace(&get_built_llvm_lib_path(&res.llvm_config));
-        }
-        if let Some(path) = &builder.config.llvm_bolt_profile_use {
-            optimize_library_with_bolt_inplace(
-                &get_built_llvm_lib_path(&res.llvm_config),
-                &Path::new(path),
-            );
-        }
-
         t!(stamp.write());
 
         res
     }
-}
-
-/// Returns path to a built LLVM library (libLLVM.so).
-/// Assumes that we have built LLVM into a single library file.
-fn get_built_llvm_lib_path(llvm_config_path: &Path) -> PathBuf {
-    let mut cmd = Command::new(llvm_config_path);
-    cmd.arg("--libfiles");
-    PathBuf::from(output(&mut cmd).trim())
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
