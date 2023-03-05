@@ -284,8 +284,12 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
         }
     }
 
-    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure().has_ffi_unwind_calls(def.did);
+    // has_ffi_unwind_calls query uses `mir_built(WithOptConstParam::unknown(def.did))`,
+    // so make sure it is run.
+    if def.const_param_did.is_none() {
+        // Actually fetch the value, to avoid having to compute the query later.
+        let _ = tcx.has_ffi_unwind_calls(def.did);
+    }
 
     let mut body = tcx.mir_built(def).steal();
 

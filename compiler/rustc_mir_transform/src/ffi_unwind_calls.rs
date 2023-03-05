@@ -47,14 +47,12 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         return false;
     }
 
-    let body = &*tcx.mir_built(ty::WithOptConstParam::unknown(local_def_id)).borrow();
-
     let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
         ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
         ty::Closure(..) => Abi::RustCall,
         ty::Generator(..) => Abi::Rust,
-        _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
+        _ => span_bug!(tcx.def_span(def_id), "unexpected body ty: {:?}", body_ty),
     };
     let body_can_unwind = layout::fn_can_unwind(tcx, Some(def_id), body_abi);
 
@@ -65,6 +63,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
     let mut tainted = false;
 
+    let body = &*tcx.mir_built(ty::WithOptConstParam::unknown(local_def_id)).borrow();
     for block in body.basic_blocks.iter() {
         if block.is_cleanup {
             continue;
