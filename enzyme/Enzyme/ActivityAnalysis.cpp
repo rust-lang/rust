@@ -283,6 +283,59 @@ const std::set<std::string> KnownInactiveFunctions = {
     "logbl",
 };
 
+const std::set<Intrinsic::ID> KnownInactiveIntrinsics = {
+    Intrinsic::floor,
+    Intrinsic::ceil,
+    Intrinsic::trunc,
+    Intrinsic::rint,
+#if LLVM_VERSION_MAJOR >= 9
+    Intrinsic::lrint,
+    Intrinsic::llrint,
+#endif
+    Intrinsic::nearbyint,
+    Intrinsic::round,
+#if LLVM_VERSION_MAJOR >= 11
+    Intrinsic::roundeven,
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+    Intrinsic::lround,
+    Intrinsic::llround,
+#endif
+    Intrinsic::nvvm_barrier0,
+    Intrinsic::nvvm_barrier0_popc,
+    Intrinsic::nvvm_barrier0_and,
+    Intrinsic::nvvm_barrier0_or,
+    Intrinsic::nvvm_membar_cta,
+    Intrinsic::nvvm_membar_gl,
+    Intrinsic::nvvm_membar_sys,
+    Intrinsic::amdgcn_s_barrier,
+    Intrinsic::assume,
+    Intrinsic::stacksave,
+    Intrinsic::stackrestore,
+    Intrinsic::lifetime_start,
+    Intrinsic::lifetime_end,
+    Intrinsic::dbg_addr,
+    Intrinsic::dbg_declare,
+    Intrinsic::dbg_value,
+#if LLVM_VERSION_MAJOR > 6
+    Intrinsic::dbg_label,
+#endif
+    Intrinsic::invariant_start,
+    Intrinsic::invariant_end,
+    Intrinsic::var_annotation,
+    Intrinsic::ptr_annotation,
+    Intrinsic::annotation,
+    Intrinsic::codeview_annotation,
+    Intrinsic::expect,
+    Intrinsic::type_test,
+    Intrinsic::donothing,
+    Intrinsic::prefetch,
+    Intrinsic::trap,
+#if LLVM_VERSION_MAJOR >= 8
+    Intrinsic::is_constant,
+#endif
+    Intrinsic::memset};
+
 const char *DemangledKnownInactiveFunctionsStartingWith[] = {
     // TODO this returns allocated memory and thus can be an active value
     // "std::allocator",
@@ -386,41 +439,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
       MPIInactiveCommAllocators.end()) {
     return true;
   }
-  switch (F->getIntrinsicID()) {
-  case Intrinsic::nvvm_barrier0:
-  case Intrinsic::nvvm_barrier0_popc:
-  case Intrinsic::nvvm_barrier0_and:
-  case Intrinsic::nvvm_barrier0_or:
-  case Intrinsic::nvvm_membar_cta:
-  case Intrinsic::nvvm_membar_gl:
-  case Intrinsic::nvvm_membar_sys:
-  case Intrinsic::amdgcn_s_barrier:
-  case Intrinsic::assume:
-  case Intrinsic::stacksave:
-  case Intrinsic::stackrestore:
-  case Intrinsic::lifetime_start:
-  case Intrinsic::lifetime_end:
-  case Intrinsic::dbg_addr:
-  case Intrinsic::dbg_declare:
-  case Intrinsic::dbg_value:
-  case Intrinsic::invariant_start:
-  case Intrinsic::invariant_end:
-  case Intrinsic::var_annotation:
-  case Intrinsic::ptr_annotation:
-  case Intrinsic::annotation:
-  case Intrinsic::codeview_annotation:
-  case Intrinsic::expect:
-  case Intrinsic::type_test:
-  case Intrinsic::donothing:
-  case Intrinsic::prefetch:
-  case Intrinsic::trap:
-#if LLVM_VERSION_MAJOR >= 8
-  case Intrinsic::is_constant:
-#endif
-  case Intrinsic::memset:
+  if (KnownInactiveIntrinsics.count(F->getIntrinsicID())) {
     return true;
-  default:
-    break;
   }
 
   /// Only the first argument (magnitude) of copysign is active
@@ -518,41 +538,8 @@ static inline void propagateArgumentInformation(
 
     // Certain intrinsics are inactive by definition
     // and have nothing to propagate.
-    switch (F->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:
-    case Intrinsic::nvvm_barrier0_popc:
-    case Intrinsic::nvvm_barrier0_and:
-    case Intrinsic::nvvm_barrier0_or:
-    case Intrinsic::nvvm_membar_cta:
-    case Intrinsic::nvvm_membar_gl:
-    case Intrinsic::nvvm_membar_sys:
-    case Intrinsic::amdgcn_s_barrier:
-    case Intrinsic::assume:
-    case Intrinsic::stacksave:
-    case Intrinsic::stackrestore:
-    case Intrinsic::lifetime_start:
-    case Intrinsic::lifetime_end:
-    case Intrinsic::dbg_addr:
-    case Intrinsic::dbg_declare:
-    case Intrinsic::dbg_value:
-    case Intrinsic::invariant_start:
-    case Intrinsic::invariant_end:
-    case Intrinsic::var_annotation:
-    case Intrinsic::ptr_annotation:
-    case Intrinsic::annotation:
-    case Intrinsic::codeview_annotation:
-    case Intrinsic::expect:
-    case Intrinsic::type_test:
-    case Intrinsic::donothing:
-    case Intrinsic::prefetch:
-    case Intrinsic::trap:
-#if LLVM_VERSION_MAJOR >= 8
-    case Intrinsic::is_constant:
-#endif
-    case Intrinsic::memset:
+    if (KnownInactiveIntrinsics.count(F->getIntrinsicID())) {
       return;
-    default:
-      break;
     }
 
     if (F->getIntrinsicID() == Intrinsic::memcpy ||
@@ -773,45 +760,11 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
                  << "\n";
 
   if (auto II = dyn_cast<IntrinsicInst>(I)) {
-    switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:
-    case Intrinsic::nvvm_barrier0_popc:
-    case Intrinsic::nvvm_barrier0_and:
-    case Intrinsic::nvvm_barrier0_or:
-    case Intrinsic::nvvm_membar_cta:
-    case Intrinsic::nvvm_membar_gl:
-    case Intrinsic::nvvm_membar_sys:
-    case Intrinsic::amdgcn_s_barrier:
-    case Intrinsic::assume:
-    case Intrinsic::stacksave:
-    case Intrinsic::stackrestore:
-    case Intrinsic::lifetime_start:
-    case Intrinsic::lifetime_end:
-    case Intrinsic::dbg_addr:
-    case Intrinsic::dbg_declare:
-    case Intrinsic::dbg_value:
-    case Intrinsic::invariant_start:
-    case Intrinsic::invariant_end:
-    case Intrinsic::var_annotation:
-    case Intrinsic::ptr_annotation:
-    case Intrinsic::annotation:
-    case Intrinsic::codeview_annotation:
-    case Intrinsic::expect:
-    case Intrinsic::type_test:
-    case Intrinsic::donothing:
-    case Intrinsic::prefetch:
-    case Intrinsic::trap:
-#if LLVM_VERSION_MAJOR >= 8
-    case Intrinsic::is_constant:
-#endif
-    case Intrinsic::memset:
+    if (KnownInactiveIntrinsics.count(II->getIntrinsicID())) {
       if (EnzymePrintActivity)
         llvm::errs() << "known inactive intrinsic " << *I << "\n";
       InsertConstantInstruction(TR, I);
       return true;
-
-    default:
-      break;
     }
   }
 
@@ -1042,40 +995,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
   }
 
   if (auto II = dyn_cast<IntrinsicInst>(Val)) {
-    switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:
-    case Intrinsic::nvvm_barrier0_popc:
-    case Intrinsic::nvvm_barrier0_and:
-    case Intrinsic::nvvm_barrier0_or:
-    case Intrinsic::nvvm_membar_cta:
-    case Intrinsic::nvvm_membar_gl:
-    case Intrinsic::nvvm_membar_sys:
-    case Intrinsic::amdgcn_s_barrier:
-    case Intrinsic::assume:
-    case Intrinsic::stacksave:
-    case Intrinsic::stackrestore:
-    case Intrinsic::lifetime_start:
-    case Intrinsic::lifetime_end:
-    case Intrinsic::dbg_addr:
-    case Intrinsic::dbg_declare:
-    case Intrinsic::dbg_value:
-    case Intrinsic::invariant_start:
-    case Intrinsic::invariant_end:
-    case Intrinsic::var_annotation:
-    case Intrinsic::ptr_annotation:
-    case Intrinsic::annotation:
-    case Intrinsic::codeview_annotation:
-    case Intrinsic::expect:
-    case Intrinsic::type_test:
-    case Intrinsic::donothing:
-    case Intrinsic::prefetch:
-#if LLVM_VERSION_MAJOR >= 8
-    case Intrinsic::is_constant:
-#endif
+    if (KnownInactiveIntrinsics.count(II->getIntrinsicID())) {
       InsertConstantValue(TR, Val);
       return true;
-    default:
-      break;
     }
   }
 
@@ -1724,40 +1646,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
         }
 
         if (F) {
-          switch (F->getIntrinsicID()) {
-          case Intrinsic::nvvm_barrier0:
-          case Intrinsic::nvvm_barrier0_popc:
-          case Intrinsic::nvvm_barrier0_and:
-          case Intrinsic::nvvm_barrier0_or:
-          case Intrinsic::nvvm_membar_cta:
-          case Intrinsic::nvvm_membar_gl:
-          case Intrinsic::nvvm_membar_sys:
-          case Intrinsic::amdgcn_s_barrier:
-          case Intrinsic::assume:
-          case Intrinsic::stacksave:
-          case Intrinsic::stackrestore:
-          case Intrinsic::lifetime_start:
-          case Intrinsic::lifetime_end:
-          case Intrinsic::dbg_addr:
-          case Intrinsic::dbg_declare:
-          case Intrinsic::dbg_value:
-          case Intrinsic::invariant_start:
-          case Intrinsic::invariant_end:
-          case Intrinsic::var_annotation:
-          case Intrinsic::ptr_annotation:
-          case Intrinsic::annotation:
-          case Intrinsic::codeview_annotation:
-          case Intrinsic::expect:
-          case Intrinsic::type_test:
-          case Intrinsic::donothing:
-          case Intrinsic::prefetch:
-          case Intrinsic::trap:
-#if LLVM_VERSION_MAJOR >= 8
-          case Intrinsic::is_constant:
-#endif
+          if (KnownInactiveIntrinsics.count(F->getIntrinsicID())) {
             return false;
-          default:
-            break;
           }
         }
       }
@@ -2416,43 +2306,11 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
   }
   // Intrinsics known always to be inactive
   if (auto II = dyn_cast<IntrinsicInst>(inst)) {
-    switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:
-    case Intrinsic::nvvm_barrier0_popc:
-    case Intrinsic::nvvm_barrier0_and:
-    case Intrinsic::nvvm_barrier0_or:
-    case Intrinsic::nvvm_membar_cta:
-    case Intrinsic::nvvm_membar_gl:
-    case Intrinsic::nvvm_membar_sys:
-    case Intrinsic::amdgcn_s_barrier:
-    case Intrinsic::assume:
-    case Intrinsic::stacksave:
-    case Intrinsic::stackrestore:
-    case Intrinsic::lifetime_start:
-    case Intrinsic::lifetime_end:
-    case Intrinsic::dbg_addr:
-    case Intrinsic::dbg_declare:
-    case Intrinsic::dbg_value:
-    case Intrinsic::invariant_start:
-    case Intrinsic::invariant_end:
-    case Intrinsic::var_annotation:
-    case Intrinsic::ptr_annotation:
-    case Intrinsic::annotation:
-    case Intrinsic::codeview_annotation:
-    case Intrinsic::expect:
-    case Intrinsic::type_test:
-    case Intrinsic::donothing:
-    case Intrinsic::prefetch:
-#if LLVM_VERSION_MAJOR >= 8
-    case Intrinsic::is_constant:
-#endif
-    case Intrinsic::memset:
+    if (KnownInactiveIntrinsics.count(II->getIntrinsicID())) {
       if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-intrinsic "
                      << *inst << "\n";
       return true;
-    default:
-      break;
     }
   }
 
