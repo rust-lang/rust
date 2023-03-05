@@ -9,7 +9,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use smallvec::{smallvec, SmallVec};
 
-use crate::context::CodegenCx;
+use crate::{context::CodegenCx, errors::TiedTargetFeatures};
 
 // Given a map from target_features to whether they are enabled or disabled,
 // ensure only valid combinations are allowed.
@@ -84,10 +84,11 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         let span = cx.tcx
             .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        let msg = format!("the target features {} must all be either enabled or disabled together", features.join(", "));
-        let mut err = cx.tcx.sess.struct_span_err(span, &msg);
-        err.help("add the missing features in a `target_feature` attribute");
-        err.emit();
+        cx.tcx.sess.create_err(TiedTargetFeatures {
+            features: features.join(", "),
+            span,
+        })
+            .emit();
         return;
     }
 
