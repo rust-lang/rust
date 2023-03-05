@@ -219,8 +219,6 @@ pub fn check(
         for line in lines {
             println!("* {line}");
         }
-    } else {
-        println!("* {} features", features.len());
     }
 
     CollectedFeatures { lib: lib_features, lang: features }
