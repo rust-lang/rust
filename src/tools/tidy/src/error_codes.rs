@@ -127,7 +127,7 @@ fn check_error_codes_docs(
 
     let mut no_longer_emitted_codes = Vec::new();
 
-    walk(&docs_path, &mut |_| false, &mut |entry, contents| {
+    walk(&docs_path, |_| false, &mut |entry, contents| {
         let path = entry.path();
 
         // Error if the file isn't markdown.
@@ -319,7 +319,7 @@ fn check_error_codes_used(
 
     let mut found_codes = Vec::new();
 
-    walk_many(search_paths, &mut filter_dirs, &mut |entry, contents| {
+    walk_many(search_paths, filter_dirs, &mut |entry, contents| {
         let path = entry.path();
 
         // Return early if we aren't looking at a source file.

@@ -101,54 +101,38 @@ mod os_impl {
 
         const ALLOWED: &[&str] = &["configure", "x"];
 
-        walk_no_read(
-            path,
-            &mut |path| {
-                filter_dirs(path)
-                    || path.ends_with("src/etc")
-                    // This is a list of directories that we almost certainly
-                    // don't need to walk. A future PR will likely want to
-                    // remove these in favor of crate::walk_no_read using git
-                    // ls-files to discover the paths we should check, which
-                    // would naturally ignore all of these directories. It's
-                    // also likely faster than walking the directory tree
-                    // directly (since git is just reading from a couple files
-                    // to produce the results).
-                    || path.ends_with("target")
-                    || path.ends_with("build")
-                    || path.ends_with(".git")
-            },
-            &mut |entry| {
-                let file = entry.path();
-                let extension = file.extension();
-                let scripts = ["py", "sh", "ps1"];
-                if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
+        // FIXME: we don't need to look at all binaries, only files that have been modified in this branch
+        // (e.g. using `git ls-files`).
+        walk_no_read(path, |path| filter_dirs(path) || path.ends_with("src/etc"), &mut |entry| {
+            let file = entry.path();
+            let extension = file.extension();
+            let scripts = ["py", "sh", "ps1"];
+            if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
+                return;
+            }
+
+            if t!(is_executable(&file), file) {
+                let rel_path = file.strip_prefix(path).unwrap();
+                let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
+
+                if ALLOWED.contains(&git_friendly_path.as_str()) {
                     return;
                 }
 
-                if t!(is_executable(&file), file) {
-                    let rel_path = file.strip_prefix(path).unwrap();
-                    let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
-
-                    if ALLOWED.contains(&git_friendly_path.as_str()) {
-                        return;
-                    }
-
-                    let output = Command::new("git")
-                        .arg("ls-files")
-                        .arg(&git_friendly_path)
-                        .current_dir(path)
-                        .stderr(Stdio::null())
-                        .output()
-                        .unwrap_or_else(|e| {
-                            panic!("could not run git ls-files: {e}");
-                        });
-                    let path_bytes = rel_path.as_os_str().as_bytes();
-                    if output.status.success() && output.stdout.starts_with(path_bytes) {
-                        tidy_error!(bad, "binary checked into source: {}", file.display());
-                    }
+                let output = Command::new("git")
+                    .arg("ls-files")
+                    .arg(&git_friendly_path)
+                    .current_dir(path)
+                    .stderr(Stdio::null())
+                    .output()
+                    .unwrap_or_else(|e| {
+                        panic!("could not run git ls-files: {e}");
+                    });
+                let path_bytes = rel_path.as_os_str().as_bytes();
+                if output.status.success() && output.stdout.starts_with(path_bytes) {
+                    tidy_error!(bad, "binary checked into source: {}", file.display());
                 }
-            },
-        )
+            }
+        })
     }
 }
