@@ -288,8 +288,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id,
             &[],
             item_segment,
-            item_segment.args(),
-            item_segment.infer_args,
             None,
             ty::BoundConstness::NotConst,
         );
@@ -332,14 +330,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// type itself: `['a]`. The returned `SubstsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn create_substs_for_ast_path<'a>(
+    fn create_substs_for_ast_path(
         &self,
         span: Span,
         def_id: DefId,
         parent_substs: &[subst::GenericArg<'tcx>],
         seg: &hir::PathSegment<'_>,
-        generic_args: &'a hir::GenericArgs<'_>,
-        infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
         constness: ty::BoundConstness,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
@@ -370,10 +366,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id,
             seg,
             generics,
-            generic_args,
             GenericArgPosition::Type,
             self_ty.is_some(),
-            infer_args,
         );
 
         // Skip processing if type has no generic parameters.
@@ -540,9 +534,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             astconv: self,
             def_id,
             span,
-            generic_args,
+            generic_args: seg.args(),
             inferred_params: vec![],
-            infer_args,
+            infer_args: seg.infer_args,
         };
         let substs = create_substs_for_generic_args(
             tcx,
@@ -623,8 +617,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_def_id,
             parent_substs,
             item_segment,
-            item_segment.args(),
-            item_segment.infer_args,
             None,
             ty::BoundConstness::NotConst,
         );
@@ -671,8 +663,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_ref_span: Span,
         trait_def_id: DefId,
         trait_segment: &hir::PathSegment<'_>,
-        args: &GenericArgs<'_>,
-        infer_args: bool,
         self_ty: Ty<'tcx>,
     ) -> GenericArgCountResult {
         let (substs, arg_count) = self.create_substs_for_ast_path(
@@ -680,8 +670,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_def_id,
             &[],
             trait_segment,
-            args,
-            infer_args,
             Some(self_ty),
             constness,
         );
@@ -690,7 +678,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let bound_vars = tcx.late_bound_vars(hir_id);
         debug!(?bound_vars);
 
-        let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
+        let assoc_bindings = self.create_assoc_bindings_for_generic_args(trait_segment.args());
 
         let poly_trait_ref =
             ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
@@ -751,8 +739,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let trait_ref_span = trait_ref.path.span;
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
-        let args = trait_segment.args();
-        let infer_args = trait_segment.infer_args;
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
@@ -767,8 +753,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref_span,
             trait_def_id,
             trait_segment,
-            args,
-            infer_args,
             self_ty,
         )
     }
@@ -787,8 +771,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let speculative = false;
         let trait_ref_span = span;
         let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
-        let trait_segment = &hir::PathSegment::invalid();
-        let infer_args = false;
+        let trait_segment = &hir::PathSegment {
+            ident: Ident::empty(),
+            hir_id: hir::HirId::INVALID,
+            res: Res::Err,
+            args: Some(args),
+            infer_args: false,
+        };
 
         self.instantiate_poly_trait_ref_inner(
             hir_id,
@@ -800,8 +789,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref_span,
             trait_def_id,
             trait_segment,
-            args,
-            infer_args,
             self_ty,
         );
     }
@@ -846,8 +833,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_def_id,
             &[],
             trait_segment,
-            trait_segment.args(),
-            trait_segment.infer_args,
             Some(self_ty),
             constness,
         )
@@ -3074,8 +3059,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     def_id,
                     &[],
                     &hir::PathSegment::invalid(),
-                    &GenericArgs::none(),
-                    true,
                     None,
                     ty::BoundConstness::NotConst,
                 );

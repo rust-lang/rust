@@ -382,25 +382,13 @@ pub fn check_generic_arg_count_for_call(
     seg: &hir::PathSegment<'_>,
     is_method_call: IsMethodCall,
 ) -> GenericArgCountResult {
-    let empty_args = hir::GenericArgs::none();
-    let gen_args = seg.args.unwrap_or(&empty_args);
     let gen_pos = match is_method_call {
         IsMethodCall::Yes => GenericArgPosition::MethodCall,
         IsMethodCall::No => GenericArgPosition::Value,
     };
     let has_self = generics.parent.is_none() && generics.has_self;
 
-    check_generic_arg_count(
-        tcx,
-        span,
-        def_id,
-        seg,
-        generics,
-        gen_args,
-        gen_pos,
-        has_self,
-        seg.infer_args,
-    )
+    check_generic_arg_count(tcx, span, def_id, seg, generics, gen_pos, has_self)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -412,13 +400,12 @@ pub(crate) fn check_generic_arg_count(
     def_id: DefId,
     seg: &hir::PathSegment<'_>,
     gen_params: &ty::Generics,
-    gen_args: &hir::GenericArgs<'_>,
     gen_pos: GenericArgPosition,
     has_self: bool,
-    infer_args: bool,
 ) -> GenericArgCountResult {
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
+    let gen_args = seg.args();
 
     // Subtracting from param count to ensure type params synthesized from `impl Trait`
     // cannot be explicitly specified.
@@ -429,14 +416,13 @@ pub(crate) fn check_generic_arg_count(
         .count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
     let infer_lifetimes =
-        (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
+        (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
             prohibit_assoc_ty_binding(tcx, b.span);
         }
 
-    let explicit_late_bound =
-        prohibit_explicit_late_bound_lifetimes(tcx, gen_params, gen_args, gen_pos);
+    let explicit_late_bound = prohibit_explicit_late_bound_lifetimes(tcx, gen_params, seg, gen_pos);
 
     let mut invalid_args = vec![];
 
@@ -560,7 +546,7 @@ pub(crate) fn check_generic_arg_count(
     };
 
     let args_correct = {
-        let expected_min = if infer_args {
+        let expected_min = if seg.infer_args {
             0
         } else {
             param_counts.consts + named_type_param_count
@@ -598,9 +584,10 @@ pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
 pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     tcx: TyCtxt<'_>,
     def: &ty::Generics,
-    args: &hir::GenericArgs<'_>,
+    seg: &hir::PathSegment<'_>,
     position: GenericArgPosition,
 ) -> ExplicitLateBound {
+    let args = seg.args();
     let infer_lifetimes = position != GenericArgPosition::Type && !args.has_lifetime_params();
 
     if infer_lifetimes {
