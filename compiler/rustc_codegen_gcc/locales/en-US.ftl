@@ -60,3 +60,6 @@ codegen_gcc_invalid_monomorphization_unsupported_cast =
 
 codegen_gcc_invalid_monomorphization_unsupported_operation =
     invalid monomorphization of `{$name}` intrinsic: unsupported operation on `{$in_ty}` with element `{$in_elem}`
+
+codegen_gcc_invalid_minimum_alignment =
+    invalid minimum global alignment: {$err}
