@@ -669,6 +669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This routine checks if the return type is left as default, the method is not part of an
     /// `impl` block and that it isn't the `main` method. If so, it suggests setting the return
     /// type.
+    #[instrument(level = "trace", skip(self, err))]
     pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut Diagnostic,
@@ -705,28 +706,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true
                 }
             }
-            hir::FnRetTy::Return(ty) => {
-                let span = ty.span;
+            hir::FnRetTy::Return(hir_ty) => {
+                let span = hir_ty.span;
 
-                if let hir::TyKind::OpaqueDef(item_id, ..) = ty.kind
-                && let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(op_ty),
-                    ..
-                }) = self.tcx.hir().get(item_id.hir_id())
-                && let hir::OpaqueTy {
-                    bounds: [bound], ..
-                } = op_ty
-                && let hir::GenericBound::LangItemTrait(
-                    hir::LangItem::Future, _, _, generic_args) = bound
-                && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
-                && let hir::TypeBinding { kind, .. } = ty_binding
-                && let hir::TypeBindingKind::Equality { term } = kind
-                && let hir::Term::Ty(term_ty) = term {
+                if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
+                    && let hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(op_ty),
+                        ..
+                    }) = self.tcx.hir().get(item_id.hir_id())
+                    && let [hir::GenericBound::LangItemTrait(
+                        hir::LangItem::Future, _, _, generic_args)] = op_ty.bounds
+                    && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                    && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } = ty_binding.kind
+                {
                     // Check if async function's return type was omitted.
                     // Don't emit suggestions if the found type is `impl Future<...>`.
-                    debug!("suggest_missing_return_type: found = {:?}", found);
+                    debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
-                        if term_ty.span.is_empty() {
+                        if term.span.is_empty() {
                             err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                             return true;
                         } else {
@@ -737,11 +734,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
-                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let ty = self.astconv().ast_ty_to_ty(ty);
-                debug!("suggest_missing_return_type: return type {:?}", ty);
-                debug!("suggest_missing_return_type: expected type {:?}", ty);
-                let bound_vars = self.tcx.late_bound_vars(fn_id);
+                debug!("return type {:?}", hir_ty);
+                let ty = self.astconv().ast_ty_to_ty(hir_ty);
+                debug!("return type {:?}", ty);
+                debug!("expected type {:?}", expected);
+                let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                 let ty = Binder::bind_with_vars(ty, bound_vars);
                 let ty = self.normalize(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
