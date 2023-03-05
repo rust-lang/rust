@@ -108,15 +108,6 @@ pub fn prebuilt_llvm_config(
     let stamp = out_dir.join("llvm-finished-building");
     let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
 
-    if builder.config.llvm_skip_rebuild && stamp.path.exists() {
-        builder.info(
-            "Warning: \
-                Using a potentially stale build of LLVM; \
-                This may not behave well.",
-        );
-        return Ok(res);
-    }
-
     if stamp.is_done() {
         if stamp.hash.is_none() {
             builder.info(
