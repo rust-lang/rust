@@ -410,7 +410,11 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
-    fn grow(&self, additional: usize) {
+    fn grow(&self, layout: Layout) {
+        // Add some padding so we can align `self.end` while
+        // stilling fitting in a `layout` allocation.
+        let additional = layout.size() + cmp::max(DROPLESS_ALIGNMENT, layout.align()) - 1;
+
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
             let mut new_cap;
@@ -429,7 +433,7 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = ArenaChunk::new(new_cap);
+            let mut chunk = ArenaChunk::new(align(new_cap, PAGE));
             self.start.set(chunk.start());
 
             // Align the end to DROPLESS_ALIGNMENT
@@ -445,8 +449,8 @@ impl DroplessArena {
     #[inline(never)]
     #[cold]
     fn grow_and_alloc_raw(&self, layout: Layout) -> *mut u8 {
-        self.grow(layout.size());
-        self.alloc_raw(layout)
+        self.grow(layout);
+        self.alloc_raw_without_grow(layout).unwrap()
     }
 
     #[inline(never)]
