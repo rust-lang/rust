@@ -255,55 +255,67 @@ impl Resolver {
             return self.module_scope.resolve_path_in_value_ns(db, path);
         }
 
-        for scope in self.scopes() {
-            match scope {
-                Scope::ExprScope(_) if n_segments > 1 => continue,
-                Scope::ExprScope(scope) => {
-                    let entry = scope
-                        .expr_scopes
-                        .entries(scope.scope_id)
-                        .iter()
-                        .find(|entry| entry.name() == first_name);
+        if n_segments <= 1 {
+            for scope in self.scopes() {
+                match scope {
+                    Scope::ExprScope(scope) => {
+                        let entry = scope
+                            .expr_scopes
+                            .entries(scope.scope_id)
+                            .iter()
+                            .find(|entry| entry.name() == first_name);
 
-                    if let Some(e) = entry {
-                        return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(e.pat())));
+                        if let Some(e) = entry {
+                            return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(
+                                e.pat(),
+                            )));
+                        }
+                    }
+                    Scope::GenericParams { params, def } => {
+                        if let Some(id) = params.find_const_by_name(first_name, *def) {
+                            let val = ValueNs::GenericParam(id);
+                            return Some(ResolveValueResult::ValueNs(val));
+                        }
+                    }
+                    &Scope::ImplDefScope(impl_) => {
+                        if first_name == &name![Self] {
+                            return Some(ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_)));
+                        }
+                    }
+                    // bare `Self` doesn't work in the value namespace in a struct/enum definition
+                    Scope::AdtScope(_) => continue,
+                    Scope::BlockScope(m) => {
+                        if let Some(def) = m.resolve_path_in_value_ns(db, path) {
+                            return Some(def);
+                        }
                     }
                 }
-                Scope::GenericParams { params, def } if n_segments > 1 => {
-                    if let Some(id) = params.find_type_by_name(first_name, *def) {
-                        let ty = TypeNs::GenericParam(id);
-                        return Some(ResolveValueResult::Partial(ty, 1));
+            }
+        } else {
+            for scope in self.scopes() {
+                match scope {
+                    Scope::ExprScope(_) => continue,
+                    Scope::GenericParams { params, def } => {
+                        if let Some(id) = params.find_type_by_name(first_name, *def) {
+                            let ty = TypeNs::GenericParam(id);
+                            return Some(ResolveValueResult::Partial(ty, 1));
+                        }
                     }
-                }
-                Scope::GenericParams { .. } if n_segments != 1 => continue,
-                Scope::GenericParams { params, def } => {
-                    if let Some(id) = params.find_const_by_name(first_name, *def) {
-                        let val = ValueNs::GenericParam(id);
-                        return Some(ResolveValueResult::ValueNs(val));
+                    &Scope::ImplDefScope(impl_) => {
+                        if first_name == &name![Self] {
+                            return Some(ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1));
+                        }
                     }
-                }
-
-                &Scope::ImplDefScope(impl_) => {
-                    if first_name == &name![Self] {
-                        return Some(if n_segments > 1 {
-                            ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1)
-                        } else {
-                            ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_))
-                        });
+                    Scope::AdtScope(adt) => {
+                        if first_name == &name![Self] {
+                            let ty = TypeNs::AdtSelfType(*adt);
+                            return Some(ResolveValueResult::Partial(ty, 1));
+                        }
                     }
-                }
-                // bare `Self` doesn't work in the value namespace in a struct/enum definition
-                Scope::AdtScope(_) if n_segments == 1 => continue,
-                Scope::AdtScope(adt) => {
-                    if first_name == &name![Self] {
-                        let ty = TypeNs::AdtSelfType(*adt);
-                        return Some(ResolveValueResult::Partial(ty, 1));
-                    }
-                }
-
-                Scope::BlockScope(m) => {
-                    if let Some(def) = m.resolve_path_in_value_ns(db, path) {
-                        return Some(def);
+                    Scope::BlockScope(m) => {
+                        if let Some(def) = m.resolve_path_in_value_ns(db, path) {
+                            return Some(def);
+                        }
                     }
                 }
             }
@@ -316,8 +328,8 @@ impl Resolver {
         // If a path of the shape `u16::from_le_bytes` failed to resolve at all, then we fall back
         // to resolving to the primitive type, to allow this to still work in the presence of
         // `use core::u16;`.
-        if path.kind == PathKind::Plain && path.segments().len() > 1 {
-            if let Some(builtin) = BuiltinType::by_name(&path.segments()[0]) {
+        if path.kind == PathKind::Plain && n_segments > 1 {
+            if let Some(builtin) = BuiltinType::by_name(first_name) {
                 return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1));
             }
         }
