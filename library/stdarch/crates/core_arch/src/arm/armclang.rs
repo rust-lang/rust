@@ -30,6 +30,6 @@ use stdarch_test::assert_instr;
 #[inline(always)]
 #[rustc_legacy_const_generics(0)]
 pub unsafe fn __breakpoint<const VAL: i32>() {
-    static_assert_imm8!(VAL);
+    static_assert_uimm_bits!(VAL, 8);
     crate::arch::asm!("bkpt #{}", const VAL);
 }

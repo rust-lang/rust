@@ -691,7 +691,7 @@ pub fn sm3p1(x: u32) -> u32 {
 #[inline]
 #[target_feature(enable = "zksed")]
 pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
-    static_assert!(BS: u8 where BS <= 3);
+    static_assert!(BS <= 3);
     let ans: u32;
     unsafe {
         asm!("sm4ed {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) a, const BS, options(pure, nomem, nostack))
@@ -751,7 +751,7 @@ pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
 #[inline]
 #[target_feature(enable = "zksed")]
 pub fn sm4ks<const BS: u8>(x: u32, k: u32) -> u32 {
-    static_assert!(BS: u8 where BS <= 3);
+    static_assert!(BS <= 3);
     let ans: u32;
     unsafe {
         asm!("sm4ks {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) k, const BS, options(pure, nomem, nostack))

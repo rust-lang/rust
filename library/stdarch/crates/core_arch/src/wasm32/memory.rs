@@ -26,7 +26,7 @@ extern "C" {
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 #[doc(alias("memory.size"))]
 pub fn memory_size<const MEM: u32>() -> usize {
-    static_assert!(MEM: u32 where MEM == 0);
+    static_assert!(MEM == 0);
     unsafe { llvm_memory_size(MEM) }
 }
 
@@ -52,7 +52,7 @@ pub fn memory_size<const MEM: u32>() -> usize {
 #[doc(alias("memory.grow"))]
 pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {
     unsafe {
-        static_assert!(MEM: u32 where MEM == 0);
+        static_assert!(MEM == 0);
         llvm_memory_grow(MEM, delta)
     }
 }

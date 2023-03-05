@@ -76,7 +76,7 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha1rnds4_epu32<const FUNC: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm2!(FUNC);
+    static_assert_uimm_bits!(FUNC, 2);
     transmute(sha1rnds4(a.as_i32x4(), b.as_i32x4(), FUNC as i8))
 }
 

@@ -81,7 +81,7 @@ pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i 
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(pblendw(a.as_i16x8(), b.as_i16x8(), IMM8 as u8))
 }
 
@@ -122,7 +122,7 @@ pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm2!(IMM2);
+    static_assert_uimm_bits!(IMM2, 2);
     blendpd(a, b, IMM2 as u8)
 }
 
@@ -136,7 +136,7 @@ pub unsafe fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm4!(IMM4);
+    static_assert_uimm_bits!(IMM4, 4);
     blendps(a, b, IMM4 as u8)
 }
 
@@ -174,7 +174,7 @@ pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
-    static_assert_imm2!(IMM8);
+    static_assert_uimm_bits!(IMM8, 2);
     transmute(simd_extract::<_, f32>(a, IMM8 as u32))
 }
 
@@ -190,7 +190,7 @@ pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
-    static_assert_imm4!(IMM8);
+    static_assert_uimm_bits!(IMM8, 4);
     simd_extract::<_, u8>(a.as_u8x16(), IMM8 as u32) as i32
 }
 
@@ -206,7 +206,7 @@ pub unsafe fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
-    static_assert_imm2!(IMM8);
+    static_assert_uimm_bits!(IMM8, 2);
     simd_extract::<_, i32>(a.as_i32x4(), IMM8 as u32)
 }
 
@@ -240,7 +240,7 @@ pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     insertps(a, b, IMM8 as u8)
 }
 
@@ -254,7 +254,7 @@ pub unsafe fn _mm_insert_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
-    static_assert_imm4!(IMM8);
+    static_assert_uimm_bits!(IMM8, 4);
     transmute(simd_insert(a.as_i8x16(), IMM8 as u32, i as i8))
 }
 
@@ -268,7 +268,7 @@ pub unsafe fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi32<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
-    static_assert_imm2!(IMM8);
+    static_assert_uimm_bits!(IMM8, 2);
     transmute(simd_insert(a.as_i32x4(), IMM8 as u32, i))
 }
 
@@ -582,7 +582,7 @@ pub unsafe fn _mm_cvtepu32_epi64(a: __m128i) -> __m128i {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_dp_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     dppd(a, b, IMM8 as u8)
 }
 
@@ -601,7 +601,7 @@ pub unsafe fn _mm_dp_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_dp_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     dpps(a, b, IMM8 as u8)
 }
 
@@ -754,7 +754,7 @@ pub unsafe fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_round_pd<const ROUNDING: i32>(a: __m128d) -> __m128d {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundpd(a, ROUNDING)
 }
 
@@ -795,7 +795,7 @@ pub unsafe fn _mm_round_pd<const ROUNDING: i32>(a: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_round_ps<const ROUNDING: i32>(a: __m128) -> __m128 {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundps(a, ROUNDING)
 }
 
@@ -838,7 +838,7 @@ pub unsafe fn _mm_round_ps<const ROUNDING: i32>(a: __m128) -> __m128 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundsd(a, b, ROUNDING)
 }
 
@@ -881,7 +881,7 @@ pub unsafe fn _mm_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> __m12
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_round_ss<const ROUNDING: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundss(a, b, ROUNDING)
 }
 
@@ -981,7 +981,7 @@ pub unsafe fn _mm_mullo_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mpsadbw_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm3!(IMM8);
+    static_assert_uimm_bits!(IMM8, 3);
     transmute(mpsadbw(a.as_u8x16(), b.as_u8x16(), IMM8 as u8))
 }
 

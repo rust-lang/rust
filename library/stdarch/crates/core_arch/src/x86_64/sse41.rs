@@ -17,7 +17,7 @@ use stdarch_test::assert_instr;
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi64<const IMM1: i32>(a: __m128i) -> i64 {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     simd_extract(a.as_i64x2(), IMM1 as u32)
 }
 
@@ -31,7 +31,7 @@ pub unsafe fn _mm_extract_epi64<const IMM1: i32>(a: __m128i) -> i64 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi64<const IMM1: i32>(a: __m128i, i: i64) -> __m128i {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     transmute(simd_insert(a.as_i64x2(), IMM1 as u32, i))
 }
 

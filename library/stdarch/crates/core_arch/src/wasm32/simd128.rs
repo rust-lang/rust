@@ -937,22 +937,22 @@ pub fn i8x16_shuffle<
     a: v128,
     b: v128,
 ) -> v128 {
-    static_assert!(I0: usize where I0 < 32);
-    static_assert!(I1: usize where I1 < 32);
-    static_assert!(I2: usize where I2 < 32);
-    static_assert!(I3: usize where I3 < 32);
-    static_assert!(I4: usize where I4 < 32);
-    static_assert!(I5: usize where I5 < 32);
-    static_assert!(I6: usize where I6 < 32);
-    static_assert!(I7: usize where I7 < 32);
-    static_assert!(I8: usize where I8 < 32);
-    static_assert!(I9: usize where I9 < 32);
-    static_assert!(I10: usize where I10 < 32);
-    static_assert!(I11: usize where I11 < 32);
-    static_assert!(I12: usize where I12 < 32);
-    static_assert!(I13: usize where I13 < 32);
-    static_assert!(I14: usize where I14 < 32);
-    static_assert!(I15: usize where I15 < 32);
+    static_assert!(I0 < 32);
+    static_assert!(I1 < 32);
+    static_assert!(I2 < 32);
+    static_assert!(I3 < 32);
+    static_assert!(I4 < 32);
+    static_assert!(I5 < 32);
+    static_assert!(I6 < 32);
+    static_assert!(I7 < 32);
+    static_assert!(I8 < 32);
+    static_assert!(I9 < 32);
+    static_assert!(I10 < 32);
+    static_assert!(I11 < 32);
+    static_assert!(I12 < 32);
+    static_assert!(I13 < 32);
+    static_assert!(I14 < 32);
+    static_assert!(I15 < 32);
     let shuf: simd::u8x16 = unsafe {
         simd_shuffle!(
             a.as_u8x16(),
@@ -1007,14 +1007,14 @@ pub fn i16x8_shuffle<
     a: v128,
     b: v128,
 ) -> v128 {
-    static_assert!(I0: usize where I0 < 16);
-    static_assert!(I1: usize where I1 < 16);
-    static_assert!(I2: usize where I2 < 16);
-    static_assert!(I3: usize where I3 < 16);
-    static_assert!(I4: usize where I4 < 16);
-    static_assert!(I5: usize where I5 < 16);
-    static_assert!(I6: usize where I6 < 16);
-    static_assert!(I7: usize where I7 < 16);
+    static_assert!(I0 < 16);
+    static_assert!(I1 < 16);
+    static_assert!(I2 < 16);
+    static_assert!(I3 < 16);
+    static_assert!(I4 < 16);
+    static_assert!(I5 < 16);
+    static_assert!(I6 < 16);
+    static_assert!(I7 < 16);
     let shuf: simd::u16x8 = unsafe {
         simd_shuffle!(
             a.as_u16x8(),
@@ -1047,10 +1047,10 @@ pub fn i32x4_shuffle<const I0: usize, const I1: usize, const I2: usize, const I3
     a: v128,
     b: v128,
 ) -> v128 {
-    static_assert!(I0: usize where I0 < 8);
-    static_assert!(I1: usize where I1 < 8);
-    static_assert!(I2: usize where I2 < 8);
-    static_assert!(I3: usize where I3 < 8);
+    static_assert!(I0 < 8);
+    static_assert!(I1 < 8);
+    static_assert!(I2 < 8);
+    static_assert!(I3 < 8);
     let shuf: simd::u32x4 = unsafe {
         simd_shuffle!(
             a.as_u32x4(),
@@ -1077,8 +1077,8 @@ pub use i32x4_shuffle as u32x4_shuffle;
 #[doc(alias("i8x16.shuffle"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_shuffle<const I0: usize, const I1: usize>(a: v128, b: v128) -> v128 {
-    static_assert!(I0: usize where I0 < 4);
-    static_assert!(I1: usize where I1 < 4);
+    static_assert!(I0 < 4);
+    static_assert!(I1 < 4);
     let shuf: simd::u64x2 =
         unsafe { simd_shuffle!(a.as_u64x2(), b.as_u64x2(), [I0 as u32, I1 as u32]) };
     shuf.v128()
@@ -1097,7 +1097,7 @@ pub use i64x2_shuffle as u64x2_shuffle;
 #[doc(alias("i8x16.extract_lane_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
-    static_assert!(N: usize where N < 16);
+    static_assert!(N < 16);
     unsafe { simd_extract(a.as_i8x16(), N as u32) }
 }
 
@@ -1111,7 +1111,7 @@ pub fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
 #[doc(alias("i8x16.extract_lane_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_extract_lane<const N: usize>(a: v128) -> u8 {
-    static_assert!(N: usize where N < 16);
+    static_assert!(N < 16);
     unsafe { simd_extract(a.as_u8x16(), N as u32) }
 }
 
@@ -1125,7 +1125,7 @@ pub fn u8x16_extract_lane<const N: usize>(a: v128) -> u8 {
 #[doc(alias("i8x16.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
-    static_assert!(N: usize where N < 16);
+    static_assert!(N < 16);
     unsafe { simd_insert(a.as_i8x16(), N as u32, val).v128() }
 }
 
@@ -1139,7 +1139,7 @@ pub fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
 #[doc(alias("i8x16.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_replace_lane<const N: usize>(a: v128, val: u8) -> v128 {
-    static_assert!(N: usize where N < 16);
+    static_assert!(N < 16);
     unsafe { simd_insert(a.as_u8x16(), N as u32, val).v128() }
 }
 
@@ -1153,7 +1153,7 @@ pub fn u8x16_replace_lane<const N: usize>(a: v128, val: u8) -> v128 {
 #[doc(alias("i16x8.extract_lane_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
-    static_assert!(N: usize where N < 8);
+    static_assert!(N < 8);
     unsafe { simd_extract(a.as_i16x8(), N as u32) }
 }
 
@@ -1167,7 +1167,7 @@ pub fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
 #[doc(alias("i16x8.extract_lane_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_extract_lane<const N: usize>(a: v128) -> u16 {
-    static_assert!(N: usize where N < 8);
+    static_assert!(N < 8);
     unsafe { simd_extract(a.as_u16x8(), N as u32) }
 }
 
@@ -1181,7 +1181,7 @@ pub fn u16x8_extract_lane<const N: usize>(a: v128) -> u16 {
 #[doc(alias("i16x8.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
-    static_assert!(N: usize where N < 8);
+    static_assert!(N < 8);
     unsafe { simd_insert(a.as_i16x8(), N as u32, val).v128() }
 }
 
@@ -1195,7 +1195,7 @@ pub fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
 #[doc(alias("i16x8.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_replace_lane<const N: usize>(a: v128, val: u16) -> v128 {
-    static_assert!(N: usize where N < 8);
+    static_assert!(N < 8);
     unsafe { simd_insert(a.as_u16x8(), N as u32, val).v128() }
 }
 
@@ -1209,7 +1209,7 @@ pub fn u16x8_replace_lane<const N: usize>(a: v128, val: u16) -> v128 {
 #[doc(alias("i32x4.extract_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extract_lane<const N: usize>(a: v128) -> i32 {
-    static_assert!(N: usize where N < 4);
+    static_assert!(N < 4);
     unsafe { simd_extract(a.as_i32x4(), N as u32) }
 }
 
@@ -1235,7 +1235,7 @@ pub fn u32x4_extract_lane<const N: usize>(a: v128) -> u32 {
 #[doc(alias("i32x4.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_replace_lane<const N: usize>(a: v128, val: i32) -> v128 {
-    static_assert!(N: usize where N < 4);
+    static_assert!(N < 4);
     unsafe { simd_insert(a.as_i32x4(), N as u32, val).v128() }
 }
 
@@ -1261,7 +1261,7 @@ pub fn u32x4_replace_lane<const N: usize>(a: v128, val: u32) -> v128 {
 #[doc(alias("i64x2.extract_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extract_lane<const N: usize>(a: v128) -> i64 {
-    static_assert!(N: usize where N < 2);
+    static_assert!(N < 2);
     unsafe { simd_extract(a.as_i64x2(), N as u32) }
 }
 
@@ -1287,7 +1287,7 @@ pub fn u64x2_extract_lane<const N: usize>(a: v128) -> u64 {
 #[doc(alias("i64x2.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_replace_lane<const N: usize>(a: v128, val: i64) -> v128 {
-    static_assert!(N: usize where N < 2);
+    static_assert!(N < 2);
     unsafe { simd_insert(a.as_i64x2(), N as u32, val).v128() }
 }
 
@@ -1313,7 +1313,7 @@ pub fn u64x2_replace_lane<const N: usize>(a: v128, val: u64) -> v128 {
 #[doc(alias("f32x4.extract_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
-    static_assert!(N: usize where N < 4);
+    static_assert!(N < 4);
     unsafe { simd_extract(a.as_f32x4(), N as u32) }
 }
 
@@ -1327,7 +1327,7 @@ pub fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
 #[doc(alias("f32x4.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
-    static_assert!(N: usize where N < 4);
+    static_assert!(N < 4);
     unsafe { simd_insert(a.as_f32x4(), N as u32, val).v128() }
 }
 
@@ -1341,7 +1341,7 @@ pub fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
 #[doc(alias("f64x2.extract_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
-    static_assert!(N: usize where N < 2);
+    static_assert!(N < 2);
     unsafe { simd_extract(a.as_f64x2(), N as u32) }
 }
 
@@ -1355,7 +1355,7 @@ pub fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
 #[doc(alias("f64x2.replace_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_replace_lane<const N: usize>(a: v128, val: f64) -> v128 {
-    static_assert!(N: usize where N < 2);
+    static_assert!(N < 2);
     unsafe { simd_insert(a.as_f64x2(), N as u32, val).v128() }
 }
 

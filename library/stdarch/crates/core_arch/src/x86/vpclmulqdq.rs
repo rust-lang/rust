@@ -37,7 +37,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pclmulqdq_512(a, b, IMM8 as u8)
 }
 
@@ -54,7 +54,7 @@ pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) 
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_clmulepi64_epi128<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pclmulqdq_256(a, b, IMM8 as u8)
 }
 

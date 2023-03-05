@@ -58,7 +58,7 @@ pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
-    static_assert_imm3!(IMM_ROUNDING);
+    static_assert_uimm_bits!(IMM_ROUNDING, 3);
     let a = a.as_f32x4();
     let r = llvm_vcvtps2ph_128(a, IMM_ROUNDING);
     transmute(r)
@@ -79,7 +79,7 @@ pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
-    static_assert_imm3!(IMM_ROUNDING);
+    static_assert_uimm_bits!(IMM_ROUNDING, 3);
     let a = a.as_f32x8();
     let r = llvm_vcvtps2ph_256(a, IMM_ROUNDING);
     transmute(r)

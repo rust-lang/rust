@@ -80,7 +80,7 @@ pub unsafe fn vec_xxpermdi<T, const DM: i32>(a: T, b: T) -> T
 where
     T: sealed::VectorPermDI,
 {
-    static_assert_imm2!(DM);
+    static_assert_uimm_bits!(DM, 2);
     a.vec_xxpermdi(b, DM as u8)
 }
 

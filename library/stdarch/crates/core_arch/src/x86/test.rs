@@ -94,7 +94,7 @@ mod x86_polyfill {
 
     #[rustc_legacy_const_generics(2)]
     pub unsafe fn _mm_insert_epi64<const INDEX: i32>(a: __m128i, val: i64) -> __m128i {
-        static_assert_imm1!(INDEX);
+        static_assert_uimm_bits!(INDEX, 1);
         #[repr(C)]
         union A {
             a: __m128i,
@@ -108,7 +108,7 @@ mod x86_polyfill {
     #[target_feature(enable = "avx2")]
     #[rustc_legacy_const_generics(2)]
     pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, val: i64) -> __m256i {
-        static_assert_imm2!(INDEX);
+        static_assert_uimm_bits!(INDEX, 2);
         #[repr(C)]
         union A {
             a: __m256i,

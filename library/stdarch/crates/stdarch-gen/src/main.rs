@@ -2844,12 +2844,9 @@ fn get_call(
             _ => 0,
         };
         if len == 0 {
-            return format!(
-                r#"static_assert!({} : i32 where {} == 0);"#,
-                fn_format[2], fn_format[2]
-            );
+            return format!(r#"static_assert!({} == 0);"#, fn_format[2]);
         } else {
-            return format!(r#"static_assert_imm{len}!({});"#, fn_format[2]);
+            return format!(r#"static_assert_uimm_bits!({}, {len});"#, fn_format[2]);
         }
     }
     if fn_name.starts_with("static_assert") {
@@ -2869,14 +2866,11 @@ fn get_call(
             fn_format[3].clone()
         };
         if lim1 == lim2 {
-            return format!(
-                r#"static_assert!({} : i32 where {} == {lim1});"#,
-                fn_format[1], fn_format[1]
-            );
+            return format!(r#"static_assert!({} == {lim1});"#, fn_format[1]);
         } else {
             return format!(
-                r#"static_assert!({} : i32 where {} >= {lim1} && {} <= {lim2});"#,
-                fn_format[1], fn_format[1], fn_format[1]
+                r#"static_assert!({} >= {lim1} && {} <= {lim2});"#,
+                fn_format[1], fn_format[1]
             );
         }
     }

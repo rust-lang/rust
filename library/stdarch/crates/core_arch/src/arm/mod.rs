@@ -103,7 +103,7 @@ pub unsafe fn udf() -> ! {
 #[inline(always)]
 #[rustc_legacy_const_generics(0)]
 pub unsafe fn __dbg<const IMM4: i32>() {
-    static_assert_imm4!(IMM4);
+    static_assert_uimm_bits!(IMM4, 4);
     dbg(IMM4);
 }
 

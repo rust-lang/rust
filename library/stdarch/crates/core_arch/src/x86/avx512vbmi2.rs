@@ -1214,7 +1214,7 @@ pub unsafe fn _mm_maskz_shrdv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shldi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshldvq(
         a.as_i64x8(),
@@ -1236,7 +1236,7 @@ pub unsafe fn _mm512_mask_shldi_epi64<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshldvq(
         a.as_i64x8(),
@@ -1258,7 +1258,7 @@ pub unsafe fn _mm512_maskz_shldi_epi64<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshldvq(
         a.as_i64x8(),
@@ -1277,7 +1277,7 @@ pub unsafe fn _mm512_maskz_shldi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shldi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshldvq256(
         a.as_i64x4(),
@@ -1299,7 +1299,7 @@ pub unsafe fn _mm256_mask_shldi_epi64<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshldvq256(
         a.as_i64x4(),
@@ -1321,7 +1321,7 @@ pub unsafe fn _mm256_maskz_shldi_epi64<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshldvq256(
         a.as_i64x4(),
@@ -1340,7 +1340,7 @@ pub unsafe fn _mm256_maskz_shldi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shldi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshldvq128(
         a.as_i64x2(),
@@ -1362,7 +1362,7 @@ pub unsafe fn _mm_mask_shldi_epi64<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x2 = vpshldvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
@@ -1380,7 +1380,7 @@ pub unsafe fn _mm_maskz_shldi_epi64<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x2 = vpshldvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     let zero = _mm_setzero_si128().as_i64x2();
@@ -1395,7 +1395,7 @@ pub unsafe fn _mm_maskz_shldi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shldi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1416,7 +1416,7 @@ pub unsafe fn _mm512_mask_shldi_epi32<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x16 = vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1437,7 +1437,7 @@ pub unsafe fn _mm512_maskz_shldi_epi32<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x16 = vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1455,7 +1455,7 @@ pub unsafe fn _mm512_maskz_shldi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shldi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -1476,7 +1476,7 @@ pub unsafe fn _mm256_mask_shldi_epi32<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x8 = vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -1497,7 +1497,7 @@ pub unsafe fn _mm256_maskz_shldi_epi32<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x8 = vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -1515,7 +1515,7 @@ pub unsafe fn _mm256_maskz_shldi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shldi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshldvd128(
         a.as_i32x4(),
         b.as_i32x4(),
@@ -1536,7 +1536,7 @@ pub unsafe fn _mm_mask_shldi_epi32<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
 }
@@ -1553,7 +1553,7 @@ pub unsafe fn _mm_maskz_shldi_epi32<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     let zero = _mm_setzero_si128().as_i32x4();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1567,7 +1567,7 @@ pub unsafe fn _mm_maskz_shldi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shldi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     transmute(vpshldvw(
         a.as_i16x32(),
@@ -1589,7 +1589,7 @@ pub unsafe fn _mm512_mask_shldi_epi16<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x32 = vpshldvw(
         a.as_i16x32(),
@@ -1611,7 +1611,7 @@ pub unsafe fn _mm512_maskz_shldi_epi16<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x32 = vpshldvw(
         a.as_i16x32(),
@@ -1630,7 +1630,7 @@ pub unsafe fn _mm512_maskz_shldi_epi16<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shldi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     transmute(vpshldvw256(
         a.as_i16x16(),
@@ -1652,7 +1652,7 @@ pub unsafe fn _mm256_mask_shldi_epi16<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshldvw256(
         a.as_i16x16(),
@@ -1674,7 +1674,7 @@ pub unsafe fn _mm256_maskz_shldi_epi16<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshldvw256(
         a.as_i16x16(),
@@ -1693,7 +1693,7 @@ pub unsafe fn _mm256_maskz_shldi_epi16<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shldi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     transmute(vpshldvw128(
         a.as_i16x8(),
@@ -1715,7 +1715,7 @@ pub unsafe fn _mm_mask_shldi_epi16<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x8 = vpshldvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     transmute(simd_select_bitmask(k, shf, src.as_i16x8()))
@@ -1733,7 +1733,7 @@ pub unsafe fn _mm_maskz_shldi_epi16<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x8 = vpshldvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     let zero = _mm_setzero_si128().as_i16x8();
@@ -1748,7 +1748,7 @@ pub unsafe fn _mm_maskz_shldi_epi16<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shrdi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshrdvq(
         a.as_i64x8(),
@@ -1770,7 +1770,7 @@ pub unsafe fn _mm512_mask_shrdi_epi64<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshrdvq(
         a.as_i64x8(),
@@ -1792,7 +1792,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshrdvq(
         a.as_i64x8(),
@@ -1811,7 +1811,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shrdi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshrdvq256(
         a.as_i64x4(),
@@ -1833,7 +1833,7 @@ pub unsafe fn _mm256_mask_shrdi_epi64<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshrdvq256(
         a.as_i64x4(),
@@ -1855,7 +1855,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshrdvq256(
         a.as_i64x4(),
@@ -1874,7 +1874,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shrdi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     transmute(vpshrdvq128(
         a.as_i64x2(),
@@ -1896,7 +1896,7 @@ pub unsafe fn _mm_mask_shrdi_epi64<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x2 = vpshrdvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
@@ -1914,7 +1914,7 @@ pub unsafe fn _mm_maskz_shrdi_epi64<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i64;
     let shf: i64x2 = vpshrdvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     let zero = _mm_setzero_si128().as_i64x2();
@@ -1929,7 +1929,7 @@ pub unsafe fn _mm_maskz_shrdi_epi64<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shrdi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1950,7 +1950,7 @@ pub unsafe fn _mm512_mask_shrdi_epi32<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x16 = vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1971,7 +1971,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x16 = vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
@@ -1989,7 +1989,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shrdi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -2010,7 +2010,7 @@ pub unsafe fn _mm256_mask_shrdi_epi32<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x8 = vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -2031,7 +2031,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x8 = vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
@@ -2049,7 +2049,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shrdi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vpshrdvd128(
         a.as_i32x4(),
         b.as_i32x4(),
@@ -2070,7 +2070,7 @@ pub unsafe fn _mm_mask_shrdi_epi32<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
 }
@@ -2087,7 +2087,7 @@ pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     let zero = _mm_setzero_si128().as_i32x4();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -2101,7 +2101,7 @@ pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     transmute(vpshrdvw(
@@ -2124,7 +2124,7 @@ pub unsafe fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x32 = vpshrdvw(
@@ -2147,7 +2147,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x32 = vpshrdvw(
@@ -2167,7 +2167,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     transmute(vpshrdvw256(
@@ -2190,7 +2190,7 @@ pub unsafe fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x16 = vpshrdvw256(
@@ -2213,7 +2213,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshrdvw256(
         a.as_i16x16(),
@@ -2232,7 +2232,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_shrdi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     transmute(vpshrdvw128(
         a.as_i16x8(),
@@ -2254,7 +2254,7 @@ pub unsafe fn _mm_mask_shrdi_epi16<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x8 = vpshrdvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     transmute(simd_select_bitmask(k, shf, src.as_i16x8()))
@@ -2272,7 +2272,7 @@ pub unsafe fn _mm_maskz_shrdi_epi16<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
     let shf: i16x8 = vpshrdvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     let zero = _mm_setzero_si128().as_i16x8();

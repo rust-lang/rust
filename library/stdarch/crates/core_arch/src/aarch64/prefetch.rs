@@ -67,7 +67,7 @@ pub const _PREFETCH_LOCALITY3: i32 = 3;
 // FIXME: Replace this with the standard ACLE __pld/__pldx/__pli/__plix intrinsics
 pub unsafe fn _prefetch<const RW: i32, const LOCALITY: i32>(p: *const i8) {
     // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
-    static_assert_imm1!(RW);
-    static_assert_imm2!(LOCALITY);
+    static_assert_uimm_bits!(RW, 1);
+    static_assert_uimm_bits!(LOCALITY, 2);
     prefetch(p, RW, LOCALITY, 1);
 }

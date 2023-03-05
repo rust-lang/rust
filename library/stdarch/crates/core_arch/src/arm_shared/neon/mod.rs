@@ -975,7 +975,7 @@ extern "unadjusted" {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> int8x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -991,7 +991,7 @@ pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> in
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> int8x16_t {
-    static_assert_imm4!(LANE);
+    static_assert_uimm_bits!(LANE, 4);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1007,7 +1007,7 @@ pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) -> int16x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1023,7 +1023,7 @@ pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) ->
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -> int16x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1039,7 +1039,7 @@ pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) -> int32x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1055,7 +1055,7 @@ pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) ->
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -> int32x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1071,7 +1071,7 @@ pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
-    static_assert!(LANE : i32 where LANE == 0);
+    static_assert!(LANE == 0);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1087,7 +1087,7 @@ pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) ->
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1103,7 +1103,7 @@ pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> uint8x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1119,7 +1119,7 @@ pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> u
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) -> uint8x16_t {
-    static_assert_imm4!(LANE);
+    static_assert_uimm_bits!(LANE, 4);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1135,7 +1135,7 @@ pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) ->
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -> uint16x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1151,7 +1151,7 @@ pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) -> uint16x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1167,7 +1167,7 @@ pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -> uint32x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1183,7 +1183,7 @@ pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) -> uint32x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1199,7 +1199,7 @@ pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
-    static_assert!(LANE : i32 where LANE == 0);
+    static_assert!(LANE == 0);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1215,7 +1215,7 @@ pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1231,7 +1231,7 @@ pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> poly8x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1247,7 +1247,7 @@ pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> p
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) -> poly8x16_t {
-    static_assert_imm4!(LANE);
+    static_assert_uimm_bits!(LANE, 4);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1263,7 +1263,7 @@ pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) ->
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -> poly16x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1279,7 +1279,7 @@ pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) -> poly16x8_t {
-    static_assert_imm3!(LANE);
+    static_assert_uimm_bits!(LANE, 3);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1297,7 +1297,7 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
-    static_assert!(LANE : i32 where LANE == 0);
+    static_assert!(LANE == 0);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1315,7 +1315,7 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1331,7 +1331,7 @@ pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) -> float32x2_t {
-    static_assert_imm1!(LANE);
+    static_assert_uimm_bits!(LANE, 1);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -1347,7 +1347,7 @@ pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) 
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t) -> float32x4_t {
-    static_assert_imm2!(LANE);
+    static_assert_uimm_bits!(LANE, 2);
     simd_insert(src, LANE as u32, *ptr)
 }
 
@@ -4655,7 +4655,7 @@ pub unsafe fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_u64<const IMM5: i32>(v: uint64x2_t) -> u64 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4670,7 +4670,7 @@ pub unsafe fn vgetq_lane_u64<const IMM5: i32>(v: uint64x2_t) -> u64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
-    static_assert!(IMM5 : i32 where IMM5 == 0);
+    static_assert!(IMM5 == 0);
     simd_extract(v, 0)
 }
 
@@ -4685,7 +4685,7 @@ pub unsafe fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_u16<const IMM5: i32>(v: uint16x4_t) -> u16 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4700,7 +4700,7 @@ pub unsafe fn vget_lane_u16<const IMM5: i32>(v: uint16x4_t) -> u16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_s16<const IMM5: i32>(v: int16x4_t) -> i16 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4715,7 +4715,7 @@ pub unsafe fn vget_lane_s16<const IMM5: i32>(v: int16x4_t) -> i16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_p16<const IMM5: i32>(v: poly16x4_t) -> p16 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4730,7 +4730,7 @@ pub unsafe fn vget_lane_p16<const IMM5: i32>(v: poly16x4_t) -> p16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_u32<const IMM5: i32>(v: uint32x2_t) -> u32 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4745,7 +4745,7 @@ pub unsafe fn vget_lane_u32<const IMM5: i32>(v: uint32x2_t) -> u32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_s32<const IMM5: i32>(v: int32x2_t) -> i32 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4760,7 +4760,7 @@ pub unsafe fn vget_lane_s32<const IMM5: i32>(v: int32x2_t) -> i32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_f32<const IMM5: i32>(v: float32x2_t) -> f32 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4775,7 +4775,7 @@ pub unsafe fn vget_lane_f32<const IMM5: i32>(v: float32x2_t) -> f32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_f32<const IMM5: i32>(v: float32x4_t) -> f32 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4790,7 +4790,7 @@ pub unsafe fn vgetq_lane_f32<const IMM5: i32>(v: float32x4_t) -> f32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_p64<const IMM5: i32>(v: poly64x1_t) -> p64 {
-    static_assert!(IMM5 : i32 where IMM5 == 0);
+    static_assert!(IMM5 == 0);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4805,7 +4805,7 @@ pub unsafe fn vget_lane_p64<const IMM5: i32>(v: poly64x1_t) -> p64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_p64<const IMM5: i32>(v: poly64x2_t) -> p64 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4820,7 +4820,7 @@ pub unsafe fn vgetq_lane_p64<const IMM5: i32>(v: poly64x2_t) -> p64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_s64<const IMM5: i32>(v: int64x1_t) -> i64 {
-    static_assert!(IMM5 : i32 where IMM5 == 0);
+    static_assert!(IMM5 == 0);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4835,7 +4835,7 @@ pub unsafe fn vget_lane_s64<const IMM5: i32>(v: int64x1_t) -> i64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_s64<const IMM5: i32>(v: int64x2_t) -> i64 {
-    static_assert_imm1!(IMM5);
+    static_assert_uimm_bits!(IMM5, 1);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4850,7 +4850,7 @@ pub unsafe fn vgetq_lane_s64<const IMM5: i32>(v: int64x2_t) -> i64 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_u16<const IMM5: i32>(v: uint16x8_t) -> u16 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4865,7 +4865,7 @@ pub unsafe fn vgetq_lane_u16<const IMM5: i32>(v: uint16x8_t) -> u16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_u32<const IMM5: i32>(v: uint32x4_t) -> u32 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4880,7 +4880,7 @@ pub unsafe fn vgetq_lane_u32<const IMM5: i32>(v: uint32x4_t) -> u32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_s16<const IMM5: i32>(v: int16x8_t) -> i16 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4895,7 +4895,7 @@ pub unsafe fn vgetq_lane_s16<const IMM5: i32>(v: int16x8_t) -> i16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_p16<const IMM5: i32>(v: poly16x8_t) -> p16 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4910,7 +4910,7 @@ pub unsafe fn vgetq_lane_p16<const IMM5: i32>(v: poly16x8_t) -> p16 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_s32<const IMM5: i32>(v: int32x4_t) -> i32 {
-    static_assert_imm2!(IMM5);
+    static_assert_uimm_bits!(IMM5, 2);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4925,7 +4925,7 @@ pub unsafe fn vgetq_lane_s32<const IMM5: i32>(v: int32x4_t) -> i32 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4940,7 +4940,7 @@ pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_s8<const IMM5: i32>(v: int8x8_t) -> i8 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4955,7 +4955,7 @@ pub unsafe fn vget_lane_s8<const IMM5: i32>(v: int8x8_t) -> i8 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vget_lane_p8<const IMM5: i32>(v: poly8x8_t) -> p8 {
-    static_assert_imm3!(IMM5);
+    static_assert_uimm_bits!(IMM5, 3);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4970,7 +4970,7 @@ pub unsafe fn vget_lane_p8<const IMM5: i32>(v: poly8x8_t) -> p8 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_u8<const IMM5: i32>(v: uint8x16_t) -> u8 {
-    static_assert_imm4!(IMM5);
+    static_assert_uimm_bits!(IMM5, 4);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -4985,7 +4985,7 @@ pub unsafe fn vgetq_lane_u8<const IMM5: i32>(v: uint8x16_t) -> u8 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_s8<const IMM5: i32>(v: int8x16_t) -> i8 {
-    static_assert_imm4!(IMM5);
+    static_assert_uimm_bits!(IMM5, 4);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -5000,7 +5000,7 @@ pub unsafe fn vgetq_lane_s8<const IMM5: i32>(v: int8x16_t) -> i8 {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vgetq_lane_p8<const IMM5: i32>(v: poly8x16_t) -> p8 {
-    static_assert_imm4!(IMM5);
+    static_assert_uimm_bits!(IMM5, 4);
     simd_extract(v, IMM5 as u32)
 }
 
@@ -6000,7 +6000,7 @@ pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vext_s64<const N: i32>(a: int64x1_t, _b: int64x1_t) -> int64x1_t {
-    static_assert!(N : i32 where N == 0);
+    static_assert!(N == 0);
     a
 }
 
@@ -6016,7 +6016,7 @@ pub unsafe fn vext_s64<const N: i32>(a: int64x1_t, _b: int64x1_t) -> int64x1_t {
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 pub unsafe fn vext_u64<const N: i32>(a: uint64x1_t, _b: uint64x1_t) -> uint64x1_t {
-    static_assert!(N : i32 where N == 0);
+    static_assert!(N == 0);
     a
 }
 

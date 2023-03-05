@@ -74,7 +74,7 @@ pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(pcmpistrm128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8))
 }
 
@@ -262,7 +262,7 @@ pub unsafe fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistri128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -277,7 +277,7 @@ pub unsafe fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistriz128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -292,7 +292,7 @@ pub unsafe fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistric128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -307,7 +307,7 @@ pub unsafe fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistris128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -321,7 +321,7 @@ pub unsafe fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistrio128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -336,7 +336,7 @@ pub unsafe fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpistria128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
@@ -350,7 +350,7 @@ pub unsafe fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> __m128i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(pcmpestrm128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8))
 }
 
@@ -439,7 +439,7 @@ pub unsafe fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestri128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
@@ -454,7 +454,7 @@ pub unsafe fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestriz128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
@@ -469,7 +469,7 @@ pub unsafe fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestric128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
@@ -484,7 +484,7 @@ pub unsafe fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestris128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
@@ -499,7 +499,7 @@ pub unsafe fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestrio128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
@@ -515,7 +515,7 @@ pub unsafe fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestra<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     pcmpestria128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 

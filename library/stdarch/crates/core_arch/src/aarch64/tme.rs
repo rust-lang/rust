@@ -96,7 +96,7 @@ pub unsafe fn __tcommit() {
 #[cfg_attr(test, assert_instr(tcancel, IMM16 = 0x0))]
 #[rustc_legacy_const_generics(0)]
 pub unsafe fn __tcancel<const IMM16: u64>() {
-    static_assert!(IMM16: u64 where IMM16 <= 65535);
+    static_assert!(IMM16 <= 65535);
     aarch64_tcancel(IMM16);
 }
 

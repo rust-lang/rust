@@ -238,7 +238,7 @@ pub unsafe fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> _
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_gf2p8affine_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
@@ -264,7 +264,7 @@ pub unsafe fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m512i,
     a: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm512_setzero_si512().as_i8x64();
     let x = x.as_i8x64();
@@ -292,7 +292,7 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m512i,
     a: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
@@ -311,7 +311,7 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
@@ -337,7 +337,7 @@ pub unsafe fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m256i,
     a: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm256_setzero_si256().as_i8x32();
     let x = x.as_i8x32();
@@ -365,7 +365,7 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m256i,
     a: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
@@ -384,7 +384,7 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[cfg_attr(test, assert_instr(gf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x16();
     let a = a.as_i8x16();
@@ -410,7 +410,7 @@ pub unsafe fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m128i,
     a: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm_setzero_si128().as_i8x16();
     let x = x.as_i8x16();
@@ -438,7 +438,7 @@ pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
     x: __m128i,
     a: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x16();
     let a = a.as_i8x16();
@@ -459,7 +459,7 @@ pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
@@ -487,7 +487,7 @@ pub unsafe fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m512i,
     a: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm512_setzero_si512().as_i8x64();
     let x = x.as_i8x64();
@@ -517,7 +517,7 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m512i,
     a: __m512i,
 ) -> __m512i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
@@ -538,7 +538,7 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
@@ -566,7 +566,7 @@ pub unsafe fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m256i,
     a: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm256_setzero_si256().as_i8x32();
     let x = x.as_i8x32();
@@ -596,7 +596,7 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m256i,
     a: __m256i,
 ) -> __m256i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
@@ -617,7 +617,7 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[cfg_attr(test, assert_instr(gf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x16();
     let a = a.as_i8x16();
@@ -645,7 +645,7 @@ pub unsafe fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m128i,
     a: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let zero = _mm_setzero_si128().as_i8x16();
     let x = x.as_i8x16();
@@ -675,7 +675,7 @@ pub unsafe fn _mm_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     x: __m128i,
     a: __m128i,
 ) -> __m128i {
-    static_assert_imm8!(B);
+    static_assert_uimm_bits!(B, 8);
     let b = B as u8;
     let x = x.as_i8x16();
     let a = a.as_i8x16();

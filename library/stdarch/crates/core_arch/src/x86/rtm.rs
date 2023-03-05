@@ -79,7 +79,7 @@ pub unsafe fn _xend() {
 #[cfg_attr(test, assert_instr(xabort, IMM8 = 0x0))]
 #[rustc_legacy_const_generics(0)]
 pub unsafe fn _xabort<const IMM8: u32>() {
-    static_assert_imm_u8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     x86_xabort(IMM8 as i8)
 }
 

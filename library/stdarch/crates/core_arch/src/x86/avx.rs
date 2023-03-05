@@ -117,7 +117,7 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
-    static_assert_imm8!(MASK);
+    static_assert_uimm_bits!(MASK, 8);
     simd_shuffle!(
         a,
         b,
@@ -140,7 +140,7 @@ pub unsafe fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m2
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm8!(MASK);
+    static_assert_uimm_bits!(MASK, 8);
     simd_shuffle!(
         a,
         b,
@@ -350,7 +350,7 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_round_pd<const ROUNDING: i32>(a: __m256d) -> __m256d {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundpd256(a, ROUNDING)
 }
 
@@ -397,7 +397,7 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_round_ps<const ROUNDING: i32>(a: __m256) -> __m256 {
-    static_assert_imm4!(ROUNDING);
+    static_assert_uimm_bits!(ROUNDING, 4);
     roundps256(a, ROUNDING)
 }
 
@@ -462,7 +462,7 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256d {
-    static_assert_imm4!(IMM4);
+    static_assert_uimm_bits!(IMM4, 4);
     simd_shuffle!(
         a,
         b,
@@ -485,7 +485,7 @@ pub unsafe fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     simd_shuffle!(
         a,
         b,
@@ -538,7 +538,7 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     vdpps(a, b, IMM8)
 }
 
@@ -737,7 +737,7 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_pd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmppd(a, b, IMM5 as i8)
 }
 
@@ -752,7 +752,7 @@ pub unsafe fn _mm_cmp_pd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cmp_pd<const IMM5: i32>(a: __m256d, b: __m256d) -> __m256d {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmppd256(a, b, IMM5 as u8)
 }
 
@@ -767,7 +767,7 @@ pub unsafe fn _mm256_cmp_pd<const IMM5: i32>(a: __m256d, b: __m256d) -> __m256d 
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_ps<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmpps(a, b, IMM5 as i8)
 }
 
@@ -782,7 +782,7 @@ pub unsafe fn _mm_cmp_ps<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cmp_ps<const IMM5: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmpps256(a, b, IMM5 as u8)
 }
 
@@ -799,7 +799,7 @@ pub unsafe fn _mm256_cmp_ps<const IMM5: i32>(a: __m256, b: __m256) -> __m256 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_sd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmpsd(a, b, IMM5 as i8)
 }
 
@@ -816,7 +816,7 @@ pub unsafe fn _mm_cmp_sd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_ss<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm5!(IMM5);
+    static_assert_uimm_bits!(IMM5, 5);
     vcmpss(a, b, IMM5 as i8)
 }
 
@@ -929,7 +929,7 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     simd_shuffle!(
         a,
         _mm256_undefined_ps(),
@@ -950,7 +950,7 @@ pub unsafe fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     simd_shuffle!(a, _mm256_undefined_pd(), [[0, 1], [2, 3]][IMM1 as usize])
 }
 
@@ -966,7 +966,7 @@ pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     let dst: i64x2 = simd_shuffle!(
         a.as_i64x4(),
         _mm256_undefined_si256().as_i64x4(),
@@ -1032,7 +1032,7 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     simd_shuffle!(
         a,
         _mm256_undefined_ps(),
@@ -1059,7 +1059,7 @@ pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_ps<const IMM8: i32>(a: __m128) -> __m128 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     simd_shuffle!(
         a,
         _mm_undefined_ps(),
@@ -1106,7 +1106,7 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
-    static_assert_imm4!(IMM4);
+    static_assert_uimm_bits!(IMM4, 4);
     simd_shuffle!(
         a,
         _mm256_undefined_pd(),
@@ -1129,7 +1129,7 @@ pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
-    static_assert_imm2!(IMM2);
+    static_assert_uimm_bits!(IMM2, 2);
     simd_shuffle!(
         a,
         _mm_undefined_pd(),
@@ -1147,7 +1147,7 @@ pub unsafe fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     vperm2f128ps256(a, b, IMM8 as i8)
 }
 
@@ -1161,7 +1161,7 @@ pub unsafe fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> _
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     vperm2f128pd256(a, b, IMM8 as i8)
 }
 
@@ -1175,7 +1175,7 @@ pub unsafe fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) ->
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
-    static_assert_imm8!(IMM8);
+    static_assert_uimm_bits!(IMM8, 8);
     transmute(vperm2f128si256(a.as_i32x8(), b.as_i32x8(), IMM8 as i8))
 }
 
@@ -1256,7 +1256,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     simd_shuffle!(
         a,
         _mm256_castps128_ps256(b),
@@ -1278,7 +1278,7 @@ pub unsafe fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     simd_shuffle!(
         a,
         _mm256_castpd128_pd256(b),
@@ -1299,7 +1299,7 @@ pub unsafe fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> _
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
-    static_assert_imm1!(IMM1);
+    static_assert_uimm_bits!(IMM1, 1);
     let dst: i64x4 = simd_shuffle!(
         a.as_i64x4(),
         _mm256_castsi128_si256(b).as_i64x4(),
@@ -1318,7 +1318,7 @@ pub unsafe fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i {
-    static_assert_imm5!(INDEX);
+    static_assert_uimm_bits!(INDEX, 5);
     transmute(simd_insert(a.as_i8x32(), INDEX as u32, i))
 }
 
@@ -1332,7 +1332,7 @@ pub unsafe fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
-    static_assert_imm4!(INDEX);
+    static_assert_uimm_bits!(INDEX, 4);
     transmute(simd_insert(a.as_i16x16(), INDEX as u32, i))
 }
 
@@ -1346,7 +1346,7 @@ pub unsafe fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m25
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
-    static_assert_imm3!(INDEX);
+    static_assert_uimm_bits!(INDEX, 3);
     transmute(simd_insert(a.as_i32x8(), INDEX as u32, i))
 }
 
