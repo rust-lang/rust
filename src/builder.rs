@@ -15,8 +15,11 @@ use gccjit::{
     Type,
     UnaryOp,
 };
+use rustc_apfloat::{ieee, Float, Round, Status};
 use rustc_codegen_ssa::MemFlags;
-use rustc_codegen_ssa::common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
+use rustc_codegen_ssa::common::{
+    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
@@ -31,6 +34,7 @@ use rustc_codegen_ssa::traits::{
     StaticBuilderMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::bug;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -451,12 +455,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(&mut self, typ: Type<'gcc>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, None, func, args, None); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value = self.current_func()
@@ -479,10 +483,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let call_site = self.call(typ, func, args, None);
+    fn invoke(&mut self, typ: Type<'gcc>, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        let call_site = self.call(typ, None, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
+        if let Some(_fn_abi) = fn_abi {
+            // TODO(bjorn3): Apply function attributes
+        }
         call_site
     }
 
@@ -707,11 +714,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.current_func().new_local(None, aligned_type, &format!("stack_var_{}", self.stack_var_count.get())).get_address(None)
     }
 
-    fn dynamic_alloca(&mut self, _ty: Type<'gcc>, _align: Align) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
-    fn array_alloca(&mut self, _ty: Type<'gcc>, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn byte_array_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -765,7 +768,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                         bx.range_metadata(load, vr);
                     }
                 }
-                abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
+                abi::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -811,11 +814,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         OperandRef { val, layout: place.layout }
     }
 
-    fn write_operand_repeatedly(mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) -> Self {
+    fn write_operand_repeatedly(&mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -834,14 +837,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
         self.llbb().add_assignment(None, current, next);
         self.br(header_bb);
 
         self.switch_to_block(next_bb);
-        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
@@ -1106,7 +1108,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let vector_type = vec.get_type().unqualified().dyncast_vector().expect("Called extract_element on a non-vector type");
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
-        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as u64);
         let array = self.context.new_bitcast(None, vec, array_type).to_rvalue();
         self.context.new_array_access(None, array, idx).to_rvalue()
     }
@@ -1197,7 +1199,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
+    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1208,42 +1210,33 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let zero = self.cx.context.new_rvalue_zero(self.int_type);
         let ptr = self.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
 
-        let field1_type = self.u8_type.make_pointer();
-        let field1 = self.context.new_field(None, field1_type, "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_2");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        let value = self.current_func().new_local(None, struct_type.as_type(), "landing_pad");
-        let ptr = self.cx.context.new_cast(None, ptr, field1_type);
-        self.block.add_assignment(None, value.access_field(None, field1), ptr);
-        self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO(antoyo): set the proper value here (the type of exception?).
+        let value1_type = self.u8_type.make_pointer();
+        let ptr = self.cx.context.new_cast(None, ptr, value1_type);
+        let value1 = ptr;
+        let value2 = zero; // TODO(antoyo): set the proper value here (the type of exception?).
 
-        value.to_rvalue()
+        (value1, value2)
     }
 
     #[cfg(not(feature="master"))]
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
-        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
-            .to_rvalue()
+    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        let value1 = self.current_func().new_local(None, self.u8_type.make_pointer(), "landing_pad0")
+                .to_rvalue();
+        let value2 = self.current_func().new_local(None, self.i32_type, "landing_pad1").to_rvalue();
+        (value1, value2)
     }
 
     #[cfg(feature="master")]
-    fn resume(&mut self, exn: RValue<'gcc>) {
-        // TODO(antoyo): check if this is normal that we need to dereference the value.
-        // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
-        // pointer of pointer that is later dereferenced.
-        let exn_type = exn.get_type().make_pointer();
-        let exn = self.context.new_cast(None, exn, exn_type);
-        let exn = exn.dereference(None).to_rvalue();
+    fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
+        let exn_type = exn0.get_type();
+        let exn = self.context.new_cast(None, exn0, exn_type);
         let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
         self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
         self.unreachable();
     }
 
     #[cfg(not(feature="master"))]
-    fn resume(&mut self, _exn: RValue<'gcc>) {
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         self.unreachable();
     }
 
@@ -1355,16 +1348,27 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn call(&mut self, _typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn call(
+        &mut self,
+        _typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        func: RValue<'gcc>,
+        args: &[RValue<'gcc>],
+        funclet: Option<&Funclet>,
+    ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };
-        if self.functions.borrow().values().find(|value| **value == gcc_func).is_some() {
+        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             self.function_call(func, args, funclet)
         }
         else {
             // If it's a not function that was defined, it's a function pointer.
             self.function_ptr_call(func, args, funclet)
+        };
+        if let Some(_fn_abi) = fn_abi {
+            // TODO(bjorn3): Apply function attributes
         }
+        call
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
@@ -1403,12 +1407,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         val
     }
 
-    fn fptoui_sat(&mut self, _val: RValue<'gcc>, _dest_ty: Type<'gcc>) -> Option<RValue<'gcc>> {
-        None
+    fn fptoui_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
+        self.fptoint_sat(false, val, dest_ty)
     }
 
-    fn fptosi_sat(&mut self, _val: RValue<'gcc>, _dest_ty: Type<'gcc>) -> Option<RValue<'gcc>> {
-        None
+    fn fptosi_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
+        self.fptoint_sat(true, val, dest_ty)
     }
 
     fn instrprof_increment(&mut self, _fn_name: RValue<'gcc>, _hash: RValue<'gcc>, _num_counters: RValue<'gcc>, _index: RValue<'gcc>) {
@@ -1417,6 +1421,166 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
+    fn fptoint_sat(&mut self, signed: bool, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
+        let src_ty = self.cx.val_ty(val);
+        let (float_ty, int_ty) = if self.cx.type_kind(src_ty) == TypeKind::Vector {
+            assert_eq!(self.cx.vector_length(src_ty), self.cx.vector_length(dest_ty));
+            (self.cx.element_type(src_ty), self.cx.element_type(dest_ty))
+        } else {
+            (src_ty, dest_ty)
+        };
+
+        // FIXME(jistone): the following was originally the fallback SSA implementation, before LLVM 13
+        // added native `fptosi.sat` and `fptoui.sat` conversions, but it was used by GCC as well.
+        // Now that LLVM always relies on its own, the code has been moved to GCC, but the comments are
+        // still LLVM-specific. This should be updated, and use better GCC specifics if possible.
+
+        let int_width = self.cx.int_width(int_ty);
+        let float_width = self.cx.float_width(float_ty);
+        // LLVM's fpto[su]i returns undef when the input val is infinite, NaN, or does not fit into the
+        // destination integer type after rounding towards zero. This `undef` value can cause UB in
+        // safe code (see issue #10184), so we implement a saturating conversion on top of it:
+        // Semantically, the mathematical value of the input is rounded towards zero to the next
+        // mathematical integer, and then the result is clamped into the range of the destination
+        // integer type. Positive and negative infinity are mapped to the maximum and minimum value of
+        // the destination integer type. NaN is mapped to 0.
+        //
+        // Define f_min and f_max as the largest and smallest (finite) floats that are exactly equal to
+        // a value representable in int_ty.
+        // They are exactly equal to int_ty::{MIN,MAX} if float_ty has enough significand bits.
+        // Otherwise, int_ty::MAX must be rounded towards zero, as it is one less than a power of two.
+        // int_ty::MIN, however, is either zero or a negative power of two and is thus exactly
+        // representable. Note that this only works if float_ty's exponent range is sufficiently large.
+        // f16 or 256 bit integers would break this property. Right now the smallest float type is f32
+        // with exponents ranging up to 127, which is barely enough for i128::MIN = -2^127.
+        // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
+        // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
+        // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
+        let int_max = |signed: bool, int_width: u64| -> u128 {
+            let shift_amount = 128 - int_width;
+            if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
+        };
+        let int_min = |signed: bool, int_width: u64| -> i128 {
+            if signed { i128::MIN >> (128 - int_width) } else { 0 }
+        };
+
+        let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {
+            let rounded_min =
+                ieee::Single::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+            assert_eq!(rounded_min.status, Status::OK);
+            let rounded_max =
+                ieee::Single::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+            assert!(rounded_max.value.is_finite());
+            (rounded_min.value.to_bits(), rounded_max.value.to_bits())
+        };
+        let compute_clamp_bounds_double = |signed: bool, int_width: u64| -> (u128, u128) {
+            let rounded_min =
+                ieee::Double::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+            assert_eq!(rounded_min.status, Status::OK);
+            let rounded_max =
+                ieee::Double::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+            assert!(rounded_max.value.is_finite());
+            (rounded_min.value.to_bits(), rounded_max.value.to_bits())
+        };
+        // To implement saturation, we perform the following steps:
+        //
+        // 1. Cast val to an integer with fpto[su]i. This may result in undef.
+        // 2. Compare val to f_min and f_max, and use the comparison results to select:
+        //  a) int_ty::MIN if val < f_min or val is NaN
+        //  b) int_ty::MAX if val > f_max
+        //  c) the result of fpto[su]i otherwise
+        // 3. If val is NaN, return 0.0, otherwise return the result of step 2.
+        //
+        // This avoids resulting undef because values in range [f_min, f_max] by definition fit into the
+        // destination type. It creates an undef temporary, but *producing* undef is not UB. Our use of
+        // undef does not introduce any non-determinism either.
+        // More importantly, the above procedure correctly implements saturating conversion.
+        // Proof (sketch):
+        // If val is NaN, 0 is returned by definition.
+        // Otherwise, val is finite or infinite and thus can be compared with f_min and f_max.
+        // This yields three cases to consider:
+        // (1) if val in [f_min, f_max], the result of fpto[su]i is returned, which agrees with
+        //     saturating conversion for inputs in that range.
+        // (2) if val > f_max, then val is larger than int_ty::MAX. This holds even if f_max is rounded
+        //     (i.e., if f_max < int_ty::MAX) because in those cases, nextUp(f_max) is already larger
+        //     than int_ty::MAX. Because val is larger than int_ty::MAX, the return value of int_ty::MAX
+        //     is correct.
+        // (3) if val < f_min, then val is smaller than int_ty::MIN. As shown earlier, f_min exactly equals
+        //     int_ty::MIN and therefore the return value of int_ty::MIN is correct.
+        // QED.
+
+        let float_bits_to_llval = |bx: &mut Self, bits| {
+            let bits_llval = match float_width {
+                32 => bx.cx().const_u32(bits as u32),
+                64 => bx.cx().const_u64(bits as u64),
+                n => bug!("unsupported float width {}", n),
+            };
+            bx.bitcast(bits_llval, float_ty)
+        };
+        let (f_min, f_max) = match float_width {
+            32 => compute_clamp_bounds_single(signed, int_width),
+            64 => compute_clamp_bounds_double(signed, int_width),
+            n => bug!("unsupported float width {}", n),
+        };
+        let f_min = float_bits_to_llval(self, f_min);
+        let f_max = float_bits_to_llval(self, f_max);
+        let int_max = self.cx.const_uint_big(int_ty, int_max(signed, int_width));
+        let int_min = self.cx.const_uint_big(int_ty, int_min(signed, int_width) as u128);
+        let zero = self.cx.const_uint(int_ty, 0);
+
+        // If we're working with vectors, constants must be "splatted": the constant is duplicated
+        // into each lane of the vector.  The algorithm stays the same, we are just using the
+        // same constant across all lanes.
+        let maybe_splat = |bx: &mut Self, val| {
+            if bx.cx().type_kind(dest_ty) == TypeKind::Vector {
+                bx.vector_splat(bx.vector_length(dest_ty), val)
+            } else {
+                val
+            }
+        };
+        let f_min = maybe_splat(self, f_min);
+        let f_max = maybe_splat(self, f_max);
+        let int_max = maybe_splat(self, int_max);
+        let int_min = maybe_splat(self, int_min);
+        let zero = maybe_splat(self, zero);
+
+        // Step 1 ...
+        let fptosui_result = if signed { self.fptosi(val, dest_ty) } else { self.fptoui(val, dest_ty) };
+        let less_or_nan = self.fcmp(RealPredicate::RealULT, val, f_min);
+        let greater = self.fcmp(RealPredicate::RealOGT, val, f_max);
+
+        // Step 2: We use two comparisons and two selects, with %s1 being the
+        // result:
+        //     %less_or_nan = fcmp ult %val, %f_min
+        //     %greater = fcmp olt %val, %f_max
+        //     %s0 = select %less_or_nan, int_ty::MIN, %fptosi_result
+        //     %s1 = select %greater, int_ty::MAX, %s0
+        // Note that %less_or_nan uses an *unordered* comparison. This
+        // comparison is true if the operands are not comparable (i.e., if val is
+        // NaN). The unordered comparison ensures that s1 becomes int_ty::MIN if
+        // val is NaN.
+        //
+        // Performance note: Unordered comparison can be lowered to a "flipped"
+        // comparison and a negation, and the negation can be merged into the
+        // select. Therefore, it not necessarily any more expensive than an
+        // ordered ("normal") comparison. Whether these optimizations will be
+        // performed is ultimately up to the backend, but at least x86 does
+        // perform them.
+        let s0 = self.select(less_or_nan, int_min, fptosui_result);
+        let s1 = self.select(greater, int_max, s0);
+
+        // Step 3: NaN replacement.
+        // For unsigned types, the above step already yielded int_ty::MIN == 0 if val is NaN.
+        // Therefore we only need to execute this step for signed integer types.
+        if signed {
+            // LLVM has no isNaN predicate, so we use (val == val) instead
+            let cmp = self.fcmp(RealPredicate::RealOEQ, val, val);
+            self.select(cmp, s1, zero)
+        } else {
+            s1
+        }
+    }
+
     #[cfg(feature="master")]
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
         let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");

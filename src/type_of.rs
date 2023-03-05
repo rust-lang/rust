@@ -3,10 +3,10 @@ use std::fmt::Write;
 use gccjit::{Struct, Type};
 use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
+use rustc_target::abi::{self, Abi, Align, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiGccExt, GccType};
@@ -47,6 +47,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ty::UintTy::U64 => self.type_i64(),
             ty::UintTy::U128 => self.type_i128(),
         }
+    }
+}
+
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
+    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
+        self.layout_of(ty).align.abi
     }
 }
 
@@ -253,7 +259,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             Int(i, false) => cx.type_from_unsigned_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
-            Pointer => {
+            Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee =
                     if let Some(pointee) = self.pointee_info_at(cx, offset) {
@@ -262,7 +268,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                     else {
                         cx.type_i8()
                     };
-                cx.type_ptr_to(pointee)
+                cx.type_ptr_to_ext(pointee, address_space)
             }
         }
     }

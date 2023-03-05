@@ -407,7 +407,7 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
 #[cfg(not(feature="master"))]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     match name {
-        "llvm.x86.xgetbv" => {
+        "llvm.x86.xgetbv" | "llvm.x86.sse2.pause" => {
             let gcc_name = "__builtin_trap";
             let func = cx.context.get_builtin_function(gcc_name);
             cx.functions.borrow_mut().insert(gcc_name.to_string(), func);

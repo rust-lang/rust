@@ -12,12 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ar"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "450575f58f7bee32816abbff470cbc47797397c2a81e0eaced4b98436daf52e1"
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -41,7 +35,7 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "1.0.0"
-source = "git+https://github.com/antoyo/gccjit.rs#1bd270d0d130fe31807cfbe509ca095c082e5848"
+source = "git+https://github.com/antoyo/gccjit.rs#eefb8c662d61477f34b7c32d26bcda5f1ef08432"
 dependencies = [
  "gccjit_sys",
 ]
@@ -49,7 +43,7 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.0.1"
-source = "git+https://github.com/antoyo/gccjit.rs#1bd270d0d130fe31807cfbe509ca095c082e5848"
+source = "git+https://github.com/antoyo/gccjit.rs#eefb8c662d61477f34b7c32d26bcda5f1ef08432"
 dependencies = [
  "libc 0.1.12",
 ]
@@ -212,11 +206,9 @@ dependencies = [
 name = "rustc_codegen_gcc"
 version = "0.1.0"
 dependencies = [
- "ar",
  "gccjit",
  "lang_tester",
  "smallvec",
- "target-lexicon",
  "tempfile",
 ]
 
@@ -234,12 +226,6 @@ name = "smallvec"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
-
-[[package]]
-name = "target-lexicon"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab0e7238dcc7b40a7be719a25365910f6807bd864f4cce6b2e6b873658e2b19d"
 
 [[package]]
 name = "tempfile"

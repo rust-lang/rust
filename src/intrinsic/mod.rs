@@ -7,7 +7,7 @@ use std::iter;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::common::{IntPredicate, span_invalid_monomorphization_error};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
@@ -31,6 +31,7 @@ use crate::abi::FnAbiGccExt;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
+use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -110,7 +111,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 _ if simple.is_some() => {
                     // FIXME(antoyo): remove this cast when the API supports function.
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
-                    self.call(self.type_void(), func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
+                    self.call(self.type_void(), None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
                 sym::likely => {
                     self.expect(args[0].immediate(), true)
@@ -141,7 +142,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 sym::volatile_load | sym::unaligned_volatile_load => {
                     let tp_ty = substs.type_at(0);
                     let mut ptr = args[0].immediate();
-                    if let PassMode::Cast(ty) = fn_abi.ret.mode {
+                    if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
                     }
                     let load = self.volatile_load(ptr.get_type(), ptr);
@@ -253,15 +254,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                span_invalid_monomorphization_error(
-                                    tcx.sess,
-                                    span,
-                                    &format!(
-                                        "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`",
-                                      name, ty
-                                    ),
-                                );
+                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
                                 return;
                             }
                         }
@@ -320,6 +313,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     return;
                 }
 
+                sym::ptr_mask => {
+                    let usize_type = self.context.new_type::<usize>();
+                    let void_ptr_type = self.context.new_type::<*const ()>();
+
+                    let ptr = args[0].immediate();
+                    let mask = args[1].immediate();
+
+                    let addr = self.bitcast(ptr, usize_type);
+                    let masked = self.and(addr, mask);
+                    self.bitcast(masked, void_ptr_type)
+                },
+                
                 _ if name_str.starts_with("simd_") => {
                     match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                         Ok(llval) => llval,
@@ -331,7 +336,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
@@ -347,7 +352,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), func, &[], None);
+        self.call(self.type_void(), None, func, &[], None);
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -427,7 +432,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         }
-        else if let PassMode::Cast(cast) = self.mode {
+        else if let PassMode::Cast(ref cast, _) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -492,7 +497,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { extra_attrs: Some(_), .. } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             },
-            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(_) => {
+            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(..) => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             },
@@ -1128,7 +1133,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
 fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, _catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
-        bx.call(bx.type_void(), try_func, &[data], None);
+        bx.call(bx.type_void(), None, try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;
@@ -1197,21 +1202,21 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        bx.call(catch_ty, catch_func, &[data, ptr], None);
+        bx.call(catch_ty, None, catch_func, &[data, ptr], None);
         bx.ret(bx.const_i32(1));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
         // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
-        bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
+        bx.invoke(try_func_ty, None, try_func, &[data], then, catch, None);
     });
 
     let func = unsafe { std::mem::transmute(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, func, &[try_func, data, catch_func], None);
+    let ret = bx.call(llty, None, func, &[try_func, data, catch_func], None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1248,8 +1253,8 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
     )));
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
-        [try_fn_ty, i8p, catch_fn_ty].iter(),
-        &tcx.types.i32,
+        [try_fn_ty, i8p, catch_fn_ty],
+        tcx.types.i32,
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,

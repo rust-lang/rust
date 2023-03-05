@@ -55,6 +55,7 @@ mod libc {
 
 mod intrinsics {
     extern "rust-intrinsic" {
+        #[rustc_safe_intrinsic]
         pub fn abort() -> !;
     }
 }

@@ -18,13 +18,17 @@
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
+extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_attr;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
+extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
@@ -51,6 +55,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod int;
 mod intrinsic;
 mod mono_item;
@@ -60,6 +65,7 @@ mod type_of;
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
+use crate::errors::LTONotSupported;
 use gccjit::{Context, OptimizationLevel, CType};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
@@ -69,7 +75,8 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -79,6 +86,8 @@ use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -96,9 +105,13 @@ pub struct GccCodegenBackend {
 }
 
 impl CodegenBackend for GccCodegenBackend {
+    fn locale_resource(&self) -> &'static str {
+        crate::DEFAULT_LOCALE_RESOURCE
+    }
+
     fn init(&self, sess: &Session) {
         if sess.lto() != Lto::No {
-            sess.warn("LTO is not supported. You may get a linker error.");
+            sess.emit_warning(LTONotSupported {});
         }
 
         let temp_dir = TempDir::new().expect("cannot create temporary directory");
@@ -149,15 +162,15 @@ impl CodegenBackend for GccCodegenBackend {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) -> Self::Module {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
             context: Context::default(),
         };
-        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, has_alloc_error_handler); }
+        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }
 
-    fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
+    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
         base::compile_codegen_unit(tcx, cgu_name, *self.supports_128bit_integers.lock().expect("lock"))
     }
 
@@ -166,15 +179,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
         Arc::new(|_| {
             Ok(())
         })
-    }
-
-    fn target_cpu<'b>(&self, _sess: &'b Session) -> &'b str {
-        unimplemented!();
-    }
-
-    fn tune_cpu<'b>(&self, _sess: &'b Session) -> Option<&'b str> {
-        None
-        // TODO(antoyo)
     }
 }
 
@@ -205,8 +209,8 @@ unsafe impl Sync for GccContext {}
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
+    type TargetMachineError = ();
     type ModuleBuffer = ModuleBuffer;
-    type Context = ();
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
@@ -324,10 +328,10 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
                 false
             }
             /*
-               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512gfni,
-               avx512ifma, avx512pf, avx512vaes, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpclmulqdq,
-               avx512vpopcntdq, bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, xsave, xsavec, xsaveopt, xsaves
+               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512ifma,
+               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+               bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
              */
             //false
         })

@@ -225,10 +225,13 @@ rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-12 || which FileCheck-13 || which FileCheck-14`"
+
+[llvm]
+download-ci-llvm = false
 EOF
 
     rustc -V | cut -d' ' -f3 | tr -d '('
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') src/test
+    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') tests
 }
 
 function asm_tests() {
@@ -236,7 +239,7 @@ function asm_tests() {
 
     echo "[TEST] rustc test suite"
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/assembly/asm --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/assembly/asm --rustc-args "$RUSTC_ARGS"
 }
 
 # FIXME(antoyo): linker gives multiple definitions error on Linux
@@ -332,21 +335,21 @@ function test_rustc() {
 
     setup_rustc
 
-    for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" src/test/ui); do
+    for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
       rm $test
     done
 
-    git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
+    git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,*lto*.rs,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
-    rm src/test/ui/mir/mir_heavy_promoted.rs # this tests is oom-killed in the CI.
-    for test in $(rg --files-with-matches "thread|lto" src/test/ui); do
+    rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,*lto*.rs,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
+    rm tests/ui/mir/mir_heavy_promoted.rs # this tests is oom-killed in the CI.
+    for test in $(rg --files-with-matches "thread|lto" tests/ui); do
       rm $test
     done
-    git checkout src/test/ui/lto/auxiliary/dylib.rs
-    git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
-    git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
-    git checkout src/test/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
+    git checkout tests/ui/lto/auxiliary/dylib.rs
+    git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
+    git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
+    git checkout tests/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
 
     RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 
@@ -358,14 +361,14 @@ function test_rustc() {
         xargs -a ../failing-ui-tests.txt -d'\n' rm
     else
         # Removing all tests.
-        find src/test/ui -type f -name '*.rs' -not -path '*/auxiliary/*' -delete
+        find tests/ui -type f -name '*.rs' -not -path '*/auxiliary/*' -delete
         # Putting back only the failing ones.
         xargs -a ../failing-ui-tests.txt -d'\n' git checkout --
     fi
 
     if [ $nb_parts -gt 0 ]; then
         echo "Splitting ui_test into $nb_parts parts (and running part $current_part)"
-        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" > ui_tests
+        find tests/ui -type f -name '*.rs' -not -path "*/auxiliary/*" > ui_tests
         # To ensure it'll be always the same sub files, we sort the content.
         sort ui_tests -o ui_tests
         count=$((`wc -l < ui_tests` / $nb_parts))
@@ -374,13 +377,13 @@ function test_rustc() {
         count=$((count + 1))
         split -d -l $count -a 1 ui_tests ui_tests.split
         # Removing all tests.
-        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" -delete
+        find tests/ui -type f -name '*.rs' -not -path "*/auxiliary/*" -delete
         # Putting back only the ones we want to test.
         xargs -a "ui_tests.split$current_part" -d'\n' git checkout --
     fi
 
     echo "[TEST] rustc test suite"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS"
 }
 
 function test_failing_rustc() {

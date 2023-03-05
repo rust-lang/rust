@@ -36,7 +36,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let context = &cx.context;
     let byte_type = context.new_type::<u8>();
-    let typ = context.new_array_type(None, byte_type, bytes.len() as i32);
+    let typ = context.new_array_type(None, byte_type, bytes.len() as u64);
     let elements: Vec<_> =
         bytes.iter()
         .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
@@ -44,7 +44,7 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
     context.new_array_constructor(None, typ, &elements)
 }
 
-pub fn type_is_pointer<'gcc>(typ: Type<'gcc>) -> bool {
+pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
@@ -115,8 +115,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.usize_type, i)
     }
 
-    fn const_u8(&self, _i: u8) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_u8(&self, i: u8) -> RValue<'gcc> {
+        self.const_uint(self.type_u8(), i as u64)
     }
 
     fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
@@ -156,10 +156,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_to_opt_u128(&self, _v: RValue<'gcc>, _sign_ext: bool) -> Option<u128> {
         // TODO(antoyo)
         None
-    }
-
-    fn zst_to_backend(&self, _ty: Type<'gcc>) -> RValue<'gcc> {
-        self.const_undef(self.type_ix(0))
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
@@ -225,7 +221,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let base_addr = self.const_bitcast(base_addr, self.usize_type);
                 let offset = self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
                 let ptr = self.const_bitcast(base_addr + offset, ptr_type);
-                if layout.primitive() != Pointer {
+                if !matches!(layout.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 }
                 else {
@@ -245,7 +241,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let value =
             if layout.size == Size::ZERO {
                 let value = self.const_usize(alloc.inner().align.bytes());
-                self.context.new_cast(None, value, ty)
+                self.const_bitcast(value, ty)
             }
             else {
                 let init = const_alloc_to_gcc(self, alloc);
