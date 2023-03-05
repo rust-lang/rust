@@ -14,6 +14,12 @@ LL | fn give_some<'a>() {
    |              -- lifetime `'a` defined here
 LL |     want_hrtb::<&'a u32>()
    |     ^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-just-for-static.rs:9:15
+   |
+LL |     where T : for<'a> Foo<&'a isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:30:5

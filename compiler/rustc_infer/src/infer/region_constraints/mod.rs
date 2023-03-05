@@ -642,7 +642,14 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> ty::Region<'tcx> {
         let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
         let root_vid = ut.find(vid).vid;
-        ut.probe_value(root_vid).0.unwrap_or_else(|| tcx.mk_re_var(root_vid))
+        let resolved = ut.probe_value(root_vid).0.unwrap_or_else(|| tcx.mk_re_var(root_vid));
+
+        // Don't resolve a variable to a region that it cannot name.
+        if self.var_universe(vid).can_name(self.universe(resolved)) {
+            resolved
+        } else {
+            tcx.mk_re_var(vid)
+        }
     }
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
