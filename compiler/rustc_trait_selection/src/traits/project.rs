@@ -2199,7 +2199,8 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         Err(guar) => return Progress::error(tcx, guar),
     };
     // We don't support specialization for RPITITs anyways... yet.
-    if !leaf_def.is_final() {
+    // Also don't try to project to an RPITIT that has no value
+    if !leaf_def.is_final() || !leaf_def.item.defaultness(tcx).has_value() {
         return Progress { term: tcx.ty_error_misc().into(), obligations };
     }
 
