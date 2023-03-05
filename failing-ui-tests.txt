@@ -65,3 +65,4 @@ tests/ui/alloc-error/default-alloc-error-hook.rs
 tests/ui/generator/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
+tests/ui/panic-while-printing.rs
