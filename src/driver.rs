@@ -176,7 +176,7 @@ Common options:
         --rustc              Pass all args to rustc
     -V, --version            Print version info and exit
 
-Other options are the same as `cargo check`.
+For the other options see `cargo check --help`.
 
 To allow or deny a lint from the command line you can use `cargo clippy --`
 with:
