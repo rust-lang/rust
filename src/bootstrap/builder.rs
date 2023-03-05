@@ -342,7 +342,6 @@ impl StepDescription {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
                     ran |= desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
-
                 }
             }
         }
