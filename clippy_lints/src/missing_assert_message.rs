@@ -15,6 +15,13 @@ declare_clippy_lint! {
     /// A good custom message should be more about why the failure of the assertion is problematic
     /// and not what is failed because the assertion already conveys that.
     ///
+    /// ### Known problems
+    /// This lint cannot check the quality of the custom panic messages.
+    /// Hence, you can suppress this lint simply by adding placeholder messages
+    /// like "assertion failed". However, we recommend coming up with good messages
+    /// that provide useful information instead of placeholder messages that
+    /// don't provide any extra information.
+    ///
     /// ### Example
     /// ```rust
     /// # struct Service { ready: bool }
