@@ -772,19 +772,6 @@ fn univariant(
     if optimize {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
-        let effective_field_align = |layout: Layout<'_>| {
-            if let Some(pack) = pack {
-                // return the packed alignment in bytes
-                layout.align().abi.min(pack).bytes()
-            } else {
-                // returns log2(effective-align).
-                // This is ok since `pack` applies to all fields equally.
-                // The calculation assumes that size is an integer multiple of align, except for ZSTs.
-                //
-                // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
-                layout.align().abi.bytes().max(layout.size().bytes()).trailing_zeros() as u64
-            }
-        };
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
         // the field ordering to try and catch some code making assumptions about layouts
@@ -801,6 +788,30 @@ fn univariant(
             }
             // Otherwise we just leave things alone and actually optimize the type's fields
         } else {
+            let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
+            let any_niche = fields.iter().any(|f| f.largest_niche().is_some());
+            let effective_field_align = |layout: Layout<'_>| {
+                if let Some(pack) = pack {
+                    // return the packed alignment in bytes
+                    layout.align().abi.min(pack).bytes()
+                } else {
+                    // returns log2(effective-align).
+                    // This is ok since `pack` applies to all fields equally.
+                    // The calculation assumes that size is an integer multiple of align, except for ZSTs.
+                    //
+                    // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
+                    let align = layout.align().abi.bytes();
+                    let size = layout.size().bytes();
+                    let size_as_align = align.max(size).trailing_zeros();
+                    let size_as_align = if any_niche {
+                        max_field_align.trailing_zeros().min(size_as_align)
+                    } else {
+                        size_as_align
+                    };
+                    size_as_align as u64
+                }
+            };
+
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
                     optimizing.sort_by_key(|&x| {

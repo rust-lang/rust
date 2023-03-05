@@ -186,6 +186,18 @@ struct Reorder2 {
     ary: [u8; 6],
 }
 
+// We want the niche in the front, which means we can't treat the array as quasi-aligned more than
+// 4 bytes even though we also want to place it at an 8-aligned offset where possible.
+// So the ideal layout would look like: (char, u32, [u8; 8], u8)
+// The current layout algorithm does (char, [u8; 8], u32, u8)
+#[repr(align(8))]
+struct ReorderWithNiche {
+    a: u32,
+    b: char,
+    c: u8,
+    ary: [u8; 8]
+}
+
 // standins for std types which we want to be laid out in a reasonable way
 struct RawVecDummy {
     ptr: NonNull<u8>,
@@ -298,4 +310,10 @@ pub fn main() {
     assert!(ptr::from_ref(&b.1).addr() > ptr::from_ref(&b.2).addr());
 
     assert_eq!(size_of::<Cow<'static, str>>(), size_of::<String>());
+
+    let v = ReorderWithNiche {a: 0, b: ' ', c: 0, ary: [0; 8]};
+    assert!((&v.ary).as_ptr().is_aligned_to(4),
+            "here [u8; 8] should group with _at least_ align-4 fields");
+    assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.b).cast(),
+               "sort niches to the front where possible");
 }
