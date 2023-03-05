@@ -17,10 +17,11 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, StylePath,
+    collect_spans_and_sources, scrape_examples_help,
+    sidebar::print_sidebar,
+    sidebar::{sidebar_module_like, Sidebar},
+    AllTypes, LinkFromSrc, StylePath,
 };
-
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
@@ -35,6 +36,7 @@ use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
+use askama::Template;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -600,15 +602,18 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
-        write!(sidebar, "<h2 class=\"location\"><a href=\"#\">Crate {}</a></h2>", crate_name);
 
-        let mut items = Buffer::html();
-        sidebar_module_like(&mut items, all.item_sections());
-        if !items.is_empty() {
-            sidebar.push_str("<div class=\"sidebar-elems\">");
-            sidebar.push_buffer(items);
-            sidebar.push_str("</div>");
-        }
+        let blocks = sidebar_module_like(all.item_sections());
+        let bar = Sidebar {
+            title_prefix: "Crate ",
+            title: crate_name.as_str(),
+            is_crate: false,
+            version: "",
+            blocks: vec![blocks],
+            path: String::new(),
+        };
+
+        bar.render_into(&mut sidebar).unwrap();
 
         let v = layout::render(
             &shared.layout,
