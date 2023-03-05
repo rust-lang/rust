@@ -987,8 +987,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
+                GenericArgs::Parenthesized(data)
+                    if self.tcx.features().return_type_notation =>
+                {
+                    // TODO: Check the parens + no return type
+                    GenericArgsCtor {
+                        args: Default::default(),
+                        bindings: &[],
+                        parenthesized: true,
+                        span: data.span,
+                    }
+                }
                 GenericArgs::Parenthesized(data) => {
                     self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                    // TODO: Add a RTN feature error if the parens are shaped correctly
                     self.lower_angle_bracketed_parameter_data(
                         &data.as_angle_bracketed_args(),
                         ParamMode::Explicit,

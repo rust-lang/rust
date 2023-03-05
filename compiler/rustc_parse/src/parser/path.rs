@@ -550,7 +550,11 @@ impl<'a> Parser<'a> {
 
                     // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
                     if let AssocConstraintKind::Bound { .. } = kind {
-                        self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+                        if gen_args.as_ref().map_or(false, |args| args.is_parenthesized()) {
+                            self.sess.gated_spans.gate(sym::return_type_notation, span);
+                        } else {
+                            self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+                        }
                     }
                     let constraint =
                         AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
