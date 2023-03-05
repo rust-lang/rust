@@ -105,10 +105,15 @@ impl Step for Std {
             cargo.arg("--lib");
         }
 
-        builder.info(&format!(
-            "Checking stage{} library artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
-        ));
+        let msg = if compiler.host == target {
+            format!("Checking stage{} library artifacts ({target})", builder.top_stage)
+        } else {
+            format!(
+                "Checking stage{} library artifacts ({} -> {})",
+                builder.top_stage, &compiler.host, target
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -162,10 +167,18 @@ impl Step for Std {
             cargo.arg("-p").arg(krate.name);
         }
 
-        builder.info(&format!(
-            "Checking stage{} library test/bench/example targets ({} -> {})",
-            builder.top_stage, &compiler.host, target
-        ));
+        let msg = if compiler.host == target {
+            format!(
+                "Checking stage{} library test/bench/example targets ({target})",
+                builder.top_stage
+            )
+        } else {
+            format!(
+                "Checking stage{} library test/bench/example targets ({} -> {})",
+                builder.top_stage, &compiler.host, target
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -239,10 +252,15 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate.name);
         }
 
-        builder.info(&format!(
-            "Checking stage{} compiler artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
-        ));
+        let msg = if compiler.host == target {
+            format!("Checking stage{} compiler artifacts ({target})", builder.top_stage)
+        } else {
+            format!(
+                "Checking stage{} compiler artifacts ({} -> {})",
+                builder.top_stage, &compiler.host, target
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -299,10 +317,15 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        builder.info(&format!(
-            "Checking stage{} {} artifacts ({} -> {})",
-            builder.top_stage, backend, &compiler.host.triple, target.triple
-        ));
+        let msg = if compiler.host == target {
+            format!("Checking stage{} {} artifacts ({target})", builder.top_stage, backend)
+        } else {
+            format!(
+                "Checking stage{} {} library ({} -> {})",
+                builder.top_stage, backend, &compiler.host.triple, target.triple
+            )
+        };
+        builder.info(&msg);
 
         run_cargo(
             builder,
@@ -362,10 +385,15 @@ impl Step for RustAnalyzer {
             cargo.arg("--benches");
         }
 
-        builder.info(&format!(
-            "Checking stage{} {} artifacts ({} -> {})",
-            compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
-        ));
+        let msg = if compiler.host == target {
+            format!("Checking stage{} {} artifacts ({target})", compiler.stage, "rust-analyzer")
+        } else {
+            format!(
+                "Checking stage{} {} artifacts ({} -> {})",
+                compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -432,14 +460,18 @@ macro_rules! tool_check_step {
                 // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
                 // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
                 cargo.rustflag("-Zunstable-options");
-
-                builder.info(&format!(
-                    "Checking stage{} {} artifacts ({} -> {})",
-                    builder.top_stage,
-                    stringify!($name).to_lowercase(),
-                    &compiler.host.triple,
-                    target.triple
-                ));
+                let msg = if compiler.host == target {
+                    format!("Checking stage{} {} artifacts ({target})", builder.top_stage, stringify!($name).to_lowercase())
+                } else {
+                    format!(
+                        "Checking stage{} {} artifacts ({} -> {})",
+                        builder.top_stage,
+                        stringify!($name).to_lowercase(),
+                        &compiler.host.triple,
+                        target.triple
+                    )
+                };
+                builder.info(&msg);
                 run_cargo(
                     builder,
                     cargo,

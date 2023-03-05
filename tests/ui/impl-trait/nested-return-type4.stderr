@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl Future<Output = impl Sized>` captures lifeti
   --> $DIR/nested-return-type4.rs:4:5
    |
 LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> {
-   |         -- hidden type `[async block@$DIR/nested-return-type4.rs:4:5: 4:31]` captures the lifetime `'s` as defined here
+   |         --                     --------------------------------------------- opaque type defined here
+   |         |
+   |         hidden type `[async block@$DIR/nested-return-type4.rs:4:5: 4:31]` captures the lifetime `'s` as defined here
 LL |     async move { let _s = s; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

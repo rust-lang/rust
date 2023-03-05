@@ -1209,6 +1209,15 @@ impl Build {
             && (self.hosts.iter().any(|h| *h == target) || target == self.build)
     }
 
+    /// Checks whether the `compiler` compiling for `target` should be forced to
+    /// use a stage2 compiler instead.
+    ///
+    /// When we download the pre-compiled version of rustc it should be forced to
+    /// use a stage2 compiler.
+    fn force_use_stage2(&self) -> bool {
+        self.config.download_rustc()
+    }
+
     /// Given `num` in the form "a.b.c" return a "release string" which
     /// describes the release version number.
     ///

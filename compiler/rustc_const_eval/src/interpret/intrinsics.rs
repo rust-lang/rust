@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf as _;
+use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -418,54 +418,36 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.substs.type_at(0);
-                let layout = self.layout_of(ty)?;
+                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
 
-                // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                // error message.
-                if layout.abi.is_uninhabited() {
-                    // The run-time intrinsic panics just to get a good backtrace; here we abort
-                    // since there is no problem showing a backtrace even for aborts.
-                    M::abort(
-                        self,
-                        format!(
+                let should_panic = !self
+                    .tcx
+                    .check_validity_requirement((requirement, self.param_env.and(ty)))
+                    .map_err(|_| err_inval!(TooGeneric))?;
+
+                if should_panic {
+                    let layout = self.layout_of(ty)?;
+
+                    let msg = match requirement {
+                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
+                        // error message.
+                        _ if layout.abi.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{}`",
                             ty
                         ),
-                    )?;
-                }
+                        ValidityRequirement::Inhabited => bug!("handled earlier"),
+                        ValidityRequirement::Zero => format!(
+                            "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
+                            ty
+                        ),
+                        ValidityRequirement::UninitMitigated0x01Fill => format!(
+                            "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
+                            ty
+                        ),
+                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
+                    };
 
-                if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !self
-                        .tcx
-                        .permits_zero_init(self.param_env.and(ty))
-                        .map_err(|_| err_inval!(TooGeneric))?;
-
-                    if should_panic {
-                        M::abort(
-                            self,
-                            format!(
-                                "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
-                                ty
-                            ),
-                        )?;
-                    }
-                }
-
-                if intrinsic_name == sym::assert_mem_uninitialized_valid {
-                    let should_panic = !self
-                        .tcx
-                        .permits_uninit_init(self.param_env.and(ty))
-                        .map_err(|_| err_inval!(TooGeneric))?;
-
-                    if should_panic {
-                        M::abort(
-                            self,
-                            format!(
-                                "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
-                            ),
-                        )?;
-                    }
+                    M::abort(self, msg)?;
                 }
             }
             sym::simd_insert => {
@@ -476,7 +458,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 assert!(
                     index < dest_len,
-                    "Index `{}` must be in bounds of vector with length {}`",
+                    "Index `{}` must be in bounds of vector with length {}",
                     index,
                     dest_len
                 );
@@ -496,7 +478,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
                 assert!(
                     index < input_len,
-                    "index `{}` must be in bounds of vector with length `{}`",
+                    "index `{}` must be in bounds of vector with length {}",
                     index,
                     input_len
                 );

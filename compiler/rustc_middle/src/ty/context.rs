@@ -20,11 +20,10 @@ use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, DefIdTree, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
-    Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
+    GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy, Visibility,
 };
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
@@ -310,7 +309,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(v, None) })
+    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(v, None) })`
     /// for small values of `i` and `v`.
     pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
@@ -794,8 +793,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
-        let cname = self.crate_name(LOCAL_CRATE);
-        self.sess.consider_optimizing(cname.as_str(), msg)
+        self.sess.consider_optimizing(|| self.crate_name(LOCAL_CRATE), msg)
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
@@ -2187,7 +2185,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Actually intern type lists as lists of `GenericArg`s.
         //
         // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
-        // as explained in ty_slice_as_generic_arg`. With this,
+        // as explained in `ty_slice_as_generic_arg`. With this,
         // we guarantee that even when transmuting between `List<Ty<'tcx>>`
         // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
         // lists is upheld.
@@ -2450,7 +2448,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
@@ -2487,8 +2485,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.maybe_unused_extern_crates =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use = |tcx, id| {
         tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };

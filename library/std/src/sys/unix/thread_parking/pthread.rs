@@ -6,7 +6,10 @@ use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
+#[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
+#[cfg(target_os = "nto")]
+use crate::sys::time::TIMESPEC_MAX_CAPPED;
 use crate::time::Duration;
 
 const EMPTY: usize = 0;
@@ -80,8 +83,14 @@ unsafe fn wait_timeout(
         (Timespec::now(libc::CLOCK_MONOTONIC), dur)
     };
 
+    #[cfg(not(target_os = "nto"))]
     let timeout =
         now.checked_add_duration(&dur).and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
+    #[cfg(target_os = "nto")]
+    let timeout = now
+        .checked_add_duration(&dur)
+        .and_then(|t| t.to_timespec_capped())
+        .unwrap_or(TIMESPEC_MAX_CAPPED);
     let r = libc::pthread_cond_timedwait(cond, lock, &timeout);
     debug_assert!(r == libc::ETIMEDOUT || r == 0);
 }

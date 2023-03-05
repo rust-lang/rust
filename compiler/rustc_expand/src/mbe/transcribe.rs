@@ -282,7 +282,7 @@ pub(super) fn transcribe<'a>(
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
-            mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
+            mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl`"),
         }
     }
 }

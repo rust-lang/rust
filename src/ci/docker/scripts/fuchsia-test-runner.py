@@ -9,6 +9,7 @@ https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-unk
 
 import argparse
 from dataclasses import dataclass
+import fcntl
 import glob
 import hashlib
 import json
@@ -145,6 +146,9 @@ class TestEnvironment:
 
     def zxdb_script_path(self):
         return os.path.join(self.tmp_dir(), "zxdb_script")
+
+    def pm_lockfile_path(self):
+        return os.path.join(self.tmp_dir(), "pm.lock")
 
     def log_info(self, msg):
         print(msg)
@@ -460,6 +464,9 @@ class TestEnvironment:
             stderr=self.subprocess_output(),
         )
 
+        # Create lockfiles
+        open(self.pm_lockfile_path(), 'a').close()
+
         # Write to file
         self.write_to_file()
 
@@ -676,19 +683,25 @@ class TestEnvironment:
             log("Publishing package to repo...")
 
             # Publish package to repo
-            subprocess.check_call(
-                [
-                    self.tool_path("pm"),
-                    "publish",
-                    "-a",
-                    "-repo",
-                    self.repo_dir(),
-                    "-f",
-                    far_path,
-                ],
-                stdout=log_file,
-                stderr=log_file,
-            )
+            with open(self.pm_lockfile_path(), 'w') as pm_lockfile:
+                fcntl.lockf(pm_lockfile.fileno(), fcntl.LOCK_EX)
+                subprocess.check_call(
+                    [
+                        self.tool_path("pm"),
+                        "publish",
+                        "-a",
+                        "-repo",
+                        self.repo_dir(),
+                        "-f",
+                        far_path,
+                    ],
+                    stdout=log_file,
+                    stderr=log_file,
+                )
+                # This lock should be released automatically when the pm
+                # lockfile is closed, but we'll be polite and unlock it now
+                # since the spec leaves some wiggle room.
+                fcntl.lockf(pm_lockfile.fileno(), fcntl.LOCK_UN)
 
             log("Running ffx test...")
 

@@ -182,7 +182,17 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         if dir.ends_with(crate::config::host_triple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
-                .and_then(|p| p.parent()) // chop off `lib`
+                .and_then(|p| {
+                    // chop off `lib` (this could be also $arch dir if the host sysroot uses a
+                    // multi-arch layout like Debian or Ubuntu)
+                    match p.parent() {
+                        Some(p) => match p.file_name() {
+                            Some(f) if f == "lib" => p.parent(), // first chop went for $arch, so chop again for `lib`
+                            _ => Some(p),
+                        },
+                        None => None,
+                    }
+                })
                 .map(|s| s.to_owned())
                 .ok_or(format!(
                     "Could not move 3 levels upper using `parent()` on {}",

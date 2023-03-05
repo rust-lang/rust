@@ -9,5 +9,5 @@ extern crate p1;
 extern crate p2;
 
 #[rustc_diagnostic_item = "Foo"]
-pub struct Foo {} //~ ERROR duplicate diagnostic item found
+pub struct Foo {} //~ ERROR duplicate diagnostic item in crate `duplicate_diagnostic`: `Foo`
 fn main() {}

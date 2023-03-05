@@ -1954,7 +1954,7 @@ impl Interner {
         let name = Symbol::new(inner.strings.len() as u32);
 
         // SAFETY: we convert from `&str` to `&[u8]`, clone it into the arena,
-        // and immediately convert the clone back to `&[u8], all because there
+        // and immediately convert the clone back to `&[u8]`, all because there
         // is no `inner.arena.alloc_str()` method. This is clearly safe.
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };

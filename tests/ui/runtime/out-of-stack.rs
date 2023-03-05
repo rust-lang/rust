@@ -6,6 +6,7 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
+// ignore-nto no stack overflow handler used (no alternate stack available)
 
 #![feature(core_intrinsics)]
 #![feature(rustc_private)]

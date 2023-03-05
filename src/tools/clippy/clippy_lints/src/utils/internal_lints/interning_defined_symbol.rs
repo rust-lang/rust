@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty::{self};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 

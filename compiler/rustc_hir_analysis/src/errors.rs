@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -247,26 +247,6 @@ pub struct SubstsOnOverriddenImpl {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_unused_extern_crate)]
-pub struct UnusedExternCrate {
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_extern_crate_not_idiomatic)]
-pub struct ExternCrateNotIdiomatic {
-    #[suggestion(
-        style = "short",
-        applicability = "machine-applicable",
-        code = "{suggestion_code}"
-    )]
-    pub span: Span,
-    pub msg_code: String,
-    pub suggestion_code: String,
-}
-
 #[derive(Diagnostic)]
 #[diag(hir_analysis_const_impl_for_non_const_trait)]
 pub struct ConstImplForNonConstTrait {
@@ -400,4 +380,22 @@ pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
     #[label]
     pub span: Span,
     pub conventions: &'a str,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum CannotCaptureLateBoundInAnonConst {
+    #[diag(hir_analysis_cannot_capture_late_bound_ty_in_anon_const)]
+    Type {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
+    #[diag(hir_analysis_cannot_capture_late_bound_const_in_anon_const)]
+    Const {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
 }

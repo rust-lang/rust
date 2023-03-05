@@ -282,6 +282,18 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            if self.prev_token == token::BinOp(token::Minus)
+                && self.token == token::BinOp(token::Minus)
+                && self.prev_token.span.between(self.token.span).is_empty()
+                && !self.look_ahead(1, |tok| tok.can_begin_expr())
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `-`
+                self.bump();
+                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
+                continue;
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -1198,8 +1210,13 @@ impl<'a> Parser<'a> {
                         // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
                         self.restore_snapshot(snapshot);
                         let close_paren = self.prev_token.span;
-                        let span = lo.to(self.prev_token.span);
-                        if !fields.is_empty() {
+                        let span = lo.to(close_paren);
+                        if !fields.is_empty() &&
+                            // `token.kind` should not be compared here.
+                            // This is because the `snapshot.token.kind` is treated as the same as
+                            // that of the open delim in `TokenTreesReader::parse_token_tree`, even if they are different.
+                            self.span_to_snippet(close_paren).map_or(false, |snippet| snippet == ")")
+                        {
                             let mut replacement_err = errors::ParenthesesWithStructFields {
                                 span,
                                 r#type: path,
@@ -1377,19 +1394,6 @@ impl<'a> Parser<'a> {
             self.parse_expr_let()
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore))
-        } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-            // Don't complain about bare semicolons after unclosed braces
-            // recovery in order to keep the error count down. Fixing the
-            // delimiters will possibly also fix the bare semicolon found in
-            // expression context. For example, silence the following error:
-            //
-            //     error: expected expression, found `;`
-            //      --> file.rs:2:13
-            //       |
-            //     2 |     foo(bar(;
-            //       |             ^ expected expression
-            self.bump();
-            Ok(self.mk_expr_err(self.token.span))
         } else if self.token.uninterpolated_span().rust_2018() {
             // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
@@ -2491,7 +2495,25 @@ impl<'a> Parser<'a> {
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
 
         let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
+
+        self.recover_loop_else("for", lo)?;
+
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
+    }
+
+    /// Recovers from an `else` clause after a loop (`for...else`, `while...else`)
+    fn recover_loop_else(&mut self, loop_kind: &'static str, loop_kw: Span) -> PResult<'a, ()> {
+        if self.token.is_keyword(kw::Else) && self.may_recover() {
+            let else_span = self.token.span;
+            self.bump();
+            let else_clause = self.parse_expr_else()?;
+            self.sess.emit_err(errors::LoopElseNotSupported {
+                span: else_span.to(else_clause.span),
+                loop_kind,
+                loop_kw,
+            });
+        }
+        Ok(())
     }
 
     fn error_missing_in_for_loop(&mut self) {
@@ -2518,6 +2540,9 @@ impl<'a> Parser<'a> {
             err.span_label(cond.span, "this `while` condition successfully parsed");
             err
         })?;
+
+        self.recover_loop_else("while", lo)?;
+
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),
             ExprKind::While(cond, body, opt_label),
@@ -2529,6 +2554,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_loop(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
         let loop_span = self.prev_token.span;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
+        self.recover_loop_else("loop", lo)?;
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),
             ExprKind::Loop(body, opt_label, loop_span),

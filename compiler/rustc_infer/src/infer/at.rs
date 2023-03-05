@@ -369,6 +369,34 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     }
 }
 
+impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        use GenericArgKind::*;
+        TypeTrace {
+            cause: cause.clone(),
+            values: match (a.unpack(), b.unpack()) {
+                (Lifetime(a), Lifetime(b)) => Regions(ExpectedFound::new(a_is_expected, a, b)),
+                (Type(a), Type(b)) => Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+                (Const(a), Const(b)) => {
+                    Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                }
+
+                (Lifetime(_), Type(_) | Const(_))
+                | (Type(_), Lifetime(_) | Const(_))
+                | (Const(_), Lifetime(_) | Type(_)) => {
+                    bug!("relating different kinds: {a:?} {b:?}")
+                }
+            },
+        }
+    }
+}
+
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,

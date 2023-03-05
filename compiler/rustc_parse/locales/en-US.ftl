@@ -151,6 +151,10 @@ parse_missing_in_in_for_loop = missing `in` in `for` loop
 parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
     .suggestion = try adding an expression to the `for` loop
 
+parse_loop_else = `{$loop_kind}...else` loops are not supported
+    .note = consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
+    .loop_keyword = `else` is attached to this loop
+
 parse_missing_comma_after_match_arm = expected `,` following `match` arm
     .suggestion = missing a comma here to end this `match` arm
 
@@ -220,7 +224,7 @@ parse_match_arm_body_without_braces = `match` arm body without braces
             [one] statement
            *[other] statements
         } with a body
-    .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
+    .suggestion_use_comma_not_semicolon = replace `;` with `,` to end a `match` arm expression
 
 parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead

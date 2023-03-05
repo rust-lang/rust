@@ -124,6 +124,8 @@
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
+#![feature(const_ipv4)]
+#![feature(const_ipv6)]
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
@@ -134,6 +136,7 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
+#![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
@@ -179,6 +182,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
+#![feature(ip)]
 #![feature(is_ascii_octdigit)]
 //
 // Language features:
@@ -242,7 +246,6 @@
 // Target features:
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
-#![feature(cmpxchg16b_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
@@ -251,6 +254,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![cfg_attr(bootstrap, feature(cmpxchg16b_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
@@ -349,6 +353,7 @@ pub mod cell;
 pub mod char;
 pub mod ffi;
 pub mod iter;
+pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;

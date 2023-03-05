@@ -1,29 +1,12 @@
-error: expected one of `)`, `,`, or `:`, found `>`
-  --> $DIR/issue-58856-1.rs:3:9
-   |
-LL |     fn b(self>
-   |         ^    ^ help: `)` may belong here
-   |         |
-   |         unclosed delimiter
-
-error: expected one of `->`, `where`, or `{`, found `>`
-  --> $DIR/issue-58856-1.rs:3:14
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-58856-1.rs:2:9
    |
 LL | impl A {
-   |        - while parsing this item list starting here
-LL |
+   |        - closing delimiter possibly meant for this
 LL |     fn b(self>
-   |              ^ expected one of `->`, `where`, or `{`
-...
+   |         ^ unclosed delimiter
 LL | }
-   | - the item list ends here
+   | ^ mismatched closing delimiter
 
-error[E0412]: cannot find type `A` in this scope
-  --> $DIR/issue-58856-1.rs:1:6
-   |
-LL | impl A {
-   |      ^ not found in this scope
+error: aborting due to previous error
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0412`.

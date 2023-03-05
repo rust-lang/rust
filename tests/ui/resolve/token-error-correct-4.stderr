@@ -1,16 +1,12 @@
-error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-4.rs:9:12
+error: mismatched closing delimiter: `}`
+  --> $DIR/token-error-correct-4.rs:8:12
    |
+LL | fn main() {
+   |           - closing delimiter possibly meant for this
 LL |     setsuna(kazusa();
-   |            ^        ^ help: `)` may belong here
-   |            |
-   |            unclosed delimiter
-
-error: expected expression, found `)`
-  --> $DIR/token-error-correct-4.rs:10:1
-   |
+   |            ^ unclosed delimiter
 LL | }
-   | ^ expected expression
+   | ^ mismatched closing delimiter
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

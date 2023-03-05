@@ -374,3 +374,9 @@ mir_build_suggest_let_else = you might want to use `let else` to handle the {$co
     } matched
 
 mir_build_suggest_attempted_int_lit = alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+
+
+mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
+    .attributes = no other attributes may be applied
+    .not_box = `#[rustc_box]` may only be applied to a `Box::new()` call
+    .missing_box = `#[rustc_box]` requires the `owned_box` lang item

@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -749,14 +749,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let opname = Ident::with_dummy_span(opname);
-        let input_types =
-            opt_rhs.as_ref().map(|(_, ty)| std::slice::from_ref(ty)).unwrap_or_default();
+        let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
+        let input_types = opt_rhs_ty.as_slice();
         let cause = self.cause(
             span,
             traits::BinOp {
-                rhs_span: opt_rhs.map(|(expr, _)| expr.span),
-                is_lit: opt_rhs
-                    .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                rhs_span: opt_rhs_expr.map(|expr| expr.span),
+                is_lit: opt_rhs_expr
+                    .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 output_ty: expected.only_has_type(self),
             },
         );

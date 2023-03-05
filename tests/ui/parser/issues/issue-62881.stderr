@@ -1,26 +1,8 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62881.rs:6:52
+  --> $DIR/issue-62881.rs:3:96
    |
 LL | fn f() -> isize { fn f() -> isize {} pub f<
-   |                 - unclosed delimiter
-...
-LL |
-   |                                                    ^
+   |                 - unclosed delimiter                                                           ^
 
-error: missing `fn` or `struct` for function or struct definition
-  --> $DIR/issue-62881.rs:3:41
-   |
-LL | fn f() -> isize { fn f() -> isize {} pub f<
-   |                                         ^
+error: aborting due to previous error
 
-error[E0308]: mismatched types
-  --> $DIR/issue-62881.rs:3:29
-   |
-LL | fn f() -> isize { fn f() -> isize {} pub f<
-   |                      -      ^^^^^ expected `isize`, found `()`
-   |                      |
-   |                      implicitly returns `()` as its body has no tail or `return` expression
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

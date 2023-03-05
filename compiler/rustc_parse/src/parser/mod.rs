@@ -10,7 +10,7 @@ mod path;
 mod stmt;
 mod ty;
 
-use crate::lexer::UnmatchedBrace;
+use crate::lexer::UnmatchedDelim;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
@@ -146,10 +146,7 @@ pub struct Parser<'a> {
     /// See the comments in the `parse_path_segment` function for more details.
     unmatched_angle_bracket_count: u32,
     max_angle_bracket_count: u32,
-    /// A list of all unclosed delimiters found by the lexer. If an entry is used for error recovery
-    /// it gets removed from here. Every entry left at the end gets emitted as an independent
-    /// error.
-    pub(super) unclosed_delims: Vec<UnmatchedBrace>,
+
     last_unexpected_token_span: Option<Span>,
     /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
     /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
@@ -168,7 +165,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 312);
+rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -213,12 +210,6 @@ struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
     inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
-}
-
-impl<'a> Drop for Parser<'a> {
-    fn drop(&mut self) {
-        emit_unclosed_delims(&mut self.unclosed_delims, &self.sess);
-    }
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -335,7 +326,7 @@ impl TokenCursor {
             num_of_hashes = cmp::max(num_of_hashes, count);
         }
 
-        // `/// foo` becomes `doc = r"foo".
+        // `/// foo` becomes `doc = r"foo"`.
         let delim_span = DelimSpan::from_single(span);
         let body = TokenTree::Delimited(
             delim_span,
@@ -478,7 +469,6 @@ impl<'a> Parser<'a> {
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
-            unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
@@ -859,7 +849,6 @@ impl<'a> Parser<'a> {
         let mut recovered = false;
         let mut trailing = false;
         let mut v = ThinVec::new();
-        let unclosed_delims = !self.unclosed_delims.is_empty();
 
         while !self.expect_any_with_type(kets, expect) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
@@ -901,7 +890,7 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     // Attempt to keep parsing if it was a similar separator.
                                     if let Some(tokens) = t.similar_tokens() {
-                                        if tokens.contains(&self.token.kind) && !unclosed_delims {
+                                        if tokens.contains(&self.token.kind) {
                                             self.bump();
                                         }
                                     }
@@ -1521,11 +1510,11 @@ impl<'a> Parser<'a> {
 }
 
 pub(crate) fn make_unclosed_delims_error(
-    unmatched: UnmatchedBrace,
+    unmatched: UnmatchedDelim,
     sess: &ParseSess,
 ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
-    // `unmatched_braces` only for error recovery in the `Parser`.
+    // `unmatched_delims` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
     let mut spans = vec![unmatched.found_span];
     if let Some(sp) = unmatched.unclosed_span {
@@ -1542,7 +1531,7 @@ pub(crate) fn make_unclosed_delims_error(
     Some(err)
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &ParseSess) {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedDelim>, sess: &ParseSess) {
     *sess.reached_eof.borrow_mut() |=
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {

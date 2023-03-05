@@ -15,8 +15,6 @@ impl dyn Demo {
         if let Some(b) = val
         && let Some(c) = num {
         && b == c {
-            //~^ ERROR expected struct
-            //~| ERROR mismatched types
         }
     }
 }

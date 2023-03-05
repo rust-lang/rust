@@ -28,7 +28,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
+use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
@@ -36,7 +36,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
-use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -1507,11 +1506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
         } else {
-            let tail_expr: &[&hir::Expr<'_>] = match tail_expr {
-                Some(e) => slice::from_ref(e),
-                None => &[],
-            };
-            CoerceMany::with_coercion_sites(coerce_to_ty, tail_expr)
+            CoerceMany::with_coercion_sites(coerce_to_ty, blk.expr.as_slice())
         };
 
         let prev_diverges = self.diverges.get();

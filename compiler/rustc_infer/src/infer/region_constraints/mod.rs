@@ -249,7 +249,7 @@ pub enum VerifyBound<'tcx> {
 /// in that case we can show `'b: 'c`. But if `'?x` winds up being something
 /// else, the bound isn't relevant.
 ///
-/// In the [`VerifyBound`], this struct is enclosed in `Binder to account
+/// In the [`VerifyBound`], this struct is enclosed in `Binder` to account
 /// for cases like
 ///
 /// ```rust

@@ -138,8 +138,20 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                 error_text.push('==> Unknown key "' + key + '"');
                 break;
             }
+            let result_v = result[key];
+            if (result_v !== null && key === "error") {
+                result_v.forEach((value, index) => {
+                    value = value.split("&nbsp;").join(" ");
+                    if (index % 2 === 1) {
+                        result_v[index] = "`" + value + "`";
+                    } else {
+                        result_v[index] = value;
+                    }
+                });
+                result_v = result_v.join("");
+            }
             const obj_path = fullPath + (fullPath.length > 0 ? '.' : '') + key;
-            valueCheck(obj_path, expected[key], result[key], error_text, queryName);
+            valueCheck(obj_path, expected[key], result_v, error_text, queryName);
         }
     } else {
         expectedValue = JSON.stringify(expected);

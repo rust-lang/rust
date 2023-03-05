@@ -333,7 +333,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                 },
             );
 
-            // `Encode the file footer.
+            // Encode the file footer.
             let footer_pos = encoder.position() as u64;
             encoder.encode_tagged(
                 TAG_FILE_FOOTER,

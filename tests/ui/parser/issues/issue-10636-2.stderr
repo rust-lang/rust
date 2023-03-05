@@ -1,16 +1,13 @@
-error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/issue-10636-2.rs:5:15
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-10636-2.rs:6:15
    |
+LL | pub fn trace_option(option: Option<isize>) {
+   |                                            - closing delimiter possibly meant for this
 LL |     option.map(|some| 42;
-   |               ^         ^ help: `)` may belong here
-   |               |
-   |               unclosed delimiter
-
-error: expected expression, found `)`
-  --> $DIR/issue-10636-2.rs:8:1
-   |
+   |               ^ unclosed delimiter
+...
 LL | }
-   | ^ expected expression
+   | ^ mismatched closing delimiter
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

@@ -1,4 +1,4 @@
-thread '<unnamed>' panicked at 'Would you like some help with that?', clippy_lints/src/utils/internal_lints/produce_ice.rs:28:9
+thread '<unnamed>' panicked at 'Would you like some help with that?', clippy_lints/src/utils/internal_lints/produce_ice.rs
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 error: internal compiler error: unexpected panic
@@ -9,5 +9,3 @@ note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy
 
 note: Clippy version: foo
 
-query stack during panic:
-end of query stack

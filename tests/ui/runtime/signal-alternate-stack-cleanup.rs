@@ -7,6 +7,7 @@
 // ignore-windows
 // ignore-sgx no libc
 // ignore-vxworks no SIGWINCH in user space
+// ignore-nto no SA_ONSTACK
 
 #![feature(rustc_private)]
 extern crate libc;

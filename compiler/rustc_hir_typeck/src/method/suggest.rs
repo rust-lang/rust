@@ -27,7 +27,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -333,6 +333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty.prefix_string(self.tcx),
             ty_str_reported,
         );
+        if tcx.sess.source_map().is_multiline(sugg_span) {
+            err.span_label(sugg_span.with_hi(span.lo()), "");
+        }
         let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
             short_ty_str
         } else {

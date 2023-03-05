@@ -2093,6 +2093,10 @@ extern "rust-intrinsic" {
     /// Above some backend-decided threshold this will emit calls to `memcmp`,
     /// like slice equality does, instead of causing massive code size.
     ///
+    /// Since this works by comparing the underlying bytes, the actual `T` is
+    /// not particularly important.  It will be used for its size and alignment,
+    /// but any validity restrictions will be ignored, not enforced.
+    ///
     /// # Safety
     ///
     /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized or carry a

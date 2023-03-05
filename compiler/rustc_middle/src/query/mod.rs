@@ -90,6 +90,7 @@ rustc_queries! {
     /// Definitions that were generated with no HIR, would be feeded to return `None`.
     query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
+        feedable
     }
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.
@@ -166,6 +167,7 @@ rustc_queries! {
         }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
@@ -222,6 +224,7 @@ rustc_queries! {
         arena_cache
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
@@ -264,6 +267,7 @@ rustc_queries! {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Elaborated version of the predicates from `explicit_item_bounds`.
@@ -475,14 +479,10 @@ rustc_queries! {
         }
     }
 
-    query symbols_for_closure_captures(
-        key: (LocalDefId, LocalDefId)
-    ) -> &'tcx Vec<rustc_span::Symbol> {
-        arena_cache
+    query closure_typeinfo(key: LocalDefId) -> ty::ClosureTypeInfo<'tcx> {
         desc {
-            |tcx| "finding symbols for captures of closure `{}` in `{}`",
-            tcx.def_path_str(key.1.to_def_id()),
-            tcx.def_path_str(key.0.to_def_id())
+            |tcx| "finding symbols for captures of closure `{}`",
+            tcx.def_path_str(key.to_def_id())
         }
     }
 
@@ -592,6 +592,7 @@ rustc_queries! {
         desc { |tcx| "computing explicit predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Returns the inferred outlives predicates (e.g., for `struct
@@ -600,6 +601,7 @@ rustc_queries! {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Maps from the `DefId` of a trait to the list of
@@ -732,6 +734,7 @@ rustc_queries! {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Collects the associated items defined on a trait or impl.
@@ -1146,6 +1149,15 @@ rustc_queries! {
         desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
+    }
+
+    /// The `opt_rpitit_info` query returns the pair of the def id of the function where the RPIT
+    /// is defined and the opaque def id if any.
+    query opt_rpitit_info(def_id: DefId) -> Option<ty::ImplTraitInTraitData> {
+        desc { |tcx| "opt_rpitit_info `{}`", tcx.def_path_str(def_id) }
+        cache_on_disk_if { def_id.is_local() }
+        feedable
     }
 
     /// Gets the span for the definition.
@@ -1161,6 +1173,7 @@ rustc_queries! {
         desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
     }
 
     query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
@@ -1502,6 +1515,7 @@ rustc_queries! {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
     }
 
     query check_well_formed(key: hir::OwnerId) -> () {
@@ -1658,7 +1672,7 @@ rustc_queries! {
 
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
-    /// See `rustc_resolve::late::lifetimes for details.
+    /// See `rustc_resolve::late::lifetimes` for details.
     query resolve_bound_vars(_: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
         desc { "resolving lifetimes" }
@@ -1699,6 +1713,7 @@ rustc_queries! {
     query visibility(def_id: DefId) -> ty::Visibility<DefId> {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
+        feedable
     }
 
     query inhabited_predicate_adt(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
@@ -1829,9 +1844,6 @@ rustc_queries! {
     }
     query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
         desc { "fetching potentially unused trait imports" }
-    }
-    query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
-        desc { "looking up all possibly unused extern crates" }
     }
     query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
         desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
@@ -2173,12 +2185,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query permits_uninit_init(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, ty::layout::LayoutError<'tcx>> {
-        desc { "checking to see if `{}` permits being left uninit", key.value }
-    }
-
-    query permits_zero_init(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, ty::layout::LayoutError<'tcx>> {
-        desc { "checking to see if `{}` permits being left zeroed", key.value }
+    query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, ty::layout::LayoutError<'tcx>> {
+        desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 
     query compare_impl_const(

@@ -1,5 +1,4 @@
 // error-pattern:this file contains an unclosed delimiter
-// error-pattern:xpected `{`, found `macro_rules`
 
 fn main() {}
 

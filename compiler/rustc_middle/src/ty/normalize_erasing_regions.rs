@@ -7,7 +7,6 @@
 //! `normalize_generic_arg_after_erasing_regions` query for each type
 //! or constant found within. (This underlying query is what is cached.)
 
-use crate::mir;
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
@@ -16,7 +15,6 @@ use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 pub enum NormalizationError<'tcx> {
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
-    ConstantKind(mir::ConstantKind<'tcx>),
 }
 
 impl<'tcx> NormalizationError<'tcx> {
@@ -24,7 +22,6 @@ impl<'tcx> NormalizationError<'tcx> {
         match self {
             NormalizationError::Type(t) => format!("{}", t),
             NormalizationError::Const(c) => format!("{}", c),
-            NormalizationError::ConstantKind(ck) => format!("{}", ck),
         }
     }
 }

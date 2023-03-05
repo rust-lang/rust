@@ -202,14 +202,14 @@ fn do_mir_borrowck<'tcx>(
     let mut errors = error::BorrowckErrors::new(infcx.tcx);
 
     // Gather the upvars of a closure, if any.
-    let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(e) = tables.tainted_by_errors {
+    if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
         errors.set_tainted_by_errors(e);
     }
-    let upvars: Vec<_> = tables
-        .closure_min_captures_flattened(def.did)
-        .map(|captured_place| {
+    let upvars: Vec<_> = tcx
+        .closure_captures(def.did)
+        .iter()
+        .map(|&captured_place| {
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -1185,12 +1185,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
-                            .report_borrowed_value_does_not_live_long_enough(
-                                location,
-                                borrow,
-                                place_span,
-                                Some(kind),
-                            ),
+                            .report_storage_dead_or_drop_of_borrowed(location, place_span, borrow),
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }

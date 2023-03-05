@@ -1895,7 +1895,7 @@ impl EmitterWriter {
                         self.draw_code_line(
                             &mut buffer,
                             &mut row_num,
-                            &Vec::new(),
+                            &[],
                             p + line_start,
                             l,
                             show_code_change,
@@ -1919,7 +1919,7 @@ impl EmitterWriter {
                             self.draw_code_line(
                                 &mut buffer,
                                 &mut row_num,
-                                &Vec::new(),
+                                &[],
                                 p + line_start,
                                 l,
                                 show_code_change,
@@ -1936,7 +1936,7 @@ impl EmitterWriter {
                             self.draw_code_line(
                                 &mut buffer,
                                 &mut row_num,
-                                &Vec::new(),
+                                &[],
                                 p + line_start,
                                 l,
                                 show_code_change,
@@ -1951,7 +1951,7 @@ impl EmitterWriter {
                 self.draw_code_line(
                     &mut buffer,
                     &mut row_num,
-                    highlight_parts,
+                    &highlight_parts,
                     line_pos + line_start,
                     line,
                     show_code_change,
@@ -2176,7 +2176,7 @@ impl EmitterWriter {
         &self,
         buffer: &mut StyledBuffer,
         row_num: &mut usize,
-        highlight_parts: &Vec<SubstitutionHighlight>,
+        highlight_parts: &[SubstitutionHighlight],
         line_num: usize,
         line_to_add: &str,
         show_code_change: DisplaySuggestion,

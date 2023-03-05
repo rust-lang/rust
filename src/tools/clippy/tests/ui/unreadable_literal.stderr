@@ -1,11 +1,3 @@
-error: digits of hex or binary literal not grouped by four
-  --> $DIR/unreadable_literal.rs:26:9
-   |
-LL |         0x1_234_567,
-   |         ^^^^^^^^^^^ help: consider: `0x0123_4567`
-   |
-   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
-
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:34:17
    |
@@ -68,5 +60,5 @@ error: long literal lacking separators
 LL |     let _fail5 = 1.100300400;
    |                  ^^^^^^^^^^^ help: consider: `1.100_300_400`
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 

@@ -437,7 +437,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
 
             // Here we are considering a case of converting
-            // `S<P0...Pn>` to S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+            // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
             // which acts like a pointer to `U`, but carries along some extra data of type `T`:
             //
             //     struct Foo<T, U> {

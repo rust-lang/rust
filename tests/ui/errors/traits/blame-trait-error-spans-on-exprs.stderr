@@ -91,10 +91,10 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:93:27
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:93:53
    |
 LL |     want(Wrapper { value: TacoKinds::OneTaco(false, q) });
-   |     ----                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `T3` is not implemented for `Q`
+   |     ----                                            ^ the trait `T3` is not implemented for `Q`
    |     |
    |     required by a bound introduced by this call
    |

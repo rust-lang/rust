@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         local_decl.source_info.span.shrink_to_lo(),
                         "consider changing this to be mutable",
-                        "mut ".to_string(),
+                        "mut ",
                         Applicability::MachineApplicable,
                     );
                     let tcx = self.infcx.tcx;
@@ -828,7 +828,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some(hir::Node::Item(item)) = node else { return; };
             let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
             let body = self.infcx.tcx.hir().body(body_id);
-            let mut v = V { assign_span: span, err, ty, suggested: false };
+            let mut assign_span = span;
+            // Drop desugaring is done at MIR build so it's not in the HIR
+            if let Some(DesugaringKind::Replace) = span.desugaring_kind() {
+                assign_span.remove_mark();
+            }
+
+            let mut v = V { assign_span, err, ty, suggested: false };
             v.visit_body(body);
             if !v.suggested {
                 err.help(&format!(
@@ -901,10 +907,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
     ) {
         let tables = tcx.typeck(closure_local_def_id);
-        let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
-        if let Some((span, closure_kind_origin)) =
-            &tables.closure_kind_origins().get(closure_hir_id)
-        {
+        if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
             let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;

@@ -5,7 +5,6 @@ fn main() {
     greeting = "DEALLOCATED".to_string();
     //~^ ERROR cannot assign
     drop(greeting);
-    //~^ ERROR cannot move
 
     println!("thread result: {:?}", res);
 }

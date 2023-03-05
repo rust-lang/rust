@@ -7,28 +7,5 @@ LL | impl T for () {
 LL |
    |                                                    ^
 
-error: trait is not supported in `trait`s or `impl`s
-  --> $DIR/missing-close-brace-in-impl-trait.rs:7:1
-   |
-LL | trait T {
-   | ^^^^^^^
-   |
-   = help: consider moving the trait out to a nearby module scope
+error: aborting due to previous error
 
-error: struct is not supported in `trait`s or `impl`s
-  --> $DIR/missing-close-brace-in-impl-trait.rs:11:1
-   |
-LL | pub(crate) struct Bar<T>();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider moving the struct out to a nearby module scope
-
-error[E0405]: cannot find trait `T` in this scope
-  --> $DIR/missing-close-brace-in-impl-trait.rs:3:6
-   |
-LL | impl T for () {
-   |      ^ not found in this scope
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0405`.

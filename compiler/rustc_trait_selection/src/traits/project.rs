@@ -32,7 +32,6 @@ use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
@@ -1175,7 +1174,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 /// paths you want to take. To make things worse, it was possible for
 /// cycles to arise, where you basically had a setup like `<MyType<$0>
 /// as Trait>::Foo == $0`. Here, normalizing `<MyType<$0> as
-/// Trait>::Foo> to `[type error]` would lead to an obligation of
+/// Trait>::Foo>` to `[type error]` would lead to an obligation of
 /// `<MyType<[type error]> as Trait>::Foo`. We are supposed to report
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
@@ -1312,16 +1311,16 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
                 }
                 Ok(None) => {
                     candidate_set.mark_ambiguous();
-                    return Err(());
+                    Err(())
                 }
                 Ok(Some(_)) => {
                     // Don't know enough about the impl to provide a useful signature
-                    return Err(());
+                    Err(())
                 }
                 Err(e) => {
                     debug!(error = ?e, "selection error");
                     candidate_set.mark_error(e);
-                    return Err(());
+                    Err(())
                 }
             }
         });
@@ -2199,7 +2198,8 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         Ok(assoc_ty) => assoc_ty,
         Err(guar) => return Progress::error(tcx, guar),
     };
-    if !leaf_def.item.defaultness(tcx).has_value() {
+    // We don't support specialization for RPITITs anyways... yet.
+    if !leaf_def.is_final() {
         return Progress { term: tcx.ty_error_misc().into(), obligations };
     }
 

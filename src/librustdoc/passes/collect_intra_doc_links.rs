@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
-use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::MalformedGenerics;
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
@@ -228,7 +228,7 @@ struct ResolutionInfo {
     item_id: ItemId,
     module_id: DefId,
     dis: Option<Disambiguator>,
-    path_str: String,
+    path_str: Box<str>,
     extra_fragment: Option<String>,
 }
 
@@ -849,10 +849,10 @@ impl PreprocessingError {
 
 #[derive(Clone)]
 struct PreprocessingInfo {
-    path_str: String,
+    path_str: Box<str>,
     disambiguator: Option<Disambiguator>,
     extra_fragment: Option<String>,
-    link_text: String,
+    link_text: Box<str>,
 }
 
 // Not a typedef to avoid leaking several private structures from this module.
@@ -937,7 +937,7 @@ fn preprocess_link(
         path_str,
         disambiguator,
         extra_fragment: extra_fragment.map(|frag| frag.to_owned()),
-        link_text: link_text.to_owned(),
+        link_text: Box::<str>::from(link_text),
     }))
 }
 
@@ -993,7 +993,7 @@ impl LinkCollector<'_, '_> {
                 item_id: item.item_id,
                 module_id,
                 dis: disambiguator,
-                path_str: path_str.to_owned(),
+                path_str: path_str.clone(),
                 extra_fragment: extra_fragment.clone(),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
@@ -1067,7 +1067,7 @@ impl LinkCollector<'_, '_> {
                 }
 
                 res.def_id(self.cx.tcx).map(|page_id| ItemLink {
-                    link: ori_link.link.clone(),
+                    link: Box::<str>::from(&*ori_link.link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,
@@ -1091,7 +1091,7 @@ impl LinkCollector<'_, '_> {
 
                 let page_id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink {
-                    link: ori_link.link.clone(),
+                    link: Box::<str>::from(&*ori_link.link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,

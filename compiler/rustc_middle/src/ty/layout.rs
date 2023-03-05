@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
@@ -92,7 +93,7 @@ impl IntegerExt for Integer {
             if discr < fit {
                 bug!(
                     "Integer::repr_discr: `#[repr]` hint too small for \
-                      discriminant range of enum `{}",
+                      discriminant range of enum `{}`",
                     ty
                 )
             }
@@ -168,6 +169,41 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * LLVM does not appear to have a vector width limit.
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+
+/// Used in `check_validity_requirement` to indicate the kind of initialization
+/// that is checked to be valid
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum ValidityRequirement {
+    Inhabited,
+    Zero,
+    /// The return value of mem::uninitialized, 0x01
+    /// (unless -Zstrict-init-checks is on, in which case it's the same as Uninit).
+    UninitMitigated0x01Fill,
+    /// True uninitialized memory.
+    Uninit,
+}
+
+impl ValidityRequirement {
+    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+        match intrinsic {
+            sym::assert_inhabited => Some(Self::Inhabited),
+            sym::assert_zero_valid => Some(Self::Zero),
+            sym::assert_mem_uninitialized_valid => Some(Self::UninitMitigated0x01Fill),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ValidityRequirement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Inhabited => f.write_str("is inhabited"),
+            Self::Zero => f.write_str("allows being left zeroed"),
+            Self::UninitMitigated0x01Fill => f.write_str("allows being filled with 0x01"),
+            Self::Uninit => f.write_str("allows being left uninitialized"),
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {

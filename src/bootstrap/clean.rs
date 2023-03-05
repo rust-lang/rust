@@ -62,6 +62,7 @@ macro_rules! clean_crate_tree {
                 let target = compiler.host;
                 let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
                 for krate in &*self.crates {
+                    cargo.arg("-p");
                     cargo.arg(krate);
                 }
 

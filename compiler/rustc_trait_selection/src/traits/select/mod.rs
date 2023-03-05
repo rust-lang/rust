@@ -151,7 +151,7 @@ struct TraitObligationStack<'prev, 'tcx> {
     /// you don't want to cache that `B: AutoTrait` or `A: AutoTrait`
     /// is `EvaluatedToOk`; this is because they were only considered
     /// ok on the premise that if `A: AutoTrait` held, but we indeed
-    /// encountered a problem (later on) with `A: AutoTrait. So we
+    /// encountered a problem (later on) with `A: AutoTrait`. So we
     /// currently set a flag on the stack node for `B: AutoTrait` (as
     /// well as the second instance of `A: AutoTrait`) to suppress
     /// caching.
@@ -727,7 +727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // Otherwise, we can say that `T: NonAutoTrait` is
                             // true.
                             // Let's imagine we have a predicate stack like
-                            //         `Foo: Bar -> WF(T) -> T: NonAutoTrait -> T: Auto
+                            //         `Foo: Bar -> WF(T) -> T: NonAutoTrait -> T: Auto`
                             // depth   ^1                    ^2                 ^3
                             // and the current predicate is `WF(T)`. `wf_args`
                             // would contain `(T, 1)`. We want to check all

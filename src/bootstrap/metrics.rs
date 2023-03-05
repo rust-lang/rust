@@ -7,7 +7,7 @@
 use crate::builder::Step;
 use crate::util::t;
 use crate::Build;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;

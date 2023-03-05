@@ -18,7 +18,7 @@
 //! the HIR doesn't change as a result of the annotations, which might
 //! perturb the reuse results.
 //!
-//! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+//! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]`
 //! allows for doing a more fine-grained check to see if pre- or post-lto data
 //! was re-used.
 

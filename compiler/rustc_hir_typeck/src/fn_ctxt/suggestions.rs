@@ -16,7 +16,7 @@ use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+    self, suggest_constraining_type_params, Binder, IsSuggestable, ToPredicate, Ty,
     TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;

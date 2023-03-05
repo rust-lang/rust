@@ -2,7 +2,9 @@ error[E0700]: hidden type for `Opaque(DefId(0:13 ~ impl_trait_captures[1afc]::fo
   --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-   |                  -- hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_)) T` captures the anonymous lifetime defined here
+   |                  --     ------------ opaque type defined here
+   |                  |
+   |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_)) T` captures the anonymous lifetime defined here
 LL |     x
    |     ^
    |

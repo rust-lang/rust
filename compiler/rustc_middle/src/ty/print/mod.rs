@@ -1,5 +1,5 @@
 use crate::ty::GenericArg;
-use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;

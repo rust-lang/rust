@@ -77,10 +77,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let nested_goals = self
             .eq(goal.param_env, goal.predicate.term, normalized_alias.into())
             .expect("failed to unify with unconstrained term");
-        let rhs_certainty =
+
+        let unify_certainty =
             self.evaluate_all(nested_goals).expect("failed to unify with unconstrained term");
 
-        self.make_canonical_response(normalization_certainty.unify_and(rhs_certainty))
+        self.make_canonical_response(normalization_certainty.unify_and(unify_certainty))
     }
 }
 

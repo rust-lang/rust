@@ -17,6 +17,10 @@ use crate::sealed::Sealed;
 #[allow(unused_imports)]
 use io::{Read, Write};
 
+// Tests for this module
+#[cfg(test)]
+mod tests;
+
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
@@ -53,6 +57,16 @@ pub trait FileExt {
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
+
+    /// Like `read_at`, except that it reads into a slice of buffers.
+    ///
+    /// Data is copied to fill each buffer in order, with the final buffer
+    /// written to possibly being only partially filled. This method must behave
+    /// equivalently to a single call to read with concatenated buffers.
+    #[unstable(feature = "unix_file_vectored_at", issue = "89517")]
+    fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        io::default_read_vectored(|b| self.read_at(b, offset), bufs)
+    }
 
     /// Reads the exact number of byte required to fill `buf` from the given offset.
     ///
@@ -155,6 +169,16 @@ pub trait FileExt {
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 
+    /// Like `write_at`, except that it writes from a slice of buffers.
+    ///
+    /// Data is copied from each buffer in order, with the final buffer read
+    /// from possibly being only partially consumed. This method must behave as
+    /// a call to `write_at` with the buffers concatenated would.
+    #[unstable(feature = "unix_file_vectored_at", issue = "89517")]
+    fn write_vectored_at(&self, bufs: &[io::IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        io::default_write_vectored(|b| self.write_at(b, offset), bufs)
+    }
+
     /// Attempts to write an entire buffer starting from a given offset.
     ///
     /// The offset is relative to the start of the file and thus independent
@@ -218,8 +242,14 @@ impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
     }
+    fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        self.as_inner().read_vectored_at(bufs, offset)
+    }
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.as_inner().write_at(buf, offset)
+    }
+    fn write_vectored_at(&self, bufs: &[io::IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        self.as_inner().write_vectored_at(bufs, offset)
     }
 }
 

@@ -14,6 +14,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/JSON.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/Memory.h"
 #include "llvm/Support/SourceMgr.h"

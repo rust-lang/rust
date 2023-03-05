@@ -16,6 +16,18 @@ fn main() {
     expect_result();
 }
 
+#[test]
+fn test_expect_option() {
+    let opt = Some(0);
+    let _ = opt.expect("");
+}
+
+#[test]
+fn test_expect_result() {
+    let res: Result<u8, ()> = Ok(0);
+    let _ = res.expect("");
+}
+
 #[cfg(test)]
 mod issue9612 {
     // should not lint in `#[cfg(test)]` modules

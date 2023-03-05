@@ -7,54 +7,5 @@ LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
    |                                  |unclosed delimiter
    |                                  closing delimiter possibly meant for this
 
-error: invalid fragment specifier `r`
-  --> $DIR/issue-102878.rs:1:27
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
-   |                           ^^^^
-   |
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
-
-error: expected identifier, found keyword `const`
-  --> $DIR/issue-102878.rs:1:36
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
-   |                                    ^^^^^ expected identifier, found keyword
-...
-LL | fn s(){test!(1,i)}
-   |        ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: escape `const` to use it as an identifier
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({r#const:y y)}
-   |                                    ++
-
-error: expected identifier, found keyword `const`
-  --> $DIR/issue-102878.rs:1:36
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
-   |                                    ^^^^^ expected identifier, found keyword
-...
-LL | fn s(){test!(1,i)}
-   |        ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: escape `const` to use it as an identifier
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({r#const:y y)}
-   |                                    ++
-
-error: expected identifier, found `:`
-  --> $DIR/issue-102878.rs:1:41
-   |
-LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
-   |                                         ^ expected identifier
-...
-LL | fn s(){test!(1,i)}
-   |        ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 
