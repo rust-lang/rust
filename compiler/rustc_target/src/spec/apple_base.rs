@@ -19,6 +19,7 @@ pub enum Arch {
     I386,
     I686,
     X86_64,
+    X86_64h,
     X86_64_sim,
     X86_64_macabi,
     Arm64_macabi,
@@ -36,6 +37,7 @@ impl Arch {
             I386 => "i386",
             I686 => "i686",
             X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64h => "x86_64h",
         }
     }
 
@@ -44,13 +46,13 @@ impl Arch {
             Armv7 | Armv7k | Armv7s => "arm",
             Arm64 | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
             I386 | I686 => "x86",
-            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
         })
     }
 
     fn target_abi(self) -> &'static str {
         match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 => "",
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
             // x86_64-apple-ios is a simulator target, even though it isn't
             // declared that way in the target like the other ones...
@@ -67,6 +69,10 @@ impl Arch {
             Arm64_32 => "apple-s4",
             I386 | I686 => "yonah",
             X86_64 | X86_64_sim => "core2",
+            // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
+            // comments (and disabled features) in `x86_64h_apple_darwin` for
+            // details.
+            X86_64h => "core-avx2",
             X86_64_macabi => "core2",
             Arm64_macabi => "apple-a12",
             Arm64_sim => "apple-a12",
@@ -182,8 +188,13 @@ fn deployment_target(var_name: &str) -> Option<(u32, u32)> {
 }
 
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
-    // Note: Arm64_sim is not included since macOS has no simulator.
-    if matches!(arch, Arm64 | Arm64_macabi) { (11, 0) } else { (10, 7) }
+    match arch {
+        // Note: Arm64_sim is not included since macOS has no simulator.
+        Arm64 | Arm64_macabi => (11, 0),
+        // x86_64h-apple-darwin only supports macOS 10.8 and later
+        X86_64h => (10, 8),
+        _ => (10, 7),
+    }
 }
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
@@ -227,7 +238,7 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // of the linking environment that's wrong and reversed.
         match arch {
             Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | Arm64_sim => {
+            | X86_64h | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
