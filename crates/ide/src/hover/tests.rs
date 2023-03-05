@@ -531,7 +531,7 @@ fn hover_const_static() {
             ```
 
             ```rust
-            const foo: u32 = 123
+            const foo: u32 = 123 (0x7B)
             ```
         "#]],
     );
@@ -3770,7 +3770,6 @@ const FOO$0: usize = 1 << 3;
             This is a doc
         "#]],
     );
-    // FIXME: show hex for >10
     check(
         r#"
 /// This is a doc
@@ -3784,7 +3783,7 @@ const FOO$0: usize = (1 << 3) + (1 << 2);
             ```
 
             ```rust
-            const FOO: usize = 12
+            const FOO: usize = 12 (0xC)
             ```
 
             ---
@@ -3828,7 +3827,7 @@ const FOO$0: i32 = 2 - 3;
             ```
 
             ```rust
-            const FOO: i32 = -1
+            const FOO: i32 = -1 (0xFFFFFFFF)
             ```
 
             ---
@@ -3915,7 +3914,7 @@ const FOO$0: u8 = b'a';
             ```
 
             ```rust
-            const FOO: u8 = 97
+            const FOO: u8 = 97 (0x61)
             ```
 
             ---
@@ -3937,7 +3936,7 @@ const FOO$0: u8 = b'\x61';
             ```
 
             ```rust
-            const FOO: u8 = 97
+            const FOO: u8 = 97 (0x61)
             ```
 
             ---
@@ -3982,6 +3981,28 @@ const FOO$0: f32 = 1f32;
 
             ```rust
             const FOO: f32 = 1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // Don't show `<ref-not-supported>` in const hover
+    check(
+        r#"
+/// This is a doc
+const FOO$0: &i32 = &2;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &i32 = &2
             ```
 
             ---

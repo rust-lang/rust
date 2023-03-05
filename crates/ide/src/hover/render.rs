@@ -432,9 +432,9 @@ pub(super) fn definition(
             }
         }),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
-            let body = it.eval(db);
+            let body = it.render_eval(db);
             match body {
-                Ok(x) => Some(format!("{}", x.display(db))),
+                Ok(x) => Some(x),
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
