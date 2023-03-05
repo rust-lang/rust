@@ -35,7 +35,15 @@ pub fn filter_dirs(path: &Path) -> bool {
 
 /// Filter for only files that end in `.rs`.
 pub fn filter_not_rust(path: &Path) -> bool {
-    !path.is_dir() && path.extension() != Some(OsStr::new("rs"))
+    path.extension() != Some(OsStr::new("rs")) && !path.is_dir()
+}
+
+pub fn walk(
+    path: &Path,
+    skip: impl Clone + Send + Sync + 'static + Fn(&Path) -> bool,
+    f: &mut dyn FnMut(&DirEntry, &str),
+) {
+    walk_many(&[path], skip, f);
 }
 
 pub fn walk_many(
@@ -43,18 +51,8 @@ pub fn walk_many(
     skip: impl Clone + Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
-    for path in paths {
-        walk(path, skip.clone(), f);
-    }
-}
-
-pub fn walk(
-    path: &Path,
-    skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
-    f: &mut dyn FnMut(&DirEntry, &str),
-) {
     let mut contents = Vec::new();
-    walk_no_read(path, skip, &mut |entry| {
+    walk_no_read(paths, skip, &mut |entry| {
         contents.clear();
         let mut file = t!(File::open(entry.path()), entry.path());
         t!(file.read_to_end(&mut contents), entry.path());
@@ -67,11 +65,14 @@ pub fn walk(
 }
 
 pub(crate) fn walk_no_read(
-    path: &Path,
+    paths: &[&Path],
     skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let mut walker = ignore::WalkBuilder::new(path);
+    let mut walker = ignore::WalkBuilder::new(paths[0]);
+    for path in &paths[1..] {
+        walker.add(path);
+    }
     let walker = walker.filter_entry(move |e| !skip(e.path()));
     for entry in walker.build() {
         if let Ok(entry) = entry {

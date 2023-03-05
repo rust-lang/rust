@@ -49,37 +49,37 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
 
 pub fn check(path: &Path, bad: &mut bool) {
     check_entries(&path, bad);
-    for path in &[&path.join("ui"), &path.join("ui-fulldeps")] {
-        crate::walk::walk_no_read(path, |_| false, &mut |entry| {
-            let file_path = entry.path();
-            if let Some(ext) = file_path.extension() {
-                if ext == "stderr" || ext == "stdout" {
-                    // Test output filenames have one of the formats:
-                    // ```
-                    // $testname.stderr
-                    // $testname.$mode.stderr
-                    // $testname.$revision.stderr
-                    // $testname.$revision.$mode.stderr
-                    // ```
-                    //
-                    // For now, just make sure that there is a corresponding
-                    // `$testname.rs` file.
-                    //
-                    // NB: We do not use file_stem() as some file names have multiple `.`s and we
-                    // must strip all of them.
-                    let testname =
-                        file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
-                    if !file_path.with_file_name(testname).with_extension("rs").exists() {
-                        tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
-                    }
+    let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
+    let paths = [ui.as_path(), ui_fulldeps.as_path()];
+    crate::walk::walk_no_read(&paths, |_| false, &mut |entry| {
+        let file_path = entry.path();
+        if let Some(ext) = file_path.extension() {
+            if ext == "stderr" || ext == "stdout" {
+                // Test output filenames have one of the formats:
+                // ```
+                // $testname.stderr
+                // $testname.$mode.stderr
+                // $testname.$revision.stderr
+                // $testname.$revision.$mode.stderr
+                // ```
+                //
+                // For now, just make sure that there is a corresponding
+                // `$testname.rs` file.
+                //
+                // NB: We do not use file_stem() as some file names have multiple `.`s and we
+                // must strip all of them.
+                let testname =
+                    file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
+                if !file_path.with_file_name(testname).with_extension("rs").exists() {
+                    tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
+                }
 
-                    if let Ok(metadata) = fs::metadata(file_path) {
-                        if metadata.len() == 0 {
-                            tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
-                        }
+                if let Ok(metadata) = fs::metadata(file_path) {
+                    if metadata.len() == 0 {
+                        tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
                     }
                 }
             }
-        });
-    }
+        }
+    });
 }
