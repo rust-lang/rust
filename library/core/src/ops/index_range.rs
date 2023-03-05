@@ -1,9 +1,13 @@
 use crate::intrinsics::{assert_unsafe_precondition, unchecked_add, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen};
+use crate::ops::Range;
 
-/// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
+/// Represents a *canonical* range of indexes, with a safety invariant that `start <= end`.
 ///
-/// This means that `end - start` cannot overflow, allowing some μoptimizations.
+/// This allows some μoptimizations:
+/// - Slice indexing can check just that `end` is in-bounds, and
+///   trust that means that `start` will also be in-bounds.
+/// - [`len()`](Self::len) can trust that `end - start` cannot overflow.
 ///
 /// (Normal `Range` code needs to handle degenerate ranges like `10..0`,
 ///  which takes extra checks compared to only handling the canonical form.)
@@ -14,8 +18,28 @@ pub(crate) struct IndexRange {
 }
 
 impl IndexRange {
+    #[inline(always)]
+    pub(crate) const fn from_range(Range { start, end }: Range<usize>) -> Option<Self> {
+        if start <= end { Some(IndexRange { start, end }) } else { None }
+    }
+
     /// # Safety
-    /// - `start <= end`
+    /// The caller must ensure that `start <= end`.
+    #[inline(always)]
+    pub(crate) const unsafe fn from_range_unchecked(Range { start, end }: Range<usize>) -> Self {
+        // SAFETY: Same precondition
+        unsafe { Self::new_unchecked(start, end) }
+    }
+
+    /// Creates an `IndexRange` from its `start` and `end` indices,
+    /// without checking whether they're ordered correctly.
+    ///
+    /// Unlike `Range<usize>`, an `IndexRange` does not allow non-canonical empty
+    /// range (like `10..2`).  The only allowed empty ranges are when
+    /// `start == end`, such as `0..0` or `10..10`.
+    ///
+    /// # Safety
+    /// The caller must ensure that `start <= end`.
     #[inline]
     pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         // SAFETY: comparisons on usize are pure

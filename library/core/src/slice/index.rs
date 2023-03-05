@@ -2,7 +2,7 @@
 
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::intrinsics::const_eval_select;
-use crate::ops;
+use crate::ops::{self, IndexRange};
 use crate::ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -270,7 +270,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
 #[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::IndexRange {
+unsafe impl<T> const SliceIndex<[T]> for IndexRange {
     type Output = [T];
 
     #[inline]
@@ -351,76 +351,45 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if self.start > self.end || self.end > slice.len() {
-            None
-        } else {
-            // SAFETY: `self` is checked to be valid and in bounds above.
-            unsafe { Some(&*self.get_unchecked(slice)) }
-        }
+        let Some(r) = IndexRange::from_range(self) else { return None };
+        r.get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if self.start > self.end || self.end > slice.len() {
-            None
-        } else {
-            // SAFETY: `self` is checked to be valid and in bounds above.
-            unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
-        }
+        let Some(r) = IndexRange::from_range(self) else { return None };
+        r.get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        let this = ops::Range { start: self.start, end: self.end };
-        // SAFETY: the caller guarantees that `slice` is not dangling, so it
-        // cannot be longer than `isize::MAX`. They also guarantee that
-        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
-        // so the call to `add` is safe.
-
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked requires that the range is within the slice",
-                [T](this: ops::Range<usize>, slice: *const [T]) =>
-                this.end >= this.start && this.end <= slice.len()
-            );
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
-        }
+        // SAFETY: the caller guarantees that `self` is correct for indexing `slice`
+        // which satisfies all the conditions for `from_range_unchecked` and `get_unchecked`.
+        unsafe { IndexRange::from_range_unchecked(self).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        let this = ops::Range { start: self.start, end: self.end };
         // SAFETY: see comments for `get_unchecked` above.
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked_mut requires that the range is within the slice",
-                [T](this: ops::Range<usize>, slice: *mut [T]) =>
-                this.end >= this.start && this.end <= slice.len()
-            );
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
-        }
+        unsafe { IndexRange::from_range_unchecked(self).get_unchecked_mut(slice) }
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if self.start > self.end {
+        if let Some(r) = IndexRange::from_range(self.start..self.end) {
+            r.index(slice)
+        } else {
             slice_index_order_fail(self.start, self.end);
-        } else if self.end > slice.len() {
-            slice_end_index_len_fail(self.end, slice.len());
         }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if self.start > self.end {
+        if let Some(r) = IndexRange::from_range(self.start..self.end) {
+            r.index_mut(slice)
+        } else {
             slice_index_order_fail(self.start, self.end);
-        } else if self.end > slice.len() {
-            slice_end_index_len_fail(self.end, slice.len());
         }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
     }
 }
 
