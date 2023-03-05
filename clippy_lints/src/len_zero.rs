@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
+use clippy_utils::source::snippet_with_context;
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators, sugg::Sugg};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{
     def_id::DefId, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, ImplItem, ImplItemKind, ImplicitSelfKind, Item,
-    ItemKind, Mutability, Node, TraitItemRef, TyKind, UnOp,
+    ItemKind, Mutability, Node, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -16,7 +16,6 @@ use rustc_span::{
     source_map::{Span, Spanned, Symbol},
     symbol::sym,
 };
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -431,7 +430,7 @@ fn check_len(
                 &format!("using `{op}is_empty` is clearer and more explicit"),
                 format!(
                     "{op}{}.is_empty()",
-                    snippet_with_applicability(cx, receiver.span, "_", &mut applicability)
+                    snippet_with_context(cx, receiver.span, span.ctxt(), "_", &mut applicability).0,
                 ),
                 applicability,
             );
@@ -444,13 +443,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
         let mut applicability = Applicability::MachineApplicable;
 
         let lit1 = peel_ref_operators(cx, lit1);
-        let mut lit_str = snippet_with_applicability(cx, lit1.span, "_", &mut applicability);
-
-        // Wrap the expression in parentheses if it's a deref expression. Otherwise operator precedence will
-        // cause the code to dereference boolean(won't compile).
-        if let ExprKind::Unary(UnOp::Deref, _) = lit1.kind {
-            lit_str = Cow::from(format!("({lit_str})"));
-        }
+        let lit_str = Sugg::hir_with_context(cx, lit1, span.ctxt(), "_", &mut applicability).maybe_par();
 
         span_lint_and_sugg(
             cx,
