@@ -1,5 +1,5 @@
 // unit-test: ScalarReplacementOfAggregates
-// compile-flags: -Zverbose -Cpanic=abort
+// compile-flags: -Cpanic=abort
 // no-prefer-dynamic
 
 trait Err {
