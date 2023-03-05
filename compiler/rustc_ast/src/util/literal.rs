@@ -2,7 +2,10 @@
 
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
-use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
+use rustc_lexer::unescape::{
+    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit,
+    Mode,
+};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::{ascii, fmt, str};
@@ -158,6 +161,52 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
+            token::CStr => {
+                let s = symbol.as_str();
+                let mut buf = Vec::with_capacity(s.len());
+                let mut error = Ok(());
+                unescape_c_string(s, Mode::CStr, &mut |span, c| match c {
+                    Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
+                        error = Err(LitError::NulInCStr(span));
+                    }
+                    Ok(CStrUnit::Byte(b)) => buf.push(b),
+                    Ok(CStrUnit::Char(c)) if c.len_utf8() == 1 => buf.push(c as u8),
+                    Ok(CStrUnit::Char(c)) => {
+                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                    }
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Err(LitError::LexerError);
+                        }
+                    }
+                });
+                error?;
+                buf.push(b'\0');
+                LitKind::CStr(buf.into(), StrStyle::Cooked)
+            }
+            token::CStrRaw(n) => {
+                let s = symbol.as_str();
+                let mut buf = Vec::with_capacity(s.len());
+                let mut error = Ok(());
+                unescape_c_string(s, Mode::RawCStr, &mut |span, c| match c {
+                    Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
+                        error = Err(LitError::NulInCStr(span));
+                    }
+                    Ok(CStrUnit::Byte(b)) => buf.push(b),
+                    Ok(CStrUnit::Char(c)) if c.len_utf8() == 1 => buf.push(c as u8),
+                    Ok(CStrUnit::Char(c)) => {
+                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                    }
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Err(LitError::LexerError);
+                        }
+                    }
+                });
+                error?;
+                buf.push(b'\0');
+                LitKind::CStr(buf.into(), StrStyle::Raw(n))
+            }
             token::Err => LitKind::Err,
         })
     }
@@ -191,6 +240,8 @@ impl fmt::Display for LitKind {
                     string = symbol
                 )?;
             }
+            // TODO need to reescape
+            LitKind::CStr(..) => todo!(),
             LitKind::Int(n, ty) => {
                 write!(f, "{n}")?;
                 match ty {
@@ -237,6 +288,8 @@ impl MetaItemLit {
             LitKind::Str(_, ast::StrStyle::Raw(n)) => token::StrRaw(n),
             LitKind::ByteStr(_, ast::StrStyle::Cooked) => token::ByteStr,
             LitKind::ByteStr(_, ast::StrStyle::Raw(n)) => token::ByteStrRaw(n),
+            LitKind::CStr(_, ast::StrStyle::Cooked) => token::CStr,
+            LitKind::CStr(_, ast::StrStyle::Raw(n)) => token::CStrRaw(n),
             LitKind::Byte(_) => token::Byte,
             LitKind::Char(_) => token::Char,
             LitKind::Int(..) => token::Integer,

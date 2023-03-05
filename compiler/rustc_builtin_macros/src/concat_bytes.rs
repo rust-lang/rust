@@ -18,6 +18,10 @@ fn invalid_type_err(
     };
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
     match ast::LitKind::from_token_lit(token_lit) {
+        Ok(ast::LitKind::CStr(_, _)) => {
+            // TODO
+            cx.span_err(span, "cannot concatenate C string litearls");
+        }
         Ok(ast::LitKind::Char(_)) => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::CharLit { span, snippet });

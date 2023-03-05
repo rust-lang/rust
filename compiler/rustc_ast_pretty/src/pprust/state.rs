@@ -210,6 +210,8 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
+        // TODO
+        token::CStr | token::CStrRaw(_) => todo!(),
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
     };
 

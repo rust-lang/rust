@@ -90,6 +90,39 @@ where
         Mode::RawStr | Mode::RawByteStr => {
             unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
         }
+        Mode::CStr | Mode::RawCStr => unreachable!(),
+    }
+}
+
+pub enum CStrUnit {
+    Byte(u8),
+    Char(char),
+}
+
+impl From<u8> for CStrUnit {
+    fn from(value: u8) -> Self {
+        CStrUnit::Byte(value)
+    }
+}
+
+impl From<char> for CStrUnit {
+    fn from(value: char) -> Self {
+        CStrUnit::Char(value)
+    }
+}
+
+pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
+{
+    if mode == Mode::RawCStr {
+        unescape_raw_str_or_raw_byte_str(
+            src,
+            mode.characters_should_be_ascii(),
+            &mut |r, result| callback(r, result.map(CStrUnit::Char)),
+        );
+    } else {
+        unescape_str_common(src, mode, callback);
     }
 }
 
@@ -114,19 +147,26 @@ pub enum Mode {
     ByteStr,
     RawStr,
     RawByteStr,
+    CStr,
+    RawCStr,
 }
 
 impl Mode {
     pub fn in_double_quotes(self) -> bool {
         match self {
-            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr => true,
+            Mode::Str
+            | Mode::ByteStr
+            | Mode::RawStr
+            | Mode::RawByteStr
+            | Mode::CStr
+            | Mode::RawCStr => true,
             Mode::Char | Mode::Byte => false,
         }
     }
 
     pub fn is_byte(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+            Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
             Mode::Char | Mode::Str | Mode::RawStr => false,
         }
     }
@@ -163,62 +203,63 @@ fn scan_escape(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError
             value as char
         }
 
-        'u' => {
-            // We've parsed '\u', now we have to parse '{..}'.
-
-            if chars.next() != Some('{') {
-                return Err(EscapeError::NoBraceInUnicodeEscape);
-            }
-
-            // First character must be a hexadecimal digit.
-            let mut n_digits = 1;
-            let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
-                '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
-                '}' => return Err(EscapeError::EmptyUnicodeEscape),
-                c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
-            };
-
-            // First character is valid, now parse the rest of the number
-            // and closing brace.
-            loop {
-                match chars.next() {
-                    None => return Err(EscapeError::UnclosedUnicodeEscape),
-                    Some('_') => continue,
-                    Some('}') => {
-                        if n_digits > 6 {
-                            return Err(EscapeError::OverlongUnicodeEscape);
-                        }
-
-                        // Incorrect syntax has higher priority for error reporting
-                        // than unallowed value for a literal.
-                        if is_byte {
-                            return Err(EscapeError::UnicodeEscapeInByte);
-                        }
-
-                        break std::char::from_u32(value).ok_or_else(|| {
-                            if value > 0x10FFFF {
-                                EscapeError::OutOfRangeUnicodeEscape
-                            } else {
-                                EscapeError::LoneSurrogateUnicodeEscape
-                            }
-                        })?;
-                    }
-                    Some(c) => {
-                        let digit: u32 =
-                            c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
-                        n_digits += 1;
-                        if n_digits > 6 {
-                            // Stop updating value since we're sure that it's incorrect already.
-                            continue;
-                        }
-                        value = value * 16 + digit;
-                    }
-                };
-            }
-        }
+        'u' => scan_unicode(chars, is_byte)?,
         _ => return Err(EscapeError::InvalidEscape),
     };
     Ok(res)
+}
+
+fn scan_unicode(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
+    // We've parsed '\u', now we have to parse '{..}'.
+
+    if chars.next() != Some('{') {
+        return Err(EscapeError::NoBraceInUnicodeEscape);
+    }
+
+    // First character must be a hexadecimal digit.
+    let mut n_digits = 1;
+    let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
+        '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
+        '}' => return Err(EscapeError::EmptyUnicodeEscape),
+        c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
+    };
+
+    // First character is valid, now parse the rest of the number
+    // and closing brace.
+    loop {
+        match chars.next() {
+            None => return Err(EscapeError::UnclosedUnicodeEscape),
+            Some('_') => continue,
+            Some('}') => {
+                if n_digits > 6 {
+                    return Err(EscapeError::OverlongUnicodeEscape);
+                }
+
+                // Incorrect syntax has higher priority for error reporting
+                // than unallowed value for a literal.
+                if is_byte {
+                    return Err(EscapeError::UnicodeEscapeInByte);
+                }
+
+                break std::char::from_u32(value).ok_or_else(|| {
+                    if value > 0x10FFFF {
+                        EscapeError::OutOfRangeUnicodeEscape
+                    } else {
+                        EscapeError::LoneSurrogateUnicodeEscape
+                    }
+                });
+            }
+            Some(c) => {
+                let digit: u32 = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
+                n_digits += 1;
+                if n_digits > 6 {
+                    // Stop updating value since we're sure that it's incorrect already.
+                    continue;
+                }
+                value = value * 16 + digit;
+            }
+        };
+    }
 }
 
 #[inline]
@@ -266,7 +307,9 @@ where
                         // if unescaped '\' character is followed by '\n'.
                         // For details see [Rust language reference]
                         // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
-                        skip_ascii_whitespace(&mut chars, start, callback);
+                        skip_ascii_whitespace(&mut chars, start, &mut |range, err| {
+                            callback(range, Err(err))
+                        });
                         continue;
                     }
                     _ => scan_escape(&mut chars, is_byte),
@@ -281,32 +324,32 @@ where
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
     }
+}
 
-    fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
-    where
-        F: FnMut(Range<usize>, Result<char, EscapeError>),
-    {
-        let tail = chars.as_str();
-        let first_non_space = tail
-            .bytes()
-            .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-            .unwrap_or(tail.len());
-        if tail[1..first_non_space].contains('\n') {
-            // The +1 accounts for the escaping slash.
-            let end = start + first_non_space + 1;
-            callback(start..end, Err(EscapeError::MultipleSkippedLinesWarning));
-        }
-        let tail = &tail[first_non_space..];
-        if let Some(c) = tail.chars().nth(0) {
-            if c.is_whitespace() {
-                // For error reporting, we would like the span to contain the character that was not
-                // skipped. The +1 is necessary to account for the leading \ that started the escape.
-                let end = start + first_non_space + c.len_utf8() + 1;
-                callback(start..end, Err(EscapeError::UnskippedWhitespaceWarning));
-            }
-        }
-        *chars = tail.chars();
+fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
+where
+    F: FnMut(Range<usize>, EscapeError),
+{
+    let tail = chars.as_str();
+    let first_non_space = tail
+        .bytes()
+        .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
+        .unwrap_or(tail.len());
+    if tail[1..first_non_space].contains('\n') {
+        // The +1 accounts for the escaping slash.
+        let end = start + first_non_space + 1;
+        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
     }
+    let tail = &tail[first_non_space..];
+    if let Some(c) = tail.chars().nth(0) {
+        if c.is_whitespace() {
+            // For error reporting, we would like the span to contain the character that was not
+            // skipped. The +1 is necessary to account for the leading \ that started the escape.
+            let end = start + first_non_space + c.len_utf8() + 1;
+            callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+        }
+    }
+    *chars = tail.chars();
 }
 
 /// Takes a contents of a string literal (without quotes) and produces a

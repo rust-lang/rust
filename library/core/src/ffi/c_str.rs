@@ -82,6 +82,7 @@ use crate::str;
 #[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
+#[cfg_attr(not(bootstrap), lang = "CStr")]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
 // on `CStr` being layout-compatible with `[u8]`.

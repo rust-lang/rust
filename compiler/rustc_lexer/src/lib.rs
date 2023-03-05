@@ -186,12 +186,16 @@ pub enum LiteralKind {
     Str { terminated: bool },
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
+    /// `c"abc"`, `c"abc`
+    CStr { terminated: bool },
     /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
+    /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` is invalid.
+    RawCStr { n_hashes: Option<u8> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -386,6 +390,32 @@ impl Cursor<'_> {
                         self.eat_literal_suffix();
                     }
                     let kind = RawByteStr { n_hashes: res.ok() };
+                    Literal { kind, suffix_start }
+                }
+                _ => self.ident_or_unknown_prefix(),
+            },
+
+            // TODO deduplicate this code
+            // c-string literal, raw c-string literal or identifier.
+            'c' => match (self.first(), self.second()) {
+                ('"', _) => {
+                    self.bump();
+                    let terminated = self.double_quoted_string();
+                    let suffix_start = self.pos_within_token();
+                    if terminated {
+                        self.eat_literal_suffix();
+                    }
+                    let kind = CStr { terminated };
+                    Literal { kind, suffix_start }
+                }
+                ('r', '"') | ('r', '#') => {
+                    self.bump();
+                    let res = self.raw_double_quoted_string(2);
+                    let suffix_start = self.pos_within_token();
+                    if res.is_ok() {
+                        self.eat_literal_suffix();
+                    }
+                    let kind = RawCStr { n_hashes: res.ok() };
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident_or_unknown_prefix(),

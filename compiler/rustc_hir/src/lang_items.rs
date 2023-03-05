@@ -332,6 +332,7 @@ language_item_table! {
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
+    CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
 }
 
 pub enum GenericRequirement {

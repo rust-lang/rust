@@ -415,6 +415,16 @@ impl<'a> StringReader<'a> {
                 }
                 self.cook_quoted(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
             }
+            rustc_lexer::LiteralKind::CStr { terminated } => {
+                if !terminated {
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start + BytePos(1), end),
+                        "unterminated C string",
+                        error_code!(E0767),
+                    )
+                }
+                self.cook_c_string(token::CStr, Mode::CStr, start, end, 2, 1) // c" "
+            }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
@@ -429,6 +439,15 @@ impl<'a> StringReader<'a> {
                     let n = u32::from(n_hashes);
                     let kind = token::ByteStrRaw(n_hashes);
                     self.cook_quoted(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
+                } else {
+                    self.report_raw_str_error(start, 2);
+                }
+            }
+            rustc_lexer::LiteralKind::RawCStr { n_hashes } => {
+                if let Some(n_hashes) = n_hashes {
+                    let n = u32::from(n_hashes);
+                    let kind = token::CStrRaw(n_hashes);
+                    self.cook_c_string(kind, Mode::RawCStr, start, end, 3 + n, 1 + n) // cr##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }
@@ -662,6 +681,51 @@ impl<'a> StringReader<'a> {
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
         unescape::unescape_literal(lit_content, mode, &mut |range, result| {
+            // Here we only check for errors. The actual unescaping is done later.
+            if let Err(err) = result {
+                let span_with_quotes = self.mk_sp(start, end);
+                let (start, end) = (range.start as u32, range.end as u32);
+                let lo = content_start + BytePos(start);
+                let hi = lo + BytePos(end - start);
+                let span = self.mk_sp(lo, hi);
+                if err.is_fatal() {
+                    has_fatal_err = true;
+                }
+                emit_unescape_error(
+                    &self.sess.span_diagnostic,
+                    lit_content,
+                    span_with_quotes,
+                    span,
+                    mode,
+                    range,
+                    err,
+                );
+            }
+        });
+
+        // We normally exclude the quotes for the symbol, but for errors we
+        // include it because it results in clearer error messages.
+        if !has_fatal_err {
+            (kind, Symbol::intern(lit_content))
+        } else {
+            (token::Err, self.symbol_from_to(start, end))
+        }
+    }
+
+    fn cook_c_string(
+        &self,
+        kind: token::LitKind,
+        mode: Mode,
+        start: BytePos,
+        end: BytePos,
+        prefix_len: u32,
+        postfix_len: u32,
+    ) -> (token::LitKind, Symbol) {
+        let mut has_fatal_err = false;
+        let content_start = start + BytePos(prefix_len);
+        let content_end = end - BytePos(postfix_len);
+        let lit_content = self.str_from_to(content_start, content_end);
+        unescape::unescape_c_string(lit_content, mode, &mut |range, result| {
             // Here we only check for errors. The actual unescaping is done later.
             if let Err(err) = result {
                 let span_with_quotes = self.mk_sp(start, end);
