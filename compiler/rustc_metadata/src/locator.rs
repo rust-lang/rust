@@ -789,6 +789,9 @@ fn get_metadata_section<'p>(
                 loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
             // The header is uncompressed
             let header_len = METADATA_HEADER.len();
+            // header + u32 length of data
+            let data_start = header_len + 4;
+
             debug!("checking {} bytes of metadata-version stamp", header_len);
             let header = &buf[..cmp::min(header_len, buf.len())];
             if header != METADATA_HEADER {
@@ -798,8 +801,14 @@ fn get_metadata_section<'p>(
                 )));
             }
 
+            // Length of the compressed stream - this allows linkers to pad the section if they want
+            let Ok(len_bytes) = <[u8; 4]>::try_from(&buf[header_len..cmp::min(data_start, buf.len())]) else {
+                return Err(MetadataError::LoadFailure("invalid metadata length found".to_string()));
+            };
+            let compressed_len = u32::from_be_bytes(len_bytes) as usize;
+
             // Header is okay -> inflate the actual metadata
-            let compressed_bytes = &buf[header_len..];
+            let compressed_bytes = &buf[data_start..(data_start + compressed_len)];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
             // Assume the decompressed data will be at least the size of the compressed data, so we
             // don't have to grow the buffer as much.
