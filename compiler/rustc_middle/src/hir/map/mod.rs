@@ -1,5 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
-use crate::ty::{DefIdTree, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -900,6 +900,11 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
         self.opt_ident(id).map(|ident| ident.span)
+    }
+
+    #[inline]
+    pub fn ident(self, id: HirId) -> Ident {
+        self.opt_ident(id).unwrap()
     }
 
     #[inline]

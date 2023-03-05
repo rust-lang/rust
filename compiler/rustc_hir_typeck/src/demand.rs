@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe::ProbeScope::TraitsInScope,
                     None,
                 ) {
-                    Ok(pick) => pick.self_ty,
+                    Ok(pick) => eraser.fold_ty(pick.self_ty),
                     Err(_) => rcvr_ty,
                 };
                 // Remove one layer of references to account for `&mut self` and

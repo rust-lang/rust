@@ -256,7 +256,6 @@ declare_features! (
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
-    (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
@@ -317,8 +316,6 @@ declare_features! (
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
     (active, c_variadic, "1.34.0", Some(44930), None),
-    /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
-    (incomplete, capture_disjoint_fields, "1.49.0", Some(53488), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.

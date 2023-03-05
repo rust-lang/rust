@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
-use rustc_middle::ty::{DefIdTree, Visibility};
+use rustc_middle::ty::Visibility;
 use std::mem;
 
 type ImportId<'a> = Interned<'a, NameBinding<'a>>;
@@ -60,7 +60,7 @@ impl Resolver<'_, '_> {
         // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
         let normal_mod_id = self.nearest_normal_mod(def_id);
         if normal_mod_id == def_id {
-            self.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
+            self.tcx.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
         } else {
             Visibility::Restricted(normal_mod_id)
         }

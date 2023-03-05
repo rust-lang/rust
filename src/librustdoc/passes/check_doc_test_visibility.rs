@@ -14,7 +14,6 @@ use crate::visit::DocVisitor;
 use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
-use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {

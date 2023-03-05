@@ -2,11 +2,13 @@ error: duplicate diagnostic item in crate `p2`: `Foo`.
    |
    = note: the diagnostic item is first defined in crate `p1`.
 
-error: duplicate diagnostic item found: `Foo`.
+error: duplicate diagnostic item in crate `duplicate_diagnostic`: `Foo`.
   --> $DIR/duplicate-diagnostic.rs:12:1
    |
 LL | pub struct Foo {}
    | ^^^^^^^^^^^^^^
+   |
+   = note: the diagnostic item is first defined in crate `p2`.
 
 error: aborting due to 2 previous errors
 

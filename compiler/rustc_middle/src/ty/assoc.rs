@@ -1,6 +1,6 @@
 pub use self::AssocItemContainer::*;
 
-use crate::ty::{self, DefIdTree};
+use crate::ty;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};

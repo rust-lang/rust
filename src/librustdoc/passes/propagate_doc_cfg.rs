@@ -9,7 +9,6 @@ use crate::fold::DocFolder;
 use crate::passes::Pass;
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::DefIdTree;
 
 pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",

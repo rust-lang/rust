@@ -418,5 +418,21 @@ LL |         return Err(format!("err!"));
    |
    = help: remove `return`
 
-error: aborting due to 50 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:312:9
+   |
+LL |         return if true { 1 } else { 2 };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:316:9
+   |
+LL |         return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return` and wrap the sequence with parentheses
+
+error: aborting due to 52 previous errors
 

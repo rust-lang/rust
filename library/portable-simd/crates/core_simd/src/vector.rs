@@ -28,7 +28,7 @@ use crate::simd::{
 /// let zm_add = a0.zip(a1).map(|(lhs, rhs)| lhs + rhs);
 /// let zm_mul = a0.zip(a1).map(|(lhs, rhs)| lhs * rhs);
 ///
-/// // `Simd<T, N>` implements `From<[T; N]>
+/// // `Simd<T, N>` implements `From<[T; N]>`
 /// let (v0, v1) = (Simd::from(a0), Simd::from(a1));
 /// // Which means arrays implement `Into<Simd<T, N>>`.
 /// assert_eq!(v0 + v1, zm_add.into());

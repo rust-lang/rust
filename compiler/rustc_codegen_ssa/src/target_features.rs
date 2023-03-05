@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -185,7 +185,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),
-    ("cmpxchg16b", Some(sym::cmpxchg16b_target_feature)),
+    ("cmpxchg16b", None),
     ("ermsb", Some(sym::ermsb_target_feature)),
     ("f16c", None),
     ("fma", None),
@@ -394,7 +394,6 @@ pub fn from_target_feature(
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
                 Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,

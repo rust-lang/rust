@@ -7,7 +7,7 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::{DefIdTree, ImplSubject, TyCtxt};
+use crate::ty::{ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
@@ -64,13 +64,17 @@ impl ModuleItems {
         self.foreign_items.iter().copied()
     }
 
-    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+    pub fn owners(&self) -> impl Iterator<Item = OwnerId> + '_ {
         self.items
             .iter()
-            .map(|id| id.owner_id.def_id)
-            .chain(self.trait_items.iter().map(|id| id.owner_id.def_id))
-            .chain(self.impl_items.iter().map(|id| id.owner_id.def_id))
-            .chain(self.foreign_items.iter().map(|id| id.owner_id.def_id))
+            .map(|id| id.owner_id)
+            .chain(self.trait_items.iter().map(|id| id.owner_id))
+            .chain(self.impl_items.iter().map(|id| id.owner_id))
+            .chain(self.foreign_items.iter().map(|id| id.owner_id))
+    }
+
+    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.owners().map(|id| id.def_id)
     }
 
     pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
@@ -173,6 +177,7 @@ pub fn provide(providers: &mut Providers) {
         }
     };
     providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
+    providers.opt_rpitit_info = |_, _| None;
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined = |tcx, id| {
         let id = id.expect_local();

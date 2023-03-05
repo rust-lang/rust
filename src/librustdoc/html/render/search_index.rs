@@ -7,9 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{
-    FnRetTy, Function, GenericBound, Generics, ItemId, Type, WherePredicate,
-};
+use crate::clean::types::{FnRetTy, Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -482,29 +480,23 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
+            WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                if let GenericBound::TraitBound(poly_trait, _) = bound {
-                    for param_def in poly_trait.generic_params.iter() {
-                        match &param_def.kind {
-                            clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
-                                add_generics_and_bounds_as_types(
-                                    self_,
-                                    generics,
-                                    ty,
-                                    tcx,
-                                    recurse + 1,
-                                    &mut ty_generics,
-                                    cache,
-                                )
-                            }
-                            _ => {}
-                        }
-                    }
+                if let Some(path) = bound.get_trait_path() {
+                    let ty = Type::Path { path };
+                    add_generics_and_bounds_as_types(
+                        self_,
+                        generics,
+                        &ty,
+                        tcx,
+                        recurse + 1,
+                        &mut ty_generics,
+                        cache,
+                    );
                 }
             }
             insert_ty(res, arg.clone(), ty_generics);

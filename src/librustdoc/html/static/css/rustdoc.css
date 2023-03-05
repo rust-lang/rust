@@ -1260,6 +1260,11 @@ a.tooltip:hover::after {
 	color: var(--search-tab-title-count-color);
 }
 
+#search .error code {
+	border-radius: 3px;
+	background-color: var(--search-error-code-background-color);
+}
+
 #src-sidebar-toggle {
 	position: sticky;
 	top: 0;

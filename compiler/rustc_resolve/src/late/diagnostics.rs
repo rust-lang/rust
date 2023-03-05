@@ -21,7 +21,6 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
-use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -878,7 +877,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         );
         let is_assoc_fn = self.self_type_is_available();
         if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
-            // The current function has a `self' parameter, but we were unable to resolve
+            // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
             if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
@@ -1508,7 +1507,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
-                let def_id = self.r.parent(ctor_def_id);
+                let def_id = self.r.tcx.parent(ctor_def_id);
                 if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
@@ -1999,7 +1998,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         } else {
             let needs_placeholder = |ctor_def_id: DefId, kind: CtorKind| {
-                let def_id = self.r.parent(ctor_def_id);
+                let def_id = self.r.tcx.parent(ctor_def_id);
                 let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,

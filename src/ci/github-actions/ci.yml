@@ -78,7 +78,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-macos-xl
-    os: macos-latest  # We don't have an XL builder for this
+    os: macos-12-xl
     <<: *base-job
 
   - &job-windows-xl

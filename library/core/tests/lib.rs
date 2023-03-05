@@ -66,6 +66,8 @@
 #![feature(try_trait_v2)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
+#![feature(ip)]
+#![feature(ip_in_core)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
@@ -77,6 +79,9 @@
 #![feature(iter_repeat_n)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
+#![feature(const_ip)]
+#![feature(const_ipv4)]
+#![feature(const_ipv6)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
 #![feature(const_waker)]
@@ -135,6 +140,7 @@ mod lazy;
 mod macros;
 mod manually_drop;
 mod mem;
+mod net;
 mod nonzero;
 mod num;
 mod ops;

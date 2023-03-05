@@ -55,7 +55,7 @@ pub fn as_constant_inner<'tcx>(
                         ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
                     }
                     Err(LitToConstError::TypeError) => {
-                        bug!("encountered type error in `lit_to_mir_constant")
+                        bug!("encountered type error in `lit_to_mir_constant`")
                     }
                 };
 

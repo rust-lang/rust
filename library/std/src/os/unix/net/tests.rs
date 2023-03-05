@@ -167,6 +167,7 @@ fn long_path() {
 }
 
 #[test]
+#[cfg(not(target_os = "nto"))]
 fn timeouts() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");

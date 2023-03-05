@@ -2213,10 +2213,6 @@ impl PartialEq for String {
     fn eq(&self, other: &String) -> bool {
         PartialEq::eq(&self[..], &other[..])
     }
-    #[inline]
-    fn ne(&self, other: &String) -> bool {
-        PartialEq::ne(&self[..], &other[..])
-    }
 }
 
 macro_rules! impl_eq {

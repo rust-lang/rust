@@ -50,7 +50,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Like [Self::canonicalize_query], but preserves distinct universes. For
     /// example, canonicalizing `&'?0: Trait<'?1>`, where `'?0` is in `U1` and
-    /// `'?1` is in `U3` would be canonicalized to have ?0` in `U1` and `'?1`
+    /// `'?1` is in `U3` would be canonicalized to have `?0` in `U1` and `'?1`
     /// in `U2`.
     ///
     /// This is used for Chalk integration.

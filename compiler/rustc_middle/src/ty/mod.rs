@@ -73,7 +73,7 @@ pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, MinCaptureInformationMap, MinCaptureList,
+    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
     CAPTURE_STRUCT_LOCAL,
 };
@@ -165,12 +165,8 @@ pub struct ResolverGlobalCtxt {
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
-    pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
     pub reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-    /// Extern prelude entries. The value is `true` if the entry was introduced
-    /// via `extern crate` item and not `--extern` option or compiler built-in.
-    pub extern_prelude: FxHashMap<Symbol, bool>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of proc macro LocalDefIds, written out in the order in which
@@ -329,12 +325,15 @@ pub struct ClosureSizeProfileData<'tcx> {
     pub after_feature_tys: Ty<'tcx>,
 }
 
-pub trait DefIdTree: Copy {
-    fn opt_parent(self, id: DefId) -> Option<DefId>;
+impl TyCtxt<'_> {
+    #[inline]
+    pub fn opt_parent(self, id: DefId) -> Option<DefId> {
+        self.def_key(id).parent.map(|index| DefId { index, ..id })
+    }
 
     #[inline]
     #[track_caller]
-    fn parent(self, id: DefId) -> DefId {
+    pub fn parent(self, id: DefId) -> DefId {
         match self.opt_parent(id) {
             Some(id) => id,
             // not `unwrap_or_else` to avoid breaking caller tracking
@@ -344,17 +343,17 @@ pub trait DefIdTree: Copy {
 
     #[inline]
     #[track_caller]
-    fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
+    pub fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
         self.opt_parent(id.to_def_id()).map(DefId::expect_local)
     }
 
     #[inline]
     #[track_caller]
-    fn local_parent(self, id: LocalDefId) -> LocalDefId {
+    pub fn local_parent(self, id: LocalDefId) -> LocalDefId {
         self.parent(id.to_def_id()).expect_local()
     }
 
-    fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
+    pub fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
         if descendant.krate != ancestor.krate {
             return false;
         }
@@ -366,13 +365,6 @@ pub trait DefIdTree: Copy {
             }
         }
         true
-    }
-}
-
-impl<'tcx> DefIdTree for TyCtxt<'tcx> {
-    #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        self.def_key(id).parent.map(|index| DefId { index, ..id })
     }
 }
 
@@ -395,19 +387,19 @@ impl<Id: Into<DefId>> Visibility<Id> {
     }
 
     /// Returns `true` if an item with this visibility is accessible from the given module.
-    pub fn is_accessible_from(self, module: impl Into<DefId>, tree: impl DefIdTree) -> bool {
+    pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tree.is_descendant_of(module.into(), id.into()),
+            Visibility::Restricted(id) => tcx.is_descendant_of(module.into(), id.into()),
         }
     }
 
     /// Returns `true` if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tree: impl DefIdTree) -> bool {
+    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tcx: TyCtxt<'_>) -> bool {
         match vis {
             Visibility::Public => self.is_public(),
-            Visibility::Restricted(id) => self.is_accessible_from(id, tree),
+            Visibility::Restricted(id) => self.is_accessible_from(id, tcx),
         }
     }
 }
@@ -714,7 +706,7 @@ impl<'tcx> Predicate<'tcx> {
         //   The substitution from the input trait-ref is therefore going to be
         //   `'a => 'x` (where `'x` has a DB index of 1).
         // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
-        //   early-bound parameter and `'b' is a late-bound parameter with a
+        //   early-bound parameter and `'b` is a late-bound parameter with a
         //   DB index of 1.
         // - If we replace `'a` with `'x` from the input, it too will have
         //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`
@@ -2075,6 +2067,12 @@ pub enum ImplOverlapKind {
     Issue33140,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+pub enum ImplTraitInTraitData {
+    Trait { fn_def_id: DefId, opaque_def_id: DefId },
+    Impl { fn_def_id: DefId },
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
         self.typeck(self.hir().body_owner_def_id(body))
@@ -2442,7 +2440,7 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Check if the given `DefId` is `#\[automatically_derived\], *and*
+    /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*
     /// whether it was produced by expanding a builtin derive macro.
     pub fn is_builtin_derived(self, def_id: DefId) -> bool {
         if self.is_automatically_derived(def_id)
@@ -2544,6 +2542,34 @@ impl<'tcx> TyCtxt<'tcx> {
             def_id = self.parent(def_id);
         }
         def_id
+    }
+
+    pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
+        if self.def_kind(def_id) != DefKind::AssocFn {
+            return false;
+        }
+
+        let Some(item) = self.opt_associated_item(def_id) else { return false; };
+        if item.container != ty::AssocItemContainer::ImplContainer {
+            return false;
+        }
+
+        let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+
+        // FIXME(RPITIT): This does a somewhat manual walk through the signature
+        // of the trait fn to look for any RPITITs, but that's kinda doing a lot
+        // of work. We can probably remove this when we refactor RPITITs to be
+        // associated types.
+        self.fn_sig(trait_item_def_id).subst_identity().skip_binder().output().walk().any(|arg| {
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Alias(ty::Projection, data) = ty.kind()
+                && self.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
+            {
+                true
+            } else {
+                false
+            }
+        })
     }
 }
 

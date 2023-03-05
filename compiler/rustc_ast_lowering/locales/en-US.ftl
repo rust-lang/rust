@@ -22,9 +22,6 @@ ast_lowering_misplaced_impl_trait =
 ast_lowering_misplaced_assoc_ty_binding =
     associated type bounds are only allowed in where clauses and function signatures, not in {$position}
 
-ast_lowering_rustc_box_attribute_error =
-    #[rustc_box] requires precisely one argument and no other attributes are allowed
-
 ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here

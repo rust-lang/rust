@@ -1,5 +1,5 @@
 // ignore-tidy-trailing-newlines
-// error-pattern: aborting due to 3 previous errors
+// error-pattern: aborting due to previous error
 #![allow(uncommon_codepoints)]
 
 y![

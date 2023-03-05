@@ -235,7 +235,7 @@ pub(crate) struct RegionValues<N: Idx> {
     free_regions: SparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
-    /// in for<'a> fn(&'a u32)`.
+    /// in `for<'a> fn(&'a u32)`.
     placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 

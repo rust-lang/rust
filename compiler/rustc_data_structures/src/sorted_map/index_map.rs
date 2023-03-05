@@ -100,6 +100,11 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
             (k == &key).then_some((i, v))
         })
     }
+
+    #[inline]
+    pub fn contains_key(&self, key: K) -> bool {
+        self.get_by_key(key).next().is_some()
+    }
 }
 
 impl<I: Idx, K: Eq, V: Eq> Eq for SortedIndexMultiMap<I, K, V> {}

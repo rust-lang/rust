@@ -62,14 +62,6 @@ hir_analysis_manual_implementation =
 
 hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
 
-hir_analysis_unused_extern_crate =
-    unused extern crate
-    .suggestion = remove it
-
-hir_analysis_extern_crate_not_idiomatic =
-    `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `{$msg_code}`
-
 hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
@@ -155,3 +147,11 @@ hir_analysis_main_function_generic_parameters = `main` function is not allowed t
 
 hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
     .label = C-variadic function must have a compatible calling convention
+
+hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
+    cannot capture late-bound type parameter in a constant
+    .label = parameter defined here
+
+hir_analysis_cannot_capture_late_bound_const_in_anon_const =
+    cannot capture late-bound const parameter in a constant
+    .label = parameter defined here

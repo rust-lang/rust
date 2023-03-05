@@ -553,6 +553,7 @@ use crate::pin::Pin;
 use crate::{
     cmp, convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
+    slice,
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -731,6 +732,124 @@ impl<T> Option<T> {
                 Some(x) => Some(Pin::new_unchecked(x)),
                 None => None,
             }
+        }
+    }
+
+    const fn get_some_offset() -> isize {
+        if mem::size_of::<Option<T>>() == mem::size_of::<T>() {
+            // niche optimization means the `T` is always stored at the same position as the Option.
+            0
+        } else {
+            assert!(mem::size_of::<Option<T>>() == mem::size_of::<Option<mem::MaybeUninit<T>>>());
+            let some_uninit = Some(mem::MaybeUninit::<T>::uninit());
+            // SAFETY: This gets the byte offset of the `Some(_)` value following the fact that
+            // niche optimization is not active, and thus Option<T> and Option<MaybeUninit<t>> share
+            // the same layout.
+            unsafe {
+                (some_uninit.as_ref().unwrap() as *const mem::MaybeUninit<T>)
+                    .byte_offset_from(&some_uninit as *const Option<mem::MaybeUninit<T>>)
+            }
+        }
+    }
+
+    /// Returns a slice of the contained value, if any. If this is `None`, an
+    /// empty slice is returned. This can be useful to have a single type of
+    /// iterator over an `Option` or slice.
+    ///
+    /// Note: Should you have an `Option<&T>` and wish to get a slice of `T`,
+    /// you can unpack it via `opt.map_or(&[], std::slice::from_ref)`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(option_as_slice)]
+    ///
+    /// assert_eq!(
+    ///     [Some(1234).as_slice(), None.as_slice()],
+    ///     [&[1234][..], &[][..]],
+    /// );
+    /// ```
+    ///
+    /// The inverse of this function is (discounting
+    /// borrowing) [`[_]::first`](slice::first):
+    ///
+    /// ```rust
+    /// #![feature(option_as_slice)]
+    ///
+    /// for i in [Some(1234_u16), None] {
+    ///     assert_eq!(i.as_ref(), i.as_slice().first());
+    /// }
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "option_as_slice", issue = "108545")]
+    pub fn as_slice(&self) -> &[T] {
+        // SAFETY: This is sound as long as `get_some_offset` returns the
+        // correct offset. Though in the `None` case, the slice may be located
+        // at a pointer pointing into padding, the fact that the slice is
+        // empty, and the padding is at a properly aligned position for a
+        // value of that type makes it sound.
+        unsafe {
+            slice::from_raw_parts(
+                (self as *const Option<T>).wrapping_byte_offset(Self::get_some_offset())
+                    as *const T,
+                self.is_some() as usize,
+            )
+        }
+    }
+
+    /// Returns a mutable slice of the contained value, if any. If this is
+    /// `None`, an empty slice is returned. This can be useful to have a
+    /// single type of iterator over an `Option` or slice.
+    ///
+    /// Note: Should you have an `Option<&mut T>` instead of a
+    /// `&mut Option<T>`, which this method takes, you can obtain a mutable
+    /// slice via `opt.map_or(&mut [], std::slice::from_mut)`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(option_as_slice)]
+    ///
+    /// assert_eq!(
+    ///     [Some(1234).as_mut_slice(), None.as_mut_slice()],
+    ///     [&mut [1234][..], &mut [][..]],
+    /// );
+    /// ```
+    ///
+    /// The result is a mutable slice of zero or one items that points into
+    /// our original `Option`:
+    ///
+    /// ```rust
+    /// #![feature(option_as_slice)]
+    ///
+    /// let mut x = Some(1234);
+    /// x.as_mut_slice()[0] += 1;
+    /// assert_eq!(x, Some(1235));
+    /// ```
+    ///
+    /// The inverse of this method (discounting borrowing)
+    /// is [`[_]::first_mut`](slice::first_mut):
+    ///
+    /// ```rust
+    /// #![feature(option_as_slice)]
+    ///
+    /// assert_eq!(Some(123).as_mut_slice().first_mut(), Some(&mut 123))
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "option_as_slice", issue = "108545")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: This is sound as long as `get_some_offset` returns the
+        // correct offset. Though in the `None` case, the slice may be located
+        // at a pointer pointing into padding, the fact that the slice is
+        // empty, and the padding is at a properly aligned position for a
+        // value of that type makes it sound.
+        unsafe {
+            slice::from_raw_parts_mut(
+                (self as *mut Option<T>).wrapping_byte_offset(Self::get_some_offset()) as *mut T,
+                self.is_some() as usize,
+            )
         }
     }
 

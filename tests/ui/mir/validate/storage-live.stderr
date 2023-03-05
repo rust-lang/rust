@@ -1,0 +1,13 @@
+error: internal compiler error: broken MIR in Item(WithOptConstParam { did: DefId(0:8 ~ storage_live[HASH]::multiple_storage), const_param_did: None }) (before pass CheckPackedRef) at bb0[1]:
+                                StorageLive(_1) which already has storage here
+  --> $DIR/storage-live.rs:22:13
+   |
+LL |             StorageLive(a);
+   |             ^^^^^^^^^^^^^^
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [mir_const] preparing `multiple_storage` for borrow checking
+#1 [mir_promoted] processing MIR for `multiple_storage`
+end of query stack

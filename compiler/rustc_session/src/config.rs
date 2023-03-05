@@ -2245,7 +2245,7 @@ pub fn parse_externs(
                 early_error(
                     error_format,
                     "the `-Z unstable-options` flag must also be passed to \
-                     enable `--extern options",
+                     enable `--extern` options",
                 );
             }
             for opt in opts.split(',') {
@@ -2792,7 +2792,7 @@ pub enum PpMode {
     HirTree,
     /// `-Zunpretty=thir-tree`
     ThirTree,
-    /// `-Zunpretty=`thir-flat`
+    /// `-Zunpretty=thir-flat`
     ThirFlat,
     /// `-Zunpretty=mir`
     Mir,

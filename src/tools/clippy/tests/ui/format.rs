@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build: proc_macro_with_span.rs
 #![warn(clippy::useless_format)]
 #![allow(
     unused_tuple_struct_fields,
@@ -8,6 +9,8 @@
     clippy::needless_borrow,
     clippy::uninlined_format_args
 )]
+
+extern crate proc_macro_with_span;
 
 struct Foo(pub String);
 
@@ -89,4 +92,7 @@ fn main() {
     let _ = format!("{abc}");
     let xx = "xx";
     let _ = format!("{xx}");
+
+    // Issue #10148
+    println!(proc_macro_with_span::with_span!(""something ""));
 }

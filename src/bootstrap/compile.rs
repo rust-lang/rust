@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
 
-use serde::Deserialize;
+use serde_derive::Deserialize;
 
 use crate::builder::crate_description;
 use crate::builder::Cargo;

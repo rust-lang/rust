@@ -123,6 +123,11 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
         self.kind.universe()
     }
 
+    #[must_use]
+    pub fn with_updated_universe(self, ui: ty::UniverseIndex) -> CanonicalVarInfo<'tcx> {
+        CanonicalVarInfo { kind: self.kind.with_updated_universe(ui) }
+    }
+
     pub fn is_existential(&self) -> bool {
         match self.kind {
             CanonicalVarKind::Ty(_) => true,
@@ -131,6 +136,28 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(..) => true,
             CanonicalVarKind::PlaceholderConst(_, _) => false,
+        }
+    }
+
+    pub fn is_region(&self) -> bool {
+        match self.kind {
+            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
+            CanonicalVarKind::Ty(_)
+            | CanonicalVarKind::PlaceholderTy(_)
+            | CanonicalVarKind::Const(_, _)
+            | CanonicalVarKind::PlaceholderConst(_, _) => false,
+        }
+    }
+
+    pub fn expect_anon_placeholder(self) -> u32 {
+        match self.kind {
+            CanonicalVarKind::Ty(_)
+            | CanonicalVarKind::Region(_)
+            | CanonicalVarKind::Const(_, _) => bug!("expected placeholder: {self:?}"),
+
+            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.name.expect_anon(),
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.name.expect_anon(),
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.name.as_u32(),
         }
     }
 }
@@ -177,6 +204,38 @@ impl<'tcx> CanonicalVarKind<'tcx> {
             CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe,
         }
     }
+
+    /// Replaces the universe of this canonical variable with `ui`.
+    ///
+    /// In case this is a float or int variable, this causes an ICE if
+    /// the updated universe is not the root.
+    pub fn with_updated_universe(self, ui: ty::UniverseIndex) -> CanonicalVarKind<'tcx> {
+        match self {
+            CanonicalVarKind::Ty(kind) => match kind {
+                CanonicalTyVarKind::General(_) => {
+                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
+                }
+                CanonicalTyVarKind::Int | CanonicalTyVarKind::Float => {
+                    assert_eq!(ui, ty::UniverseIndex::ROOT);
+                    CanonicalVarKind::Ty(kind)
+                }
+            },
+            CanonicalVarKind::PlaceholderTy(placeholder) => {
+                CanonicalVarKind::PlaceholderTy(ty::Placeholder { universe: ui, ..placeholder })
+            }
+            CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
+            CanonicalVarKind::PlaceholderRegion(placeholder) => {
+                CanonicalVarKind::PlaceholderRegion(ty::Placeholder { universe: ui, ..placeholder })
+            }
+            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty),
+            CanonicalVarKind::PlaceholderConst(placeholder, ty) => {
+                CanonicalVarKind::PlaceholderConst(
+                    ty::Placeholder { universe: ui, ..placeholder },
+                    ty,
+                )
+            }
+        }
+    }
 }
 
 /// Rust actually has more than one category of type variables;
@@ -213,7 +272,8 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
     pub member_constraints: Vec<MemberConstraint<'tcx>>,

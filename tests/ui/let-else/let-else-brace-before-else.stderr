@@ -10,18 +10,7 @@ LL |     let Some(1) = ({ Some(1) }) else {
    |                   +           +
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/let-else-brace-before-else.rs:10:40
-   |
-LL |     let Some(1) = loop { break Some(1) } else {
-   |                                        ^
-   |
-help: wrap the expression in parentheses
-   |
-LL |     let Some(1) = (loop { break Some(1) }) else {
-   |                   +                      +
-
-error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/let-else-brace-before-else.rs:14:34
+  --> $DIR/let-else-brace-before-else.rs:10:34
    |
 LL |     let 2 = 1 + match 1 { n => n } else {
    |                                  ^
@@ -32,7 +21,7 @@ LL |     let 2 = 1 + (match 1 { n => n }) else {
    |                 +                  +
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/let-else-brace-before-else.rs:18:40
+  --> $DIR/let-else-brace-before-else.rs:14:40
    |
 LL |     let Some(1) = unsafe { unsafe_fn() } else {
    |                                        ^
@@ -42,5 +31,5 @@ help: wrap the expression in parentheses
 LL |     let Some(1) = (unsafe { unsafe_fn() }) else {
    |                   +                      +
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

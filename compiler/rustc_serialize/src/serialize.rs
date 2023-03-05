@@ -43,24 +43,12 @@ pub trait Encoder {
     fn emit_str(&mut self, v: &str);
     fn emit_raw_bytes(&mut self, s: &[u8]);
 
-    // Convenience for the derive macro:
     fn emit_enum_variant<F>(&mut self, v_id: usize, f: F)
     where
         F: FnOnce(&mut Self),
     {
         self.emit_usize(v_id);
         f(self);
-    }
-
-    // We put the field index in a const generic to allow the emit_usize to be
-    // compiled into a more efficient form. In practice, the variant index is
-    // known at compile-time, and that knowledge allows much more efficient
-    // codegen than we'd otherwise get. LLVM isn't always able to make the
-    // optimization that would otherwise be necessary here, likely due to the
-    // multiple levels of inlining and const-prop that are needed.
-    #[inline]
-    fn emit_fieldless_enum_variant<const ID: usize>(&mut self) {
-        self.emit_usize(ID)
     }
 }
 

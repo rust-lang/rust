@@ -8,7 +8,7 @@ LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:12:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             -          ^           ^ mismatched closing delimiter
@@ -17,7 +17,7 @@ LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:19:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             -          ^           ^ mismatched closing delimiter
@@ -25,104 +25,23 @@ LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:23:65
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             ^              ^ mismatched closing delimiter
-   |             |             |
-   |             |             unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
-   |
+   |                                          - missing open `[` for this delimiter
+...
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
-   |
+   |                                    - missing open `[` for this delimiter
+...
+LL | mod c {
+   |       - unclosed delimiter
+LL |     enum Bug {
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
+   |                                    - missing open `[` for this delimiter
+...
+LL | fn main() {}
+   |                                                                 ^
 
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
-   |
-LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             ^              ^ mismatched closing delimiter
-   |             |             |
-   |             |             unclosed delimiter
-   |             closing delimiter possibly meant for this
+error: aborting due to 4 previous errors
 
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
-   |
-LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
-   |
-LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
-   |
-LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             ^              ^ mismatched closing delimiter
-   |             |             |
-   |             |             unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
-   |
-LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
-   |
-LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
-   |             |          unclosed delimiter
-   |             closing delimiter possibly meant for this
-
-error[E0282]: type annotations needed
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:26
-   |
-LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |                          ^^ cannot infer type for type parameter `T`
-
-error[E0282]: type annotations needed
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:14
-   |
-LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |              ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Vec`
-   |
-help: consider specifying the generic argument
-   |
-LL |         V = [Vec::<T>::new; { [0].len() ].len() as isize,
-   |                 +++++
-
-error: aborting due to 14 previous errors
-
-For more information about this error, try `rustc --explain E0282`.

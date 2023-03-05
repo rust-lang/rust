@@ -9,17 +9,5 @@ LL |     }
 LL | }
    | ^ mismatched closing delimiter
 
-error[E0308]: mismatched types
-  --> $DIR/unclosed-delimiter-in-dep.rs:4:20
-   |
-LL |     let _: usize = unclosed_delim_mod::new();
-   |            -----   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `Result<Value, ()>`
-   |            |
-   |            expected due to this
-   |
-   = note: expected type `usize`
-              found enum `Result<Value, ()>`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

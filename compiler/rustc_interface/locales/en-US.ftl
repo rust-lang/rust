@@ -33,7 +33,7 @@ interface_rustc_error_fatal =
     fatal error triggered by #[rustc_error]
 
 interface_rustc_error_unexpected_annotation =
-    unexpected annotation used with `#[rustc_error(...)]!
+    unexpected annotation used with `#[rustc_error(...)]`!
 
 interface_failed_writing_file =
     failed to write file {$path}: {$error}"

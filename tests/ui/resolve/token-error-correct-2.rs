@@ -2,6 +2,5 @@
 
 fn main() {
     if foo {
-    //~^ ERROR: cannot find value `foo`
     ) //~ ERROR: mismatched closing delimiter: `)`
 }

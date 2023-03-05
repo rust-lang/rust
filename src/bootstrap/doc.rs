@@ -62,6 +62,7 @@ macro_rules! book {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
                     src: INTERNER.intern_path(builder.src.join($path)),
+                    parent: Some(self),
                 })
             }
         }
@@ -119,18 +120,20 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: INTERNER.intern_path(builder.md_doc_out(self.target).join("unstable-book")),
+            parent: Some(self),
         })
     }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-struct RustbookSrc {
+struct RustbookSrc<P: Step> {
     target: TargetSelection,
     name: Interned<String>,
     src: Interned<PathBuf>,
+    parent: Option<P>,
 }
 
-impl Step for RustbookSrc {
+impl<P: Step> Step for RustbookSrc<P> {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -152,13 +155,18 @@ impl Step for RustbookSrc {
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        if builder.config.dry_run() || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
-            return;
-        }
-        builder.info(&format!("Rustbook ({}) - {}", target, name));
-        let _ = fs::remove_dir_all(&out);
 
-        builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(out));
+        if !builder.config.dry_run() && !(up_to_date(&src, &index) || up_to_date(&rustbook, &index))
+        {
+            builder.info(&format!("Rustbook ({}) - {}", target, name));
+            let _ = fs::remove_dir_all(&out);
+
+            builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(out));
+        }
+
+        if self.parent.is_some() {
+            builder.maybe_open_in_browser::<P>(index)
+        }
     }
 }
 
@@ -205,6 +213,7 @@ impl Step for TheBook {
             target,
             name: INTERNER.intern_str("book"),
             src: INTERNER.intern_path(builder.src.join(&relative_path)),
+            parent: Some(self),
         });
 
         // building older edition redirects
@@ -213,6 +222,9 @@ impl Step for TheBook {
                 target,
                 name: INTERNER.intern_string(format!("book/{}", edition)),
                 src: INTERNER.intern_path(builder.src.join(&relative_path).join(edition)),
+                // There should only be one book that is marked as the parent for each target, so
+                // treat the other editions as not having a parent.
+                parent: Option::<Self>::None,
             });
         }
 
@@ -228,10 +240,6 @@ impl Step for TheBook {
 
             invoke_rustdoc(builder, compiler, &shared_assets, target, path);
         }
-
-        let out = builder.doc_out(target);
-        let index = out.join("book").join("index.html");
-        builder.maybe_open_in_browser::<Self>(index);
     }
 }
 
@@ -1032,10 +1040,7 @@ impl Step for RustcBook {
             target: self.target,
             name: INTERNER.intern_str("rustc"),
             src: INTERNER.intern_path(out_base),
+            parent: Some(self),
         });
-
-        let out = builder.doc_out(self.target);
-        let index = out.join("rustc").join("index.html");
-        builder.maybe_open_in_browser::<Self>(index);
     }
 }

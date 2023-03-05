@@ -212,36 +212,44 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
     /// Identifies whether a predicate obligation needs processing.
     ///
-    /// This is always inlined, despite its size, because it has a single
-    /// callsite and it is called *very* frequently.
+    /// This is always inlined because it has a single callsite and it is
+    /// called *very* frequently. Be careful modifying this code! Several
+    /// compile-time benchmarks are very sensitive to even small changes.
     #[inline(always)]
     fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
         // If we were stalled on some unresolved variables, first check whether
         // any of them have been resolved; if not, don't bother doing more work
         // yet.
-        match pending_obligation.stalled_on.len() {
-            // Match arms are in order of frequency, which matters because this
-            // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
-            1 => {
-                let infer_var = pending_obligation.stalled_on[0];
-                self.selcx.infcx.ty_or_const_infer_var_changed(infer_var)
-            }
-            0 => {
-                // In this case we haven't changed, but wish to make a change.
-                true
-            }
-            _ => {
-                // This `for` loop was once a call to `all()`, but this lower-level
-                // form was a perf win. See #64545 for details.
-                (|| {
-                    for &infer_var in &pending_obligation.stalled_on {
-                        if self.selcx.infcx.ty_or_const_infer_var_changed(infer_var) {
-                            return true;
-                        }
+        let stalled_on = &pending_obligation.stalled_on;
+        match stalled_on.len() {
+            // This case is the hottest most of the time, being hit up to 99%
+            // of the time. `keccak` and `cranelift-codegen-0.82.1` are
+            // benchmarks that particularly stress this path.
+            1 => self.selcx.infcx.ty_or_const_infer_var_changed(stalled_on[0]),
+
+            // In this case we haven't changed, but wish to make a change. Note
+            // that this is a special case, and is not equivalent to the `_`
+            // case below, which would return `false` for an empty `stalled_on`
+            // vector.
+            //
+            // This case is usually hit only 1% of the time or less, though it
+            // reaches 20% in `wasmparser-0.101.0`.
+            0 => true,
+
+            // This case is usually hit only 1% of the time or less, though it
+            // reaches 95% in `mime-0.3.16`, 64% in `wast-54.0.0`, and 12% in
+            // `inflate-0.4.5`.
+            //
+            // The obvious way of writing this, with a call to `any()` and no
+            // closure, is currently slower than this version.
+            _ => (|| {
+                for &infer_var in stalled_on {
+                    if self.selcx.infcx.ty_or_const_infer_var_changed(infer_var) {
+                        return true;
                     }
-                    false
-                })()
-            }
+                }
+                false
+            })(),
         }
     }
 

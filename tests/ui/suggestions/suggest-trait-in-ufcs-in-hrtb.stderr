@@ -1,0 +1,9 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/suggest-trait-in-ufcs-in-hrtb.rs:5:38
+   |
+LL | impl<S> Foo for Bar<S> where for<'a> <&'a S>::Item: Foo {}
+   |                                      ^^^^^^^^^^^^^ help: use the fully-qualified path: `<&'a S as IntoIterator>::Item`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0223`.

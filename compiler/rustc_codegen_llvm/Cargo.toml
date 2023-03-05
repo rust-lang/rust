@@ -36,3 +36,5 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 tempfile = "3.2.0"
+serde = { version = "1", features = [ "derive" ]}
+serde_json = "1"

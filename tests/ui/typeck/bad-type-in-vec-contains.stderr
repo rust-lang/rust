@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/bad-type-in-vec-contains.rs:5:21
+   |
+LL |     primes.contains(3);
+   |            -------- ^
+   |            |        |
+   |            |        expected `&_`, found integer
+   |            |        help: consider borrowing here: `&3`
+   |            arguments to this method are incorrect
+   |            here the type of `primes` is inferred to be `[_]`
+   |
+   = note: expected reference `&_`
+                   found type `{integer}`
+note: method defined here
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

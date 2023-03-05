@@ -2,8 +2,9 @@ error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |              ----                 ^
-   |              |
+   |              ----     ---------   ^
+   |              |        |
+   |              |        opaque type defined here
    |              hidden type `&i32` captures the anonymous lifetime defined here
    |
 help: to declare that `impl Copy` captures `'_`, you can add an explicit `'_` lifetime bound
@@ -15,8 +16,9 @@ error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
-   |             --                             ^
-   |             |
+   |             --                 ---------   ^
+   |             |                  |
+   |             |                  opaque type defined here
    |             hidden type `&'a i32` captures the lifetime `'a` as defined here
    |
 help: to declare that `impl Copy` captures `'a`, you can add an explicit `'a` lifetime bound
@@ -100,7 +102,9 @@ error[E0700]: hidden type for `impl Fn(&'a u32)` captures lifetime that does not
   --> $DIR/must_outlive_least_region_or_bound.rs:38:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
-   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:38:5: 38:13]` captures the lifetime `'b` as defined here
+   |                              --                             ---------------- opaque type defined here
+   |                              |
+   |                              hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:38:5: 38:13]` captures the lifetime `'b` as defined here
 LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

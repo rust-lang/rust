@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/missing-close-brace-in-trait.rs:12:65
+  --> $DIR/missing-close-brace-in-trait.rs:11:65
    |
 LL | trait T {
    |         - unclosed delimiter
@@ -7,21 +7,5 @@ LL | trait T {
 LL | fn main() {}
    |                                                                 ^
 
-error: struct is not supported in `trait`s or `impl`s
-  --> $DIR/missing-close-brace-in-trait.rs:4:1
-   |
-LL | pub(crate) struct Bar<T>();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider moving the struct out to a nearby module scope
-
-error: implementation is not supported in `trait`s or `impl`s
-  --> $DIR/missing-close-brace-in-trait.rs:7:1
-   |
-LL | impl T for Bar<usize> {
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider moving the implementation out to a nearby module scope
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

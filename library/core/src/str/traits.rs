@@ -28,10 +28,6 @@ impl PartialEq for str {
     fn eq(&self, other: &str) -> bool {
         self.as_bytes() == other.as_bytes()
     }
-    #[inline]
-    fn ne(&self, other: &str) -> bool {
-        !(*self).eq(other)
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

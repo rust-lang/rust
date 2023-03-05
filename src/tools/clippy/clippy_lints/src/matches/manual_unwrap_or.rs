@@ -10,7 +10,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{OptionNone, ResultErr};
 use rustc_hir::{Arm, Expr, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::DefIdTree;
 use rustc_span::sym;
 
 use super::MANUAL_UNWRAP_OR;

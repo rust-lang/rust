@@ -84,6 +84,9 @@ When typing in the search bar, you can prefix your search term with a type
 followed by a colon (such as `mod:`) to restrict the results to just that
 kind of item. (The available items are listed in the help popup.)
 
+Searching for `println!` will search for a macro named `println`, just like
+searching for `macro:println` does.
+
 ### Changing displayed theme
 
 You can change the displayed theme by opening the settings menu (the gear

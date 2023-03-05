@@ -522,6 +522,13 @@ pub enum BuiltinLintDiagnostics {
         is_formatting_arg: bool,
     },
     ByteSliceInPackedStructWithDerive,
+    UnusedExternCrate {
+        removal_span: Span,
+    },
+    ExternCrateNotIdiomatic {
+        vis_span: Span,
+        ident_span: Span,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

@@ -232,6 +232,7 @@
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
+#![cfg_attr(windows, feature(round_char_boundary))]
 //
 // Language features:
 #![feature(alloc_error_handler)]
@@ -287,6 +288,8 @@
 #![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(ip)]
+#![feature(ip_in_core)]
 #![feature(is_some_and)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]

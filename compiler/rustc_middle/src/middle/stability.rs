@@ -3,7 +3,7 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::ty::{self, DefIdTree, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, DefaultBodyStability, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;

@@ -910,14 +910,16 @@ impl<'a> Builder<'a> {
     /// new artifacts, it can't be used to rely on the presence of a particular
     /// sysroot.
     ///
-    /// See `force_use_stage1` for documentation on what each argument is.
+    /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
     pub fn compiler_for(
         &self,
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage1(Compiler { stage, host }, target) {
+        if self.build.force_use_stage2() {
+            self.compiler(2, self.config.build)
+        } else if self.build.force_use_stage1(Compiler { stage, host }, target) {
             self.compiler(1, self.config.build)
         } else {
             self.compiler(stage, host)

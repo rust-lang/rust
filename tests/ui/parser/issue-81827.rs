@@ -1,6 +1,5 @@
 // error-pattern: this file contains an unclosed delimiter
 // error-pattern: mismatched closing delimiter: `]`
-// error-pattern: expected one of `)` or `,`, found `{`
 
 #![crate_name="0"]
 

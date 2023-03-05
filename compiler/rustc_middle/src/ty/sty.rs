@@ -7,7 +7,7 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    self, AdtDef, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
@@ -105,6 +105,15 @@ impl BoundRegionKind {
         match *self {
             BoundRegionKind::BrNamed(id, _) => return Some(id),
             _ => None,
+        }
+    }
+
+    pub fn expect_anon(&self) -> u32 {
+        match *self {
+            BoundRegionKind::BrNamed(_, _) | BoundRegionKind::BrEnv => {
+                bug!("expected anon region: {self:?}")
+            }
+            BoundRegionKind::BrAnon(idx, _) => idx,
         }
     }
 }

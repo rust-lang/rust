@@ -11,7 +11,7 @@ use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::AdtDef;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
@@ -183,7 +183,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
             &projection,
         ) else {
         let closure_span = cx.tcx.def_span(closure_def_id);
-        if !enable_precise_capture(cx.tcx, closure_span) {
+        if !enable_precise_capture(closure_span) {
             bug!(
                 "No associated capture found for {:?}[{:#?}] even though \
                     capture_disjoint_fields isn't enabled",
@@ -745,8 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-/// Precise capture is enabled if the feature gate `capture_disjoint_fields` is enabled or if
-/// user is using Rust Edition 2021 or higher.
-fn enable_precise_capture(tcx: TyCtxt<'_>, closure_span: Span) -> bool {
-    tcx.features().capture_disjoint_fields || closure_span.rust_2021()
+/// Precise capture is enabled if user is using Rust Edition 2021 or higher.
+fn enable_precise_capture(closure_span: Span) -> bool {
+    closure_span.rust_2021()
 }
