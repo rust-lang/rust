@@ -17,53 +17,81 @@
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -O2 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -O3 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
 
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
+#include <stdio.h>
+
 #include "test_utils.h"
 
-double __enzyme_autodiff(void*, double);
+// Fast inverse sqrt
+// Code taken from https://en.wikipedia.org/wiki/Fast_inverse_square_root
+float Q_rsqrt( float number )
+{
+  long i;
+  float x2, y;
+  const float threehalfs = 1.5F;
 
-__attribute__((noinline))
-void square_(const double* src, double* dest) {
-    *dest = *src * *src;
-}
-
-int augment = 0;
-void* augment_square_(const double* src, const double *d_src, double* dest, double* d_dest) {
-    augment++;
-    // intentionally incorrect for debugging
-    *dest = 7.0;
-    *d_dest = 11.0;
-    return NULL;
-}
-
-int gradient = 0;
-void gradient_square_(const double* src, double *d_src, const double* dest, const double* d_dest, void* tape) {
-    gradient++;
-    // intentionally incorrect for debugging
-    *d_src = 13.0;
-}
-
-void* __enzyme_register_gradient_square[] = {
-    (void*)square_,
-    (void*)augment_square_,
-    (void*)gradient_square_,
-};
-
-
-double square(double x) {
-    double y;
-    square_(&x, &y);
-    return y;
-}
-
-double dsquare(double x) {
-    return __enzyme_autodiff((void*)square, x);
+  x2 = number * 0.5F;
+  y  = number;
+  i  = * ( long * ) &y;                       // evil floating point bit level hacking
+  i  = 0x5f3759df - ( i >> 1 );               // what the [...]?
+  y  = * ( float * ) &i;
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+  return y;
 }
 
 
-int main() {
-    double res = dsquare(3.0);
-    printf("res=%f augment=%d gradient=%d\n", res, augment, gradient);
-    APPROX_EQ(res, 13.0, 1e-10);
-    APPROX_EQ(augment, 1.0, 1e-10);
-    APPROX_EQ(gradient, 1.0, 1e-10);
+double invmag(double* __restrict__ A, int n) {
+  double sumsq = 0;
+  for (int i=0; i<n; i++) {
+    sumsq += A[i] * A[i];
+  }
+  return Q_rsqrt(sumsq);
+}
+
+
+
+// Returns { optional tape, original return (if pointer), shadow return (if pointer) }
+void aug_rsqrt(float x) {
+  // Nothing need to be done in augmented forward pass
+}
+
+// Arguments: all pointers duplicated, gradient of the return, tape (if provided)
+float rev_rsqrt(float x, float grad_out) {
+  // derivative of x^(-1/2) = -1/2 x^(-3/2)
+  return -grad_out * Q_rsqrt(x) / (2 * x);
+}
+
+void* __enzyme_register_gradient_rsqrt[3] = { (void*)Q_rsqrt, (void*)aug_rsqrt, (void*)rev_rsqrt };
+
+void __enzyme_autodiff(void*, ...);
+
+int main(int argc, char *argv[]) {
+  int n = 3;
+
+  double *A = (double*)malloc(sizeof(double) * n);
+  for(int i=0; i<n; i++)
+   A[i] = (i+1);
+  assert(A != 0);
+
+  double *grad_A = (double*)malloc(sizeof(double) * n);
+  assert(grad_A != 0);
+  for(int i=0; i<n; i++)
+   grad_A[i] = 0;
+ 
+  __enzyme_autodiff((void*)invmag, A, grad_A, n);
+
+  double im = invmag(A, n);
+  im = im*im*im;
+
+  for(int i=0; i<n; i++)
+    printf("A[%d]=%f dA[%d]=%f\n", i, A[i], i, grad_A[i]);
+
+  fflush(0);
+  
+  for(int i=0; i<n; i++)
+    APPROX_EQ(grad_A[i], -A[i]*im, 1e-3); 
+
+  return 0;
 }

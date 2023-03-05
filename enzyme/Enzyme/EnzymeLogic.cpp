@@ -2061,7 +2061,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
 
     std::map<AugmentedStruct, int> returnMapping;
-    returnMapping[AugmentedStruct::Tape] = -1;
+    if (!foundcalled->getReturnType()->isVoidTy())
+      returnMapping[AugmentedStruct::Tape] = -1;
 
     return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
                AugmentedCachedFunctions, tup,
@@ -3583,6 +3584,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         NewF->setAttributes(foundcalled->getAttributes());
         if (NewF->hasFnAttribute(Attribute::NoInline)) {
           NewF->removeFnAttr(Attribute::NoInline);
+        }
+        if (NewF->hasFnAttribute(Attribute::OptimizeNone)) {
+          NewF->removeFnAttr(Attribute::OptimizeNone);
         }
         size_t argnum = 0;
         for (Argument &Arg : NewF->args()) {
