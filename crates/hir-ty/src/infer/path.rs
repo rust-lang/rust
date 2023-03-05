@@ -35,7 +35,7 @@ impl<'a> InferenceContext<'a> {
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
             let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
-            self.resolve_ty_assoc_item(ty, last.name, id)?
+            self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
             // FIXME: report error, unresolved first path segment
             let value_or_partial =
@@ -43,9 +43,9 @@ impl<'a> InferenceContext<'a> {
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
-                ResolveValueResult::Partial(def, remaining_index) => {
-                    self.resolve_assoc_item(def, path, remaining_index, id)?
-                }
+                ResolveValueResult::Partial(def, remaining_index) => self
+                    .resolve_assoc_item(def, path, remaining_index, id)
+                    .map(|(it, substs)| (it, Some(substs)))?,
             }
         };
 
@@ -113,7 +113,7 @@ impl<'a> InferenceContext<'a> {
         path: &Path,
         remaining_index: usize,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
@@ -166,7 +166,7 @@ impl<'a> InferenceContext<'a> {
         trait_ref: TraitRef,
         segment: PathSegment<'_>,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         let trait_ = trait_ref.hir_trait_id();
         let item =
             self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
@@ -202,16 +202,15 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.write_assoc_resolution(id, item, trait_ref.substitution.clone());
-        Some((def, Some(trait_ref.substitution)))
+        Some((def, trait_ref.substitution))
     }
 
-    // FIXME: Change sig to -> Option<(ValueNs, Substitution)>, subs aren't optional from here anymore
     fn resolve_ty_assoc_item(
         &mut self,
         ty: Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         if let TyKind::Error = ty.kind(Interner) {
             return None;
         }
@@ -280,7 +279,7 @@ impl<'a> InferenceContext<'a> {
         if !visible {
             self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item });
         }
-        Some((def, Some(substs)))
+        Some((def, substs))
     }
 
     fn resolve_enum_variant_on_ty(
@@ -288,7 +287,7 @@ impl<'a> InferenceContext<'a> {
         ty: &Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         let ty = self.resolve_ty_shallow(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
@@ -298,6 +297,6 @@ impl<'a> InferenceContext<'a> {
         let local_id = enum_data.variant(name)?;
         let variant = EnumVariantId { parent: enum_id, local_id };
         self.write_variant_resolution(id, variant.into());
-        Some((ValueNs::EnumVariantId(variant), Some(subst.clone())))
+        Some((ValueNs::EnumVariantId(variant), subst.clone()))
     }
 }
