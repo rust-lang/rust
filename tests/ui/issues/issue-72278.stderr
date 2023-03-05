@@ -9,7 +9,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn func<'a, U>(&'a self) -> U {
    |             ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.func::<'a, U>()
+LL +     S.func::<U>()
+   |
 
 error: aborting due to previous error
 

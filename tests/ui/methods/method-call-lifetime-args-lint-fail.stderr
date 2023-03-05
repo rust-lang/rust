@@ -9,7 +9,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.late::<'static>(&0, &0);
+LL +     S.late(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:24:14
@@ -22,7 +26,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late::<'static, 'static>(&0, &0);
+LL +     S.late(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:26:14
@@ -35,7 +43,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late::<'static, 'static, 'static>(&0, &0);
+LL +     S.late(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:29:20
@@ -48,7 +60,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.late_early::<'static>(&0);
+LL +     S.late_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:31:20
@@ -61,7 +77,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_early::<'static, 'static>(&0);
+LL +     S.late_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:33:20
@@ -74,7 +94,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_early::<'static, 'static, 'static>(&0);
+LL +     S.late_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:37:23
@@ -87,7 +111,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.late_implicit::<'static>(&0, &0);
+LL +     S.late_implicit(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:39:23
@@ -100,7 +128,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_implicit::<'static, 'static>(&0, &0);
+LL +     S.late_implicit(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:41:23
@@ -113,7 +145,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_implicit::<'static, 'static, 'static>(&0, &0);
+LL +     S.late_implicit(&0, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:44:29
@@ -126,7 +162,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.late_implicit_early::<'static>(&0);
+LL +     S.late_implicit_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:46:29
@@ -139,7 +179,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_implicit_early::<'static, 'static>(&0);
+LL +     S.late_implicit_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:48:29
@@ -152,7 +196,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
-   = help: remove the explicit lifetime arguments
+help: remove the explicit lifetime arguments
+   |
+LL -     S.late_implicit_early::<'static, 'static, 'static>(&0);
+LL +     S.late_implicit_early(&0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:56:21
@@ -165,7 +213,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S::late_early::<'static>(S, &0);
+LL +     S::late_early(S, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:59:30
@@ -178,7 +230,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S::late_implicit_early::<'static>(S, &0);
+LL +     S::late_implicit_early(S, &0);
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:67:9
@@ -191,7 +247,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn f<'early, 'late, T: 'early>() {}
    |                  ^^^^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     f::<'static, u8>;
+LL +     f::<u8>;
+   |
 
 error: aborting due to 15 previous errors
 

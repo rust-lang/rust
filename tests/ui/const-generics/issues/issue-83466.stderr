@@ -9,7 +9,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn func<'a, U>(self) -> U {
    |             ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     S.func::<'a, 10_u32>()
+LL +     S.func::<10_u32>()
+   |
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/issue-83466.rs:11:18

@@ -9,7 +9,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _: [u8; faz::<'a>(&())];
+LL +     let _: [u8; faz(&())];
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:21:23
@@ -22,7 +26,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _: [u8; faz::<'b>(&())];
+LL +     let _: [u8; faz(&())];
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:41:24
@@ -35,7 +43,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _: Foo<{ faz::<'a>(&()) }>;
+LL +     let _: Foo<{ faz(&()) }>;
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:44:24
@@ -48,7 +60,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _: Foo<{ faz::<'b>(&()) }>;
+LL +     let _: Foo<{ faz(&()) }>;
+   |
 
 error: unconstrained generic constant
   --> $DIR/const-arg-in-const-arg.rs:13:12
@@ -109,7 +125,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _ = [0; faz::<'a>(&())];
+LL +     let _ = [0; faz(&())];
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:33:23
@@ -122,7 +142,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _ = [0; faz::<'b>(&())];
+LL +     let _ = [0; faz(&())];
+   |
 
 error: unconstrained generic constant
   --> $DIR/const-arg-in-const-arg.rs:47:19
@@ -151,7 +175,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _ = Foo::<{ faz::<'a>(&()) }>;
+LL +     let _ = Foo::<{ faz(&()) }>;
+   |
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:55:27
@@ -164,7 +192,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     let _ = Foo::<{ faz::<'b>(&()) }>;
+LL +     let _ = Foo::<{ faz(&()) }>;
+   |
 
 error: aborting due to 16 previous errors
 

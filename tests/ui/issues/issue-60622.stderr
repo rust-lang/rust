@@ -9,7 +9,11 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn a(&self) {}
    |          ^
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     b.a::<'_, T>();
+LL +     b.a::<T>();
+   |
 
 error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-60622.rs:10:7

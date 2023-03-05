@@ -14,7 +14,11 @@ LL |     0.clone::<'a>();
    |
 note: the late bound lifetime parameter is introduced here
   --> $SRC_DIR/core/src/clone.rs:LL:COL
-   = help: remove the explicit lifetime argument
+help: remove the explicit lifetime argument
+   |
+LL -     0.clone::<'a>();
+LL +     0.clone();
+   |
 
 error: aborting due to 2 previous errors
 

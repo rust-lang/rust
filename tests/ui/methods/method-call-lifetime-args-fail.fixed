@@ -16,9 +16,9 @@ impl S {
 
 fn method_call() {
     S.early(); // OK
-    S.early::<'static>();
+    S.early::<'static, 'static>();
     //~^ ERROR method takes 2 lifetime arguments but 1 lifetime argument
-    S.early::<'static, 'static, 'static>();
+    S.early::<'static, 'static, >();
     //~^ ERROR method takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S.life_and_type::<'static>();
     S.life_and_type::<u8>();
@@ -27,45 +27,45 @@ fn method_call() {
 
 fn ufcs() {
     S::late(S, &0, &0); // OK
-    S::late::<'static>(S, &0, &0);
+    S::late(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late::<'static, 'static>(S, &0, &0);
+    S::late(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late::<'static, 'static, 'static>(S, &0, &0);
+    S::late(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_early(S, &0); // OK
-    S::late_early::<'static, 'static>(S, &0);
+    S::late_early(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_early::<'static, 'static, 'static>(S, &0);
+    S::late_early(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
 
     S::late_implicit(S, &0, &0); // OK
-    S::late_implicit::<'static>(S, &0, &0);
+    S::late_implicit(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_implicit::<'static, 'static>(S, &0, &0);
+    S::late_implicit(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_implicit::<'static, 'static, 'static>(S, &0, &0);
+    S::late_implicit(S, &0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit_early(S, &0); // OK
-    S::late_implicit_early::<'static, 'static>(S, &0);
+    S::late_implicit_early(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_implicit_early::<'static, 'static, 'static>(S, &0);
+    S::late_implicit_early(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit_self_early(&S); // OK
-    S::late_implicit_self_early::<'static, 'static>(&S);
+    S::late_implicit_self_early(&S);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_implicit_self_early::<'static, 'static, 'static>(&S);
+    S::late_implicit_self_early(&S);
     //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_unused_early(S); // OK
-    S::late_unused_early::<'static, 'static>(S);
+    S::late_unused_early(S);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    S::late_unused_early::<'static, 'static, 'static>(S);
+    S::late_unused_early(S);
     //~^ ERROR cannot specify lifetime arguments explicitly
 
     S::early(S); // OK
-    S::early::<'static>(S);
+    S::early::<'static, 'static>(S);
     //~^ ERROR method takes 2 lifetime arguments but 1 lifetime argument
-    S::early::<'static, 'static, 'static>(S);
+    S::early::<'static, 'static, >(S);
     //~^ ERROR method takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S::life_and_type::<'static>(S);
     S::life_and_type::<u8>(S);

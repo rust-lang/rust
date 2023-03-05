@@ -611,7 +611,40 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
             })
             .collect();
 
-        tcx.sess.struct_span_err(spans, msg).span_note(span_late, note).help(help).emit();
+        let mut err = tcx.sess.struct_span_err(spans, msg);
+        err.span_note(span_late, note);
+
+        let mut suggestions = vec![];
+        if let Some(span_ext) = args.span_ext() {
+            if args.num_lifetime_params() == args.args.len()
+                && span_ext.ctxt() == seg.ident.span.ctxt()
+            {
+                // We only specify lifetime args, so suggest to remove everything.
+                suggestions.push((seg.ident.span.shrink_to_hi().to(span_ext), String::new()));
+            } else {
+                for [arg, next_arg] in args.args.array_windows() {
+                    if let hir::GenericArg::Lifetime(lifetime) = arg
+                        && let Some(arg_span) = lifetime.ident.span.find_ancestor_inside(span_ext)
+                        && let Some(next_span_lo) = next_arg.span().shrink_to_lo().find_ancestor_inside(span_ext)
+                    {
+                        suggestions.push((arg_span.with_hi(next_span_lo.lo()), String::new()));
+                    }
+                }
+
+                if let Some(arg) = args.args.last()
+                    && let hir::GenericArg::Lifetime(lifetime) = arg
+                    && let Some(arg_span) = lifetime.ident.span.find_ancestor_inside(span_ext)
+                {
+                    suggestions.push((arg_span, String::new()));
+                }
+            }
+        }
+        if !suggestions.is_empty() {
+            err.multipart_suggestion_verbose(help, suggestions, Applicability::MachineApplicable);
+        } else {
+            err.help(help);
+        }
+        err.emit();
 
         ExplicitLateBound::Yes
     } else {
