@@ -33,7 +33,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 use la_arena::ArenaMap;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::always;
 
 use crate::{
@@ -423,6 +423,8 @@ pub(crate) struct InferenceContext<'a> {
     pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
+    /// The traits in scope, disregarding block modules. This is used for caching purposes.
+    traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
     /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
@@ -505,6 +507,7 @@ impl<'a> InferenceContext<'a> {
             db,
             owner,
             body,
+            traits_in_scope: resolver.traits_in_scope(db.upcast()),
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
@@ -1055,6 +1058,15 @@ impl<'a> InferenceContext<'a> {
     fn resolve_va_list(&self) -> Option<AdtId> {
         let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
         Some(struct_.into())
+    }
+
+    fn get_traits_in_scope(&self) -> Either<FxHashSet<TraitId>, &FxHashSet<TraitId>> {
+        let mut b_traits = self.resolver.traits_in_scope_from_block_scopes().peekable();
+        if b_traits.peek().is_some() {
+            Either::Left(self.traits_in_scope.iter().copied().chain(b_traits).collect())
+        } else {
+            Either::Right(&self.traits_in_scope)
+        }
     }
 }
 

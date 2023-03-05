@@ -449,6 +449,15 @@ impl Resolver {
         traits
     }
 
+    pub fn traits_in_scope_from_block_scopes(&self) -> impl Iterator<Item = TraitId> + '_ {
+        self.scopes()
+            .filter_map(|scope| match scope {
+                Scope::BlockScope(m) => Some(m.def_map[m.module_id].scope.traits()),
+                _ => None,
+            })
+            .flatten()
+    }
+
     pub fn module(&self) -> ModuleId {
         let (def_map, local_id) = self.item_scope();
         def_map.module_id(local_id)

@@ -205,6 +205,7 @@ impl<'a> InferenceContext<'a> {
         Some((def, Some(trait_ref.substitution)))
     }
 
+    // FIXME: Change sig to -> Option<(ValueNs, Substitution)>, subs aren't optional from here anymore
     fn resolve_ty_assoc_item(
         &mut self,
         ty: Ty,
@@ -220,70 +221,66 @@ impl<'a> InferenceContext<'a> {
         }
 
         let canonical_ty = self.canonicalize(ty.clone());
-        let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
             self.table.trait_env.clone(),
-            &traits_in_scope,
+            self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             Some(name),
             method_resolution::LookupMode::Path,
             |_ty, item, visible| {
-                let (def, container) = match item {
-                    AssocItemId::FunctionId(f) => {
-                        (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
-                    }
-                    AssocItemId::ConstId(c) => {
-                        (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container)
-                    }
-                    AssocItemId::TypeAliasId(_) => unreachable!(),
-                };
-                let substs = match container {
-                    ItemContainerId::ImplId(impl_id) => {
-                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        let impl_self_ty =
-                            self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
-                        self.unify(&impl_self_ty, &ty);
-                        impl_substs
-                    }
-                    ItemContainerId::TraitId(trait_) => {
-                        // we're picking this method
-                        let trait_ref = TyBuilder::trait_ref(self.db, trait_)
-                            .push(ty.clone())
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        self.push_obligation(trait_ref.clone().cast(Interner));
-                        trait_ref.substitution
-                    }
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
-                        never!("assoc item contained in module/extern block");
-                        return None;
-                    }
-                };
-
                 if visible {
-                    Some((def, item, Some(substs), true))
+                    Some((item, true))
                 } else {
                     if not_visible.is_none() {
-                        not_visible = Some((def, item, Some(substs), false));
+                        not_visible = Some((item, false));
                     }
                     None
                 }
             },
         );
         let res = res.or(not_visible);
-        if let Some((_, item, Some(ref substs), visible)) = res {
-            self.write_assoc_resolution(id, item, substs.clone());
-            if !visible {
-                self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item })
+        let (item, visible) = res?;
+
+        let (def, container) = match item {
+            AssocItemId::FunctionId(f) => {
+                (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
             }
+            AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container),
+            AssocItemId::TypeAliasId(_) => unreachable!(),
+        };
+        let substs = match container {
+            ItemContainerId::ImplId(impl_id) => {
+                let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
+                    .fill_with_inference_vars(&mut self.table)
+                    .build();
+                let impl_self_ty = self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
+                self.unify(&impl_self_ty, &ty);
+                impl_substs
+            }
+            ItemContainerId::TraitId(trait_) => {
+                // we're picking this method
+                let trait_ref = TyBuilder::trait_ref(self.db, trait_)
+                    .push(ty.clone())
+                    .fill_with_inference_vars(&mut self.table)
+                    .build();
+                self.push_obligation(trait_ref.clone().cast(Interner));
+                trait_ref.substitution
+            }
+            ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                never!("assoc item contained in module/extern block");
+                return None;
+            }
+        };
+
+        self.write_assoc_resolution(id, item, substs.clone());
+        if !visible {
+            self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item });
         }
-        res.map(|(def, _, substs, _)| (def, substs))
+        Some((def, Some(substs)))
     }
 
     fn resolve_enum_variant_on_ty(
