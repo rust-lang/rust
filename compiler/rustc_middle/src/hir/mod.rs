@@ -7,7 +7,7 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::{DefIdTree, ImplSubject, TyCtxt};
+use crate::ty::{ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};

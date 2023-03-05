@@ -245,7 +245,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         import: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
         let import_vis = import.expect_vis().to_def_id();
-        let vis = if binding.vis.is_at_least(import_vis, self)
+        let vis = if binding.vis.is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, binding)
         {
             import_vis
@@ -255,7 +255,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind {
             if vis == import_vis
-                || max_vis.get().map_or(true, |max_vis| vis.is_at_least(max_vis, self))
+                || max_vis.get().map_or(true, |max_vis| vis.is_at_least(max_vis, self.tcx))
             {
                 max_vis.set(Some(vis.expect_local()))
             }
@@ -294,7 +294,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 old_binding,
                                 binding,
                             ));
-                        } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
+                        } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.binding = Some(binding);
                         }
@@ -786,7 +786,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     if !is_prelude
                     && let Some(max_vis) = max_vis.get()
-                    && !max_vis.is_at_least(import.expect_vis(), &*self)
+                    && !max_vis.is_at_least(import.expect_vis(), self.tcx)
                 {
                     let msg = "glob import doesn't reexport anything because no candidate is public enough";
                     self.lint_buffer.buffer_lint(UNUSED_IMPORTS, id, import.span, msg);
@@ -977,7 +977,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
             if let Ok(binding) = source_bindings[ns].get() {
-                if !binding.vis.is_at_least(import.expect_vis(), &*this) {
+                if !binding.vis.is_at_least(import.expect_vis(), this.tcx) {
                     reexport_error = Some((ns, binding));
                     if let ty::Visibility::Restricted(binding_def_id) = binding.vis {
                         if binding_def_id.is_top_level_module() {

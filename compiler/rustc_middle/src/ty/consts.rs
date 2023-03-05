@@ -1,6 +1,6 @@
 use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::LitToConstInput;
-use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

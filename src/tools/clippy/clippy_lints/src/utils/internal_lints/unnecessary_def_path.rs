@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, Local, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::{Allocation, ConstValue, GlobalAlloc};
-use rustc_middle::ty::{self, DefIdTree, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;

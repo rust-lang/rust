@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;

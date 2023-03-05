@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::ty::{self, DefIdTree, ImplTraitInTraitData, InternalSubsts, TyCtxt};
+use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub fn provide(providers: &mut ty::query::Providers) {

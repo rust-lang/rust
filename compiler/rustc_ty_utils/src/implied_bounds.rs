@@ -1,4 +1,3 @@
-use crate::rustc_middle::ty::DefIdTree;
 use rustc_hir::{def::DefKind, def_id::DefId};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 

@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};

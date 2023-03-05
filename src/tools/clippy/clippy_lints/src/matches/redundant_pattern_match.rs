@@ -12,7 +12,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
+use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
 use rustc_span::{sym, Symbol};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

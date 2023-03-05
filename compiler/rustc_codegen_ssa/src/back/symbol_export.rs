@@ -11,7 +11,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, DefIdTree, SymbolName, TyCtxt};
+use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::SanitizerSet;
 
