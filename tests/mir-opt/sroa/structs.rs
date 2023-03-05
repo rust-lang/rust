@@ -111,12 +111,12 @@ fn main() {
     constant();
 }
 
-// EMIT_MIR sroa.dropping.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.enums.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.structs.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.unions.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.flat.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.escaping.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.copies.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.ref_copies.ScalarReplacementOfAggregates.diff
-// EMIT_MIR sroa.constant.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.dropping.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.enums.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.structs.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.unions.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.flat.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.escaping.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.copies.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.ref_copies.ScalarReplacementOfAggregates.diff
+// EMIT_MIR structs.constant.ScalarReplacementOfAggregates.diff
