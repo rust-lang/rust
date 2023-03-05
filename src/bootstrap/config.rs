@@ -112,7 +112,6 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
-    pub llvm_skip_rebuild: bool,
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_plugins: bool,
@@ -666,7 +665,6 @@ define_config! {
 define_config! {
     /// TOML representation of how the LLVM build is configured.
     struct Llvm {
-        skip_rebuild: Option<bool> = "skip-rebuild",
         optimize: Option<bool> = "optimize",
         thin_lto: Option<bool> = "thin-lto",
         release_debuginfo: Option<bool> = "release-debuginfo",
@@ -1060,11 +1058,6 @@ impl Config {
             config.mandir = install.mandir.map(PathBuf::from);
         }
 
-        // We want the llvm-skip-rebuild flag to take precedence over the
-        // skip-rebuild config.toml option so we store it separately
-        // so that we can infer the right value
-        let mut llvm_skip_rebuild = flags.llvm_skip_rebuild;
-
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut llvm_assertions = None;
@@ -1170,7 +1163,6 @@ impl Config {
             llvm_assertions = llvm.assertions;
             llvm_tests = llvm.tests;
             llvm_plugins = llvm.plugins;
-            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
@@ -1324,7 +1316,6 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
