@@ -388,7 +388,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().debugtrap();
         }
-        sym::copy | sym::copy_nonoverlapping => {
+        sym::copy => {
             intrinsic_args!(fx, args => (src, dst, count); intrinsic);
             let src = src.load_scalar(fx);
             let dst = dst.load_scalar(fx);
@@ -400,13 +400,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let byte_amount =
                 if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
 
-            if intrinsic == sym::copy_nonoverlapping {
-                // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.target_config, dst, src, byte_amount);
-            } else {
-                // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.target_config, dst, src, byte_amount);
-            }
+            // FIXME emit_small_memmove
+            fx.bcx.call_memmove(fx.target_config, dst, src, byte_amount);
         }
         sym::volatile_copy_memory | sym::volatile_copy_nonoverlapping_memory => {
             // NOTE: the volatile variants have src and dst swapped
