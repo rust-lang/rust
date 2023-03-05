@@ -17,7 +17,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{def_id::DefId, Span};
+use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 use rustc_trait_selection::traits;
@@ -328,9 +328,6 @@ struct ConstPropagator<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     local_decls: &'mir IndexVec<Local, LocalDecl<'tcx>>,
-    // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
-    // the last known `SourceInfo` here and just keep revisiting it.
-    source_info: Option<SourceInfo>,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {
@@ -411,13 +408,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        ConstPropagator {
-            ecx,
-            tcx,
-            param_env,
-            local_decls: &dummy_body.local_decls,
-            source_info: None,
-        }
+        ConstPropagator { ecx, tcx, param_env, local_decls: &dummy_body.local_decls }
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
@@ -495,7 +486,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         *operand = self.operand_from_scalar(
                             scalar,
                             value.layout.ty,
-                            self.source_info.unwrap().span,
+                            DUMMY_SP,
                         );
                     }
                 }
@@ -629,12 +620,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }))
     }
 
-    fn replace_with_const(
-        &mut self,
-        rval: &mut Rvalue<'tcx>,
-        value: &OpTy<'tcx>,
-        source_info: SourceInfo,
-    ) {
+    fn replace_with_const(&mut self, rval: &mut Rvalue<'tcx>, value: &OpTy<'tcx>) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
             match c.literal {
                 ConstantKind::Ty(c) if matches!(c.kind(), ConstKind::Unevaluated(..)) => {}
@@ -664,11 +650,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let Some(Right(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(scalar) => {
-                    *rval = Rvalue::Use(self.operand_from_scalar(
-                        scalar,
-                        value.layout.ty,
-                        source_info.span,
-                    ));
+                    *rval =
+                        Rvalue::Use(self.operand_from_scalar(scalar, value.layout.ty, DUMMY_SP));
                 }
                 Immediate::ScalarPair(..) => {
                     // Found a value represented as a pair. For now only do const-prop if the type
@@ -701,7 +684,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
                                 let literal = ConstantKind::Val(const_val, ty);
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
-                                    span: source_info.span,
+                                    span: DUMMY_SP,
                                     user_ty: None,
                                     literal,
                                 })));
@@ -894,8 +877,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
-        let source_info = statement.source_info;
-        self.source_info = Some(source_info);
         match statement.kind {
             StatementKind::Assign(box (place, ref mut rval)) => {
                 let can_const_prop = self.ecx.machine.can_const_prop[place.local];
@@ -905,7 +886,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     // consists solely of uninitialized memory (so it doesn't capture any locals).
                     if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
                         trace!("replacing {:?} with {:?}", rval, value);
-                        self.replace_with_const(rval, value, source_info);
+                        self.replace_with_const(rval, value);
                         if can_const_prop == ConstPropMode::FullConstProp
                             || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
                         {
@@ -977,8 +958,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        let source_info = terminator.source_info;
-        self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
 
         match &mut terminator.kind {
@@ -991,7 +970,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     *cond = self.operand_from_scalar(
                         value_const,
                         self.tcx.types.bool,
-                        source_info.span,
+                        DUMMY_SP,
                     );
                 }
             }

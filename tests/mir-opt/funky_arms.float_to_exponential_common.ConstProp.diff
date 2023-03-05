@@ -54,7 +54,7 @@
 -         _6 = MinusPlus;                  // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
 +         _6 = const MinusPlus;            // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
 +                                          // mir::Constant
-+                                          // + span: $DIR/funky_arms.rs:21:17: 21:41
++                                          // + span: no-location
 +                                          // + literal: Const { ty: Sign, val: Value(Scalar(0x01)) }
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
       }
@@ -63,7 +63,7 @@
 -         _6 = Minus;                      // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
 +         _6 = const Minus;                // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
 +                                          // mir::Constant
-+                                          // + span: $DIR/funky_arms.rs:20:18: 20:38
++                                          // + span: no-location
 +                                          // + literal: Const { ty: Sign, val: Value(Scalar(0x00)) }
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
       }
