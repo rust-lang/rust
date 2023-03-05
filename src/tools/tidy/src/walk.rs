@@ -1,6 +1,6 @@
 use ignore::DirEntry;
 
-use std::{fs::File, io::Read, path::Path};
+use std::{ffi::OsStr, fs::File, io::Read, path::Path};
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
@@ -31,6 +31,11 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/bootstrap/target",
     ];
     skip.iter().any(|p| path.ends_with(p))
+}
+
+/// Filter for only files that end in `.rs`.
+pub fn filter_not_rust(path: &Path) -> bool {
+    !path.is_dir() && path.extension() != Some(OsStr::new("rs"))
 }
 
 pub fn walk_many(
