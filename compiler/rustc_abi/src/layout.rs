@@ -1,4 +1,5 @@
 use super::*;
+use std::fmt::Write;
 use std::{borrow::Borrow, cmp, iter, ops::Bound};
 
 #[cfg(feature = "randomize")]
@@ -72,11 +73,29 @@ pub trait LayoutCalculator {
                         .expect("alt layout should have a niche like the regular one");
                     let alt_head_space = niche.offset.bytes();
                     let alt_niche_len = niche.value.size(dl).bytes();
+                    let alt_tail_space = alt_layout.size.bytes() - alt_head_space - alt_niche_len;
 
                     debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
 
                     let prefer_alt_layout =
                         alt_head_space > head_space && alt_head_space > tail_space;
+
+                    debug!(
+                        "sz: {}, default_niche_at: {}+{}, default_tail_space: {}, alt_niche_at/head_space: {}+{}, alt_tail: {}, num_fields: {}, better: {}\n\
+                        layout: {}\n\
+                        alt_layout: {}\n",
+                        layout.size.bytes(),
+                        head_space,
+                        niche_length,
+                        tail_space,
+                        alt_head_space,
+                        alt_niche_len,
+                        alt_tail_space,
+                        layout.fields.count(),
+                        prefer_alt_layout,
+                        format_field_niches(&layout, &fields, &dl),
+                        format_field_niches(&alt_layout, &fields, &dl),
+                    );
 
                     if prefer_alt_layout {
                         return Some(alt_layout);
@@ -1014,4 +1033,29 @@ fn univariant(
         align,
         size,
     })
+}
+
+fn format_field_niches(
+    layout: &LayoutS,
+    fields: &IndexSlice<FieldIdx, Layout<'_>>,
+    dl: &TargetDataLayout,
+) -> String {
+    let mut s = String::new();
+    for i in layout.fields.index_by_increasing_offset() {
+        let offset = layout.fields.offset(i);
+        let f = fields[i.into()];
+        write!(s, "[o{}a{}s{}", offset.bytes(), f.align().abi.bytes(), f.size().bytes()).unwrap();
+        if let Some(n) = f.largest_niche() {
+            write!(
+                s,
+                " n{}b{}s{}",
+                n.offset.bytes(),
+                n.available(dl).ilog2(),
+                n.value.size(dl).bytes()
+            )
+            .unwrap();
+        }
+        write!(s, "] ").unwrap();
+    }
+    s
 }
