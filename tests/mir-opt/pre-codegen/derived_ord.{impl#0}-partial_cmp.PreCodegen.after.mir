@@ -6,37 +6,33 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     let mut _0: std::option::Option<std::cmp::Ordering>;
     let mut _3: &char;
     let mut _4: &char;
-    let mut _10: std::option::Option<std::cmp::Ordering>;
+    let mut _8: std::option::Option<std::cmp::Ordering>;
+    let mut _9: i8;
+    let mut _10: &i16;
     let mut _11: &i16;
-    let mut _12: &i16;
-    let _18: std::option::Option<std::cmp::Ordering>;
     scope 1 {
-        debug cmp => _18;
+        debug cmp => _8;
     }
     scope 2 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
         debug self => _3;
         debug other => _4;
-        let mut _9: std::cmp::Ordering;
+        let mut _7: std::cmp::Ordering;
         scope 3 (inlined std::cmp::impls::<impl Ord for char>::cmp) {
             debug self => _3;
             debug other => _4;
             let mut _5: char;
             let mut _6: char;
-            let mut _7: bool;
-            let mut _8: bool;
         }
     }
     scope 4 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
-        debug self => _11;
-        debug other => _12;
-        let mut _17: std::cmp::Ordering;
+        debug self => _10;
+        debug other => _11;
+        let mut _14: std::cmp::Ordering;
         scope 5 (inlined std::cmp::impls::<impl Ord for i16>::cmp) {
-            debug self => _11;
-            debug other => _12;
+            debug self => _10;
+            debug other => _11;
+            let mut _12: i16;
             let mut _13: i16;
-            let mut _14: i16;
-            let mut _15: bool;
-            let mut _16: bool;
         }
     }
 
@@ -45,115 +41,46 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
         _3 = &((*_1).0: char);
         StorageLive(_4);
         _4 = &((*_2).0: char);
-        StorageLive(_9);
         StorageLive(_5);
-        StorageLive(_6);
-        StorageLive(_7);
         _5 = ((*_1).0: char);
+        StorageLive(_6);
         _6 = ((*_2).0: char);
-        _7 = Lt(_5, _6);
-        switchInt(move _7) -> [0: bb1, otherwise: bb10];
+        _7 = Cmp(move _5, move _6);
+        StorageDead(_6);
+        StorageDead(_5);
+        _8 = Option::<std::cmp::Ordering>::Some(_7);
+        StorageDead(_4);
+        StorageDead(_3);
+        _9 = discriminant(_7);
+        switchInt(move _9) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageLive(_8);
-        _8 = Eq(_5, _6);
-        switchInt(move _8) -> [0: bb2, otherwise: bb3];
+        StorageLive(_10);
+        _10 = &((*_1).1: i16);
+        StorageLive(_11);
+        _11 = &((*_2).1: i16);
+        StorageLive(_14);
+        StorageLive(_12);
+        _12 = ((*_1).1: i16);
+        StorageLive(_13);
+        _13 = ((*_2).1: i16);
+        _14 = Cmp(move _12, move _13);
+        StorageDead(_13);
+        StorageDead(_12);
+        _0 = Option::<std::cmp::Ordering>::Some(move _14);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_10);
+        goto -> bb3;
     }
 
     bb2: {
-        _9 = const Greater;
-        StorageDead(_8);
-        StorageDead(_7);
-        StorageDead(_6);
-        StorageDead(_5);
-        _10 = Option::<std::cmp::Ordering>::Some(move _9);
-        StorageDead(_9);
-        StorageDead(_4);
-        StorageDead(_3);
-        goto -> bb11;
+        _0 = _8;
+        goto -> bb3;
     }
 
     bb3: {
-        StorageDead(_8);
-        StorageDead(_7);
-        StorageDead(_6);
-        StorageDead(_5);
-        StorageDead(_9);
-        StorageDead(_4);
-        StorageDead(_3);
-        StorageLive(_11);
-        _11 = &((*_1).1: i16);
-        StorageLive(_12);
-        _12 = &((*_2).1: i16);
-        StorageLive(_17);
-        StorageLive(_13);
-        StorageLive(_14);
-        StorageLive(_15);
-        _13 = ((*_1).1: i16);
-        _14 = ((*_2).1: i16);
-        _15 = Lt(_13, _14);
-        switchInt(move _15) -> [0: bb4, otherwise: bb8];
-    }
-
-    bb4: {
-        StorageLive(_16);
-        _16 = Eq(_13, _14);
-        switchInt(move _16) -> [0: bb5, otherwise: bb6];
-    }
-
-    bb5: {
-        _17 = const Greater;
-        goto -> bb7;
-    }
-
-    bb6: {
-        _17 = const Equal;
-        goto -> bb7;
-    }
-
-    bb7: {
-        StorageDead(_16);
-        goto -> bb9;
-    }
-
-    bb8: {
-        _17 = const Less;
-        goto -> bb9;
-    }
-
-    bb9: {
-        StorageDead(_15);
-        StorageDead(_14);
-        StorageDead(_13);
-        _0 = Option::<std::cmp::Ordering>::Some(move _17);
-        StorageDead(_17);
-        StorageDead(_12);
-        StorageDead(_11);
-        goto -> bb12;
-    }
-
-    bb10: {
-        _9 = const Less;
-        StorageDead(_7);
-        StorageDead(_6);
-        StorageDead(_5);
-        _10 = Option::<std::cmp::Ordering>::Some(move _9);
-        StorageDead(_9);
-        StorageDead(_4);
-        StorageDead(_3);
-        goto -> bb11;
-    }
-
-    bb11: {
-        StorageLive(_18);
-        _18 = _10;
-        _0 = _10;
-        StorageDead(_18);
-        goto -> bb12;
-    }
-
-    bb12: {
         return;
     }
 }

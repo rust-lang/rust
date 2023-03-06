@@ -376,6 +376,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), lang = "Ordering")]
 #[repr(i8)]
 pub enum Ordering {
     /// An ordering where a compared value is less than another.
@@ -1563,11 +1564,18 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
+                    #[cfg(bootstrap)]
+                    {
                     // The order here is important to generate more optimal assembly.
                     // See <https://github.com/rust-lang/rust/issues/63758> for more info.
                     if *self < *other { Less }
                     else if *self == *other { Equal }
                     else { Greater }
+                }
+                    #[cfg(not(bootstrap))]
+                    {
+                        crate::intrinsics::three_way_compare(*self, *other)
+                    }
                 }
             }
         )*)

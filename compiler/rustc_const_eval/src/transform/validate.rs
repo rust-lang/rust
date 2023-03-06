@@ -987,6 +987,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
+                    Cmp => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot three-way compare non-integer type {:?}",
+                                ty::Char | ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                    }
                     AddUnchecked | SubUnchecked | MulUnchecked | Shl | ShlUnchecked | Shr
                     | ShrUnchecked => {
                         for x in [a, b] {

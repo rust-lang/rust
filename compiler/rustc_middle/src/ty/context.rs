@@ -905,6 +905,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_lang_items(())
     }
 
+    /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
+    #[track_caller]
+    pub fn ty_ordering_enum(self, span: Option<Span>) -> Ty<'tcx> {
+        let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
+        self.type_of(ordering_enum).no_bound_vars().unwrap()
+    }
+
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {

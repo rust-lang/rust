@@ -21,6 +21,7 @@
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_write)]
+#![cfg_attr(not(bootstrap), feature(const_three_way_compare))]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
 #![feature(const_location_fields)]

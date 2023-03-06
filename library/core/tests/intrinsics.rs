@@ -99,3 +99,22 @@ fn test_const_deallocate_at_runtime() {
         const_deallocate(core::ptr::null_mut(), 1, 1); // nop
     }
 }
+
+#[cfg(not(bootstrap))]
+#[test]
+fn test_three_way_compare_in_const_contexts() {
+    use core::cmp::Ordering::*;
+    use core::intrinsics::three_way_compare;
+
+    const {
+        assert!(Less as i8 == three_way_compare(123_u16, 456) as _);
+        assert!(Equal as i8 == three_way_compare(456_u16, 456) as _);
+        assert!(Greater as i8 == three_way_compare(789_u16, 456) as _);
+        assert!(Less as i8 == three_way_compare('A', 'B') as _);
+        assert!(Equal as i8 == three_way_compare('B', 'B') as _);
+        assert!(Greater as i8 == three_way_compare('C', 'B') as _);
+        assert!(Less as i8 == three_way_compare(-123_i16, 456) as _);
+        assert!(Equal as i8 == three_way_compare(456_i16, 456) as _);
+        assert!(Greater as i8 == three_way_compare(123_i16, -456) as _);
+    }
+}

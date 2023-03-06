@@ -160,6 +160,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_int(self.type_i32(), i as i64)
     }
 
+    fn const_i8(&self, i: i8) -> &'ll Value {
+        self.const_int(self.type_i8(), i as i64)
+    }
+
     fn const_u32(&self, i: u32) -> &'ll Value {
         self.const_uint(self.type_i32(), i as u64)
     }

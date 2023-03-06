@@ -1785,6 +1785,7 @@ symbols! {
         thread,
         thread_local,
         thread_local_macro,
+        three_way_compare,
         thumb2,
         thumb_mode: "thumb-mode",
         tmm_reg,

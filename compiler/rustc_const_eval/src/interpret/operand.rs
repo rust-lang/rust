@@ -236,6 +236,13 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 
     #[inline]
+    pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
+        let ty = tcx.ty_ordering_enum(None);
+        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+        Self::from_scalar(Scalar::from_i8(c as i8), layout)
+    }
+
+    #[inline]
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
         let int = self.to_scalar().assert_int();

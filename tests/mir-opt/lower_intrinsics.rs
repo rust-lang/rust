@@ -229,3 +229,18 @@ pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
 
     core::intrinsics::offset(p, d)
 }
+
+// EMIT_MIR lower_intrinsics.three_way_compare_char.LowerIntrinsics.diff
+pub fn three_way_compare_char(a: char, b: char) {
+    let _x = core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.three_way_compare_signed.LowerIntrinsics.diff
+pub fn three_way_compare_signed(a: i16, b: i16) {
+    core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.three_way_compare_unsigned.LowerIntrinsics.diff
+pub fn three_way_compare_unsigned(a: u32, b: u32) {
+    let _x = core::intrinsics::three_way_compare(a, b);
+}
