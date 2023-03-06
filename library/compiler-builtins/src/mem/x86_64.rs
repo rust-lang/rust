@@ -173,88 +173,82 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
+
+// In order to process more than on byte simultaneously when executing strlen,
+// two things must be considered:
+// * An n byte read with an n-byte aligned address will never cross
+//   a page boundary and will always succeed. Any smaller alignment
+//   may result in a read that will cross a page boundary, which may
+//   trigger an access violation.
+// * Surface Rust considers any kind of out-of-bounds read as undefined
+//   behaviour. To dodge this, memory access operations are written
+//   using inline assembly.
+
 #[cfg(target_feature = "sse2")]
 #[inline(always)]
 pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
-    let mut n: usize;
+    use core::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_movemask_epi8, _mm_set1_epi8};
 
-    asm!(
-        // For small sizes, we avoid invoking SSE instructions.
-        // make manual comparisons instead.
-        "xor %eax, %eax",
-        "cmpb $0, (%rdi)",
-        "je 3f",
-        "mov $1, %eax",
-        "cmpb $0, 1(%rdi)",
-        "je 3f",
-        "mov $2, %eax",
-        "cmpb $0, 2(%rdi)",
-        "je 3f",
-        "mov $3, %eax",
-        "cmpb $0, 3(%rdi)",
-        "je 3f",
+    let mut n = 0;
+    
+    // The use of _mm_movemask_epi8 and company allow for speedups,
+    // but they aren't cheap by themselves. Thus, possibly small strings
+    // are handled in simple loops.
 
-        // Adjust address
-        "add $4, %rdi",
+    for _ in 0..4 {
+        if *s == 0 {
+            return n;
+        }
 
-        // Align the address to 16 bytes (xmm register size).
-        // This is important, since an n byte read
-        // with n byte alignment is guranteed to never cross
-        // a page boundary and thus will never try to access
-        // memory which may not be accessible.
-        "mov %edi, %ecx",
-        "and $15, %ecx",
-        "and $-16, %rdi",
+        n += 1;
+        s = s.add(1);
+    }
+    
+    // Shave of the least significand bits to align the address to a 16
+    // byte boundary. The shaved of bits are used to correct the first iteration.
 
-        // zero out an xmm register for comparisons with zero.
-        "pxor    %xmm0, %xmm0",
+    let align = s as usize & 15;
+    let mut s = ((s as usize) - align) as *const __m128i;
+    let zero = _mm_set1_epi8(0);
 
-        // One manual iteration of a zero byte search.
-        // Ensuring proper alignment may cause us to read
-        // memory _before_ the actual string start.
-        // Thus, one separate iteration is needed to handle this special case.
-        "movdqa (%rdi), %xmm1",
-        "pcmpeqb %xmm0, %xmm1",
-        "pmovmskb %xmm1, %eax",
-        // Shift out comparisons that don't belong to the actual string.
-        "shr %cl, %eax",
-        // Check if there was a zero
-        "test %eax, %eax",
-        "jz 1f",
+    let x = {
+        let r;
+        asm!(
+            "movdqa ({addr}), {dest}",
+            addr = in(reg) s,
+            dest = out(xmm_reg) r,
+            options(att_syntax, nostack),
+        );
+        r
+    };
+    let cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(x, zero)) >> align;
 
-        // A zero was found: calculate result and exit.
-        "bsf %eax, %eax",
-        "add $4, %eax",
-        "jmp 3f",
+    if cmp != 0 {
+        return n + cmp.trailing_zeros() as usize;
+    }
 
-        // No zero was found: prepare main loop.
-        "1:",
-        "add $16, %rdi",
-        "neg %rcx",
-        "add $4, %rcx",
+    n += 16 - align;
+    s = s.add(1);
 
-        // main loop
-        "2:",
-        "movdqa  (%rdi), %xmm1",
-        "add $16, %rdi",
-        "add $16, %rcx",
-        "pcmpeqb %xmm0, %xmm1",
-        "pmovmskb %xmm1, %eax",
-        // Check if there was a zero
-        "test   %eax, %eax",
-        "jz 2b",
-
-        // A zero was found: calculate result and exit.
-        "bsf %eax, %eax",
-        "add %rcx, %rax",
-        "3:",
-        inout("rdi") s => _,
-        out("rax") n,
-        out("rcx") _,
-        options(att_syntax, nostack),
-    );
-
-    n
+    loop {
+        let x = {
+            let r;
+            asm!(
+                "movdqa ({addr}), {dest}",
+                addr = in(reg) s,
+                dest = out(xmm_reg) r,
+                options(att_syntax, nostack),
+            );
+            r
+        };
+        let cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(x, zero)) as u32;
+        if cmp == 0 {
+            n += 16;
+            s = s.add(1);
+        } else {
+            return n + cmp.trailing_zeros() as usize;
+        }
+    }
 }
 
 // Provided for scenarios like kernel development, where SSE might not
@@ -263,11 +257,52 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
 #[inline(always)]
 pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
     let mut n = 0;
-    while *s != 0 {
+
+    // Check bytes in steps of one until
+    // either a zero byte is discovered or
+    // pointer is aligned to an eight byte boundary.
+
+    while s as usize & 7 != 0 {
+        if *s == 0 {
+            return n;
+        }
+
         n += 1;
         s = s.add(1);
     }
-    n
+    
+    // Check bytes in steps of eight until a zero
+    // byte is discovered.
+
+    let mut s = s as *const u64;
+
+    loop {
+        let mut cs = {
+            let r: u64;
+            asm!(
+                "mov ({addr}), {dest}",
+                addr = in(reg) s,
+                dest = out(reg) r,
+                options(att_syntax, nostack),
+            );
+            r
+        };
+        // Detect if a word has a zero byte, taken from
+        // https://graphics.stanford.edu/~seander/bithacks.html
+        if (cs.wrapping_sub(0x0101010101010101) & !cs & 0x8080808080808080) != 0 {
+            loop {
+                if cs & 255 == 0 {
+                    return n;
+                } else {
+                    cs >>= 8;
+                    n += 1;
+                }
+            }
+        } else {
+            n += 8;
+            s = s.add(1);
+        }
+    }
 }
 
 /// Determine optimal parameters for a `rep` instruction.
