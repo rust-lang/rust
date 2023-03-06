@@ -1,7 +1,7 @@
 //! 64-bit WebAssembly target with a full operating system based on WASI
 //!
 
-use super::{wasm_base, TlsModel};
+use super::wasm_base;
 use super::{crt_objects::{self, LinkSelfContainedDefault}, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
@@ -21,11 +21,6 @@ pub fn target() -> Target {
 
     // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
     options.link_self_contained = LinkSelfContainedDefault::True;
-
-    // WASI now supports multi-threading but not yet thread local support
-    options.singlethread = false;
-    options.tls_model = TlsModel::LocalExec;
-    options.has_thread_local = true;
 
     // WASI(X) now supports multi-threading
     options.singlethread = false;

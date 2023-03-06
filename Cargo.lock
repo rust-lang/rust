@@ -108,9 +108,9 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.12.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 dependencies = [
  "winapi",
 ]
@@ -190,7 +190,7 @@ dependencies = [
  "quote",
  "serde",
  "syn",
- "toml 0.5.7",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -284,7 +284,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tar",
- "toml 0.5.7",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -300,7 +300,7 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_json",
- "toml 0.5.7",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -379,6 +379,7 @@ dependencies = [
  "openssl",
  "os_info",
  "pathdiff",
+ "percent-encoding",
  "pretty_env_logger",
  "rustc-workspace-hack",
  "rustfix",
@@ -394,9 +395,7 @@ dependencies = [
  "tar",
  "tempfile",
  "termcolor",
- "time 0.3.17",
- "toml 0.7.2",
- "toml_edit",
+ "toml_edit 0.14.4",
  "unicode-width",
  "unicode-xid",
  "url",
@@ -486,8 +485,7 @@ dependencies = [
  "snapbox",
  "tar",
  "termcolor",
- "time 0.3.17",
- "toml 0.7.2",
+ "toml_edit 0.14.4",
  "url",
  "winapi",
 ]
@@ -504,7 +502,7 @@ dependencies = [
  "jobserver",
  "libc",
  "log",
- "miow",
+ "miow 0.3.7",
  "same-file",
  "shell-escape",
  "tempfile",
@@ -741,7 +739,7 @@ dependencies = [
  "termize",
  "tester",
  "tokio",
- "toml 0.5.7",
+ "toml 0.5.11",
  "walkdir",
 ]
 
@@ -767,7 +765,7 @@ dependencies = [
  "declare_clippy_lint",
  "if_chain",
  "itertools",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.2",
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
@@ -775,7 +773,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "toml 0.5.7",
+ "toml 0.5.11",
  "unicode-normalization",
  "unicode-script",
  "url",
@@ -850,6 +848,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "combine"
+version = "4.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35ed6e9d84f0b51a7f52daf1c7d71dd136fd7a3f41a8462b8cdb8c78d920fad4"
+dependencies = [
+ "bytes",
+ "memchr",
+]
+
+[[package]]
 name = "commoncrypto"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -914,7 +922,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "miow",
+ "miow 0.3.7",
  "regex",
  "rustfix",
  "serde",
@@ -1221,6 +1229,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
+name = "difference"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
+
+[[package]]
 name = "digest"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1330,28 +1344,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
-]
-
-[[package]]
-name = "elliptic-curve"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7bb888ab5300a19b8e5bceef25ac745ad065f3c9f7efc6de1b91958110891d3"
-dependencies = [
- "base16ct",
- "crypto-bigint",
- "der",
- "digest",
- "ff",
- "generic-array",
- "group",
- "hkdf",
- "pem-rfc7468",
- "pkcs8",
- "rand_core",
- "sec1",
- "subtle",
- "zeroize",
 ]
 
 [[package]]
@@ -1886,13 +1878,11 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.3.0"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "856b5cb0902c2b6d65d5fd97dfa30f9b70c7538e770b98eab5ed52d8db923e01"
+checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
- "compiler_builtins",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
+ "libc",
 ]
 
 [[package]]
@@ -1900,6 +1890,11 @@ name = "hermit-abi"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
 
 [[package]]
 name = "hex"
@@ -2180,7 +2175,7 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21b6b32576413a8e69b90e952e4a026476040d81017b80445deda5f2d3921857"
 dependencies = [
- "hermit-abi 0.3.0",
+ "hermit-abi 0.3.1",
  "io-lifetimes",
  "rustix",
  "windows-sys 0.45.0",
@@ -2269,6 +2264,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kstring"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec3066350882a1cd6d950d055997f379ac37fd39f81cd4d8ed186032eb3c5747"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2283,8 +2287,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "libc"
 version = "0.2.139"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+source = "git+https://github.com/john-sharratt/libc.git#25a254ef438c7562a6215d9955b358ca605e201e"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -2514,13 +2517,13 @@ dependencies = [
  "memchr",
  "once_cell",
  "opener",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.2",
  "regex",
  "serde",
  "serde_json",
  "shlex",
  "tempfile",
- "toml 0.5.7",
+ "toml 0.7.2",
  "topological-sort",
 ]
 
@@ -2531,7 +2534,7 @@ dependencies = [
  "anyhow",
  "handlebars 3.5.5",
  "pretty_assertions",
- "pulldown-cmark",
+ "pulldown-cmark 0.7.2",
  "same-file",
  "serde_json",
  "url",
@@ -2638,6 +2641,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "miow"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52ffbca2f655e33c08be35d87278e5b18b89550a37dbd598c20db92f6a471123"
+dependencies = [
+ "windows-sys 0.42.0",
+]
+
+[[package]]
 name = "miri"
 version = "0.1.0"
 dependencies = [
@@ -2679,15 +2691,6 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "nom8"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae01545c9c7fc4486ab7debaf2aad7003ac19431791868fb2e8066df97fad2f8"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -3133,14 +3136,14 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "pretty_assertions"
-version = "1.3.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a25e9bcb20aa780fd0bb16b72403a9064d6b3f22f026946029acb941a50af755"
+checksum = "3f81e1644e1b54f5a68959a29aa86cde704219254669da328ecfdf6a1f09d427"
 dependencies = [
+ "ansi_term",
  "ctor",
- "diff",
+ "difference",
  "output_vt100",
- "yansi",
 ]
 
 [[package]]
@@ -3216,6 +3219,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5787f7cda34e3033a72192c018bc5883100330f362ef279a8cbccfce8bb4e874"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca36dea94d187597e104a5c8e4b07576a8a45aa5db48a65e12940d3eb7461f55"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "unicase",
 ]
 
 [[package]]
@@ -4538,7 +4552,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.2",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4857,7 +4871,7 @@ dependencies = [
  "serde_json",
  "term",
  "thiserror",
- "toml 0.5.7",
+ "toml 0.5.11",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -5209,7 +5223,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown 0.12.3",
- "hermit-abi 0.3.0",
+ "hermit-abi 0.3.1",
  "libc",
  "miniz_oxide 0.5.4",
  "object 0.29.0",
@@ -5221,6 +5235,7 @@ dependencies = [
  "rustc-demangle",
  "std_detect",
  "unwind",
+ "wasi",
  "wasix",
 ]
 
@@ -5547,7 +5562,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit",
+ "toml_edit 0.19.3",
 ]
 
 [[package]]
@@ -5556,6 +5571,19 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5376256e44f2443f8896ac012507c19a012df0fe8758b55246ae51a2279db51f"
+dependencies = [
+ "combine",
+ "indexmap",
+ "itertools",
+ "kstring",
  "serde",
 ]
 
@@ -5638,8 +5666,6 @@ version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6176eae26dd70d0c919749377897b54a9276bd7061339665dd68777926b5a70"
 dependencies = [
- "ansi_term",
- "lazy_static",
  "matchers",
  "nu-ansi-term",
  "once_cell",
@@ -5659,7 +5685,6 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758e983ab7c54fee18403994507e7f212b9005e957ce7984996fac8d11facedb"
 dependencies = [
- "ansi_term",
  "atty",
  "nu-ansi-term",
  "tracing-core",
@@ -6011,10 +6036,17 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
 
 [[package]]
 name = "wasix"
-version = "0.11.64"
+version = "0.11.65"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3eee3d5a4f98ca0c2ca3a13c05cfac8c3fe8890ddedc5866f05db11e1b7a9a60"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",

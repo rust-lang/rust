@@ -71,7 +71,7 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use super::{wasm_base, TlsModel};
+use super::wasm_base;
 use super::{crt_objects::{self, LinkSelfContainedDefault}, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
