@@ -7,7 +7,7 @@ use either::{Either, Left, Right};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -508,14 +508,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         frame
             .instance
             .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
-            .map_err(|e| {
-                self.tcx.sess.delay_span_bug(
-                    self.cur_span(),
-                    format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
-                );
-
-                InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric)
-            })
+            .map_err(|_| err_inval!(TooGeneric))
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
