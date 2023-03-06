@@ -1,5 +1,5 @@
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-impls-lint.rs:9:1
+  --> $DIR/suspicious-impls-lint.rs:10:1
    |
 LL | unsafe impl<T: Send> Send for MayImplementSendErr<&T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,18 +8,18 @@ LL | unsafe impl<T: Send> Send for MayImplementSendErr<&T> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `&T` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-impls-lint.rs:8:1
+  --> $DIR/suspicious-impls-lint.rs:9:1
    |
 LL | struct MayImplementSendErr<T>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/suspicious-impls-lint.rs:1:9
+  --> $DIR/suspicious-impls-lint.rs:2:9
    |
 LL | #![deny(suspicious_auto_trait_impls)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-impls-lint.rs:21:1
+  --> $DIR/suspicious-impls-lint.rs:22:1
    |
 LL | unsafe impl Send for ContainsVec<i32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,13 +28,28 @@ LL | unsafe impl Send for ContainsVec<i32> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `i32` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-impls-lint.rs:20:1
+  --> $DIR/suspicious-impls-lint.rs:21:1
    |
 LL | struct ContainsVec<T>(Vec<T>);
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-impls-lint.rs:32:1
+  --> $DIR/suspicious-impls-lint.rs:25:1
+   |
+LL | impl !Send for ContainsVec<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
+   = note: `u32` is not a generic parameter
+note: try using the same sequence of generic parameters as the struct definition
+  --> $DIR/suspicious-impls-lint.rs:21:1
+   |
+LL | struct ContainsVec<T>(Vec<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: cross-crate traits with a default impl, like `Send`, should not be specialized
+  --> $DIR/suspicious-impls-lint.rs:36:1
    |
 LL | unsafe impl<T: Send> Send for TwoParamsSame<T, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,13 +58,13 @@ LL | unsafe impl<T: Send> Send for TwoParamsSame<T, T> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `T` is mentioned multiple times
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-impls-lint.rs:31:1
+  --> $DIR/suspicious-impls-lint.rs:35:1
    |
 LL | struct TwoParamsSame<T, U>(T, U);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-impls-lint.rs:40:1
+  --> $DIR/suspicious-impls-lint.rs:44:1
    |
 LL | unsafe impl<T> Send for WithPhantomDataSend<*const T, i8> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,13 +73,28 @@ LL | unsafe impl<T> Send for WithPhantomDataSend<*const T, i8> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `*const T` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-impls-lint.rs:39:1
+  --> $DIR/suspicious-impls-lint.rs:43:1
+   |
+LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cross-crate traits with a default impl, like `Send`, should not be specialized
+  --> $DIR/suspicious-impls-lint.rs:47:1
+   |
+LL | impl<T> !Send for WithPhantomDataSend<*const T, u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
+   = note: `*const T` is not a generic parameter
+note: try using the same sequence of generic parameters as the struct definition
+  --> $DIR/suspicious-impls-lint.rs:43:1
    |
 LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Sync`, should not be specialized
-  --> $DIR/suspicious-impls-lint.rs:46:1
+  --> $DIR/suspicious-impls-lint.rs:53:1
    |
 LL | unsafe impl<T> Sync for WithLifetime<'static, Vec<T>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,10 +103,25 @@ LL | unsafe impl<T> Sync for WithLifetime<'static, Vec<T>> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `Vec<T>` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-impls-lint.rs:44:1
+  --> $DIR/suspicious-impls-lint.rs:51:1
    |
 LL | pub struct WithLifetime<'a, T>(&'a (), T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: cross-crate traits with a default impl, like `Sync`, should not be specialized
+  --> $DIR/suspicious-impls-lint.rs:56:1
+   |
+LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
+   = note: `Option<T>` is not a generic parameter
+note: try using the same sequence of generic parameters as the struct definition
+  --> $DIR/suspicious-impls-lint.rs:51:1
+   |
+LL | pub struct WithLifetime<'a, T>(&'a (), T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
