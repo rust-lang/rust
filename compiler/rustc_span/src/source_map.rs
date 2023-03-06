@@ -100,6 +100,9 @@ pub trait FileLoader {
 
     /// Read the contents of a UTF-8 file into memory.
     fn read_file(&self, path: &Path) -> io::Result<String>;
+
+    /// Read the contents of a potentially non-UTF-8 file into memory.
+    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -112,6 +115,10 @@ impl FileLoader for RealFileLoader {
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
         fs::read_to_string(path)
+    }
+
+    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
+        fs::read(path)
     }
 }
 
@@ -220,9 +227,7 @@ impl SourceMap {
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
     pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
-        // Ideally, this should use `self.file_loader`, but it can't
-        // deal with binary files yet.
-        let bytes = fs::read(path)?;
+        let bytes = self.file_loader.read_binary_file(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present
         // in dep-info. There's also an edge case that file might be both
