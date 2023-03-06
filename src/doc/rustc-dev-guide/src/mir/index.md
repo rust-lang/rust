@@ -217,7 +217,7 @@ over the overflow checks.)
 ## MIR data types
 
 The MIR data types are defined in the [`compiler/rustc_middle/src/mir/`][mir]
-module.  Each of the key concepts mentioned in the previous section
+module. Each of the key concepts mentioned in the previous section
 maps in a fairly straightforward way to a Rust type.
 
 The main MIR data type is [`Body`]. It contains the data for a single
@@ -233,15 +233,14 @@ but [you can read about those below](#promoted)).
 - **Terminators** are represented by the [`Terminator`].
 - **Locals** are represented by a [newtype'd] index type [`Local`].
   The data for a local variable is found in the
-  [`Body::local_decls`][localdecls] vector). There is also a special constant
+  [`Body::local_decls`][localdecls] vector. There is also a special constant
   [`RETURN_PLACE`] identifying the special "local" representing the return value.
-- **Places** are identified by the enum [`Place`]. There are a few
-  variants:
+- **Places** are identified by the struct [`Place`]. There are a few
+  fields:
   - Local variables like `_1`
-  - Static variables `FOO`
   - **Projections**, which are fields or other things that "project
-    out" from a base place. These are represented by the type
-    [`ProjectionElem`].  So e.g. the place `_1.f` is a projection,
+    out" from a base place. These are represented by the [newtype'd] type
+    [`ProjectionElem`]. So e.g. the place `_1.f` is a projection,
     with `f` being the "projection element" and `_1` being the base
     path. `*_1` is also a projection, with the `*` being represented
     by the [`ProjectionElem::Deref`] element.
