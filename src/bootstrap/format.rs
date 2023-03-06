@@ -2,6 +2,7 @@
 
 use crate::builder::Builder;
 use crate::util::{output, program_out_of_date, t};
+use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
@@ -144,8 +145,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             let untracked_paths = untracked_paths_output
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
-                .map(|entry| {
-                    entry.split(' ').nth(1).expect("every git status entry should list a path")
+                .filter_map(|entry| {
+                    let path =
+                        entry.split(' ').nth(1).expect("every git status entry should list a path");
+                    path.ends_with(".rs").then_some(path)
                 });
             for untracked_path in untracked_paths {
                 println!("skip untracked path {} during rustfmt invocations", untracked_path);
@@ -156,7 +159,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // preventing the latter from being formatted.
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
-            if !check && paths.is_empty() {
+            // Only check modified files locally to speed up runtime.
+            // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
+            // we also care about CI time less since this is still very fast compared to building the compiler.
+            if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         for file in files {

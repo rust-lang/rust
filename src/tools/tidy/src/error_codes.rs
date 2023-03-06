@@ -46,8 +46,10 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
 
     // Stage 1: create list
     let error_codes = extract_error_codes(root_path, &mut errors);
-    println!("Found {} error codes", error_codes.len());
-    println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
+    if verbose {
+        println!("Found {} error codes", error_codes.len());
+        println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
+    }
 
     // Stage 2: check list has docs
     let no_longer_emitted = check_error_codes_docs(root_path, &error_codes, &mut errors, verbose);

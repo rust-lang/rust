@@ -149,6 +149,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         &mut self,
         _: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>> {
-        unimplemented!()
+        std::mem::take(&mut self.obligations)
     }
 }

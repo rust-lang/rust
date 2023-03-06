@@ -100,8 +100,9 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(def_id);
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
+        let impls = self.trait_impls_of(trait_def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
             f(impl_def_id);
@@ -114,26 +115,28 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Iterate over every impl that could possibly match the
-    /// self type `self_ty`.
+    /// Iterate over every impl that could possibly match the self type `self_ty`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         mut f: F,
     ) {
-        let _: Option<()> = self.find_map_relevant_impl(def_id, self_ty, |did| {
+        let _: Option<()> = self.find_map_relevant_impl(trait_def_id, self_ty, |did| {
             f(did);
             None
         });
     }
 
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn non_blanket_impls_for_ty(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
-        let impls = self.trait_impls_of(def_id);
+        let impls = self.trait_impls_of(trait_def_id);
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsInfer) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
@@ -145,9 +148,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Applies function to every impl that could possibly match the self type `self_ty` and returns
     /// the first non-none value.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn find_map_relevant_impl<T, F: FnMut(DefId) -> Option<T>>(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         mut f: F,
     ) -> Option<T> {
@@ -156,7 +161,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // If we want to be faster, we could have separate queries for
         // blanket and non-blanket impls, and compare them separately.
-        let impls = self.trait_impls_of(def_id);
+        let impls = self.trait_impls_of(trait_def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
             if let result @ Some(_) = f(impl_def_id) {
@@ -190,9 +195,11 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Returns an iterator containing all impls
-    pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
+    /// Returns an iterator containing all impls for `trait_def_id`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
