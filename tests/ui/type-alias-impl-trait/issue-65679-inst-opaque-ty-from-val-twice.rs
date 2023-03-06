@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(type_alias_impl_trait, rustc_attrs)]
+#![feature(type_alias_impl_trait, rustc_attrs, type_alias_impl_trait_in_where_bounds)]
 
 type T = impl Sized;
 // The concrete type referred by impl-trait-type-alias(`T`) is guaranteed

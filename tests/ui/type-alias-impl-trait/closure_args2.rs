@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(type_alias_impl_trait)]
+#![feature(type_alias_impl_trait, type_alias_impl_trait_in_where_bounds)]
 
 trait Foo {
     // This was reachable in https://github.com/rust-lang/rust/issues/100800

@@ -1509,6 +1509,7 @@ symbols! {
         ty,
         type_alias_enum_variants,
         type_alias_impl_trait,
+        type_alias_impl_trait_in_where_bounds,
         type_ascribe,
         type_ascription,
         type_changing_struct_update,

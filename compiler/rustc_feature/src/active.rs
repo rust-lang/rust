@@ -524,6 +524,8 @@ declare_features! (
     (active, try_blocks, "1.29.0", Some(31436), None),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
+    /// Allows functions with TAITs in their where bounds to register hidden types.
+    (active, type_alias_impl_trait_in_where_bounds, "CURRENT_RUSTC_VERSION", Some(63063), None),
     /// Allows the use of type ascription in expressions.
     (active, type_ascription, "1.6.0", Some(23416), None),
     /// Allows creation of instances of a struct by moving fields that have

@@ -16,8 +16,9 @@ use rustc_middle::ty::{
     self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{sym, Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
@@ -639,7 +640,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
-                if !may_define_opaque_type(self.tcx, item_def_id, self.def_id) {
+                if !may_define_opaque_type(self.tcx, item_def_id, self.def_id, concrete_type.span) {
                     self.tcx.sess.emit_err(OpaqueTypeConstrainedButNotInSig {
                         span: concrete_type.span,
                         item_span: self.tcx.def_span(item_def_id),
@@ -758,6 +759,7 @@ fn may_define_opaque_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     opaque_def_id: LocalDefId,
+    span: Span,
 ) -> bool {
     if tcx.is_descendant_of(opaque_def_id.to_def_id(), def_id.to_def_id()) {
         // If the opaque type is defined in the body of a function, that function
@@ -766,7 +768,7 @@ fn may_define_opaque_type<'tcx>(
     }
 
     if tcx.is_closure(def_id.to_def_id()) {
-        return may_define_opaque_type(tcx, tcx.local_parent(def_id), opaque_def_id);
+        return may_define_opaque_type(tcx, tcx.local_parent(def_id), opaque_def_id, span);
     }
 
     let param_env = tcx.param_env(def_id);
@@ -860,8 +862,25 @@ fn may_define_opaque_type<'tcx>(
         _ => false,
     };
     trace!(?tait_in_fn_sig);
-    tait_in_fn_sig
-        || has_tait(tcx.predicates_of(def_id.to_def_id()).predicates, opaque_def_id, tcx, param_env)
+    if tait_in_fn_sig {
+        return true;
+    }
+    let tait_in_where_bounds =
+        has_tait(tcx.predicates_of(def_id.to_def_id()).predicates, opaque_def_id, tcx, param_env);
+    if tcx.features().type_alias_impl_trait_in_where_bounds {
+        tait_in_where_bounds
+    } else {
+        if tait_in_where_bounds {
+            feature_err(
+                &tcx.sess.parse_sess,
+                sym::type_alias_impl_trait_in_where_bounds,
+                span,
+                "type alias impl trait is only usable in argument or return types",
+            )
+            .emit();
+        }
+        false
+    }
 }
 
 fn find_opaque_ty_constraints_for_rpit(
@@ -1072,8 +1091,6 @@ fn infer_placeholder_type<'a>(
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     if !tcx.features().inherent_associated_types {
-        use rustc_session::parse::feature_err;
-        use rustc_span::symbol::sym;
         feature_err(
             &tcx.sess.parse_sess,
             sym::inherent_associated_types,

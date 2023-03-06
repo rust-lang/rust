@@ -2,7 +2,7 @@
 
 // regression test for https://github.com/rust-lang/rust/issues/100800
 
-#![feature(type_alias_impl_trait)]
+#![feature(type_alias_impl_trait, type_alias_impl_trait_in_where_bounds)]
 
 trait Anything {}
 impl<T> Anything for T {}

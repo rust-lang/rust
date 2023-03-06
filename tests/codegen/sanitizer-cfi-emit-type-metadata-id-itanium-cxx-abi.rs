@@ -7,7 +7,13 @@
 #![allow(dead_code)]
 #![allow(incomplete_features)]
 #![allow(unused_must_use)]
-#![feature(adt_const_params, extern_types, inline_const, type_alias_impl_trait)]
+#![feature(
+    adt_const_params,
+    extern_types,
+    inline_const,
+    type_alias_impl_trait,
+    type_alias_impl_trait_in_where_bounds
+)]
 
 extern crate core;
 use core::ffi::c_void;

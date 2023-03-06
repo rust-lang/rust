@@ -1,4 +1,4 @@
-#![feature(type_alias_impl_trait)]
+#![feature(type_alias_impl_trait, type_alias_impl_trait_in_where_bounds)]
 #![allow(dead_code)]
 
 use std::fmt::Debug;
