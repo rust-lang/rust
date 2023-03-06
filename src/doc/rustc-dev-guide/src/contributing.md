@@ -96,20 +96,22 @@ For a full list of possible `groupname` check the `adhoc_groups` section at the
 or the list of teams in the [rust-lang teams
 database](https://github.com/rust-lang/team/tree/master/teams).
 
----
-
-**Please note**: Our pool of pull requests reviewers is often working at capacity, many of them are
-contributing on a volunteer basis. In order to minimize review delays, pull request authors
-and assigned reviewers should ensure that the review label (`S-waiting-on-review` and
-`S-waiting-on-author`) stays updated, invoking these commands when appropriate:
-
-`@rustbot author`: the review is finished, PR author should check the comments and take action
-accordingly
-
-`@rustbot review`: the author is ready for a review, this PR will be queued again in the reviewer's
-queue
-
----
+> NOTE
+>
+> Pull request reviewers are often working at capacity,
+> and many of them are contributing on a volunteer basis.
+> In order to minimize review delays,
+> pull request authors and assigned reviewers should ensure that the review label
+> (`S-waiting-on-review` and `S-waiting-on-author`) stays updated,
+> invoking these commands when appropriate:
+>
+> - `@rustbot author`:
+>   the review is finished,
+>   and PR author should check the comments and take action accordingly.
+>
+> - `@rustbot review`:
+>   the author is ready for a review,
+>   and this PR will be queued again in the reviewer's queue.
 
 ### CI
 
