@@ -181,7 +181,7 @@ impl LitKind {
                     }
                 });
                 error?;
-                buf.push(b'\0');
+                buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Cooked)
             }
             token::CStrRaw(n) => {
@@ -204,7 +204,7 @@ impl LitKind {
                     }
                 });
                 error?;
-                buf.push(b'\0');
+                buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Raw(n))
             }
             token::Err => LitKind::Err,

@@ -441,6 +441,7 @@ symbols! {
         bridge,
         bswap,
         c_str,
+        c_str_literals,
         c_unwind,
         c_variadic,
         call,
