@@ -185,7 +185,7 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
 
 #[cfg(target_feature = "sse2")]
 #[inline(always)]
-pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
+pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
     use core::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_movemask_epi8, _mm_set1_epi8};
 
     let mut n = 0;
@@ -202,7 +202,7 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
         n += 1;
         s = s.add(1);
     }
-    
+
     // Shave of the least significand bits to align the address to a 16
     // byte boundary. The shaved of bits are used to correct the first iteration.
 
