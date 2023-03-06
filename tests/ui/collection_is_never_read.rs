@@ -153,3 +153,13 @@ fn extension_traits() {
     let y = vec![1, 2, 3]; // Ok (false negative)
     y.method_without_side_effect();
 }
+
+fn function_argument() {
+    #[allow(clippy::ptr_arg)]
+    fn foo<T>(v: &Vec<T>) -> usize {
+        v.len()
+    }
+
+    let x = vec![1, 2, 3]; // Ok
+    foo(&x);
+}
