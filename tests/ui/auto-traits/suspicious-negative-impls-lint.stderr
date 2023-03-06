@@ -21,21 +21,6 @@ LL | #![deny(suspicious_auto_trait_impls)]
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
   --> $DIR/suspicious-negative-impls-lint.rs:12:1
    |
-LL | unsafe impl<T> Send for WithPhantomDataSend<*const T, i8> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this will change its meaning in a future release!
-   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
-   = note: `*const T` is not a generic parameter
-note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-negative-impls-lint.rs:11:1
-   |
-LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-negative-impls-lint.rs:15:1
-   |
 LL | impl<T> !Send for WithPhantomDataSend<*const T, u8> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -49,22 +34,7 @@ LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Sync`, should not be specialized
-  --> $DIR/suspicious-negative-impls-lint.rs:21:1
-   |
-LL | unsafe impl<T> Sync for WithLifetime<'static, Vec<T>> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this will change its meaning in a future release!
-   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
-   = note: `Vec<T>` is not a generic parameter
-note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-negative-impls-lint.rs:19:1
-   |
-LL | pub struct WithLifetime<'a, T>(&'a (), T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: cross-crate traits with a default impl, like `Sync`, should not be specialized
-  --> $DIR/suspicious-negative-impls-lint.rs:24:1
+  --> $DIR/suspicious-negative-impls-lint.rs:17:1
    |
 LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,10 +43,10 @@ LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `Option<T>` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-negative-impls-lint.rs:19:1
+  --> $DIR/suspicious-negative-impls-lint.rs:16:1
    |
 LL | pub struct WithLifetime<'a, T>(&'a (), T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
