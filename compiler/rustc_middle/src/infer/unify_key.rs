@@ -11,7 +11,10 @@ pub trait ToType {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct UnifiedRegion<'tcx>(pub Option<ty::Region<'tcx>>);
+pub struct UnifiedRegion<'tcx> {
+    pub universe: ty::UniverseIndex,
+    pub value: Option<ty::Region<'tcx>>,
+}
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RegionVidKey<'tcx> {
@@ -40,21 +43,30 @@ impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     }
 }
 
+fn universe_of_universal_region(region: ty::Region<'_>) -> ty::UniverseIndex {
+    match *region {
+        ty::ReStatic | ty::ReFree(..) | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+        ty::RePlaceholder(placeholder) => placeholder.universe,
+        _ => bug!("universe(): encountered region {:?}", region),
+    }
+}
+
+pub struct UniverseError;
+
 impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
-    type Error = NoError;
+    type Error = UniverseError;
 
-    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
-        Ok(match (value1.0, value2.0) {
-            // Here we can just pick one value, because the full constraints graph
-            // will be handled later. Ideally, we might want a `MultipleValues`
-            // variant or something. For now though, this is fine.
-            (Some(_), Some(_)) => *value1,
-
-            (Some(_), _) => *value1,
-            (_, Some(_)) => *value2,
-
-            (None, None) => *value1,
-        })
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        let universe = value1.universe.min(value2.universe);
+        if [value1.value, value2.value]
+            .into_iter()
+            .flatten()
+            .any(|val| universe.cannot_name(universe_of_universal_region(val)))
+        {
+            Err(UniverseError)
+        } else {
+            Ok(Self { value: [value1.value, value2.value].into_iter().flatten().next(), universe })
+        }
     }
 }
 
