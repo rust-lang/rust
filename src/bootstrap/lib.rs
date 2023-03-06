@@ -1402,7 +1402,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata().map_err(|err| { eprintln!("Copy {:?} to {:?}", src, dst); err }));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {

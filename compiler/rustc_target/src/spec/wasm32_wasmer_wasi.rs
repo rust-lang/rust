@@ -94,8 +94,6 @@ pub fn target() -> Target {
 
     // WASI(X) now supports multi-threading
     options.singlethread = false;
-    options.tls_model = TlsModel::LocalExec;
-    options.has_thread_local = true;
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal
