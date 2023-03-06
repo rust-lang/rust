@@ -1,0 +1,10 @@
+error: this operation will panic at runtime
+  --> $DIR/unconditional_panic_98444.rs:6:13
+   |
+LL |     let _ = xs[7];
+   |             ^^^^^ index out of bounds: the length is 5 but the index is 7
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: aborting due to previous error
+

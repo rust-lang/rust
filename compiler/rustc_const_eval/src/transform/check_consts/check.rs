@@ -926,15 +926,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
-                if let Some(gate) = is_unstable_const_fn(tcx, callee) {
+                if let Some((gate, implied_by)) = is_unstable_const_fn(tcx, callee) {
                     trace!(?gate, "calling unstable const fn");
                     if self.span.allows_unstable(gate) {
                         return;
                     }
+                    if let Some(implied_by_gate) = implied_by && self.span.allows_unstable(implied_by_gate) {
+                        return;
+                    }
 
                     // Calling an unstable function *always* requires that the corresponding gate
-                    // be enabled, even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    if !tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate) {
+                    // (or implied gate) be enabled, even if the function has
+                    // `#[rustc_allow_const_fn_unstable(the_gate)]`.
+                    let gate_declared = |gate| {
+                        tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate)
+                    };
+                    let feature_gate_declared = gate_declared(gate);
+                    let implied_gate_declared = implied_by.map(gate_declared).unwrap_or(false);
+                    if !feature_gate_declared && !implied_gate_declared {
                         self.check_op(ops::FnCallUnstable(callee, Some(gate)));
                         return;
                     }
@@ -947,7 +956,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
-
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
                         trace!("rustc_allow_const_fn_unstable gate active");
                         return;

@@ -16,7 +16,23 @@ LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
 LL | unsafe impl<T: 'static> Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
 
-error: aborting due to 2 previous errors
+warning: cross-crate traits with a default impl, like `Send`, should not be specialized
+  --> $DIR/coherence-conflicting-negative-trait-impl.rs:15:1
+   |
+LL | impl !Send for TestType<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
+   = note: `i32` is not a generic parameter
+note: try using the same sequence of generic parameters as the struct definition
+  --> $DIR/coherence-conflicting-negative-trait-impl.rs:7:1
+   |
+LL | struct TestType<T>(::std::marker::PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(suspicious_auto_trait_impls)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0119, E0751.
 For more information about an error, try `rustc --explain E0119`.

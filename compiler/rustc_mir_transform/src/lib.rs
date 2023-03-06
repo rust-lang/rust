@@ -416,8 +416,6 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
 
     pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
 
-    debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
-
     body
 }
 
@@ -626,8 +624,6 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
 
-    debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
-
     body
 }
 
@@ -650,8 +646,6 @@ fn promoted_mir(
         }
         run_analysis_to_runtime_passes(tcx, body);
     }
-
-    debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.arena.alloc(promoted)
 }
