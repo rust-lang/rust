@@ -32,6 +32,7 @@ pub(crate) fn unresolved_method(
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
     )
     .with_fixes(fixes(ctx, d))
+    .experimental()
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Vec<Assist>> {

@@ -14,6 +14,7 @@ pub(crate) fn expected_function(
         format!("expected function, found {}", d.found.display(ctx.sema.db)),
         ctx.sema.diagnostics_display_range(d.call.clone().map(|it| it.into())).range,
     )
+    .experimental()
 }
 
 #[cfg(test)]
