@@ -172,7 +172,7 @@ fn signature_help_for_call(
 
     res.signature.push('(');
     {
-        if let Some(self_param) = callable.receiver_param(db) {
+        if let Some((self_param, _)) = callable.receiver_param(db) {
             format_to!(res.signature, "{}", self_param)
         }
         let mut buf = String::new();

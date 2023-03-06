@@ -534,6 +534,40 @@ pub mod option {
                 None => panic!("called `Option::unwrap()` on a `None` value"),
             }
         }
+
+        pub fn and<U>(self, optb: Option<U>) -> Option<U> {
+            loop {}
+        }
+        pub fn unwrap_or(self, default: T) -> T {
+            loop {}
+        }
+        // region:fn
+        pub fn and_then<U, F>(self, f: F) -> Option<U>
+        where
+            F: FnOnce(T) -> Option<U>,
+        {
+            loop {}
+        }
+        pub fn unwrap_or_else<F>(self, f: F) -> T
+        where
+            F: FnOnce() -> T,
+        {
+            loop {}
+        }
+        pub fn map_or<U, F>(self, default: U, f: F) -> U
+        where
+            F: FnOnce(T) -> U,
+        {
+            loop {}
+        }
+        pub fn map_or_else<U, D, F>(self, default: D, f: F) -> U
+        where
+            D: FnOnce() -> U,
+            F: FnOnce(T) -> U,
+        {
+            loop {}
+        }
+        // endregion:fn
     }
 }
 // endregion:option
