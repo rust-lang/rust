@@ -1440,8 +1440,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// }
     /// ```
     ///
-    /// we will create a TAIT definition in the HIR like and return a type like `TestReturn<'a, T>`,
-    /// so that the function looks like:
+    /// we will create a TAIT definition in the HIR and change the return type so that the function looks like:
     ///
     /// ```rust
     /// #![feature(type_alias_impl_trait)]
