@@ -514,6 +514,19 @@ struct OptUnitField {
 }
 
 #[derive(Diagnostic)]
+#[diag(no_crate_example)]
+struct BoolField {
+    #[primary_span]
+    spans: Span,
+    #[help]
+    foo: bool,
+    #[help(no_crate_help)]
+    //~^ ERROR the `#[help(...)]` attribute can only be applied to fields of type `Span`, `bool` or `()`
+    // only allow plain 'bool' fields
+    bar: Option<bool>,
+}
+
+#[derive(Diagnostic)]
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingPath {
     #[label(no_crate_label, foo)]
