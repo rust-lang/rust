@@ -526,6 +526,7 @@ pub enum BuiltinLintDiagnostics {
 
 /// Lints that are buffered up early on in the `Session` before the
 /// `LintLevels` is calculated.
+#[derive(Debug)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
     pub span: MultiSpan,
@@ -544,7 +545,7 @@ pub struct BufferedEarlyLint {
     pub diagnostic: BuiltinLintDiagnostics,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LintBuffer {
     pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
 }

@@ -31,6 +31,10 @@ rustc_queries! {
         desc { "compute registered tools for crate" }
     }
 
+    query early_lint_checks(_: ()) -> () {
+        desc { "perform lints prior to macro expansion" }
+    }
+
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         feedable
         no_hash
