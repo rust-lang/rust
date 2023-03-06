@@ -13,7 +13,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
+use rustc_middle::ty::cast::{mir_cast_kind};
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
@@ -263,11 +263,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     (source, ty)
                 };
-                let from_ty = CastTy::from_ty(ty);
-                let cast_ty = CastTy::from_ty(expr.ty);
-                debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
-                let cast_kind = mir_cast_kind(ty, expr.ty);
-                block.and(Rvalue::Cast(cast_kind, source, expr.ty))
+
+                let ty = this.structurally_resolved_ty(ty);
+                let cast_ty = this.structurally_resolved_ty(expr.ty);
+                let cast_kind = mir_cast_kind(ty, cast_ty);
+                block.and(Rvalue::Cast(cast_kind, source, cast_ty))
             }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(

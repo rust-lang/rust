@@ -38,11 +38,13 @@ use rustc_middle::ty::{
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::query::Fallible;
 use rustc_trait_selection::traits::PredicateObligation;
+use rustc_trait_selection::traits::{fully_solve_obligation, Obligation, ObligationCause};
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -1154,6 +1156,31 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    fn structurally_resolved_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if self.tcx().trait_solver_next() && let ty::Alias(ty::Projection, projection_ty) = *ty.kind() {
+            let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: DUMMY_SP,
+            });
+            let obligation = Obligation::new(
+                self.tcx(),
+                ObligationCause::dummy(),
+                self.param_env,
+                ty::Binder::dummy(ty::ProjectionPredicate {
+                    projection_ty,
+                    term: new_infer_ty.into(),
+                }),
+            );
+
+            if self.infcx.predicate_may_hold(&obligation) {
+                fully_solve_obligation(&self.infcx, obligation);
+                return self.infcx.resolve_vars_if_possible(new_infer_ty);
+            }
+        }
+
+        ty
+    }
+
     #[instrument(skip(self, body, location), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
@@ -1871,6 +1898,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 self.check_operand(op, location);
 
+                let structurally_resolved_cast_tys = || {
+                    (
+                        self.structurally_resolved_ty(op.ty(body, tcx)),
+                        self.structurally_resolved_ty(*ty),
+                    )
+                };
+
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
@@ -1902,7 +1936,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-                        let sig = match op.ty(body, tcx).kind() {
+                        let sig = match self.structurally_resolved_ty(op.ty(body, tcx)).kind() {
                             ty::Closure(_, substs) => substs.as_closure().sig(),
                             _ => bug!(),
                         };
@@ -1971,10 +2005,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // get the constraints from the target type (`dyn* Clone`)
                         //
                         // apply them to prove that the source type `Foo` implements `Clone` etc
-                        let (existential_predicates, region) = match ty.kind() {
-                            Dynamic(predicates, region, ty::DynStar) => (predicates, region),
-                            _ => panic!("Invalid dyn* cast_ty"),
-                        };
+                        let (existential_predicates, region) =
+                            match self.structurally_resolved_ty(*ty).kind() {
+                                Dynamic(predicates, region, ty::DynStar) => (predicates, region),
+                                _ => panic!("Invalid dyn* cast_ty"),
+                            };
 
                         let self_ty = op.ty(body, tcx);
 
@@ -2001,7 +2036,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty::RawPtr(ty::TypeAndMut {
                             ty: ty_from,
                             mutbl: hir::Mutability::Mut,
-                        }) = op.ty(body, tcx).kind() else {
+                        }) = self.structurally_resolved_ty(op.ty(body, tcx)).kind() else {
                             span_mirbug!(
                                 self,
                                 rvalue,
@@ -2013,7 +2048,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty::RawPtr(ty::TypeAndMut {
                             ty: ty_to,
                             mutbl: hir::Mutability::Not,
-                        }) = ty.kind() else {
+                        }) = self.structurally_resolved_ty(*ty).kind() else {
                             span_mirbug!(
                                 self,
                                 rvalue,
@@ -2042,7 +2077,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::ArrayToPointer) => {
                         let ty_from = op.ty(body, tcx);
 
-                        let opt_ty_elem_mut = match ty_from.kind() {
+                        let opt_ty_elem_mut = match self.structurally_resolved_ty(ty_from).kind() {
                             ty::RawPtr(ty::TypeAndMut { mutbl: array_mut, ty: array_ty }) => {
                                 match array_ty.kind() {
                                     ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
@@ -2062,7 +2097,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             return;
                         };
 
-                        let (ty_to, ty_to_mut) = match ty.kind() {
+                        let (ty_to, ty_to_mut) = match self.structurally_resolved_ty(*ty).kind() {
                             ty::RawPtr(ty::TypeAndMut { mutbl: ty_to_mut, ty: ty_to }) => {
                                 (ty_to, *ty_to_mut)
                             }
@@ -2106,9 +2141,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerExposeAddress => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
                             _ => {
@@ -2124,9 +2159,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerFromExposedAddress => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
                             _ => {
@@ -2141,9 +2176,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => (),
                             _ => {
@@ -2158,9 +2193,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Int(_)), Some(CastTy::Float)) => (),
                             _ => {
@@ -2175,9 +2210,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Float), Some(CastTy::Int(_))) => (),
                             _ => {
@@ -2192,9 +2227,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Float), Some(CastTy::Float)) => (),
                             _ => {
@@ -2209,9 +2244,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FnPtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => (),
                             _ => {
@@ -2226,9 +2261,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::PtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let (ty_from, ty) = structurally_resolved_cast_tys();
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(*ty);
+                        let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => (),
                             _ => {

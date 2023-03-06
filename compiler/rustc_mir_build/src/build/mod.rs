@@ -11,6 +11,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{GeneratorKind, Node};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::type_variable::{TypeVariableOriginKind, TypeVariableOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
@@ -22,9 +23,11 @@ use rustc_middle::thir::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use super::lints;
 
@@ -228,6 +231,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn var_local_id(&self, id: LocalVarId, for_guard: ForGuard) -> Local {
         self.var_indices[&id].local_id(for_guard)
+    }
+
+    fn structurally_resolved_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if self.tcx.trait_solver_next() && let ty::Alias(ty::Projection, projection_ty) = *ty.kind() {
+            let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: DUMMY_SP,
+            });
+            let obligation = traits::Obligation::new(
+                self.tcx,
+                traits::ObligationCause::dummy(),
+                self.param_env,
+                ty::Binder::dummy(ty::ProjectionPredicate {
+                    projection_ty,
+                    term: new_infer_ty.into(),
+                }),
+            );
+
+            if self.infcx.predicate_may_hold(&obligation) {
+                traits::fully_solve_obligation(&self.infcx, obligation);
+                return self.infcx.resolve_vars_if_possible(new_infer_ty);
+            }
+        }
+
+        ty
     }
 }
 

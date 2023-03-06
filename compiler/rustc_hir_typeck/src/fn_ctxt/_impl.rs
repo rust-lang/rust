@@ -19,6 +19,7 @@ use rustc_hir_analysis::astconv::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::error::TypeError;
@@ -34,6 +35,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
 
 use std::collections::hash_map::Entry;
@@ -1408,7 +1410,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Resolves `typ` by a single level if `typ` is a type variable.
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
-    pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn structurally_resolved_type(&self, sp: Span, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        if self.tcx.trait_solver_next() && let ty::Alias(ty::Projection, projection_ty) = *ty.kind() {
+            let new_infer_ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: sp,
+            });
+            let obligation = traits::Obligation::new(
+                self.tcx,
+                self.misc(sp),
+                self.param_env,
+                ty::Binder::dummy(ty::ProjectionPredicate {
+                    projection_ty,
+                    term: new_infer_ty.into(),
+                }),
+            );
+            if self.predicate_may_hold(&obligation) {
+                self.register_predicate(obligation);
+                ty = new_infer_ty;
+            }
+        }
+
         let ty = self.resolve_vars_with_obligations(ty);
         if !ty.is_ty_var() {
             ty
