@@ -160,7 +160,7 @@ fn remove_dead_unwinds<'tcx>(
     let basic_blocks = body.basic_blocks.as_mut();
     for &bb in dead_unwinds.iter() {
         if let Some(unwind) = basic_blocks[bb].terminator_mut().unwind_mut() {
-            *unwind = None;
+            *unwind = UnwindAction::Unreachable;
         }
     }
 }

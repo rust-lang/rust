@@ -1438,11 +1438,11 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
-                if let Some(unwind) = *unwind {
+                if let UnwindAction::Cleanup(unwind) = *unwind {
                     let source_info = term.source_info;
                     cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
                 } else {
-                    *unwind = Some(to);
+                    *unwind = UnwindAction::Cleanup(to);
                 }
             }
             TerminatorKind::FalseUnwind { unwind, .. }
