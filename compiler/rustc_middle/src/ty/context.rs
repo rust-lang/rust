@@ -2443,6 +2443,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn lower_impl_trait_in_trait_to_assoc_ty(self) -> bool {
         self.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty
     }
+
+    pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
+        if self.lower_impl_trait_in_trait_to_assoc_ty() {
+            self.def_kind(def_id) == DefKind::AssocTy && self.opt_rpitit_info(def_id).is_some()
+        } else {
+            self.def_kind(def_id) == DefKind::ImplTraitPlaceholder
+        }
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
