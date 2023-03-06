@@ -932,7 +932,7 @@ mod copy_impls {
 #[lang = "fn_ptr_trait"]
 #[cfg(not(bootstrap))]
 #[rustc_deny_explicit_impl]
-pub trait FnPtr {
+pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
