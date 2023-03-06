@@ -72,6 +72,17 @@ impl<'tcx> MirPass<'tcx> for Validator {
         };
         checker.visit_body(body);
         checker.check_cleanup_control_flow();
+
+        if let MirPhase::Runtime(_) = body.phase {
+            if let ty::InstanceDef::Item(_) = body.source.instance {
+                if body.has_free_regions() {
+                    checker.fail(
+                        Location::START,
+                        format!("Free regions in optimized {} MIR", body.phase.name()),
+                    );
+                }
+            }
+        }
     }
 }
 
