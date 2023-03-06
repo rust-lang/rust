@@ -245,7 +245,7 @@ impl<'a> Renderer<'a> {
                     name: outcome.name.clone(),
                     exec_time: None,
                     stdout: None,
-                    reason: None,
+                    message: None,
                 };
                 self.render_test_outcome(Outcome::BenchOk, &fake_test_outcome);
                 self.benches.push(outcome);
@@ -255,7 +255,7 @@ impl<'a> Renderer<'a> {
             }
             Message::Test(TestMessage::Ignored(outcome)) => {
                 self.render_test_outcome(
-                    Outcome::Ignored { reason: outcome.reason.as_deref() },
+                    Outcome::Ignored { reason: outcome.message.as_deref() },
                     &outcome,
                 );
             }
@@ -345,5 +345,5 @@ struct TestOutcome {
     name: String,
     exec_time: Option<f64>,
     stdout: Option<String>,
-    reason: Option<String>,
+    message: Option<String>,
 }
