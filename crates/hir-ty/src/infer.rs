@@ -33,7 +33,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 use la_arena::ArenaMap;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::always;
 
 use crate::{
@@ -423,6 +423,8 @@ pub(crate) struct InferenceContext<'a> {
     pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
+    /// The traits in scope, disregarding block modules. This is used for caching purposes.
+    traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
     /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
@@ -505,6 +507,7 @@ impl<'a> InferenceContext<'a> {
             db,
             owner,
             body,
+            traits_in_scope: resolver.traits_in_scope(db.upcast()),
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
@@ -706,7 +709,6 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        // FIXME use right resolver for block
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let ty = ctx.lower_ty(type_ref);
         let ty = self.insert_type_vars(ty);
@@ -822,12 +824,11 @@ impl<'a> InferenceContext<'a> {
             Some(path) => path,
             None => return (self.err_ty(), None),
         };
-        let resolver = &self.resolver;
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         let (resolution, unresolved) = if value_ns {
-            match resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
                 Some(ResolveValueResult::ValueNs(value)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
@@ -848,7 +849,7 @@ impl<'a> InferenceContext<'a> {
                 None => return (self.err_ty(), None),
             }
         } else {
-            match resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
                 None => return (self.err_ty(), None),
             }
@@ -1057,6 +1058,15 @@ impl<'a> InferenceContext<'a> {
     fn resolve_va_list(&self) -> Option<AdtId> {
         let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
         Some(struct_.into())
+    }
+
+    fn get_traits_in_scope(&self) -> Either<FxHashSet<TraitId>, &FxHashSet<TraitId>> {
+        let mut b_traits = self.resolver.traits_in_scope_from_block_scopes().peekable();
+        if b_traits.peek().is_some() {
+            Either::Left(self.traits_in_scope.iter().copied().chain(b_traits).collect())
+        } else {
+            Either::Right(&self.traits_in_scope)
+        }
     }
 }
 

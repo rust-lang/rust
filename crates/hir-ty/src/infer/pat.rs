@@ -245,9 +245,8 @@ impl<'a> InferenceContext<'a> {
                 self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
             }
             Pat::Path(path) => {
-                // FIXME use correct resolver for the surrounding expression
-                let resolver = self.resolver.clone();
-                self.infer_path(&resolver, path, pat.into()).unwrap_or_else(|| self.err_ty())
+                // FIXME update resolver for the surrounding expression
+                self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty())
             }
             Pat::Bind { mode, name: _, subpat } => {
                 return self.infer_bind_pat(pat, *mode, default_bm, *subpat, &expected);

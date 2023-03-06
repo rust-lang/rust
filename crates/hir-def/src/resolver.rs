@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::{hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault, sync::Arc};
 
 use base_db::CrateId;
 use hir_expand::name::{name, Name};
@@ -36,17 +36,32 @@ pub struct Resolver {
     module_scope: ModuleItemMap,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct ModuleItemMap {
     def_map: Arc<DefMap>,
     module_id: LocalModuleId,
 }
 
-#[derive(Debug, Clone)]
+impl fmt::Debug for ModuleItemMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ModuleItemMap").field("module_id", &self.module_id).finish()
+    }
+}
+
+#[derive(Clone)]
 struct ExprScope {
     owner: DefWithBodyId,
     expr_scopes: Arc<ExprScopes>,
     scope_id: ScopeId,
+}
+
+impl fmt::Debug for ExprScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExprScope")
+            .field("owner", &self.owner)
+            .field("scope_id", &self.scope_id)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -240,55 +255,67 @@ impl Resolver {
             return self.module_scope.resolve_path_in_value_ns(db, path);
         }
 
-        for scope in self.scopes() {
-            match scope {
-                Scope::ExprScope(_) if n_segments > 1 => continue,
-                Scope::ExprScope(scope) => {
-                    let entry = scope
-                        .expr_scopes
-                        .entries(scope.scope_id)
-                        .iter()
-                        .find(|entry| entry.name() == first_name);
+        if n_segments <= 1 {
+            for scope in self.scopes() {
+                match scope {
+                    Scope::ExprScope(scope) => {
+                        let entry = scope
+                            .expr_scopes
+                            .entries(scope.scope_id)
+                            .iter()
+                            .find(|entry| entry.name() == first_name);
 
-                    if let Some(e) = entry {
-                        return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(e.pat())));
+                        if let Some(e) = entry {
+                            return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(
+                                e.pat(),
+                            )));
+                        }
+                    }
+                    Scope::GenericParams { params, def } => {
+                        if let Some(id) = params.find_const_by_name(first_name, *def) {
+                            let val = ValueNs::GenericParam(id);
+                            return Some(ResolveValueResult::ValueNs(val));
+                        }
+                    }
+                    &Scope::ImplDefScope(impl_) => {
+                        if first_name == &name![Self] {
+                            return Some(ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_)));
+                        }
+                    }
+                    // bare `Self` doesn't work in the value namespace in a struct/enum definition
+                    Scope::AdtScope(_) => continue,
+                    Scope::BlockScope(m) => {
+                        if let Some(def) = m.resolve_path_in_value_ns(db, path) {
+                            return Some(def);
+                        }
                     }
                 }
-                Scope::GenericParams { params, def } if n_segments > 1 => {
-                    if let Some(id) = params.find_type_by_name(first_name, *def) {
-                        let ty = TypeNs::GenericParam(id);
-                        return Some(ResolveValueResult::Partial(ty, 1));
+            }
+        } else {
+            for scope in self.scopes() {
+                match scope {
+                    Scope::ExprScope(_) => continue,
+                    Scope::GenericParams { params, def } => {
+                        if let Some(id) = params.find_type_by_name(first_name, *def) {
+                            let ty = TypeNs::GenericParam(id);
+                            return Some(ResolveValueResult::Partial(ty, 1));
+                        }
                     }
-                }
-                Scope::GenericParams { .. } if n_segments != 1 => continue,
-                Scope::GenericParams { params, def } => {
-                    if let Some(id) = params.find_const_by_name(first_name, *def) {
-                        let val = ValueNs::GenericParam(id);
-                        return Some(ResolveValueResult::ValueNs(val));
+                    &Scope::ImplDefScope(impl_) => {
+                        if first_name == &name![Self] {
+                            return Some(ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1));
+                        }
                     }
-                }
-
-                &Scope::ImplDefScope(impl_) => {
-                    if first_name == &name![Self] {
-                        return Some(if n_segments > 1 {
-                            ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1)
-                        } else {
-                            ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_))
-                        });
+                    Scope::AdtScope(adt) => {
+                        if first_name == &name![Self] {
+                            let ty = TypeNs::AdtSelfType(*adt);
+                            return Some(ResolveValueResult::Partial(ty, 1));
+                        }
                     }
-                }
-                // bare `Self` doesn't work in the value namespace in a struct/enum definition
-                Scope::AdtScope(_) if n_segments == 1 => continue,
-                Scope::AdtScope(adt) => {
-                    if first_name == &name![Self] {
-                        let ty = TypeNs::AdtSelfType(*adt);
-                        return Some(ResolveValueResult::Partial(ty, 1));
-                    }
-                }
-
-                Scope::BlockScope(m) => {
-                    if let Some(def) = m.resolve_path_in_value_ns(db, path) {
-                        return Some(def);
+                    Scope::BlockScope(m) => {
+                        if let Some(def) = m.resolve_path_in_value_ns(db, path) {
+                            return Some(def);
+                        }
                     }
                 }
             }
@@ -301,8 +328,8 @@ impl Resolver {
         // If a path of the shape `u16::from_le_bytes` failed to resolve at all, then we fall back
         // to resolving to the primitive type, to allow this to still work in the presence of
         // `use core::u16;`.
-        if path.kind == PathKind::Plain && path.segments().len() > 1 {
-            if let Some(builtin) = BuiltinType::by_name(&path.segments()[0]) {
+        if path.kind == PathKind::Plain && n_segments > 1 {
+            if let Some(builtin) = BuiltinType::by_name(first_name) {
                 return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1));
             }
         }
@@ -434,6 +461,15 @@ impl Resolver {
         traits
     }
 
+    pub fn traits_in_scope_from_block_scopes(&self) -> impl Iterator<Item = TraitId> + '_ {
+        self.scopes()
+            .filter_map(|scope| match scope {
+                Scope::BlockScope(m) => Some(m.def_map[m.module_id].scope.traits()),
+                _ => None,
+            })
+            .flatten()
+    }
+
     pub fn module(&self) -> ModuleId {
         let (def_map, local_id) = self.item_scope();
         def_map.module_id(local_id)
@@ -478,7 +514,71 @@ impl Resolver {
             _ => None,
         })
     }
+    /// `expr_id` is required to be an expression id that comes after the top level expression scope in the given resolver
+    #[must_use]
+    pub fn update_to_inner_scope(
+        &mut self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        expr_id: ExprId,
+    ) -> UpdateGuard {
+        #[inline(always)]
+        fn append_expr_scope(
+            db: &dyn DefDatabase,
+            resolver: &mut Resolver,
+            owner: DefWithBodyId,
+            expr_scopes: &Arc<ExprScopes>,
+            scope_id: ScopeId,
+        ) {
+            resolver.scopes.push(Scope::ExprScope(ExprScope {
+                owner,
+                expr_scopes: expr_scopes.clone(),
+                scope_id,
+            }));
+            if let Some(block) = expr_scopes.block(scope_id) {
+                if let Some(def_map) = db.block_def_map(block) {
+                    let root = def_map.root();
+                    resolver
+                        .scopes
+                        .push(Scope::BlockScope(ModuleItemMap { def_map, module_id: root }));
+                    // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+                    // already traverses all parents, so this is O(n²). I think we could only store the
+                    // innermost module scope instead?
+                }
+            }
+        }
+
+        let start = self.scopes.len();
+        let innermost_scope = self.scopes().next();
+        match innermost_scope {
+            Some(&Scope::ExprScope(ExprScope { scope_id, ref expr_scopes, owner })) => {
+                let expr_scopes = expr_scopes.clone();
+                let scope_chain = expr_scopes
+                    .scope_chain(expr_scopes.scope_for(expr_id))
+                    .take_while(|&it| it != scope_id);
+                for scope_id in scope_chain {
+                    append_expr_scope(db, self, owner, &expr_scopes, scope_id);
+                }
+            }
+            _ => {
+                let expr_scopes = db.expr_scopes(owner);
+                let scope_chain = expr_scopes.scope_chain(expr_scopes.scope_for(expr_id));
+
+                for scope_id in scope_chain {
+                    append_expr_scope(db, self, owner, &expr_scopes, scope_id);
+                }
+            }
+        }
+        self.scopes[start..].reverse();
+        UpdateGuard(start)
+    }
+
+    pub fn reset_to_guard(&mut self, UpdateGuard(start): UpdateGuard) {
+        self.scopes.truncate(start);
+    }
 }
+
+pub struct UpdateGuard(usize);
 
 impl Resolver {
     fn scopes(&self) -> impl Iterator<Item = &Scope> {
@@ -576,10 +676,11 @@ impl Scope {
     }
 }
 
-// needs arbitrary_self_types to be a method... or maybe move to the def?
 pub fn resolver_for_expr(db: &dyn DefDatabase, owner: DefWithBodyId, expr_id: ExprId) -> Resolver {
+    let r = owner.resolver(db);
     let scopes = db.expr_scopes(owner);
-    resolver_for_scope(db, owner, scopes.scope_for(expr_id))
+    let scope_id = scopes.scope_for(expr_id);
+    resolver_for_scope_(db, scopes, scope_id, r, owner)
 }
 
 pub fn resolver_for_scope(
@@ -587,8 +688,18 @@ pub fn resolver_for_scope(
     owner: DefWithBodyId,
     scope_id: Option<ScopeId>,
 ) -> Resolver {
-    let mut r = owner.resolver(db);
+    let r = owner.resolver(db);
     let scopes = db.expr_scopes(owner);
+    resolver_for_scope_(db, scopes, scope_id, r, owner)
+}
+
+fn resolver_for_scope_(
+    db: &dyn DefDatabase,
+    scopes: Arc<ExprScopes>,
+    scope_id: Option<ScopeId>,
+    mut r: Resolver,
+    owner: DefWithBodyId,
+) -> Resolver {
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     r.scopes.reserve(scope_chain.len());
 

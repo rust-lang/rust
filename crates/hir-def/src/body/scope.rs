@@ -66,6 +66,7 @@ impl ExprScopes {
         self.scopes[scope].label.clone()
     }
 
+    /// Returns the scopes in ascending order.
     pub fn scope_chain(&self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + '_ {
         std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
     }

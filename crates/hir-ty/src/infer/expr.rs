@@ -15,7 +15,6 @@ use hir_def::{
     generics::TypeOrConstParamData,
     lang_item::LangItem,
     path::{GenericArg, GenericArgs},
-    resolver::resolver_for_expr,
     ConstParamId, FieldId, ItemContainerId, Lookup,
 };
 use hir_expand::name::{name, Name};
@@ -457,9 +456,10 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Path(p) => {
-                // FIXME this could be more efficient...
-                let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
-                self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or_else(|| self.err_ty())
+                let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                let ty = self.infer_path(p, tgt_expr.into()).unwrap_or_else(|| self.err_ty());
+                self.resolver.reset_to_guard(g);
+                ty
             }
             Expr::Continue { label } => {
                 if let None = find_continuable(&mut self.breakables, label.as_ref()) {
@@ -1168,8 +1168,8 @@ impl<'a> InferenceContext<'a> {
         expected: &Expectation,
     ) -> Ty {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
-        let old_resolver =
-            mem::replace(&mut self.resolver, resolver_for_expr(self.db.upcast(), self.owner, expr));
+        let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+
         let (break_ty, ty) =
             self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty.clone()), label, |this| {
                 for stmt in statements {
@@ -1256,7 +1256,7 @@ impl<'a> InferenceContext<'a> {
                     }
                 }
             });
-        self.resolver = old_resolver;
+        self.resolver.reset_to_guard(g);
 
         break_ty.unwrap_or(ty)
     }
@@ -1349,14 +1349,14 @@ impl<'a> InferenceContext<'a> {
             None => {
                 // no field found,
                 let method_with_same_name_exists = {
-                    let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
-                    let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
+                    self.get_traits_in_scope();
 
+                    let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
                     method_resolution::lookup_method(
                         self.db,
                         &canonicalized_receiver.value,
                         self.trait_env.clone(),
-                        &traits_in_scope,
+                        self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
                         VisibleFromModule::Filter(self.resolver.module()),
                         name,
                     )
@@ -1385,13 +1385,11 @@ impl<'a> InferenceContext<'a> {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
         let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
 
-        let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
-
         let resolved = method_resolution::lookup_method(
             self.db,
             &canonicalized_receiver.value,
             self.trait_env.clone(),
-            &traits_in_scope,
+            self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             method_name,
         );
