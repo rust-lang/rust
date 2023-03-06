@@ -790,15 +790,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
 
-    // Avoid overwhelming user with errors if borrow checking failed.
-    // I'm not sure how helpful this is, to be honest, but it avoids a
-    // lot of annoying errors in the ui tests (basically,
-    // lint warnings and so on -- kindck used to do this abort, but
-    // kindck is gone now). -nmatsakis
-    if let Some(reported) = sess.has_errors() {
-        return Err(reported);
-    }
-
     sess.time("misc_checking_3", || {
         parallel!(
             {

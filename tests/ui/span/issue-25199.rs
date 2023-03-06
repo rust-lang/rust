@@ -18,7 +18,7 @@
 
 use std::cell::RefCell;
 
-trait Obj { }
+trait Obj {}
 
 struct VecHolder {
     v: Vec<(bool, &'static str)>,
@@ -34,20 +34,15 @@ impl Drop for VecHolder {
 
 struct Container<'a> {
     v: VecHolder,
-    d: RefCell<Vec<Box<dyn Obj+'a>>>,
+    d: RefCell<Vec<Box<dyn Obj + 'a>>>,
 }
 
 impl<'a> Container<'a> {
     fn new() -> Container<'a> {
-        Container {
-            d: RefCell::new(Vec::new()),
-            v: VecHolder {
-                v: vec![(true, "valid"); 100]
-            }
-        }
+        Container { d: RefCell::new(Vec::new()), v: VecHolder { v: vec![(true, "valid"); 100] } }
     }
 
-    fn store<T: Obj+'a>(&'a self, val: T) {
+    fn store<T: Obj + 'a>(&'a self, val: T) {
         self.d.borrow_mut().push(Box::new(val));
     }
 }
@@ -56,18 +51,19 @@ struct Test<'a> {
     test: &'a Container<'a>,
 }
 
-impl<'a> Obj for Test<'a> { }
+impl<'a> Obj for Test<'a> {}
 impl<'a> Drop for Test<'a> {
     fn drop(&mut self) {
         for e in &self.test.v.v {
             assert!(e.0, e.1);
+            //~^ WARN: panic message is not a string literal
         }
     }
 }
 
 fn main() {
     let container = Container::new();
-    let test = Test{test: &container};
+    let test = Test { test: &container };
     //~^ ERROR `container` does not live long enough
     println!("container.v[30]: {:?}", container.v.v[30]);
     container.store(test);

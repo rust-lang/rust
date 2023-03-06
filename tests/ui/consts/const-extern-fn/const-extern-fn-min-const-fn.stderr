@@ -1,21 +1,40 @@
 error[E0658]: floating point arithmetic is not allowed in constant functions
-  --> $DIR/const-extern-fn-min-const-fn.rs:5:42
+  --> $DIR/const-extern-fn-min-const-fn.rs:12:5
    |
-LL | const unsafe extern "C" fn use_float() { 1.0 + 1.0; }
-   |                                          ^^^^^^^^^
+LL |     1.0 + 1.0;
+   |     ^^^^^^^^^
    |
    = note: see issue #57241 <https://github.com/rust-lang/rust/issues/57241> for more information
    = help: add `#![feature(const_fn_floating_point_arithmetic)]` to the crate attributes to enable
 
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/const-extern-fn-min-const-fn.rs:7:48
+  --> $DIR/const-extern-fn-min-const-fn.rs:16:5
    |
-LL | const extern "C" fn ptr_cast(val: *const u8) { val as usize; }
-   |                                                ^^^^^^^^^^^^
+LL |     val as usize;
+   |     ^^^^^^^^^^^^
    |
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error: aborting due to 2 previous errors
+warning: `extern` fn uses type `[u8]`, which is not FFI-safe
+  --> $DIR/const-extern-fn-min-const-fn.rs:3:44
+   |
+LL | const extern "C" fn unsize(x: &[u8; 3]) -> &[u8] {
+   |                                            ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer instead
+   = note: slices have no C equivalent
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: `extern` fn uses type `fn()`, which is not FFI-safe
+  --> $DIR/const-extern-fn-min-const-fn.rs:7:41
+   |
+LL | const unsafe extern "C" fn closure() -> fn() {
+   |                                         ^^^^ not FFI-safe
+   |
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
+   = note: this function pointer has Rust-specific calling convention
+
+error: aborting due to 2 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

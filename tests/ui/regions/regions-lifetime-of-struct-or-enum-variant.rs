@@ -2,25 +2,26 @@
 // are treated as rvalues and their lifetime is not bounded to
 // the static scope.
 
-fn id<T>(x: T) -> T { x }
+fn id<T>(x: T) -> T {
+    x
+}
 
 struct Test;
 
 enum MyEnum {
-    Variant1
+    Variant1,
 }
 
-fn structLifetime<'a>() -> &'a Test {
-  let testValue = &id(Test);
-  testValue
-  //~^ ERROR cannot return value referencing temporary value
+fn struct_lifetime<'a>() -> &'a Test {
+    let test_value = &id(Test);
+    test_value
+    //~^ ERROR cannot return value referencing temporary value
 }
 
-fn variantLifetime<'a>() -> &'a MyEnum {
-  let testValue = &id(MyEnum::Variant1);
-  testValue
-  //~^ ERROR cannot return value referencing temporary value
+fn variant_lifetime<'a>() -> &'a MyEnum {
+    let test_value = &id(MyEnum::Variant1);
+    test_value
+    //~^ ERROR cannot return value referencing temporary value
 }
-
 
 fn main() {}

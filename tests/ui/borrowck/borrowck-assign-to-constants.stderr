@@ -1,7 +1,7 @@
-error[E0594]: cannot assign to immutable static item `foo`
+error[E0594]: cannot assign to immutable static item `FOO`
   --> $DIR/borrowck-assign-to-constants.rs:5:5
    |
-LL |     foo = 6;
+LL |     FOO = 6;
    |     ^^^^^^^ cannot assign
 
 error: aborting due to previous error

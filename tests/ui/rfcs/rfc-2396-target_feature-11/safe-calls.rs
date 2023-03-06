@@ -62,7 +62,7 @@ fn qux() {
     //[thir]~^^ ERROR call to function `sse2` with `#[target_feature]` is unsafe
 }
 
-const name: () = sse2();
+const NAME: () = sse2();
 //[mir]~^ ERROR call to function with `#[target_feature]` is unsafe
 //[thir]~^^ ERROR call to function `sse2` with `#[target_feature]` is unsafe
 

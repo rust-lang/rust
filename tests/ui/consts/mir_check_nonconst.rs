@@ -5,7 +5,7 @@ fn bar() -> Foo {
     Foo { a: 5 }
 }
 
-static foo: Foo = bar();
+static FOO: Foo = bar();
 //~^ ERROR cannot call non-const fn
 
 fn main() {}

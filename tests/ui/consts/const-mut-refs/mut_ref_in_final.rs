@@ -8,6 +8,7 @@ const A: *const i32 = &4;
 // but we do not want to allow this to compile,
 // as that would be an enormous footgun in oli-obk's opinion.
 const B: *mut i32 = &mut 4; //~ ERROR mutable references are not allowed
+//~^ ERROR: untyped pointers are not allowed
 
 // Ok, no actual mutable allocation exists
 const B2: Option<&mut i32> = None;
@@ -15,12 +16,13 @@ const B2: Option<&mut i32> = None;
 // Not ok, can't prove that no mutable allocation ends up in final value
 const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR temporary value dropped while borrowed
 
-const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
+const fn helper(x: &mut i32) -> Option<&mut i32> {
+    Some(x)
+}
 const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed
 
-// Ok, because no references to mutable data exist here, since the `{}` moves
-// its value and then takes a reference to that.
 const C: *const i32 = &{
+    //~^ ERROR: untyped pointers are not allowed
     let mut x = 42;
     x += 3;
     x

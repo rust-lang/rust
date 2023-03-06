@@ -1,5 +1,5 @@
 pub fn main() {
-    const z: &'static isize = {
+    const Z: &'static isize = {
         let p = 3;
         &p //~ ERROR `p` does not live long enough
     };

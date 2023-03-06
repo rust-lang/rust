@@ -5,6 +5,7 @@
 
 extern "C" {
     pub static FOO: extern "rust-intrinsic" fn();
+    //~^ WARN: not FFI-safe
 }
 
 fn main() {

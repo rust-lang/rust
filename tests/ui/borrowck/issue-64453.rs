@@ -1,7 +1,7 @@
 struct Project;
 struct Value;
 
-static settings_dir: String = format!("");
+static SETTINGS_DIR: String = format!("");
 //~^ ERROR cannot call non-const fn
 //~| ERROR is not yet stable as a const
 
@@ -11,7 +11,7 @@ fn from_string(_: String) -> Value {
 fn set_editor(_: Value) {}
 
 fn main() {
-    let settings_data = from_string(settings_dir);
+    let settings_data = from_string(SETTINGS_DIR);
     //~^ ERROR cannot move out of static item
     let args: i32 = 0;
 

@@ -1,11 +1,11 @@
-const bad : u32 = {
+const BAD: u32 = {
     {
         5;
         0
     }
 };
 
-const bad_two : u32 = {
+const BAD2: u32 = {
     {
         invalid();
         //~^ ERROR: cannot call non-const fn `invalid`
@@ -13,21 +13,21 @@ const bad_two : u32 = {
     }
 };
 
-const bad_three : u32 = {
+const BAD3: u32 = {
     {
         valid();
         0
     }
 };
 
-static bad_four : u32 = {
+static BAD4: u32 = {
     {
         5;
         0
     }
 };
 
-static bad_five : u32 = {
+static BAD5: u32 = {
     {
         invalid();
         //~^ ERROR: cannot call non-const fn `invalid`
@@ -35,21 +35,21 @@ static bad_five : u32 = {
     }
 };
 
-static bad_six : u32 = {
+static BAD6: u32 = {
     {
         valid();
         0
     }
 };
 
-static mut bad_seven : u32 = {
+static mut BAD7: u32 = {
     {
         5;
         0
     }
 };
 
-static mut bad_eight : u32 = {
+static mut BAD8: u32 = {
     {
         invalid();
         //~^ ERROR: cannot call non-const fn `invalid`
@@ -57,13 +57,12 @@ static mut bad_eight : u32 = {
     }
 };
 
-static mut bad_nine : u32 = {
+static mut BAD9: u32 = {
     {
         valid();
         0
     }
 };
-
 
 fn invalid() {}
 const fn valid() {}

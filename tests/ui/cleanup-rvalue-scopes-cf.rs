@@ -5,10 +5,14 @@ use std::ops::Drop;
 
 static mut FLAGS: u64 = 0;
 
-struct StackBox<T> { f: T }
-struct AddFlags { bits: u64 }
+struct StackBox<T> {
+    f: T,
+}
+struct AddFlags {
+    bits: u64,
+}
 
-fn AddFlags(bits: u64) -> AddFlags {
+fn add_flags(bits: u64) -> AddFlags {
     AddFlags { bits: bits }
 }
 
@@ -23,13 +27,13 @@ impl AddFlags {
 }
 
 pub fn main() {
-    let x1 = arg(&AddFlags(1)); //~ ERROR temporary value dropped while borrowed
-    let x2 = AddFlags(1).get(); //~ ERROR temporary value dropped while borrowed
-    let x3 = &*arg(&AddFlags(1)); //~ ERROR temporary value dropped while borrowed
-    let ref x4 = *arg(&AddFlags(1)); //~ ERROR temporary value dropped while borrowed
-    let &ref x5 = arg(&AddFlags(1)); //~ ERROR temporary value dropped while borrowed
-    let x6 = AddFlags(1).get(); //~ ERROR temporary value dropped while borrowed
-    let StackBox { f: x7 } = StackBox { f: AddFlags(1).get() };
+    let x1 = arg(&add_flags(1)); //~ ERROR temporary value dropped while borrowed
+    let x2 = add_flags(1).get(); //~ ERROR temporary value dropped while borrowed
+    let x3 = &*arg(&add_flags(1)); //~ ERROR temporary value dropped while borrowed
+    let ref x4 = *arg(&add_flags(1)); //~ ERROR temporary value dropped while borrowed
+    let &ref x5 = arg(&add_flags(1)); //~ ERROR temporary value dropped while borrowed
+    let x6 = add_flags(1).get(); //~ ERROR temporary value dropped while borrowed
+    let StackBox { f: x7 } = StackBox { f: add_flags(1).get() };
     //~^ ERROR temporary value dropped while borrowed
     (x1, x2, x3, x4, x5, x6, x7);
 }

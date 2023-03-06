@@ -4,7 +4,7 @@
 
 use std::mem::MaybeUninit;
 
-enum HasNiche {
+pub enum HasNiche {
     A,
     B,
     C,

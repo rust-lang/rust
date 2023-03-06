@@ -1,7 +1,7 @@
 error[E0015]: cannot call non-const fn `Box::<isize>::new` in statics
   --> $DIR/static-mut-not-constant.rs:1:28
    |
-LL | static mut a: Box<isize> = Box::new(3);
+LL | static mut A: Box<isize> = Box::new(3);
    |                            ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants

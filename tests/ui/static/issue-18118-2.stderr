@@ -1,7 +1,7 @@
 error[E0013]: constants cannot refer to statics
   --> $DIR/issue-18118-2.rs:4:10
    |
-LL |         &p
+LL |         &P
    |          ^
    |
    = help: consider extracting the value of the `static` to a `const`, and referring to that

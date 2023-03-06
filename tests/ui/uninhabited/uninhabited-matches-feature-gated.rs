@@ -3,7 +3,8 @@ enum Void {}
 
 fn main() {
     let x: Result<u32, &'static Void> = Ok(23);
-    let _ = match x {   //~ ERROR non-exhaustive
+    let _ = match x {
+        //~^ ERROR non-exhaustive
         Ok(n) => n,
     };
 
@@ -12,24 +13,31 @@ fn main() {
     // just accept the fact that this is UB if `main` did run, but it doesn't;
     // this test only checks that these are feature-gated.
     let x: &Void = unsafe { zeroed() };
+    //~^ WARN: does not permit zero-init
     let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: (Void,) = unsafe { zeroed() };
+    //~^ WARN: does not permit zero-init
     let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: [Void; 1] = unsafe { zeroed() };
+    //~^ WARN: does not permit zero-init
     let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: &[Void] = unsafe { zeroed() };
-    let _ = match x {   //~ ERROR non-exhaustive
+    //~^ WARN: does not permit zero-init
+    let _ = match x {
+        //~^ ERROR non-exhaustive
         &[] => (),
     };
 
     let x: Void = unsafe { zeroed() };
+    //~^ WARN: does not permit zero-init
     let _ = match x {}; // okay
 
     let x: Result<u32, Void> = Ok(23);
-    let _ = match x {   //~ ERROR non-exhaustive
+    let _ = match x {
+        //~^ ERROR non-exhaustive
         Ok(x) => x,
     };
 

@@ -16,12 +16,12 @@ const fn sub1() -> u32 {
 
 static Y: u32 = 0;
 
-const fn get_Y() -> u32 {
+const fn get_y() -> u32 {
     Y
     //~^ ERROR E0013
 }
 
-const fn get_Y_addr() -> &'static u32 {
+const fn get_y_addr() -> &'static u32 {
     &Y
     //~^ ERROR E0013
 }

@@ -1,0 +1,37 @@
+error[E0764]: mutable references are not allowed in the final value of constants
+  --> $DIR/issue-17718-const-bad-values.rs:3:34
+   |
+LL | const C1: &'static mut [usize] = &mut [];
+   |                                  ^^^^^^^
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-const-bad-values.rs:8:46
+   |
+LL | const C2: &'static mut usize = unsafe { &mut S };
+   |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-const-bad-values.rs:8:46
+   |
+LL | const C2: &'static mut usize = unsafe { &mut S };
+   |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/issue-17718-const-bad-values.rs:3:1
+   |
+LL | const C1: &'static mut [usize] = &mut [];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────alloc4────────╼ 00 00 00 00 00 00 00 00 │ ╾──────╼........
+           }
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0013, E0080, E0764.
+For more information about an error, try `rustc --explain E0013`.

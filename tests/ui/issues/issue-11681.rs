@@ -5,15 +5,14 @@
 struct Test;
 
 impl Drop for Test {
-    fn drop (&mut self) {}
+    fn drop(&mut self) {}
 }
 
-fn createTest<'a>() -> &'a Test {
-  let testValue = &Test;
-  return testValue; //~ ERROR cannot return value referencing temporary value
+fn create_test<'a>() -> &'a Test {
+    let test_value = &Test;
+    return test_value; //~ ERROR cannot return value referencing temporary value
 }
-
 
 pub fn main() {
-    createTest();
+    create_test();
 }

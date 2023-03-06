@@ -7,7 +7,7 @@ LL | const _: () = panic!(1);
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument to `panic!()` in a const context must have type `&str`
-  --> $DIR/issue-66693.rs:7:19
+  --> $DIR/issue-66693.rs:8:19
    |
 LL | static _FOO: () = panic!(true);
    |                   ^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | static _FOO: () = panic!(true);
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument to `panic!()` in a const context must have type `&str`
-  --> $DIR/issue-66693.rs:11:5
+  --> $DIR/issue-66693.rs:13:5
    |
 LL |     panic!(&1);
    |     ^^^^^^^^^^
@@ -23,16 +23,85 @@ LL |     panic!(&1);
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used
-  --> $DIR/issue-66693.rs:11:12
+  --> $DIR/issue-66693.rs:13:12
    |
 LL |     panic!(&1);
    |            ^^
 
 note: erroneous constant used
-  --> $DIR/issue-66693.rs:11:12
+  --> $DIR/issue-66693.rs:13:12
    |
 LL |     panic!(&1);
    |            ^^
 
-error: aborting due to 3 previous errors
+warning: panic message is not a string literal
+  --> $DIR/issue-66693.rs:4:22
+   |
+LL | const _: () = panic!(1);
+   |                      ^
+   |
+   = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+   = note: `#[warn(non_fmt_panics)]` on by default
+help: add a "{}" format string to `Display` the message
+   |
+LL | const _: () = panic!("{}", 1);
+   |                      +++++
+help: or use std::panic::panic_any instead
+   |
+LL | const _: () = std::panic::panic_any(1);
+   |               ~~~~~~~~~~~~~~~~~~~~~
 
+warning: panic message is not a string literal
+  --> $DIR/issue-66693.rs:8:26
+   |
+LL | static _FOO: () = panic!(true);
+   |                          ^^^^
+   |
+   = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to `Display` the message
+   |
+LL | static _FOO: () = panic!("{}", true);
+   |                          +++++
+help: or use std::panic::panic_any instead
+   |
+LL | static _FOO: () = std::panic::panic_any(true);
+   |                   ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/issue-66693.rs:13:12
+   |
+LL |     panic!(&1);
+   |            ^^
+   |
+   = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to `Display` the message
+   |
+LL |     panic!("{}", &1);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(&1);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-66693.rs:20:15
+   |
+LL | const _: () = panic!();
+   |               ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-66693.rs:20:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: could not evaluate static initializer
+  --> $DIR/issue-66693.rs:22:19
+   |
+LL | static _BAR: () = panic!("panic in static");
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'panic in static', $DIR/issue-66693.rs:22:19
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0080`.

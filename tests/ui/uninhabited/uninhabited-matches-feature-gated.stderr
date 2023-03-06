@@ -17,7 +17,7 @@ LL ~         Err(_) => todo!(),
    |
 
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:15:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:17:19
    |
 LL |     let _ = match x {};
    |                   ^
@@ -37,7 +37,7 @@ LL ~     };
    |
 
 error[E0004]: non-exhaustive patterns: type `(Void,)` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:18:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:21:19
    |
 LL |     let _ = match x {};
    |                   ^
@@ -51,7 +51,7 @@ LL ~     };
    |
 
 error[E0004]: non-exhaustive patterns: type `[Void; 1]` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:21:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:25:19
    |
 LL |     let _ = match x {};
    |                   ^
@@ -65,7 +65,7 @@ LL ~     };
    |
 
 error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:24:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:29:19
    |
 LL |     let _ = match x {
    |                   ^ pattern `&[_, ..]` not covered
@@ -78,7 +78,7 @@ LL ~         &[_, ..] => todo!(),
    |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:32:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:39:19
    |
 LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
@@ -96,7 +96,7 @@ LL ~         Err(_) => todo!(),
    |
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/uninhabited-matches-feature-gated.rs:37:9
+  --> $DIR/uninhabited-matches-feature-gated.rs:45:9
    |
 LL |     let Ok(x) = x;
    |         ^^^^^ pattern `Err(_)` not covered
@@ -109,7 +109,66 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let Ok(x) = x else { todo!() };
    |                   ++++++++++++++++
 
-error: aborting due to 7 previous errors
+warning: the type `&Void` does not permit zero-initialization
+  --> $DIR/uninhabited-matches-feature-gated.rs:15:29
+   |
+LL |     let x: &Void = unsafe { zeroed() };
+   |                             ^^^^^^^^
+   |                             |
+   |                             this code causes undefined behavior when executed
+   |                             help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: references must be non-null
+   = note: `#[warn(invalid_value)]` on by default
+
+warning: the type `(Void,)` does not permit zero-initialization
+  --> $DIR/uninhabited-matches-feature-gated.rs:19:31
+   |
+LL |     let x: (Void,) = unsafe { zeroed() };
+   |                               ^^^^^^^^ this code causes undefined behavior when executed
+   |
+note: enums with no inhabited variants have no valid value
+  --> $DIR/uninhabited-matches-feature-gated.rs:2:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^
+
+warning: the type `[Void; 1]` does not permit zero-initialization
+  --> $DIR/uninhabited-matches-feature-gated.rs:23:33
+   |
+LL |     let x: [Void; 1] = unsafe { zeroed() };
+   |                                 ^^^^^^^^ this code causes undefined behavior when executed
+   |
+note: enums with no inhabited variants have no valid value
+  --> $DIR/uninhabited-matches-feature-gated.rs:2:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^
+
+warning: the type `&[Void]` does not permit zero-initialization
+  --> $DIR/uninhabited-matches-feature-gated.rs:27:31
+   |
+LL |     let x: &[Void] = unsafe { zeroed() };
+   |                               ^^^^^^^^
+   |                               |
+   |                               this code causes undefined behavior when executed
+   |                               help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: references must be non-null
+
+warning: the type `Void` does not permit zero-initialization
+  --> $DIR/uninhabited-matches-feature-gated.rs:34:28
+   |
+LL |     let x: Void = unsafe { zeroed() };
+   |                            ^^^^^^^^ this code causes undefined behavior when executed
+   |
+note: enums with no inhabited variants have no valid value
+  --> $DIR/uninhabited-matches-feature-gated.rs:2:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^
+
+error: aborting due to 7 previous errors; 5 warnings emitted
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.

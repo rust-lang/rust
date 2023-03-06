@@ -1,4 +1,4 @@
-static mut a: Box<isize> = Box::new(3);
+static mut A: Box<isize> = Box::new(3);
 //~^ ERROR cannot call non-const fn
 
 fn main() {}

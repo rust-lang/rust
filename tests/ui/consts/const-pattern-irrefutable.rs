@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals)]
+
 mod foo {
     pub const b: u8 = 2;
     pub const d: u8 = 2;

@@ -1,7 +1,7 @@
 error[E0015]: cannot call non-const fn `bar` in statics
   --> $DIR/mir_check_nonconst.rs:8:19
    |
-LL | static foo: Foo = bar();
+LL | static FOO: Foo = bar();
    |                   ^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants

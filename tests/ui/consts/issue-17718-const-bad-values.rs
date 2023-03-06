@@ -1,5 +1,8 @@
+// stderr-per-bitwidth
+
 const C1: &'static mut [usize] = &mut [];
 //~^ ERROR: mutable references are not allowed
+//~| ERROR: it is undefined behavior
 
 static mut S: usize = 3;
 const C2: &'static mut usize = unsafe { &mut S };

@@ -8,12 +8,12 @@ pub enum Context {
 }
 
 impl Tag {
-    const ExifIFDPointer: Tag = Tag(Context::Tiff, 34665);
+    const EXIF_IFD_POINTER: Tag = Tag(Context::Tiff, 34665);
 }
 
 fn main() {
-    match Tag::ExifIFDPointer {
+    match Tag::EXIF_IFD_POINTER {
     //~^ ERROR: non-exhaustive patterns: `Tag(Context::Exif, _)` not covered
-        Tag::ExifIFDPointer => {}
+        Tag::EXIF_IFD_POINTER => {}
     }
 }

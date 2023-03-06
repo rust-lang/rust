@@ -5,7 +5,7 @@ LL | const B: *mut i32 = &mut 4;
    |                     ^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:16:40
+  --> $DIR/mut_ref_in_final.rs:17:40
    |
 LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                              ----------^^-
@@ -15,7 +15,7 @@ LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:19:42
+  --> $DIR/mut_ref_in_final.rs:22:42
    |
 LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              ------------^^-
@@ -25,7 +25,7 @@ LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:34:65
+  --> $DIR/mut_ref_in_final.rs:36:65
    |
 LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  -------------------------------^^--
@@ -35,7 +35,7 @@ LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:37:67
+  --> $DIR/mut_ref_in_final.rs:39:67
    |
 LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    -------------------------------^^--
@@ -45,7 +45,7 @@ LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:40:71
+  --> $DIR/mut_ref_in_final.rs:42:71
    |
 LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        -------------------------------^^--
@@ -54,7 +54,19 @@ LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        |                              creates a temporary value which is freed while still in use
    |                                        using this value as a static requires that borrow lasts for `'static`
 
-error: aborting due to 6 previous errors
+error: untyped pointers are not allowed in constant
+  --> $DIR/mut_ref_in_final.rs:10:1
+   |
+LL | const B: *mut i32 = &mut 4;
+   | ^^^^^^^^^^^^^^^^^
+
+error: untyped pointers are not allowed in constant
+  --> $DIR/mut_ref_in_final.rs:24:1
+   |
+LL | const C: *const i32 = &{
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0716, E0764.
 For more information about an error, try `rustc --explain E0716`.
