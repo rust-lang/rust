@@ -167,18 +167,44 @@ private:
 
   /// Import known data from an existing analyzer
   void insertAllFrom(TypeResults const &TR, ActivityAnalyzer &Hypothesis,
-                     llvm::Value *Orig) {
+                     llvm::Value *Orig, llvm::Value *Orig2 = nullptr) {
     insertConstantsFrom(TR, Hypothesis);
     for (auto I : Hypothesis.ActiveInstructions) {
       bool inserted = ActiveInstructions.insert(I).second;
       if (inserted && directions == 3) {
         ReEvaluateInstIfInactiveValue[Orig].insert(I);
+        if (Orig2 && Orig2 != Orig)
+          ReEvaluateInstIfInactiveValue[Orig2].insert(I);
       }
     }
     for (auto V : Hypothesis.ActiveValues) {
       bool inserted = ActiveValues.insert(V).second;
       if (inserted && directions == 3) {
         ReEvaluateValueIfInactiveValue[Orig].insert(V);
+        if (Orig2 && Orig2 != Orig)
+          ReEvaluateValueIfInactiveValue[Orig2].insert(V);
+      }
+    }
+
+    for (auto &pair : Hypothesis.ReEvaluateValueIfInactiveInst) {
+      ReEvaluateValueIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                        pair.second.end());
+      if (ConstantInstructions.count(pair.first)) {
+        InsertConstantInstruction(TR, pair.first);
+      }
+    }
+    for (auto &pair : Hypothesis.ReEvaluateInstIfInactiveValue) {
+      ReEvaluateInstIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                       pair.second.end());
+      if (ConstantValues.count(pair.first)) {
+        InsertConstantValue(TR, pair.first);
+      }
+    }
+    for (auto &pair : Hypothesis.ReEvaluateValueIfInactiveValue) {
+      ReEvaluateValueIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                        pair.second.end());
+      if (ConstantValues.count(pair.first)) {
+        InsertConstantValue(TR, pair.first);
       }
     }
   }

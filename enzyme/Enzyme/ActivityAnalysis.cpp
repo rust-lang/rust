@@ -1300,6 +1300,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
             return true;
           }
         }
+        ReEvaluateValueIfInactiveValue[LI->getPointerOperand()].insert(Val);
+        if (TmpOrig != Val) {
+          ReEvaluateValueIfInactiveValue[LI->getPointerOperand()].insert(
+              TmpOrig);
+        }
       } else if (isa<IntrinsicInst>(TmpOrig) &&
                  (cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
                       Intrinsic::nvvm_ldu_global_i ||
@@ -1325,6 +1330,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
             insertConstantsFrom(TR, *UpHypothesis);
             return true;
           }
+        }
+        ReEvaluateValueIfInactiveValue[II->getOperand(0)].insert(Val);
+        if (TmpOrig != Val) {
+          ReEvaluateValueIfInactiveValue[II->getOperand(0)].insert(TmpOrig);
         }
       } else if (auto op = dyn_cast<CallInst>(TmpOrig)) {
         if (op->hasFnAttr("enzyme_inactive")) {
@@ -1902,8 +1911,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
                    << " potentiallyActiveStore=" << potentiallyActiveStore
                    << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentiallyActiveStore) {
-      insertAllFrom(TR, *Hypothesis, Val);
-      // TODO have insertall dependence on this
+      insertAllFrom(TR, *Hypothesis, Val, TmpOrig);
       if (TmpOrig != Val)
         ReEvaluateValueIfInactiveValue[TmpOrig].insert(Val);
       return false;
@@ -2011,7 +2019,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
         ActiveValues.insert(Val);
         assert(Hypothesis->directions == directions);
         assert(Hypothesis->ActiveValues.count(Val));
-        insertAllFrom(TR, *Hypothesis, Val);
+        insertAllFrom(TR, *Hypothesis, Val, TmpOrig);
         if (TmpOrig != Val)
           ReEvaluateValueIfInactiveValue[TmpOrig].insert(Val);
         return false;
