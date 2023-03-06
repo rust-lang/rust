@@ -7,25 +7,14 @@ LL |     baz(|_| ());
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `Fn` is not general enough
   --> $DIR/closure-mismatch.rs:8:5
    |
 LL |     baz(|_| ());
-   |     ^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: expected trait `for<'a> Fn<(&'a (),)>`
-              found trait `Fn<(&(),)>`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/closure-mismatch.rs:8:9
-   |
-LL |     baz(|_| ());
-   |         ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/closure-mismatch.rs:5:11
-   |
-LL | fn baz<T: Foo>(_: T) {}
-   |           ^^^
+   = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

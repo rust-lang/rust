@@ -11,6 +11,6 @@ fn f<T, S>(data: &[T], key: impl Fn(&T) -> S) {
 fn g<T>(data: &[T]) {
     f(data, identity)
     //~^ ERROR the parameter type
-    //~| ERROR mismatched types
+    //~| ERROR implementation of `Fn` is not general enough
     //~| ERROR implementation of `FnOnce` is not general
 }

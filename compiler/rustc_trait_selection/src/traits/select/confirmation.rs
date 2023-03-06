@@ -17,7 +17,7 @@ use rustc_middle::ty::{
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
-use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
+use crate::traits::project::normalize_with_depth_to;
 use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
 use crate::traits::vtable::{
     count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
@@ -598,13 +598,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         is_const: bool,
     ) -> Result<ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
     {
+        let mut nested = vec![];
+        let placeholder_trait_pred =
+            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_trait_pred = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            placeholder_trait_pred,
+            &mut nested,
+        );
+
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
         let tcx = self.tcx();
-        let self_ty = self
-            .infcx
-            .shallow_resolve(obligation.self_ty().no_bound_vars())
-            .expect("fn pointer should not capture bound vars from predicate");
+
+        let self_ty = self.infcx.shallow_resolve(placeholder_trait_pred.self_ty());
         let sig = self_ty.fn_sig(tcx);
         let trait_ref = closure_trait_ref_and_return_type(
             tcx,
@@ -615,9 +625,37 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
-        let cause = obligation.derived_cause(BuiltinDerivedObligation);
+        let instantiated_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType,
+            trait_ref,
+        );
+        let instantiated_trait_ref = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            instantiated_trait_ref,
+            &mut nested,
+        );
 
+        nested.extend(
+            self.infcx
+                .at(&obligation.cause, obligation.param_env)
+                // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
+                .define_opaque_types(true)
+                .eq(placeholder_trait_pred.trait_ref, instantiated_trait_ref)
+                .map_err(|e| {
+                    OutputTypeParameterMismatch(
+                        trait_ref,
+                        obligation.predicate.to_poly_trait_ref(),
+                        e,
+                    )
+                })?
+                .into_obligations(),
+        );
+
+        let cause = obligation.derived_cause(BuiltinDerivedObligation);
         if obligation.is_const() && !is_const {
             // function is a trait method
             if let ty::FnDef(def_id, substs) = self_ty.kind() && let Some(trait_id) = tcx.trait_of_item(*def_id) {
@@ -676,18 +714,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
     {
-        // Okay to skip binder because the substs on generator types never
-        // touch bound regions, they just capture the in-scope
-        // type/region parameters.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let mut nested = vec![];
+        let placeholder_trait_pred =
+            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_trait_pred = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            placeholder_trait_pred,
+            &mut nested,
+        );
+
+        let self_ty = self.infcx.shallow_resolve(placeholder_trait_pred.self_ty());
         let ty::Generator(generator_def_id, substs, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_generator_candidate");
 
-        let gen_sig = substs.as_generator().poly_sig();
-
+        let gen_sig = substs.as_generator().sig();
         // NOTE: The self-type is a generator type and hence is
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation).
@@ -697,15 +743,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .no_bound_vars()
             .expect("unboxed closure type should not capture bound vars from the predicate");
 
-        let trait_ref = super::util::generator_trait_ref_and_outputs(
+        let (trait_ref, _, _) = super::util::generator_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
             gen_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref);
+        );
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        nested.extend(
+            self.infcx
+                .at(&obligation.cause, obligation.param_env)
+                // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
+                .define_opaque_types(true)
+                .eq(placeholder_trait_pred.trait_ref, trait_ref)
+                .map_err(|e| {
+                    OutputTypeParameterMismatch(
+                        ty::Binder::dummy(trait_ref),
+                        obligation.predicate.to_poly_trait_ref(),
+                        e,
+                    )
+                })?
+                .into_obligations(),
+        );
         debug!(?trait_ref, ?nested, "generator candidate obligations");
 
         Ok(ImplSourceGeneratorData { generator_def_id, substs, nested })
@@ -715,27 +774,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        let mut nested = vec![];
+        let placeholder_trait_pred =
+            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_trait_pred = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            placeholder_trait_pred,
+            &mut nested,
+        );
+
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(placeholder_trait_pred.self_ty());
         let ty::Generator(generator_def_id, substs, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_future_candidate");
 
-        let gen_sig = substs.as_generator().poly_sig();
+        let gen_sig = substs.as_generator().sig();
 
-        let trait_ref = super::util::future_trait_ref_and_outputs(
+        let (trait_ref, _) = super::util::future_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
             gen_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref);
+        );
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        nested.extend(
+            self.infcx
+                .at(&obligation.cause, obligation.param_env)
+                // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
+                .define_opaque_types(true)
+                .eq(placeholder_trait_pred.trait_ref, trait_ref)
+                .map_err(|e| {
+                    OutputTypeParameterMismatch(
+                        ty::Binder::dummy(trait_ref),
+                        obligation.predicate.to_poly_trait_ref(),
+                        e,
+                    )
+                })?
+                .into_obligations(),
+        );
+
         debug!(?trait_ref, ?nested, "future candidate obligations");
 
         Ok(ImplSourceFutureData { generator_def_id, substs, nested })
@@ -746,23 +831,57 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        let mut nested = vec![];
+        let placeholder_trait_pred =
+            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_trait_pred = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            placeholder_trait_pred,
+            &mut nested,
+        );
+
         let kind = self
             .tcx()
-            .fn_trait_kind_from_def_id(obligation.predicate.def_id())
+            .fn_trait_kind_from_def_id(placeholder_trait_pred.def_id())
             .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
 
-        // Okay to skip binder because the substs on closure types never
-        // touch bound regions, they just capture the in-scope
-        // type/region parameters.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(placeholder_trait_pred.self_ty());
         let ty::Closure(closure_def_id, substs) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let instantiated_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType,
+            trait_ref,
+        );
 
-        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
+        nested.extend(
+            self.infcx
+                .at(&obligation.cause, obligation.param_env)
+                // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
+                .define_opaque_types(true)
+                .eq(placeholder_trait_pred.trait_ref, instantiated_trait_ref)
+                .map_err(|e| {
+                    OutputTypeParameterMismatch(
+                        trait_ref,
+                        obligation.predicate.to_poly_trait_ref(),
+                        e,
+                    )
+                })?
+                .into_obligations(),
+        );
+
+        debug!(
+            ?closure_def_id,
+            ?instantiated_trait_ref,
+            ?nested,
+            "confirm closure candidate obligations"
+        );
 
         // FIXME: Chalk
         if self.tcx().sess.opts.unstable_opts.trait_solver != TraitSolver::Chalk {
@@ -773,62 +892,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         Ok(ImplSourceClosureData { closure_def_id, substs, nested })
-    }
-
-    /// In the case of closure types and fn pointers,
-    /// we currently treat the input type parameters on the trait as
-    /// outputs. This means that when we have a match we have only
-    /// considered the self type, so we have to go back and make sure
-    /// to relate the argument types too. This is kind of wrong, but
-    /// since we control the full set of impls, also not that wrong,
-    /// and it DOES yield better error messages (since we don't report
-    /// errors as if there is no applicable impl, but rather report
-    /// errors are about mismatched argument types.
-    ///
-    /// Here is an example. Imagine we have a closure expression
-    /// and we desugared it so that the type of the expression is
-    /// `Closure`, and `Closure` expects `i32` as argument. Then it
-    /// is "as if" the compiler generated this impl:
-    /// ```ignore (illustrative)
-    /// impl Fn(i32) for Closure { ... }
-    /// ```
-    /// Now imagine our obligation is `Closure: Fn(usize)`. So far
-    /// we have matched the self type `Closure`. At this point we'll
-    /// compare the `i32` to `usize` and generate an error.
-    ///
-    /// Note that this checking occurs *after* the impl has selected,
-    /// because these output type parameters should not affect the
-    /// selection of the impl. Therefore, if there is a mismatch, we
-    /// report an error to the user.
-    #[instrument(skip(self), level = "trace")]
-    fn confirm_poly_trait_refs(
-        &mut self,
-        obligation: &TraitObligation<'tcx>,
-        expected_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
-        // Normalize the obligation and expected trait refs together, because why not
-        let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    (obligation_trait_ref, expected_trait_ref),
-                )
-            });
-
-        self.infcx
-            .at(&obligation.cause, obligation.param_env)
-            // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
-            .define_opaque_types(true)
-            .sup(obligation_trait_ref, expected_trait_ref)
-            .map(|InferOk { mut obligations, .. }| {
-                obligations.extend(nested);
-                obligations
-            })
-            .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
     }
 
     fn confirm_trait_upcasting_unsize_candidate(

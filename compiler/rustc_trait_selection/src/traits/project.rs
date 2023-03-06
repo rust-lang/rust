@@ -1817,7 +1817,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     impl_source: ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let gen_sig = impl_source.substs.as_generator().sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -1832,26 +1832,24 @@ fn confirm_generator_candidate<'cx, 'tcx>(
 
     let gen_def_id = tcx.require_lang_item(LangItem::Generator, None);
 
-    let predicate = super::util::generator_trait_ref_and_outputs(
+    let (trait_ref, yield_ty, return_ty) = super::util::generator_trait_ref_and_outputs(
         tcx,
         gen_def_id,
         obligation.predicate.self_ty(),
         gen_sig,
-    )
-    .map_bound(|(trait_ref, yield_ty, return_ty)| {
-        let name = tcx.associated_item(obligation.predicate.def_id).name;
-        let ty = if name == sym::Return {
-            return_ty
-        } else if name == sym::Yield {
-            yield_ty
-        } else {
-            bug!()
-        };
+    );
 
-        ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
-            term: ty.into(),
-        }
+    let name = tcx.associated_item(obligation.predicate.def_id).name;
+    let ty = if name == sym::Return {
+        return_ty
+    } else if name == sym::Yield {
+        yield_ty
+    } else {
+        bug!()
+    };
+    let predicate = ty::Binder::dummy(ty::ProjectionPredicate {
+        projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
+        term: ty.into(),
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate, false)
@@ -1864,7 +1862,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     impl_source: ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let gen_sig = impl_source.substs.as_generator().sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -1878,19 +1876,17 @@ fn confirm_future_candidate<'cx, 'tcx>(
     let tcx = selcx.tcx();
     let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
 
-    let predicate = super::util::future_trait_ref_and_outputs(
+    let (trait_ref, return_ty) = super::util::future_trait_ref_and_outputs(
         tcx,
         fut_def_id,
         obligation.predicate.self_ty(),
         gen_sig,
-    )
-    .map_bound(|(trait_ref, return_ty)| {
-        debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+    );
 
-        ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
-            term: return_ty.into(),
-        }
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+    let predicate = ty::Binder::dummy(ty::ProjectionPredicate {
+        projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
+        term: return_ty.into(),
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate, false)
