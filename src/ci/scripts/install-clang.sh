@@ -19,9 +19,12 @@ if isMacOS; then
         bindir="$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
     else
         file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
+        mkdir -p citools
+        cd citools
         retry curl -f "${file}" -o "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
         tar xJf "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
-        bindir="$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin"
+        mv "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin" clang-rust
+        bindir="$(pwd)/clang-rust/bin"
     fi
 
     ciCommandSetEnv CC "${bindir}/clang"
