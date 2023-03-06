@@ -3,9 +3,9 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst,
-    InferTy, Opaque, PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitor,
+    AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -94,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -460,7 +460,7 @@ pub struct IsSuggestableVisitor<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -480,8 +480,9 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *self.tcx.type_of(parent).kind()
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     // Okay
@@ -535,10 +536,10 @@ pub struct MakeSuggestableFolder<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     type Error = ();
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -563,8 +564,9 @@ impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *self.tcx.type_of(parent).kind()
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     t
@@ -608,4 +610,12 @@ impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
 
         c.try_super_fold_with(self)
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_const_not_used_in_type_alias)]
+pub(super) struct ConstNotUsedTraitAlias {
+    pub ct: String,
+    #[primary_span]
+    pub span: Span,
 }

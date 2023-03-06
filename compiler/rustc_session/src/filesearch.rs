@@ -182,7 +182,17 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         if dir.ends_with(crate::config::host_triple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
-                .and_then(|p| p.parent()) // chop off `lib`
+                .and_then(|p| {
+                    // chop off `lib` (this could be also $arch dir if the host sysroot uses a
+                    // multi-arch layout like Debian or Ubuntu)
+                    match p.parent() {
+                        Some(p) => match p.file_name() {
+                            Some(f) if f == "lib" => p.parent(), // first chop went for $arch, so chop again for `lib`
+                            _ => Some(p),
+                        },
+                        None => None,
+                    }
+                })
                 .map(|s| s.to_owned())
                 .ok_or(format!(
                     "Could not move 3 levels upper using `parent()` on {}",
@@ -217,7 +227,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
                 // Look for the target rustlib directory in the suspected sysroot.
                 let mut rustlib_path = rustc_target::target_rustlib_path(&p, "dummy");
                 rustlib_path.pop(); // pop off the dummy target.
-                if rustlib_path.exists() { Some(p) } else { None }
+                rustlib_path.exists().then_some(p)
             }
             None => None,
         }

@@ -18,7 +18,7 @@ LL |         builder.push(output);
    |         ^^^^^^^^^^^^^------^
    |                      |
    |                      this argument influences the return type of `push`
-note: associated function defined here
+note: method defined here
   --> $DIR/issue-52893.rs:11:8
    |
 LL |     fn push(self, other: T) -> Self::PushRes;

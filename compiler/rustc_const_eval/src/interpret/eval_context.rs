@@ -7,7 +7,7 @@ use either::{Either, Left, Right};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -489,7 +489,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    >(
         &self,
         value: T,
     ) -> Result<T, InterpError<'tcx>> {
@@ -498,7 +500,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the provided
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
@@ -506,14 +508,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         frame
             .instance
             .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
-            .map_err(|e| {
-                self.tcx.sess.delay_span_bug(
-                    self.cur_span(),
-                    format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
-                );
-
-                InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric)
-            })
+            .map_err(|_| err_inval!(TooGeneric))
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
@@ -632,14 +627,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 Ok(Some((size, align)))
             }
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
                 Ok(Some(self.get_vtable_size_and_align(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.unwrap_meta().to_machine_usize(self)?;
+                let len = metadata.unwrap_meta().to_target_usize(self)?;
                 let elem = layout.field(self, 0);
 
                 // Make sure the slice is not too big.

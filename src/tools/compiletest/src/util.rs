@@ -11,6 +11,8 @@ mod tests;
 
 pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
     "aarch64-unknown-linux-gnu",
@@ -19,6 +21,7 @@ pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
     "i686-linux-android",
     "i686-unknown-linux-gnu",
     "x86_64-apple-darwin",
+    "x86_64-apple-ios",
     "x86_64-unknown-fuchsia",
     "x86_64-linux-android",
     "x86_64-unknown-freebsd",
@@ -45,6 +48,13 @@ pub const CFI_SUPPORTED_TARGETS: &[&str] = &[
 
 pub const KCFI_SUPPORTED_TARGETS: &[&str] = &["aarch64-linux-none", "x86_64-linux-none"];
 
+pub const KASAN_SUPPORTED_TARGETS: &[&str] = &[
+    "aarch64-unknown-none",
+    "riscv64gc-unknown-none-elf",
+    "riscv64imac-unknown-none-elf",
+    "x86_64-unknown-none",
+];
+
 pub const LSAN_SUPPORTED_TARGETS: &[&str] = &[
     // FIXME: currently broken, see #88132
     // "aarch64-apple-darwin",
@@ -63,8 +73,11 @@ pub const MSAN_SUPPORTED_TARGETS: &[&str] = &[
 
 pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
+    "x86_64-apple-ios",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",

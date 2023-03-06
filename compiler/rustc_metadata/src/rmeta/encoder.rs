@@ -838,7 +838,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Field => true,
         DefKind::TyParam
         | DefKind::ConstParam
@@ -873,7 +873,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -951,7 +951,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::TyAlias
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -988,7 +988,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
@@ -1018,7 +1018,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
@@ -1081,7 +1081,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::Closure
         | DefKind::Generator
@@ -1101,32 +1101,18 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_trait_impl_trait_tys(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if tcx.def_kind(def_id) != DefKind::AssocFn {
-        return false;
+// We only encode impl trait in trait when using `lower-impl-trait-in-trait-to-assoc-ty` unstable
+// option.
+fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty
+        && let Some(assoc_item) = tcx.opt_associated_item(def_id)
+        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.kind == ty::AssocKind::Fn
+    {
+        true
+    } else {
+        false
     }
-
-    let Some(item) = tcx.opt_associated_item(def_id) else { return false; };
-    if item.container != ty::AssocItemContainer::ImplContainer {
-        return false;
-    }
-
-    let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
-
-    // FIXME(RPITIT): This does a somewhat manual walk through the signature
-    // of the trait fn to look for any RPITITs, but that's kinda doing a lot
-    // of work. We can probably remove this when we refactor RPITITs to be
-    // associated types.
-    tcx.fn_sig(trait_item_def_id).subst_identity().skip_binder().output().walk().any(|arg| {
-        if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, data) = ty.kind()
-            && tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
-        {
-            true
-        } else {
-            false
-        }
-    })
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
@@ -1137,8 +1123,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_doc_hidden: false,
         };
         let attr_iter = tcx
-            .hir()
-            .attrs(tcx.hir().local_def_id_to_hir_id(def_id))
+            .opt_local_def_id_to_hir_id(def_id)
+            .map_or(Default::default(), |hir_id| tcx.hir().attrs(hir_id))
             .iter()
             .filter(|attr| analyze_attr(attr, &mut state));
 
@@ -1206,10 +1192,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(def_id);
             }
-            if should_encode_trait_impl_trait_tys(tcx, def_id)
+            if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
+            }
+            if should_encode_fn_impl_trait_in_trait(tcx, def_id) {
+                let table = tcx.associated_items_for_impl_trait_in_trait(def_id);
+                record_defaulted_array!(self.tables.associated_items_for_impl_trait_in_trait[def_id] <- table);
             }
         }
 
@@ -1541,8 +1531,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.impl_defaultness.set_some(def_id.index, *defaultness);
                 self.tables.constness.set_some(def_id.index, *constness);
 
-                let trait_ref = self.tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::skip_binder);
+                let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {
+                    let trait_ref = trait_ref.skip_binder();
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
@@ -1630,7 +1621,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_closure(&mut self, def_id: LocalDefId) {
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
-        // including on the signature, which is inferred in `typeck.
+        // including on the signature, which is inferred in `typeck`.
         let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = typeck_result.node_type(hir_id);
@@ -1860,7 +1851,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
                 if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
                     let trait_ref = trait_ref.subst_identity();
 
@@ -2255,6 +2246,22 @@ pub fn provide(providers: &mut Providers) {
             // Bring everything into deterministic order.
             traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
             tcx.arena.alloc_slice(&traits)
+        },
+        trait_impls_in_crate: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+
+            let mut trait_impls = Vec::new();
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
+                    && tcx.impl_trait_ref(id.owner_id).is_some()
+                {
+                    trait_impls.push(id.owner_id.to_def_id())
+                }
+            }
+
+            // Bring everything into deterministic order.
+            trait_impls.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            tcx.arena.alloc_slice(&trait_impls)
         },
 
         ..*providers

@@ -3,7 +3,7 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -162,6 +162,10 @@ pub fn predicate_obligations<'tcx>(
                 ty::TermKind::Ty(ty) => ty.into(),
                 ty::TermKind::Const(c) => c.into(),
             })
+        }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            wf.compute(ct.into());
+            wf.compute(ty.into());
         }
         ty::PredicateKind::WellFormed(arg) => {
             wf.compute(arg);
@@ -879,7 +883,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.
-    let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
+    let open_ty = tcx.mk_fresh_ty(0);
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
@@ -922,6 +926,7 @@ pub(crate) fn required_region_bounds<'tcx>(
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::WellFormed(..)

@@ -3,7 +3,7 @@
 goto: "file://" + |DOC_PATH| + "/test_docs/huge_amount_of_consts/index.html"
 
 compare-elements-position-near-false: (
-    "//*[@class='item-table']//div[last()-1]",
-    "//*[@class='item-table']//div[last()-3]",
+    "//ul[@class='item-table']/li[last()-1]",
+    "//ul[@class='item-table']/li[last()-3]",
     {"y": 12},
 )

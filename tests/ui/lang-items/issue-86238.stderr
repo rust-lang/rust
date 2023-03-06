@@ -4,7 +4,7 @@ error: failed to find an overloaded call trait for closure call
 LL |     one()
    |     ^^^^^
    |
-   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have associated `call`/`call_mut`/`call_once` functions
+   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
 
 error: aborting due to previous error
 

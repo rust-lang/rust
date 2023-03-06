@@ -20,8 +20,8 @@ use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
-
 use std::mem;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
@@ -146,14 +146,14 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
-                this.parse_struct_expr(None, path, true)?
+                this.parse_expr_struct(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
                 this.mk_expr(lo.to(hi), ExprKind::Path(None, path))
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_dot_or_call_expr_with(expr, lo, attrs)
+                this.parse_expr_dot_or_call_with(expr, lo, attrs)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
             Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens_trailing_token` closure,
             // since our outer attributes do not apply to this part of the expression
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_assoc_expr_with(
+                this.parse_expr_assoc_with(
                     0,
                     LhsExpr::AlreadyParsed { expr, starts_statement: true },
                 )
@@ -199,8 +199,8 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
-            let e = self.parse_assoc_expr_with(
+            let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
+            let e = self.parse_expr_assoc_with(
                 0,
                 LhsExpr::AlreadyParsed { expr: e, starts_statement: false },
             )?;
@@ -544,7 +544,7 @@ impl<'a> Parser<'a> {
         s: BlockCheckMode,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
-        let mut stmts = vec![];
+        let mut stmts = ThinVec::new();
         let mut snapshot = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
@@ -662,7 +662,12 @@ impl<'a> Parser<'a> {
         Ok(Some(stmt))
     }
 
-    pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
+    pub(super) fn mk_block(
+        &self,
+        stmts: ThinVec<Stmt>,
+        rules: BlockCheckMode,
+        span: Span,
+    ) -> P<Block> {
         P(Block {
             stmts,
             id: DUMMY_NODE_ID,
@@ -682,6 +687,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_block_err(&self, span: Span) -> P<Block> {
-        self.mk_block(vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
+        self.mk_block(thin_vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
     }
 }

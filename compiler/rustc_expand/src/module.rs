@@ -12,8 +12,8 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::iter::once;
-
 use std::path::{self, Path, PathBuf};
+use thin_vec::ThinVec;
 
 #[derive(Copy, Clone)]
 pub enum DirOwnership {
@@ -31,7 +31,7 @@ pub struct ModulePathSuccess {
 }
 
 pub(crate) struct ParsedExternalMod {
-    pub items: Vec<P<Item>>,
+    pub items: ThinVec<P<Item>>,
     pub spans: ModSpans,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,

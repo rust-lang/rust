@@ -12,7 +12,7 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;
 
@@ -32,7 +32,7 @@ pub trait QueryNormalizeExt<'tcx> {
     /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 }
 
 impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
     /// and other details are still "under development".
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
@@ -115,8 +115,8 @@ struct MaxEscapingBoundVarVisitor {
     escaping: usize,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -170,14 +170,14 @@ struct QueryNormalizer<'cx, 'tcx> {
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
-    fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    fn try_fold_binder<T: TypeFoldable<'tcx>>(
+    fn try_fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
@@ -214,7 +214,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
                     Reveal::All => {
                         let substs = substs.try_fold_with(self)?;
-                        let recursion_limit = self.tcx().recursion_limit();
+                        let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             // A closure or generator may have itself as in its upvars.
                             // This should be checked handled by the recursion check for opaque
@@ -228,8 +228,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                             return ty.try_super_fold_with(self);
                         }
 
-                        let generic_ty = self.tcx().bound_type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
+                        let generic_ty = self.interner().type_of(def_id);
+                        let concrete_ty = generic_ty.subst(self.interner(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             bug!(

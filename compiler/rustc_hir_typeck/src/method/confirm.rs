@@ -14,7 +14,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, UserSubsts, UserType};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
@@ -384,7 +384,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.cfcx.tcx();
-                        self.cfcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
+                        self.cfcx
+                            .ct_infer(
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
+                                Some(param),
+                                inf.span,
+                            )
+                            .into()
                     }
                     _ => unreachable!(),
                 }
@@ -627,7 +635,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn instantiate_binder_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         self.fcx.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, value)
     }

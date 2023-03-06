@@ -2,11 +2,12 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{
-    error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
+    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
+use crate::fluent_generated as fluent;
 use crate::UnsupportedLiteralReason;
 
 #[derive(Diagnostic)]
@@ -59,7 +60,7 @@ impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
         );
         diag.set_arg("item", self.item);
         diag.set_arg("expected", expected.join(", "));
-        diag.span_label(self.span, fluent::label);
+        diag.span_label(self.span, fluent::attr_label);
         diag
     }
 }
@@ -99,31 +100,31 @@ pub(crate) struct InvalidIssueString {
 // translatable.
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidIssueStringCause {
-    #[label(must_not_be_zero)]
+    #[label(attr_must_not_be_zero)]
     MustNotBeZero {
         #[primary_span]
         span: Span,
     },
 
-    #[label(empty)]
+    #[label(attr_empty)]
     Empty {
         #[primary_span]
         span: Span,
     },
 
-    #[label(invalid_digit)]
+    #[label(attr_invalid_digit)]
     InvalidDigit {
         #[primary_span]
         span: Span,
     },
 
-    #[label(pos_overflow)]
+    #[label(attr_pos_overflow)]
     PosOverflow {
         #[primary_span]
         span: Span,
     },
 
-    #[label(neg_overflow)]
+    #[label(attr_neg_overflow)]
     NegOverflow {
         #[primary_span]
         span: Span,
@@ -275,7 +276,7 @@ pub(crate) struct IncorrectReprFormatGeneric<'a> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum IncorrectReprFormatGenericCause<'a> {
-    #[suggestion(suggestion, code = "{name}({int})", applicability = "machine-applicable")]
+    #[suggestion(attr_suggestion, code = "{name}({int})", applicability = "machine-applicable")]
     Int {
         #[primary_span]
         span: Span,
@@ -287,7 +288,7 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
         int: u128,
     },
 
-    #[suggestion(suggestion, code = "{name}({symbol})", applicability = "machine-applicable")]
+    #[suggestion(attr_suggestion, code = "{name}({symbol})", applicability = "machine-applicable")]
     Symbol {
         #[primary_span]
         span: Span,

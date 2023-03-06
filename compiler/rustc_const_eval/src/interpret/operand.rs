@@ -52,7 +52,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val, Scalar::from_machine_usize(len, cx))
+        Immediate::ScalarPair(val, Scalar::from_target_usize(len, cx))
     }
 
     pub fn new_dyn_trait(
@@ -255,7 +255,22 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         }
     }
 
-    pub fn offset_with_meta(
+    /// Replace the layout of this operand. There's basically no sanity check that this makes sense,
+    /// you better know what you are doing! If this is an immediate, applying the wrong layout can
+    /// not just lead to invalid data, it can actually *shift the data around* since the offsets of
+    /// a ScalarPair are entirely determined by the layout, not the data.
+    pub fn transmute(&self, layout: TyAndLayout<'tcx>) -> Self {
+        assert_eq!(
+            self.layout.size, layout.size,
+            "transmuting with a size change, that doesn't seem right"
+        );
+        OpTy { layout, ..*self }
+    }
+
+    /// Offset the operand in memory (if possible) and change its metadata.
+    ///
+    /// This can go wrong very easily if you give the wrong layout for the new place!
+    pub(super) fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
@@ -276,6 +291,9 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         }
     }
 
+    /// Offset the operand in memory (if possible).
+    ///
+    /// This can go wrong very easily if you give the wrong layout for the new place!
     pub fn offset(
         &self,
         offset: Size,
@@ -414,12 +432,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.read_scalar(op)?.to_pointer(self)
     }
     /// Read a pointer-sized unsigned integer from a place.
-    pub fn read_machine_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
-        self.read_scalar(op)?.to_machine_usize(self)
+    pub fn read_target_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
+        self.read_scalar(op)?.to_target_usize(self)
     }
     /// Read a pointer-sized signed integer from a place.
-    pub fn read_machine_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
-        self.read_scalar(op)?.to_machine_isize(self)
+    pub fn read_target_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
+        self.read_scalar(op)?.to_target_isize(self)
     }
 
     /// Turn the wide MPlace into a string (must already be dereferenced!)

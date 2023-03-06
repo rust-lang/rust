@@ -23,16 +23,16 @@ use rustc_infer::infer::InferResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, GenericParamDefKind, Ty, UserType,
+    self, AdtKind, CanonicalUserType, GenericParamDefKind, Ty, TyCtxt, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
 
@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn normalize<T>(&self, span: Span, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.register_infer_ok_obligations(
             self.at(&self.misc(span), self.param_env).normalize(value),
@@ -443,7 +443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // sufficiently enforced with erased regions. =)
     fn can_contain_user_lifetime_bounds<T>(t: T) -> bool
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         t.has_free_regions() || t.has_projections() || t.has_infer_types()
     }
@@ -451,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
+            None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error(e),
             None => {
                 bug!(
                     "no type for node {} in fcx {}",
@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if let Some(e) = self.tainted_by_errors() => Some(self.tcx.ty_error_with_guaranteed(e)),
+            None if let Some(e) = self.tainted_by_errors() => Some(self.tcx.ty_error(e)),
             None => None,
         }
     }
@@ -663,6 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
@@ -700,7 +701,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        vec![self.tcx.ty_error(); len]
+        let ty_error = self.tcx.ty_error_misc();
+        vec![ty_error; len]
     }
 
     /// Unifies the output type with the expected type early, for more coercions
@@ -736,7 +738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
                     && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
                     && let Some(def_id) = def_id.as_local()
-                    && self.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                    && self.opaque_type_origin(def_id).is_some() {
                     return None;
                 }
             }
@@ -776,9 +778,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.bound_type_of(self.tcx.parent(def_id))
+            self.tcx.type_of(self.tcx.parent(def_id))
         } else {
-            self.tcx.bound_type_of(def_id)
+            self.tcx.type_of(def_id)
         };
         let substs = self.fresh_substs_for_item(span, def_id);
         let ty = item_ty.subst(self.tcx, substs);
@@ -1130,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id));
+            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id).subst_identity());
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
@@ -1160,7 +1162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     let reported = err.emit();
-                    return (tcx.ty_error_with_guaranteed(reported), res);
+                    return (tcx.ty_error(reported), res);
                 }
             }
         } else {
@@ -1226,7 +1228,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.fcx.tcx();
-                        self.fcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
+                        self.fcx
+                            .ct_infer(
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
+                                Some(param),
+                                inf.span,
+                            )
+                            .into()
                     }
                     _ => unreachable!(),
                 }
@@ -1248,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            tcx.bound_type_of(param.def_id).subst(tcx, substs.unwrap()).into()
+                            tcx.type_of(param.def_id).subst(tcx, substs.unwrap()).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
@@ -1296,7 +1306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty = tcx.bound_type_of(def_id);
+        let ty = tcx.type_of(def_id);
         assert!(!substs.has_escaping_bound_vars());
         assert!(!ty.0.has_escaping_bound_vars());
         let ty_substituted = self.normalize(span, ty.subst(tcx, substs));
@@ -1307,7 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
             // This also occurs for an enum variant on a type alias.
-            let impl_ty = self.normalize(span, tcx.bound_type_of(impl_def_id).subst(tcx, substs));
+            let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).subst(tcx, substs));
             let self_ty = self.normalize(span, self_ty);
             match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
@@ -1408,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
                     .emit()
             });
-            let err = self.tcx.ty_error_with_guaranteed(e);
+            let err = self.tcx.ty_error(e);
             self.demand_suptype(sp, err, ty);
             err
         }

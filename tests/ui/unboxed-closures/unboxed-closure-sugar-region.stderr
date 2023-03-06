@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 1 lifetime argument but 0 lifetime arguments were supplied
+error[E0107]: trait takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/unboxed-closure-sugar-region.rs:30:51
    |
 LL | fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {

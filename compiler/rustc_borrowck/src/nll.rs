@@ -5,7 +5,6 @@
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
@@ -37,7 +36,7 @@ use crate::{
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
-    Upvar,
+    BorrowckInferCtxt, Upvar,
 };
 
 pub type PoloniusOutput = Output<RustcFacts>;
@@ -58,7 +57,7 @@ pub(crate) struct NllOutput<'tcx> {
 /// `compute_regions`.
 #[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
@@ -157,7 +156,7 @@ fn populate_polonius_move_facts(
 ///
 /// This may result in errors being reported.
 pub(crate) fn compute_regions<'cx, 'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -259,6 +258,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     );
 
     let mut regioncx = RegionInferenceContext::new(
+        infcx,
         var_origins,
         universal_regions,
         placeholder_indices,
@@ -322,7 +322,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 }
 
 pub(super) fn dump_mir_results<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
@@ -372,7 +372,7 @@ pub(super) fn dump_mir_results<'tcx>(
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
 pub(super) fn dump_annotation<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,

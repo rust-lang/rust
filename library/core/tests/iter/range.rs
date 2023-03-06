@@ -26,7 +26,6 @@ fn test_range() {
 
 #[test]
 fn test_char_range() {
-    use std::char;
     // Miri is too slow
     let from = if cfg!(miri) { char::from_u32(0xD800 - 10).unwrap() } else { '\0' };
     let to = if cfg!(miri) { char::from_u32(0xDFFF + 10).unwrap() } else { char::MAX };

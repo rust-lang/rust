@@ -126,7 +126,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Deref]),
+                    projection: self.tcx().mk_place_elems(&[ProjectionElem::Deref]),
                 },
                 self.tcx,
             );
@@ -162,10 +162,9 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
-                        Field::new(0),
-                        self.ref_gen_ty,
-                    )]),
+                    projection: self
+                        .tcx()
+                        .mk_place_elems(&[ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
                 },
                 self.tcx,
             );
@@ -187,7 +186,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     let mut new_projection = new_base.projection.to_vec();
     new_projection.append(&mut place.projection.to_vec());
 
-    place.projection = tcx.intern_place_elems(&new_projection);
+    place.projection = tcx.mk_place_elems(&new_projection);
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
@@ -300,7 +299,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(Field::new(idx), ty));
 
-        Place { local: base.local, projection: self.tcx.intern_place_elems(&projection) }
+        Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
 
     // Create a statement which changes the discriminant
@@ -427,7 +426,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
+    let substs = tcx.mk_substs(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
 
     // Replace the by ref generator argument
@@ -487,7 +486,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let get_context_def_id = tcx.require_lang_item(LangItem::GetContext, None);
 
-    for bb in BasicBlock::new(0)..body.basic_blocks.next_index() {
+    for bb in START_BLOCK..body.basic_blocks.next_index() {
         let bb_data = &body[bb];
         if bb_data.is_cleanup {
             continue;
@@ -1255,7 +1254,7 @@ fn create_generator_resume_function<'tcx>(
     use rustc_middle::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
-    cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
+    cases.insert(0, (UNRESUMED, START_BLOCK));
 
     // Panic when resumed on the returned or poisoned state
     let generator_kind = body.generator_kind().unwrap();
@@ -1450,13 +1449,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
             let poll_adt_ref = tcx.adt_def(poll_did);
-            let poll_substs = tcx.intern_substs(&[body.return_ty().into()]);
+            let poll_substs = tcx.mk_substs(&[body.return_ty().into()]);
             (poll_adt_ref, poll_substs)
         } else {
             // Compute GeneratorState<yield_ty, return_ty>
             let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
             let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
+            let state_substs = tcx.mk_substs(&[yield_ty.into(), body.return_ty().into()]);
             (state_adt_ref, state_substs)
         };
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
@@ -1481,7 +1480,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // When first entering the generator, move the resume argument into its new local.
         let source_info = SourceInfo::outermost(body.span);
-        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
+        let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
         stmts.insert(
             0,
             Statement {
@@ -1845,7 +1844,7 @@ fn check_must_not_suspend_ty<'tcx>(
                 param_env,
                 SuspendCheckData {
                     descr_pre,
-                    plural_len: len.try_eval_usize(tcx, param_env).unwrap_or(0) as usize + 1,
+                    plural_len: len.try_eval_target_usize(tcx, param_env).unwrap_or(0) as usize + 1,
                     ..data
                 },
             )
@@ -1873,12 +1872,14 @@ fn check_must_not_suspend_def(
     data: SuspendCheckData<'_>,
 ) -> bool {
     if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let msg = format!(
-            "{}`{}`{} held across a suspend point, but should not be",
-            data.descr_pre,
-            tcx.def_path_str(def_id),
-            data.descr_post,
-        );
+        let msg = rustc_errors::DelayDm(|| {
+            format!(
+                "{}`{}`{} held across a suspend point, but should not be",
+                data.descr_pre,
+                tcx.def_path_str(def_id),
+                data.descr_post,
+            )
+        });
         tcx.struct_span_lint_hir(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,

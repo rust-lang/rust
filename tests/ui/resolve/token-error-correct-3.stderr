@@ -1,25 +1,13 @@
-error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:13:21
-   |
-LL |             callback(path.as_ref();
-   |                     ^             ^ help: `)` may belong here
-   |                     |
-   |                     unclosed delimiter
-
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:16:9
-   |
-LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
-   |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator
-LL |         } else {
-   |         ^ unexpected token
-
-error[E0425]: cannot find function `is_directory` in this scope
-  --> $DIR/token-error-correct-3.rs:11:13
+error: mismatched closing delimiter: `}`
+  --> $DIR/token-error-correct-3.rs:12:21
    |
 LL |         if !is_directory(path.as_ref()) {
-   |             ^^^^^^^^^^^^ not found in this scope
+   |                                         - closing delimiter possibly meant for this
+LL |             callback(path.as_ref();
+   |                     ^ unclosed delimiter
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
+LL |         } else {
+   |         ^ mismatched closing delimiter
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0425`.

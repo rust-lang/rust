@@ -1,8 +1,11 @@
-use hir::{Adt, HasSource, HirDisplay, Module, Semantics, TypeInfo};
+use hir::{
+    Adt, AsAssocItem, HasSource, HirDisplay, Module, PathResolution, Semantics, Type, TypeInfo,
+};
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
+    path_transform::PathTransform,
     FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use stdx::to_lower_snake_case;
@@ -10,14 +13,13 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, AstNode, CallExpr, HasArgList, HasModuleItem,
+        make, AstNode, CallExpr, HasArgList, HasGenericParams, HasModuleItem, HasTypeBounds,
     },
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
-    utils::convert_reference_type,
-    utils::{find_struct_impl, render_snippet, Cursor},
+    utils::{convert_reference_type, find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -107,7 +109,7 @@ fn fn_target_info(
     match path.qualifier() {
         Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
             Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
-                get_fn_target_info(ctx, &Some(module), call.clone())
+                get_fn_target_info(ctx, Some(module), call.clone())
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
                 if let hir::Adt::Enum(_) = adt {
@@ -125,7 +127,7 @@ fn fn_target_info(
             }
             _ => None,
         },
-        _ => get_fn_target_info(ctx, &None, call.clone()),
+        _ => get_fn_target_info(ctx, None, call.clone()),
     }
 }
 
@@ -136,7 +138,8 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     }
 
     let fn_name = call.name_ref()?;
-    let adt = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
+    let receiver_ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references();
+    let adt = receiver_ty.as_adt()?;
 
     let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module = adt.module(ctx.sema.db);
@@ -147,8 +150,14 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
     let (target, insert_offset) = get_method_target(ctx, &impl_, &adt)?;
 
-    let function_builder =
-        FunctionBuilder::from_method_call(ctx, &call, &fn_name, target_module, target)?;
+    let function_builder = FunctionBuilder::from_method_call(
+        ctx,
+        &call,
+        &fn_name,
+        receiver_ty,
+        target_module,
+        target,
+    )?;
     let text_range = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
     let label = format!("Generate {} method", function_builder.fn_name);
@@ -179,6 +188,7 @@ fn add_func_to_accumulator(
         let function_template = function_builder.render(adt_name.is_some());
         let mut func = function_template.to_string(ctx.config.snippet_cap);
         if let Some(name) = adt_name {
+            // FIXME: adt may have generic params.
             func = format!("\n{indent}impl {name} {{\n{func}\n{indent}}}");
         }
         builder.edit_file(file);
@@ -238,7 +248,8 @@ impl FunctionTemplate {
 struct FunctionBuilder {
     target: GeneratedFunctionTarget,
     fn_name: ast::Name,
-    type_params: Option<ast::GenericParamList>,
+    generic_param_list: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
     params: ast::ParamList,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
@@ -260,19 +271,32 @@ impl FunctionBuilder {
         let target_module =
             target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
         let fn_name = make::name(fn_name);
-        let (type_params, params) =
-            fn_args(ctx, target_module, ast::CallableExpr::Call(call.clone()))?;
+        let mut necessary_generic_params = FxHashSet::default();
+        let params = fn_args(
+            ctx,
+            target_module,
+            ast::CallableExpr::Call(call.clone()),
+            &mut necessary_generic_params,
+        )?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) =
-            make_return_type(ctx, &ast::Expr::CallExpr(call.clone()), target_module);
+        let (ret_type, should_focus_return_type) = make_return_type(
+            ctx,
+            &ast::Expr::CallExpr(call.clone()),
+            target_module,
+            &mut necessary_generic_params,
+        );
+
+        let (generic_param_list, where_clause) =
+            fn_generic_params(ctx, necessary_generic_params, &target)?;
 
         Some(Self {
             target,
             fn_name,
-            type_params,
+            generic_param_list,
+            where_clause,
             params,
             ret_type,
             should_focus_return_type,
@@ -285,25 +309,40 @@ impl FunctionBuilder {
         ctx: &AssistContext<'_>,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
+        receiver_ty: Type,
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
         let needs_pub =
             !module_is_descendant(&ctx.sema.scope(call.syntax())?.module(), &target_module, ctx);
         let fn_name = make::name(&name.text());
-        let (type_params, params) =
-            fn_args(ctx, target_module, ast::CallableExpr::MethodCall(call.clone()))?;
+        let mut necessary_generic_params = FxHashSet::default();
+        necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
+        let params = fn_args(
+            ctx,
+            target_module,
+            ast::CallableExpr::MethodCall(call.clone()),
+            &mut necessary_generic_params,
+        )?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) =
-            make_return_type(ctx, &ast::Expr::MethodCallExpr(call.clone()), target_module);
+        let (ret_type, should_focus_return_type) = make_return_type(
+            ctx,
+            &ast::Expr::MethodCallExpr(call.clone()),
+            target_module,
+            &mut necessary_generic_params,
+        );
+
+        let (generic_param_list, where_clause) =
+            fn_generic_params(ctx, necessary_generic_params, &target)?;
 
         Some(Self {
             target,
             fn_name,
-            type_params,
+            generic_param_list,
+            where_clause,
             params,
             ret_type,
             should_focus_return_type,
@@ -319,7 +358,8 @@ impl FunctionBuilder {
         let mut fn_def = make::fn_(
             visibility,
             self.fn_name,
-            self.type_params,
+            self.generic_param_list,
+            self.where_clause,
             self.params,
             fn_body,
             self.ret_type,
@@ -375,6 +415,7 @@ fn make_return_type(
     ctx: &AssistContext<'_>,
     call: &ast::Expr,
     target_module: Module,
+    necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> (Option<ast::RetType>, bool) {
     let (ret_ty, should_focus_return_type) = {
         match ctx.sema.type_of_expr(call).map(TypeInfo::original) {
@@ -382,6 +423,7 @@ fn make_return_type(
             None => (Some(make::ty_placeholder()), true),
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
+                necessary_generic_params.extend(ty.generic_params(ctx.db()));
                 let rendered = ty.display_source_code(ctx.db(), target_module.into());
                 match rendered {
                     Ok(rendered) => (Some(make::ty(&rendered)), false),
@@ -396,16 +438,16 @@ fn make_return_type(
 
 fn get_fn_target_info(
     ctx: &AssistContext<'_>,
-    target_module: &Option<Module>,
+    target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<TargetInfo> {
     let (target, file, insert_offset) = get_fn_target(ctx, target_module, call)?;
-    Some(TargetInfo::new(*target_module, None, target, file, insert_offset))
+    Some(TargetInfo::new(target_module, None, target, file, insert_offset))
 }
 
 fn get_fn_target(
     ctx: &AssistContext<'_>,
-    target_module: &Option<Module>,
+    target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
     let mut file = ctx.file_id();
@@ -473,35 +515,384 @@ impl GeneratedFunctionTarget {
             GeneratedFunctionTarget::InEmptyItemList(it) => it,
         }
     }
+
+    fn parent(&self) -> SyntaxNode {
+        match self {
+            GeneratedFunctionTarget::BehindItem(it) => it.parent().expect("item without parent"),
+            GeneratedFunctionTarget::InEmptyItemList(it) => it.clone(),
+        }
+    }
 }
 
-/// Computes the type variables and arguments required for the generated function
+/// Computes parameter list for the generated function.
 fn fn_args(
     ctx: &AssistContext<'_>,
     target_module: hir::Module,
     call: ast::CallableExpr,
-) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
+    necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
+) -> Option<ast::ParamList> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
         arg_names.push(fn_arg_name(&ctx.sema, &arg));
-        arg_types.push(fn_arg_type(ctx, target_module, &arg));
+        arg_types.push(fn_arg_type(ctx, target_module, &arg, necessary_generic_params));
     }
     deduplicate_arg_names(&mut arg_names);
     let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
         make::param(make::ext::simple_ident_pat(make::name(&name)).into(), make::ty(&ty))
     });
 
-    Some((
-        None,
-        make::param_list(
-            match call {
-                ast::CallableExpr::Call(_) => None,
-                ast::CallableExpr::MethodCall(_) => Some(make::self_param()),
-            },
-            params,
-        ),
+    Some(make::param_list(
+        match call {
+            ast::CallableExpr::Call(_) => None,
+            ast::CallableExpr::MethodCall(_) => Some(make::self_param()),
+        },
+        params,
     ))
+}
+
+/// Gets parameter bounds and where predicates in scope and filters out irrelevant ones. Returns
+/// `None` when it fails to get scope information.
+///
+/// See comment on `filter_unnecessary_bounds()` for what bounds we consider relevant.
+///
+/// NOTE: Generic parameters returned from this function may cause name clash at `target`. We don't
+/// currently do anything about it because it's actually easy to resolve it after the assist: just
+/// use the Rename functionality.
+fn fn_generic_params(
+    ctx: &AssistContext<'_>,
+    necessary_params: FxHashSet<hir::GenericParam>,
+    target: &GeneratedFunctionTarget,
+) -> Option<(Option<ast::GenericParamList>, Option<ast::WhereClause>)> {
+    if necessary_params.is_empty() {
+        // Not really needed but fast path.
+        return Some((None, None));
+    }
+
+    // 1. Get generic parameters (with bounds) and where predicates in scope.
+    let (generic_params, where_preds) = params_and_where_preds_in_scope(ctx);
+
+    // 2. Extract type parameters included in each bound.
+    let mut generic_params = generic_params
+        .into_iter()
+        .filter_map(|it| compute_contained_params_in_generic_param(ctx, it))
+        .collect();
+    let mut where_preds = where_preds
+        .into_iter()
+        .filter_map(|it| compute_contained_params_in_where_pred(ctx, it))
+        .collect();
+
+    // 3. Filter out unnecessary bounds.
+    filter_unnecessary_bounds(&mut generic_params, &mut where_preds, necessary_params);
+    filter_bounds_in_scope(&mut generic_params, &mut where_preds, ctx, target);
+
+    let generic_params: Vec<_> =
+        generic_params.into_iter().map(|it| it.node.clone_for_update()).collect();
+    let where_preds: Vec<_> =
+        where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
+
+    // 4. Rewrite paths
+    if let Some(param) = generic_params.first() {
+        let source_scope = ctx.sema.scope(param.syntax())?;
+        let target_scope = ctx.sema.scope(&target.parent())?;
+        if source_scope.module() != target_scope.module() {
+            let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
+            let generic_params = generic_params.iter().map(|it| it.syntax());
+            let where_preds = where_preds.iter().map(|it| it.syntax());
+            transform.apply_all(generic_params.chain(where_preds));
+        }
+    }
+
+    let generic_param_list = make::generic_param_list(generic_params);
+    let where_clause =
+        if where_preds.is_empty() { None } else { Some(make::where_clause(where_preds)) };
+
+    Some((Some(generic_param_list), where_clause))
+}
+
+fn params_and_where_preds_in_scope(
+    ctx: &AssistContext<'_>,
+) -> (Vec<ast::GenericParam>, Vec<ast::WherePred>) {
+    let Some(body) = containing_body(ctx) else { return Default::default(); };
+
+    let mut generic_params = Vec::new();
+    let mut where_clauses = Vec::new();
+
+    // There are two items where generic parameters currently in scope may be declared: the item
+    // the cursor is at, and its parent (if any).
+    //
+    // We handle parent first so that their generic parameters appear first in the generic
+    // parameter list of the function we're generating.
+    let db = ctx.db();
+    if let Some(parent) = body.as_assoc_item(db).map(|it| it.container(db)) {
+        match parent {
+            hir::AssocItemContainer::Impl(it) => {
+                let (params, clauses) = get_bounds_in_scope(ctx, it);
+                generic_params.extend(params);
+                where_clauses.extend(clauses);
+            }
+            hir::AssocItemContainer::Trait(it) => {
+                let (params, clauses) = get_bounds_in_scope(ctx, it);
+                generic_params.extend(params);
+                where_clauses.extend(clauses);
+            }
+        }
+    }
+
+    // Other defs with body may inherit generic parameters from its parent, but never have their
+    // own generic parameters.
+    if let hir::DefWithBody::Function(it) = body {
+        let (params, clauses) = get_bounds_in_scope(ctx, it);
+        generic_params.extend(params);
+        where_clauses.extend(clauses);
+    }
+
+    (generic_params, where_clauses)
+}
+
+fn containing_body(ctx: &AssistContext<'_>) -> Option<hir::DefWithBody> {
+    let item: ast::Item = ctx.find_node_at_offset()?;
+    let def = match item {
+        ast::Item::Fn(it) => ctx.sema.to_def(&it)?.into(),
+        ast::Item::Const(it) => ctx.sema.to_def(&it)?.into(),
+        ast::Item::Static(it) => ctx.sema.to_def(&it)?.into(),
+        _ => return None,
+    };
+    Some(def)
+}
+
+fn get_bounds_in_scope<D>(
+    ctx: &AssistContext<'_>,
+    def: D,
+) -> (impl Iterator<Item = ast::GenericParam>, impl Iterator<Item = ast::WherePred>)
+where
+    D: HasSource,
+    D::Ast: HasGenericParams,
+{
+    // This function should be only called with `Impl`, `Trait`, or `Function`, for which it's
+    // infallible to get source ast.
+    let node = ctx.sema.source(def).unwrap().value;
+    let generic_params = node.generic_param_list().into_iter().flat_map(|it| it.generic_params());
+    let where_clauses = node.where_clause().into_iter().flat_map(|it| it.predicates());
+    (generic_params, where_clauses)
+}
+
+#[derive(Debug)]
+struct ParamBoundWithParams {
+    node: ast::GenericParam,
+    /// Generic parameter `node` introduces.
+    ///
+    /// ```text
+    /// impl<T> S<T> {
+    ///     fn f<U: Trait<T>>() {}
+    ///          ^ this
+    /// }
+    /// ```
+    ///
+    /// `U` in this example.
+    self_ty_param: hir::GenericParam,
+    /// Generic parameters contained in the trait reference of this bound.
+    ///
+    /// ```text
+    /// impl<T> S<T> {
+    ///     fn f<U: Trait<T>>() {}
+    ///             ^^^^^^^^ params in this part
+    /// }
+    /// ```
+    ///
+    /// `T` in this example.
+    other_params: FxHashSet<hir::GenericParam>,
+}
+
+#[derive(Debug)]
+struct WherePredWithParams {
+    node: ast::WherePred,
+    /// Generic parameters contained in the "self type" of this where predicate.
+    ///
+    /// ```text
+    /// Struct<T, U>: Trait<T, Assoc = V>,
+    /// ^^^^^^^^^^^^ params in this part
+    /// ```
+    ///
+    /// `T` and `U` in this example.
+    self_ty_params: FxHashSet<hir::GenericParam>,
+    /// Generic parameters contained in the trait reference of this where predicate.
+    ///
+    /// ```text
+    /// Struct<T, U>: Trait<T, Assoc = V>,
+    ///               ^^^^^^^^^^^^^^^^^^^ params in this part
+    /// ```
+    ///
+    /// `T` and `V` in this example.
+    other_params: FxHashSet<hir::GenericParam>,
+}
+
+fn compute_contained_params_in_generic_param(
+    ctx: &AssistContext<'_>,
+    node: ast::GenericParam,
+) -> Option<ParamBoundWithParams> {
+    match &node {
+        ast::GenericParam::TypeParam(ty) => {
+            let self_ty_param = ctx.sema.to_def(ty)?.into();
+
+            let other_params = ty
+                .type_bound_list()
+                .into_iter()
+                .flat_map(|it| it.bounds())
+                .flat_map(|bound| bound.syntax().descendants())
+                .filter_map(|node| filter_generic_params(ctx, node))
+                .collect();
+
+            Some(ParamBoundWithParams { node, self_ty_param, other_params })
+        }
+        ast::GenericParam::ConstParam(ct) => {
+            let self_ty_param = ctx.sema.to_def(ct)?.into();
+            Some(ParamBoundWithParams { node, self_ty_param, other_params: FxHashSet::default() })
+        }
+        ast::GenericParam::LifetimeParam(_) => {
+            // FIXME: It might be a good idea to handle lifetime parameters too.
+            None
+        }
+    }
+}
+
+fn compute_contained_params_in_where_pred(
+    ctx: &AssistContext<'_>,
+    node: ast::WherePred,
+) -> Option<WherePredWithParams> {
+    let self_ty = node.ty()?;
+    let bound_list = node.type_bound_list()?;
+
+    let self_ty_params = self_ty
+        .syntax()
+        .descendants()
+        .filter_map(|node| filter_generic_params(ctx, node))
+        .collect();
+
+    let other_params = bound_list
+        .bounds()
+        .flat_map(|bound| bound.syntax().descendants())
+        .filter_map(|node| filter_generic_params(ctx, node))
+        .collect();
+
+    Some(WherePredWithParams { node, self_ty_params, other_params })
+}
+
+fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hir::GenericParam> {
+    let path = ast::Path::cast(node)?;
+    match ctx.sema.resolve_path(&path)? {
+        PathResolution::TypeParam(it) => Some(it.into()),
+        PathResolution::ConstParam(it) => Some(it.into()),
+        _ => None,
+    }
+}
+
+/// Filters out irrelevant bounds from `generic_params` and `where_preds`.
+///
+/// Say we have a trait bound `Struct<T>: Trait<U>`. Given `necessary_params`, when is it relevant
+/// and when not? Some observations:
+/// - When `necessary_params` contains `T`, it's likely that we want this bound, but now we have
+/// an extra param to consider: `U`.
+/// - On the other hand, when `necessary_params` contains `U` (but not `T`), then it's unlikely
+/// that we want this bound because it doesn't really constrain `U`.
+///
+/// (FIXME?: The latter clause might be overstating. We may want to include the bound if the self
+/// type does *not* include generic params at all - like `Option<i32>: From<U>`)
+///
+/// Can we make this a bit more formal? Let's define "dependency" between generic parameters and
+/// trait bounds:
+/// - A generic parameter `T` depends on a trait bound if `T` appears in the self type (i.e. left
+/// part) of the bound.
+/// - A trait bound depends on a generic parameter `T` if `T` appears in the bound.
+///
+/// Using the notion, what we want is all the bounds that params in `necessary_params`
+/// *transitively* depend on!
+///
+/// Now it's not hard to solve: we build a dependency graph and compute all reachable nodes from
+/// nodes that represent params in `necessary_params` by usual and boring DFS.
+///
+/// The time complexity is O(|generic_params| + |where_preds| + |necessary_params|).
+fn filter_unnecessary_bounds(
+    generic_params: &mut Vec<ParamBoundWithParams>,
+    where_preds: &mut Vec<WherePredWithParams>,
+    necessary_params: FxHashSet<hir::GenericParam>,
+) {
+    // All `self_ty_param` should be unique as they were collected from `ast::GenericParamList`s.
+    let param_map: FxHashMap<hir::GenericParam, usize> =
+        generic_params.iter().map(|it| it.self_ty_param).zip(0..).collect();
+    let param_count = param_map.len();
+    let generic_params_upper_bound = param_count + generic_params.len();
+    let node_count = generic_params_upper_bound + where_preds.len();
+
+    // | node index range                        | what the node represents |
+    // |-----------------------------------------|--------------------------|
+    // | 0..param_count                          | generic parameter        |
+    // | param_count..generic_params_upper_bound | `ast::GenericParam`      |
+    // | generic_params_upper_bound..node_count  | `ast::WherePred`         |
+    let mut graph = Graph::new(node_count);
+    for (pred, pred_idx) in generic_params.iter().zip(param_count..) {
+        let param_idx = param_map[&pred.self_ty_param];
+        graph.add_edge(param_idx, pred_idx);
+        graph.add_edge(pred_idx, param_idx);
+
+        for param in &pred.other_params {
+            let param_idx = param_map[param];
+            graph.add_edge(pred_idx, param_idx);
+        }
+    }
+    for (pred, pred_idx) in where_preds.iter().zip(generic_params_upper_bound..) {
+        for param in &pred.self_ty_params {
+            let param_idx = param_map[param];
+            graph.add_edge(param_idx, pred_idx);
+            graph.add_edge(pred_idx, param_idx);
+        }
+        for param in &pred.other_params {
+            let param_idx = param_map[param];
+            graph.add_edge(pred_idx, param_idx);
+        }
+    }
+
+    let starting_nodes = necessary_params.iter().map(|param| param_map[param]);
+    let reachable = graph.compute_reachable_nodes(starting_nodes);
+
+    // Not pretty, but effective. If only there were `Vec::retain_index()`...
+    let mut idx = param_count;
+    generic_params.retain(|_| {
+        idx += 1;
+        reachable[idx - 1]
+    });
+    stdx::always!(idx == generic_params_upper_bound, "inconsistent index");
+    where_preds.retain(|_| {
+        idx += 1;
+        reachable[idx - 1]
+    });
+}
+
+/// Filters out bounds from impl if we're generating the function into the same impl we're
+/// generating from.
+fn filter_bounds_in_scope(
+    generic_params: &mut Vec<ParamBoundWithParams>,
+    where_preds: &mut Vec<WherePredWithParams>,
+    ctx: &AssistContext<'_>,
+    target: &GeneratedFunctionTarget,
+) -> Option<()> {
+    let target_impl = target.parent().ancestors().find_map(ast::Impl::cast)?;
+    let target_impl = ctx.sema.to_def(&target_impl)?;
+    // It's sufficient to test only the first element of `generic_params` because of the order of
+    // insertion (see `relevant_parmas_and_where_clauses()`).
+    let def = generic_params.first()?.self_ty_param.parent();
+    if def != hir::GenericDef::Impl(target_impl) {
+        return None;
+    }
+
+    // Now we know every element that belongs to an impl would be in scope at `target`, we can
+    // filter them out just by lookint at their parent.
+    generic_params.retain(|it| !matches!(it.self_ty_param.parent(), hir::GenericDef::Impl(_)));
+    where_preds.retain(|it| {
+        it.node.syntax().parent().and_then(|it| it.parent()).and_then(ast::Impl::cast).is_none()
+    });
+
+    Some(())
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
@@ -564,16 +955,24 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
     }
 }
 
-fn fn_arg_type(ctx: &AssistContext<'_>, target_module: hir::Module, fn_arg: &ast::Expr) -> String {
+fn fn_arg_type(
+    ctx: &AssistContext<'_>,
+    target_module: hir::Module,
+    fn_arg: &ast::Expr,
+    generic_params: &mut FxHashSet<hir::GenericParam>,
+) -> String {
     fn maybe_displayed_type(
         ctx: &AssistContext<'_>,
         target_module: hir::Module,
         fn_arg: &ast::Expr,
+        generic_params: &mut FxHashSet<hir::GenericParam>,
     ) -> Option<String> {
         let ty = ctx.sema.type_of_expr(fn_arg)?.adjusted();
         if ty.is_unknown() {
             return None;
         }
+
+        generic_params.extend(ty.generic_params(ctx.db()));
 
         if ty.is_reference() || ty.is_mutable_reference() {
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
@@ -585,7 +984,8 @@ fn fn_arg_type(ctx: &AssistContext<'_>, target_module: hir::Module, fn_arg: &ast
         }
     }
 
-    maybe_displayed_type(ctx, target_module, fn_arg).unwrap_or_else(|| String::from("_"))
+    maybe_displayed_type(ctx, target_module, fn_arg, generic_params)
+        .unwrap_or_else(|| String::from("_"))
 }
 
 /// Returns the position inside the current mod or file
@@ -640,10 +1040,11 @@ fn next_space_for_fn_in_module(
 }
 
 fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarget> {
-    if let Some(last_item) = impl_.assoc_item_list().and_then(|it| it.assoc_items().last()) {
+    let assoc_item_list = impl_.assoc_item_list()?;
+    if let Some(last_item) = assoc_item_list.assoc_items().last() {
         Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
     } else {
-        Some(GeneratedFunctionTarget::InEmptyItemList(impl_.assoc_item_list()?.syntax().clone()))
+        Some(GeneratedFunctionTarget::InEmptyItemList(assoc_item_list.syntax().clone()))
     }
 }
 
@@ -657,6 +1058,73 @@ fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistCon
         }
     }
     false
+}
+
+// This is never intended to be used as a generic graph strucuture. If there's ever another need of
+// graph algorithm, consider adding a library for that (and replace the following).
+/// Minimally implemented directed graph structure represented by adjacency list.
+struct Graph {
+    edges: Vec<Vec<usize>>,
+}
+
+impl Graph {
+    fn new(node_count: usize) -> Self {
+        Self { edges: vec![Vec::new(); node_count] }
+    }
+
+    fn add_edge(&mut self, from: usize, to: usize) {
+        self.edges[from].push(to);
+    }
+
+    fn edges_for(&self, node_idx: usize) -> &[usize] {
+        &self.edges[node_idx]
+    }
+
+    fn len(&self) -> usize {
+        self.edges.len()
+    }
+
+    fn compute_reachable_nodes(
+        &self,
+        starting_nodes: impl IntoIterator<Item = usize>,
+    ) -> Vec<bool> {
+        let mut visitor = Visitor::new(self);
+        for idx in starting_nodes {
+            visitor.mark_reachable(idx);
+        }
+        visitor.visited
+    }
+}
+
+struct Visitor<'g> {
+    graph: &'g Graph,
+    visited: Vec<bool>,
+    // Stack is held in this struct so we can reuse its buffer.
+    stack: Vec<usize>,
+}
+
+impl<'g> Visitor<'g> {
+    fn new(graph: &'g Graph) -> Self {
+        let visited = vec![false; graph.len()];
+        Self { graph, visited, stack: Vec::new() }
+    }
+
+    fn mark_reachable(&mut self, start_idx: usize) {
+        // non-recursive DFS
+        stdx::always!(self.stack.is_empty());
+
+        self.stack.push(start_idx);
+        while let Some(idx) = self.stack.pop() {
+            if !self.visited[idx] {
+                self.visited[idx] = true;
+                for &neighbor in self.graph.edges_for(idx) {
+                    if !self.visited[neighbor] {
+                        self.stack.push(neighbor);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1087,22 +1555,297 @@ fn bar(baz: Baz::Bof) {
     }
 
     #[test]
-    fn add_function_with_generic_arg() {
-        // FIXME: This is wrong, generated `bar` should include generic parameter.
+    fn generate_function_with_generic_param() {
         check_assist(
             generate_function,
             r"
-fn foo<T>(t: T) {
-    $0bar(t)
+fn foo<T, const N: usize>(t: [T; N]) { $0bar(t) }
+",
+            r"
+fn foo<T, const N: usize>(t: [T; N]) { bar(t) }
+
+fn bar<T, const N: usize>(t: [T; N]) {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn generate_function_with_parent_generic_param() {
+        check_assist(
+            generate_function,
+            r"
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo<U>(t: T, u: U) { $0bar(t, u) }
 }
 ",
             r"
-fn foo<T>(t: T) {
-    bar(t)
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo<U>(t: T, u: U) { bar(t, u) }
 }
 
-fn bar(t: T) {
+fn bar<T, U>(t: T, u: U) {
     ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn generic_param_in_receiver_type() {
+        // FIXME: Generic parameter `T` should be part of impl, not method.
+        check_assist(
+            generate_function,
+            r"
+struct S<T>(T);
+fn foo<T, U>(s: S<T>, u: U) { s.$0foo(u) }
+",
+            r"
+struct S<T>(T);
+impl S {
+    fn foo<T, U>(&self, u: U) {
+        ${0:todo!()}
+    }
+}
+fn foo<T, U>(s: S<T>, u: U) { s.foo(u) }
+",
+        )
+    }
+
+    #[test]
+    fn generic_param_in_return_type() {
+        check_assist(
+            generate_function,
+            r"
+fn foo<T, const N: usize>() -> [T; N] { $0bar() }
+",
+            r"
+fn foo<T, const N: usize>() -> [T; N] { bar() }
+
+fn bar<T, const N: usize>() -> [T; N] {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn generate_fn_with_bounds() {
+        // FIXME: where predicates should be on next lines.
+        check_assist(
+            generate_function,
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T: A<i32>> S<T>
+where
+    T: A<i64>,
+{
+    fn foo<U>(t: T, u: U)
+    where
+        T: A<()>,
+        U: A<i32> + A<i64>,
+    {
+        $0bar(t, u)
+    }
+}
+",
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T: A<i32>> S<T>
+where
+    T: A<i64>,
+{
+    fn foo<U>(t: T, u: U)
+    where
+        T: A<()>,
+        U: A<i32> + A<i64>,
+    {
+        bar(t, u)
+    }
+}
+
+fn bar<T: A<i32>, U>(t: T, u: U) where T: A<i64>, T: A<()>, U: A<i32> + A<i64> {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn include_transitive_param_dependency() {
+        // FIXME: where predicates should be on next lines.
+        check_assist(
+            generate_function,
+            r"
+trait A<T> { type Assoc; }
+trait B { type Item; }
+struct S<T>(T);
+impl<T, U, V: B, W> S<(T, U, V, W)>
+where
+    T: A<U, Assoc = V>,
+    S<V::Item>: A<U, Assoc = W>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        U: A<T, Assoc = I>,
+    {
+        $0bar(u)
+    }
+}
+",
+            r"
+trait A<T> { type Assoc; }
+trait B { type Item; }
+struct S<T>(T);
+impl<T, U, V: B, W> S<(T, U, V, W)>
+where
+    T: A<U, Assoc = V>,
+    S<V::Item>: A<U, Assoc = W>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        U: A<T, Assoc = I>,
+    {
+        bar(u)
+    }
+}
+
+fn bar<T, U, V: B, W, I>(u: U) where T: A<U, Assoc = V>, S<V::Item>: A<U, Assoc = W>, U: A<T, Assoc = I> {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn irrelevant_bounds_are_filtered_out() {
+        check_assist(
+            generate_function,
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T, U, V, W> S<(T, U, V, W)>
+where
+    T: A<U>,
+    V: A<W>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        U: A<T> + A<I>,
+    {
+        $0bar(u)
+    }
+}
+",
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T, U, V, W> S<(T, U, V, W)>
+where
+    T: A<U>,
+    V: A<W>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        U: A<T> + A<I>,
+    {
+        bar(u)
+    }
+}
+
+fn bar<T, U, I>(u: U) where T: A<U>, U: A<T> + A<I> {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn params_in_trait_arg_are_not_dependency() {
+        // Even though `bar` depends on `U` and `I`, we don't have to copy these bounds:
+        // `T: A<I>` and `T: A<U>`.
+        check_assist(
+            generate_function,
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T, U> S<(T, U)>
+where
+    T: A<U>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        T: A<I>,
+        U: A<I>,
+    {
+        $0bar(u)
+    }
+}
+",
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T, U> S<(T, U)>
+where
+    T: A<U>,
+{
+    fn foo<I>(t: T, u: U)
+    where
+        T: A<I>,
+        U: A<I>,
+    {
+        bar(u)
+    }
+}
+
+fn bar<U, I>(u: U) where U: A<I> {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
+    fn dont_copy_bounds_already_in_scope() {
+        check_assist(
+            generate_function,
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T: A<i32>> S<T>
+where
+    T: A<usize>,
+{
+    fn foo<U: A<()>>(t: T, u: U)
+    where
+        T: A<S<i32>>,
+    {
+        Self::$0bar(t, u);
+    }
+}
+",
+            r"
+trait A<T> {}
+struct S<T>(T);
+impl<T: A<i32>> S<T>
+where
+    T: A<usize>,
+{
+    fn foo<U: A<()>>(t: T, u: U)
+    where
+        T: A<S<i32>>,
+    {
+        Self::bar(t, u);
+    }
+
+    fn bar<U: A<()>>(t: T, u: U) ${0:-> _} where T: A<S<i32>> {
+        todo!()
+    }
 }
 ",
         )
@@ -1289,6 +2032,50 @@ fn baz(foo: foo::Foo) {
         )
     }
 
+    #[test]
+    fn qualified_path_in_generic_bounds_uses_correct_scope() {
+        check_assist(
+            generate_function,
+            r"
+mod a {
+    pub trait A {};
+}
+pub mod b {
+    pub struct S<T>(T);
+}
+struct S<T>(T);
+impl<T> S<T>
+where
+    T: a::A,
+{
+    fn foo<U: a::A>(t: b::S<T>, u: S<U>) {
+        a::$0bar(t, u);
+    }
+}
+",
+            r"
+mod a {
+    pub trait A {}
+
+    pub(crate) fn bar<T, U: self::A>(t: crate::b::S<T>, u: crate::S<U>) ${0:-> _} where T: self::A {
+        todo!()
+    };
+}
+pub mod b {
+    pub struct S<T>(T);
+}
+struct S<T>(T);
+impl<T> S<T>
+where
+    T: a::A,
+{
+    fn foo<U: a::A>(t: b::S<T>, u: S<U>) {
+        a::bar(t, u);
+    }
+}
+",
+        )
+    }
     #[test]
     fn add_function_in_module_containing_other_items() {
         check_assist(
@@ -1602,6 +2389,26 @@ impl S {
     }
 }
 fn foo() {S::bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_generic_static_method() {
+        check_assist(
+            generate_function,
+            r"
+struct S;
+fn foo<T, const N: usize>(t: [T; N]) { S::bar$0(t); }
+",
+            r"
+struct S;
+impl S {
+    fn bar<T, const N: usize>(t: [T; N]) ${0:-> _} {
+        todo!()
+    }
+}
+fn foo<T, const N: usize>(t: [T; N]) { S::bar(t); }
 ",
         )
     }

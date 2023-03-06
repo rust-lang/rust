@@ -17,9 +17,9 @@ pub fn build_ptr_tys<'tcx>(
     unique_did: DefId,
     nonnull_did: DefId,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let substs = tcx.intern_substs(&[pointee.into()]);
-    let unique_ty = tcx.bound_type_of(unique_did).subst(tcx, substs);
-    let nonnull_ty = tcx.bound_type_of(nonnull_did).subst(tcx, substs);
+    let substs = tcx.mk_substs(&[pointee.into()]);
+    let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
+    let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
     let ptr_ty = tcx.mk_imm_ptr(pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
@@ -93,7 +93,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
         if let Some(def_id) = tcx.lang_items().owned_box() {
             let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[0].did;
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).ty_adt_def() else {
+            let Some(nonnull_def) = tcx.type_of(unique_did).subst_identity().ty_adt_def() else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 
@@ -138,7 +138,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
 
                     if let Some(mut new_projections) = new_projections {
                         new_projections.extend_from_slice(&place.projection[last_deref..]);
-                        place.projection = tcx.intern_place_elems(&new_projections);
+                        place.projection = tcx.mk_place_elems(&new_projections);
                     }
                 }
             }

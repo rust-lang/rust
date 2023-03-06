@@ -1,4 +1,5 @@
 use crate::base::{self, *};
+use crate::errors;
 use crate::proc_macro_server;
 
 use rustc_ast as ast;
@@ -60,11 +61,12 @@ impl base::BangProcMacro for BangProcMacro {
         let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            let mut err = ecx.struct_span_err(span, "proc macro panicked");
-            if let Some(s) = e.as_str() {
-                err.help(&format!("message: {}", s));
-            }
-            err.emit()
+            ecx.sess.emit_err(errors::ProcMacroPanicked {
+                span,
+                message: e
+                    .as_str()
+                    .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
+            })
         })
     }
 }
@@ -174,7 +176,7 @@ impl MultiItemModifier for DeriveProcMacro {
 
         // fail if there have been errors emitted
         if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {
-            ecx.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
+            ecx.sess.emit_err(errors::ProcMacroDeriveTokens { span });
         }
 
         ExpandResult::Ready(items)

@@ -1,0 +1,8 @@
+error: associated type bounds are only allowed in where clauses and function signatures, not in impl headers
+  --> $DIR/bad-universal-in-impl-sig.rs:10:16
+   |
+LL | impl dyn Trait<Item: Trait2> {}
+   |                ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

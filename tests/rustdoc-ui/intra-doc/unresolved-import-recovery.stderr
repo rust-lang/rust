@@ -6,8 +6,6 @@ LL | use unresolved_crate::module::Name;
    |
    = help: consider adding `extern crate unresolved_crate` to use the `unresolved_crate` crate
 
-error: Compilation failed, aborting rustdoc
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0433`.

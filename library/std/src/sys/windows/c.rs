@@ -6,12 +6,14 @@
 
 use crate::ffi::CStr;
 use crate::mem;
-use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
+use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort};
 use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
 use crate::ptr;
 use core::ffi::NonZero_c_ulong;
 
 use libc::{c_void, size_t, wchar_t};
+
+pub use crate::os::raw::c_int;
 
 #[path = "c/errors.rs"] // c.rs is included from two places so we need to specify this
 mod errors;
@@ -47,16 +49,19 @@ pub type ACCESS_MASK = DWORD;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
+pub type LPCCH = *const CHAR;
 pub type LPCSTR = *const CHAR;
+pub type LPCWCH = *const WCHAR;
 pub type LPCWSTR = *const WCHAR;
+pub type LPCVOID = *const c_void;
 pub type LPDWORD = *mut DWORD;
 pub type LPHANDLE = *mut HANDLE;
 pub type LPOVERLAPPED = *mut OVERLAPPED;
 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPSTARTUPINFO = *mut STARTUPINFO;
+pub type LPSTR = *mut CHAR;
 pub type LPVOID = *mut c_void;
-pub type LPCVOID = *const c_void;
 pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
@@ -131,6 +136,10 @@ pub const FIONBIO: c_ulong = 0x8004667e;
 pub const MAX_PATH: usize = 260;
 
 pub const FILE_TYPE_PIPE: u32 = 3;
+
+pub const CP_UTF8: DWORD = 65001;
+pub const MB_ERR_INVALID_CHARS: DWORD = 0x08;
+pub const WC_ERR_INVALID_CHARS: DWORD = 0x80;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -295,8 +304,6 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-// "RNG\0"
-pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
@@ -539,14 +546,6 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PrintNameLength: c_ushort,
     pub Flags: c_ulong,
     pub PathBuffer: WCHAR,
-}
-
-/// NB: Use carefully! In general using this as a reference is likely to get the
-/// provenance wrong for the `PathBuffer` field!
-#[repr(C)]
-pub struct FILE_NAME_INFO {
-    pub FileNameLength: DWORD,
-    pub FileName: [WCHAR; 1],
 }
 
 #[repr(C)]
@@ -834,6 +833,10 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
+        // Forbidden when targeting UWP
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -1153,6 +1156,25 @@ extern "system" {
         lpFilePart: *mut LPWSTR,
     ) -> DWORD;
     pub fn GetFileAttributesW(lpFileName: LPCWSTR) -> DWORD;
+
+    pub fn MultiByteToWideChar(
+        CodePage: UINT,
+        dwFlags: DWORD,
+        lpMultiByteStr: LPCCH,
+        cbMultiByte: c_int,
+        lpWideCharStr: LPWSTR,
+        cchWideChar: c_int,
+    ) -> c_int;
+    pub fn WideCharToMultiByte(
+        CodePage: UINT,
+        dwFlags: DWORD,
+        lpWideCharStr: LPCWCH,
+        cchWideChar: c_int,
+        lpMultiByteStr: LPSTR,
+        cbMultiByte: c_int,
+        lpDefaultChar: LPCCH,
+        lpUsedDefaultChar: LPBOOL,
+    ) -> c_int;
 }
 
 #[link(name = "ws2_32")]
@@ -1258,13 +1280,6 @@ extern "system" {
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
-    pub fn BCryptOpenAlgorithmProvider(
-        phalgorithm: *mut BCRYPT_ALG_HANDLE,
-        pszAlgId: LPCWSTR,
-        pszimplementation: LPCWSTR,
-        dwflags: ULONG,
-    ) -> NTSTATUS;
-    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,

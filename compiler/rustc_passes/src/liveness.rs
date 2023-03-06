@@ -95,7 +95,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, Ty, TyCtxt};
+use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
@@ -145,7 +145,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
 
     // Don't run unused pass for #[derive()]
     let parent = tcx.local_parent(local_def_id);
-    if let DefKind::Impl = tcx.def_kind(parent)
+    if let DefKind::Impl { .. } = tcx.def_kind(parent)
         && tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
     {
         return;
@@ -475,7 +475,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::Box(..)
             | hir::ExprKind::Type(..)
-            | hir::ExprKind::Err
+            | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
                 intravisit::walk_expr(self, expr);
@@ -1129,7 +1129,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Lit(..)
             | hir::ExprKind::ConstBlock(..)
-            | hir::ExprKind::Err
+            | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..)) => succ,
 
@@ -1427,7 +1427,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Yield(..)
         | hir::ExprKind::Box(..)
         | hir::ExprKind::Type(..)
-        | hir::ExprKind::Err => {}
+        | hir::ExprKind::Err(_) => {}
     }
 }
 

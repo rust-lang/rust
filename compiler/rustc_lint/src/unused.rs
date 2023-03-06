@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::elaborate_predicates_with_span;
 use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, DefIdTree, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
@@ -309,7 +309,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         None
                     }
                 }
-                ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
+                ty::Array(ty, len) => match len.try_eval_target_usize(cx.tcx, cx.param_env) {
                     // If the array is empty we don't lint, to avoid false positives
                     Some(0) | None => None,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.

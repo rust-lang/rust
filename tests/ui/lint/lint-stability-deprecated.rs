@@ -22,40 +22,40 @@ mod cross_crate {
         let foo = MethodTester;
 
         deprecated(); //~ WARN use of deprecated function `lint_stability::deprecated`
-        foo.method_deprecated(); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated`
-        Foo::method_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated`
-        <Foo>::method_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated`
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        Trait::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
+        foo.method_deprecated(); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated`
+        Foo::method_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated`
+        <Foo>::method_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated`
+        foo.trait_deprecated(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        Trait::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
 
         deprecated_text(); //~ WARN use of deprecated function `lint_stability::deprecated_text`: text
-        foo.method_deprecated_text(); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_text`: text
-        Foo::method_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_text`: text
-        <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_text`: text
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
+        foo.method_deprecated_text(); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_text`: text
+        Foo::method_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_text`: text
+        <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_text`: text
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
 
         deprecated_unstable(); //~ WARN use of deprecated function `lint_stability::deprecated_unstable`
-        foo.method_deprecated_unstable(); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable`
-        Foo::method_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable`
-        <Foo>::method_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable`
-        foo.trait_deprecated_unstable(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
+        foo.method_deprecated_unstable(); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable`
+        Foo::method_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable`
+        <Foo>::method_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable`
+        foo.trait_deprecated_unstable(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
 
         deprecated_unstable_text(); //~ WARN use of deprecated function `lint_stability::deprecated_unstable_text`: text
-        foo.method_deprecated_unstable_text(); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable_text`: text
-        Foo::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable_text`: text
-        <Foo>::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::MethodTester::method_deprecated_unstable_text`: text
-        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        foo.method_deprecated_unstable_text(); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable_text`: text
+        Foo::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable_text`: text
+        <Foo>::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::MethodTester::method_deprecated_unstable_text`: text
+        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
 
         unstable();
         foo.method_unstable();
@@ -141,22 +141,22 @@ mod cross_crate {
     }
 
     fn test_method_param<Foo: Trait>(foo: Foo) {
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        Trait::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        foo.trait_deprecated_unstable(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
-        <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        foo.trait_deprecated(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        Trait::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        foo.trait_deprecated_unstable(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
         foo.trait_unstable();
         Trait::trait_unstable(&foo);
         <Foo>::trait_unstable(&foo);
@@ -172,10 +172,10 @@ mod cross_crate {
     }
 
     fn test_method_object(foo: &dyn Trait) {
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated`
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_text`: text
-        foo.trait_deprecated_unstable(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable`
-        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated associated function `lint_stability::Trait::trait_deprecated_unstable_text`: text
+        foo.trait_deprecated(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated`
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_text`: text
+        foo.trait_deprecated_unstable(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable`
+        foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated method `lint_stability::Trait::trait_deprecated_unstable_text`: text
         foo.trait_unstable();
         foo.trait_unstable_text();
         foo.trait_stable();
@@ -328,22 +328,22 @@ mod this_crate {
         let foo = MethodTester;
 
         deprecated(); //~ WARN use of deprecated function `this_crate::deprecated`
-        foo.method_deprecated(); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated`
-        Foo::method_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated`
-        <Foo>::method_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated`
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        Trait::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
+        foo.method_deprecated(); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated`
+        Foo::method_deprecated(&foo); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated`
+        <Foo>::method_deprecated(&foo); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated`
+        foo.trait_deprecated(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        Trait::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
 
         deprecated_text(); //~ WARN use of deprecated function `this_crate::deprecated_text`: text
-        foo.method_deprecated_text(); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated_text`: text
-        Foo::method_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated_text`: text
-        <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::MethodTester::method_deprecated_text`: text
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
+        foo.method_deprecated_text(); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated_text`: text
+        Foo::method_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated_text`: text
+        <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::MethodTester::method_deprecated_text`: text
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
 
         unstable();
         foo.method_unstable();
@@ -402,14 +402,14 @@ mod this_crate {
     }
 
     fn test_method_param<Foo: Trait>(foo: Foo) {
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        Trait::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
+        foo.trait_deprecated(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        Trait::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
+        <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
         foo.trait_unstable();
         Trait::trait_unstable(&foo);
         <Foo>::trait_unstable(&foo);
@@ -425,8 +425,8 @@ mod this_crate {
     }
 
     fn test_method_object(foo: &dyn Trait) {
-        foo.trait_deprecated(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated`
-        foo.trait_deprecated_text(); //~ WARN use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
+        foo.trait_deprecated(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated`
+        foo.trait_deprecated_text(); //~ WARN use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
         foo.trait_unstable();
         foo.trait_unstable_text();
         foo.trait_stable();

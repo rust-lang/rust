@@ -22,7 +22,6 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
-use std::iter;
 
 fn get_simple_intrinsic<'ll>(
     cx: &CodegenCx<'ll, '_>,
@@ -798,7 +797,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     // `unsafe fn(*mut i8) -> ()`
     let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-        iter::once(i8p),
+        [i8p],
         tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
@@ -806,7 +805,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     )));
     // `unsafe fn(*mut i8, *mut i8) -> ()`
     let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-        [i8p, i8p].iter().cloned(),
+        [i8p, i8p],
         tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
@@ -814,7 +813,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     )));
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
-        [try_fn_ty, i8p, catch_fn_ty].into_iter(),
+        [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
         false,
         hir::Unsafety::Unsafe,
@@ -877,7 +876,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
@@ -957,9 +956,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             // version of this intrinsic.
             match args[2].layout.ty.kind() {
                 ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                    len.try_eval_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(|| {
-                        span_bug!(span, "could not evaluate shuffle index array length")
-                    })
+                    len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
+                        || span_bug!(span, "could not evaluate shuffle index array length"),
+                    )
                 }
                 _ => return_error!(InvalidMonomorphization::SimdShuffle {
                     span,
@@ -1123,7 +1122,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
                 // Zero-extend iN to the array length:

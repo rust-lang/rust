@@ -39,7 +39,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_target::abi::{Align, Size, VariantIdx};
+use rustc_target::abi::{Align, VariantIdx};
 
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
@@ -148,7 +148,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, bx.param_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
+            cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
@@ -273,12 +273,13 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
         "destination type must be a dyn*"
     );
-    // FIXME(dyn-star): this is probably not the best way to check if this is
-    // a pointer, and really we should ensure that the value is a suitable
-    // pointer earlier in the compilation process.
-    let src = match src_ty_and_layout.pointee_info_at(bx.cx(), Size::ZERO) {
-        Some(_) => bx.ptrtoint(src, bx.cx().type_isize()),
-        None => bx.bitcast(src, bx.type_isize()),
+    // FIXME(dyn-star): We can remove this when all supported LLVMs use opaque ptrs only.
+    let unit_ptr = bx.cx().type_ptr_to(bx.cx().type_struct(&[], false));
+    let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
+        TypeKind::Pointer => bx.pointercast(src, unit_ptr),
+        TypeKind::Integer => bx.inttoptr(src, unit_ptr),
+        // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.
+        kind => bug!("unexpected TypeKind for left-hand side of `dyn*` cast: {kind:?}"),
     };
     (src, unsized_info(bx, src_ty_and_layout.ty, dst_ty, old_info))
 }
@@ -475,7 +476,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     cx.tcx(),
                     ty::ParamEnv::reveal_all(),
                     start_def_id,
-                    cx.tcx().intern_substs(&[main_ret_ty.into()]),
+                    cx.tcx().mk_substs(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap(),
@@ -579,7 +580,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let metadata_module = if need_metadata_module {
+    let metadata_module = need_metadata_module.then(|| {
         // Emit compressed metadata object.
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
@@ -594,17 +595,15 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             if let Err(error) = std::fs::write(&file_name, data) {
                 tcx.sess.emit_fatal(errors::MetadataObjectFileWrite { error });
             }
-            Some(CompiledModule {
+            CompiledModule {
                 name: metadata_cgu_name,
                 kind: ModuleKind::Metadata,
                 object: Some(file_name),
                 dwarf_object: None,
                 bytecode: None,
-            })
+            }
         })
-    } else {
-        None
-    };
+    });
 
     let ongoing_codegen = start_async_codegen(
         backend.clone(),
@@ -858,6 +857,7 @@ impl CrateInfo {
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
+            feature_packed_bundled_libs: tcx.features().packed_bundled_libs,
         };
         let crates = tcx.crates(());
 

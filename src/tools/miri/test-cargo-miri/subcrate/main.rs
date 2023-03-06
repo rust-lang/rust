@@ -5,7 +5,7 @@ fn main() {
     println!("subcrate running");
 
     fn host_to_target_path(path: String) -> PathBuf {
-        use std::ffi::{CStr, CString};
+        use std::ffi::{c_char, CStr, CString};
 
         let path = CString::new(path).unwrap();
         let mut out = Vec::with_capacity(1024);
@@ -13,8 +13,8 @@ fn main() {
         unsafe {
             extern "Rust" {
                 fn miri_host_to_target_path(
-                    path: *const i8,
-                    out: *mut i8,
+                    path: *const c_char,
+                    out: *mut c_char,
                     out_size: usize,
                 ) -> usize;
             }

@@ -9,9 +9,9 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayHintLabel, InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable,
-    Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange,
-    TextSize,
+    InlayHintLabel, InlayHintLabelPart, InlayKind, Markup, NavigationTarget, ReferenceCategory,
+    RenameError, Runnable, Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind,
+    TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -31,8 +31,8 @@ pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::P
     let line_col = line_index.index.line_col(offset);
     match line_index.encoding {
         PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
-        PositionEncoding::Utf16 => {
-            let line_col = line_index.index.to_utf16(line_col);
+        PositionEncoding::Wide(enc) => {
+            let line_col = line_index.index.to_wide(enc, line_col);
             lsp_types::Position::new(line_col.line, line_col.col)
         }
     }
@@ -212,11 +212,17 @@ pub(crate) fn completion_items(
     tdpp: lsp_types::TextDocumentPositionParams,
     items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
-    let max_relevance = items.iter().map(|it| it.relevance().score()).max().unwrap_or_default();
+    let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item)
+        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
     }
+
+    if let Some(limit) = config.completion().limit {
+        res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
+        res.truncate(limit);
+    }
+
     res
 }
 
@@ -229,22 +235,26 @@ fn completion_item(
     item: CompletionItem,
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
+    let ref_match = item.ref_match();
+    let lookup = item.lookup().to_string();
+
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
     let text_edit = {
         let mut text_edit = None;
-        let source_range = item.source_range();
-        for indel in item.text_edit().iter() {
+        let source_range = item.source_range;
+        for indel in item.text_edit {
             if indel.delete.contains_range(source_range) {
+                // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
                     self::completion_text_edit(line_index, insert_replace_support, indel.clone())
                 } else {
                     assert!(source_range.end() == indel.delete.end());
                     let range1 = TextRange::new(indel.delete.start(), source_range.start());
                     let range2 = source_range;
-                    let indel1 = Indel::replace(range1, String::new());
+                    let indel1 = Indel::delete(range1);
                     let indel2 = Indel::replace(range2, indel.insert.clone());
                     additional_text_edits.push(self::text_edit(line_index, indel1));
                     self::completion_text_edit(line_index, insert_replace_support, indel2)
@@ -258,23 +268,23 @@ fn completion_item(
         text_edit.unwrap()
     };
 
-    let insert_text_format = item.is_snippet().then_some(lsp_types::InsertTextFormat::SNIPPET);
-    let tags = item.deprecated().then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
-    let command = if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
+    let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
+    let tags = item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
+    let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
         Some(command::trigger_parameter_hints())
     } else {
         None
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
-        label: item.label().to_string(),
-        detail: item.detail().map(|it| it.to_string()),
-        filter_text: Some(item.lookup().to_string()),
-        kind: Some(completion_item_kind(item.kind())),
+        label: item.label.to_string(),
+        detail: item.detail.map(|it| it.to_string()),
+        filter_text: Some(lookup),
+        kind: Some(completion_item_kind(item.kind)),
         text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
-        documentation: item.documentation().map(documentation),
-        deprecated: Some(item.deprecated()),
+        documentation: item.documentation.map(documentation),
+        deprecated: Some(item.deprecated),
         tags,
         command,
         insert_text_format,
@@ -288,12 +298,13 @@ fn completion_item(
         });
     }
 
-    set_score(&mut lsp_item, max_relevance, item.relevance());
+    set_score(&mut lsp_item, max_relevance, item.relevance);
 
     if config.completion().enable_imports_on_the_fly {
-        if let imports @ [_, ..] = item.imports_to_add() {
-            let imports: Vec<_> = imports
-                .iter()
+        if !item.import_to_add.is_empty() {
+            let imports: Vec<_> = item
+                .import_to_add
+                .into_iter()
                 .filter_map(|import_edit| {
                     let import_path = &import_edit.import_path;
                     let import_name = import_path.segments().last()?;
@@ -310,18 +321,13 @@ fn completion_item(
         }
     }
 
-    if let Some((mutability, offset, relevance)) = item.ref_match() {
-        let mut lsp_item_with_ref = lsp_item.clone();
+    if let Some((label, indel, relevance)) = ref_match {
+        let mut lsp_item_with_ref = lsp_types::CompletionItem { label, ..lsp_item.clone() };
+        lsp_item_with_ref
+            .additional_text_edits
+            .get_or_insert_with(Default::default)
+            .push(self::text_edit(line_index, indel));
         set_score(&mut lsp_item_with_ref, max_relevance, relevance);
-        lsp_item_with_ref.label =
-            format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
-        lsp_item_with_ref.additional_text_edits.get_or_insert_with(Default::default).push(
-            self::text_edit(
-                line_index,
-                Indel::insert(offset, format!("&{}", mutability.as_keyword_for_ref())),
-            ),
-        );
-
         acc.push(lsp_item_with_ref);
     };
 
@@ -431,137 +437,140 @@ pub(crate) fn inlay_hint(
     mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
     match inlay_hint.kind {
-        InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
-        InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
-        InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
-        InlayKind::DiscriminantHint => inlay_hint.label.prepend_str(" = "),
+        InlayKind::Parameter if render_colons => inlay_hint.label.append_str(":"),
+        InlayKind::Type if render_colons => inlay_hint.label.prepend_str(": "),
+        InlayKind::ClosureReturnType => inlay_hint.label.prepend_str(" -> "),
+        InlayKind::Discriminant => inlay_hint.label.prepend_str(" = "),
         _ => {}
     }
+
+    let (label, tooltip) = inlay_hint_label(snap, inlay_hint.label)?;
 
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
             InlayKind::OpeningParenthesis
-            | InlayKind::ParameterHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
+            | InlayKind::Parameter
+            | InlayKind::Adjustment
+            | InlayKind::BindingMode => position(line_index, inlay_hint.range.start()),
             // after annotated thing
-            InlayKind::ClosureReturnTypeHint
-            | InlayKind::TypeHint
-            | InlayKind::DiscriminantHint
-            | InlayKind::ChainingHint
-            | InlayKind::GenericParamListHint
+            InlayKind::ClosureReturnType
+            | InlayKind::Type
+            | InlayKind::Discriminant
+            | InlayKind::Chaining
+            | InlayKind::GenericParamList
             | InlayKind::ClosingParenthesis
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::LifetimeHint
-            | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Lifetime
+            | InlayKind::ClosingBrace => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => !render_colons,
-            InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
+            InlayKind::Type => !render_colons,
+            InlayKind::Chaining | InlayKind::ClosingBrace => true,
             InlayKind::ClosingParenthesis
-            | InlayKind::DiscriminantHint
+            | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
-            | InlayKind::BindingModeHint
-            | InlayKind::ClosureReturnTypeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::LifetimeHint
-            | InlayKind::ParameterHint => false,
+            | InlayKind::BindingMode
+            | InlayKind::ClosureReturnType
+            | InlayKind::GenericParamList
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Lifetime
+            | InlayKind::Parameter => false,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::ClosingParenthesis
             | InlayKind::OpeningParenthesis
-            | InlayKind::ChainingHint
-            | InlayKind::ClosureReturnTypeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::TypeHint
-            | InlayKind::DiscriminantHint
-            | InlayKind::ClosingBraceHint => false,
-            InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
-            InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
+            | InlayKind::Chaining
+            | InlayKind::ClosureReturnType
+            | InlayKind::GenericParamList
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Type
+            | InlayKind::Discriminant
+            | InlayKind::ClosingBrace => false,
+            InlayKind::BindingMode => {
+                matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
+            }
+            InlayKind::Parameter | InlayKind::Lifetime => true,
         }),
         kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
+            InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::ClosureReturnType | InlayKind::Type | InlayKind::Chaining => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
             InlayKind::ClosingParenthesis
-            | InlayKind::DiscriminantHint
+            | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
-            | InlayKind::BindingModeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::LifetimeHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::ClosingBraceHint => None,
+            | InlayKind::BindingMode
+            | InlayKind::GenericParamList
+            | InlayKind::Lifetime
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::ClosingBrace => None,
         },
         text_edits: None,
-        data: (|| match inlay_hint.tooltip {
-            Some(ide::InlayTooltip::HoverOffset(file_id, offset)) => {
-                let uri = url(snap, file_id);
-                let line_index = snap.file_line_index(file_id).ok()?;
-
-                let text_document = lsp_types::VersionedTextDocumentIdentifier {
-                    version: snap.url_file_version(&uri)?,
-                    uri,
-                };
-                to_value(lsp_ext::InlayHintResolveData {
-                    text_document,
-                    position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
-                })
-                .ok()
-            }
-            Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
-                let uri = url(snap, file_id);
-                let text_document = lsp_types::VersionedTextDocumentIdentifier {
-                    version: snap.url_file_version(&uri)?,
-                    uri,
-                };
-                let line_index = snap.file_line_index(file_id).ok()?;
-                to_value(lsp_ext::InlayHintResolveData {
-                    text_document,
-                    position: lsp_ext::PositionOrRange::Range(range(&line_index, text_range)),
-                })
-                .ok()
-            }
-            _ => None,
-        })(),
-        tooltip: Some(match inlay_hint.tooltip {
-            Some(ide::InlayTooltip::String(s)) => lsp_types::InlayHintTooltip::String(s),
-            _ => lsp_types::InlayHintTooltip::String(inlay_hint.label.to_string()),
-        }),
-        label: inlay_hint_label(snap, inlay_hint.label)?,
+        data: None,
+        tooltip,
+        label,
     })
 }
 
 fn inlay_hint_label(
     snap: &GlobalStateSnapshot,
-    label: InlayHintLabel,
-) -> Cancellable<lsp_types::InlayHintLabel> {
-    Ok(match label.as_simple_str() {
-        Some(s) => lsp_types::InlayHintLabel::String(s.into()),
-        None => lsp_types::InlayHintLabel::LabelParts(
-            label
+    mut label: InlayHintLabel,
+) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
+    let res = match &*label.parts {
+        [InlayHintLabelPart { linked_location: None, .. }] => {
+            let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
+            (
+                lsp_types::InlayHintLabel::String(text),
+                match tooltip {
+                    Some(ide::InlayTooltip::String(s)) => {
+                        Some(lsp_types::InlayHintTooltip::String(s))
+                    }
+                    Some(ide::InlayTooltip::Markdown(s)) => {
+                        Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                            kind: lsp_types::MarkupKind::Markdown,
+                            value: s,
+                        }))
+                    }
+                    None => None,
+                },
+            )
+        }
+        _ => {
+            let parts = label
                 .parts
                 .into_iter()
                 .map(|part| {
-                    Ok(lsp_types::InlayHintLabelPart {
-                        value: part.text,
-                        tooltip: None,
-                        location: part
-                            .linked_location
-                            .map(|range| location(snap, range))
-                            .transpose()?,
-                        command: None,
-                    })
+                    part.linked_location.map(|range| location(snap, range)).transpose().map(
+                        |location| lsp_types::InlayHintLabelPart {
+                            value: part.text,
+                            tooltip: match part.tooltip {
+                                Some(ide::InlayTooltip::String(s)) => {
+                                    Some(lsp_types::InlayHintLabelPartTooltip::String(s))
+                                }
+                                Some(ide::InlayTooltip::Markdown(s)) => {
+                                    Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
+                                        lsp_types::MarkupContent {
+                                            kind: lsp_types::MarkupKind::Markdown,
+                                            value: s,
+                                        },
+                                    ))
+                                }
+                                None => None,
+                            },
+                            location,
+                            command: None,
+                        },
+                    )
                 })
-                .collect::<Cancellable<Vec<_>>>()?,
-        ),
-    })
+                .collect::<Cancellable<_>>()?;
+            (lsp_types::InlayHintLabel::LabelParts(parts), None)
+        }
+    };
+    Ok(res)
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
@@ -757,6 +766,7 @@ pub(crate) fn folding_range(
             end_line,
             end_character: None,
             kind,
+            collapsed_text: None,
         }
     } else {
         lsp_types::FoldingRange {
@@ -765,6 +775,7 @@ pub(crate) fn folding_range(
             end_line: range.end.line,
             end_character: Some(range.end.character),
             kind,
+            collapsed_text: None,
         }
     }
 }
@@ -1351,7 +1362,7 @@ pub(crate) mod command {
     pub(crate) fn trigger_parameter_hints() -> lsp_types::Command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
-            command: "editor.action.triggerParameterHints".into(),
+            command: "rust-analyzer.triggerParameterHints".into(),
             arguments: None,
         }
     }
@@ -1420,7 +1431,7 @@ fn main() {
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(text)),
             endings: LineEndings::Unix,
-            encoding: PositionEncoding::Utf16,
+            encoding: PositionEncoding::Utf8,
         };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(text, &line_index, true, it)).collect();

@@ -100,8 +100,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
 
-                let count =
-                    self.monomorphize(count).eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                let count = self
+                    .monomorphize(count)
+                    .eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
 
                 bx.write_operand_repeatedly(cg_elem, count, dest);
             }
@@ -412,7 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs.layout.ty,
                 );
                 let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types.bool]);
+                let operand_ty = bx.tcx().mk_tup(&[val_ty, bx.tcx().types.bool]);
                 OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
             }
 
@@ -492,7 +493,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(index) = place.as_local() {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind() {
-                    let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                    let n = n.eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);
                 }
             }
@@ -651,15 +652,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs: Bx::Value,
         input_ty: Ty<'tcx>,
     ) -> OperandValue<Bx::Value> {
-        // This case can currently arise only from functions marked
-        // with #[rustc_inherit_overflow_checks] and inlined from
-        // another crate (mostly core::num generic/#[inline] fns),
-        // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow() {
-            let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-            return OperandValue::Pair(val, bx.cx().const_bool(false));
-        }
-
         let (val, of) = match op {
             // These are checked using intrinsics
             mir::BinOp::Add | mir::BinOp::Sub | mir::BinOp::Mul => {

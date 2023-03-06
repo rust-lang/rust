@@ -1,9 +1,3 @@
-error: unexpected token: `;`
-  --> $DIR/parser-recovery-2.rs:10:15
-   |
-LL |     let x = y.;
-   |               ^
-
 error: mismatched closing delimiter: `)`
   --> $DIR/parser-recovery-2.rs:4:14
    |
@@ -13,18 +7,5 @@ LL |         let x = foo();
 LL |     )
    |     ^ mismatched closing delimiter
 
-error[E0425]: cannot find value `y` in this scope
-  --> $DIR/parser-recovery-2.rs:10:13
-   |
-LL |     let x = y.;
-   |             ^ not found in this scope
+error: aborting due to previous error
 
-error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/parser-recovery-2.rs:5:17
-   |
-LL |         let x = foo();
-   |                 ^^^ not found in this scope
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0425`.

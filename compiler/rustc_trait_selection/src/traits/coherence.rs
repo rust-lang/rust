@@ -21,7 +21,7 @@ use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
@@ -82,8 +82,8 @@ pub fn overlapping_impls(
         (Some(a), Some(b)) => iter::zip(a.skip_binder().substs, b.skip_binder().substs)
             .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
         (None, None) => {
-            let self_ty1 = tcx.type_of(impl1_def_id);
-            let self_ty2 = tcx.type_of(impl2_def_id);
+            let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
+            let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
             drcx.types_may_unify(self_ty1, self_ty2)
         }
         _ => bug!("unexpected impls: {impl1_def_id:?} {impl2_def_id:?}"),
@@ -124,7 +124,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 
     let header = ty::ImplHeader {
         impl_def_id,
-        self_ty: tcx.bound_type_of(impl_def_id).subst(tcx, impl_substs),
+        self_ty: tcx.type_of(impl_def_id).subst(tcx, impl_substs),
         trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
@@ -217,6 +217,7 @@ fn equate_impl_headers<'cx, 'tcx>(
     selcx
         .infcx
         .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+        .define_opaque_types(true)
         .eq_impl_headers(impl1_header, impl2_header)
         .map(|infer_ok| infer_ok.obligations)
         .ok()
@@ -627,7 +628,7 @@ enum OrphanCheckEarlyExit<'tcx> {
     LocalTy(Ty<'tcx>),
 }
 
-impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
     type BreakTy = OrphanCheckEarlyExit<'tcx>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())

@@ -107,6 +107,7 @@ impl<'a> Project<'a> {
                     did_change_watched_files: Some(
                         lsp_types::DidChangeWatchedFilesClientCapabilities {
                             dynamic_registration: Some(true),
+                            relative_pattern_support: None,
                         },
                     ),
                     ..Default::default()
@@ -137,6 +138,7 @@ impl<'a> Project<'a> {
                 })),
                 ..Default::default()
             },
+            Vec::new(),
         );
         config.discovered_projects = Some(discovered_projects);
         config.update(self.config).expect("invalid config");

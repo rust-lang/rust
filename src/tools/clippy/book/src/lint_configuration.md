@@ -53,6 +53,7 @@ Please use that command to update the file and do not edit it by hand.
 | [ignore-interior-mutability](#ignore-interior-mutability) | `["bytes::Bytes"]` |
 | [allow-mixed-uninlined-format-args](#allow-mixed-uninlined-format-args) | `true` |
 | [suppress-restriction-lint-in-const](#suppress-restriction-lint-in-const) | `false` |
+| [missing-docs-in-crate-items](#missing-docs-in-crate-items) | `false` |
 
 ### arithmetic-side-effects-allowed
 Suppress checking of the passed type names in all types of operations.
@@ -305,7 +306,7 @@ The maximum number of lines a function or method can have
 ### array-size-threshold
 The maximum allowed size for arrays on the stack
 
-**Default Value:** `512000` (`u128`)
+**Default Value:** `512000` (`u64`)
 
 * [large_stack_arrays](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays)
 * [large_const_arrays](https://rust-lang.github.io/rust-clippy/master/index.html#large_const_arrays)
@@ -471,7 +472,7 @@ The maximum size of a file included via `include_bytes!()` or `include_str!()`, 
 
 
 ### allow-expect-in-tests
-Whether `expect` should be allowed within `#[cfg(test)]`
+Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -479,7 +480,7 @@ Whether `expect` should be allowed within `#[cfg(test)]`
 
 
 ### allow-unwrap-in-tests
-Whether `unwrap` should be allowed in test cfg
+Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -487,7 +488,7 @@ Whether `unwrap` should be allowed in test cfg
 
 
 ### allow-dbg-in-tests
-Whether `dbg!` should be allowed in test functions
+Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -495,7 +496,7 @@ Whether `dbg!` should be allowed in test functions
 
 
 ### allow-print-in-tests
-Whether print macros (ex. `println!`) should be allowed in test functions
+Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -538,6 +539,15 @@ if no suggestion can be made.
 **Default Value:** `false` (`bool`)
 
 * [indexing_slicing](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
+
+
+### missing-docs-in-crate-items
+Whether to **only** check for missing documentation in items visible within the current
+crate. For example, `pub(crate)` items.
+
+**Default Value:** `false` (`bool`)
+
+* [missing_docs_in_private_items](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
 
 
 

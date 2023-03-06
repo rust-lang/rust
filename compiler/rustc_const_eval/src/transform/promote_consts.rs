@@ -18,7 +18,7 @@ use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -364,31 +364,33 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::Index(local) => {
                         let mut promotable = false;
                         // Only accept if we can predict the index and are indexing an array.
-                        let val =
-                            if let TempState::Defined { location: loc, .. } = self.temps[local] {
-                                let block = &self.body[loc.block];
-                                if loc.statement_index < block.statements.len() {
-                                    let statement = &block.statements[loc.statement_index];
-                                    match &statement.kind {
-                                        StatementKind::Assign(box (
-                                            _,
-                                            Rvalue::Use(Operand::Constant(c)),
-                                        )) => c.literal.try_eval_usize(self.tcx, self.param_env),
-                                        _ => None,
-                                    }
-                                } else {
-                                    None
+                        let val = if let TempState::Defined { location: loc, .. } =
+                            self.temps[local]
+                        {
+                            let block = &self.body[loc.block];
+                            if loc.statement_index < block.statements.len() {
+                                let statement = &block.statements[loc.statement_index];
+                                match &statement.kind {
+                                    StatementKind::Assign(box (
+                                        _,
+                                        Rvalue::Use(Operand::Constant(c)),
+                                    )) => c.literal.try_eval_target_usize(self.tcx, self.param_env),
+                                    _ => None,
                                 }
                             } else {
                                 None
-                            };
+                            }
+                        } else {
+                            None
+                        };
                         if let Some(idx) = val {
                             // Determine the type of the thing we are indexing.
                             let ty = place_base.ty(self.body, self.tcx).ty;
                             match ty.kind() {
                                 ty::Array(_, len) => {
                                     // It's an array; determine its length.
-                                    if let Some(len) = len.try_eval_usize(self.tcx, self.param_env)
+                                    if let Some(len) =
+                                        len.try_eval_target_usize(self.tcx, self.param_env)
                                     {
                                         // If the index is in-bounds, go ahead.
                                         if idx < len {
@@ -470,7 +472,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
                 if let ty::Array(_, len) = ty.kind() {
-                    match len.try_eval_usize(self.tcx, self.param_env) {
+                    match len.try_eval_target_usize(self.tcx, self.param_env) {
                         Some(0) => {}
                         _ => return Err(Unpromotable),
                     }
@@ -864,7 +866,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.intern_place_elems(&projection);
+            place.projection = tcx.mk_place_elems(&projection);
 
             // Create a temp to hold the promoted reference.
             // This is because `*r` requires `r` to be a local,
@@ -896,7 +898,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
             &mut rvalue,
-            Location { block: BasicBlock::new(0), statement_index: usize::MAX },
+            Location { block: START_BLOCK, statement_index: usize::MAX },
         );
 
         let span = self.promoted.span;

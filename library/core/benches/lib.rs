@@ -9,6 +9,7 @@
 extern crate test;
 
 mod any;
+mod array;
 mod ascii;
 mod char;
 mod fmt;
@@ -19,6 +20,7 @@ mod ops;
 mod pattern;
 mod slice;
 mod str;
+mod tuple;
 
 /// Returns a `rand::Rng` seeded with a consistent seed.
 ///

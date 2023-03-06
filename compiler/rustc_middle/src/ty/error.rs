@@ -271,7 +271,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
             ty::Alias(ty::Projection, _) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{p}`").into(),
-            ty::Alias(ty::Opaque, ..) => "opaque type".into(),
+            ty::Alias(ty::Opaque, ..) => if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() },
             ty::Error(_) => "type error".into(),
             _ => {
                 let width = tcx.sess.diagnostic_width();

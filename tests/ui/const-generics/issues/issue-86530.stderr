@@ -10,7 +10,7 @@ note: required by a bound in `z`
   --> $DIR/issue-86530.rs:10:8
    |
 LL | fn z<T>(t: T)
-   |    - required by a bound in this
+   |    - required by a bound in this function
 LL | where
 LL |     T: X,
    |        ^ required by this bound in `z`

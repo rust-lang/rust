@@ -27,7 +27,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -508,7 +508,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
                         instance.substs,
                         ty::ParamEnv::reveal_all(),
-                        cx.tcx.type_of(impl_def_id),
+                        cx.tcx.type_of(impl_def_id).skip_binder(),
                     );
 
                     // Only "class" methods are generally understood by LLVM,

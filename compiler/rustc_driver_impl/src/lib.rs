@@ -23,15 +23,15 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{ErrorGuaranteed, PResult};
+use rustc_errors::{
+    DiagnosticMessage, ErrorGuaranteed, PResult, SubdiagnosticMessage, TerminalUrl,
+};
 use rustc_feature::find_gated_cfg;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
+use rustc_macros::fluent_messages;
 use rustc_metadata::locator;
-use rustc_save_analysis as save;
-use rustc_save_analysis::DumpHandler;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
@@ -63,6 +63,44 @@ use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
 };
+
+fluent_messages! { "../locales/en-US.ftl" }
+
+pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
+    // tidy-alphabetical-start
+    crate::DEFAULT_LOCALE_RESOURCE,
+    rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
+    rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
+    rustc_attr::DEFAULT_LOCALE_RESOURCE,
+    rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
+    rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
+    rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
+    rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
+    rustc_error_messages::DEFAULT_LOCALE_RESOURCE,
+    rustc_expand::DEFAULT_LOCALE_RESOURCE,
+    rustc_hir_analysis::DEFAULT_LOCALE_RESOURCE,
+    rustc_hir_typeck::DEFAULT_LOCALE_RESOURCE,
+    rustc_incremental::DEFAULT_LOCALE_RESOURCE,
+    rustc_infer::DEFAULT_LOCALE_RESOURCE,
+    rustc_interface::DEFAULT_LOCALE_RESOURCE,
+    rustc_lint::DEFAULT_LOCALE_RESOURCE,
+    rustc_metadata::DEFAULT_LOCALE_RESOURCE,
+    rustc_middle::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_dataflow::DEFAULT_LOCALE_RESOURCE,
+    rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,
+    rustc_parse::DEFAULT_LOCALE_RESOURCE,
+    rustc_passes::DEFAULT_LOCALE_RESOURCE,
+    rustc_plugin_impl::DEFAULT_LOCALE_RESOURCE,
+    rustc_privacy::DEFAULT_LOCALE_RESOURCE,
+    rustc_query_system::DEFAULT_LOCALE_RESOURCE,
+    rustc_resolve::DEFAULT_LOCALE_RESOURCE,
+    rustc_session::DEFAULT_LOCALE_RESOURCE,
+    rustc_symbol_mangling::DEFAULT_LOCALE_RESOURCE,
+    rustc_trait_selection::DEFAULT_LOCALE_RESOURCE,
+    rustc_ty_utils::DEFAULT_LOCALE_RESOURCE,
+    // tidy-alphabetical-end
+];
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -221,6 +259,7 @@ fn run_compiler(
         output_file: ofile,
         output_dir: odir,
         file_loader,
+        locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,
@@ -323,7 +362,7 @@ fn run_compiler(
             }
 
             // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt()?;
+            queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering(()));
 
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
@@ -343,22 +382,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
-                let result = tcx.analysis(());
-                if sess.opts.unstable_opts.save_analysis {
-                    let crate_name = tcx.crate_name(LOCAL_CRATE);
-                    sess.time("save_analysis", || {
-                        save::process_crate(
-                            tcx,
-                            crate_name,
-                            &sess.io.input,
-                            None,
-                            DumpHandler::new(sess.io.output_dir.as_deref(), crate_name),
-                        )
-                    });
-                }
-                result
-            })?;
+            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
@@ -461,7 +485,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
     match registry.try_find_description(&normalised) {
-        Ok(Some(description)) => {
+        Ok(description) => {
             let mut is_in_code_block = false;
             let mut text = String::new();
             // Slice off the leading newline and print.
@@ -484,9 +508,6 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             } else {
                 print!("{text}");
             }
-        }
-        Ok(None) => {
-            early_error(output, &format!("no extended information for {code}"));
         }
         Err(InvalidErrorCode) => {
             early_error(output, &format!("{code} is not a valid error code"));
@@ -1180,7 +1201,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
@@ -1191,6 +1212,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         None,
         false,
         false,
+        TerminalUrl::No,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 

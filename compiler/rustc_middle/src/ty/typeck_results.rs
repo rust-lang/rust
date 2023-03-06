@@ -569,7 +569,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.contains_key(&id.local_id)
     }
 
-    pub fn get(&self, id: hir::HirId) -> Option<&V> {
+    pub fn get(&self, id: hir::HirId) -> Option<&'a V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }

@@ -412,11 +412,7 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
 }
 
 fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
-    if config.instrument_coverage {
-        Some(CString::new("default_%m_%p.profraw").unwrap())
-    } else {
-        None
-    }
+    config.instrument_coverage.then(|| CString::new("default_%m_%p.profraw").unwrap())
 }
 
 pub(crate) unsafe fn llvm_optimize(
@@ -446,16 +442,19 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
             sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
             sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
+            sanitize_kernel_address: config.sanitizer.contains(SanitizerSet::KERNELADDRESS),
+            sanitize_kernel_address_recover: config
+                .sanitizer_recover
+                .contains(SanitizerSet::KERNELADDRESS),
         })
     } else {
         None
     };
 
-    let mut llvm_profiler = if cgcx.prof.llvm_recording_enabled() {
-        Some(LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()))
-    } else {
-        None
-    };
+    let mut llvm_profiler = cgcx
+        .prof
+        .llvm_recording_enabled()
+        .then(|| LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()));
 
     let llvm_selfprofiler =
         llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());
@@ -762,6 +761,7 @@ pub(crate) unsafe fn codegen(
             EmitObj::None => {}
         }
 
+        record_llvm_cgu_instructions_stats(&cgcx.prof, llmod);
         drop(handlers);
     }
 
@@ -974,4 +974,24 @@ fn record_artifact_size(
         let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         self_profiler_ref.artifact_size(artifact_kind, artifact_name.to_string_lossy(), file_size);
     }
+}
+
+fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Module) {
+    if !prof.enabled() {
+        return;
+    }
+
+    let raw_stats =
+        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(&llmod, s) })
+            .expect("cannot get module instruction stats");
+
+    #[derive(serde::Deserialize)]
+    struct InstructionsStats {
+        module: String,
+        total: u64,
+    }
+
+    let InstructionsStats { module, total } =
+        serde_json::from_str(&raw_stats).expect("cannot parse llvm cgu instructions stats");
+    prof.artifact_size("cgu_instructions", module, total);
 }

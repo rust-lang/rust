@@ -46,12 +46,6 @@ changelog-seen = 2
 # Defaults to "if-available" when `channel = "dev"` and "false" otherwise.
 #download-ci-llvm = "if-available"
 
-# Indicates whether LLVM rebuild should be skipped when running bootstrap. If
-# this is `false` then the compiler's LLVM will be rebuilt whenever the built
-# version doesn't have the correct hash. If it is `true` then LLVM will never
-# be rebuilt. The default value is `false`.
-#skip-rebuild = false
-
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 
@@ -164,6 +158,7 @@ changelog-seen = 2
 # General build configuration options
 # =============================================================================
 [build]
+
 # The default stage to use for the `check` subcommand
 #check-stage = 0
 
@@ -665,6 +660,9 @@ changelog-seen = 2
 # "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib, or "off" to disable
 # LTO entirely.
 #lto = "thin-local"
+
+# Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
+#validate-mir-opts = 3
 
 # =============================================================================
 # Options for specific targets

@@ -1,4 +1,4 @@
-use crate::{NameBinding, NameBindingKind, Resolver, ResolverTree};
+use crate::{NameBinding, NameBindingKind, Resolver};
 use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
@@ -7,9 +7,9 @@ use rustc_ast::EnumDef;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
-use rustc_middle::middle::privacy::{IntoDefIdTree, Level};
-use rustc_middle::ty::{DefIdTree, Visibility};
+use rustc_middle::ty::Visibility;
 use std::mem;
 
 type ImportId<'a> = Interned<'a, NameBinding<'a>>;
@@ -29,8 +29,8 @@ impl ParentId<'_> {
     }
 }
 
-pub struct EffectiveVisibilitiesVisitor<'r, 'a> {
-    r: &'r mut Resolver<'a>,
+pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
+    r: &'r mut Resolver<'a, 'tcx>,
     def_effective_visibilities: EffectiveVisibilities,
     /// While walking import chains we need to track effective visibilities per-binding, and def id
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
@@ -41,7 +41,7 @@ pub struct EffectiveVisibilitiesVisitor<'r, 'a> {
     changed: bool,
 }
 
-impl Resolver<'_> {
+impl Resolver<'_, '_> {
     fn nearest_normal_mod(&mut self, def_id: LocalDefId) -> LocalDefId {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
@@ -60,25 +60,21 @@ impl Resolver<'_> {
         // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
         let normal_mod_id = self.nearest_normal_mod(def_id);
         if normal_mod_id == def_id {
-            self.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
+            self.tcx.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
         } else {
             Visibility::Restricted(normal_mod_id)
         }
     }
 }
 
-impl<'a, 'b> IntoDefIdTree for &'b mut Resolver<'a> {
-    type Tree = &'b Resolver<'a>;
-    fn tree(self) -> Self::Tree {
-        self
-    }
-}
-
-impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
+impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// Fills the `Resolver::effective_visibilities` table with public & exported items
     /// For now, this doesn't resolve macros (FIXME) and cannot resolve Impl, as we
     /// need access to a TyCtxt for that.
-    pub fn compute_effective_visibilities<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
+    pub(crate) fn compute_effective_visibilities<'c>(
+        r: &'r mut Resolver<'a, 'tcx>,
+        krate: &'c Crate,
+    ) {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -104,11 +100,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
             let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
             if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(
-                    r.local_def_id(node_id),
-                    eff_vis,
-                    ResolverTree(&r.untracked),
-                )
+                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
             }
         }
 
@@ -164,26 +156,28 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
         let nominal_vis = binding.vis.expect_local();
         let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
+        let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
             binding,
             nominal_vis,
-            |r| (private_vis.unwrap_or_else(|| r.private_vis_import(binding)), r),
+            || private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
             inherited_eff_vis,
             parent_id.level(),
-            &mut *self.r,
+            tcx,
         );
     }
 
     fn update_def(&mut self, def_id: LocalDefId, nominal_vis: Visibility, parent_id: ParentId<'a>) {
         let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
+        let tcx = self.r.tcx;
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             nominal_vis,
-            |r| (private_vis.unwrap_or_else(|| r.private_vis_def(def_id)), r),
+            || private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
             inherited_eff_vis,
             parent_id.level(),
-            &mut *self.r,
+            tcx,
         );
     }
 
@@ -192,7 +186,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
     }
 }
 
-impl<'r, 'ast> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r> {
+impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 'tcx> {
     fn visit_item(&mut self, item: &'ast ast::Item) {
         let def_id = self.r.local_def_id(item.id);
         // Update effective visibilities of nested items.

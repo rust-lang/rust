@@ -1,7 +1,8 @@
-// Mixing +bundle and +whole-archive is not allowed
+// gate-test-packed_bundled_libs
 
-// compile-flags: -l static:+bundle,+whole-archive=mylib -Zunstable-options --crate-type rlib
+// ignore-wasm32-bare
+// compile-flags: -l static:+bundle,+whole-archive=rust_test_helpers --crate-type rlib
+// error-pattern: link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
 // build-fail
-// error-pattern: the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
 
-fn main() { }
+fn main() {}

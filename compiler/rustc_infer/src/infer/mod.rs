@@ -29,7 +29,7 @@ use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
@@ -94,10 +94,10 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 /// call to `start_snapshot` and `rollback_to`.
 #[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
-    /// Cache for projections. This cache is snapshotted along with the infcx.
+    /// Cache for projections.
     ///
-    /// Public so that `traits::project` can use it.
-    pub projection_cache: traits::ProjectionCacheStorage<'tcx>,
+    /// This cache is snapshotted along with the infcx.
+    projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
     /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
@@ -156,7 +156,7 @@ pub struct InferCtxtInner<'tcx> {
     undo_log: InferCtxtUndoLogs<'tcx>,
 
     /// Caches for opaque type inference.
-    pub opaque_type_storage: OpaqueTypeStorage<'tcx>,
+    opaque_type_storage: OpaqueTypeStorage<'tcx>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -195,41 +195,17 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn int_unification_table(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::IntVid,
-            &mut ut::UnificationStorage<ty::IntVid>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    fn int_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::IntVid> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
-    fn float_unification_table(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::FloatVid,
-            &mut ut::UnificationStorage<ty::FloatVid>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    fn float_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
-    fn const_unification_table(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::ConstVid<'tcx>,
-            &mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    fn const_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::ConstVid<'tcx>> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
@@ -264,7 +240,7 @@ pub struct InferCtxt<'tcx> {
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
     ///
-    /// It is default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
+    /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
     /// might come up during inference or typeck.
     pub defining_use_anchor: DefiningAnchor,
 
@@ -617,7 +593,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         canonical: &Canonical<'tcx, T>,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let infcx = self.build();
         let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
@@ -697,7 +673,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.in_snapshot.get()
     }
 
-    pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
+    pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
 
@@ -880,30 +856,20 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
     }
 
-    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> UnitResult<'tcx>
+    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            self.at(origin, param_env).sub(a, b).map(|InferOk { obligations: _, .. }| {
-                // Ignore obligations, since we are unrolling
-                // everything anyway.
-            })
-        })
+        self.probe(|_| self.at(origin, param_env).sub(a, b).is_ok())
     }
 
-    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> UnitResult<'tcx>
+    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            self.at(origin, param_env).eq(a, b).map(|InferOk { obligations: _, .. }| {
-                // Ignore obligations, since we are unrolling
-                // everything anyway.
-            })
-        })
+        self.probe(|_| self.at(origin, param_env).eq(a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -1103,7 +1069,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Region<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
-        self.tcx.mk_region(ty::ReVar(region_var))
+        self.tcx.mk_re_var(region_var)
     }
 
     /// Return the universe that the region `r` was created in. For
@@ -1121,11 +1087,13 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    #[instrument(skip(self), level = "debug")]
     pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    #[instrument(skip(self), level = "debug")]
     pub fn next_nll_region_var_in_universe(
         &self,
         origin: NllRegionVariableOrigin,
@@ -1176,7 +1144,15 @@ impl<'tcx> InferCtxt<'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx.mk_const(const_var_id, self.tcx.type_of(param.def_id)).into()
+                self.tcx
+                    .mk_const(
+                        const_var_id,
+                        self.tcx
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    )
+                    .into()
             }
         }
     }
@@ -1371,7 +1347,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will be resolving them as well, e.g. in a loop).
     pub fn shallow_resolve<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         value.fold_with(&mut ShallowResolver { infcx: self })
     }
@@ -1388,7 +1364,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// at will.
     pub fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if !value.has_non_region_infer() {
             return value;
@@ -1399,7 +1375,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if !value.needs_infer() {
             return value; // Avoid duplicated subst-folding.
@@ -1414,7 +1390,7 @@ impl<'tcx> InferCtxt<'tcx> {
         value: &T,
     ) -> Option<(ty::Term<'tcx>, Option<Span>)>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         value.visit_with(&mut resolve::UnresolvedTypeOrConstFinder::new(self)).break_value()
     }
@@ -1429,17 +1405,14 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: T) -> FixupResult<'tcx, T> {
-        /*!
-         * Attempts to resolve all type/region/const variables in
-         * `value`. Region inference must have been run already (e.g.,
-         * by calling `resolve_regions_and_report_errors`). If some
-         * variable was never unified, an `Err` results.
-         *
-         * This method is idempotent, but it not typically not invoked
-         * except during the writeback phase.
-         */
-
+    /// Attempts to resolve all type/region/const variables in
+    /// `value`. Region inference must have been run already (e.g.,
+    /// by calling `resolve_regions_and_report_errors`). If some
+    /// variable was never unified, an `Err` results.
+    ///
+    /// This method is idempotent, but it not typically not invoked
+    /// except during the writeback phase.
+    pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
         let value = resolve::fully_resolve(self, value);
         assert!(
             value.as_ref().map_or(true, |value| !value.needs_infer()),
@@ -1462,7 +1435,7 @@ impl<'tcx> InferCtxt<'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = value.no_bound_vars() {
             return inner;
@@ -1754,7 +1727,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     // in this case. The typechecker should only ever report type errors involving mismatched
     // types using one of these methods, and should not call span_err directly for such
     // errors.
-
     pub fn type_error_struct_with_diag<M>(
         &self,
         sp: Span,
@@ -1852,8 +1824,8 @@ struct InferenceLiteralEraser<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1870,8 +1842,8 @@ struct ShallowResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -2064,21 +2036,21 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
         idx: u32,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::Infer(_) = t.kind() {
-                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
                     name: ty::BoundTyKind::Anon({
                         let idx = self.idx;
                         self.idx += 1;
                         idx
                     }),
-                }))
+                })
             } else {
                 t.super_fold_with(self)
             }

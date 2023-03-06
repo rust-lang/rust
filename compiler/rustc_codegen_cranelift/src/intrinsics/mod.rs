@@ -21,7 +21,8 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -493,20 +494,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let res = crate::num::codegen_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
         }
-        sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-            intrinsic_args!(fx, args => (x, y); intrinsic);
-
-            assert_eq!(x.layout().ty, y.layout().ty);
-            let bin_op = match intrinsic {
-                sym::add_with_overflow => BinOp::Add,
-                sym::sub_with_overflow => BinOp::Sub,
-                sym::mul_with_overflow => BinOp::Mul,
-                _ => unreachable!(),
-            };
-
-            let res = crate::num::codegen_checked_int_binop(fx, bin_op, x, y);
-            ret.write_cvalue(fx, res);
-        }
         sym::saturating_add | sym::saturating_sub => {
             intrinsic_args!(fx, args => (lhs, rhs); intrinsic);
 
@@ -640,48 +627,40 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let layout = fx.layout_of(substs.type_at(0));
-            if layout.abi.is_uninhabited() {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!("attempted to instantiate uninhabited type `{}`", layout.ty),
-                        source_info,
-                    )
-                });
-                return;
-            }
+            let ty = substs.type_at(0);
 
-            if intrinsic == sym::assert_zero_valid
-                && !fx.tcx.permits_zero_init(fx.param_env().and(layout))
-            {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to zero-initialize type `{}`, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    );
-                });
-                return;
-            }
+            let requirement = ValidityRequirement::from_intrinsic(intrinsic);
 
-            if intrinsic == sym::assert_mem_uninitialized_valid
-                && !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
-            {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to leave type `{}` uninitialized, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    )
-                });
-                return;
+            if let Some(requirement) = requirement {
+                let do_panic = !fx
+                    .tcx
+                    .check_validity_requirement((requirement, fx.param_env().and(ty)))
+                    .expect("expect to have layout during codegen");
+
+                if do_panic {
+                    let layout = fx.layout_of(ty);
+
+                    with_no_trimmed_paths!({
+                        crate::base::codegen_panic_nounwind(
+                            fx,
+                            &if layout.abi.is_uninhabited() {
+                                format!("attempted to instantiate uninhabited type `{}`", layout.ty)
+                            } else if requirement == ValidityRequirement::Zero {
+                                format!(
+                                    "attempted to zero-initialize type `{}`, which is invalid",
+                                    layout.ty
+                                )
+                            } else {
+                                format!(
+                                    "attempted to leave type `{}` uninitialized, which is invalid",
+                                    layout.ty
+                                )
+                            },
+                            source_info,
+                        )
+                    });
+                    return;
+                }
             }
         }
 

@@ -186,5 +186,6 @@ function createCommands(): Record<string, CommandFactory> {
         resolveCodeAction: { enabled: commands.resolveCodeAction },
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
+        triggerParameterHints: { enabled: commands.triggerParameterHints },
     };
 }

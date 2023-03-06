@@ -182,7 +182,10 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
+        let desc = it
+            .doc_value()
+            .as_ref()
+            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
         let desc = if let Some(desc) = desc {
             desc
         } else if it.is_crate() {
@@ -702,14 +705,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared.fs.write(scrape_examples_help_file, v)?;
         }
 
-        if let Some(ref redirections) = shared.redirections {
-            if !redirections.borrow().is_empty() {
-                let redirect_map_path =
-                    self.dst.join(crate_name.as_str()).join("redirect-map.json");
-                let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
-                shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
-                shared.fs.write(redirect_map_path, paths)?;
-            }
+        if let Some(ref redirections) = shared.redirections && !redirections.borrow().is_empty() {
+            let redirect_map_path =
+                self.dst.join(crate_name.as_str()).join("redirect-map.json");
+            let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
+            shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
+            shared.fs.write(redirect_map_path, paths)?;
         }
 
         // No need for it anymore.

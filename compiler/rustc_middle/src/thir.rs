@@ -20,7 +20,7 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts};
+use rustc_middle::ty::{self, AdtDef, FnSig, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -29,11 +29,15 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
-pub mod print;
 pub mod visit;
 
 macro_rules! thir_with_elements {
-    ($($name:ident: $id:ty => $value:ty => $format:literal,)*) => {
+    (
+        $($field_name:ident: $field_ty:ty,)*
+
+    @elements:
+        $($name:ident: $id:ty => $value:ty => $format:literal,)*
+    ) => {
         $(
             newtype_index! {
                 #[derive(HashStable)]
@@ -48,13 +52,19 @@ macro_rules! thir_with_elements {
         #[derive(Debug, HashStable, Clone)]
         pub struct Thir<'tcx> {
             $(
+                pub $field_name: $field_ty,
+            )*
+            $(
                 pub $name: IndexVec<$id, $value>,
             )*
         }
 
         impl<'tcx> Thir<'tcx> {
-            pub fn new() -> Thir<'tcx> {
+            pub fn new($($field_name: $field_ty,)*) -> Thir<'tcx> {
                 Thir {
+                    $(
+                        $field_name,
+                    )*
                     $(
                         $name: IndexVec::new(),
                     )*
@@ -76,11 +86,20 @@ macro_rules! thir_with_elements {
 pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
 
 thir_with_elements! {
+    body_type: BodyTy<'tcx>,
+
+@elements:
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
     params: ParamId => Param<'tcx> => "p{}",
+}
+
+#[derive(Debug, HashStable, Clone)]
+pub enum BodyTy<'tcx> {
+    Const(Ty<'tcx>),
+    Fn(FnSig<'tcx>),
 }
 
 /// Description of a type-checked function parameter.
@@ -218,6 +237,9 @@ pub struct LocalVarId(pub hir::HirId);
 /// A THIR expression.
 #[derive(Clone, Debug, HashStable)]
 pub struct Expr<'tcx> {
+    /// kind of expression
+    pub kind: ExprKind<'tcx>,
+
     /// The type of this expression
     pub ty: Ty<'tcx>,
 
@@ -227,9 +249,6 @@ pub struct Expr<'tcx> {
 
     /// span of the expression in the source
     pub span: Span,
-
-    /// kind of expression
-    pub kind: ExprKind<'tcx>,
 }
 
 #[derive(Clone, Debug, HashStable)]

@@ -16,8 +16,7 @@ use crate::{
     inlay_hints::AdjustmentHintsMode,
     moniker::{def_to_moniker, MonikerResult},
     parent_module::crates_for,
-    Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
-    TryToNav,
+    Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
 };
 
 /// A static representation of fully analyzed source code.
@@ -107,7 +106,6 @@ impl StaticIndex<'_> {
             .analysis
             .inlay_hints(
                 &InlayHintsConfig {
-                    location_links: true,
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
@@ -138,8 +136,9 @@ impl StaticIndex<'_> {
         });
         let hover_config = HoverConfig {
             links_in_hover: true,
-            documentation: Some(HoverDocFormat::Markdown),
+            documentation: true,
             keywords: true,
+            format: crate::HoverDocFormat::Markdown,
         };
         let tokens = tokens.filter(|token| {
             matches!(

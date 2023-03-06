@@ -1,4 +1,4 @@
-error[E0107]: this struct takes at least 2 generic arguments but 1 generic argument was supplied
+error[E0107]: struct takes at least 2 generic arguments but 1 generic argument was supplied
   --> $DIR/generic-impl-less-params-with-defaults.rs:11:5
    |
 LL |     Foo::<isize>::new();

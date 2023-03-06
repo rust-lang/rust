@@ -218,9 +218,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return;
             }
-            sym::add_with_overflow
-            | sym::sub_with_overflow
-            | sym::mul_with_overflow
             | sym::unchecked_div
             | sym::unchecked_rem
             | sym::unchecked_shl
@@ -232,28 +229,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, bx.tcx()) {
                     Some((_width, signed)) => match name {
-                        sym::add_with_overflow
-                        | sym::sub_with_overflow
-                        | sym::mul_with_overflow => {
-                            let op = match name {
-                                sym::add_with_overflow => OverflowOp::Add,
-                                sym::sub_with_overflow => OverflowOp::Sub,
-                                sym::mul_with_overflow => OverflowOp::Mul,
-                                _ => bug!(),
-                            };
-                            let (val, overflow) =
-                                bx.checked_binop(op, ty, args[0].immediate(), args[1].immediate());
-                            // Convert `i1` to a `bool`, and write it to the out parameter
-                            let val = bx.from_immediate(val);
-                            let overflow = bx.from_immediate(overflow);
-
-                            let dest = result.project_field(bx, 0);
-                            bx.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(bx, 1);
-                            bx.store(overflow, dest.llval, dest.align);
-
-                            return;
-                        }
                         sym::exact_div => {
                             if signed {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())

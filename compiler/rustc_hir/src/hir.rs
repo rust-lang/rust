@@ -369,10 +369,10 @@ impl<'hir> GenericArgs<'hir> {
 
     pub fn has_err(&self) -> bool {
         self.args.iter().any(|arg| match arg {
-            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err),
+            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         }) || self.bindings.iter().any(|arg| match arg.kind {
-            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err),
+            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         })
     }
@@ -498,6 +498,7 @@ pub struct GenericParam<'hir> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
     pub colon_span: Option<Span>,
+    pub source: GenericParamSource,
 }
 
 impl<'hir> GenericParam<'hir> {
@@ -514,6 +515,20 @@ impl<'hir> GenericParam<'hir> {
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
     }
+}
+
+/// Records where the generic parameter originated from.
+///
+/// This can either be from an item's generics, in which case it's typically
+/// early-bound (but can be a late-bound lifetime in functions, for example),
+/// or from a `for<...>` binder, in which case it's late-bound (and notably,
+/// does not show up in the parent item's generics).
+#[derive(Debug, HashStable_Generic, PartialEq, Eq, Copy, Clone)]
+pub enum GenericParamSource {
+    // Early or late-bound parameters defined on an item
+    Generics,
+    // Late-bound parameters defined via a `for<...>`
+    Binder,
 }
 
 #[derive(Default)]
@@ -574,14 +589,11 @@ impl<'hir> Generics<'hir> {
 
     /// If there are generic parameters, return where to introduce a new one.
     pub fn span_for_param_suggestion(&self) -> Option<Span> {
-        if self.params.iter().any(|p| self.span.contains(p.span)) {
+        self.params.iter().any(|p| self.span.contains(p.span)).then(|| {
             // `fn foo<A>(t: impl Trait)`
             //          ^ suggest `, T: Trait` here
-            let span = self.span.with_lo(self.span.hi() - BytePos(1)).shrink_to_lo();
-            Some(span)
-        } else {
-            None
-        }
+            self.span.with_lo(self.span.hi() - BytePos(1)).shrink_to_lo()
+        })
     }
 
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
@@ -639,7 +651,7 @@ impl<'hir> Generics<'hir> {
                 // We include bounds that come from a `#[derive(_)]` but point at the user's code,
                 // as we use this method to get a span appropriate for suggestions.
                 let bs = bound.span();
-                if bs.can_be_used_for_suggestions() { Some(bs.shrink_to_hi()) } else { None }
+                bs.can_be_used_for_suggestions().then(|| bs.shrink_to_hi())
             },
         )
     }
@@ -990,7 +1002,6 @@ pub struct Pat<'hir> {
 }
 
 impl<'hir> Pat<'hir> {
-    // FIXME(#19596) this is a workaround, but there should be a better way
     fn walk_short_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) -> bool {
         if !it(self) {
             return false;
@@ -1018,7 +1029,6 @@ impl<'hir> Pat<'hir> {
         self.walk_short_(&mut it)
     }
 
-    // FIXME(#19596) this is a workaround, but there should be a better way
     fn walk_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) {
         if !it(self) {
             return;
@@ -1693,7 +1703,7 @@ impl Expr<'_> {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
-            ExprKind::Err => ExprPrecedence::Err,
+            ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }
 
@@ -1759,7 +1769,7 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => false,
+            | ExprKind::Err(_) => false,
         }
     }
 
@@ -1845,7 +1855,7 @@ impl Expr<'_> {
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => true,
+            | ExprKind::Err(_) => true,
         }
     }
 
@@ -2018,7 +2028,7 @@ pub enum ExprKind<'hir> {
     Yield(&'hir Expr<'hir>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
-    Err,
+    Err(rustc_span::ErrorGuaranteed),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
@@ -2681,7 +2691,7 @@ pub enum TyKind<'hir> {
     /// specified. This can appear anywhere in a type.
     Infer,
     /// Placeholder for a type that has failed to be defined.
-    Err,
+    Err(rustc_span::ErrorGuaranteed),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -3460,7 +3470,7 @@ pub struct Upvar {
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
-#[derive(Encodable, Decodable, Clone, Debug, HashStable_Generic)]
+#[derive(Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,

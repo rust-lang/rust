@@ -9,7 +9,6 @@ use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldabl
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
-use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
@@ -106,7 +105,7 @@ pub trait TypeRelation<'tcx>: Sized {
         T: Relate<'tcx>;
 }
 
-pub trait Relate<'tcx>: TypeFoldable<'tcx> + PartialEq + Copy {
+pub trait Relate<'tcx>: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -145,7 +144,7 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-    relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
+    relation.tcx().mk_substs_from_iter(iter::zip(a_subst, b_subst).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
     }))
 }
@@ -164,8 +163,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
         let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
-            let ty =
-                *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
+            let ty = *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
             ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
         } else {
             ty::VarianceDiagInfo::default()
@@ -173,7 +171,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
         relation.relate_with_variance(variance, variance_info, a, b)
     });
 
-    tcx.mk_substs(params)
+    tcx.mk_substs_from_iter(params)
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
@@ -224,7 +222,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 r => r,
             });
         Ok(ty::FnSig {
-            inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
+            inputs_and_output: tcx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
             unsafety,
             abi,
@@ -354,7 +352,8 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
-        let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
+        let types =
+            tcx.mk_type_list_from_iter(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
     }
 }
@@ -414,7 +413,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             bug!("bound types encountered in super_relate_tys")
         }
 
-        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error_with_guaranteed(guar)),
+        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error(guar)),
 
         (&ty::Never, _)
         | (&ty::Char, _)
@@ -502,7 +501,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Ok(sz) => Ok(tcx.mk_array_with_const_len(t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
@@ -511,8 +510,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     // we however cannot end up with errors in `Relate` during both
                     // `type_of` and `predicates_of`. This means that evaluating the
                     // constants should not cause cycle errors here.
-                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
-                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
+                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
                             TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
@@ -530,7 +529,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
+                Ok(tcx.mk_tup_from_iter(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
             } else {
@@ -593,25 +592,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, ty::Const<'tcx>> {
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
-
-    let a_ty;
-    let b_ty;
-    if relation.tcx().features().adt_const_params {
-        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
-        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
-    } else {
-        a_ty = tcx.erase_regions(a.ty());
-        b_ty = tcx.erase_regions(b.ty());
-    }
-    if a_ty != b_ty {
-        relation.tcx().sess.delay_span_bug(
-            DUMMY_SP,
-            &format!(
-                "cannot relate constants ({:?}, {:?}) of different types: {} != {}",
-                a, b, a_ty, b_ty
-            ),
-        );
-    }
 
     // HACK(const_generics): We still need to eagerly evaluate consts when
     // relating them because during `normalize_param_env_or_error`,
@@ -694,7 +674,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                     for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
                         related_args.push(r.consts(a_arg, b_arg)?);
                     }
-                    let related_args = tcx.mk_const_list(related_args.iter());
+                    let related_args = tcx.mk_const_list(&related_args);
                     Expr::FunctionCall(func, related_args)
                 }
                 _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),
@@ -741,7 +721,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
                 _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b))),
             }
         });
-        tcx.mk_poly_existential_predicates(v)
+        tcx.mk_poly_existential_predicates_from_iter(v)
     }
 }
 

@@ -125,7 +125,7 @@ impl FlagComputation {
                 self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
             }
 
-            &ty::GeneratorWitnessMIR(_, ref substs) => {
+            ty::GeneratorWitnessMIR(_, substs) => {
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 self.add_substs(substs);
@@ -250,6 +250,10 @@ impl FlagComputation {
             ))) => {
                 self.add_ty(ty);
                 self.add_region(region);
+            }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                self.add_const(ct);
+                self.add_ty(ty);
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
                 self.add_ty(a);

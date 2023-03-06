@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -297,7 +297,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method.sig.output()
             }
             // error types are considered "builtin"
-            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
+            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
+                self.tcx.ty_error_misc()
+            }
             Err(errors) => {
                 let (_, trait_def_id) =
                     lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
@@ -518,7 +520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 let reported = err.emit();
-                self.tcx.ty_error_with_guaranteed(reported)
+                self.tcx.ty_error(reported)
             }
         };
 
@@ -631,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
-                if !actual.references_error() {
+                let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         ex.span,
@@ -701,9 +703,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit();
-                }
-                self.tcx.ty_error()
+                    err.emit()
+                });
+                self.tcx.ty_error(guar)
             }
         }
     }
@@ -747,14 +749,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let opname = Ident::with_dummy_span(opname);
-        let input_types =
-            opt_rhs.as_ref().map(|(_, ty)| std::slice::from_ref(ty)).unwrap_or_default();
+        let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
+        let input_types = opt_rhs_ty.as_slice();
         let cause = self.cause(
             span,
             traits::BinOp {
-                rhs_span: opt_rhs.map(|(expr, _)| expr.span),
-                is_lit: opt_rhs
-                    .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                rhs_span: opt_rhs_expr.map(|expr| expr.span),
+                is_lit: opt_rhs_expr
+                    .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 output_ty: expected.only_has_type(self),
             },
         );
@@ -963,8 +965,8 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
 struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
 
-impl<'tcx> TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TypeParamEraser<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
 

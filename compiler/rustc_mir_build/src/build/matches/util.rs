@@ -5,7 +5,7 @@ use crate::build::Builder;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use smallvec::SmallVec;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -35,7 +35,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
             match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (length.eval_usize(tcx, self.param_env), true),
+                ty::Array(_, length) => (length.eval_target_usize(tcx, self.param_env), true),
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {

@@ -326,7 +326,7 @@ impl<T> Trait<T> for X {
                         diag,
                         &trait_ref,
                         pred.bounds,
-                        &assoc,
+                        assoc,
                         assoc_substs,
                         ty,
                         msg,
@@ -504,7 +504,9 @@ fn foo(&self) -> Self::T { String::new() }
         let methods: Vec<(Span, String)> = items
             .in_definition_order()
             .filter(|item| {
-                ty::AssocKind::Fn == item.kind && Some(item.name) != current_method_ident
+                ty::AssocKind::Fn == item.kind
+                    && Some(item.name) != current_method_ident
+                    && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).subst_identity();
@@ -575,8 +577,8 @@ fn foo(&self) -> Self::T { String::new() }
                             if let hir::Defaultness::Default { has_value: true } =
                                 tcx.impl_defaultness(item.id.owner_id)
                             {
-                                let assoc_ty = tcx.bound_type_of(item.id.owner_id).subst_identity();
-                                if self.infcx.can_eq(param_env, assoc_ty, found).is_ok() {
+                                let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
+                                if self.infcx.can_eq(param_env, assoc_ty, found) {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -596,9 +598,9 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.bound_type_of(item.id.owner_id).subst_identity();
+                        let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
 
-                        if self.infcx.can_eq(param_env, assoc_ty, found).is_ok() {
+                        if self.infcx.can_eq(param_env, assoc_ty, found) {
                             diag.span_label(item.span, "expected this associated type");
                             return true;
                         }
@@ -622,7 +624,7 @@ fn foo(&self) -> Self::T { String::new() }
         diag: &mut Diagnostic,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
-        assoc: &ty::AssocItem,
+        assoc: ty::AssocItem,
         assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: &str,
@@ -665,7 +667,7 @@ fn foo(&self) -> Self::T { String::new() }
         &self,
         diag: &mut Diagnostic,
         span: Span,
-        assoc: &ty::AssocItem,
+        assoc: ty::AssocItem,
         assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: &str,

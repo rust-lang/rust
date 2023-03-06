@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
-use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::MalformedGenerics;
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
@@ -24,6 +24,7 @@ use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
+use std::mem;
 use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module};
@@ -33,9 +34,6 @@ use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;
-
-mod early;
-pub(crate) use early::early_resolve_intra_doc_links;
 
 pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
@@ -230,7 +228,7 @@ struct ResolutionInfo {
     item_id: ItemId,
     module_id: DefId,
     dis: Option<Disambiguator>,
-    path_str: String,
+    path_str: Box<str>,
     extra_fragment: Option<String>,
 }
 
@@ -295,7 +293,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let ty_res = self.resolve_path(&path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
-            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).kind() {
+            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).subst_identity().kind() {
                 ty::Adt(def, _) if def.is_enum() => {
                     if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
                         && let Some(field) = variant.fields.iter().find(|f| f.name == variant_field_name) {
@@ -361,7 +359,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 _ => def_id,
             })
             .and_then(|self_id| match tcx.def_kind(self_id) {
-                DefKind::Impl => self.def_id_to_res(self_id),
+                DefKind::Impl { .. } => self.def_id_to_res(self_id),
                 DefKind::Use => None,
                 def_kind => Some(Res::Def(def_kind, self_id)),
             })
@@ -473,7 +471,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// This is used for resolving type aliases.
     fn def_id_to_res(&self, ty_id: DefId) -> Option<Res> {
         use PrimitiveType::*;
-        Some(match *self.cx.tcx.type_of(ty_id).kind() {
+        Some(match *self.cx.tcx.type_of(ty_id).subst_identity().kind() {
             ty::Bool => Res::Primitive(Bool),
             ty::Char => Res::Primitive(Char),
             ty::Int(ity) => Res::Primitive(ity.into()),
@@ -516,27 +514,27 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // FIXME: Only simple types are supported here, see if we can support
         // other types such as Tuple, Array, Slice, etc.
         // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
-        Some(tcx.mk_ty(match prim {
-            Bool => ty::Bool,
-            Str => ty::Str,
-            Char => ty::Char,
-            Never => ty::Never,
-            I8 => ty::Int(ty::IntTy::I8),
-            I16 => ty::Int(ty::IntTy::I16),
-            I32 => ty::Int(ty::IntTy::I32),
-            I64 => ty::Int(ty::IntTy::I64),
-            I128 => ty::Int(ty::IntTy::I128),
-            Isize => ty::Int(ty::IntTy::Isize),
-            F32 => ty::Float(ty::FloatTy::F32),
-            F64 => ty::Float(ty::FloatTy::F64),
-            U8 => ty::Uint(ty::UintTy::U8),
-            U16 => ty::Uint(ty::UintTy::U16),
-            U32 => ty::Uint(ty::UintTy::U32),
-            U64 => ty::Uint(ty::UintTy::U64),
-            U128 => ty::Uint(ty::UintTy::U128),
-            Usize => ty::Uint(ty::UintTy::Usize),
+        Some(match prim {
+            Bool => tcx.types.bool,
+            Str => tcx.types.str_,
+            Char => tcx.types.char,
+            Never => tcx.types.never,
+            I8 => tcx.types.i8,
+            I16 => tcx.types.i16,
+            I32 => tcx.types.i32,
+            I64 => tcx.types.i64,
+            I128 => tcx.types.i128,
+            Isize => tcx.types.isize,
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
+            U8 => tcx.types.u8,
+            U16 => tcx.types.u16,
+            U32 => tcx.types.u32,
+            U64 => tcx.types.u64,
+            U128 => tcx.types.u128,
+            Usize => tcx.types.usize,
             _ => return None,
-        }))
+        })
     }
 
     /// Resolve an associated item, returning its containing page's `Res`
@@ -574,7 +572,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name is a variant of the `SomeItem` enum
                 if ns == TypeNS && def_kind == DefKind::Enum {
-                    match tcx.type_of(did).kind() {
+                    match tcx.type_of(did).subst_identity().kind() {
                         ty::Adt(adt_def, _) => {
                             for variant in adt_def.variants() {
                                 if variant.name == item_name {
@@ -608,7 +606,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
                         resolve_associated_trait_item(
-                            tcx.type_of(did),
+                            tcx.type_of(did).subst_identity(),
                             module_id,
                             item_name,
                             ns,
@@ -641,7 +639,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // they also look like associated items (`module::Type::Variant`),
                 // because they are real Rust syntax (unlike the intra-doc links
                 // field syntax) and are handled by the compiler's resolver.
-                let def = match tcx.type_of(did).kind() {
+                let def = match tcx.type_of(did).subst_identity().kind() {
                     ty::Adt(def, _) if !def.is_enum() => def,
                     _ => return None,
                 };
@@ -691,12 +689,12 @@ fn resolve_associated_trait_item<'a>(
             .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
             .map(|trait_assoc| {
                 trait_assoc_to_impl_assoc_item(cx.tcx, impl_, trait_assoc.def_id)
-                    .unwrap_or(trait_assoc)
+                    .unwrap_or(*trait_assoc)
             })
     });
     // FIXME(#74563): warn about ambiguity
     debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
-    candidates.next().copied()
+    candidates.next()
 }
 
 /// Find the associated item in the impl `impl_id` that corresponds to the
@@ -713,7 +711,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
     trait_assoc_id: DefId,
-) -> Option<&'tcx ty::AssocItem> {
+) -> Option<ty::AssocItem> {
     let trait_to_impl_assoc_map = tcx.impl_item_implementor_ids(impl_id);
     debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
@@ -807,22 +805,12 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let parent_node = parent_module.or(parent_node);
-            let mut tmp_links = self
-                .cx
-                .resolver_caches
-                .markdown_links
-                .take()
-                .expect("`markdown_links` are already borrowed");
-            if !tmp_links.contains_key(&doc) {
-                tmp_links.insert(doc.clone(), preprocessed_markdown_links(&doc));
-            }
-            for md_link in &tmp_links[&doc] {
-                let link = self.resolve_link(item, &doc, parent_node, md_link);
+            for md_link in preprocessed_markdown_links(&doc) {
+                let link = self.resolve_link(item, &doc, parent_node, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
             }
-            self.cx.resolver_caches.markdown_links = Some(tmp_links);
         }
 
         if item.is_mod() {
@@ -861,10 +849,10 @@ impl PreprocessingError {
 
 #[derive(Clone)]
 struct PreprocessingInfo {
-    path_str: String,
+    path_str: Box<str>,
     disambiguator: Option<Disambiguator>,
     extra_fragment: Option<String>,
-    link_text: String,
+    link_text: Box<str>,
 }
 
 // Not a typedef to avoid leaking several private structures from this module.
@@ -896,7 +884,8 @@ fn preprocess_link(
     let mut parts = stripped.split('#');
 
     let link = parts.next().unwrap();
-    if link.trim().is_empty() {
+    let link = link.trim();
+    if link.is_empty() {
         // This is an anchor to an element of the current page, nothing to do in here!
         return None;
     }
@@ -909,7 +898,7 @@ fn preprocess_link(
     // Parse and strip the disambiguator from the link, if present.
     let (disambiguator, path_str, link_text) = match Disambiguator::from_str(link) {
         Ok(Some((d, path, link_text))) => (Some(d), path.trim(), link_text.trim()),
-        Ok(None) => (None, link.trim(), link.trim()),
+        Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
@@ -948,7 +937,7 @@ fn preprocess_link(
         path_str,
         disambiguator,
         extra_fragment: extra_fragment.map(|frag| frag.to_owned()),
-        link_text: link_text.to_owned(),
+        link_text: Box::<str>::from(link_text),
     }))
 }
 
@@ -1004,7 +993,7 @@ impl LinkCollector<'_, '_> {
                 item_id: item.item_id,
                 module_id,
                 dis: disambiguator,
-                path_str: path_str.to_owned(),
+                path_str: path_str.clone(),
                 extra_fragment: extra_fragment.clone(),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
@@ -1078,7 +1067,7 @@ impl LinkCollector<'_, '_> {
                 }
 
                 res.def_id(self.cx.tcx).map(|page_id| ItemLink {
-                    link: ori_link.link.clone(),
+                    link: Box::<str>::from(&*ori_link.link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,
@@ -1102,7 +1091,7 @@ impl LinkCollector<'_, '_> {
 
                 let page_id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink {
-                    link: ori_link.link.clone(),
+                    link: Box::<str>::from(&*ori_link.link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,
@@ -1626,7 +1615,7 @@ fn resolution_failure(
             // ignore duplicates
             let mut variants_seen = SmallVec::<[_; 3]>::new();
             for mut failure in kinds {
-                let variant = std::mem::discriminant(&failure);
+                let variant = mem::discriminant(&failure);
                 if variants_seen.contains(&variant) {
                     continue;
                 }
@@ -1696,7 +1685,7 @@ fn resolution_failure(
 
                         if !path_str.contains("::") {
                             if disambiguator.map_or(true, |d| d.ns() == MacroNS)
-                                && let Some(&res) = collector.cx.resolver_caches.all_macro_rules
+                                && let Some(&res) = collector.cx.tcx.resolutions(()).all_macro_rules
                                                              .get(&Symbol::intern(path_str))
                             {
                                 diag.note(format!(
@@ -1722,7 +1711,7 @@ fn resolution_failure(
                         Res::Primitive(_) => None,
                     };
                     let is_struct_variant = |did| {
-                        if let ty::Adt(def, _) = tcx.type_of(did).kind()
+                        if let ty::Adt(def, _) = tcx.type_of(did).subst_identity().kind()
                         && def.is_enum()
                         && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
                             // ctor is `None` if variant is a struct
@@ -1773,7 +1762,7 @@ fn resolution_failure(
                             }
                             Trait | TyAlias | ForeignTy | OpaqueTy | ImplTraitPlaceholder
                             | TraitAlias | TyParam | Static(_) => "associated item",
-                            Impl | GlobalAsm => unreachable!("not a path"),
+                            Impl { .. } | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {
                         "associated item"

@@ -8,7 +8,7 @@ use rustc_hir::{
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{AdtDef, DefIdTree};
+use rustc_middle::ty::AdtDef;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let Some(adt_def) = cx.tcx.type_of(item.owner_id).ty_adt_def();
+            if let Some(adt_def) = cx.tcx.type_of(item.owner_id).subst_identity().ty_adt_def();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);

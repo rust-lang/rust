@@ -98,10 +98,12 @@ mod outlives;
 pub mod structured_errors;
 mod variance;
 
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_macros::fluent_messages;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -113,14 +115,14 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
-use std::iter;
 use std::ops::Not;
 
 use astconv::AstConv;
 use bounds::Bounds;
 
+fluent_messages! { "../locales/en-US.ftl" }
+
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    const ERROR_HEAD: &str = "C-variadic function must have a compatible calling convention";
     const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";
     const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
     const UNSTABLE_EXPLAIN: &str =
@@ -152,8 +154,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         (true, false) => CONVENTIONS_UNSTABLE,
     };
 
-    let mut err = struct_span_err!(tcx.sess, span, E0045, "{}, like {}", ERROR_HEAD, conventions);
-    err.span_label(span, ERROR_HEAD).emit();
+    tcx.sess.emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
 }
 
 fn require_same_types<'tcx>(
@@ -187,7 +188,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_type = tcx.type_of(local_def_id);
+            let hir_type = tcx.type_of(local_def_id).subst_identity();
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
@@ -204,7 +205,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
-                generics.params.is_empty().not().then(|| generics.span)
+                generics.params.is_empty().not().then_some(generics.span)
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");
@@ -255,53 +256,30 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_fn_predicates = tcx.predicates_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
         let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
-        let msg = "`main` function is not allowed to have generic \
-            parameters";
-        let mut diag =
-            struct_span_err!(tcx.sess, generics_param_span.unwrap_or(main_span), E0131, "{}", msg);
-        if let Some(generics_param_span) = generics_param_span {
-            let label = "`main` cannot have generic parameters";
-            diag.span_label(generics_param_span, label);
-        }
-        diag.emit();
+        tcx.sess.emit_err(errors::MainFunctionGenericParameters {
+            span: generics_param_span.unwrap_or(main_span),
+            label_span: generics_param_span,
+        });
         error = true;
     } else if !main_fn_predicates.predicates.is_empty() {
         // generics may bring in implicit predicates, so we skip this check if generics is present.
         let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
-        let mut diag = struct_span_err!(
-            tcx.sess,
-            generics_where_clauses_span.unwrap_or(main_span),
-            E0646,
-            "`main` function is not allowed to have a `where` clause"
-        );
-        if let Some(generics_where_clauses_span) = generics_where_clauses_span {
-            diag.span_label(generics_where_clauses_span, "`main` cannot have a `where` clause");
-        }
-        diag.emit();
+        tcx.sess.emit_err(errors::WhereClauseOnMain {
+            span: generics_where_clauses_span.unwrap_or(main_span),
+            generics_span: generics_where_clauses_span,
+        });
         error = true;
     }
 
     let main_asyncness = tcx.asyncness(main_def_id);
     if let hir::IsAsync::Async = main_asyncness {
-        let mut diag = struct_span_err!(
-            tcx.sess,
-            main_span,
-            E0752,
-            "`main` function is not allowed to be `async`"
-        );
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
-        if let Some(asyncness_span) = asyncness_span {
-            diag.span_label(asyncness_span, "`main` function is not allowed to be `async`");
-        }
-        diag.emit();
+        tcx.sess.emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
         error = true;
     }
 
     for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
-        tcx.sess
-            .struct_span_err(attr.span, "`main` function is not allowed to be `#[track_caller]`")
-            .span_label(main_span, "`main` function is not allowed to be `#[track_caller]`")
-            .emit();
+        tcx.sess.emit_err(errors::TrackCallerOnMain { span: attr.span, annotated: main_span });
         error = true;
     }
 
@@ -314,9 +292,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         if !return_ty.bound_vars().is_empty() {
-            let msg = "`main` function return type is not allowed to have generic \
-                    parameters";
-            struct_span_err!(tcx.sess, return_ty_span, E0131, "{}", msg).emit();
+            tcx.sess.emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
             error = true;
         }
         let return_ty = return_ty.skip_binder();
@@ -348,7 +324,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let se_ty = tcx.mk_fn_ptr(expected_return_type.map_bound(|expected_return_type| {
-        tcx.mk_fn_sig(iter::empty(), expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
+        tcx.mk_fn_sig([], expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
     }));
 
     require_same_types(
@@ -366,63 +342,35 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
     let start_id = tcx.hir().local_def_id_to_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
-    let start_t = tcx.type_of(start_def_id);
+    let start_t = tcx.type_of(start_def_id).subst_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
                 if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
-                        struct_span_err!(
-                            tcx.sess,
-                            generics.span,
-                            E0132,
-                            "start function is not allowed to have type parameters"
-                        )
-                        .span_label(generics.span, "start function cannot have type parameters")
-                        .emit();
+                        tcx.sess.emit_err(errors::StartFunctionParameters { span: generics.span });
                         error = true;
                     }
                     if generics.has_where_clause_predicates {
-                        struct_span_err!(
-                            tcx.sess,
-                            generics.where_clause_span,
-                            E0647,
-                            "start function is not allowed to have a `where` clause"
-                        )
-                        .span_label(
-                            generics.where_clause_span,
-                            "start function cannot have a `where` clause",
-                        )
-                        .emit();
+                        tcx.sess.emit_err(errors::StartFunctionWhere {
+                            span: generics.where_clause_span,
+                        });
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
                         let span = tcx.def_span(it.owner_id);
-                        struct_span_err!(
-                            tcx.sess,
-                            span,
-                            E0752,
-                            "`start` is not allowed to be `async`"
-                        )
-                        .span_label(span, "`start` is not allowed to be `async`")
-                        .emit();
+                        tcx.sess.emit_err(errors::StartAsync { span: span });
                         error = true;
                     }
 
                     let attrs = tcx.hir().attrs(start_id);
                     for attr in attrs {
                         if attr.has_name(sym::track_caller) {
-                            tcx.sess
-                                .struct_span_err(
-                                    attr.span,
-                                    "`start` is not allowed to be `#[track_caller]`",
-                                )
-                                .span_label(
-                                    start_span,
-                                    "`start` is not allowed to be `#[track_caller]`",
-                                )
-                                .emit();
+                            tcx.sess.emit_err(errors::StartTrackCaller {
+                                span: attr.span,
+                                start: start_span,
+                            });
                             error = true;
                         }
                     }
@@ -434,7 +382,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
             }
 
             let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))].iter().cloned(),
+                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))],
                 tcx.types.isize,
                 false,
                 hir::Unsafety::Normal,

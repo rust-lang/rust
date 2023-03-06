@@ -61,9 +61,7 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// For example, given the following invocation of the macro..
 ///
 /// ```ignore (rust)
-/// fluent_messages! {
-///     typeck => "./typeck.ftl",
-/// }
+/// fluent_messages! { "./typeck.ftl" }
 /// ```
 /// ..where `typeck.ftl` has the following contents..
 ///
@@ -77,9 +75,7 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// will generate the following code:
 ///
 /// ```ignore (rust)
-/// pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] = &[
-///     include_str!("./typeck.ftl"),
-/// ];
+/// pub static DEFAULT_LOCALE_RESOURCE: &'static [&'static str] = include_str!("./typeck.ftl");
 ///
 /// mod fluent_generated {
 ///     mod typeck {
@@ -124,8 +120,27 @@ decl_derive!([TyDecodable] => serialize::type_decodable_derive);
 decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
-decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_foldable_derive);
-decl_derive!([TypeVisitable, attributes(type_visitable)] => type_visitable::type_visitable_derive);
+decl_derive!(
+    [TypeFoldable, attributes(type_foldable)] =>
+    /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
+    ///
+    /// The fold will produce a value of the same struct or enum variant as the input, with
+    /// each field respectively folded using the `TypeFoldable` implementation for its type.
+    /// However, if a field of a struct or an enum variant is annotated with
+    /// `#[type_foldable(identity)]` then that field will retain its incumbent value (and its
+    /// type is not required to implement `TypeFoldable`).
+    type_foldable::type_foldable_derive
+);
+decl_derive!(
+    [TypeVisitable, attributes(type_visitable)] =>
+    /// Derives `TypeVisitable` for the annotated `struct` or `enum` (`union` is not supported).
+    ///
+    /// Each field of the struct or enum variant will be visited in definition order, using the
+    /// `TypeVisitable` implementation for its type. However, if a field of a struct or an enum
+    /// variant is annotated with `#[type_visitable(ignore)]` then that field will not be
+    /// visited (and its type is not required to implement `TypeVisitable`).
+    type_visitable::type_visitable_derive
+);
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [Diagnostic, attributes(

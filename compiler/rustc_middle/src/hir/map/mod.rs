@@ -1,5 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
-use crate::ty::{DefIdTree, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -203,7 +203,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Use(..) => DefKind::Use,
                 ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
                 ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-                ItemKind::Impl { .. } => DefKind::Impl,
+                ItemKind::Impl(impl_) => DefKind::Impl { of_trait: impl_.of_trait.is_some() },
             },
             Node::ForeignItem(item) => match item.kind {
                 ForeignItemKind::Fn(..) => DefKind::Fn,
@@ -849,6 +849,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn get_fn_output(self, def_id: LocalDefId) -> Option<&'hir FnRetTy<'hir>> {
+        match self.tcx.hir_owner(OwnerId { def_id }) {
+            Some(Owner { node, .. }) => node.fn_decl().map(|fn_decl| &fn_decl.output),
+            _ => None,
+        }
+    }
+
     pub fn expect_variant(self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
@@ -893,6 +900,11 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
         self.opt_ident(id).map(|ident| ident.span)
+    }
+
+    #[inline]
+    pub fn ident(self, id: HirId) -> Ident {
+        self.opt_ident(id).unwrap()
     }
 
     #[inline]
@@ -1062,7 +1074,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(self, id: DefId) -> Option<Span> {
-        if id.is_local() { Some(self.tcx.def_span(id)) } else { None }
+        id.is_local().then(|| self.tcx.def_span(id))
     }
 
     pub fn res_span(self, res: Res) -> Option<Span> {

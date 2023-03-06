@@ -8,7 +8,8 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+    UintTy,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
@@ -204,7 +205,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
     ) -> Result<&'a mut Self, !>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         // FIXME(non-lifetime-binders): What to do here?
         let regions = if value.has_late_bound_regions() {
@@ -540,7 +541,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
                         // Use a type that can't appear in defaults of type parameters.
-                        let dummy_self = cx.tcx.mk_ty_infer(ty::FreshTy(0));
+                        let dummy_self = cx.tcx.mk_fresh_ty(0);
                         let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
@@ -791,6 +792,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             | DefPathData::Use
             | DefPathData::GlobalAsm
             | DefPathData::Impl
+            | DefPathData::ImplTraitAssocTy
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

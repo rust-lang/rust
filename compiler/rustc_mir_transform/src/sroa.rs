@@ -1,10 +1,10 @@
 use crate::MirPass;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 
 pub struct ScalarReplacementOfAggregates;
@@ -18,18 +18,21 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
         let mut excluded = excluded_locals(body);
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         loop {
             debug!(?excluded);
             let escaping = escaping_locals(&excluded, body);
             debug!(?escaping);
-            let replacements = compute_flattening(tcx, body, escaping);
+            let replacements = compute_flattening(tcx, param_env, body, escaping);
             debug!(?replacements);
             let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
             if !all_dead_locals.is_empty() {
-                for local in excluded.indices() {
-                    excluded[local] |= all_dead_locals.contains(local);
-                }
-                excluded.raw.resize(body.local_decls.len(), false);
+                excluded.union(&all_dead_locals);
+                excluded = {
+                    let mut growable = GrowableBitSet::from(excluded);
+                    growable.ensure(body.local_decls.len());
+                    growable.into()
+                };
             } else {
                 break;
             }
@@ -44,11 +47,11 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
 /// - the locals is a union or an enum;
 /// - the local's address is taken, and thus the relative addresses of the fields are observable to
 ///   client code.
-fn escaping_locals(excluded: &IndexVec<Local, bool>, body: &Body<'_>) -> BitSet<Local> {
+fn escaping_locals(excluded: &BitSet<Local>, body: &Body<'_>) -> BitSet<Local> {
     let mut set = BitSet::new_empty(body.local_decls.len());
     set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
-        if decl.ty.is_union() || decl.ty.is_enum() || excluded[local] {
+        if decl.ty.is_union() || decl.ty.is_enum() || excluded.contains(local) {
             set.insert(local);
         }
     }
@@ -120,7 +123,7 @@ impl<'tcx> ReplacementMap<'tcx> {
         let &[PlaceElem::Field(f, _), ref rest @ ..] = place.projection else { return None; };
         let fields = self.fragments[place.local].as_ref()?;
         let (_, new_local) = fields[f]?;
-        Some(Place { local: new_local, projection: tcx.intern_place_elems(&rest) })
+        Some(Place { local: new_local, projection: tcx.mk_place_elems(&rest) })
     }
 
     fn place_fragments(
@@ -142,6 +145,7 @@ impl<'tcx> ReplacementMap<'tcx> {
 /// The replacement will be done later in `ReplacementVisitor`.
 fn compute_flattening<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     escaping: BitSet<Local>,
 ) -> ReplacementMap<'tcx> {
@@ -153,7 +157,7 @@ fn compute_flattening<'tcx>(
         }
         let decl = body.local_decls[local].clone();
         let ty = decl.ty;
-        iter_fields(ty, tcx, |variant, field, field_ty| {
+        iter_fields(ty, tcx, param_env, |variant, field, field_ty| {
             if variant.is_some() {
                 // Downcasts are currently not supported.
                 return;
@@ -172,7 +176,7 @@ fn replace_flattened_locals<'tcx>(
     body: &mut Body<'tcx>,
     replacements: ReplacementMap<'tcx>,
 ) -> BitSet<Local> {
-    let mut all_dead_locals = BitSet::new_empty(body.local_decls.len());
+    let mut all_dead_locals = BitSet::new_empty(replacements.fragments.len());
     for (local, replacements) in replacements.fragments.iter_enumerated() {
         if replacements.is_some() {
             all_dead_locals.insert(local);
@@ -318,6 +322,8 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // ConstProp will pick up the pieces and replace them by actual constants.
             StatementKind::Assign(box (place, Rvalue::Use(Operand::Constant(_)))) => {
                 if let Some(final_locals) = self.replacements.place_fragments(place) {
+                    // Put the deaggregated statements *after* the original one.
+                    let location = location.successor_within_block();
                     for (field, ty, new_local) in final_locals {
                         let rplace = self.tcx.mk_place_field(place, field, ty);
                         let rvalue = Rvalue::Use(Operand::Move(rplace));

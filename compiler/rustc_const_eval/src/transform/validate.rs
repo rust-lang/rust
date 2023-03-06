@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -72,6 +72,17 @@ impl<'tcx> MirPass<'tcx> for Validator {
         };
         checker.visit_body(body);
         checker.check_cleanup_control_flow();
+
+        if let MirPhase::Runtime(_) = body.phase {
+            if let ty::InstanceDef::Item(_) = body.source.instance {
+                if body.has_free_regions() {
+                    checker.fail(
+                        Location::START,
+                        format!("Free regions in optimized {} MIR", body.phase.name()),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -315,7 +326,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Field(f, ty) => {
-                let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+                let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
                 let parent_ty = parent.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &Self, location| {
                     this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
@@ -334,7 +345,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 let kind = match parent_ty.ty.kind() {
                     &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                        self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                        self.tcx.type_of(def_id).subst(self.tcx, substs).kind()
                     }
                     kind => kind,
                 };
@@ -755,8 +766,26 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{:?}` is forbidden", kind));
                 }
             }
-            StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
+            StatementKind::StorageLive(local) => {
+                // We check that the local is not live when entering a `StorageLive` for it.
+                // Technically, violating this restriction is only UB and not actually indicative
+                // of not well-formed MIR. This means that an optimization which turns MIR that
+                // already has UB into MIR that fails this check is not necessarily wrong. However,
+                // we have no such optimizations at the moment, and so we include this check anyway
+                // to help us catch bugs. If you happen to write an optimization that might cause
+                // this to incorrectly fire, feel free to remove this check.
+                if self.reachable_blocks.contains(location.block) {
+                    self.storage_liveness.seek_before_primary_effect(location);
+                    let locals_with_storage = self.storage_liveness.get();
+                    if locals_with_storage.contains(*local) {
+                        self.fail(
+                            location,
+                            format!("StorageLive({local:?}) which already has storage here"),
+                        );
+                    }
+                }
+            }
+            StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}

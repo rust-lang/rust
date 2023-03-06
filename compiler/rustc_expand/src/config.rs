@@ -24,6 +24,7 @@ use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use thin_vec::ThinVec;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -206,7 +207,7 @@ pub fn features(
         None => {
             // The entire crate is unconfigured.
             krate.attrs = ast::AttrVec::new();
-            krate.items = Vec::new();
+            krate.items = ThinVec::new();
             Features::default()
         }
         Some(attrs) => {
@@ -238,12 +239,10 @@ macro_rules! configure {
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs + HasTokens>(&self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        if self.in_cfg(node.attrs()) {
+        self.in_cfg(node.attrs()).then(|| {
             self.try_configure_tokens(&mut node);
-            Some(node)
-        } else {
-            None
-        }
+            node
+        })
     }
 
     fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
@@ -257,7 +256,7 @@ impl<'a> StripUnconfigured<'a> {
 
     fn configure_krate_attrs(&self, mut attrs: ast::AttrVec) -> Option<ast::AttrVec> {
         attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-        if self.in_cfg(&attrs) { Some(attrs) } else { None }
+        self.in_cfg(&attrs).then_some(attrs)
     }
 
     /// Performs cfg-expansion on `stream`, producing a new `AttrTokenStream`.

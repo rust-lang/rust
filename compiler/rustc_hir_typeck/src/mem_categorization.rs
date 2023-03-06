@@ -51,8 +51,7 @@
 use rustc_middle::hir::place::*;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -127,7 +126,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.resolve_vars_if_possible(value)
     }
@@ -384,7 +383,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::Box(..)
-            | hir::ExprKind::Err => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
+            | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
         }
     }
 
@@ -602,7 +601,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(
         &self,
         mut place_with_id: PlaceWithHirId<'tcx>,
@@ -638,7 +636,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // `&&Some(x,)` `place_foo`
         //  `&Some(x,)` `deref { place_foo}`
         //   `Some(x,)` `deref { deref { place_foo }}`
-        //        (x,)` `field0 { deref { deref { place_foo }}}` <- resulting place
+        //       `(x,)` `field0 { deref { deref { place_foo }}}` <- resulting place
         //
         // The above example has no adjustments. If the code were instead the (after adjustments,
         // equivalent) version

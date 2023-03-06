@@ -29,8 +29,8 @@
    29|      1|    some_string = Some(String::from("the string content"));
    30|      1|    let
    31|      1|        a
-   32|      1|    =
-   33|      1|        ||
+   32|       |    =
+   33|       |        ||
    34|      0|    {
    35|      0|        let mut countdown = 0;
    36|      0|        if is_false {

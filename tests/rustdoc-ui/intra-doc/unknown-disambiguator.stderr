@@ -20,22 +20,6 @@ LL | //! Linking to [foo@banana] and [`bar@banana!()`].
    |
    = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
 
-error: unknown disambiguator `foo`
-  --> $DIR/unknown-disambiguator.rs:10:34
-   |
-LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
-   |                                  ^^^
-   |
-   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
-
-error: unknown disambiguator `foo`
-  --> $DIR/unknown-disambiguator.rs:10:48
-   |
-LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
-   |                                                ^^^
-   |
-   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
-
 error: unknown disambiguator ``
   --> $DIR/unknown-disambiguator.rs:7:31
    |
@@ -49,6 +33,22 @@ error: unknown disambiguator ``
    |
 LL | //! And to [no disambiguator](@nectarine) and [another](@apricot!()).
    |                                                         ^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator `foo`
+  --> $DIR/unknown-disambiguator.rs:10:34
+   |
+LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
+   |                                  ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator `foo`
+  --> $DIR/unknown-disambiguator.rs:10:48
+   |
+LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
+   |                                                ^^^
    |
    = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
 

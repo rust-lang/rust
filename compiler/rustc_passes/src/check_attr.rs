@@ -4,10 +4,10 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
+use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, Applicability, IntoDiagnosticArg, MultiSpan};
+use rustc_errors::{Applicability, IntoDiagnosticArg, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -18,12 +18,13 @@ use rustc_hir::{
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -156,6 +157,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
+                sym::rustc_coinductive => self.check_rustc_coinductive(&attr, span, target),
                 sym::cmse_nonsecure_entry => {
                     self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
                 }
@@ -934,15 +936,15 @@ impl CheckAttrVisitor<'_> {
                             src.insert(1, '!');
                             err.span_suggestion_verbose(
                                 attr.span,
-                                fluent::suggestion,
+                                fluent::passes_suggestion,
                                 src,
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            err.span_help(attr.span, fluent::help);
+                            err.span_help(attr.span, fluent::passes_help);
                         }
                     }
-                    err.note(fluent::note);
+                    err.note(fluent::passes_note);
                     err
                 },
             );
@@ -1608,6 +1610,20 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    /// Checks if the `#[rustc_coinductive]` attribute is applied to a trait.
+    fn check_rustc_coinductive(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::Trait => true,
+            _ => {
+                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
+                    attr_span: attr.span,
+                    defn_span: span,
+                });
+                false
+            }
+        }
+    }
+
     /// Checks if `#[link_section]` is applied to a function or static.
     fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
@@ -2087,7 +2103,33 @@ impl CheckAttrVisitor<'_> {
 
     fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::MacroDef {
-            self.tcx.emit_spanned_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::MacroExport);
+            self.tcx.emit_spanned_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr.span,
+                errors::MacroExport::Normal,
+            );
+        } else if let Some(meta_item_list) = attr.meta_item_list() &&
+        !meta_item_list.is_empty() {
+            if meta_item_list.len() > 1 {
+                self.tcx.emit_spanned_lint(
+                    INVALID_MACRO_EXPORT_ARGUMENTS,
+                    hir_id,
+                    attr.span,
+                    errors::MacroExport::TooManyItems,
+                );
+            } else {
+                if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
+                    self.tcx.emit_spanned_lint(
+                        INVALID_MACRO_EXPORT_ARGUMENTS,
+                        hir_id,
+                        meta_item_list[0].span(),
+                        errors::MacroExport::UnknownItem {
+                            name: meta_item_list[0].name_or_empty(),
+                        },
+                    );
+                }
+            }
         }
     }
 
@@ -2159,7 +2201,7 @@ impl CheckAttrVisitor<'_> {
         let tcx = self.tcx;
         if target == Target::Fn {
             let Some(tokenstream) = tcx.get_diagnostic_item(sym::TokenStream) else {return};
-            let tokenstream = tcx.type_of(tokenstream);
+            let tokenstream = tcx.type_of(tokenstream).subst_identity();
 
             let id = hir_id.expect_owner();
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();

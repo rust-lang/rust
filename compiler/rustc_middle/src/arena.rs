@@ -8,7 +8,7 @@
 macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
-            [] layout: rustc_target::abi::LayoutS<rustc_target::abi::VariantIdx>,
+            [] layout: rustc_target::abi::LayoutS,
             [] fn_abi: rustc_target::abi::call::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
             [decode] adt_def: rustc_middle::ty::AdtDefData,
@@ -35,6 +35,8 @@ macro_rules! arena_types {
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
             [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
+            [] metadata_loader: rustc_data_structures::steal::Steal<Box<rustc_session::cstore::MetadataLoaderDyn>>,
+            [] crate_for_resolver: rustc_data_structures::steal::Steal<rustc_ast::ast::Crate>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
@@ -114,6 +116,7 @@ macro_rules! arena_types {
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
+            [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
         ]);
     )
 }

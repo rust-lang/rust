@@ -116,12 +116,19 @@ pub enum DefKind {
     LifetimeParam,
     /// A use of `global_asm!`.
     GlobalAsm,
-    Impl,
+    Impl {
+        of_trait: bool,
+    },
     Closure,
     Generator,
 }
 
 impl DefKind {
+    /// Get an English description for the item's kind.
+    ///
+    /// If you have access to `TyCtxt`, use `TyCtxt::def_descr` or
+    /// `TyCtxt::def_kind_descr` instead, because they give better
+    /// information for generators and associated functions.
     pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
@@ -155,7 +162,7 @@ impl DefKind {
             DefKind::AnonConst => "constant expression",
             DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
-            DefKind::Impl => "implementation",
+            DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
             DefKind::Generator => "generator",
             DefKind::ExternCrate => "extern crate",
@@ -164,6 +171,10 @@ impl DefKind {
     }
 
     /// Gets an English article for the definition.
+    ///
+    /// If you have access to `TyCtxt`, use `TyCtxt::def_descr_article` or
+    /// `TyCtxt::def_kind_descr_article` instead, because they give better
+    /// information for generators and associated functions.
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
@@ -171,7 +182,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Use
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
@@ -216,7 +227,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::ImplTraitPlaceholder => None,
         }
     }
@@ -255,7 +266,7 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
             | DefKind::ImplTraitPlaceholder
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Field
             | DefKind::TyParam
             | DefKind::ConstParam

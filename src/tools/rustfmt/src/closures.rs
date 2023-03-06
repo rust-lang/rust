@@ -1,5 +1,6 @@
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;
@@ -150,7 +151,7 @@ fn rewrite_closure_with_block(
     }
 
     let block = ast::Block {
-        stmts: vec![ast::Stmt {
+        stmts: thin_vec![ast::Stmt {
             id: ast::NodeId::root(),
             kind: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,

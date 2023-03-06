@@ -44,8 +44,7 @@ SOURCE_FILE
       IDENT "T"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 9: expected type parameter
-error 11: expected COMMA
+error 9: expected generic parameter
 error 11: expected R_ANGLE
 error 11: expected `;`, `{`, or `(`
 error 12: expected an item

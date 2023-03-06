@@ -88,7 +88,7 @@ pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
-    explain: &str,
+    explain: impl Into<DiagnosticMessage>,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
@@ -103,7 +103,7 @@ pub fn feature_err_issue<'a>(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
-    explain: &str,
+    explain: impl Into<DiagnosticMessage>,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     let span = span.into();
 
@@ -114,7 +114,7 @@ pub fn feature_err_issue<'a>(
             .map(|err| err.cancel());
     }
 
-    let mut err = sess.create_err(FeatureGateError { span, explain });
+    let mut err = sess.create_err(FeatureGateError { span, explain: explain.into() });
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
     err
 }
@@ -226,8 +226,8 @@ pub struct ParseSess {
 
 impl ParseSess {
     /// Used for testing.
-    pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let fallback_bundle = fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+    pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
+        let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(
             ColorConfig::Auto,
@@ -265,7 +265,7 @@ impl ParseSess {
     }
 
     pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
-        let fallback_bundle = fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_handler =
             Handler::with_tty_emitter(ColorConfig::Auto, false, None, None, None, fallback_bundle);

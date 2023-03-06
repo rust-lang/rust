@@ -134,11 +134,11 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // Process the replace ranges, starting from the highest start
             // position and working our way back. If have tokens like:
             //
-            // `#[cfg(FALSE)]` struct Foo { #[cfg(FALSE)] field: bool }`
+            // `#[cfg(FALSE)] struct Foo { #[cfg(FALSE)] field: bool }`
             //
             // Then we will generate replace ranges for both
             // the `#[cfg(FALSE)] field: bool` and the entire
-            // `#[cfg(FALSE)]` struct Foo { #[cfg(FALSE)] field: bool }`
+            // `#[cfg(FALSE)] struct Foo { #[cfg(FALSE)] field: bool }`
             //
             // By starting processing from the replace range with the greatest
             // start position, we ensure that any replace range which encloses

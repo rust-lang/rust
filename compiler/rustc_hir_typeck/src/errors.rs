@@ -1,4 +1,5 @@
 //! Errors emitted by `rustc_hir_typeck`.
+use crate::fluent_generated as fluent;
 use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, MultiSpan, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -14,7 +15,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(previous_use_label)]
+    #[label(hir_typeck_previous_use_label)]
     pub prev_span: Span,
     pub ident: Ident,
 }
@@ -24,9 +25,9 @@ pub struct FieldMultiplySpecifiedInInitializer {
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
-    #[label(encl_body_label)]
+    #[label(hir_typeck_encl_body_label)]
     pub encl_body_span: Option<Span>,
-    #[label(encl_fn_label)]
+    #[label(hir_typeck_encl_fn_label)]
     pub encl_fn_span: Option<Span>,
 }
 
@@ -157,20 +158,17 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
 
         // Only explain that `a ..b` is a range if it's split up
         if self.expr_span.between(self.fru_span).is_empty() {
-            diag.span_note(
-                self.expr_span.to(self.fru_span),
-                rustc_errors::fluent::hir_typeck_fru_note,
-            );
+            diag.span_note(self.expr_span.to(self.fru_span), fluent::hir_typeck_fru_note);
         } else {
             let mut multispan: MultiSpan = vec![self.expr_span, self.fru_span].into();
-            multispan.push_span_label(self.expr_span, rustc_errors::fluent::hir_typeck_fru_expr);
-            multispan.push_span_label(self.fru_span, rustc_errors::fluent::hir_typeck_fru_expr2);
-            diag.span_note(multispan, rustc_errors::fluent::hir_typeck_fru_note);
+            multispan.push_span_label(self.expr_span, fluent::hir_typeck_fru_expr);
+            multispan.push_span_label(self.fru_span, fluent::hir_typeck_fru_expr2);
+            diag.span_note(multispan, fluent::hir_typeck_fru_note);
         }
 
         diag.span_suggestion(
             self.expr_span.shrink_to_hi(),
-            rustc_errors::fluent::hir_typeck_fru_suggestion,
+            fluent::hir_typeck_fru_suggestion,
             ", ",
             Applicability::MaybeIncorrect,
         );

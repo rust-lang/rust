@@ -3,14 +3,14 @@
 // check that we don't emit multiple drop flags when they are not needed.
 
 
-// EMIT_MIR issue_41110.main.ElaborateDrops.after.mir
+// EMIT_MIR issue_41110.main.ElaborateDrops.diff
 fn main() {
     let x = S.other(S.id());
 }
 
 // no_mangle to make sure this gets instantiated even in an executable.
 #[no_mangle]
-// EMIT_MIR issue_41110.test.ElaborateDrops.after.mir
+// EMIT_MIR issue_41110.test.ElaborateDrops.diff
 pub fn test() {
     let u = S;
     let mut v = S;

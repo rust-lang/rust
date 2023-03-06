@@ -352,7 +352,7 @@ impl Instant {
         self.checked_duration_since(earlier).unwrap_or_default()
     }
 
-    /// Returns the amount of time elapsed since this instant was created.
+    /// Returns the amount of time elapsed since this instant.
     ///
     /// # Panics
     ///
@@ -525,8 +525,8 @@ impl SystemTime {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
-    /// Returns the difference between the clock time when this
-    /// system time was created, and the current clock time.
+    /// Returns the difference from this system time to the
+    /// current clock time.
     ///
     /// This function may fail as the underlying system clock is susceptible to
     /// drift and updates (e.g., the system clock could go backwards), so this

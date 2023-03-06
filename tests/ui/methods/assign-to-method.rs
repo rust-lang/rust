@@ -1,5 +1,4 @@
-// compile-flags: -Zsave-analysis
-// Also regression test for #69409
+// Regression test for #69409
 
 struct Cat {
     meows : usize,

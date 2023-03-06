@@ -9,7 +9,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
@@ -339,7 +339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Essentially any user-written impl will match with an error type,
         // so creating `ImplCandidates` isn't useful. However, we might
-        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized)
+        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized`)
         // This helps us avoid overflow: see issue #72839
         // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.
@@ -396,7 +396,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // still be provided by a manual implementation for
                     // this trait and type.
                 }
-                ty::Param(..) | ty::Alias(ty::Projection, ..) => {
+                ty::Param(..)
+                | ty::Alias(ty::Projection, ..)
+                | ty::Placeholder(..)
+                | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
                     // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -448,6 +451,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         self.infcx.probe(|_snapshot| {
+            if obligation.has_non_region_late_bound() {
+                return;
+            }
+
             // The code below doesn't care about regions, and the
             // self-ty here doesn't escape this probe, so just erase
             // any LBR.

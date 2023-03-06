@@ -11,7 +11,7 @@ use std::io::{self, Write};
 pub const TOOLTIP_INDENT: &str = "    ";
 
 const CARET: char = '\u{2038}'; // Unicode `CARET`
-const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT BINDING BRACKET
+const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT BINDING BRACKET`
 const ANNOTATION_RIGHT_BRACKET: char = '\u{2989}'; // Unicode `Z NOTATION LEFT BINDING BRACKET`
 const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
 const HEADER: &str = r#"<!DOCTYPE html>

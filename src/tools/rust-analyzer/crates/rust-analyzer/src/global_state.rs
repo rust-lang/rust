@@ -179,10 +179,9 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        // A file was added or deleted
-        let mut has_structure_changes = false;
         let mut workspace_structure_change = None;
 
+        let mut file_changes = FxHashMap::default();
         let (change, changed_files) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
@@ -191,43 +190,56 @@ impl GlobalState {
                 return false;
             }
 
-            // important: this needs to be a stable sort, the order between changes is relevant
-            // for the same file ids
-            changed_files.sort_by_key(|file| file.file_id);
-            // We need to fix up the changed events a bit, if we have a create or modify for a file
-            // id that is followed by a delete we actually no longer observe the file text from the
-            // create or modify which may cause problems later on
-            changed_files.dedup_by(|a, b| {
+            // We need to fix up the changed events a bit. If we have a create or modify for a file
+            // id that is followed by a delete we actually skip observing the file text from the
+            // earlier event, to avoid problems later on.
+            for changed_file in &changed_files {
                 use vfs::ChangeKind::*;
 
-                if a.file_id != b.file_id {
-                    return false;
-                }
+                file_changes
+                    .entry(changed_file.file_id)
+                    .and_modify(|(change, just_created)| {
+                        // None -> Delete => keep
+                        // Create -> Delete => collapse
+                        //
+                        match (change, just_created, changed_file.change_kind) {
+                            // latter `Delete` wins
+                            (change, _, Delete) => *change = Delete,
+                            // merge `Create` with `Create` or `Modify`
+                            (Create, _, Create | Modify) => {}
+                            // collapse identical `Modify`es
+                            (Modify, _, Modify) => {}
+                            // equivalent to `Modify`
+                            (change @ Delete, just_created, Create) => {
+                                *change = Modify;
+                                *just_created = true;
+                            }
+                            // shouldn't occur, but collapse into `Create`
+                            (change @ Delete, just_created, Modify) => {
+                                *change = Create;
+                                *just_created = true;
+                            }
+                            // shouldn't occur, but collapse into `Modify`
+                            (Modify, _, Create) => {}
+                        }
+                    })
+                    .or_insert((
+                        changed_file.change_kind,
+                        matches!(changed_file.change_kind, Create),
+                    ));
+            }
 
-                match (a.change_kind, b.change_kind) {
-                    // duplicate can be merged
-                    (Create, Create) | (Modify, Modify) | (Delete, Delete) => true,
-                    // just leave the create, modify is irrelevant
-                    (Create, Modify) => {
-                        std::mem::swap(a, b);
-                        true
-                    }
-                    // modify becomes irrelevant if the file is deleted
-                    (Modify, Delete) => true,
-                    // we should fully remove this occurrence,
-                    // but leaving just a delete works as well
-                    (Create, Delete) => true,
-                    // this is equivalent to a modify
-                    (Delete, Create) => {
-                        a.change_kind = Modify;
-                        true
-                    }
-                    // can't really occur
-                    (Modify, Create) => false,
-                    (Delete, Modify) => false,
-                }
-            });
+            changed_files.extend(
+                file_changes
+                    .into_iter()
+                    .filter(|(_, (change_kind, just_created))| {
+                        !matches!((change_kind, just_created), (vfs::ChangeKind::Delete, true))
+                    })
+                    .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind }),
+            );
 
+            // A file was added or deleted
+            let mut has_structure_changes = false;
             for file in &changed_files {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();

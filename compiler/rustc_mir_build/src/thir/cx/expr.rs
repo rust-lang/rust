@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
@@ -18,7 +19,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::abi::VariantIdx;
 
 impl<'tcx> Cx<'tcx> {
@@ -33,8 +34,6 @@ impl<'tcx> Cx<'tcx> {
 
     #[instrument(level = "trace", skip(self, hir_expr))]
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        let temp_lifetime =
-            self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
@@ -67,7 +66,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Next, wrap this up in the expr's scope.
         expr = Expr {
-            temp_lifetime,
+            temp_lifetime: expr.temp_lifetime,
             ty: expr.ty,
             span: hir_expr.span,
             kind: ExprKind::Scope {
@@ -82,7 +81,7 @@ impl<'tcx> Cx<'tcx> {
             self.region_scope_tree.opt_destruction_scope(hir_expr.hir_id.local_id)
         {
             expr = Expr {
-                temp_lifetime,
+                temp_lifetime: expr.temp_lifetime,
                 ty: expr.ty,
                 span: hir_expr.span,
                 kind: ExprKind::Scope {
@@ -262,6 +261,7 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
@@ -307,7 +307,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
-                        ty: tcx.mk_tup(arg_tys),
+                        ty: tcx.mk_tup_from_iter(arg_tys),
                         temp_lifetime,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
@@ -322,6 +322,34 @@ impl<'tcx> Cx<'tcx> {
                         fn_span: expr.span,
                     }
                 } else {
+                    let attrs = tcx.hir().attrs(expr.hir_id);
+                    if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_box) {
+                        if attrs.len() != 1 {
+                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                span: attrs[0].span,
+                                reason: errors::RustcBoxAttrReason::Attributes,
+                            });
+                        } else if let Some(box_item) = tcx.lang_items().owned_box() {
+                            if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) = fun.kind
+                                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                                && path.res.opt_def_id().map_or(false, |did| did == box_item)
+                                && fn_path.ident.name == sym::new
+                                && let [value] = args
+                            {
+                                return Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: ExprKind::Box { value: self.mirror_expr(value) } }
+                            } else {
+                                tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                    span: expr.span,
+                                    reason: errors::RustcBoxAttrReason::NotBoxNew
+                                });
+                            }
+                        } else {
+                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                span: attrs[0].span,
+                                reason: errors::RustcBoxAttrReason::MissingBox,
+                            });
+                        }
+                    }
                     let adt_data =
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = fun.kind {
                             // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
@@ -541,8 +569,9 @@ impl<'tcx> Cx<'tcx> {
                 let def_id = def_id.expect_local();
 
                 let upvars = self
-                    .typeck_results
-                    .closure_min_captures_flattened(def_id)
+                    .tcx
+                    .closure_captures(def_id)
+                    .iter()
                     .zip(substs.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);
@@ -758,7 +787,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
-            hir::ExprKind::Err => unreachable!(),
+            hir::ExprKind::Err(_) => unreachable!(),
         };
 
         Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }

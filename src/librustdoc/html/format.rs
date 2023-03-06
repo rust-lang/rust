@@ -19,7 +19,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty;
-use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
@@ -34,6 +33,7 @@ use crate::clean::{
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 
 use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
@@ -360,7 +360,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             for _ in 0..padding_amout {
                 br_with_padding.push_str(" ");
             }
-            let where_preds = where_preds.to_string().replace("\n", &br_with_padding);
+            let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
 
             if ending == Ending::Newline {
                 let mut clause = " ".repeat(indent.saturating_sub(1));
@@ -709,11 +709,9 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    if !is_remote {
-        if let Some(root_path) = root_path {
-            let root = root_path.trim_end_matches('/');
-            url_parts.push_front(root);
-        }
+    if !is_remote && let Some(root_path) = root_path {
+        let root = root_path.trim_end_matches('/');
+        url_parts.push_front(root);
     }
     debug!(?url_parts);
     match shortty {
@@ -766,6 +764,28 @@ pub(crate) fn href_relative_parts<'fqp>(
     } else {
         Box::new(iter::empty())
     }
+}
+
+pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
+    let cache = cx.cache();
+    let Some((fqp, shortty)) = cache.paths.get(&did)
+        .or_else(|| cache.external_paths.get(&did))
+        else { return String::new() };
+    let mut buf = Buffer::new();
+    if let &Some(UrlFragment::Item(id)) = fragment {
+        write!(buf, "{} ", cx.tcx().def_descr(id));
+        for component in fqp {
+            write!(buf, "{component}::");
+        }
+        write!(buf, "{}", cx.tcx().item_name(id));
+    } else if !fqp.is_empty() {
+        let mut fqp_it = fqp.into_iter();
+        write!(buf, "{shortty} {}", fqp_it.next().unwrap());
+        for component in fqp_it {
+            write!(buf, "::{component}");
+        }
+    }
+    buf.into_inner()
 }
 
 /// Used to render a [`clean::Path`].
@@ -1405,12 +1425,12 @@ impl clean::FnDecl {
             format!(
                 "({pad}{args}{close}){arrow}",
                 pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
-                args = args.replace("\n", &full_pad),
+                args = args.replace('\n', &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("\n", " "), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace('\n', " "), arrow = arrow)
         };
 
         write!(f, "{}", output)

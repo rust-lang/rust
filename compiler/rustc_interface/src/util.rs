@@ -14,8 +14,8 @@ use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
 use rustc_session::{early_error, filesearch, output, Session};
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use session::CompilerIO;
@@ -59,6 +59,7 @@ pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
+    locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -89,11 +90,15 @@ pub fn create_session(
         }
     };
 
+    let mut locale_resources = Vec::from(locale_resources);
+    locale_resources.push(codegen_backend.locale_resource());
+
     let mut sess = session::build_session(
         sopts,
         io,
         bundle,
         descriptions,
+        locale_resources,
         lint_caps,
         file_loader,
         target_override,

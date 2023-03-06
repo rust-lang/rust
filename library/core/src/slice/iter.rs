@@ -7,7 +7,9 @@ use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::intrinsics::assume;
-use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use crate::iter::{
+    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
+};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;

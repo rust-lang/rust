@@ -1695,7 +1695,13 @@ impl<T> [T] {
         let ptr = self.as_ptr();
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
+        unsafe {
+            assert_unsafe_precondition!(
+                "slice::split_at_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
+            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid))
+        }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -2730,8 +2736,10 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
-    /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following from the reordered slice:
+    /// (i.e. does not allocate), and *O*(*n*) on average. The worst-case performance is *O*(*n* log *n*).
+    /// This function is also known as "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from the reordered slice:
     /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
     /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
     /// and greater-than-or-equal-to the value of the element at `index`.
@@ -2777,8 +2785,11 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
+    /// The worst-case performance is *O*(*n* log *n*). This function is also known as
+    /// "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from
     /// the slice reordered according to the provided comparator function: the subslice prior to
     /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
     /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
@@ -2829,8 +2840,11 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
+    /// The worst-case performance is *O*(*n* log *n*).
+    /// This function is also known as "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from
     /// the slice reordered according to the provided key extraction function: the subslice prior to
     /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
     /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
@@ -2947,7 +2961,7 @@ impl<T> [T] {
         // This operation is still `O(n)`.
         //
         // Example: We start in this state, where `r` represents "next
-        // read" and `w` represents "next_write`.
+        // read" and `w` represents "next_write".
         //
         //           r
         //     +---+---+---+---+---+---+

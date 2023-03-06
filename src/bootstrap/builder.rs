@@ -780,7 +780,6 @@ impl<'a> Builder<'a> {
                 install::Clippy,
                 install::Miri,
                 install::LlvmTools,
-                install::Analysis,
                 install::Src,
                 install::Rustc
             ),
@@ -793,7 +792,7 @@ impl<'a> Builder<'a> {
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
             ),
-            Kind::Setup => describe!(setup::Profile),
+            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
             Kind::Format => vec![],
@@ -1802,16 +1801,6 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if mode == Mode::Std && self.config.extended && compiler.is_final_stage(self) {
-            rustflags.arg("-Zsave-analysis");
-            cargo.env(
-                "RUST_SAVE_ANALYSIS_CONFIG",
-                "{\"output_file\": null,\"full_docs\": false,\
-                       \"pub_only\": true,\"reachable_only\": false,\
-                       \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}",
-            );
-        }
-
         // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
         // when compiling the standard library, since this might be linked into the final outputs
         // produced by rustc. Since this mitigation is only available on Windows, only enable it
@@ -1923,6 +1912,13 @@ impl<'a> Builder<'a> {
                 {
                     rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
                 }
+            }
+        }
+
+        if matches!(mode, Mode::Std) {
+            if let Some(mir_opt_level) = self.config.rust_validate_mir_opts {
+                rustflags.arg("-Zvalidate-mir");
+                rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
             }
         }
 

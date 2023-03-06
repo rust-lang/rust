@@ -54,7 +54,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();
                     inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                    sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                    sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
                     sig
                 });
             }
@@ -63,14 +63,14 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Closure(def_id, substs) => {
             let sig = substs.as_closure().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds(
+            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
             );
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
+            let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
             let sig = sig.skip_binder();
@@ -88,19 +88,18 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Generator(did, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds(
+            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
             );
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
-            let pin_substs = tcx.intern_substs(&[env_ty.into()]);
+            let pin_substs = tcx.mk_substs(&[env_ty.into()]);
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             let sig = sig.skip_binder();
@@ -112,7 +111,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
-                let poll_substs = tcx.intern_substs(&[sig.return_ty.into()]);
+                let poll_substs = tcx.mk_substs(&[sig.return_ty.into()]);
                 let ret_ty = tcx.mk_adt(poll_adt_ref, poll_substs);
 
                 // We have to replace the `ResumeTy` that is used for type and borrow checking
@@ -134,7 +133,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let state_substs = tcx.mk_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 (sig.resume_ty, ret_ty)
@@ -142,8 +141,8 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             ty::Binder::bind_with_vars(
                 tcx.mk_fn_sig(
-                    [env_ty, resume_ty].iter(),
-                    &ret_ty,
+                    [env_ty, resume_ty],
+                    ret_ty,
                     false,
                     hir::Unsafety::Normal,
                     rustc_target::spec::abi::Abi::Rust,
@@ -207,11 +206,8 @@ fn fn_abi_of_instance<'tcx>(
 
     let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
 
-    let caller_location = if instance.def.requires_caller_location(tcx) {
-        Some(tcx.caller_location_ty())
-    } else {
-        None
-    };
+    let caller_location =
+        instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
 
     fn_abi_new_uncached(
         &LayoutCx { tcx, param_env },

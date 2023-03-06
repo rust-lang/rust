@@ -740,6 +740,7 @@ symbols! {
         frem_fast,
         from,
         from_desugaring,
+        from_fn,
         from_iter,
         from_method,
         from_output,
@@ -1016,6 +1017,7 @@ symbols! {
         non_ascii_idents,
         non_exhaustive,
         non_exhaustive_omitted_patterns_lint,
+        non_lifetime_binders,
         non_modrs_mods,
         nontemporal_store,
         noop_method_borrow,
@@ -1049,6 +1051,7 @@ symbols! {
         overlapping_marker_traits,
         owned_box,
         packed,
+        packed_bundled_libs,
         panic,
         panic_2015,
         panic_2021,
@@ -1223,6 +1226,7 @@ symbols! {
         rustc_capture_analysis,
         rustc_clean,
         rustc_coherence_is_core,
+        rustc_coinductive,
         rustc_const_stable,
         rustc_const_unstable,
         rustc_conversion_suggestion,
@@ -1950,7 +1954,7 @@ impl Interner {
         let name = Symbol::new(inner.strings.len() as u32);
 
         // SAFETY: we convert from `&str` to `&[u8]`, clone it into the arena,
-        // and immediately convert the clone back to `&[u8], all because there
+        // and immediately convert the clone back to `&[u8]`, all because there
         // is no `inner.arena.alloc_str()` method. This is clearly safe.
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };

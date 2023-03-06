@@ -36,13 +36,13 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
+    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
-    DEFAULT_LOCALE_RESOURCES,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
+use rustc_macros::fluent_messages;
 use rustc_span::source_map::SourceMap;
-use rustc_span::HashStableContext;
+pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
@@ -75,6 +75,8 @@ pub use snippet::Style;
 
 pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
@@ -329,7 +331,7 @@ impl CodeSuggestion {
                     });
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
-                    if prev_hi.line == cur_lo.line && cur_hi.line == cur_lo.line {
+                    if cur_hi.line == cur_lo.line {
                         // Account for the difference between the width of the current code and the
                         // snippet being suggested, so that the *later* suggestions are correctly
                         // aligned on the screen.
@@ -471,6 +473,8 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
+    /// When an invalid lifetime e.g. `'🐱` contains emoji.
+    LifetimeContainsEmoji,
     /// Maybe there was a typo where a comma was forgotten before
     /// FRU syntax
     MaybeFruTypo,
@@ -573,6 +577,7 @@ impl Handler {
             None,
             flags.macro_backtrace,
             flags.track_diagnostics,
+            TerminalUrl::No,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -1065,29 +1070,26 @@ impl Handler {
     }
 
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().has_errors() { Some(ErrorGuaranteed(())) } else { None }
+        self.inner.borrow().has_errors().then(ErrorGuaranteed::unchecked_claim_error_was_emitted)
     }
 
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().has_errors_or_lint_errors() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            None
-        }
+        self.inner
+            .borrow()
+            .has_errors_or_lint_errors()
+            .then(ErrorGuaranteed::unchecked_claim_error_was_emitted)
     }
     pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().has_errors_or_delayed_span_bugs() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            None
-        }
+        self.inner
+            .borrow()
+            .has_errors_or_delayed_span_bugs()
+            .then(ErrorGuaranteed::unchecked_claim_error_was_emitted)
     }
     pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().is_compilation_going_to_fail() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            None
-        }
+        self.inner
+            .borrow()
+            .is_compilation_going_to_fail()
+            .then(ErrorGuaranteed::unchecked_claim_error_was_emitted)
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1475,9 +1477,7 @@ impl HandlerInner {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|x| match &x {
-                    DiagnosticId::Error(s)
-                        if registry.try_find_description(s).map_or(false, |o| o.is_some()) =>
-                    {
+                    DiagnosticId::Error(s) if registry.try_find_description(s).is_ok() => {
                         Some(s.clone())
                     }
                     _ => None,
@@ -1838,16 +1838,9 @@ pub fn add_elided_lifetime_in_path_suggestion(
     );
 }
 
-/// Useful type to use with `Result<>` indicate that an error has already
-/// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(HashStable_Generic)]
-pub struct ErrorGuaranteed(());
-
-impl ErrorGuaranteed {
-    /// To be used only if you really know what you are doing... ideally, we would find a way to
-    /// eliminate all calls to this method.
-    pub fn unchecked_claim_error_was_emitted() -> Self {
-        ErrorGuaranteed(())
-    }
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum TerminalUrl {
+    No,
+    Yes,
+    Auto,
 }

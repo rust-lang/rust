@@ -9,7 +9,7 @@ LL |         let f: impl core::future::Future<Output = u8> = async { 1 };
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
   --> $DIR/issue-79099.rs:3:16
    |
 LL |         let f: impl core::future::Future<Output = u8> = async { 1 };

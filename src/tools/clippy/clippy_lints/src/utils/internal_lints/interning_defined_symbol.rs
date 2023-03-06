@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty::{self};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                 for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
-                        let ty = cx.tcx.type_of(item_def_id);
+                        let ty = cx.tcx.type_of(item_def_id).subst_identity();
                         if match_type(cx, ty, &paths::SYMBOL);
                         if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
                         if let Ok(value) = value.to_u32();

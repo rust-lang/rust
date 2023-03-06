@@ -477,7 +477,8 @@ pub struct MiriMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
-        let local_crates = helpers::get_local_crates(layout_cx.tcx);
+        let tcx = layout_cx.tcx;
+        let local_crates = helpers::get_local_crates(tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
@@ -486,10 +487,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let borrow_tracker = config.borrow_tracker.map(|bt| bt.instanciate_global_state(config));
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
+        // Determinine page size, stack address, and stack size.
+        // These values are mostly meaningless, but the stack address is also where we start
+        // allocating physical integer addresses for all allocations.
         let page_size = if let Some(page_size) = config.page_size {
             page_size
         } else {
-            let target = &layout_cx.tcx.sess.target;
+            let target = &tcx.sess.target;
             match target.arch.as_ref() {
                 "wasm32" | "wasm64" => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
                 "aarch64" =>
@@ -504,10 +508,12 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 _ => 4 * 1024,
             }
         };
-        let stack_addr = page_size * 32;
-        let stack_size = page_size * 16;
+        // On 16bit targets, 32 pages is more than the entire address space!
+        let stack_addr = if tcx.pointer_size().bits() < 32 { page_size } else { page_size * 32 };
+        let stack_size =
+            if tcx.pointer_size().bits() < 32 { page_size * 4 } else { page_size * 16 };
         MiriMachine {
-            tcx: layout_cx.tcx,
+            tcx,
             borrow_tracker,
             data_race,
             intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config, stack_addr)),
@@ -771,10 +777,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     type Provenance = Provenance;
     type ProvenanceExtra = ProvenanceExtra;
+    type Bytes = Box<[u8]>;
 
     type MemoryMap = MonoHashMap<
         AllocId,
-        (MemoryKind<MiriMemoryKind>, Allocation<Provenance, Self::AllocExtra>),
+        (MemoryKind<MiriMemoryKind>, Allocation<Provenance, Self::AllocExtra, Self::Bytes>),
     >;
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
@@ -815,8 +822,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn checked_binop_checks_overflow(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
-        ecx.tcx.sess.overflow_checks()
+    fn ignore_checkable_overflow_assertions(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
+        !ecx.tcx.sess.overflow_checks()
     }
 
     #[inline(always)]
@@ -901,8 +908,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
-            let extern_decl_layout =
-                ecx.tcx.layout_of(ty::ParamEnv::empty().and(ecx.tcx.type_of(def_id))).unwrap();
+            let def_ty = ecx.tcx.type_of(def_id).subst_identity();
+            let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
             if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
                 throw_unsup_format!(
                     "`extern` static `{name}` from crate `{krate}` has been declared \

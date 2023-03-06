@@ -26,11 +26,9 @@ pub enum DynKind {
     Dyn,
     /// A sized `dyn* Trait` object
     ///
-    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
-    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
-    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
-    /// or similar, but the drop function included in the vtable is responsible for freeing the
-    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a value of some
+    /// ptr-sized and ptr-aligned dynamically determined type `T` and `vtable` is a pointer to the
+    /// vtable of `impl T for Trait`. This allows a `dyn*` object to be treated agnostically with
     /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
     DynStar,
 }
@@ -336,7 +334,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_d == b_d && a_s == b_s && a_m == b_m
             }
             (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
-            (&GeneratorWitnessMIR(ref a_d, ref a_s), &GeneratorWitnessMIR(ref b_d, ref b_s)) => {
+            (GeneratorWitnessMIR(a_d, a_s), GeneratorWitnessMIR(b_d, b_s)) => {
                 a_d == b_d && a_s == b_s
             }
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
@@ -397,8 +395,8 @@ impl<I: Interner> Ord for TyKind<I> {
                 }
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
                 (
-                    &GeneratorWitnessMIR(ref a_d, ref a_s),
-                    &GeneratorWitnessMIR(ref b_d, ref b_s),
+                    GeneratorWitnessMIR(a_d, a_s),
+                    GeneratorWitnessMIR(b_d, b_s),
                 ) => match Ord::cmp(a_d, b_d) {
                     Ordering::Equal => Ord::cmp(a_s, b_s),
                     cmp => cmp,

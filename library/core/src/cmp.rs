@@ -22,6 +22,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod bytewise;
+pub(crate) use bytewise::BytewiseEq;
+
 use crate::marker::Destruct;
 
 use self::Ordering::*;
@@ -1491,9 +1494,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    impl<A: ?Sized, B: ?Sized> const PartialOrd<&B> for &A
     where
-        A: PartialOrd<B>,
+        A: ~const PartialOrd<B>,
     {
         #[inline]
         fn partial_cmp(&self, other: &&B) -> Option<Ordering> {

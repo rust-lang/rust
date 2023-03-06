@@ -478,6 +478,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
                     // A (non-frozen) union. We fall back to whatever the type says.
                     (self.unsafe_cell_action)(v)
+                } else if matches!(v.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)) {
+                    // This needs to read the vtable pointer to proceed type-driven, but we don't
+                    // want to reentrantly read from memory here.
+                    (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a
@@ -758,10 +762,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let seconds_place = this.mplace_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
-        let seconds = seconds_scalar.to_machine_isize(this)?;
+        let seconds = seconds_scalar.to_target_isize(this)?;
         let nanoseconds_place = this.mplace_field(tp, 1)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
-        let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
+        let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
         Ok(try {
             // tv_sec must be non-negative.

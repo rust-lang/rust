@@ -1,11 +1,13 @@
+use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
@@ -91,7 +93,7 @@ impl IntegerExt for Integer {
             if discr < fit {
                 bug!(
                     "Integer::repr_discr: `#[repr]` hint too small for \
-                      discriminant range of enum `{}",
+                      discriminant range of enum `{}`",
                     ty
                 )
             }
@@ -168,6 +170,41 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
+/// Used in `check_validity_requirement` to indicate the kind of initialization
+/// that is checked to be valid
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum ValidityRequirement {
+    Inhabited,
+    Zero,
+    /// The return value of mem::uninitialized, 0x01
+    /// (unless -Zstrict-init-checks is on, in which case it's the same as Uninit).
+    UninitMitigated0x01Fill,
+    /// True uninitialized memory.
+    Uninit,
+}
+
+impl ValidityRequirement {
+    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+        match intrinsic {
+            sym::assert_inhabited => Some(Self::Inhabited),
+            sym::assert_zero_valid => Some(Self::Zero),
+            sym::assert_mem_uninitialized_valid => Some(Self::UninitMitigated0x01Fill),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ValidityRequirement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Inhabited => f.write_str("is inhabited"),
+            Self::Zero => f.write_str("allows being left zeroed"),
+            Self::UninitMitigated0x01Fill => f.write_str("allows being filled with 0x01"),
+            Self::Uninit => f.write_str("allows being left uninitialized"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
@@ -182,16 +219,16 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
         match self {
             LayoutError::Unknown(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_unknown_layout);
+                diag.set_primary_message(fluent::middle_unknown_layout);
             }
             LayoutError::SizeOverflow(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_values_too_big);
+                diag.set_primary_message(fluent::middle_values_too_big);
             }
             LayoutError::NormalizationFailure(ty, e) => {
                 diag.set_arg("ty", ty);
                 diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(rustc_errors::fluent::middle_cannot_be_normalized);
+                diag.set_primary_message(fluent::middle_cannot_be_normalized);
             }
         }
         diag
@@ -595,7 +632,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!(),
                 };
-                tcx.intern_layout(LayoutS {
+                tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -608,7 +645,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
+            Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -630,7 +667,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.intern_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };
@@ -770,7 +807,7 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                        TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
                         TyMaybeWithLayout::Ty(

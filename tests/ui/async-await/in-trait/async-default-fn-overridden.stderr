@@ -1,0 +1,11 @@
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/async-default-fn-overridden.rs:4:12
+   |
+LL | #![feature(async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

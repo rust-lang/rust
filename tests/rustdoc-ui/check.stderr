@@ -17,7 +17,7 @@ LL | #![warn(missing_docs)]
    |         ^^^^^^^^^^^^
 
 warning: missing documentation for a function
-  --> $DIR/check.rs:12:1
+  --> $DIR/check.rs:13:1
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^
@@ -27,7 +27,7 @@ warning: no documentation found for this crate's top-level module
    = help: The following guide may be of use:
            https://doc.rust-lang.org/$CHANNEL/rustdoc/how-to-write-documentation.html
 note: the lint level is defined here
-  --> $DIR/check.rs:10:9
+  --> $DIR/check.rs:11:9
    |
 LL | #![warn(rustdoc::all)]
    |         ^^^^^^^^^^^^
@@ -45,10 +45,14 @@ LL | |
 LL | | pub fn foo() {}
    | |_______________^
    |
-   = note: `#[warn(rustdoc::missing_doc_code_examples)]` implied by `#[warn(rustdoc::all)]`
+note: the lint level is defined here
+  --> $DIR/check.rs:10:9
+   |
+LL | #![warn(rustdoc::missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: missing code example in this documentation
-  --> $DIR/check.rs:12:1
+  --> $DIR/check.rs:13:1
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^^^^

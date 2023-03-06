@@ -1310,7 +1310,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if has_notable_trait {
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
-            " <a href=\"#\" class=\"notable-traits\" data-ty=\"{ty}\">ⓘ</a>",
+            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
             ty = Escape(&format!("{:#}", ty.print(cx))),
         ))
     } else {
@@ -2225,14 +2225,13 @@ fn sidebar_deref_methods(
         })
     {
         debug!("found target, real_target: {:?} {:?}", target, real_target);
-        if let Some(did) = target.def_id(c) {
-            if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
-                // `impl Deref<Target = S> for S`
-                if did == type_did || !derefs.insert(did) {
-                    // Avoid infinite cycles
-                    return;
-                }
-            }
+        if let Some(did) = target.def_id(c) &&
+            let Some(type_did) = impl_.inner_impl().for_.def_id(c) &&
+            // `impl Deref<Target = S> for S`
+            (did == type_did || !derefs.insert(did))
+        {
+            // Avoid infinite cycles
+            return;
         }
         let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
         let inner_impl = target
@@ -2266,25 +2265,24 @@ fn sidebar_deref_methods(
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id(c) {
-            if let Some(target_impls) = c.impls.get(&target_did) {
-                if let Some(target_deref_impl) = target_impls.iter().find(|i| {
-                    i.inner_impl()
-                        .trait_
-                        .as_ref()
-                        .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
-                        .unwrap_or(false)
-                }) {
-                    sidebar_deref_methods(
-                        cx,
-                        out,
-                        target_deref_impl,
-                        target_impls,
-                        derefs,
-                        used_links,
-                    );
-                }
-            }
+        if let Some(target_did) = target.def_id(c) &&
+            let Some(target_impls) = c.impls.get(&target_did) &&
+            let Some(target_deref_impl) = target_impls.iter().find(|i| {
+                i.inner_impl()
+                    .trait_
+                    .as_ref()
+                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                    .unwrap_or(false)
+            })
+        {
+            sidebar_deref_methods(
+                cx,
+                out,
+                target_deref_impl,
+                target_impls,
+                derefs,
+                used_links,
+            );
         }
     }
 }

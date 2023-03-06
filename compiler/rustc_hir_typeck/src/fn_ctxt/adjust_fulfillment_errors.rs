@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, DefIdTree, Ty, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits;
 
@@ -241,13 +241,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
+    fn find_ambiguous_parameter_in<T: TypeVisitable<TyCtxt<'tcx>>>(
         &self,
         item_def_id: DefId,
         t: T,
     ) -> Option<ty::GenericArg<'tcx>> {
         struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
-        impl<'tcx> TypeVisitor<'tcx> for FindAmbiguousParameter<'_, 'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)
@@ -310,7 +310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    return Some((expr_field.expr, self.tcx.type_of(field.did)));
+                    return Some((expr_field.expr, self.tcx.type_of(field.did).subst_identity()));
                 }
             }
         }
@@ -337,7 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id);
+        let ty = self.tcx.type_of(def_id).subst_identity();
         if !ty.is_fn() {
             return false;
         }
@@ -475,19 +475,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
-        let impl_trait_self_ref: Option<ty::TraitRef<'tcx>> =
-            self.tcx.impl_trait_ref(obligation.impl_def_id).map(|impl_def| impl_def.skip_binder());
-
-        let Some(impl_trait_self_ref) = impl_trait_self_ref else {
-            // It is possible that this is absent. In this case, we make no progress.
-            return Err(expr);
+        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
+            self.tcx.mk_trait_ref(
+                obligation.impl_or_alias_def_id,
+                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
+            )
+        } else {
+            self.tcx
+                .impl_trait_ref(obligation.impl_or_alias_def_id)
+                .map(|impl_def| impl_def.skip_binder())
+                // It is possible that this is absent. In this case, we make no progress.
+                .ok_or(expr)?
         };
 
         // We only really care about the `Self` type itself, which we extract from the ref.
         let impl_self_ty: Ty<'tcx> = impl_trait_self_ref.self_ty();
 
         let impl_predicates: ty::GenericPredicates<'tcx> =
-            self.tcx.predicates_of(obligation.impl_def_id);
+            self.tcx.predicates_of(obligation.impl_or_alias_def_id);
         let Some(impl_predicate_index) = obligation.impl_def_predicate_index else {
             // We don't have the index, so we can only guess.
             return Err(expr);
@@ -541,6 +546,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::GenericArgKind::Type(in_ty) = in_ty.unpack() else {
             return Err(expr);
         };
+
+        if let (
+            hir::ExprKind::AddrOf(_borrow_kind, _borrow_mutability, borrowed_expr),
+            ty::Ref(_ty_region, ty_ref_type, _ty_mutability),
+        ) = (&expr.kind, in_ty.kind())
+        {
+            // We can "drill into" the borrowed expression.
+            return self.blame_specific_part_of_expr_corresponding_to_generic_param(
+                param,
+                borrowed_expr,
+                (*ty_ref_type).into(),
+            );
+        }
 
         if let (hir::ExprKind::Tup(expr_elements), ty::Tuple(in_ty_elements)) =
             (&expr.kind, in_ty.kind())
@@ -694,12 +712,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.parent(expr_ctor_def_id)
                 }
                 hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, hir::def::CtorKind::Fn) => {
-                    // If this is a variant, its parent is the type definition.
-                    if in_ty_adt.did() != self.tcx.parent(expr_ctor_def_id) {
+                    // For a typical enum like
+                    // `enum Blah<T> { Variant(T) }`
+                    // we get the following resolutions:
+                    // - expr_ctor_def_id :::                                   DefId(0:29 ~ source_file[b442]::Blah::Variant::{constructor#0})
+                    // - self.tcx.parent(expr_ctor_def_id) :::                  DefId(0:28 ~ source_file[b442]::Blah::Variant)
+                    // - self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) ::: DefId(0:26 ~ source_file[b442]::Blah)
+
+                    // Therefore, we need to go up once to obtain the variant and up twice to obtain the type.
+                    // Note that this pattern still holds even when we `use` a variant or `use` an enum type to rename it, or chain `use` expressions
+                    // together; this resolution is handled automatically by `qpath_res`.
+
+                    // FIXME: Deal with type aliases?
+                    if in_ty_adt.did() == self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) {
+                        // The constructor definition refers to the "constructor" of the variant:
+                        // For example, `Some(5)` triggers this case.
+                        self.tcx.parent(expr_ctor_def_id)
+                    } else {
                         // FIXME: Deal with type aliases?
                         return Err(expr);
                     }
-                    expr_ctor_def_id
                 }
                 _ => {
                     return Err(expr);

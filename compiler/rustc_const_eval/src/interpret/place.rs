@@ -26,6 +26,7 @@ pub enum MemPlaceMeta<Prov: Provenance = AllocId> {
 }
 
 impl<Prov: Provenance> MemPlaceMeta<Prov> {
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn unwrap_meta(self) -> Scalar<Prov> {
         match self {
             Self::Meta(s) => s,
@@ -147,12 +148,16 @@ impl<Prov: Provenance> MemPlace<Prov> {
     }
 
     #[inline]
-    pub fn offset_with_meta<'tcx>(
+    pub(super) fn offset_with_meta<'tcx>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
+        debug_assert!(
+            !meta.has_meta() || self.meta.has_meta(),
+            "cannot use `offset_with_meta` to add metadata to a place"
+        );
         Ok(MemPlace { ptr: self.ptr.offset(offset, cx)?, meta })
     }
 }
@@ -178,12 +183,15 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
         let align = layout.align.abi;
-        let ptr = Pointer::from_addr(align.bytes()); // no provenance, absolute address
+        let ptr = Pointer::from_addr_invalid(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None }, layout, align }
     }
 
+    /// Offset the place in memory and change its metadata.
+    ///
+    /// This can go wrong very easily if you give the wrong layout for the new place!
     #[inline]
-    pub fn offset_with_meta(
+    pub(crate) fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
@@ -197,6 +205,9 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         })
     }
 
+    /// Offset the place in memory.
+    ///
+    /// This can go wrong very easily if you give the wrong layout for the new place!
     pub fn offset(
         &self,
         offset: Size,
@@ -229,7 +240,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind() {
-                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_machine_usize(cx),
+                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_target_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -239,14 +250,6 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
                 abi::FieldsShape::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
             }
-        }
-    }
-
-    #[inline]
-    pub(super) fn vtable(&self) -> Scalar<Prov> {
-        match self.layout.ty.kind() {
-            ty::Dynamic(..) => self.mplace.meta.unwrap_meta(),
-            _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
 }
@@ -266,7 +269,12 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.as_mplace_or_imm().left().unwrap()
+        self.as_mplace_or_imm().left().unwrap_or_else(|| {
+            bug!(
+                "OpTy of type {} was immediate when it was expected to be an MPlace",
+                self.layout.ty
+            )
+        })
     }
 }
 
@@ -283,7 +291,12 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.as_mplace_or_local().left().unwrap()
+        self.as_mplace_or_local().left().unwrap_or_else(|| {
+            bug!(
+                "PlaceTy of type {} was a local when it was expected to be an MPlace",
+                self.layout.ty
+            )
+        })
     }
 }
 
@@ -340,7 +353,8 @@ where
     pub(super) fn get_place_alloc(
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
@@ -351,7 +365,8 @@ where
     pub(super) fn get_place_alloc_mut(
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
@@ -756,7 +771,7 @@ where
         mutbl: Mutability,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?;
-        let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
+        let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace = MemPlace { ptr: ptr.into(), meta: MemPlaceMeta::Meta(meta) };
 
         let ty = self.tcx.mk_ref(
@@ -807,11 +822,16 @@ where
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
+    /// Aso returns the vtable.
     pub(super) fn unpack_dyn_trait(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let vtable = mplace.vtable().to_pointer(self)?; // also sanity checks the type
+    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, Pointer<Option<M::Provenance>>)> {
+        assert!(
+            matches!(mplace.layout.ty.kind(), ty::Dynamic(_, _, ty::Dyn)),
+            "`unpack_dyn_trait` only makes sense on `dyn*` types"
+        );
+        let vtable = mplace.meta.unwrap_meta().to_pointer(self)?;
         let (ty, _) = self.get_ptr_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
 
@@ -820,7 +840,26 @@ where
             layout,
             align: layout.align.abi,
         };
-        Ok(mplace)
+        Ok((mplace, vtable))
+    }
+
+    /// Turn an operand with a `dyn* Trait` type into an operand with the actual dynamic type.
+    /// Aso returns the vtable.
+    pub(super) fn unpack_dyn_star(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, (OpTy<'tcx, M::Provenance>, Pointer<Option<M::Provenance>>)> {
+        assert!(
+            matches!(op.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+            "`unpack_dyn_star` only makes sense on `dyn*` types"
+        );
+        let data = self.operand_field(&op, 0)?;
+        let vtable = self.operand_field(&op, 1)?;
+        let vtable = self.read_pointer(&vtable)?;
+        let (ty, _) = self.get_ptr_vtable(vtable)?;
+        let layout = self.layout_of(ty)?;
+        let data = data.transmute(layout);
+        Ok((data, vtable))
     }
 }
 

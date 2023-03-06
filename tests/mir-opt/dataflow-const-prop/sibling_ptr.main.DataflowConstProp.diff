@@ -32,7 +32,7 @@
           _5 = _3;                         // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:11
           _4 = ptr::mut_ptr::<impl *mut u8>::add(move _5, const 1_usize) -> bb1; // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:18
                                            // mir::Constant
-                                           // + span: $DIR/sibling_ptr.rs:8:12: 8:15
+                                           // + span: $DIR/sibling_ptr.rs:15:12: 15:15
                                            // + literal: Const { ty: unsafe fn(*mut u8, usize) -> *mut u8 {ptr::mut_ptr::<impl *mut u8>::add}, val: Value(<ZST>) }
       }
   

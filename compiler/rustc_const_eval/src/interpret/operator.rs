@@ -10,28 +10,20 @@ use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
-    ///
-    /// `force_overflow_checks` indicates whether overflow checks should be done even when
-    /// `tcx.sess.overflow_checks()` is `false`.
     pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        force_overflow_checks: bool,
         left: &ImmTy<'tcx, M::Provenance>,
         right: &ImmTy<'tcx, M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
-            self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
+            self.tcx.mk_tup(&[ty, self.tcx.types.bool]),
             dest.layout.ty,
             "type mismatch for result of {:?}",
             op,
         );
-        // As per https://github.com/rust-lang/rust/pull/98738, we always return `false` in the 2nd
-        // component when overflow checking is disabled.
-        let overflowed =
-            overflowed && (force_overflow_checks || M::checked_binop_checks_overflow(self));
         // Write the result to `dest`.
         if let Abi::ScalarPair(..) = dest.layout.abi {
             // We can use the optimized path and avoid `place_field` (which might do

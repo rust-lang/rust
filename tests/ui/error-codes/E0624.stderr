@@ -1,11 +1,11 @@
-error[E0624]: associated function `method` is private
+error[E0624]: method `method` is private
   --> $DIR/E0624.rs:11:9
    |
 LL |         fn method(&self) {}
-   |         ---------------- private associated function defined here
+   |         ---------------- private method defined here
 ...
 LL |     foo.method();
-   |         ^^^^^^ private associated function
+   |         ^^^^^^ private method
 
 error: aborting due to previous error
 

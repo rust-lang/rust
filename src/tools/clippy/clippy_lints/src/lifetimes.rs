@@ -144,6 +144,10 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
 
     for typ in types {
+        if !typ.span.eq_ctxt(span) {
+            return;
+        }
+
         for pred in generics.bounds_for_param(typ.def_id) {
             if pred.origin == PredicateOrigin::WhereClause {
                 // has_where_lifetimes checked that this predicate contains no lifetime.
@@ -181,6 +185,10 @@ fn check_fn_inner<'tcx>(
     }
 
     if let Some((elidable_lts, usages)) = could_use_elision(cx, sig.decl, body, trait_sig, generics.params) {
+        if usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)) {
+            return;
+        }
+
         let lts = elidable_lts
             .iter()
             // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a

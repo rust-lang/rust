@@ -62,7 +62,7 @@ LL |     match tuple() {
    |           ------- this expression has type `impl Future<Output = Tuple>`
 LL |
 LL |         Tuple(_) => {}
-   |         ^^^^^^^^ expected opaque type, found `Tuple`
+   |         ^^^^^^^^ expected future, found `Tuple`
    |
    = note: expected opaque type `impl Future<Output = Tuple>`
                    found struct `Tuple`

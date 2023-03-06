@@ -16,8 +16,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
+    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -105,10 +105,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Extra data stored in every allocation.
     type AllocExtra: Debug + Clone + 'static;
 
+    /// Type for the bytes of the allocation.
+    type Bytes: AllocBytes + 'static;
+
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra>),
+            (
+                MemoryKind<Self::MemoryKind>,
+                Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>,
+            ),
         > + Default
         + Clone;
 
@@ -147,8 +153,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
         true
     }
 
-    /// Whether CheckedBinOp MIR statements should actually check for overflow.
-    fn checked_binop_checks_overflow(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
+    /// check for overflow.
+    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
@@ -337,7 +344,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -458,6 +465,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
 
     type AllocExtra = ();
     type FrameExtra = ();
+    type Bytes = Box<[u8]>;
 
     #[inline(always)]
     fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
@@ -466,8 +474,8 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn checked_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
+    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        false
     }
 
     #[inline(always)]
@@ -517,7 +525,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
-        Ok(Pointer::from_addr(addr))
+        Ok(Pointer::from_addr_invalid(addr))
     }
 
     #[inline(always)]

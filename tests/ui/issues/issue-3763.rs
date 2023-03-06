@@ -1,5 +1,4 @@
-// compile-flags: -Zsave-analysis
-// Also regression test for #69416
+// Regression test for #3763
 
 mod my_mod {
     pub struct MyStruct {
@@ -21,9 +20,9 @@ fn main() {
     let _woohoo = (Box::new(my_struct)).priv_field;
     //~^ ERROR field `priv_field` of struct `MyStruct` is private
 
-    (&my_struct).happyfun();               //~ ERROR associated function `happyfun` is private
+    (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
 
-    (Box::new(my_struct)).happyfun();          //~ ERROR associated function `happyfun` is private
+    (Box::new(my_struct)).happyfun();          //~ ERROR method `happyfun` is private
     let nope = my_struct.priv_field;
     //~^ ERROR field `priv_field` of struct `MyStruct` is private
 }

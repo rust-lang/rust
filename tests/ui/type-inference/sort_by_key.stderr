@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/sort_by_key.rs:3:40
    |
 LL |     lst.sort_by_key(|&(v, _)| v.iter().sum());
-   |                                        ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
+   |                                        ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |
 help: consider specifying the generic argument
    |

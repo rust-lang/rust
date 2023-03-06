@@ -1,4 +1,5 @@
 use crate::cmp::Ordering;
+use crate::error::Error;
 use crate::ffi::c_char;
 use crate::fmt;
 use crate::intrinsics;
@@ -129,10 +130,12 @@ impl FromBytesWithNulError {
     const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
+}
 
-    #[doc(hidden)]
-    #[unstable(feature = "cstr_internals", issue = "none")]
-    pub fn __description(&self) -> &str {
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
         match self.kind {
             FromBytesWithNulErrorKind::InteriorNul(..) => {
                 "data provided contains an interior nul byte"
@@ -180,7 +183,7 @@ impl Default for &CStr {
 impl fmt::Display for FromBytesWithNulError {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.__description())?;
+        f.write_str(self.description())?;
         if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
             write!(f, " at byte pos {pos}")?;
         }
@@ -454,6 +457,10 @@ impl CStr {
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
     ///
+    /// The type of the returned pointer is
+    /// [`*const c_char`][crate::ffi::c_char], and whether it's
+    /// an alias for `*const i8` or `*const u8` is platform-specific.
+    ///
     /// **WARNING**
     ///
     /// The returned pointer is read-only; writing to it (including passing it
@@ -467,6 +474,7 @@ impl CStr {
     /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
     /// use std::ffi::CString;
     ///
+    /// // Do not do this:
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
     ///     // `ptr` is dangling

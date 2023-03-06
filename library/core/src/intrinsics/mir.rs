@@ -42,7 +42,7 @@
 //! another function. The `dialect` and `phase` parameters indicate which [version of MIR][dialect
 //! docs] you are inserting here. Generally you'll want to use `#![custom_mir(dialect = "built")]`
 //! if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
-//! "runtime", phase = "optimized")] if you don't.
+//! "runtime", phase = "optimized")]` if you don't.
 //!
 //! [dialect docs]:
 //!     https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html

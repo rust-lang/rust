@@ -82,7 +82,8 @@ pub use crate::{
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
-        InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
+        InlayHintLabel, InlayHintLabelPart, InlayHintsConfig, InlayKind, InlayTooltip,
+        LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -114,7 +115,7 @@ pub use ide_db::{
         SourceRoot, SourceRootId,
     },
     label::Label,
-    line_index::{LineCol, LineColUtf16, LineIndex},
+    line_index::{LineCol, LineIndex},
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
@@ -236,7 +237,7 @@ impl Analysis {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("Analysis::from_single_file has no target layout".into()),
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);

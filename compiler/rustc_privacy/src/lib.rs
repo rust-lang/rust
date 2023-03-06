@@ -16,18 +16,20 @@ use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
+use rustc_macros::fluent_messages;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
+use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
@@ -43,6 +45,8 @@ use errors::{
     InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, ReportEffectiveVisibility,
     UnnamedItemIsPrivate,
 };
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -81,7 +85,10 @@ trait DefIdVisitor<'tcx> {
             dummy: Default::default(),
         }
     }
-    fn visit(&mut self, ty_fragment: impl TypeVisitable<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit(
+        &mut self,
+        ty_fragment: impl TypeVisitable<TyCtxt<'tcx>>,
+    ) -> ControlFlow<Self::BreakTy> {
         ty_fragment.visit_with(&mut self.skeleton())
     }
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -159,9 +166,21 @@ where
                 _region,
             ))) => ty.visit_with(self),
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                ct.visit_with(self)?;
+                ty.visit_with(self)
+            }
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
-            _ => bug!("unexpected predicate: {:?}", predicate),
+
+            ty::PredicateKind::ObjectSafe(_)
+            | ty::PredicateKind::ClosureKind(_, _, _)
+            | ty::PredicateKind::Subtype(_)
+            | ty::PredicateKind::Coerce(_)
+            | ty::PredicateKind::ConstEquate(_, _)
+            | ty::PredicateKind::TypeWellFormedFromEnv(_)
+            | ty::PredicateKind::Ambiguous
+            | ty::PredicateKind::AliasEq(_, _) => bug!("unexpected predicate: {:?}", predicate),
         }
     }
 
@@ -174,7 +193,7 @@ where
     }
 }
 
-impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
+impl<'tcx, V> TypeVisitor<TyCtxt<'tcx>> for DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
@@ -207,7 +226,7 @@ where
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
                     if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
-                        tcx.type_of(impl_def_id).visit_with(self)?;
+                        tcx.type_of(impl_def_id).subst_identity().visit_with(self)?;
                     }
                 }
             }
@@ -270,10 +289,11 @@ where
             | ty::Ref(..)
             | ty::FnPtr(..)
             | ty::Param(..)
+            | ty::Bound(..)
             | ty::Error(_)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..) => {}
-            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
+            ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }
@@ -341,7 +361,7 @@ trait VisibilityLike: Sized {
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin { tcx, effective_visibilities, min: Self::MAX };
-        find.visit(tcx.type_of(def_id));
+        find.visit(tcx.type_of(def_id).subst_identity());
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
             find.visit_trait(trait_ref.subst_identity());
         }
@@ -593,7 +613,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::Generator => (),
         }
@@ -837,11 +857,11 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.ev.tcx.type_of(param.def_id));
+                        self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
                     }
                 }
                 GenericParamDefKind::Const { has_default } => {
-                    self.visit(self.ev.tcx.type_of(param.def_id));
+                    self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
                     if has_default {
                         self.visit(self.ev.tcx.const_param_default(param.def_id).subst_identity());
                     }
@@ -857,7 +877,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.ev.tcx.type_of(self.item_def_id));
+        self.visit(self.ev.tcx.type_of(self.item_def_id).subst_identity());
         self
     }
 
@@ -1268,7 +1288,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 // Method calls have to be checked specially.
                 self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def_id)).is_break() {
+                    if self.visit(self.tcx.type_of(def_id).subst_identity()).is_break() {
                         return;
                     }
                 } else {
@@ -1316,7 +1336,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     hir::QPath::Resolved(_, path) => Some(self.tcx.def_path_str(path.res.def_id())),
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
-                let kind = kind.descr(def_id);
+                let kind = self.tcx.def_descr(def_id);
                 let sess = self.tcx.sess;
                 let _ = match name {
                     Some(name) => {
@@ -1742,12 +1762,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.tcx.type_of(param.def_id));
+                        self.visit(self.tcx.type_of(param.def_id).subst_identity());
                     }
                 }
                 // FIXME(generic_const_exprs): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
-                    self.visit(self.tcx.type_of(param.def_id));
+                    self.visit(self.tcx.type_of(param.def_id).subst_identity());
                 }
             }
         }
@@ -1774,7 +1794,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.tcx.type_of(self.item_def_id));
+        self.visit(self.tcx.type_of(self.item_def_id).subst_identity());
         self
     }
 
@@ -1997,7 +2017,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
-            DefKind::Impl => {
+            DefKind::Impl { .. } => {
                 let item = tcx.hir().item(id);
                 if let hir::ItemKind::Impl(ref impl_) = item.kind {
                     let impl_vis =

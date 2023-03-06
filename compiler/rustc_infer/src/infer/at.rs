@@ -55,7 +55,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: true }
+        At { infcx: self, cause, param_env, define_opaque_types: false }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -365,6 +365,34 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        use GenericArgKind::*;
+        TypeTrace {
+            cause: cause.clone(),
+            values: match (a.unpack(), b.unpack()) {
+                (Lifetime(a), Lifetime(b)) => Regions(ExpectedFound::new(a_is_expected, a, b)),
+                (Type(a), Type(b)) => Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+                (Const(a), Const(b)) => {
+                    Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                }
+
+                (Lifetime(_), Type(_) | Const(_))
+                | (Type(_), Lifetime(_) | Const(_))
+                | (Const(_), Lifetime(_) | Type(_)) => {
+                    bug!("relating different kinds: {a:?} {b:?}")
+                }
+            },
         }
     }
 }

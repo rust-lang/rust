@@ -6,7 +6,7 @@ LL |     qux.foo(a, b, c, d, e, f, g, h, i, j, k, l);
    |         |
    |         arguments to this method are incorrect
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/too-long.rs:4:8
    |
 LL |     fn foo(

@@ -6,7 +6,7 @@ use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Binder, TypeFoldable};
+use rustc_middle::ty::{self, Binder, TyCtxt, TypeFoldable};
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     /// Checks whether `for<..> sub <: for<..> sup` holds.
@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn instantiate_binder_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = binder.no_bound_vars() {
             return inner;
@@ -82,16 +82,16 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
+                self.tcx.mk_re_placeholder(ty::PlaceholderRegion {
                     universe: next_universe,
                     name: br.kind,
-                }))
+                })
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: next_universe,
                     name: bound_ty.kind,
-                }))
+                })
             },
             consts: &mut |bound_var: ty::BoundVar, ty| {
                 self.tcx

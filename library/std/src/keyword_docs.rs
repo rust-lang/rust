@@ -1568,7 +1568,7 @@ mod static_keyword {}
 ///
 /// # Style conventions
 ///
-/// Structs are always written in CamelCase, with few exceptions. While the trailing comma on a
+/// Structs are always written in UpperCamelCase, with few exceptions. While the trailing comma on a
 /// struct's list of fields can be omitted, it's usually kept for convenience in adding and
 /// removing fields down the line.
 ///

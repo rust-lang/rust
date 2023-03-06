@@ -3,6 +3,7 @@ mod overflow;
 
 use self::cache::ProvisionalEntry;
 use super::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
+pub(super) use crate::solve::search_graph::overflow::OverflowHandler;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
@@ -42,11 +43,29 @@ impl<'tcx> SearchGraph<'tcx> {
             && !self.overflow_data.did_overflow()
     }
 
+    /// Whether we're currently in a cycle. This should only be used
+    /// for debug assertions.
+    pub(super) fn in_cycle(&self) -> bool {
+        if let Some(stack_depth) = self.stack.last() {
+            // Either the current goal on the stack is the root of a cycle...
+            if self.stack[stack_depth].has_been_used {
+                return true;
+            }
+
+            // ...or it depends on a goal with a lower depth.
+            let current_goal = self.stack[stack_depth].goal;
+            let entry_index = self.provisional_cache.lookup_table[&current_goal];
+            self.provisional_cache.entries[entry_index].depth != stack_depth
+        } else {
+            false
+        }
+    }
+
     /// Tries putting the new goal on the stack, returning an error if it is already cached.
     ///
     /// This correctly updates the provisional cache if there is a cycle.
     #[instrument(level = "debug", skip(self, tcx), ret)]
-    pub(super) fn try_push_stack(
+    fn try_push_stack(
         &mut self,
         tcx: TyCtxt<'tcx>,
         goal: CanonicalGoal<'tcx>,
@@ -121,19 +140,19 @@ impl<'tcx> SearchGraph<'tcx> {
     ///
     /// FIXME: Refer to the rustc-dev-guide entry once it exists.
     #[instrument(level = "debug", skip(self, tcx, actual_goal), ret)]
-    pub(super) fn try_finalize_goal(
+    fn try_finalize_goal(
         &mut self,
         tcx: TyCtxt<'tcx>,
         actual_goal: CanonicalGoal<'tcx>,
         response: QueryResult<'tcx>,
     ) -> bool {
-        let StackElem { goal, has_been_used } = self.stack.pop().unwrap();
+        let stack_elem = self.stack.pop().unwrap();
+        let StackElem { goal, has_been_used } = stack_elem;
         assert_eq!(goal, actual_goal);
 
         let cache = &mut self.provisional_cache;
         let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
-        let depth = provisional_entry.depth;
         // We eagerly update the response in the cache here. If we have to reevaluate
         // this goal we use the new response when hitting a cycle, and we definitely
         // want to access the final response whenever we look at the cache.
@@ -157,29 +176,72 @@ impl<'tcx> SearchGraph<'tcx> {
             self.stack.push(StackElem { goal, has_been_used: false });
             false
         } else {
-            // If not, we're done with this goal.
-            //
-            // Check whether that this goal doesn't depend on a goal deeper on the stack
-            // and if so, move it and all nested goals to the global cache.
-            //
-            // Note that if any nested goal were to depend on something deeper on the stack,
-            // this would have also updated the depth of the current goal.
-            if depth == self.stack.next_index() {
-                for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..)
-                {
-                    let actual_index = cache.lookup_table.remove(&entry.goal);
-                    debug_assert_eq!(Some(i), actual_index);
-                    debug_assert!(entry.depth == depth);
-                    cache::try_move_finished_goal_to_global_cache(
-                        tcx,
-                        &mut self.overflow_data,
-                        &self.stack,
-                        entry.goal,
-                        entry.response,
-                    );
-                }
-            }
+            self.try_move_finished_goal_to_global_cache(tcx, stack_elem);
             true
         }
+    }
+
+    fn try_move_finished_goal_to_global_cache(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        stack_elem: StackElem<'tcx>,
+    ) {
+        let StackElem { goal, .. } = stack_elem;
+        let cache = &mut self.provisional_cache;
+        let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
+        let provisional_entry = &mut cache.entries[provisional_entry_index];
+        let depth = provisional_entry.depth;
+
+        // If not, we're done with this goal.
+        //
+        // Check whether that this goal doesn't depend on a goal deeper on the stack
+        // and if so, move it and all nested goals to the global cache.
+        //
+        // Note that if any nested goal were to depend on something deeper on the stack,
+        // this would have also updated the depth of the current goal.
+        if depth == self.stack.next_index() {
+            for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..) {
+                let actual_index = cache.lookup_table.remove(&entry.goal);
+                debug_assert_eq!(Some(i), actual_index);
+                debug_assert!(entry.depth == depth);
+                cache::try_move_finished_goal_to_global_cache(
+                    tcx,
+                    &mut self.overflow_data,
+                    &self.stack,
+                    entry.goal,
+                    entry.response,
+                );
+            }
+        }
+    }
+
+    pub(super) fn with_new_goal(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        canonical_goal: CanonicalGoal<'tcx>,
+        mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
+    ) -> QueryResult<'tcx> {
+        match self.try_push_stack(tcx, canonical_goal) {
+            Ok(()) => {}
+            // Our goal is already on the stack, eager return.
+            Err(response) => return response,
+        }
+
+        self.repeat_while_none(
+            |this| {
+                let result = this.deal_with_overflow(tcx, canonical_goal);
+                let stack_elem = this.stack.pop().unwrap();
+                this.try_move_finished_goal_to_global_cache(tcx, stack_elem);
+                result
+            },
+            |this| {
+                let result = loop_body(this);
+                if this.try_finalize_goal(tcx, canonical_goal, result) {
+                    Some(result)
+                } else {
+                    None
+                }
+            },
+        )
     }
 }

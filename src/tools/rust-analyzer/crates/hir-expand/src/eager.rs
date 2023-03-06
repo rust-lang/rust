@@ -108,7 +108,7 @@ pub fn expand_eager_macro(
         .value
         .token_tree()
         .map(|tt| mbe::syntax_node_to_token_tree(tt.syntax()).0)
-        .unwrap_or_default();
+        .unwrap_or_else(tt::Subtree::empty);
 
     let ast_map = db.ast_id_map(macro_call.file_id);
     let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
@@ -165,9 +165,9 @@ pub fn expand_eager_macro(
     }
 }
 
-fn to_subtree(node: &SyntaxNode) -> tt::Subtree {
+fn to_subtree(node: &SyntaxNode) -> crate::tt::Subtree {
     let mut subtree = mbe::syntax_node_to_token_tree(node).0;
-    subtree.delimiter = None;
+    subtree.delimiter = crate::tt::Delimiter::unspecified();
     subtree
 }
 

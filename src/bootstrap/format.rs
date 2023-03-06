@@ -2,6 +2,7 @@
 
 use crate::builder::Builder;
 use crate::util::{output, program_out_of_date, t};
+use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
@@ -87,7 +88,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
     get_git_modified_files(Some(&build.config.src), &vec!["rs"])
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde_derive::Deserialize)]
 struct RustfmtConfig {
     ignore: Vec<String>,
 }
@@ -144,8 +145,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             let untracked_paths = untracked_paths_output
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
-                .map(|entry| {
-                    entry.split(' ').nth(1).expect("every git status entry should list a path")
+                .filter_map(|entry| {
+                    let path =
+                        entry.split(' ').nth(1).expect("every git status entry should list a path");
+                    path.ends_with(".rs").then_some(path)
                 });
             for untracked_path in untracked_paths {
                 println!("skip untracked path {} during rustfmt invocations", untracked_path);
@@ -156,7 +159,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // preventing the latter from being formatted.
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
-            if !check && paths.is_empty() {
+            // Only check modified files locally to speed up runtime.
+            // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
+            // we also care about CI time less since this is still very fast compared to building the compiler.
+            if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         for file in files {
@@ -193,10 +199,46 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
     let walker = match paths.get(0) {
         Some(first) => {
-            let mut walker = WalkBuilder::new(first);
+            let find_shortcut_candidates = |p: &PathBuf| {
+                let mut candidates = Vec::new();
+                for candidate in WalkBuilder::new(src.clone()).max_depth(Some(3)).build() {
+                    if let Ok(entry) = candidate {
+                        if let Some(dir_name) = p.file_name() {
+                            if entry.path().is_dir() && entry.file_name() == dir_name {
+                                candidates.push(entry.into_path());
+                            }
+                        }
+                    }
+                }
+                candidates
+            };
+
+            // Only try to look for shortcut candidates for single component paths like
+            // `std` and not for e.g. relative paths like `../library/std`.
+            let should_look_for_shortcut_dir = |p: &PathBuf| p.components().count() == 1;
+
+            let mut walker = if should_look_for_shortcut_dir(first) {
+                if let [single_candidate] = &find_shortcut_candidates(first)[..] {
+                    WalkBuilder::new(single_candidate)
+                } else {
+                    WalkBuilder::new(first)
+                }
+            } else {
+                WalkBuilder::new(src.join(first))
+            };
+
             for path in &paths[1..] {
-                walker.add(path);
+                if should_look_for_shortcut_dir(path) {
+                    if let [single_candidate] = &find_shortcut_candidates(path)[..] {
+                        walker.add(single_candidate);
+                    } else {
+                        walker.add(path);
+                    }
+                } else {
+                    walker.add(src.join(path));
+                }
             }
+
             walker
         }
         None => WalkBuilder::new(src.clone()),

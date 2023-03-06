@@ -246,7 +246,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         // Grab the ADT and the param we might need to calculate its layout
         let param_env = tcx.param_env(did);
-        let adt_ty = tcx.type_of(did);
+        let adt_ty = tcx.type_of(did).subst_identity();
 
         // The ADT is a 1-zst if it's a ZST and its alignment is 1.
         // Mark the ADT as _not_ a 1-zst if there was a layout error.
@@ -468,7 +468,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let ty = self
             .interner
             .tcx
-            .bound_type_of(def_id)
+            .type_of(def_id)
             .subst(self.interner.tcx, bound_vars)
             .lower_into(self.interner);
 
@@ -588,10 +588,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> chalk_ir::Ty<RustInterner<'tcx>> {
         // FIXME(chalk): actually get hidden ty
-        self.interner
-            .tcx
-            .mk_ty(ty::Tuple(self.interner.tcx.intern_type_list(&[])))
-            .lower_into(self.interner)
+        self.interner.tcx.types.unit.lower_into(self.interner)
     }
 
     fn closure_kind(
@@ -721,13 +718,13 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
 fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
         ty::GenericParamDefKind::Type { .. } => tcx
-            .mk_ty(ty::Bound(
+            .mk_bound(
                 ty::INNERMOST,
                 ty::BoundTy {
                     var: ty::BoundVar::from(param.index),
                     kind: ty::BoundTyKind::Param(param.def_id, param.name),
                 },
-            ))
+            )
             .into(),
 
         ty::GenericParamDefKind::Lifetime => {
@@ -735,13 +732,13 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(substs.len() as u32, None),
             };
-            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
             .mk_const(
                 ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
-                tcx.type_of(param.def_id),
+                tcx.type_of(param.def_id).subst_identity(),
             )
             .into(),
     })
@@ -772,12 +769,12 @@ struct ReplaceOpaqueTyFolder<'tcx> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ReplaceOpaqueTyFolder<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -790,10 +787,9 @@ impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind() {
             if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
-                return self.tcx.mk_ty(ty::Bound(
-                    self.binder_index,
-                    ty::BoundTy::from(ty::BoundVar::from_u32(0)),
-                ));
+                return self
+                    .tcx
+                    .mk_bound(self.binder_index, ty::BoundTy::from(ty::BoundVar::from_u32(0)));
             }
         }
         ty

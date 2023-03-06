@@ -1,5 +1,4 @@
 // compile-flags: -C no-prepopulate-passes
-// min-llvm-version: 14.0
 
 // Check that we use undef (and not zero) for uninitialized bytes in constants.
 

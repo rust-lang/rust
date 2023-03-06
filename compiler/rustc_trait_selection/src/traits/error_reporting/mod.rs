@@ -38,7 +38,7 @@ use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::config::TraitSolver;
 use rustc_session::Limit;
@@ -109,7 +109,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -122,7 +122,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -492,7 +492,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -512,7 +512,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -1283,6 +1283,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "AliasEq predicate should never be the predicate cause of a SelectionError"
                     ),
+
+                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                        self.tcx.sess.struct_span_err(
+                            span,
+                            &format!("the constant `{}` is not of type `{}`", ct, ty),
+                        )
+                    }
                 }
             }
 
@@ -1629,7 +1636,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
                 let param_env = ty::ParamEnv::empty();
-                if self.can_sub(param_env, error, implication).is_ok() {
+                if self.can_sub(param_env, error, implication) {
                     debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
                     return true;
                 }
@@ -2098,7 +2105,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Ignore automatically derived impls and `!Trait` impls.
                 .filter(|&def_id| {
                     self.tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
-                        || self.tcx.is_builtin_derive(def_id)
+                        || self.tcx.is_automatically_derived(def_id)
                 })
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
                 .map(ty::EarlyBinder::subst_identity)
@@ -2433,7 +2440,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             };
                             let mut suggestions = vec![(
                                 path.span.shrink_to_lo(),
-                                format!("<{} as ", self.tcx.type_of(impl_def_id))
+                                format!("<{} as ", self.tcx.type_of(impl_def_id).subst_identity())
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
                                 let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
@@ -2675,8 +2682,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
-        impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }
 
@@ -2964,7 +2971,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
+impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

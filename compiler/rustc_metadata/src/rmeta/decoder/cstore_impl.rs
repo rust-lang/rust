@@ -114,7 +114,7 @@ macro_rules! provide_one {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
             def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_values::$name<'tcx> {
+        ) -> ty::query::query_provided::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -130,7 +130,13 @@ macro_rules! provide_one {
                 $tcx.ensure().crate_hash($def_id.krate);
             }
 
-            let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);
+            let cdata = rustc_data_structures::sync::MappedReadGuard::map(CStore::from_tcx($tcx), |c| {
+                c.get_crate_data($def_id.krate).cdata
+            });
+            let $cdata = crate::creader::CrateMetadataRef {
+                cdata: &cdata,
+                cstore: &CStore::from_tcx($tcx),
+            };
 
             $compute
         }
@@ -248,6 +254,8 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
      }
 
+    associated_items_for_impl_trait_in_trait => { table_defaulted_array }
+
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -304,6 +312,7 @@ provide! { tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
@@ -607,20 +616,6 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
-    }
-
-    /// Decodes all trait impls in the crate (for rustdoc).
-    pub fn trait_impls_in_crate_untracked(
-        &self,
-        cnum: CrateNum,
-    ) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + '_ {
-        self.get_crate_data(cnum).get_trait_impls()
-    }
-
-    pub fn is_doc_hidden_untracked(&self, def_id: DefId) -> bool {
-        self.get_crate_data(def_id.krate)
-            .get_attr_flags(def_id.index)
-            .contains(AttrFlags::IS_DOC_HIDDEN)
     }
 }
 

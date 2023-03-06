@@ -10,7 +10,9 @@ use crate::{
 };
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -25,8 +27,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
+use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
@@ -34,7 +36,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
-use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -72,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
-                    self.tcx.ty_error()
+                    self.tcx.ty_error_misc()
                 } else {
                     self.tcx.erase_regions(ty)
                 }
@@ -100,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs)],
+                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
             };
 
             self.check_argument_types(
@@ -113,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
                 method.ok().map(|method| method.def_id),
             );
-            return self.tcx.ty_error();
+            return self.tcx.ty_error_misc();
         }
 
         let method = method.unwrap();
@@ -533,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .typeck_results
                     .borrow()
                     .expr_ty_adjusted_opt(*expr)
-                    .unwrap_or_else(|| tcx.ty_error());
+                    .unwrap_or_else(|| tcx.ty_error_misc());
                 (self.resolve_vars_if_possible(ty), normalize_span(expr.span))
             })
             .collect();
@@ -640,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = tcx.mk_tup(
+                let provided_as_tuple = tcx.mk_tup_from_iter(
                     provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
                 );
 
@@ -755,15 +756,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.drain_filter(|error| {
-                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
-                let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
-                let trace = mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
-                if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
-                    self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
-                    return true;
-                }
-                false
-            });
+            let Error::Invalid(
+                provided_idx,
+                expected_idx,
+                Compatibility::Incompatible(Some(e)),
+            ) = error else { return false };
+            let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
+            let trace =
+                mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
+            if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
+                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                return true;
+            }
+            false
+        });
 
         // We're done if we found errors, but we already emitted them.
         if errors.is_empty() {
@@ -864,7 +870,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut suggestion_text = SuggestionText::None;
 
+        let ty_to_snippet = |ty: Ty<'tcx>, expected_idx: ExpectedIdx| {
+            if ty.is_unit() {
+                "()".to_string()
+            } else if ty.is_suggestable(tcx, false) {
+                format!("/* {} */", ty)
+            } else if let Some(fn_def_id) = fn_def_id
+                && self.tcx.def_kind(fn_def_id).is_fn_like()
+                && let self_implicit =
+                    matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
+                && let Some(arg) = self.tcx.fn_arg_names(fn_def_id)
+                    .get(expected_idx.as_usize() + self_implicit)
+                && arg.name != kw::SelfLower
+            {
+                format!("/* {} */", arg.name)
+            } else {
+                "/* value */".to_string()
+            }
+        };
+
         let mut errors = errors.into_iter().peekable();
+        let mut suggestions = vec![];
         while let Some(error) = errors.next() {
             match error {
                 Error::Invalid(provided_idx, expected_idx, compatibility) => {
@@ -905,12 +931,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "".to_string()
                     };
                     labels
-                        .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
-                    suggestion_text = match suggestion_text {
-                        SuggestionText::None => SuggestionText::Remove(false),
-                        SuggestionText::Remove(_) => SuggestionText::Remove(true),
-                        _ => SuggestionText::DidYouMean,
-                    };
+                        .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
+                    let mut span = provided_span;
+                    if span.can_be_used_for_suggestions() {
+                        if arg_idx.index() > 0
+                        && let Some((_, prev)) = provided_arg_tys
+                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
+                    ) {
+                        // Include previous comma
+                        span = prev.shrink_to_hi().to(span);
+                    }
+                        suggestions.push((span, String::new()));
+
+                        suggestion_text = match suggestion_text {
+                            SuggestionText::None => SuggestionText::Remove(false),
+                            SuggestionText::Remove(_) => SuggestionText::Remove(true),
+                            _ => SuggestionText::DidYouMean,
+                        };
+                    }
                 }
                 Error::Missing(expected_idx) => {
                     // If there are multiple missing arguments adjacent to each other,
@@ -1095,6 +1133,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // Incorporate the argument changes in the removal suggestion.
+        // When a type is *missing*, and the rest are additional, we want to suggest these with a
+        // multipart suggestion, but in order to do so we need to figure out *where* the arg that
+        // was provided but had the wrong type should go, because when looking at `expected_idx`
+        // that is the position in the argument list in the definition, while `provided_idx` will
+        // not be present. So we have to look at what the *last* provided position was, and point
+        // one after to suggest the replacement. FIXME(estebank): This is hacky, and there's
+        // probably a better more involved change we can make to make this work.
+        // For example, if we have
+        // ```
+        // fn foo(i32, &'static str) {}
+        // foo((), (), ());
+        // ```
+        // what should be suggested is
+        // ```
+        // foo(/* i32 */, /* &str */);
+        // ```
+        // which includes the replacement of the first two `()` for the correct type, and the
+        // removal of the last `()`.
+        let mut prev = -1;
+        for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+            // We want to point not at the *current* argument expression index, but rather at the
+            // index position where it *should have been*, which is *after* the previous one.
+            if let Some(provided_idx) = provided_idx {
+                prev = provided_idx.index() as i64;
+            }
+            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+            if let None = provided_idx
+                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
+            {
+                // There is a type that was *not* found anywhere, so it isn't a move, but a
+                // replacement and we look at what type it should have been. This will allow us
+                // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
+                // was `fn foo(())`.
+                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+            }
+        }
+
         // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
         if labels.len() <= 5 {
             for (span, label) in labels {
@@ -1112,7 +1189,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
+                err.multipart_suggestion(
+                    &format!("remove the extra argument{}", if plural { "s" } else { "" }),
+                    suggestions,
+                    Applicability::HasPlaceholders,
+                );
+                None
             }
             SuggestionText::Swap => Some("swap these arguments".to_string()),
             SuggestionText::Reorder => Some("reorder these arguments".to_string()),
@@ -1151,20 +1233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // Propose a placeholder of the correct type
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                    if expected_ty.is_unit() {
-                        "()".to_string()
-                    } else if expected_ty.is_suggestable(tcx, false) {
-                        format!("/* {} */", expected_ty)
-                    } else if let Some(fn_def_id) = fn_def_id
-                        && self.tcx.def_kind(fn_def_id).is_fn_like()
-                        && let self_implicit = matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                        && let Some(arg) = self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
-                        && arg.name != kw::SelfLower
-                    {
-                        format!("/* {} */", arg.name)
-                    } else {
-                        "/* value */".to_string()
-                    }
+                    ty_to_snippet(expected_ty, expected_idx)
                 };
                 suggestion += &suggestion_text;
             }
@@ -1218,7 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
-            ast::LitKind::Err => tcx.ty_error(),
+            ast::LitKind::Err => tcx.ty_error_misc(),
         }
     }
 
@@ -1226,15 +1295,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &QPath<'_>,
         hir_id: hir::HirId,
-    ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
+    ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
-                self.set_tainted_by_errors(
-                    self.tcx.sess.delay_span_bug(path_span, "`Res::Err` but no error emitted"),
-                );
-                return None;
+                let guar =
+                    self.tcx.sess.delay_span_bug(path_span, "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(guar);
+                return Err(guar);
             }
             Res::Def(DefKind::Variant, _) => match ty.normalized.ty_adt_def() {
                 Some(adt) => {
@@ -1262,28 +1331,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
 
-            Some((variant, ty.normalized))
+            Ok((variant, ty.normalized))
         } else {
-            match ty.normalized.kind() {
-                ty::Error(_) => {
+            Err(match *ty.normalized.kind() {
+                ty::Error(guar) => {
                     // E0071 might be caused by a spelling error, which will have
                     // already caused an error message and probably a suggestion
                     // elsewhere. Refrain from emitting more unhelpful errors here
                     // (issue #88844).
+                    guar
                 }
-                _ => {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        path_span,
-                        E0071,
-                        "expected struct, variant or union type, found {}",
-                        ty.normalized.sort_string(self.tcx)
-                    )
-                    .span_label(path_span, "not a struct")
-                    .emit();
-                }
-            }
-            None
+                _ => struct_span_err!(
+                    self.tcx.sess,
+                    path_span,
+                    E0071,
+                    "expected struct, variant or union type, found {}",
+                    ty.normalized.sort_string(self.tcx)
+                )
+                .span_label(path_span, "not a struct")
+                .emit(),
+            })
         }
     }
 
@@ -1439,11 +1506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
         } else {
-            let tail_expr: &[&hir::Expr<'_>] = match tail_expr {
-                Some(e) => slice::from_ref(e),
-                None => &[],
-            };
-            CoerceMany::with_coercion_sites(coerce_to_ty, tail_expr)
+            CoerceMany::with_coercion_sites(coerce_to_ty, blk.expr.as_slice())
         };
 
         let prev_diverges = self.diverges.get();
@@ -1647,9 +1710,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx hir::Pat<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        if ty.references_error() {
+        if let Err(guar) = ty.error_reported() {
             // Override the types everywhere with `err()` to avoid knock on errors.
-            let err = self.tcx.ty_error();
+            let err = self.tcx.ty_error(guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
             let local_ty = LocalTy { decl_ty: err, revealed_ty: err };
@@ -1669,7 +1732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = self.astconv().res_to_ty(self_ty, path, true);
+                let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
                 (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
@@ -1678,7 +1741,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let result = self
                     .astconv()
                     .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
-                let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
+                let ty =
+                    result.map(|(ty, _, _)| ty).unwrap_or_else(|guar| self.tcx().ty_error(guar));
                 let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
@@ -1870,8 +1934,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 spans.push_span_label(param.span, "");
             }
 
-            let def_kind = self.tcx.def_kind(def_id);
-            err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+            err.span_note(spans, &format!("{} defined here", self.tcx.def_descr(def_id)));
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
             && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
         {
@@ -1884,10 +1947,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             err.span_note(span, &format!("{} defined here", kind));
         } else {
-            let def_kind = self.tcx.def_kind(def_id);
             err.span_note(
                 self.tcx.def_span(def_id),
-                &format!("{} defined here", def_kind.descr(def_id)),
+                &format!("{} defined here", self.tcx.def_descr(def_id)),
             );
         }
     }

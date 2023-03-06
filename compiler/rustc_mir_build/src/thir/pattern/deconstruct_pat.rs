@@ -172,7 +172,7 @@ impl IntRange {
         ty: Ty<'tcx>,
         end: &RangeEnd,
     ) -> Option<IntRange> {
-        if Self::is_integral(ty) {
+        Self::is_integral(ty).then(|| {
             // Perform a shift if the underlying types are signed,
             // which makes the interval arithmetic simpler.
             let bias = IntRange::signed_bias(tcx, ty);
@@ -182,10 +182,8 @@ impl IntRange {
                 // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
-            Some(IntRange { range: lo..=(hi - offset), bias })
-        } else {
-            None
-        }
+            IntRange { range: lo..=(hi - offset), bias }
+        })
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -922,8 +920,8 @@ impl<'tcx> SplitWildcard<'tcx> {
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind() {
             ty::Bool => smallvec![make_range(0, 1)],
-            ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-                let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
+            ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
+                let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
                 if len != 0 && cx.is_uninhabited(*sub_ty) {
                     smallvec![]
                 } else {
@@ -1406,7 +1404,9 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match pat.ty.kind() {
-                    ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env) as usize),
+                    ty::Array(_, length) => {
+                        Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
+                    }
                     ty::Slice(_) => None,
                     _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
                 };

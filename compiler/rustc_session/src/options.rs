@@ -4,7 +4,7 @@ use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use rustc_errors::LanguageIdentifier;
+use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -370,7 +370,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -402,6 +402,8 @@ mod desc {
     pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
     pub const parse_tls_model: &str = "one of supported TLS models (`rustc --print tls-models`)";
     pub const parse_target_feature: &str = parse_string;
+    pub const parse_terminal_url: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -682,6 +684,7 @@ mod parse {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
                     "kcfi" => SanitizerSet::KCFI,
+                    "kernel-address" => SanitizerSet::KERNELADDRESS,
                     "leak" => SanitizerSet::LEAK,
                     "memory" => SanitizerSet::MEMORY,
                     "memtag" => SanitizerSet::MEMTAG,
@@ -807,7 +810,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(MirSpanview::Statement) } else { None };
+                *slot = bool_arg.unwrap().then_some(MirSpanview::Statement);
                 return true;
             }
         }
@@ -848,7 +851,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(InstrumentCoverage::All) } else { None };
+                *slot = bool_arg.unwrap().then_some(InstrumentCoverage::All);
                 return true;
             }
         }
@@ -1041,6 +1044,16 @@ mod parse {
             Some(tls_model) => *slot = Some(tls_model),
             _ => return false,
         }
+        true
+    }
+
+    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
+            Some("off" | "no" | "n") => TerminalUrl::No,
+            Some("auto") => TerminalUrl::Auto,
+            _ => return false,
+        };
         true
     }
 
@@ -1476,6 +1489,8 @@ options! {
         "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
+    link_directives: bool = (true, parse_bool, [TRACKED],
+        "honor #[link] directives in the compiled crate (default: yes)"),
     link_native_libraries: bool = (true, parse_bool, [UNTRACKED],
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
@@ -1488,6 +1503,9 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
+    lower_impl_trait_in_trait_to_assoc_ty: bool = (false, parse_bool, [TRACKED],
+        "modify the lowering strategy for `impl Trait` in traits so that they are lowered to \
+        generic associated types"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
@@ -1554,8 +1572,6 @@ options! {
         "parse only; do not compile, assemble, or link (default: no)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics (default: no)"),
-    pick_stable_methods_before_any_unstable: bool = (true, parse_bool, [TRACKED],
-        "try to pick stable methods first before picking any unstable methods (default: yes)"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
@@ -1617,9 +1633,6 @@ options! {
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
         the max/min integer respectively, and NaN is mapped to 0 (default: yes)"),
-    save_analysis: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in JSON format) information, in \
-        addition to normal output (default: no)"),
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
@@ -1675,6 +1688,8 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
+    terminal_urls: TerminalUrl = (TerminalUrl::No, parse_terminal_url, [UNTRACKED],
+        "use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),

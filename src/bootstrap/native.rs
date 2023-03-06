@@ -16,7 +16,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::bolt::{instrument_with_bolt_inplace, optimize_library_with_bolt_inplace};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
 use crate::config::{Config, TargetSelection};
@@ -108,15 +107,6 @@ pub fn prebuilt_llvm_config(
 
     let stamp = out_dir.join("llvm-finished-building");
     let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
-
-    if builder.config.llvm_skip_rebuild && stamp.path.exists() {
-        builder.info(
-            "Warning: \
-                Using a potentially stale build of LLVM; \
-                This may not behave well.",
-        );
-        return Ok(res);
-    }
 
     if stamp.is_done() {
         if stamp.hash.is_none() {
@@ -216,21 +206,24 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         }
     }
 
-    if CiEnv::is_ci() {
+    if is_ci_llvm_modified(config) {
+        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
+        return false;
+    }
+
+    true
+}
+
+/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
+pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
+    CiEnv::is_ci() && {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
         let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
         let head_sha = head_sha.trim();
-        if llvm_sha == head_sha {
-            eprintln!(
-                "Detected LLVM as non-available: running in CI and modified LLVM in this change"
-            );
-            return false;
-        }
+        llvm_sha == head_sha
     }
-
-    true
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -483,7 +476,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -516,36 +509,14 @@ impl Step for Llvm {
 
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
-                t!(builder.build.config.symlink_file("libLLVM.dylib", &lib_llvm));
+                t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
-        }
-
-        // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file
-        // in place. This is fine, because currently we do not support incrementally rebuilding
-        // LLVM after a configuration change, so to rebuild it the build files have to be removed,
-        // which will also remove these modified files.
-        if builder.config.llvm_bolt_profile_generate {
-            instrument_with_bolt_inplace(&get_built_llvm_lib_path(&res.llvm_config));
-        }
-        if let Some(path) = &builder.config.llvm_bolt_profile_use {
-            optimize_library_with_bolt_inplace(
-                &get_built_llvm_lib_path(&res.llvm_config),
-                &Path::new(path),
-            );
         }
 
         t!(stamp.write());
 
         res
     }
-}
-
-/// Returns path to a built LLVM library (libLLVM.so).
-/// Assumes that we have built LLVM into a single library file.
-fn get_built_llvm_lib_path(llvm_config_path: &Path) -> PathBuf {
-    let mut cmd = Command::new(llvm_config_path);
-    cmd.arg("--libfiles");
-    PathBuf::from(output(&mut cmd).trim())
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
@@ -561,11 +532,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 13 {
+        if major >= 14 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=13.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=14.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -574,6 +545,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
+    extra_compiler_flags: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -714,6 +686,9 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(&format!(" --target={}", target));
     }
+    for flag in extra_compiler_flags {
+        cflags.push(&format!(" {}", flag));
+    }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
@@ -722,6 +697,9 @@ fn configure_cmake(
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={}", target));
+    }
+    for flag in extra_compiler_flags {
+        cxxflags.push(&format!(" {}", flag));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -864,7 +842,7 @@ impl Step for Lld {
             }
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1028,7 +1006,16 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher, LdFlags::default());
+        let extra_compiler_flags: &[&str] =
+            if self.target.contains("apple") { &["-fembed-bitcode=off"] } else { &[] };
+        configure_cmake(
+            builder,
+            self.target,
+            &mut cfg,
+            use_compiler_launcher,
+            LdFlags::default(),
+            extra_compiler_flags,
+        );
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
@@ -1084,12 +1071,15 @@ fn supported_sanitizers(
 
     match &*target.triple {
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
+        "aarch64-apple-ios" => darwin_libs("ios", &["asan", "tsan"]),
+        "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
+        "x86_64-apple-ios" => darwin_libs("iossim", &["asan", "tsan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-netbsd" => {
             common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])

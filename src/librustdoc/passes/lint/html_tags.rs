@@ -113,7 +113,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             if let Some(link) =
                 link_names.iter().find(|link| *link.original_text == *broken_link.reference)
             {
-                Some((link.href.as_str().into(), link.new_text.as_str().into()))
+                Some((link.href.as_str().into(), link.new_text.to_string().into()))
             } else if matches!(
                 &broken_link.link_type,
                 LinkType::Reference | LinkType::ReferenceUnknown
@@ -210,11 +210,9 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
             .take_while(|(_, c)| is_id_start(*c) || is_id_continue(*c))
             .reduce(|_accum, item| item)
             .and_then(|(new_pos, c)| is_id_start(c).then_some(new_pos));
-        if let Some(new_pos) = new_pos {
-            if current_pos != new_pos {
-                current_pos = new_pos;
-                continue;
-            }
+        if let Some(new_pos) = new_pos && current_pos != new_pos {
+            current_pos = new_pos;
+            continue;
         }
         break;
     }

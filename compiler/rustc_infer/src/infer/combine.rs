@@ -31,15 +31,17 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
     self, AliasKind, FallibleTypeFolder, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitable,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
@@ -123,11 +125,11 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::Alias(AliasKind::Projection, _), _) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(a.into(), b.into());
+                relation.register_type_equate_obligation(a, b);
                 Ok(b)
             }
             (_, ty::Alias(AliasKind::Projection, _)) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(b.into(), a.into());
+                relation.register_type_equate_obligation(b, a);
                 Ok(a)
             }
 
@@ -151,6 +153,34 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
+
+        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
+        // correct type for the generic param they are an argument for. However there have been a number of cases
+        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
+        // to check even if it is a bit nasty impl wise :(
+        //
+        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
+        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
+        self.probe(|_| {
+            if a.ty() == b.ty() {
+                return;
+            }
+
+            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
+            // two const param's types are able to be equal has to go through a canonical query with the actual logic
+            // in `rustc_trait_selection`.
+            let canonical = self.canonicalize_query(
+                (relation.param_env(), a.ty(), b.ty()),
+                &mut OriginalQueryValues::default(),
+            );
+
+            if let Err(NoSolution) = self.tcx.check_tys_might_be_eq(canonical) {
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    &format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
+                );
+            }
+        });
 
         match (a.kind(), b.kind()) {
             (
@@ -448,10 +478,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         self.obligations.extend(obligations.into_iter());
     }
 
-    pub fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
-    ) {
+    pub fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>) {
         self.obligations.extend(obligations.into_iter().map(|to_pred| {
             Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
         }))
@@ -784,10 +811,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// Register predicates that must hold in order for this relation to hold. Uses
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
     /// be used if control over the obligaton causes is required.
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
-    );
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
 
     /// Register an obligation that both constants must be equal to each other.
     ///
@@ -844,10 +868,10 @@ struct ConstInferUnifier<'cx, 'tcx> {
     target_vid: ty::ConstVid<'tcx>,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
     type Error = TypeError<'tcx>;
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -875,7 +899,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
                             .borrow_mut()
                             .type_variables()
                             .new_var(self.for_universe, origin);
-                        Ok(self.tcx().mk_ty_var(new_var_id))
+                        Ok(self.interner().mk_ty_var(new_var_id))
                     }
                 }
             }
@@ -953,7 +977,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(self.interner().mk_const(new_var_id, c.ty()))
                         }
                     }
                 }

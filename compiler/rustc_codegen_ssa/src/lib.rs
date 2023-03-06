@@ -13,7 +13,7 @@
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that
-//! have to be implemented by each backends.
+//! have to be implemented by each backend.
 
 #[macro_use]
 extern crate rustc_macros;
@@ -25,7 +25,9 @@ extern crate rustc_middle;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::def_id::CrateNum;
+use rustc_macros::fluent_messages;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -53,6 +55,8 @@ pub mod mir;
 pub mod mono_item;
 pub mod target_features;
 pub mod traits;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
@@ -159,6 +163,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
+    pub feature_packed_bundled_libs: bool, // unstable feature flag.
 }
 
 #[derive(Encodable, Decodable)]

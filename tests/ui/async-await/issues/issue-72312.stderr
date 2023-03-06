@@ -1,10 +1,10 @@
-error[E0521]: borrowed data escapes outside of associated function
+error[E0521]: borrowed data escapes outside of method
   --> $DIR/issue-72312.rs:12:9
    |
 LL |       pub async fn start(&self) {
    |                          -----
    |                          |
-   |                          `self` is a reference that is only valid in the associated function body
+   |                          `self` is a reference that is only valid in the method body
    |                          let's call the lifetime of this reference `'1`
 ...
 LL | /         require_static(async move {
@@ -15,7 +15,7 @@ LL | |             &self;
 LL | |         });
    | |          ^
    | |          |
-   | |__________`self` escapes the associated function body here
+   | |__________`self` escapes the method body here
    |            argument requires that `'1` must outlive `'static`
 
 error: aborting due to previous error

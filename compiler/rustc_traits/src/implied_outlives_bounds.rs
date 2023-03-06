@@ -7,7 +7,7 @@ use rustc_infer::infer::outlives::components::{push_outlives_components, Compone
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -99,6 +99,9 @@ fn compute_implied_outlives_bounds<'tcx>(
             };
             match pred {
                 ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
+                // if we ever support that
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))

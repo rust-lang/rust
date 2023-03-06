@@ -1,0 +1,10 @@
+error: `foobar` is not yet stable as a const fn
+  --> $DIR/const-stability-attribute-implies-no-feature.rs:12:5
+   |
+LL |     foobar();
+   |     ^^^^^^^^
+   |
+   = help: add `#![feature(const_foobar)]` to the crate attributes to enable
+
+error: aborting due to previous error
+

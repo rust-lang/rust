@@ -11,8 +11,8 @@ struct Foo {
 struct Bar;
 
 impl Bar {
-    fn a(&self) -> i32 { 5 } //~ WARNING: associated function `a` is never used
-    pub fn b(&self) -> i32 { 6 } //~ WARNING: associated function `b` is never used
+    fn a(&self) -> i32 { 5 } //~ WARNING: method `a` is never used
+    pub fn b(&self) -> i32 { 6 } //~ WARNING: method `b` is never used
 }
 
 pub(crate) struct Foo1 {
@@ -23,8 +23,8 @@ pub(crate) struct Foo1 {
 pub(crate) struct Bar1;
 
 impl Bar1 {
-    fn a(&self) -> i32 { 5 } //~ WARNING: associated function `a` is never used
-    pub fn b(&self) -> i32 { 6 } //~ WARNING: associated function `b` is never used
+    fn a(&self) -> i32 { 5 } //~ WARNING: method `a` is never used
+    pub fn b(&self) -> i32 { 6 } //~ WARNING: method `b` is never used
 }
 
 pub(crate) struct Foo2 {
@@ -35,8 +35,8 @@ pub(crate) struct Foo2 {
 pub(crate) struct Bar2;
 
 impl Bar2 {
-    fn a(&self) -> i32 { 5 } //~ WARNING: associated function `a` is never used
-    pub fn b(&self) -> i32 { 6 } //~ WARNING: associated function `b` is never used
+    fn a(&self) -> i32 { 5 } //~ WARNING: method `a` is never used
+    pub fn b(&self) -> i32 { 6 } //~ WARNING: method `b` is never used
 }
 
 

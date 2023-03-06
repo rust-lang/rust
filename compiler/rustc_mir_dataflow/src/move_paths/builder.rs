@@ -126,7 +126,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         BorrowedContent {
                             target_place: Place {
                                 local: place.local,
-                                projection: tcx.intern_place_elems(proj),
+                                projection: tcx.mk_place_elems(proj),
                             },
                         },
                     ));
@@ -165,7 +165,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             if union_path.is_none() {
                 base = self.add_move_path(base, elem, |tcx| Place {
                     local: place.local,
-                    projection: tcx.intern_place_elems(&place.projection[..i + 1]),
+                    projection: tcx.mk_place_elems(&place.projection[..i + 1]),
                 });
             }
         }
@@ -476,7 +476,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
             let base_place =
-                Place { local: place.local, projection: self.builder.tcx.intern_place_elems(base) };
+                Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {
@@ -490,7 +490,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => size.eval_usize(self.builder.tcx, self.builder.param_env),
+                ty::Array(_, size) => {
+                    size.eval_target_usize(self.builder.tcx, self.builder.param_env)
+                }
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

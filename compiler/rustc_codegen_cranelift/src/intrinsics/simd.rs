@@ -141,7 +141,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let idx_ty = fx.monomorphize(idx.ty(fx.mir, fx.tcx));
                 match idx_ty.kind() {
                     ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
-                        .try_eval_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                        .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
                         .unwrap_or_else(|| {
                             span_bug!(span, "could not evaluate shuffle index array length")
                         })
@@ -735,7 +735,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {}
                 ty::Array(elem, len)
                     if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                        && len.try_eval_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                        && len.try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
                             == Some(expected_bytes) => {}
                 _ => {
                     fx.tcx.sess.span_fatal(

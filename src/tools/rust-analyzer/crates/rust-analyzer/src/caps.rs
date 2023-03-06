@@ -1,4 +1,5 @@
 //! Advertises the capabilities of the LSP Server.
+use ide_db::line_index::WideEncoding;
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
@@ -10,21 +11,25 @@ use lsp_types::{
     SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities,
     SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
-    WorkspaceFileOperationsServerCapabilities, WorkspaceServerCapabilities,
+    WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
+    WorkspaceServerCapabilities,
 };
 use serde_json::json;
 
 use crate::config::{Config, RustfmtConfig};
-use crate::lsp_ext::supports_utf8;
+use crate::line_index::PositionEncoding;
+use crate::lsp_ext::negotiated_encoding;
 use crate::semantic_tokens;
 
 pub fn server_capabilities(config: &Config) -> ServerCapabilities {
     ServerCapabilities {
-        position_encoding: if supports_utf8(config.caps()) {
-            Some(PositionEncodingKind::UTF8)
-        } else {
-            None
-        },
+        position_encoding: Some(match negotiated_encoding(config.caps()) {
+            PositionEncoding::Utf8 => PositionEncodingKind::UTF8,
+            PositionEncoding::Wide(wide) => match wide {
+                WideEncoding::Utf16 => PositionEncodingKind::UTF16,
+                WideEncoding::Utf32 => PositionEncodingKind::UTF32,
+            },
+        }),
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
             change: Some(TextDocumentSyncKind::INCREMENTAL),
@@ -80,7 +85,10 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         color_provider: None,
         execute_command_provider: None,
         workspace: Some(WorkspaceServerCapabilities {
-            workspace_folders: None,
+            workspace_folders: Some(WorkspaceFoldersServerCapabilities {
+                supported: Some(true),
+                change_notifications: Some(OneOf::Left(true)),
+            }),
             file_operations: Some(WorkspaceFileOperationsServerCapabilities {
                 did_create: None,
                 will_create: None,
@@ -130,6 +138,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 resolve_provider: Some(true),
             },
         ))),
+        inline_value_provider: None,
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,

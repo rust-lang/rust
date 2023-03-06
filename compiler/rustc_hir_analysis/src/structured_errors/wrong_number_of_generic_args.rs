@@ -423,7 +423,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     fn get_unbound_associated_types(&self) -> Vec<String> {
         if self.tcx.is_trait(self.def_id) {
-            let items: &AssocItems<'_> = self.tcx.associated_items(self.def_id);
+            let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
                 .filter(|item| item.kind == AssocKind::Type)
@@ -439,7 +439,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     fn create_error_message(&self) -> String {
         let def_path = self.tcx.def_path_str(self.def_id);
-        let def_kind = self.tcx.def_kind(self.def_id).descr(self.def_id);
+        let def_kind = self.tcx.def_descr(self.def_id);
         let (quantifier, bound) = self.get_quantifier_and_bound();
         let kind = self.kind();
         let provided_lt_args = self.num_provided_lifetime_args();
@@ -462,7 +462,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         if self.gen_args.span_ext().is_some() {
             format!(
-                "this {} takes {}{} {} argument{} but {} {} supplied",
+                "{} takes {}{} {} argument{} but {} {} supplied",
                 def_kind,
                 quantifier,
                 bound,
@@ -990,7 +990,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         };
 
         let msg = {
-            let def_kind = self.tcx.def_kind(self.def_id).descr(self.def_id);
+            let def_kind = self.tcx.def_descr(self.def_id);
             let (quantifier, bound) = self.get_quantifier_and_bound();
 
             let params = if bound == 0 {

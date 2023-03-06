@@ -1,5 +1,6 @@
 use crate::cell::Cell;
 use crate::sync as public;
+use crate::sync::once::ExclusiveState;
 
 pub struct Once {
     state: Cell<State>,
@@ -42,6 +43,16 @@ impl Once {
     #[inline]
     pub fn is_completed(&self) -> bool {
         self.state.get() == State::Complete
+    }
+
+    #[inline]
+    pub(crate) fn state(&mut self) -> ExclusiveState {
+        match self.state.get() {
+            State::Incomplete => ExclusiveState::Incomplete,
+            State::Poisoned => ExclusiveState::Poisoned,
+            State::Complete => ExclusiveState::Complete,
+            _ => unreachable!("invalid Once state"),
+        }
     }
 
     #[cold]

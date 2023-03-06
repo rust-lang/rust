@@ -43,17 +43,14 @@ SOURCE_FILE
                                     IDENT "Box"
                                   GENERIC_ARG_LIST
                                     L_ANGLE "<"
-                                    TYPE_ARG
-                                      ERROR
-                                        AT "@"
-      WHITESPACE " "
-      TUPLE_FIELD
-        PATH_TYPE
-          PATH
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "Any"
-      ERROR
+  ERROR
+    AT "@"
+  WHITESPACE " "
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "Any"
   ERROR
     R_ANGLE ">"
   ERROR
@@ -69,17 +66,14 @@ SOURCE_FILE
   ERROR
     SEMICOLON ";"
   WHITESPACE "\n\n"
-error 67: expected type
-error 68: expected COMMA
-error 68: expected R_ANGLE
-error 68: expected COMMA
-error 68: expected R_ANGLE
-error 68: expected COMMA
-error 68: expected R_ANGLE
-error 68: expected COMMA
-error 72: expected COMMA
-error 72: expected a type
-error 72: expected R_PAREN
+error 67: expected R_ANGLE
+error 67: expected R_ANGLE
+error 67: expected R_ANGLE
+error 67: expected R_PAREN
+error 67: expected SEMICOLON
+error 67: expected an item
+error 72: expected BANG
+error 72: expected `{`, `[`, `(`
 error 72: expected SEMICOLON
 error 72: expected an item
 error 73: expected an item

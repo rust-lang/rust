@@ -1,5 +1,5 @@
 error: invalid register `invalid`: unknown register
-  --> $DIR/issue-72570.rs:9:18
+  --> $DIR/issue-72570.rs:7:18
    |
 LL |         asm!("", in("invalid") "".len());
    |                  ^^^^^^^^^^^^^^^^^^^^^^

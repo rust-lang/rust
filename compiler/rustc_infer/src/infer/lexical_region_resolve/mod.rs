@@ -70,7 +70,7 @@ pub enum RegionResolutionError<'tcx> {
     /// `o` requires that `a <= b`, but this does not hold
     ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
 
-    /// `GenericBoundFailure(p, s, a)
+    /// `GenericBoundFailure(p, s, a)`:
     ///
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).
@@ -382,7 +382,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // name the placeholder, then the placeholder is
                     // larger; otherwise, the only ancestor is `'static`.
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
-                        self.tcx().mk_region(RePlaceholder(placeholder))
+                        self.tcx().mk_re_placeholder(placeholder)
                     }
                     Err(_) => self.tcx().lifetimes.re_static,
                 };
@@ -438,7 +438,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -467,7 +471,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
@@ -1024,7 +1032,7 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 impl<'tcx> LexicalRegionResolutions<'tcx> {
     fn normalize<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(value, |r, _db| self.resolve_region(tcx, r))
     }
@@ -1046,7 +1054,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.re_error_misc(),
+                VarValue::ErrorValue => tcx.lifetimes.re_static,
             },
             _ => r,
         };

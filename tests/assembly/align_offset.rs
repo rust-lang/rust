@@ -1,7 +1,6 @@
 // assembly-output: emit-asm
 // compile-flags: -Copt-level=1
 // only-x86_64
-// min-llvm-version: 14.0
 #![crate_type="rlib"]
 
 // CHECK-LABEL: align_offset_byte_ptr

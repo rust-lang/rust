@@ -7,6 +7,7 @@ use rustc_ast::{self as ast, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_debug(
     cx: &mut ExtCtxt<'_>,
@@ -94,7 +95,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     if fields.is_empty() {
         // Special case for no fields.
         let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
@@ -105,7 +106,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         };
         let fn_path_debug = cx.std_path(&[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = Vec::with_capacity(2 + fields.len() * args_per_field);
+        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt, name]);
         for i in 0..fields.len() {
             let field = &fields[i];
@@ -121,8 +122,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         BlockOrExpr::new_expr(expr)
     } else {
         // Enough fields that we must use the any-length method.
-        let mut name_exprs = Vec::with_capacity(fields.len());
-        let mut value_exprs = Vec::with_capacity(fields.len());
+        let mut name_exprs = ThinVec::with_capacity(fields.len());
+        let mut value_exprs = ThinVec::with_capacity(fields.len());
 
         for i in 0..fields.len() {
             let field = &fields[i];
@@ -135,19 +136,17 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         }
 
         // `let names: &'static _ = &["field1", "field2"];`
-        let names_let = if is_struct {
+        let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            Some(cx.stmt_let_ty(
+            cx.stmt_let_ty(
                 span,
                 false,
                 Ident::new(sym::names, span),
                 Some(ty_static_ref),
                 cx.expr_array_ref(span, name_exprs),
-            ))
-        } else {
-            None
-        };
+            )
+        });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
@@ -179,7 +178,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         };
         let fn_path_debug_internal = cx.std_path(&[sym::fmt, sym::Formatter, sym_debug]);
 
-        let mut args = Vec::with_capacity(4);
+        let mut args = ThinVec::with_capacity(4);
         args.push(fmt);
         args.push(name);
         if is_struct {
@@ -188,7 +187,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         args.push(cx.expr_ident(span, Ident::new(sym::values, span)));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let mut stmts = Vec::with_capacity(3);
+        let mut stmts = ThinVec::with_capacity(2);
         if is_struct {
             stmts.push(names_let.unwrap());
         }
@@ -225,18 +224,18 @@ fn show_fieldless_enum(
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());
-                    cx.pat_tuple_struct(span, variant_path, vec![])
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
                 }
                 ast::VariantData::Struct(fields, _) => {
                     debug_assert!(fields.is_empty());
-                    cx.pat_struct(span, variant_path, vec![])
+                    cx.pat_struct(span, variant_path, ThinVec::new())
                 }
                 ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
             };
             cx.arm(span, pat, cx.expr_str(span, v.ident.name))
         })
-        .collect::<Vec<_>>();
+        .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-    BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]))
+    BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }

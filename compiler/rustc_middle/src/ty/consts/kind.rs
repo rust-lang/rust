@@ -4,7 +4,7 @@ use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::ty::abstract_const::CastKind;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
-use crate::ty::{self, List, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
@@ -125,8 +125,8 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_value()?.try_to_machine_usize(tcx)
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_target_usize(tcx)
     }
 }
 
@@ -217,23 +217,21 @@ impl<'tcx> ConstKind<'tcx> {
             // Note that we erase regions *before* calling `with_reveal_all_normalized`,
             // so that we don't try to invoke this query with
             // any region variables.
-            let param_env_and = tcx
-                .erase_regions(param_env)
-                .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(unevaluated));
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed
             // when the expression doesn't depend on any parameters.
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
-            let param_env_and = if param_env_and.needs_infer() {
+            let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
                 tcx.param_env(unevaluated.def.did).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
                     substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
                 })
             } else {
-                param_env_and
+                tcx.erase_regions(param_env)
+                    .with_reveal_all_normalized(tcx)
+                    .and(tcx.erase_regions(unevaluated))
             };
 
             // FIXME(eddyb) maybe the `const_eval_*` methods should take

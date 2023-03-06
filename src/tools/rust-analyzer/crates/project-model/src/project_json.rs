@@ -4,6 +4,50 @@
 //! idea here is that people who do not use Cargo, can instead teach their build
 //! system to generate `rust-project.json` which can be ingested by
 //! rust-analyzer.
+//!
+//! This short file is a somewhat big conceptual piece of the architecture of
+//! rust-analyzer, so it's worth elaborating on the underlying ideas and
+//! motivation.
+//!
+//! For rust-analyzer to function, it needs some information about the project.
+//! Specifically, it maintains an in-memory data structure which lists all the
+//! crates (compilation units) and dependencies between them. This is necessary
+//! a global singleton, as we do want, eg, find usages to always search across
+//! the whole project, rather than just in the "current" crate.
+//!
+//! Normally, we get this "crate graph" by calling `cargo metadata
+//! --message-format=json` for each cargo workspace and merging results. This
+//! works for your typical cargo project, but breaks down for large folks who
+//! have a monorepo with an infinite amount of Rust code which is built with bazel or
+//! some such.
+//!
+//! To support this use case, we need to make _something_ configurable. To avoid
+//! a [midlayer mistake](https://lwn.net/Articles/336262/), we allow configuring
+//! the lowest possible layer. `ProjectJson` is essentially a hook to just set
+//! that global singleton in-memory data structure. It is optimized for power,
+//! not for convenience (you'd be using cargo anyway if you wanted nice things,
+//! right? :)
+//!
+//! `rust-project.json` also isn't necessary a file. Architecturally, we support
+//! any convenient way to specify this data, which today is:
+//!
+//! * file on disk
+//! * a field in the config (ie, you can send a JSON request with the contents
+//!   of rust-project.json to rust-analyzer, no need to write anything to disk)
+//!
+//! Another possible thing we don't do today, but which would be totally valid,
+//! is to add an extension point to VS Code extension to register custom
+//! project.
+//!
+//! In general, it is assumed that if you are going to use `rust-project.json`,
+//! you'd write a fair bit of custom code gluing your build system to ra through
+//! this JSON format. This logic can take form of a VS Code extension, or a
+//! proxy process which injects data into "configure" LSP request, or maybe just
+//! a simple build system rule to generate the file.
+//!
+//! In particular, the logic for lazily loading parts of the monorepo as the
+//! user explores them belongs to that extension (it's totally valid to change
+//! rust-project.json over time via configuration request!)
 
 use std::path::PathBuf;
 

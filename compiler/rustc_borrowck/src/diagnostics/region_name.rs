@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -280,17 +280,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
-            ty::ReEarlyBound(ebr) => {
-                if ebr.has_name() {
-                    let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
-                    Some(RegionName {
-                        name: ebr.name,
-                        source: RegionNameSource::NamedEarlyBoundRegion(span),
-                    })
-                } else {
-                    None
-                }
-            }
+            ty::ReEarlyBound(ebr) => ebr.has_name().then(|| {
+                let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
+                RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyBoundRegion(span) }
+            }),
 
             ty::ReStatic => {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
@@ -852,12 +845,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let region_parent = tcx.parent(region.def_id);
-        if tcx.def_kind(region_parent) != DefKind::Impl {
+        let DefKind::Impl { .. } = tcx.def_kind(region_parent) else {
             return None;
-        }
+        };
 
-        let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent), |r| *r == ty::ReEarlyBound(region));
+        let found = tcx.any_free_region_meets(&tcx.type_of(region_parent).subst_identity(), |r| {
+            *r == ty::ReEarlyBound(region)
+        });
 
         Some(RegionName {
             name: self.synthesize_region_name(),

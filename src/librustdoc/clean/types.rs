@@ -22,7 +22,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
+use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -182,10 +182,8 @@ impl ExternalCrate {
             return Local;
         }
 
-        if extern_url_takes_precedence {
-            if let Some(url) = extern_url {
-                return to_remote(url);
-            }
+        if extern_url_takes_precedence && let Some(url) = extern_url {
+            return to_remote(url);
         }
 
         // Failing that, see if there's an attribute specifying where to find this
@@ -482,16 +480,16 @@ impl Item {
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
-        use crate::html::format::href;
+        use crate::html::format::{href, link_tooltip};
 
         cx.cache()
             .intra_doc_links
             .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: did, ref fragment }| {
-                debug!(?did);
-                if let Ok((mut href, ..)) = href(*did, cx) {
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
+                debug!(?id);
+                if let Ok((mut href, ..)) = href(*id, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
                         fragment.render(&mut href, cx.tcx())
@@ -499,6 +497,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
+                        tooltip: link_tooltip(*id, fragment, cx),
                         href,
                     })
                 } else {
@@ -523,6 +522,7 @@ impl Item {
                 original_text: s.clone(),
                 new_text: link_text.clone(),
                 href: String::new(),
+                tooltip: String::new(),
             })
             .collect()
     }
@@ -1017,12 +1017,12 @@ pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ItemLink {
     /// The original link written in the markdown
-    pub(crate) link: String,
+    pub(crate) link: Box<str>,
     /// The link text displayed in the HTML.
     ///
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
-    pub(crate) link_text: String,
+    pub(crate) link_text: Box<str>,
     /// The `DefId` of the Item whose **HTML Page** contains the item being
     /// linked to. This will be different to `item_id` on item's that don't
     /// have their own page, such as struct fields and enum variants.
@@ -1035,11 +1035,13 @@ pub struct RenderedLink {
     /// The text the link was original written as.
     ///
     /// This could potentially include disambiguators and backticks.
-    pub(crate) original_text: String,
+    pub(crate) original_text: Box<str>,
     /// The text to display in the HTML
-    pub(crate) new_text: String,
+    pub(crate) new_text: Box<str>,
     /// The URL to put in the `href`
     pub(crate) href: String,
+    /// The tooltip.
+    pub(crate) tooltip: String,
 }
 
 /// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
@@ -1172,10 +1174,10 @@ impl GenericBound {
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait() {
-                return true;
-            }
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self &&
+            Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
+        {
+            return true;
         }
         false
     }

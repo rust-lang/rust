@@ -7,42 +7,5 @@ LL | fn i(n{...,f #
    |     | unclosed delimiter
    |     unclosed delimiter
 
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-63135.rs:3:16
-   |
-LL | fn i(n{...,f #
-   |     - -        ^
-   |     | |
-   |     | unclosed delimiter
-   |     unclosed delimiter
-
-error: expected field pattern, found `...`
-  --> $DIR/issue-63135.rs:3:8
-   |
-LL | fn i(n{...,f #
-   |        ^^^
-   |
-help: to omit remaining fields, use `..`
-   |
-LL | fn i(n{..,f #
-   |        ~~
-
-error: expected `}`, found `,`
-  --> $DIR/issue-63135.rs:3:11
-   |
-LL | fn i(n{...,f #
-   |        ---^
-   |        |  |
-   |        |  expected `}`
-   |        `..` must be at the end and cannot have a trailing comma
-
-error: expected one of `!` or `[`, found `}`
-  --> $DIR/issue-63135.rs:3:16
-   |
-LL | fn i(n{...,f #
-   |      -         ^ expected one of `!` or `[`
-   |      |
-   |      while parsing the fields for this pattern
-
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 

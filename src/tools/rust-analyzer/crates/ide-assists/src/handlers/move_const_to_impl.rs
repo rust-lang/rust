@@ -5,10 +5,7 @@ use syntax::{
     SyntaxKind,
 };
 
-use crate::{
-    assist_context::{AssistContext, Assists},
-    utils,
-};
+use crate::assist_context::{AssistContext, Assists};
 
 // NOTE: Code may break if the self type implements a trait that has associated const with the same
 // name, but it's pretty expensive to check that (`hir::Impl::all_for_type()`) and we assume that's
@@ -130,9 +127,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
             let const_ = const_.clone_for_update();
             const_.reindent_to(indent);
-            let mut const_text = format!("\n{indent}{const_}{fixup}");
-            utils::escape_non_snippet(&mut const_text);
-            builder.insert(insert_offset, const_text);
+            builder.insert(insert_offset, format!("\n{indent}{const_}{fixup}"));
         },
     )
 }
@@ -442,40 +437,5 @@ impl S {
 }
 "#,
         );
-    }
-
-    #[test]
-    fn moved_const_body_is_escaped() {
-        // Note that the last argument is what *lsp clients would see* rather than
-        // what users would see. Unescaping happens thereafter.
-        check_assist(
-            move_const_to_impl,
-            r#"
-struct S;
-impl S {
-    fn f() -> usize {
-        /// doc comment
-        /// \\
-        /// ${snippet}
-        const C$0: &str = "\ and $1";
-
-        C.len()
-    }
-}
-"#,
-            r#"
-struct S;
-impl S {
-    /// doc comment
-    /// \\\\
-    /// \${snippet}
-    const C: &str = "\\ and \$1";
-
-    fn f() -> usize {
-        Self::C.len()
-    }
-}
-"#,
-        )
     }
 }

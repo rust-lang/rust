@@ -3,7 +3,7 @@ use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -185,7 +185,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),
-    ("cmpxchg16b", Some(sym::cmpxchg16b_target_feature)),
+    ("cmpxchg16b", None),
     ("ermsb", Some(sym::ermsb_target_feature)),
     ("f16c", None),
     ("fma", None),
@@ -286,6 +286,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
+    ("relaxed-simd", Some(sym::wasm_target_feature)),
     ("sign-ext", Some(sym::wasm_target_feature)),
     ("simd128", None),
     // tidy-alphabetical-end
@@ -393,7 +394,6 @@ pub fn from_target_feature(
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
                 Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
@@ -440,12 +440,9 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxHashSet<Symbol> {
 /// Checks the function annotated with `#[target_feature]` is not a safe
 /// trait method implementation, reporting an error if it is.
 pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-    let node = tcx.hir().get(hir_id);
-    if let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_item = tcx.hir().expect_item(parent_id.def_id);
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
+    if let DefKind::AssocFn = tcx.def_kind(id) {
+        let parent_id = tcx.local_parent(id);
+        if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
             tcx.sess
                 .struct_span_err(
                     attr_span,

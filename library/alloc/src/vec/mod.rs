@@ -378,8 +378,8 @@ mod spec_extend;
 /// Currently, `Vec` does not guarantee the order in which elements are dropped.
 /// The order has changed in the past and may change again.
 ///
-/// [`get`]: ../../std/vec/struct.Vec.html#method.get
-/// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
+/// [`get`]: slice::get
+/// [`get_mut`]: slice::get_mut
 /// [`String`]: crate::string::String
 /// [`&str`]: type@str
 /// [`shrink_to_fit`]: Vec::shrink_to_fit
@@ -3131,10 +3131,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// ```
     #[cfg(not(test))]
     fn from(s: [T; N]) -> Vec<T> {
-        <[T]>::into_vec(
-            #[rustc_box]
-            Box::new(s),
-        )
+        <[T]>::into_vec(Box::new(s))
     }
 
     #[cfg(test)]

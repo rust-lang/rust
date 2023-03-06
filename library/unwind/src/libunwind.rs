@@ -89,7 +89,7 @@ pub type _Unwind_Exception_Cleanup_Fn =
 
 // FIXME: The `#[link]` attributes on `extern "C"` block marks those symbols declared in
 // the block are reexported in dylib build of std. This is needed when build rustc with
-// feature `llvm-libunwind', as no other cdylib will provided those _Unwind_* symbols.
+// feature `llvm-libunwind`, as no other cdylib will provided those _Unwind_* symbols.
 // However the `link` attribute is duplicated multiple times and does not just export symbol,
 // a better way to manually export symbol would be another attribute like `#[export]`.
 // See the logic in function rustc_codegen_ssa::src::back::exported_symbols, module

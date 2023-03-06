@@ -232,7 +232,7 @@ impl ScalarInt {
     }
 
     #[inline]
-    pub fn try_to_machine_usize(&self, tcx: TyCtxt<'_>) -> Result<u64, Size> {
+    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Result<u64, Size> {
         Ok(self.to_bits(tcx.data_layout.pointer_size)? as u64)
     }
 

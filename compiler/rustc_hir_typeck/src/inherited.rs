@@ -6,7 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};

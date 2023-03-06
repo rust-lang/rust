@@ -91,7 +91,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
 
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 
 #[derive(Debug)]
 pub struct Scopes<'tcx> {
@@ -1118,24 +1118,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
+    /// Force a drop at this point in the MIR by creating a new block.
     pub(crate) fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
         span: Span,
         place: Place<'tcx>,
-        value: Operand<'tcx>,
+        value: Rvalue<'tcx>,
     ) -> BlockAnd<()> {
+        let span = self.tcx.with_stable_hashing_context(|hcx| {
+            span.mark_with_reason(None, DesugaringKind::Replace, self.tcx.sess.edition(), hcx)
+        });
         let source_info = self.source_info(span);
-        let next_target = self.cfg.start_new_block();
+
+        // create the new block for the assignment
+        let assign = self.cfg.start_new_block();
+        self.cfg.push_assign(assign, source_info, place, value.clone());
+
+        // create the new block for the assignment in the case of unwinding
+        let assign_unwind = self.cfg.start_new_cleanup_block();
+        self.cfg.push_assign(assign_unwind, source_info, place, value.clone());
 
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::DropAndReplace { place, value, target: next_target, unwind: None },
+            TerminatorKind::Drop { place, target: assign, unwind: Some(assign_unwind) },
         );
         self.diverge_from(block);
 
-        next_target.unit()
+        assign.unit()
     }
 
     /// Creates an `Assert` terminator and return the success block.
@@ -1413,8 +1424,15 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
-            TerminatorKind::Drop { unwind, .. }
-            | TerminatorKind::DropAndReplace { unwind, .. }
+            TerminatorKind::Drop { unwind, .. } => {
+                if let Some(unwind) = *unwind {
+                    let source_info = term.source_info;
+                    cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
+                } else {
+                    *unwind = Some(to);
+                }
+            }
+            TerminatorKind::DropAndReplace { unwind, .. }
             | TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call { cleanup: unwind, .. }
             | TerminatorKind::Assert { cleanup: unwind, .. }

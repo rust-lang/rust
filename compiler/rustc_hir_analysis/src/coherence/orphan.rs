@@ -8,7 +8,8 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -39,25 +40,27 @@ fn do_orphan_check_impl<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
 
-    let item = tcx.hir().expect_item(def_id);
-    let hir::ItemKind::Impl(impl_) = item.kind else {
-        bug!("{:?} is not an impl: {:?}", def_id, item);
-    };
-    let sp = tcx.def_span(def_id);
-    let tr = impl_.of_trait.as_ref().unwrap();
-
-    match traits::orphan_check(tcx, item.owner_id.to_def_id()) {
+    match traits::orphan_check(tcx, def_id.to_def_id()) {
         Ok(()) => {}
-        Err(err) => emit_orphan_check_error(
-            tcx,
-            sp,
-            item.span,
-            tr.path.span,
-            trait_ref,
-            impl_.self_ty.span,
-            &impl_.generics,
-            err,
-        )?,
+        Err(err) => {
+            let item = tcx.hir().expect_item(def_id);
+            let hir::ItemKind::Impl(impl_) = item.kind else {
+                bug!("{:?} is not an impl: {:?}", def_id, item);
+            };
+            let tr = impl_.of_trait.as_ref().unwrap();
+            let sp = tcx.def_span(def_id);
+
+            emit_orphan_check_error(
+                tcx,
+                sp,
+                item.span,
+                tr.path.span,
+                trait_ref,
+                impl_.self_ty.span,
+                &impl_.generics,
+                err,
+            )?
+        }
     }
 
     // In addition to the above rules, we restrict impls of auto traits
@@ -235,7 +238,10 @@ fn do_orphan_check_impl<'tcx>(
             | ty::GeneratorWitnessMIR(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(..) => span_bug!(sp, "weird self type for autotrait impl"),
+            | ty::Infer(..) => {
+                let sp = tcx.def_span(def_id);
+                span_bug!(sp, "weird self type for autotrait impl")
+            }
 
             ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };
@@ -254,6 +260,7 @@ fn do_orphan_check_impl<'tcx>(
                                 is one of the trait object's trait bounds",
                         trait = tcx.def_path_str(trait_def_id),
                     );
+                    let sp = tcx.def_span(def_id);
                     let reported =
                         struct_span_err!(tcx.sess, sp, E0321, "{}", msg).note(label).emit();
                     return Err(reported);
@@ -282,6 +289,7 @@ fn do_orphan_check_impl<'tcx>(
                             non-struct/enum type",
                 )),
             } {
+                let sp = tcx.def_span(def_id);
                 let reported =
                     struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
                 return Err(reported);
@@ -470,10 +478,6 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    if tcx.impl_polarity(impl_def_id) != ImplPolarity::Positive {
-        return;
-    }
-
     assert_eq!(trait_ref.substs.len(), 1);
     let self_ty = trait_ref.self_ty();
     let (self_type_did, substs) = match self_ty.kind() {
@@ -524,7 +528,7 @@ fn lint_auto_trait_impl<'tcx>(
         }),
         |lint| {
             let item_span = tcx.def_span(self_type_did);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+            let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
                     lint.note(&format!("`{}` is mentioned multiple times", arg));
@@ -552,7 +556,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
         seen: FxHashSet<DefId>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for DisableAutoTraitVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for DisableAutoTraitVisitor<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             let tcx = self.tcx;

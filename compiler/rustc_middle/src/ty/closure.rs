@@ -5,10 +5,10 @@ use crate::{mir, ty};
 
 use std::fmt::Write;
 
-use hir::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
 use super::{Ty, TyCtxt};
@@ -129,6 +129,9 @@ impl<'tcx> ClosureKind {
 #[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct CapturedPlace<'tcx> {
+    /// Name and span where the binding happens.
+    pub var_ident: Ident,
+
     /// The `Place` that is captured.
     pub place: HirPlace<'tcx>,
 
@@ -148,12 +151,8 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 
     /// Returns a symbol of the captured upvar, which looks like `name__field1__field2`.
-    fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
-        let hir_id = match self.place.base {
-            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-            base => bug!("Expected an upvar, found {:?}", base),
-        };
-        let mut symbol = tcx.hir().name(hir_id).as_str().to_string();
+    pub fn to_symbol(&self) -> Symbol {
+        let mut symbol = self.var_ident.to_string();
 
         let mut ty = self.place.base_ty;
         for proj in self.place.projections.iter() {
@@ -169,11 +168,7 @@ impl<'tcx> CapturedPlace<'tcx> {
                         .unwrap();
                     }
                     ty => {
-                        span_bug!(
-                            self.get_capture_kind_span(tcx),
-                            "Unexpected type {:?} for `Field` projection",
-                            ty
-                        )
+                        bug!("Unexpected type {:?} for `Field` projection", ty)
                     }
                 },
 
@@ -238,10 +233,39 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 }
 
-fn symbols_for_closure_captures(tcx: TyCtxt<'_>, def_id: (LocalDefId, LocalDefId)) -> Vec<Symbol> {
-    let typeck_results = tcx.typeck(def_id.0);
-    let captures = typeck_results.closure_min_captures_flattened(def_id.1);
-    captures.into_iter().map(|captured_place| captured_place.to_symbol(tcx)).collect()
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct ClosureTypeInfo<'tcx> {
+    user_provided_sig: ty::CanonicalPolyFnSig<'tcx>,
+    captures: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
+    kind_origin: Option<&'tcx (Span, HirPlace<'tcx>)>,
+}
+
+fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo<'tcx> {
+    debug_assert!(tcx.is_closure(def.to_def_id()));
+    let typeck_results = tcx.typeck(def);
+    let user_provided_sig = typeck_results.user_provided_sigs[&def];
+    let captures = typeck_results.closure_min_captures_flattened(def);
+    let captures = tcx.arena.alloc_from_iter(captures);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let kind_origin = typeck_results.closure_kind_origins().get(hir_id);
+    ClosureTypeInfo { user_provided_sig, captures, kind_origin }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn closure_kind_origin(self, def_id: LocalDefId) -> Option<&'tcx (Span, HirPlace<'tcx>)> {
+        self.closure_typeinfo(def_id).kind_origin
+    }
+
+    pub fn closure_user_provided_sig(self, def_id: LocalDefId) -> ty::CanonicalPolyFnSig<'tcx> {
+        self.closure_typeinfo(def_id).user_provided_sig
+    }
+
+    pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
+        if !self.is_closure(def_id.to_def_id()) {
+            return &[];
+        };
+        self.closure_typeinfo(def_id).captures
+    }
 }
 
 /// Return true if the `proj_possible_ancestor` represents an ancestor path
@@ -434,5 +458,5 @@ impl BorrowKind {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { symbols_for_closure_captures, ..*providers }
+    *providers = ty::query::Providers { closure_typeinfo, ..*providers }
 }

@@ -116,7 +116,7 @@ impl Target {
             DefKind::Union => Target::Union,
             DefKind::Trait => Target::Trait,
             DefKind::TraitAlias => Target::TraitAlias,
-            DefKind::Impl => Target::Impl,
+            DefKind::Impl { .. } => Target::Impl,
             _ => panic!("impossible case reached"),
         }
     }

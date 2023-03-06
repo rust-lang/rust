@@ -10,6 +10,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, ExpandError, HirFileId, InFile,
 };
+use intern::Interned;
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
 use profile::Count;
@@ -33,7 +34,6 @@ use crate::{
         Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat, RecordLitField,
         Statement,
     },
-    intern::Interned,
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
@@ -67,9 +67,9 @@ impl<'a> LowerCtx<'a> {
         Path::from_src(ast, self)
     }
 
-    pub(crate) fn ast_id<N: AstNode>(&self, db: &dyn DefDatabase, item: &N) -> Option<AstId<N>> {
+    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> Option<AstId<N>> {
         let &(file_id, ref ast_id_map) = self.ast_id_map.as_ref()?;
-        let ast_id_map = ast_id_map.get_or_init(|| db.ast_id_map(file_id));
+        let ast_id_map = ast_id_map.get_or_init(|| self.db.ast_id_map(file_id));
         Some(InFile::new(file_id, ast_id_map.ast_id(item)))
     }
 }
@@ -624,6 +624,10 @@ impl ExprCollector<'_> {
                         krate: *krate,
                     });
                 }
+                Some(ExpandError::RecursionOverflowPosioned) => {
+                    // Recursion limit has been reached in the macro expansion tree, but not in
+                    // this very macro call. Don't add diagnostics to avoid duplication.
+                }
                 Some(err) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
                         node: InFile::new(outer_file, syntax_ptr),
@@ -636,6 +640,8 @@ impl ExprCollector<'_> {
 
         match res.value {
             Some((mark, expansion)) => {
+                // Keep collecting even with expansion errors so we can provide completions and
+                // other services in incomplete macro expressions.
                 self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id);
                 let prev_ast_id_map = mem::replace(
                     &mut self.ast_id_map,

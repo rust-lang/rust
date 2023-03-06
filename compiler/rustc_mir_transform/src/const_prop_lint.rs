@@ -21,7 +21,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{
+    self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
+};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
@@ -57,7 +59,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).is_generator();
+        let is_generator = tcx.type_of(def_id.to_def_id()).subst_identity().is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
         if is_generator {

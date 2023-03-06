@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, def_id::DefId, GenericArg, QPath, TyKind};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_span::symbol::sym;
 
 use super::VEC_BOX;

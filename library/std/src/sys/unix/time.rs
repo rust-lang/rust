@@ -9,6 +9,14 @@ pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 pub const TIMESPEC_MAX: libc::timespec =
     libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
+// This additional constant is only used when calling
+// `libc::pthread_cond_timedwait`.
+#[cfg(target_os = "nto")]
+pub(super) const TIMESPEC_MAX_CAPPED: libc::timespec = libc::timespec {
+    tv_sec: (u64::MAX / NSEC_PER_SEC) as i64,
+    tv_nsec: (u64::MAX % NSEC_PER_SEC) as i64,
+};
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -143,6 +151,20 @@ impl Timespec {
             tv_sec: self.tv_sec.try_into().ok()?,
             tv_nsec: self.tv_nsec.0.try_into().ok()?,
         })
+    }
+
+    // On QNX Neutrino, the maximum timespec for e.g. pthread_cond_timedwait
+    // is 2^64 nanoseconds
+    #[cfg(target_os = "nto")]
+    pub(super) fn to_timespec_capped(&self) -> Option<libc::timespec> {
+        // Check if timeout in nanoseconds would fit into an u64
+        if (self.tv_nsec.0 as u64)
+            .checked_add((self.tv_sec as u64).checked_mul(NSEC_PER_SEC)?)
+            .is_none()
+        {
+            return None;
+        }
+        self.to_timespec()
     }
 }
 

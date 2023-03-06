@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 2 generic arguments but 4 generic arguments were supplied
+error[E0107]: trait takes 2 generic arguments but 4 generic arguments were supplied
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
    |
 LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,

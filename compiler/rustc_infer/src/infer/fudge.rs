@@ -98,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce() -> Result<T, E>,
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let variable_lengths = self.variable_lengths();
         let (mut fudger, value) = self.probe(|_| {
@@ -175,8 +175,8 @@ pub struct InferenceFudger<'a, 'tcx> {
     const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

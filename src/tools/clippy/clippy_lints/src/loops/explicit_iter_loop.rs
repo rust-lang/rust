@@ -68,7 +68,7 @@ fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.kind() {
         ty::Array(_, n) => n
-            .try_eval_usize(cx.tcx, cx.param_env)
+            .try_eval_target_usize(cx.tcx, cx.param_env)
             .map_or(false, |val| (0..=32).contains(&val)),
         _ => false,
     }

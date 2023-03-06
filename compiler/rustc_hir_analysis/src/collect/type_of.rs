@@ -9,7 +9,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -243,7 +243,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
     let def_id = def_id.expect_local();
     use rustc_hir::*;
 
@@ -251,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -259,13 +259,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(
-                            tcx, def_id, body_id, ty.span, item.ident, "constant",
-                        ))
-                    } else {
-                        None
-                    }
+                    is_suggestable_infer_ty(ty)
+                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -324,8 +319,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 ItemKind::Impl(hir::Impl { self_ty, .. }) => {
                     match self_ty.find_self_aliases() {
                         spans if spans.len() > 0 => {
-                            tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: (), });
-                            tcx.ty_error()
+                            let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
+                            tcx.ty_error(guar)
                         },
                         _ => icx.to_ty(*self_ty),
                     }
@@ -349,8 +344,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     in_trait,
                     ..
                 }) => {
-                    if in_trait {
-                        assert!(tcx.impl_defaultness(owner).has_value());
+                    if in_trait && !tcx.impl_defaultness(owner).has_value() {
+                        span_bug!(tcx.def_span(def_id), "tried to get type of this RPITIT with no definition");
                     }
                     find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
@@ -382,7 +377,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_item(hir_id))
+                tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -399,7 +394,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
             // for generic arguments.
-            tcx.type_of(param)
+            tcx.type_of(param).subst_identity()
         }
 
         Node::AnonConst(_) => {
@@ -451,7 +446,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -461,7 +456,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id)
+                        tcx.type_of(assoc_item.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -485,7 +480,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         }) =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -506,7 +501,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     if let Some(param)
                         = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
                     {
-                        tcx.type_of(param.def_id)
+                        tcx.type_of(param.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -520,7 +515,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     def_id: param_def_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
-                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id),
+                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id).subst_identity(),
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
@@ -538,7 +533,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 #[instrument(skip(tcx), level = "debug")]
@@ -603,8 +599,9 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             // // constant does not contain interior mutability.
             // ```
             let tables = self.tcx.typeck(item_def_id);
-            if let Some(_) = tables.tainted_by_errors {
-                self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
+            if let Some(guar) = tables.tainted_by_errors {
+                self.found =
+                    Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error(guar) });
                 return;
             }
             let Some(&typeck_hidden_ty) = tables.concrete_opaque_types.get(&self.def_id) else {
@@ -622,8 +619,8 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                        prev.report_mismatch(&concrete_type, self.tcx);
-                        prev.ty = self.tcx.ty_error();
+                        let guar = prev.report_mismatch(&concrete_type, self.tcx);
+                        prev.ty = self.tcx.ty_error(guar);
                     }
                 } else {
                     self.found = Some(concrete_type);
@@ -710,7 +707,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 _ => "item",
             },
         });
-        return tcx.ty_error_with_guaranteed(reported);
+        return tcx.ty_error(reported);
     };
 
     // Only check against typeck if we didn't already error
@@ -818,11 +815,11 @@ fn find_opaque_ty_constraints_for_rpit(
 
     concrete.map(|concrete| concrete.ty).unwrap_or_else(|| {
         let table = tcx.typeck(owner_def_id);
-        if let Some(_) = table.tainted_by_errors {
+        if let Some(guar) = table.tainted_by_errors {
             // Some error in the
             // owner fn prevented us from populating
             // the `concrete_opaque_types` table.
-            tcx.ty_error()
+            tcx.ty_error(guar)
         } else {
             table.concrete_opaque_types.get(&def_id).map(|ty| ty.ty).unwrap_or_else(|| {
                 // We failed to resolve the opaque type or it
@@ -850,8 +847,8 @@ fn infer_placeholder_type<'a>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for MakeNameable<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MakeNameable<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

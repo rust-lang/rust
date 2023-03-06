@@ -1,6 +1,4 @@
-//! Constants for the 16-bit unsigned integer type.
-//!
-//! *[See also the `u16` primitive type][u16].*
+//! Redundant constants module for the [`i16` primitive type][i16].
 //!
 //! New code should use the associated constants directly on the primitive type.
 

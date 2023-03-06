@@ -8,11 +8,12 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::{ErrorGuaranteed, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
-use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -23,9 +24,9 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_a
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
-use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -35,13 +36,9 @@ use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 
 use std::any::Any;
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
-use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
@@ -73,93 +70,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
     visit::walk_crate(&mut counter, krate);
     counter.count
-}
-
-pub use boxed_resolver::BoxedResolver;
-mod boxed_resolver {
-    use super::*;
-
-    pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
-
-    struct BoxedResolverInner {
-        session: Lrc<Session>,
-        resolver_arenas: Option<ResolverArenas<'static>>,
-        resolver: Option<Resolver<'static>>,
-        _pin: PhantomPinned,
-    }
-
-    // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
-    // then resolver_arenas and session.
-    impl Drop for BoxedResolverInner {
-        fn drop(&mut self) {
-            self.resolver.take();
-            self.resolver_arenas.take();
-        }
-    }
-
-    impl BoxedResolver {
-        pub(super) fn new(
-            session: Lrc<Session>,
-            make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
-        ) -> BoxedResolver {
-            let mut boxed_resolver = Box::new(BoxedResolverInner {
-                session,
-                resolver_arenas: Some(Resolver::arenas()),
-                resolver: None,
-                _pin: PhantomPinned,
-            });
-            // SAFETY: `make_resolver` takes a resolver arena with an arbitrary lifetime and
-            // returns a resolver with the same lifetime as the arena. We ensure that the arena
-            // outlives the resolver in the drop impl and elsewhere so these transmutes are sound.
-            unsafe {
-                let resolver = make_resolver(
-                    std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
-                    std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
-                        boxed_resolver.resolver_arenas.as_ref().unwrap(),
-                    ),
-                );
-                boxed_resolver.resolver = Some(resolver);
-                BoxedResolver(Pin::new_unchecked(boxed_resolver))
-            }
-        }
-
-        pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
-            // SAFETY: The resolver doesn't need to be pinned.
-            let mut resolver = unsafe {
-                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-            };
-            f((&mut *resolver).as_mut().unwrap())
-        }
-
-        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ty::ResolverOutputs {
-            match Rc::try_unwrap(resolver) {
-                Ok(resolver) => {
-                    let mut resolver = resolver.into_inner();
-                    // SAFETY: The resolver doesn't need to be pinned.
-                    let mut resolver = unsafe {
-                        resolver
-                            .0
-                            .as_mut()
-                            .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-                    };
-                    resolver.take().unwrap().into_outputs()
-                }
-                Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
-            }
-        }
-    }
-}
-
-pub fn create_resolver(
-    sess: Lrc<Session>,
-    metadata_loader: Box<MetadataLoaderDyn>,
-    krate: &ast::Crate,
-    crate_name: Symbol,
-) -> BoxedResolver {
-    trace!("create_resolver");
-    BoxedResolver::new(sess, move |sess, resolver_arenas| {
-        Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
-    })
 }
 
 pub fn register_plugins<'a>(
@@ -262,14 +172,12 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
-pub fn configure_and_expand(
-    sess: &Session,
-    lint_store: &LintStore,
-    mut krate: ast::Crate,
-    crate_name: Symbol,
-    resolver: &mut Resolver<'_>,
-) -> Result<ast::Crate> {
-    trace!("configure_and_expand");
+#[instrument(level = "trace", skip(krate, resolver))]
+fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) -> ast::Crate {
+    let tcx = resolver.tcx();
+    let sess = tcx.sess;
+    let lint_store = unerased_lint_store(tcx);
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
@@ -340,20 +248,19 @@ pub fn configure_and_expand(
             ecx.check_unused_macros();
         });
 
-        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+        // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
+        // with a large AST
+        if ecx.reduced_recursion_limit.is_some() {
+            sess.abort_if_errors();
+            unreachable!();
+        }
 
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
 
-        if recursion_limit_hit {
-            // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
-            // with a large AST
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            Ok(krate)
-        }
-    })?;
+        krate
+    });
 
     sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
@@ -380,28 +287,18 @@ pub fn configure_and_expand(
         sess.emit_warning(errors::ProcMacroCratePanicAbort);
     }
 
-    // For backwards compatibility, we don't try to run proc macro injection
-    // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
-    // specified. This should only affect users who manually invoke 'rustdoc', as
-    // 'cargo doc' will automatically pass the proper '--crate-type' flags.
-    // However, we do emit a warning, to let such users know that they should
-    // start passing '--crate-type proc-macro'
-    if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
-        sess.emit_warning(errors::ProcMacroDocWithoutArg);
-    } else {
-        krate = sess.time("maybe_create_a_macro_crate", || {
-            let is_test_crate = sess.opts.test;
-            rustc_builtin_macros::proc_macro_harness::inject(
-                sess,
-                resolver,
-                krate,
-                is_proc_macro_crate,
-                has_proc_macro_decls,
-                is_test_crate,
-                sess.diagnostic(),
-            )
-        });
-    }
+    krate = sess.time("maybe_create_a_macro_crate", || {
+        let is_test_crate = sess.opts.test;
+        rustc_builtin_macros::proc_macro_harness::inject(
+            sess,
+            resolver,
+            krate,
+            is_proc_macro_crate,
+            has_proc_macro_decls,
+            is_test_crate,
+            sess.diagnostic(),
+        )
+    });
 
     // Done with macro expansion!
 
@@ -456,7 +353,7 @@ pub fn configure_and_expand(
         )
     });
 
-    Ok(krate)
+    krate
 }
 
 // Returns all the paths that correspond to generated files.
@@ -655,6 +552,28 @@ fn write_out_deps(
     }
 }
 
+fn resolver_for_lowering<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (): (),
+) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    let arenas = Resolver::arenas();
+    let krate = tcx.crate_for_resolver(()).steal();
+    let mut resolver = Resolver::new(tcx, &krate, &arenas);
+    let krate = configure_and_expand(krate, &mut resolver);
+
+    // Make sure we don't mutate the cstore from here on.
+    tcx.untracked().cstore.leak();
+
+    let ty::ResolverOutputs {
+        global_ctxt: untracked_resolutions,
+        ast_lowering: untracked_resolver_for_lowering,
+    } = resolver.into_outputs();
+
+    let feed = tcx.feed_unit_query();
+    feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
+}
+
 fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
@@ -688,7 +607,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, tcx.cstore_untracked(), &outputs, &output_paths);
+    write_out_deps(sess, &*tcx.cstore_untracked(), &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -709,6 +628,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
+    providers.resolver_for_lowering = resolver_for_lowering;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

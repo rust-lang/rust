@@ -13,6 +13,7 @@
 #![allow(
     clippy::collapsible_else_if,
     clippy::collapsible_if,
+    clippy::if_same_then_else,
     clippy::comparison_chain,
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
@@ -21,7 +22,7 @@
     clippy::single_match,
     clippy::useless_format,
     clippy::derive_partial_eq_without_eq,
-    clippy::derive_hash_xor_eq,
+    clippy::derived_hash_with_manual_eq,
     clippy::too_many_arguments,
     clippy::type_complexity,
     clippy::single_element_loop,

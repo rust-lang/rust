@@ -1,5 +1,5 @@
 error[E0658]: a non-static lifetime is not allowed in a `const`
-  --> $DIR/const-argument-non-static-lifetime.rs:15:17
+  --> $DIR/const-argument-non-static-lifetime.rs:14:17
    |
 LL |         let _: &'a ();
    |                 ^^

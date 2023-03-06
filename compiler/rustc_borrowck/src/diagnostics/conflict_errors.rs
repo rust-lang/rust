@@ -6,7 +6,7 @@ use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -236,10 +236,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = used_place.ty(self.body, self.infcx.tcx).ty;
             let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
-                    let tables = self.infcx.tcx.typeck(id.expect_local());
-                    let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(id.expect_local());
-
-                    tables.closure_kind_origins().get(hir_id).is_none()
+                    self.infcx.tcx.closure_kind_origin(id.expect_local()).is_none()
                 }
                 _ => true,
             };
@@ -1186,11 +1183,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return None;
             };
             debug!("checking call args for uses of inner_param: {:?}", args);
-            if args.contains(&Operand::Move(inner_param)) {
-                Some((loc, term))
-            } else {
-                None
-            }
+            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
         }) else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;
@@ -1474,6 +1467,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Reports StorageDeadOrDrop of `place` conflicts with `borrow`.
     ///
+    /// Depending on the origin of the StorageDeadOrDrop, this may be
+    /// reported as either a drop or an illegal mutation of a borrowed value.
+    /// The latter is preferred when the this is a drop triggered by a
+    /// reassignment, as it's more user friendly to report a problem with the
+    /// explicit assignment than the implicit drop.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn report_storage_dead_or_drop_of_borrowed(
+        &mut self,
+        location: Location,
+        place_span: (Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        // It's sufficient to check the last desugaring as Replace is the last
+        // one to be applied.
+        if let Some(DesugaringKind::Replace) = place_span.1.desugaring_kind() {
+            self.report_illegal_mutation_of_borrowed(location, place_span, borrow)
+        } else {
+            self.report_borrowed_value_does_not_live_long_enough(
+                location,
+                borrow,
+                place_span,
+                Some(WriteKind::StorageDeadOrDrop),
+            )
+        }
+    }
+
     /// This means that some data referenced by `borrow` needs to live
     /// past the point where the StorageDeadOrDrop of `place` occurs.
     /// This is usually interpreted as meaning that `place` has too
@@ -1498,7 +1517,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         assert!(root_place.projection.is_empty());
         let proper_span = self.body.local_decls[root_place.local].source_info.span;
 
-        let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
+        let root_place_projection = self.infcx.tcx.mk_place_elems(root_place.projection);
 
         if self.access_place_error_reported.contains(&(
             Place { local: root_place.local, projection: root_place_projection },
@@ -1674,7 +1693,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            let fn_hir_id = self.mir_hir_id();
             err.span_label(
                 drop_span,
                 format!(
@@ -1682,19 +1700,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     name,
                     self.infcx
                         .tcx
-                        .hir()
-                        .opt_name(fn_hir_id)
+                        .opt_item_name(self.mir_def_id().to_def_id())
                         .map(|name| format!("function `{}`", name))
                         .unwrap_or_else(|| {
-                            match &self
-                                .infcx
-                                .tcx
-                                .typeck(self.mir_def_id())
-                                .node_type(fn_hir_id)
-                                .kind()
-                            {
-                                ty::Closure(..) => "enclosing closure",
-                                ty::Generator(..) => "enclosing generator",
+                            match &self.infcx.tcx.def_kind(self.mir_def_id()) {
+                                DefKind::Closure => "enclosing closure",
+                                DefKind::Generator => "enclosing generator",
                                 kind => bug!("expected closure or generator, found {:?}", kind),
                             }
                             .to_string()
@@ -2139,7 +2150,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
 
-        let (_, escapes_from) = tcx.article_and_description(self.mir_def_id().to_def_id());
+        let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());
 
         let mut err =
             borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);
@@ -2596,7 +2607,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id());
+                let ty = self.infcx.tcx.type_of(self.mir_def_id()).subst_identity();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),

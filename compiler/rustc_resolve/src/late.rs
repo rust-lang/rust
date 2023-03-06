@@ -21,8 +21,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
-use rustc_middle::middle::resolve_lifetime::Set1;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
@@ -56,7 +55,7 @@ struct BindingInfo {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PatternSource {
+pub(crate) enum PatternSource {
     Match,
     Let,
     For,
@@ -70,7 +69,7 @@ enum IsRepeatExpr {
 }
 
 impl PatternSource {
-    pub fn descr(self) -> &'static str {
+    fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
@@ -505,7 +504,7 @@ enum MaybeExported<'a> {
 }
 
 impl MaybeExported<'_> {
-    fn eval(self, r: &Resolver<'_>) -> bool {
+    fn eval(self, r: &Resolver<'_, '_>) -> bool {
         let def_id = match self {
             MaybeExported::Ok(node_id) => Some(r.local_def_id(node_id)),
             MaybeExported::Impl(Some(trait_def_id)) | MaybeExported::ImplItem(Ok(trait_def_id)) => {
@@ -584,8 +583,8 @@ struct DiagnosticMetadata<'ast> {
     current_elision_failures: Vec<MissingLifetime>,
 }
 
-struct LateResolutionVisitor<'a, 'b, 'ast> {
-    r: &'b mut Resolver<'a>,
+struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 
     /// The module that represents the current item scope.
     parent_scope: ParentScope<'a>,
@@ -628,7 +627,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn visit_attribute(&mut self, _: &'ast Attribute) {
         // We do not want to resolve expressions that appear in attributes,
         // as they do not correspond to actual code.
@@ -682,7 +681,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 // Elided lifetime in reference: we resolve as if there was some lifetime `'_` with
                 // NodeId `ty.id`.
                 // This span will be used in case of elision failure.
-                let span = self.r.session.source_map().start_point(ty.span);
+                let span = self.r.tcx.sess.source_map().start_point(ty.span);
                 self.resolve_elided_lifetime(ty.id, span);
                 visit::walk_ty(self, ty);
             }
@@ -1199,8 +1198,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
 }
 
-impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
-    fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b, 'ast> {
+impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -1571,7 +1570,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
                     let mut diag = rustc_errors::struct_span_err!(
-                        self.r.session,
+                        self.r.tcx.sess,
                         lifetime.ident.span,
                         E0637,
                         "{}",
@@ -1671,8 +1670,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Figure out if this is a type/trait segment,
             // which may need lifetime elision performed.
             let type_def_id = match partial_res.base_res() {
-                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => self.r.parent(def_id),
-                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => self.r.parent(def_id),
+                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
+                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)
@@ -1748,7 +1751,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. } => {
-                        let sess = self.r.session;
+                        let sess = self.r.tcx.sess;
                         let mut err = rustc_errors::struct_span_err!(
                             sess,
                             path_span,
@@ -2029,13 +2032,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// List all the lifetimes that appear in the provided type.
     fn find_lifetime_for_self(&self, ty: &'ast Ty) -> Set1<LifetimeRes> {
-        struct SelfVisitor<'r, 'a> {
-            r: &'r Resolver<'a>,
+        struct SelfVisitor<'r, 'a, 'tcx> {
+            r: &'r Resolver<'a, 'tcx>,
             impl_self: Option<Res>,
             lifetime: Set1<LifetimeRes>,
         }
 
-        impl SelfVisitor<'_, '_> {
+        impl SelfVisitor<'_, '_, '_> {
             // Look for `self: &'a Self` - also desugared from `&'a self`,
             // and if that matches, use it for elision and return early.
             fn is_self_ty(&self, ty: &Ty) -> bool {
@@ -2053,7 +2056,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
         }
 
-        impl<'a> Visitor<'a> for SelfVisitor<'_, '_> {
+        impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
             fn visit_ty(&mut self, ty: &'a Ty) {
                 trace!("SelfVisitor considering ty={:?}", ty);
                 if let TyKind::Ref(lt, ref mt) = ty.kind && self.is_self_ty(&mt.ty) {
@@ -2194,7 +2197,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
                 if this.should_report_errs() {
                     this.r
-                        .session
+                        .tcx
+                        .sess
                         .span_err(ident.span, &format!("imports cannot refer to {}", what));
                 }
             };
@@ -2374,9 +2378,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Maintain macro_rules scopes in the same way as during early resolution
                 // for diagnostics and doc links.
                 if macro_def.macro_rules {
-                    let (macro_rules_scope, _) =
-                        self.r.macro_rules_scope(self.r.local_def_id(item.id));
-                    self.parent_scope.macro_rules = macro_rules_scope;
+                    let def_id = self.r.local_def_id(item.id);
+                    self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
             }
 
@@ -2439,7 +2442,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let GenericParamKind::Lifetime = param.kind
                 && let Some(&original) = seen_lifetimes.get(&ident)
             {
-                diagnostics::signal_lifetime_shadowing(self.r.session, original, param.ident);
+                diagnostics::signal_lifetime_shadowing(self.r.tcx.sess, original, param.ident);
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
@@ -2463,7 +2466,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if param.ident.name == kw::UnderscoreLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0637,
                     "`'_` cannot be used here"
@@ -2477,7 +2480,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if param.ident.name == kw::StaticLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0262,
                     "invalid lifetime parameter name: `{}`",
@@ -2506,7 +2509,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             let res = match kind {
                 ItemRibKind(..) | AssocItemRibKind => Res::Def(def_kind, def_id.to_def_id()),
-                NormalRibKind => Res::Err,
+                NormalRibKind => {
+                    if self.r.tcx.sess.features_untracked().non_lifetime_binders {
+                        Res::Def(def_kind, def_id.to_def_id())
+                    } else {
+                        Res::Err
+                    }
+                }
                 _ => span_bug!(param.ident.span, "Unexpected rib kind {:?}", kind),
             };
             self.r.record_partial_res(param.id, PartialRes::new(res));
@@ -3379,7 +3388,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Res::SelfCtor(_) => {
                 // We resolve `Self` in pattern position as an ident sometimes during recovery,
                 // so delay a bug instead of ICEing.
-                self.r.session.delay_span_bug(
+                self.r.tcx.sess.delay_span_bug(
                     ident.span,
                     "unexpected `SelfCtor` in pattern, expected identifier"
                 );
@@ -3659,7 +3668,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     #[inline]
     /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
     fn should_report_errs(&self) -> bool {
-        !(self.r.session.opts.actually_rustdoc && self.in_func_body)
+        !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
@@ -3824,7 +3833,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
-                diagnostics::signal_label_shadowing(self.r.session, orig_span, label.ident)
+                diagnostics::signal_label_shadowing(self.r.tcx.sess, orig_span, label.ident)
             }
 
             self.with_label_rib(NormalRibKind, |this| {
@@ -4130,9 +4139,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &'ast Expr) {
         match expr.kind {
             ExprKind::Field(_, ident) => {
-                // FIXME(#6890): Even though you can't treat a method like a
-                // field, we need to add any trait methods we find that match
-                // the field name so that we can do some nice error reporting
+                // #6890: Even though you can't treat a method like a field,
+                // we need to add any trait methods we find that match the
+                // field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.traits_in_scope(ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
@@ -4206,7 +4215,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 if let Some(res) = res
                     && let Some(def_id) = res.opt_def_id()
                     && !def_id.is_local()
-                    && self.r.session.crate_types().contains(&CrateType::ProcMacro) {
+                    && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
                     // Encoding foreign def ids in proc macro crate metadata will ICE.
                     return None;
                 }
@@ -4218,10 +4228,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {
-        match self.r.session.opts.resolve_doc_links {
+        match self.r.tcx.sess.opts.resolve_doc_links {
             ResolveDocLinks::None => return,
             ResolveDocLinks::ExportedMetadata
-                if !self.r.session.crate_types().iter().copied().any(CrateType::has_metadata)
+                if !self.r.tcx.sess.crate_types().iter().copied().any(CrateType::has_metadata)
                     || !maybe_exported.eval(self.r) =>
             {
                 return;
@@ -4275,7 +4285,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         .into_iter()
                         .filter_map(|tr| {
                             if !tr.def_id.is_local()
-                                && self.r.session.crate_types().contains(&CrateType::ProcMacro)
+                                && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+                                && matches!(
+                                    self.r.tcx.sess.opts.resolve_doc_links,
+                                    ResolveDocLinks::ExportedMetadata
+                                )
                             {
                                 // Encoding foreign def ids in proc macro crate metadata will ICE.
                                 return None;
@@ -4289,13 +4303,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 }
 
-struct LifetimeCountVisitor<'a, 'b> {
-    r: &'b mut Resolver<'a>,
+struct LifetimeCountVisitor<'a, 'b, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters.
-impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
+impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
@@ -4329,7 +4343,7 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);

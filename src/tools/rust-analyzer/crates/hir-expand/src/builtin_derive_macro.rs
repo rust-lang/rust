@@ -3,11 +3,11 @@
 use base_db::{CrateOrigin, LangCrateOrigin};
 use tracing::debug;
 
+use crate::tt::{self, TokenId};
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasModuleItem, HasName},
     match_ast,
 };
-use tt::TokenId;
 
 use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId};
 
@@ -92,7 +92,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
     })?;
     let name_token_id =
         token_map.token_by_range(name.syntax().text_range()).unwrap_or_else(TokenId::unspecified);
-    let name_token = tt::Ident { id: name_token_id, text: name.text().into() };
+    let name_token = tt::Ident { span: name_token_id, text: name.text().into() };
     let param_types = params
         .into_iter()
         .flat_map(|param_list| param_list.type_or_const_params())
@@ -101,7 +101,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
                 let ty = param
                     .ty()
                     .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax()).0)
-                    .unwrap_or_default();
+                    .unwrap_or_else(tt::Subtree::empty);
                 Some(ty)
             } else {
                 None
@@ -114,7 +114,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
 fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResult<tt::Subtree> {
     let info = match parse_adt(tt) {
         Ok(info) => info,
-        Err(e) => return ExpandResult::only_err(e),
+        Err(e) => return ExpandResult::with_err(tt::Subtree::empty(), e),
     };
     let (params, args): (Vec<_>, Vec<_>) = info
         .param_types
@@ -122,7 +122,7 @@ fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResu
         .enumerate()
         .map(|(idx, param_ty)| {
             let ident = tt::Leaf::Ident(tt::Ident {
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
                 text: format!("T{idx}").into(),
             });
             let ident_ = ident.clone();

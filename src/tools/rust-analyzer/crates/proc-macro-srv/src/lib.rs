@@ -37,6 +37,8 @@ use proc_macro_api::{
     ProcMacroKind,
 };
 
+use ::tt::token_id as tt;
+
 #[derive(Default)]
 pub(crate) struct ProcMacroSrv {
     expanders: HashMap<(PathBuf, SystemTime), dylib::Expander>,

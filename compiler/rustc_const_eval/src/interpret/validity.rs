@@ -23,18 +23,18 @@ use std::hash::Hash;
 // for the validation errors
 use super::UndefinedBehaviorInfo::*;
 use super::{
-    CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, OpTy, Scalar, ValueVisitor,
+    AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
+    Machine, MemPlaceMeta, OpTy, Pointer, Scalar, ValueVisitor,
 };
 
 macro_rules! throw_validation_failure {
-    ($where:expr, { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )?) => {{
+    ($where:expr, { $( $what_fmt:tt )* } $( expected { $( $expected_fmt:tt )* } )?) => {{
         let mut msg = String::new();
         msg.push_str("encountered ");
-        write!(&mut msg, $($what_fmt),+).unwrap();
+        write!(&mut msg, $($what_fmt)*).unwrap();
         $(
             msg.push_str(", but expected ");
-            write!(&mut msg, $($expected_fmt),+).unwrap();
+            write!(&mut msg, $($expected_fmt)*).unwrap();
         )?
         let path = rustc_middle::ty::print::with_no_trimmed_paths!({
             let where_ = &$where;
@@ -82,7 +82,7 @@ macro_rules! throw_validation_failure {
 ///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
-    $( $( $p:pat_param )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?
+    $( $( $p:pat_param )|+ => { $( $what_fmt:tt )* } $( expected { $( $expected_fmt:tt )* } )? ),+ $(,)?
     ) => {{
         match $e {
             Ok(x) => x,
@@ -93,7 +93,7 @@ macro_rules! try_validation {
                     InterpError::UndefinedBehavior($($p)|+) =>
                        throw_validation_failure!(
                             $where,
-                            { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
+                            { $( $what_fmt )* } $( expected { $( $expected_fmt )* } )?
                         )
                 ),+,
                 #[allow(unreachable_patterns)]
@@ -240,10 +240,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME this should be more descriptive i.e. CapturePlace instead of CapturedVar
                 // https://github.com/rust-lang/project-rfc-2229/issues/46
                 if let Some(local_def_id) = def_id.as_local() {
-                    let tables = self.ecx.tcx.typeck(local_def_id);
-                    if let Some(captured_place) =
-                        tables.closure_min_captures_flattened(local_def_id).nth(field)
-                    {
+                    let captures = self.ecx.tcx.closure_captures(local_def_id);
+                    if let Some(captured_place) = captures.get(field) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
                         let var_hir_id = captured_place.get_root_variable();
@@ -335,7 +333,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind() {
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
                 // Make sure it is a genuine vtable pointer.
                 let (_ty, _trait) = try_validation!(
@@ -348,7 +346,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
             ty::Slice(..) | ty::Str => {
-                let _len = meta.unwrap_meta().to_machine_usize(self.ecx)?;
+                let _len = meta.unwrap_meta().to_target_usize(self.ecx)?;
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
                 // "dereferenceable" check performed by Stacked Borrows.
@@ -399,12 +397,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 {
                     "an unaligned {kind} (required {} byte alignment but found {})",
                     required.bytes(),
-                    has.bytes()
+                    has.bytes(),
                 },
             DanglingIntPointer(0, _) =>
                 { "a null {kind}" },
             DanglingIntPointer(i, _) =>
-                { "a dangling {kind} (address {i:#x} is unallocated)" },
+                {
+                    "a dangling {kind} ({pointer} has no provenance)",
+                    pointer = Pointer::<Option<AllocId>>::from_addr_invalid(*i),
+                },
             PointerOutOfBounds { .. } =>
                 { "a dangling {kind} (going beyond the bounds of its allocation)" },
             // This cannot happen during const-eval (because interning already detects

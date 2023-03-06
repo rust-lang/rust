@@ -3,7 +3,7 @@ use crate::astconv::AstConv;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
@@ -103,7 +103,7 @@ pub(super) fn item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
-    let bounds = tcx.mk_predicates(
+    let bounds = tcx.mk_predicates_from_iter(
         util::elaborate_predicates(
             tcx,
             tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),

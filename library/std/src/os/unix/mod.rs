@@ -65,6 +65,8 @@ mod platform {
     pub use crate::os::macos::*;
     #[cfg(target_os = "netbsd")]
     pub use crate::os::netbsd::*;
+    #[cfg(target_os = "nto")]
+    pub use crate::os::nto::*;
     #[cfg(target_os = "openbsd")]
     pub use crate::os::openbsd::*;
     #[cfg(target_os = "redox")]
@@ -95,7 +97,8 @@ pub mod thread;
     target_os = "watchos",
     target_os = "macos",
     target_os = "netbsd",
-    target_os = "openbsd"
+    target_os = "openbsd",
+    target_os = "nto",
 ))]
 pub mod ucred;
 

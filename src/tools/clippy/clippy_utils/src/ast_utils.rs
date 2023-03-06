@@ -144,7 +144,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (_, Paren(r)) => eq_expr(l, r),
         (Err, Err) => true,
         (Box(l), Box(r)) | (Try(l), Try(r)) | (Await(l), Await(r)) => eq_expr(l, r),
-        (Array(l), Array(r)) | (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
+        (Array(l), Array(r)) => over(l, r, |l, r| eq_expr(l, r)),
+        (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
         (Call(lc, la), Call(rc, ra)) => eq_expr(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
         (

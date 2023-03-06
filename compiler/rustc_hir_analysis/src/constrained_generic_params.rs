@@ -43,7 +43,7 @@ pub fn parameters_for_impl<'tcx>(
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
 pub fn parameters_for<'tcx>(
-    t: &impl TypeVisitable<'tcx>,
+    t: &impl TypeVisitable<TyCtxt<'tcx>>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
     let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
@@ -56,7 +56,7 @@ struct ParameterCollector {
     include_nonconstraining: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
             ty::Alias(ty::Projection, ..) if !self.include_nonconstraining => {

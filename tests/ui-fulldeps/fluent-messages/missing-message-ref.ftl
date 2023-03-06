@@ -1,1 +1,1 @@
-missing_message_ref = {message}
+no_crate_missing_message_ref = {message}

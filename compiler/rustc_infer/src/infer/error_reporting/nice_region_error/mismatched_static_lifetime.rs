@@ -72,7 +72,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             };
 
             // Next, let's figure out the set of trait objects with implicit static bounds
-            let ty = self.tcx().type_of(*impl_def_id);
+            let ty = self.tcx().type_of(*impl_def_id).subst_identity();
             let mut v = super::static_impl_trait::TraitObjectVisitor(FxIndexSet::default());
             v.visit_ty(ty);
             let mut traits = vec![];

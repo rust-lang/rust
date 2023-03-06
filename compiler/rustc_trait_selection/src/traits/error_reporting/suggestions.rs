@@ -30,10 +30,10 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
-    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
     IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeckResults,
+    TypeSuperFoldable, TypeVisitableExt, TypeckResults,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -82,11 +82,8 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                     upvars.iter().find_map(|(upvar_id, upvar)| {
                         let upvar_ty = typeck_results.node_type(*upvar_id);
                         let upvar_ty = infer_context.resolve_vars_if_possible(upvar_ty);
-                        if ty_matches(ty::Binder::dummy(upvar_ty)) {
-                            Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
-                        } else {
-                            None
-                        }
+                        ty_matches(ty::Binder::dummy(upvar_ty))
+                            .then(|| GeneratorInteriorOrUpvar::Upvar(upvar.span))
                     })
                 })
             }
@@ -748,10 +745,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let real_ty = real_trait_pred.self_ty();
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
             // `ReLateBound`, and we don't particularly care about the regions.
-            if self
-                .can_eq(obligation.param_env, self.tcx.erase_late_bound_regions(real_ty), arg_ty)
-                .is_err()
-            {
+            if !self.can_eq(
+                obligation.param_env,
+                self.tcx.erase_late_bound_regions(real_ty),
+                arg_ty,
+            ) {
                 continue;
             }
 
@@ -769,15 +767,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             obligation.param_env,
                             real_trait_pred_and_ty,
                         );
-                        if obligations
+                        let may_hold = obligations
                             .iter()
                             .chain([&obligation])
                             .all(|obligation| self.predicate_may_hold(obligation))
-                        {
-                            Some(steps)
-                        } else {
-                            None
-                        }
+                            .then_some(steps);
+
+                        may_hold
                     })
                 {
                     if steps > 0 {
@@ -931,7 +927,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 DefKind::Ctor(CtorOf::Variant, _) => {
                     "use parentheses to construct this tuple variant".to_string()
                 }
-                kind => format!("use parentheses to call this {}", kind.descr(def_id)),
+                kind => format!(
+                    "use parentheses to call this {}",
+                    self.tcx.def_kind_descr(kind, def_id)
+                ),
             },
             DefIdOrName::Name(name) => format!("use parentheses to call this {name}"),
         };
@@ -1060,7 +1059,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        let ty = self.tcx.erase_late_bound_regions(self_ty);
+        let ty = self.instantiate_binder_with_placeholders(self_ty);
         let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else { return false };
         let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
         let ty::Param(param) = inner_ty.kind() else { return false };
@@ -2016,7 +2015,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
                     infcx.tcx.mk_fn_sig(
-                        inputs.iter(),
+                        *inputs,
                         infcx.next_ty_var(TypeVariableOrigin {
                             span: DUMMY_SP,
                             kind: TypeVariableOriginKind::MiscVariable,
@@ -2027,7 +2026,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 }
                 _ => infcx.tcx.mk_fn_sig(
-                    std::iter::once(inputs),
+                    [inputs],
                     infcx.next_ty_var(TypeVariableOrigin {
                         span: DUMMY_SP,
                         kind: TypeVariableOriginKind::MiscVariable,
@@ -2143,7 +2142,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note(&format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    assoc_item.kind.as_def_kind().descr(item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,
@@ -2788,7 +2787,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             _ => true,
                         };
                     if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(ident.span, "required by a bound in this");
+                        multispan.push_span_label(
+                            ident.span,
+                            format!(
+                                "required by a bound in this {}",
+                                tcx.def_kind(item_def_id).descr(item_def_id)
+                            ),
+                        );
                     }
                 }
                 let descr = format!("required by a bound in `{item_name}`");
@@ -3102,6 +3107,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 self.tcx.def_span(def_id),
                                 "required because it's used within this closure",
                             ),
+                            ty::Str => err.note("`str` is considered to contain a `[u8]` slice for auto trait purposes"),
                             _ => err.note(&msg),
                         };
                     }
@@ -3147,7 +3153,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     parent_trait_pred.print_modifiers_and_trait_path()
                 );
                 let mut is_auto_trait = false;
-                match self.tcx.hir().get_if_local(data.impl_def_id) {
+                match self.tcx.hir().get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Trait(is_auto, ..),
                         ident,
@@ -3529,7 +3535,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
                 let expr = expr.peel_blocks();
-                let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
+                let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc());
                 let span = expr.span;
                 if Some(span) != err.span.primary_span() {
                     err.span_label(
@@ -3572,7 +3578,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 {
                     type_diffs = vec![
                         Sorts(ty::error::ExpectedFound {
-                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, where_pred.skip_binder().projection_ty)),
+                            expected: self.tcx.mk_alias(ty::Projection, where_pred.skip_binder().projection_ty),
                             found,
                         }),
                     ];
@@ -3632,7 +3638,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut assocs = vec![];
         let mut expr = expr;
         let mut prev_ty = self.resolve_vars_if_possible(
-            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc()),
         );
         while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
             // Point at every method call in the chain with the resulting type.
@@ -3643,7 +3649,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
             assocs.push(assocs_in_this_method);
             prev_ty = self.resolve_vars_if_possible(
-                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc()),
             );
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -3661,7 +3667,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let hir::Node::Param(param) = parent {
                     // ...and it is a an fn argument.
                     let prev_ty = self.resolve_vars_if_possible(
-                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.ty_error()),
+                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.ty_error_misc()),
                     );
                     let assocs_in_this_method = self.probe_assoc_types_at_expr(&type_diffs, param.ty_span, prev_ty, param.hir_id, param_env);
                     if assocs_in_this_method.iter().any(|a| a.is_some()) {
@@ -3690,7 +3696,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let Some((span, (assoc, ty))) = entry else { continue; };
                     if primary_spans.is_empty() || type_diffs.iter().any(|diff| {
                         let Sorts(expected_found) = diff else { return false; };
-                        self.can_eq(param_env, expected_found.found, ty).is_ok()
+                        self.can_eq(param_env, expected_found.found, ty)
                     }) {
                         // FIXME: this doesn't quite work for `Iterator::collect`
                         // because we have `Vec<i32>` and `()`, but we'd want `i32`
@@ -3717,10 +3723,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
 
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
-                        if self.can_eq(param_env, ty, *prev_ty).is_err() {
+                        if !self.can_eq(param_env, ty, *prev_ty) {
                             if type_diffs.iter().any(|diff| {
                                 let Sorts(expected_found) = diff else { return false; };
-                                self.can_eq(param_env, expected_found.found, ty).is_ok()
+                                self.can_eq(param_env, expected_found.found, ty)
                             }) {
                                 primary_spans.push(span);
                             }
@@ -3868,7 +3874,7 @@ fn hint_missing_borrow<'tcx>(
         let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
-        if infcx.can_eq(param_env, found_ty, expected_ty).is_ok() {
+        if infcx.can_eq(param_env, found_ty, expected_ty) {
             // FIXME: This could handle more exotic cases like mutability mismatches too!
             if found_refs.len() < expected_refs.len()
                 && found_refs[..] == expected_refs[expected_refs.len() - found_refs.len()..]
@@ -4081,7 +4087,7 @@ struct ReplaceImplTraitFolder<'tcx> {
     replace_ty: Ty<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Param(ty::ParamTy { index, .. }) = t.kind() {
             if self.param.index == *index {
@@ -4091,7 +4097,7 @@ impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
         t.super_fold_with(self)
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

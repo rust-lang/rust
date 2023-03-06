@@ -152,7 +152,7 @@ pub fn parse_asm_args<'a>(
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
         } else if p.eat_keyword(kw::Const) {
-            let anon_const = p.parse_anon_const_expr()?;
+            let anon_const = p.parse_expr_anon_const()?;
             ast::InlineAsmOperand::Const { anon_const }
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;

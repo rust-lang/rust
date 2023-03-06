@@ -48,18 +48,17 @@
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(control_flow_enum)]
-#![feature(associated_type_defaults)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
-#![feature(unwrap_infallible)]
 #![feature(decl_macro)]
 #![feature(drain_filter)]
 #![feature(intra_doc_pointers)]
 #![feature(yeet_expr)]
 #![feature(result_option_inspect)]
 #![feature(const_option)]
+#![feature(trait_alias)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
@@ -73,6 +72,9 @@ extern crate rustc_data_structures;
 extern crate tracing;
 #[macro_use]
 extern crate smallvec;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
 
 #[cfg(test)]
 mod tests;
@@ -106,3 +108,5 @@ pub mod util {
 
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;
+
+fluent_messages! { "../locales/en-US.ftl" }

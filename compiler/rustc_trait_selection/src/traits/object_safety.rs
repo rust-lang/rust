@@ -18,10 +18,10 @@ use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -97,7 +97,7 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
-pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
+pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self: Sized` bound cannot be called.
@@ -120,8 +120,8 @@ fn object_safety_violations_for_trait(
         .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn)
-        .filter_map(|item| {
-            object_safety_violation_for_method(tcx, trait_def_id, &item)
+        .filter_map(|&item| {
+            object_safety_violation_for_method(tcx, trait_def_id, item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.name, code, span))
         })
         .collect();
@@ -307,7 +307,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
@@ -325,8 +325,12 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(_ct, ty)) => {
+            has_self_ty(&ty.into()).then_some(sp)
+        }
+
         ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
 
         ty::PredicateKind::WellFormed(..)
@@ -362,6 +366,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(..))
+            | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
@@ -382,7 +387,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn object_safety_violation_for_method(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<(MethodViolationCode, Span)> {
     debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self : Sized` requisite is otherwise
@@ -415,7 +420,7 @@ fn object_safety_violation_for_method(
 fn virtual_call_violation_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<MethodViolationCode> {
     let sig = tcx.fn_sig(method.def_id).subst_identity();
 
@@ -527,8 +532,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 }
             }
 
-            let trait_object_ty =
-                object_ty_for_trait(tcx, trait_def_id, tcx.mk_region(ty::ReStatic));
+            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
 
             // e.g., `Rc<dyn Trait>`
             let trait_object_receiver =
@@ -599,7 +603,7 @@ fn virtual_call_violation_for_method<'tcx>(
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred.clone())
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
     }) {
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
@@ -662,8 +666,9 @@ fn object_ty_for_trait<'tcx>(
     elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
     elaborated_predicates.dedup();
 
-    let existential_predicates = tcx
-        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
+    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
+        iter::once(trait_predicate).chain(elaborated_predicates),
+    );
     debug!(?existential_predicates);
 
     tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
@@ -718,7 +723,7 @@ fn object_ty_for_trait<'tcx>(
 #[allow(dead_code)]
 fn receiver_is_dispatchable<'tcx>(
     tcx: TyCtxt<'tcx>,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
@@ -762,11 +767,11 @@ fn receiver_is_dispatchable<'tcx>(
             ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
         };
 
-        let caller_bounds: Vec<Predicate<'tcx>> =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]).collect();
+        let caller_bounds =
+            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
         ty::ParamEnv::new(
-            tcx.intern_predicates(&caller_bounds),
+            tcx.mk_predicates_from_iter(caller_bounds),
             param_env.reveal(),
             param_env.constness(),
         )
@@ -786,7 +791,7 @@ fn receiver_is_dispatchable<'tcx>(
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
-fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
+fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
@@ -836,7 +841,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         supertraits: Option<Vec<DefId>>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         type BreakTy = ();
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

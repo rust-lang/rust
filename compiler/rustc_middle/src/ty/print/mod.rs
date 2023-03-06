@@ -1,5 +1,5 @@
 use crate::ty::GenericArg;
-use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -115,7 +115,7 @@ pub trait Printer<'tcx>: Sized {
 
             DefPathData::Impl => {
                 let generics = self.tcx().generics_of(def_id);
-                let self_ty = self.tcx().bound_type_of(def_id);
+                let self_ty = self.tcx().type_of(def_id);
                 let impl_trait_ref = self.tcx().impl_trait_ref(def_id);
                 let (self_ty, impl_trait_ref) = if substs.len() >= generics.count() {
                     (

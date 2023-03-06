@@ -24,6 +24,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
+    TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -156,7 +157,7 @@ pub struct Session {
     /// `-C metadata` arguments passed to the compiler. Its value forms a unique
     /// global identifier for the crate. It is used to allow multiple crates
     /// with the same name to coexist. See the
-    /// `rustc_codegen_llvm::back::symbol_names` module for more information.
+    /// `rustc_symbol_mangling` crate for more information.
     pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
@@ -881,10 +882,14 @@ impl Session {
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
-    pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
+    pub fn consider_optimizing(
+        &self,
+        get_crate_name: impl Fn() -> Symbol,
+        msg: impl Fn() -> String,
+    ) -> bool {
         let mut ret = true;
         if let Some((ref c, _)) = self.opts.unstable_opts.fuel {
-            if c == crate_name {
+            if c == get_crate_name().as_str() {
                 assert_eq!(self.threads(), 1);
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
@@ -902,7 +907,7 @@ impl Session {
             }
         }
         if let Some(ref c) = self.opts.unstable_opts.print_fuel {
-            if c == crate_name {
+            if c == get_crate_name().as_str() {
                 assert_eq!(self.threads(), 1);
                 self.print_fuel.fetch_add(1, SeqCst);
             }
@@ -953,10 +958,10 @@ impl Session {
     /// Checks if LLVM lifetime markers should be emitted.
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
-        // AddressSanitizer uses lifetimes to detect use after scope bugs.
+        // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
         // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn is_proc_macro_attr(&self, attr: &Attribute) -> bool {
@@ -1273,6 +1278,19 @@ fn default_emitter(
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
+    let terminal_url = match sopts.unstable_opts.terminal_urls {
+        TerminalUrl::Auto => {
+            match (std::env::var("COLORTERM").as_deref(), std::env::var("TERM").as_deref()) {
+                (Ok("truecolor"), Ok("xterm-256color"))
+                    if sopts.unstable_features.is_nightly_build() =>
+                {
+                    TerminalUrl::Yes
+                }
+                _ => TerminalUrl::No,
+            }
+        }
+        t => t,
+    };
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1297,6 +1315,7 @@ fn default_emitter(
                     sopts.diagnostic_width,
                     macro_backtrace,
                     track_diagnostics,
+                    terminal_url,
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
@@ -1312,6 +1331,7 @@ fn default_emitter(
                 sopts.diagnostic_width,
                 macro_backtrace,
                 track_diagnostics,
+                terminal_url,
             )
             .ui_testing(sopts.unstable_opts.ui_testing),
         ),
@@ -1325,6 +1345,7 @@ pub fn build_session(
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
+    fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
@@ -1369,7 +1390,7 @@ pub fn build_session(
     ));
 
     let fallback_bundle = fallback_fluent_bundle(
-        rustc_errors::DEFAULT_LOCALE_RESOURCES,
+        fluent_resources,
         sopts.unstable_opts.translate_directionality_markers,
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
@@ -1614,7 +1635,10 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle = fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+    // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
+    // need to reference every crate that might emit an early error for translation to work.
+    let fallback_bundle =
+        fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1628,6 +1652,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
                 None,
                 false,
                 false,
+                TerminalUrl::No,
             ))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
@@ -1638,6 +1663,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
             None,
             false,
             false,
+            TerminalUrl::No,
         )),
     };
     rustc_errors::Handler::with_emitter(true, None, emitter)

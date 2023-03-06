@@ -6,28 +6,5 @@ LL | y![
 LL | Ϥ,
    |   ^
 
-error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/issue-62524.rs:5:3
-   |
-LL |   y![
-   |  ___^
-LL | | Ϥ,
-   | |__^
-   |
-help: change the delimiters to curly braces
-   |
-LL | y! { /* items */ }
-   |    ~~~~~~~~~~~~~~~
-help: add a semicolon
-   |
-LL | Ϥ,;
-   |   +
-
-error: cannot find macro `y` in this scope
-  --> $DIR/issue-62524.rs:5:1
-   |
-LL | y![
-   | ^
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

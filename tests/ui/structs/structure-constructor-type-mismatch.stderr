@@ -52,7 +52,7 @@ LL |         x: 7,
    |            expected `f32`, found integer
    |            help: use a float literal: `7.0`
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/structure-constructor-type-mismatch.rs:48:15
    |
 LL |     let pt3 = PointF::<i32> {
@@ -84,7 +84,7 @@ LL |         y: 10,
    |            expected `f32`, found integer
    |            help: use a float literal: `10.0`
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
 LL |         PointF::<u32> { .. } => {}

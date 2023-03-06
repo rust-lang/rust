@@ -14,7 +14,7 @@ note: candidate #2 is defined in the trait `T`
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     T::foo(&x);
    |     ~~~~~~~~~~

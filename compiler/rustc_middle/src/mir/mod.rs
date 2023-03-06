@@ -9,8 +9,8 @@ use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
+use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -27,7 +27,6 @@ use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
@@ -62,7 +61,6 @@ pub use terminator::*;
 
 pub mod traversal;
 mod type_foldable;
-mod type_visitable;
 pub mod visit;
 
 pub use self::generic_graph::graphviz_safe_def_name;
@@ -416,7 +414,7 @@ impl<'tcx> Body<'tcx> {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            (decl.is_user_variable() && decl.mutability.is_mut()).then(|| local)
+            (decl.is_user_variable() && decl.mutability.is_mut()).then_some(local)
         })
     }
 
@@ -705,7 +703,11 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx>, }
+TrivialTypeTraversalAndLiftImpls! {
+    for<'tcx> {
+        BindingForm<'tcx>,
+    }
+}
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1618,7 +1620,7 @@ impl<'tcx> Place<'tcx> {
             &v
         };
 
-        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -1638,6 +1640,14 @@ impl<'tcx> PlaceRef<'tcx> {
             | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
         }
+    }
+
+    /// Returns `true` if this `Place` contains a `Deref` projection.
+    ///
+    /// If `Place::is_indirect` returns false, the caller knows that the `Place` refers to the
+    /// same region of memory as its base.
+    pub fn is_indirect(&self) -> bool {
+        self.projection.iter().any(|elem| elem.is_indirect())
     }
 
     /// If MirPhase >= Derefered and if projection contains Deref,
@@ -2340,13 +2350,17 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u64> {
+    pub fn try_eval_target_usize(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<u64> {
         match self {
-            Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
-            Self::Val(val, _) => val.try_to_machine_usize(tcx),
+            Self::Ty(ct) => ct.try_eval_target_usize(tcx, param_env),
+            Self::Val(val, _) => val.try_to_target_usize(tcx),
             Self::Unevaluated(uneval, _) => {
                 match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => val.try_to_machine_usize(tcx),
+                    Ok(val) => val.try_to_target_usize(tcx),
                     Err(_) => None,
                 }
             }
@@ -2483,7 +2497,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = tcx.type_of(def.def_id_for_type_of()).subst_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2511,20 +2525,19 @@ impl<'tcx> ConstantKind<'tcx> {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id) {
-            if let Some(parent_did) = parent_hir_id.as_owner() {
-                InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
-            } else {
-                tcx.mk_substs(Vec::<GenericArg<'tcx>>::new().into_iter())
-            }
+        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
+            && let Some(parent_did) = parent_hir_id.as_owner()
+        {
+            InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
         } else {
-            tcx.mk_substs(Vec::<GenericArg<'tcx>>::new().into_iter())
+            List::empty()
         };
         debug!(?parent_substs);
 
         let did = def.did.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs = tcx.mk_substs(parent_substs.into_iter().chain(child_substs.into_iter()));
+        let substs =
+            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
@@ -2742,8 +2755,11 @@ impl UserTypeProjection {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
             base: self.base.try_fold_with(folder)?,
             projs: self.projs.try_fold_with(folder)?,
@@ -2751,8 +2767,11 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }
@@ -2889,7 +2908,7 @@ fn pretty_print_const_value<'tcx>(
             // the `destructure_const` query with an empty `ty::ParamEnv` without
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
-            // to be able to destructure the tuple into `(0u8, *mut T)
+            // to be able to destructure the tuple into `(0u8, *mut T)`
             //
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.

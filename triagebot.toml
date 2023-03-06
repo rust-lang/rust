@@ -468,6 +468,14 @@ This was probably unintentional and should be reverted before this PR is merged.
 If this was intentional then you can ignore this comment.
 """
 
+[mentions."src/tools/x"]
+message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
+
+[mentions."src/bootstrap/defaults/config.compiler.toml"]
+message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
+[mentions."src/bootstrap/defaults/config.codegen.toml"]
+message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
@@ -479,7 +487,6 @@ compiler-team = [
     "@davidtwco",
     "@oli-obk",
     "@lcnr",
-    "@nagisa",
     "@wesleywiser",
     "@michaelwoerister",
 ]
@@ -535,6 +542,7 @@ diagnostics = [
     "@TaKO8Ki",
 ]
 parser = [
+    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -548,7 +556,6 @@ mir = [
     "@oli-obk",
 ]
 mir-opt = [
-    "@nagisa",
     "@oli-obk",
     "@wesleywiser",
 ]
@@ -564,6 +571,7 @@ borrowck = [
     "@pnkfelix",
 ]
 ast_lowering = [
+    "@compiler-errors",
     "@spastorino",
 ]
 fallback = [
@@ -627,7 +635,7 @@ style-team = [
 "/src/stage0.json" =                         ["bootstrap"]
 "/tests/ui" =                                ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
-"/src/tools/compiletest" =                   ["bootstrap"]
+"/src/tools/compiletest" =                   ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
 "/src/tools/rust-installer" =                ["bootstrap"]
 "/src/tools/rustbook" =                      ["@ehuss"]

@@ -9,7 +9,7 @@ edition = "2021"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
 cfg-if = "1.0"
-ena = "0.14"
+ena = "0.14.1"
 indexmap = { version = "1.9.1" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
@@ -29,8 +29,9 @@ smallvec = { version = "1.8.1", features = [
 stable_deref_trait = "1.0.0"
 stacker = "0.1.15"
 tempfile = "3.2"
-thin-vec = "0.2.9"
+thin-vec = "0.2.12"
 tracing = "0.1"
+elsa = "1.8"
 
 [dependencies.parking_lot]
 version = "0.11"

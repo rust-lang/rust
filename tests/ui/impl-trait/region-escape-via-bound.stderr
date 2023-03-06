@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl Trait<'y>` captures lifetime that does not a
   --> $DIR/region-escape-via-bound.rs:17:5
    |
 LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
-   |        -- hidden type `Cell<&'x u32>` captures the lifetime `'x` as defined here
+   |        --                           -------------- opaque type defined here
+   |        |
+   |        hidden type `Cell<&'x u32>` captures the lifetime `'x` as defined here
 ...
 LL |     x
    |     ^

@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62554.rs:6:89
+  --> $DIR/issue-62554.rs:5:89
    |
 LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
    |               -                       -         -                  -                  - ^
@@ -9,65 +9,5 @@ LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s 
    |               |                       |         unclosed delimiter
    |               unclosed delimiter      unclosed delimiter
 
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62554.rs:6:89
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - ^
-   |               |                       |         |                  |                  |
-   |               |                       |         |                  |                  unclosed delimiter
-   |               |                       |         |                  unclosed delimiter
-   |               |                       |         unclosed delimiter
-   |               unclosed delimiter      unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62554.rs:6:89
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - ^
-   |               |                       |         |                  |                  |
-   |               |                       |         |                  |                  unclosed delimiter
-   |               |                       |         |                  unclosed delimiter
-   |               |                       |         unclosed delimiter
-   |               unclosed delimiter      unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62554.rs:6:89
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - ^
-   |               |                       |         |                  |                  |
-   |               |                       |         |                  |                  unclosed delimiter
-   |               |                       |         |                  unclosed delimiter
-   |               |                       |         unclosed delimiter
-   |               unclosed delimiter      unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62554.rs:6:89
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - ^
-   |               |                       |         |                  |                  |
-   |               |                       |         |                  |                  unclosed delimiter
-   |               |                       |         |                  unclosed delimiter
-   |               |                       |         unclosed delimiter
-   |               unclosed delimiter      unclosed delimiter
-
-error: expected `{`, found `macro_rules`
-  --> $DIR/issue-62554.rs:6:23
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |                       ^^^^^^^^^^^ expected `{`
-   |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/issue-62554.rs:6:20
-   |
-LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |                    ^^
-help: try placing this code inside a block
-   |
-LL | fn foo(u: u8) { if u8 { macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 { }
-   |                       +                                                                    +
-
-error: aborting due to 6 previous errors
+error: aborting due to previous error
 

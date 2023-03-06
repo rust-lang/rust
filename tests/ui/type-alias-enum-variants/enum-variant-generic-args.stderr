@@ -304,7 +304,7 @@ LL |     AliasFixed::TSVariant::<()>(());
    |                 |
    |                 not allowed on this type
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:64:5
    |
 LL |     AliasFixed::<()>::TSVariant(());
@@ -318,7 +318,7 @@ note: type alias defined here, with 0 generic parameters
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:66:5
    |
 LL |     AliasFixed::<()>::TSVariant::<()>(());
@@ -395,7 +395,7 @@ LL -     AliasFixed::SVariant::<()> { v: () };
 LL +     AliasFixed::<()>::SVariant { v: () };
    |
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:82:5
    |
 LL |     AliasFixed::<()>::SVariant { v: () };
@@ -409,7 +409,7 @@ note: type alias defined here, with 0 generic parameters
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:84:5
    |
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
@@ -470,7 +470,7 @@ LL |     AliasFixed::UVariant::<()>;
    |                 |
    |                 not allowed on this type
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:100:5
    |
 LL |     AliasFixed::<()>::UVariant;
@@ -484,7 +484,7 @@ note: type alias defined here, with 0 generic parameters
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
 
-error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:102:5
    |
 LL |     AliasFixed::<()>::UVariant::<()>;

@@ -323,7 +323,7 @@ macro_rules! make_mir_visitor {
                     self.visit_source_scope($(& $mutability)? *parent_scope);
                 }
                 if let Some((callee, callsite_span)) = inlined {
-                    let location = START_BLOCK.start_location();
+                    let location = Location::START;
 
                     self.visit_span($(& $mutability)? *callsite_span);
 
@@ -837,7 +837,7 @@ macro_rules! make_mir_visitor {
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
-                let location = START_BLOCK.start_location();
+                let location = Location::START;
                 match value {
                     VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
                     VarDebugInfoContents::Place(place) =>
@@ -1026,7 +1026,7 @@ macro_rules! super_body {
         $self.visit_span($(& $mutability)? $body.span);
 
         for const_ in &$($mutability)? $body.required_consts {
-            let location = START_BLOCK.start_location();
+            let location = Location::START;
             $self.visit_constant(const_, location);
         }
     }
@@ -1045,7 +1045,7 @@ macro_rules! visit_place_fns {
             self.visit_local(&mut place.local, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection, location) {
-                place.projection = self.tcx().intern_place_elems(&new_projection);
+                place.projection = self.tcx().mk_place_elems(&new_projection);
             }
         }
 
@@ -1214,7 +1214,7 @@ impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
 
 /// Extra information passed to `visit_ty` and friends to give context
 /// about where the type etc appears.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum TyContext {
     LocalDecl {
         /// The index of the local variable we are visiting.

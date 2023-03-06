@@ -19,14 +19,14 @@ use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
     StashKey,
 };
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use std::fmt::Write;
 use std::mem;
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
@@ -56,12 +56,12 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-    ) -> PResult<'a, (AttrVec, Vec<P<Item>>, ModSpans)> {
+    ) -> PResult<'a, (AttrVec, ThinVec<P<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
         let post_attr_lo = self.token.span;
-        let mut items = vec![];
+        let mut items = ThinVec::new();
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
             self.maybe_consume_incorrect_semicolon(&items);
@@ -125,16 +125,13 @@ impl<'a> Parser<'a> {
             return Ok(Some(item.into_inner()));
         };
 
-        let mut unclosed_delims = vec![];
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
                 let item =
                     this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                unclosed_delims.append(&mut this.unclosed_delims);
                 Ok((item?, TrailingToken::None))
             })?;
 
-        self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
     }
 
@@ -459,7 +456,8 @@ impl<'a> Parser<'a> {
                 // Maybe the user misspelled `macro_rules` (issue #91227)
                 if self.token.is_ident()
                     && path.segments.len() == 1
-                    && lev_distance("macro_rules", &path.segments[0].ident.to_string(), 3).is_some()
+                    && edit_distance("macro_rules", &path.segments[0].ident.to_string(), 2)
+                        .is_some()
                 {
                     err.span_suggestion(
                         path.span,
@@ -645,20 +643,20 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
-    ) -> PResult<'a, Vec<T>> {
+    ) -> PResult<'a, ThinVec<T>> {
         let open_brace_span = self.token.span;
 
         // Recover `impl Ty;` instead of `impl Ty {}`
         if self.token == TokenKind::Semi {
             self.sess.emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            return Ok(vec![]);
+            return Ok(ThinVec::new());
         }
 
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
-        let mut items = Vec::new();
+        let mut items = ThinVec::new();
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.recover_doc_comment_before_brace() {
                 continue;
@@ -996,7 +994,7 @@ impl<'a> Parser<'a> {
     /// ```text
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
+    fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
             p.recover_diff_marker();
             Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
@@ -1287,7 +1285,7 @@ impl<'a> Parser<'a> {
         let (variants, _) = if self.token == TokenKind::Semi {
             self.sess.emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            (vec![], false)
+            (thin_vec![], false)
         } else {
             self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
                 |mut e| {
@@ -1330,7 +1328,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let disr_expr =
-                    if this.eat(&token::Eq) { Some(this.parse_anon_const_expr()?) } else { None };
+                    if this.eat(&token::Eq) { Some(this.parse_expr_anon_const()?) } else { None };
 
                 let vr = ast::Variant {
                     ident,
@@ -1456,8 +1454,8 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
-    ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
-        let mut fields = Vec::new();
+    ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
+        let mut fields = ThinVec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(Delimiter::Brace)) {
             while self.token != token::CloseDelim(Delimiter::Brace) {
@@ -1497,7 +1495,7 @@ impl<'a> Parser<'a> {
         Ok((fields, recovered))
     }
 
-    pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<FieldDef>> {
+    pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
@@ -1721,7 +1719,7 @@ impl<'a> Parser<'a> {
         }
         if self.token.kind == token::Eq {
             self.bump();
-            let const_expr = self.parse_anon_const_expr()?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.struct_span_err(sp, "default values on `struct` fields aren't supported")
                 .span_suggestion(
@@ -1959,21 +1957,12 @@ impl<'a> Parser<'a> {
         // FIXME: This will make us not emit the help even for declarative
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
-            if self.unclosed_delims.is_empty() {
-                let DelimSpan { open, close } = args.dspan;
-                err.multipart_suggestion(
-                    "change the delimiters to curly braces",
-                    vec![(open, "{".to_string()), (close, '}'.to_string())],
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.span_suggestion(
-                    span,
-                    "change the delimiters to curly braces",
-                    " { /* items */ }",
-                    Applicability::HasPlaceholders,
-                );
-            }
+            let DelimSpan { open, close } = args.dspan;
+            err.multipart_suggestion(
+                "change the delimiters to curly braces",
+                vec![(open, "{".to_string()), (close, '}'.to_string())],
+                Applicability::MaybeIncorrect,
+            );
             err.span_suggestion(
                 span.shrink_to_hi(),
                 "add a semicolon",
@@ -2373,7 +2362,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
-    pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, Vec<Param>> {
+    pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {

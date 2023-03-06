@@ -15,7 +15,7 @@ LL | impl<T: Clone> SpaceLlama for T {
    | ------------------------------- parent `impl` is here
 ...
 LL |     default fn fly(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `fly`
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `fly`
    |
    = note: to specialize, `fly` in the parent `impl` must be marked `default`
 

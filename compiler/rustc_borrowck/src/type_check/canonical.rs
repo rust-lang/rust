@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_infer::infer::{canonical::Canonical, InferOk};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
@@ -66,7 +66,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         canonical: &Canonical<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_universe = self.infcx.universe();
 
@@ -117,7 +117,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx> + std::fmt::Debug>,
+        predicates: impl IntoIterator<Item: ToPredicate<'tcx> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {

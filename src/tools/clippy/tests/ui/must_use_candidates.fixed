@@ -84,7 +84,7 @@ pub unsafe fn mutates_static() -> usize {
 }
 
 #[no_mangle]
-pub fn unmangled(i: bool) -> bool {
+pub extern "C" fn unmangled(i: bool) -> bool {
     !i
 }
 

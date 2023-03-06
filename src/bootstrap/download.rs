@@ -2,7 +2,7 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs::{self, File},
-    io::{self, BufRead, BufReader, ErrorKind},
+    io::{BufRead, BufReader, ErrorKind},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -24,14 +24,6 @@ static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
 impl Config {
     pub fn is_verbose(&self) -> bool {
         self.verbose > 0
-    }
-
-    pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
-        #[cfg(unix)]
-        use std::os::unix::fs::symlink as symlink_file;
-        #[cfg(windows)]
-        use std::os::windows::fs::symlink_file;
-        if !self.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
     pub(crate) fn create(&self, path: &Path, s: &str) {
@@ -181,8 +173,7 @@ impl Config {
             // appear to have this (even when `../lib` is redundant).
             // NOTE: there are only two paths here, delimited by a `:`
             let mut entries = OsString::from("$ORIGIN/../lib:");
-            entries.push(t!(fs::canonicalize(nix_deps_dir)));
-            entries.push("/lib");
+            entries.push(t!(fs::canonicalize(nix_deps_dir)).join("lib"));
             entries
         };
         patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
@@ -339,15 +330,6 @@ impl Config {
         let bin_root = self.out.join(host.triple).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
-
-        #[cfg(not(windows))]
-        {
-            let legacy_rustfmt = self.initial_rustc.with_file_name(exe("rustfmt", host));
-            if !legacy_rustfmt.exists() {
-                t!(self.symlink_file(&rustfmt_path, &legacy_rustfmt));
-            }
-        }
-
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
             return Some(rustfmt_path);
         }
@@ -370,6 +352,13 @@ impl Config {
         if self.should_fix_bins_and_dylibs() {
             self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
             self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+            let lib_dir = bin_root.join("lib");
+            for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+                let lib = t!(lib);
+                if lib.path().extension() == Some(OsStr::new("so")) {
+                    self.fix_bin_or_dylib(&lib.path());
+                }
+            }
         }
 
         self.create(&rustfmt_stamp, &channel);

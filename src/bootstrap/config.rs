@@ -25,6 +25,7 @@ use crate::flags::{Color, Flags};
 use crate::util::{exe, output, t};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
+use serde_derive::Deserialize;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -97,6 +98,10 @@ pub struct Config {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: DryRun,
+    /// Arguments appearing after `--` to be forwarded to tools,
+    /// e.g. `--fix-broken` or test arguments.
+    pub free_args: Vec<String>,
+
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
@@ -107,7 +112,6 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
-    pub llvm_skip_rebuild: bool,
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_plugins: bool,
@@ -169,6 +173,7 @@ pub struct Config {
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
+    pub rust_validate_mir_opts: Option<u32>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -660,7 +665,6 @@ define_config! {
 define_config! {
     /// TOML representation of how the LLVM build is configured.
     struct Llvm {
-        skip_rebuild: Option<bool> = "skip-rebuild",
         optimize: Option<bool> = "optimize",
         thin_lto: Option<bool> = "thin-lto",
         release_debuginfo: Option<bool> = "release-debuginfo",
@@ -766,6 +770,7 @@ define_config! {
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
+        validate_mir_opts: Option<u32> = "validate-mir-opts",
     }
 }
 
@@ -866,6 +871,7 @@ impl Config {
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
+        config.free_args = flags.free_args.clone().unwrap_or_default();
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
@@ -1052,11 +1058,6 @@ impl Config {
             config.mandir = install.mandir.map(PathBuf::from);
         }
 
-        // We want the llvm-skip-rebuild flag to take precedence over the
-        // skip-rebuild config.toml option so we store it separately
-        // so that we can infer the right value
-        let mut llvm_skip_rebuild = flags.llvm_skip_rebuild;
-
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut llvm_assertions = None;
@@ -1144,6 +1145,7 @@ impl Config {
                 .as_deref()
                 .map(|value| RustcLto::from_str(value).unwrap())
                 .unwrap_or_default();
+            config.rust_validate_mir_opts = rust.validate_mir_opts;
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -1161,7 +1163,6 @@ impl Config {
             llvm_assertions = llvm.assertions;
             llvm_tests = llvm.tests;
             llvm_plugins = llvm.plugins;
-            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
@@ -1310,21 +1311,11 @@ impl Config {
             } else {
                 RustfmtState::Unavailable
             };
-        } else {
-            // If using a system toolchain for bootstrapping, see if that has rustfmt available.
-            let host = config.build;
-            let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
-            let bin_root = config.out.join(host.triple).join("stage0");
-            if !rustfmt_path.starts_with(&bin_root) {
-                // Using a system-provided toolchain; we shouldn't download rustfmt.
-                *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
-            }
         }
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);

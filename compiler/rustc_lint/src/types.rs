@@ -1,19 +1,24 @@
-use crate::lints::{
-    AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
-    InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
-    OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-    RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+use crate::{
+    fluent_generated as fluent,
+    lints::{
+        AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
+        InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
+        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+    },
 };
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{fluent, DiagnosticMessage};
+use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{
+    self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -651,7 +656,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 ) -> Option<&'a ty::FieldDef> {
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
-        let field_ty = tcx.type_of(field.did);
+        let field_ty = tcx.type_of(field.did).subst_identity();
         let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
         !is_zst
     })
@@ -1144,7 +1149,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1240,7 +1245,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_foreign_static(&mut self, id: hir::OwnerId, span: Span) {
-        let ty = self.cx.tcx.type_of(id);
+        let ty = self.cx.tcx.type_of(id).subst_identity();
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
@@ -1301,7 +1306,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
-            let t = cx.tcx.type_of(it.owner_id);
+            let t = cx.tcx.type_of(it.owner_id).subst_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple {
@@ -1421,7 +1426,7 @@ impl InvalidAtomicOrdering {
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
-            && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
+            && let Some(adt) = cx.tcx.type_of(impl_did).subst_identity().ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
             && let parent = cx.tcx.parent(adt.did())

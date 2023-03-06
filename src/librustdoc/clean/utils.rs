@@ -17,7 +17,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
@@ -129,7 +129,7 @@ fn external_generic_args<'tcx>(
         });
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings }
     }
 }
 
@@ -266,7 +266,7 @@ pub(crate) fn print_evaluated_const(
     underscores_and_type: bool,
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id);
+        let ty = tcx.type_of(def_id).subst_identity();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
@@ -345,10 +345,10 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
             return true;
         }
 
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind {
-            if let hir::ExprKind::Lit(_) = &expr.kind {
-                return true;
-            }
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind &&
+            let hir::ExprKind::Lit(_) = &expr.kind
+        {
+            return true;
         }
     }
 
@@ -470,6 +470,12 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
+    // FIXME: To be removed once `parallel_compiler` bugs are fixed!
+    // More information in <https://github.com/rust-lang/rust/pull/106930>.
+    if cfg!(parallel_compiler) {
+        return vec![].into_iter().chain(vec![].into_iter());
+    }
+
     let auto_impls = cx
         .sess()
         .prof

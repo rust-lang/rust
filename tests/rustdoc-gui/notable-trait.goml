@@ -6,13 +6,13 @@ size: (1100, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("y"),
 )
 // Checking they don't have the same x position.
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("x"),
 )
 // The `i` should be *after* the type.
@@ -21,33 +21,33 @@ assert-position: (
     {"x": 677},
 )
 assert-position: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     {"x": 955},
 )
 // The tooltip should be below the `i`
 // Also, clicking the tooltip should bring its text into the DOM
-assert-count: ("//*[@class='notable popover']", 0)
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+assert-count: ("//*[@class='tooltip popover']", 0)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 compare-elements-position-near: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable popover']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+    "//*[@class='tooltip popover']",
     {"y": 30}
 )
 compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable popover']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+    "//*[@class='tooltip popover']",
     ("x")
 )
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 move-cursor-to: "//h1"
-assert-count: ("//*[@class='notable popover']", 0)
+assert-count: ("//*[@class='tooltip popover']", 0)
 
 // Now only the `i` should be on the next line.
 size: (1055, 600)
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("y", "x"),
 )
 
@@ -56,13 +56,13 @@ size: (980, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("y"),
 )
 // Checking they don't have the same x position.
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("x"),
 )
 // The `i` should be *after* the type.
@@ -71,7 +71,7 @@ assert-position: (
     {"x": 245},
 )
 assert-position: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     {"x": 523},
 )
 
@@ -80,13 +80,13 @@ size: (650, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("y"),
 )
 // Checking they don't have the same x position.
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ("x"),
 )
 // The `i` should be *after* the type.
@@ -95,29 +95,29 @@ assert-position: (
     {"x": 15},
 )
 assert-position: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     {"x": 293},
 )
 // The tooltip should STILL be below `i`
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 compare-elements-position-near: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable popover']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+    "//*[@class='tooltip popover']",
     {"y": 30}
 )
 compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable popover']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+    "//*[@class='tooltip popover']",
     ("x")
 )
 assert-position: (
-    "//*[@class='notable popover']",
+    "//*[@class='tooltip popover']",
     {"x": 0}
 )
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 move-cursor-to: "//h1"
-assert-count: ("//*[@class='notable popover']", 0)
+assert-count: ("//*[@class='tooltip popover']", 0)
 
 // Now check the colors.
 define-function: (
@@ -133,26 +133,26 @@ define-function: (
         // We reload the page so the local storage settings are being used.
         reload:
 
-        move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-        assert-count: (".notable.popover", 1)
+        move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+        assert-count: (".tooltip.popover", 1)
 
         assert-css: (
-             ".notable.popover h3",
+             ".tooltip.popover h3",
              {"color": |header_color|},
              ALL,
         )
         assert-css: (
-             ".notable.popover pre",
+             ".tooltip.popover pre",
              {"color": |content_color|},
              ALL,
         )
         assert-css: (
-             ".notable.popover pre a.struct",
+             ".tooltip.popover pre a.struct",
              {"color": |type_color|},
              ALL,
         )
         assert-css: (
-             ".notable.popover pre a.trait",
+             ".tooltip.popover pre a.trait",
              {"color": |trait_color|},
              ALL,
         )
@@ -195,24 +195,24 @@ call-function: (
 reload:
 
 // Check that pressing escape works
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-move-cursor-to: "//*[@class='notable popover']"
-assert-count: ("//*[@class='notable popover']", 1)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+move-cursor-to: "//*[@class='tooltip popover']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 press-key: "Escape"
-assert-count: ("//*[@class='notable popover']", 0)
-assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
+assert-count: ("//*[@class='tooltip popover']", 0)
+assert: "#method\.create_an_iterator_from_read .tooltip:focus"
 
 // Check that clicking outside works.
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 click: ".search-input"
-assert-count: ("//*[@class='notable popover']", 0)
-assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
+assert-count: ("//*[@class='tooltip popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"
 
 // Check that pressing tab over and over works.
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-move-cursor-to: "//*[@class='notable popover']"
-assert-count: ("//*[@class='notable popover']", 1)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+move-cursor-to: "//*[@class='tooltip popover']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 press-key: "Tab"
 press-key: "Tab"
 press-key: "Tab"
@@ -220,8 +220,8 @@ press-key: "Tab"
 press-key: "Tab"
 press-key: "Tab"
 press-key: "Tab"
-assert-count: ("//*[@class='notable popover']", 0)
-assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
+assert-count: ("//*[@class='tooltip popover']", 0)
+assert: "#method\.create_an_iterator_from_read .tooltip:focus"
 
 // Now we check that the focus isn't given back to the wrong item when opening
 // another popover.
@@ -231,8 +231,8 @@ click: "#method\.create_an_iterator_from_read .fn"
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.
 store-window-property: (scroll, "scrollY")
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-wait-for: "//*[@class='notable popover']"
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+wait-for: "//*[@class='tooltip popover']"
 click: "#settings-menu a"
 click: ".search-input"
 // We ensure we didn't come back to the previous focused item.
@@ -245,8 +245,8 @@ click: "#method\.create_an_iterator_from_read .fn"
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.
 store-window-property: (scroll, "scrollY")
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-wait-for: "//*[@class='notable popover']"
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+wait-for: "//*[@class='tooltip popover']"
 click: "#settings-menu a"
 press-key: "Escape"
 // We ensure we didn't come back to the previous focused item.
@@ -254,23 +254,23 @@ assert-window-property-false: {"scrollY": |scroll|}
 
 // Opening the mobile sidebar should close the popover.
 size: (650, 600)
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 click: ".sidebar-menu-toggle"
 assert: "//*[@class='sidebar shown']"
-assert-count: ("//*[@class='notable popover']", 0)
-assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
-// Clicking a notable popover should close the sidebar.
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+assert-count: ("//*[@class='tooltip popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"
+// Clicking a notable trait tooltip popover should close the sidebar.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 assert-false: "//*[@class='sidebar shown']"
 
 // Also check the focus handling for the help button.
 size: (1100, 600)
 reload:
-assert-count: ("//*[@class='notable popover']", 0)
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable popover']", 1)
+assert-count: ("//*[@class='tooltip popover']", 0)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+assert-count: ("//*[@class='tooltip popover']", 1)
 click: "#help-button a"
-assert-count: ("//*[@class='notable popover']", 0)
-assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
+assert-count: ("//*[@class='tooltip popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"

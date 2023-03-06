@@ -54,7 +54,7 @@ bitflags! {
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
-/// These are all interned (by `alloc_adt_def`) into the global arena.
+/// These are all interned (by `mk_adt_def`) into the global arena.
 ///
 /// The initialism *ADT* stands for an [*algebraic data type (ADT)*][adt].
 /// This is slightly wrong because `union`s are not ADTs.
@@ -406,6 +406,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Return the index of `VariantDef` given a variant id.
+    #[inline]
     pub fn variant_index_with_id(self, vid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()

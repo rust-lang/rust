@@ -3,7 +3,7 @@ use clippy_utils::{def_path_def_ids, trait_ref_of_method};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -166,7 +166,8 @@ impl MutableKeyType {
             Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || self.is_interior_mutable_type(cx, inner_ty),
             Slice(inner_ty) => self.is_interior_mutable_type(cx, inner_ty),
             Array(inner_ty, size) => {
-                size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
+                size.try_eval_target_usize(cx.tcx, cx.param_env)
+                    .map_or(true, |u| u != 0)
                     && self.is_interior_mutable_type(cx, inner_ty)
             },
             Tuple(fields) => fields.iter().any(|ty| self.is_interior_mutable_type(cx, ty)),

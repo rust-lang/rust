@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/seq-args.rs:4:13
    |
 LL |     impl<T> Seq<T> for Vec<T> {
@@ -12,7 +12,7 @@ note: trait defined here, with 0 generic parameters
 LL |     trait Seq { }
    |           ^^^
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/seq-args.rs:9:10
    |
 LL |     impl Seq<bool> for u32 {

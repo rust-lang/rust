@@ -10,7 +10,7 @@ LL |     c.read_to(v);
    |
    = note: expected mutable reference `&mut [u8]`
                          found struct `Vec<_>`
-note: associated function defined here
+note: method defined here
   --> $DIR/issue-11374.rs:13:12
    |
 LL |     pub fn read_to(&mut self, vec: &mut [u8]) {

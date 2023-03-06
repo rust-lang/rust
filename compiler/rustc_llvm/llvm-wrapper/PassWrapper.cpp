@@ -9,11 +9,11 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
-#include "llvm/InitializePasses.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -25,11 +25,6 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #endif
 #include "llvm/Support/Host.h"
-#if LLVM_VERSION_LT(14, 0)
-#include "llvm/Support/TargetRegistry.h"
-#else
-#include "llvm/MC/TargetRegistry.h"
-#endif
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
@@ -61,22 +56,6 @@ typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
-
-extern "C" void LLVMInitializePasses() {
-  PassRegistry &Registry = *PassRegistry::getPassRegistry();
-  initializeCore(Registry);
-  initializeCodeGen(Registry);
-  initializeScalarOpts(Registry);
-  initializeVectorization(Registry);
-  initializeIPO(Registry);
-  initializeAnalysis(Registry);
-  initializeTransformUtils(Registry);
-  initializeInstCombine(Registry);
-#if LLVM_VERSION_LT(16, 0)
-  initializeInstrumentation(Registry);
-#endif
-  initializeTarget(Registry);
-}
 
 extern "C" void LLVMTimeTraceProfilerInitialize() {
   timeTraceProfilerInitialize(
@@ -266,10 +245,6 @@ enum class LLVMRustPassBuilderOptLevel {
   Os,
   Oz,
 };
-
-#if LLVM_VERSION_LT(14,0)
-using OptimizationLevel = PassBuilder::OptimizationLevel;
-#endif
 
 static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
   switch (Level) {
@@ -602,6 +577,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeThread;
   bool SanitizeHWAddress;
   bool SanitizeHWAddressRecover;
+  bool SanitizeKernelAddress;
+  bool SanitizeKernelAddressRecover;
 };
 
 extern "C" LLVMRustResult
@@ -747,27 +724,18 @@ LLVMRustOptimize(
 
   if (SanitizerOptions) {
     if (SanitizerOptions->SanitizeMemory) {
-#if LLVM_VERSION_GE(14, 0)
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
           SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false,
           /*EagerChecks=*/true);
-#else
-      MemorySanitizerOptions Options(
-          SanitizerOptions->SanitizeMemoryTrackOrigins,
-          SanitizerOptions->SanitizeMemoryRecover,
-          /*CompileKernel=*/false);
-#endif
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0) && LLVM_VERSION_LT(16, 0)
+#if LLVM_VERSION_LT(16, 0)
           MPM.addPass(ModuleMemorySanitizerPass(Options));
+          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
 #else
           MPM.addPass(MemorySanitizerPass(Options));
-#endif
-#if LLVM_VERSION_LT(16, 0)
-          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
 #endif
         }
       );
@@ -776,26 +744,23 @@ LLVMRustOptimize(
     if (SanitizerOptions->SanitizeThread) {
       OptimizerLastEPCallbacks.push_back(
         [](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0)
           MPM.addPass(ModuleThreadSanitizerPass());
-#else
-          MPM.addPass(ThreadSanitizerPass());
-#endif
           MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
         }
       );
     }
 
-    if (SanitizerOptions->SanitizeAddress) {
+    if (SanitizerOptions->SanitizeAddress || SanitizerOptions->SanitizeKernelAddress) {
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+          auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
 #if LLVM_VERSION_LT(15, 0)
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
 #endif
-#if LLVM_VERSION_GE(14, 0)
           AddressSanitizerOptions opts = AddressSanitizerOptions{
-            /*CompileKernel=*/false,
-            SanitizerOptions->SanitizeAddressRecover,
+            CompileKernel,
+            SanitizerOptions->SanitizeAddressRecover
+              || SanitizerOptions->SanitizeKernelAddressRecover,
             /*UseAfterScope=*/true,
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
@@ -804,28 +769,16 @@ LLVMRustOptimize(
 #else
           MPM.addPass(AddressSanitizerPass(opts));
 #endif
-#else
-          MPM.addPass(ModuleAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
-          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
-              /*UseAfterScope=*/true)));
-#endif
         }
       );
     }
     if (SanitizerOptions->SanitizeHWAddress) {
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0)
           HWAddressSanitizerOptions opts(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover,
               /*DisableOptimization=*/false);
           MPM.addPass(HWAddressSanitizerPass(opts));
-#else
-          MPM.addPass(HWAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
-#endif
         }
       );
     }
@@ -1034,23 +987,8 @@ LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
 }
 
 extern "C" void LLVMRustPrintPasses() {
-  LLVMInitializePasses();
-  struct MyListener : PassRegistrationListener {
-    void passEnumerate(const PassInfo *Info) {
-      StringRef PassArg = Info->getPassArgument();
-      StringRef PassName = Info->getPassName();
-      if (!PassArg.empty()) {
-        // These unsigned->signed casts could theoretically overflow, but
-        // realistically never will (and even if, the result is implementation
-        // defined rather plain UB).
-        printf("%15.*s - %.*s\n", (int)PassArg.size(), PassArg.data(),
-               (int)PassName.size(), PassName.data());
-      }
-    }
-  } Listener;
-
-  PassRegistry *PR = PassRegistry::getPassRegistry();
-  PR->enumerateWith(&Listener);
+  PassBuilder PB;
+  PB.printPassNames(outs());
 }
 
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
@@ -1328,11 +1266,7 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
-#if LLVM_VERSION_GE(14, 0)
   thinLTOFinalizeInModule(Mod, DefinedGlobals, /*PropagateAttrs=*/true);
-#else
-  thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
-#endif
   return true;
 }
 

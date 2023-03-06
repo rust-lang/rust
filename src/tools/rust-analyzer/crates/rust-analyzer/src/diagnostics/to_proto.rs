@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
+use ide_db::line_index::WideEncoding;
 use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
@@ -95,7 +96,8 @@ fn position(
         let mut char_offset = 0;
         let len_func = match position_encoding {
             PositionEncoding::Utf8 => char::len_utf8,
-            PositionEncoding::Utf16 => char::len_utf16,
+            PositionEncoding::Wide(WideEncoding::Utf16) => char::len_utf16,
+            PositionEncoding::Wide(WideEncoding::Utf32) => |_| 1,
         };
         for c in line.text.chars() {
             char_offset += 1;
@@ -534,7 +536,7 @@ mod tests {
         let (sender, _) = crossbeam_channel::unbounded();
         let state = GlobalState::new(
             sender,
-            Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
+            Config::new(workspace_root.to_path_buf(), ClientCapabilities::default(), Vec::new()),
         );
         let snap = state.snapshot();
         let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);

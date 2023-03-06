@@ -206,7 +206,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:41:20
    |
 LL |     fn ban(&self) -> usize { 42 }
-   |     ---------------------- associated function `ban` defined here
+   |     ---------------------- method `ban` defined here
 ...
 LL |     let _: usize = X::ban;
    |            -----   ^^^^^^ expected `usize`, found fn item
@@ -215,7 +215,7 @@ LL |     let _: usize = X::ban;
    |
    = note: expected type `usize`
            found fn item `for<'a> fn(&'a X) -> usize {<X as T>::ban}`
-help: use parentheses to call this associated function
+help: use parentheses to call this method
    |
 LL |     let _: usize = X::ban(/* &X */);
    |                          ++++++++++
@@ -224,7 +224,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:42:20
    |
 LL |     fn bal(&self) -> usize;
-   |     ----------------------- associated function `bal` defined here
+   |     ----------------------- method `bal` defined here
 ...
 LL |     let _: usize = X::bal;
    |            -----   ^^^^^^ expected `usize`, found fn item
@@ -233,7 +233,7 @@ LL |     let _: usize = X::bal;
    |
    = note: expected type `usize`
            found fn item `for<'a> fn(&'a X) -> usize {<X as T>::bal}`
-help: use parentheses to call this associated function
+help: use parentheses to call this method
    |
 LL |     let _: usize = X::bal(/* &X */);
    |                          ++++++++++

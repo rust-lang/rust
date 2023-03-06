@@ -9,14 +9,17 @@ LL | |             async_dummy();
 LL | |
 LL | |         }
 LL | |         false => async_dummy(),
-   | |                  ^^^^^^^^^^^^^ expected `()`, found opaque type
+   | |                  ^^^^^^^^^^^^^ expected `()`, found future
 ...  |
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected unit type `()`
-            found opaque type `impl Future<Output = ()>`
+note: calling an async function returns a future
+  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+   |
+LL |         false => async_dummy(),
+   |                  ^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy().await,
@@ -38,14 +41,17 @@ LL | |             async_dummy();
 LL | |
 LL | |         }
 LL | |         false => async_dummy2(),
-   | |                  ^^^^^^^^^^^^^^ expected `()`, found opaque type
+   | |                  ^^^^^^^^^^^^^^ expected `()`, found future
 ...  |
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected unit type `()`
-            found opaque type `impl Future<Output = ()>`
+note: calling an async function returns a future
+  --> $DIR/match-prev-arm-needing-semi.rs:39:18
+   |
+LL |         false => async_dummy2(),
+   |                  ^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy2().await,
@@ -67,14 +73,12 @@ LL | |         true => async_dummy(),
    | |                 ------------- this is found to be of type `impl Future<Output = ()>`
 LL | |
 LL | |         false => async_dummy2(),
-   | |                  ^^^^^^^^^^^^^^ expected opaque type, found a different opaque type
-...  |
+   | |                  ^^^^^^^^^^^^^^ expected future, found a different future
+LL | |
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected opaque type `impl Future<Output = ()>` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:16:24>)
-              found opaque type `impl Future<Output = ()>` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:18:25>)
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |

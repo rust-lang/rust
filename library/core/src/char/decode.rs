@@ -3,8 +3,6 @@
 use crate::error::Error;
 use crate::fmt;
 
-use super::from_u32_unchecked;
-
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
 ///
 /// This `struct` is created by the [`decode_utf16`] method on [`char`]. See its
@@ -49,7 +47,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
 
         if !u.is_utf16_surrogate() {
             // SAFETY: not a surrogate
-            Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
+            Some(Ok(unsafe { char::from_u32_unchecked(u as u32) }))
         } else if u >= 0xDC00 {
             // a trailing surrogate
             Some(Err(DecodeUtf16Error { code: u }))
@@ -69,7 +67,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             // all ok, so lets decode it.
             let c = (((u & 0x3ff) as u32) << 10 | (u2 & 0x3ff) as u32) + 0x1_0000;
             // SAFETY: we checked that it's a legal unicode value
-            Some(Ok(unsafe { from_u32_unchecked(c) }))
+            Some(Ok(unsafe { char::from_u32_unchecked(c) }))
         }
     }
 

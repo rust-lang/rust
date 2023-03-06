@@ -278,6 +278,7 @@
 //!
 //! ```
 //! # #![allow(unused_must_use)]
+//! # #![cfg_attr(not(bootstrap), allow(map_unit_fn))]
 //! let v = vec![1, 2, 3, 4, 5];
 //! v.iter().map(|x| println!("{x}"));
 //! ```
@@ -450,6 +451,7 @@ pub use self::adapters::{
 pub use self::adapters::{Intersperse, IntersperseWith};
 
 pub(crate) use self::adapters::try_process;
+pub(crate) use self::traits::UncheckedIterator;
 
 mod adapters;
 mod range;

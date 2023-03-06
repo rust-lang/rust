@@ -181,7 +181,7 @@ impl<N: Idx> LivenessValues<N> {
 /// Maps from `ty::PlaceholderRegion` values that are used in the rest of
 /// rustc to the internal `PlaceholderIndex` values that are used in
 /// NLL.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct PlaceholderIndices {
     indices: FxIndexSet<ty::PlaceholderRegion>,
 }
@@ -235,7 +235,7 @@ pub(crate) struct RegionValues<N: Idx> {
     free_regions: SparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
-    /// in for<'a> fn(&'a u32)`.
+    /// in `for<'a> fn(&'a u32)`.
     placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 

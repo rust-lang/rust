@@ -19,6 +19,8 @@ use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -28,11 +30,13 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;
-use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
+use parser::{make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
 
 mod errors;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
@@ -92,10 +96,7 @@ pub fn parse_stream_from_source_str(
     sess: &ParseSess,
     override_span: Option<Span>,
 ) -> TokenStream {
-    let (stream, mut errors) =
-        source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span);
-    emit_unclosed_delims(&mut errors, &sess);
-    stream
+    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
 /// Creates a new parser from a source string.
@@ -131,9 +132,8 @@ fn maybe_source_file_to_parser(
     source_file: Lrc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diagnostic>> {
     let end_pos = source_file.end_pos;
-    let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
+    let stream = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
-    parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
     }
@@ -178,7 +178,7 @@ pub fn source_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
+) -> TokenStream {
     panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
 }
 
@@ -188,7 +188,7 @@ pub fn maybe_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
+) -> Result<TokenStream, Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         sess.span_diagnostic.bug(&format!(
             "cannot lex `source_file` without source: {}",
@@ -196,23 +196,7 @@ pub fn maybe_file_to_stream(
         ));
     });
 
-    let (token_trees, unmatched_braces) =
-        lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span);
-
-    match token_trees {
-        Ok(stream) => Ok((stream, unmatched_braces)),
-        Err(err) => {
-            let mut buffer = Vec::with_capacity(1);
-            err.buffer(&mut buffer);
-            // Not using `emit_unclosed_delims` to use `db.buffer`
-            for unmatched in unmatched_braces {
-                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
-                    err.buffer(&mut buffer);
-                }
-            }
-            Err(buffer)
-        }
-    }
+    lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span)
 }
 
 /// Given a stream and the `ParseSess`, produces a parser.

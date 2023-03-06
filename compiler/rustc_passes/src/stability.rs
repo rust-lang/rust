@@ -265,6 +265,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 self.index.implications.insert(implied_by, feature);
             }
 
+            if let Some(ConstStability {
+                level: Unstable { implied_by: Some(implied_by), .. },
+                feature,
+                ..
+            }) = const_stab
+            {
+                self.index.implications.insert(implied_by, feature);
+            }
+
             self.index.stab_map.insert(def_id, stab);
             stab
         });
@@ -281,7 +290,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         self.recurse_with_stability_attrs(
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
             stab,
-            if inherit_const_stability.yes() { const_stab } else { None },
+            inherit_const_stability.yes().then_some(const_stab).flatten(),
             visit_children,
         );
     }
@@ -523,7 +532,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && stab.is_none()
             && self.effective_visibilities.is_reachable(def_id)
         {
-            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.sess.emit_err(errors::MissingStabilityAttr { span, descr });
         }
     }
@@ -537,7 +546,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         // then it would be "stable" at least for the impl.
         // We gate usages of it using `feature(const_trait_impl)` anyways
         // so there is no unstable leakage
-        if self.tcx.is_builtin_derive(def_id.to_def_id()) {
+        if self.tcx.is_automatically_derived(def_id.to_def_id()) {
             return;
         }
 
@@ -551,7 +560,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
         if is_const && is_stable && missing_const_stability_attribute && is_reachable {
-            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.sess.emit_err(errors::MissingConstStabAttr { span, descr });
         }
     }
@@ -748,7 +757,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
-                        if c.fully_stable {
+
+                        // do not lint when the trait isn't resolved, since resolution error should
+                        // be fixed first
+                        if t.path.res != Res::Err && c.fully_stable {
                             self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),

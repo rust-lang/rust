@@ -17,7 +17,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
-use rustc_middle::ty::{self, DefIdTree, InferConst};
+use rustc_middle::ty::{self, InferConst};
 use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -122,7 +122,7 @@ impl InferenceDiagnosticsParentData {
             tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
 
         Some(InferenceDiagnosticsParentData {
-            prefix: tcx.def_kind(parent_def_id).descr(parent_def_id),
+            prefix: tcx.def_descr(parent_def_id),
             name: parent_name,
         })
     }
@@ -1061,8 +1061,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 };
 
                 let parent_def_id = generics.parent.unwrap();
-                if tcx.def_kind(parent_def_id) == DefKind::Impl {
-                    let parent_ty = tcx.bound_type_of(parent_def_id).subst(tcx, substs);
+                if let DefKind::Impl { .. } = tcx.def_kind(parent_def_id) {
+                    let parent_ty = tcx.type_of(parent_def_id).subst(tcx, substs);
                     match (parent_ty.kind(), &ty.kind) {
                         (
                             ty::Adt(def, substs),

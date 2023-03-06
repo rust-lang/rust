@@ -4,8 +4,14 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{AssocItem, GenericParam, HasAttrs, HirDisplay, Semantics, Trait};
-use ide_db::{active_parameter::callable_for_node, base_db::FilePosition};
+use hir::{
+    AssocItem, GenericParam, HasAttrs, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
+};
+use ide_db::{
+    active_parameter::{callable_for_node, generic_def_for_node},
+    base_db::FilePosition,
+    FxIndexMap,
+};
 use stdx::format_to;
 use syntax::{
     algo,
@@ -37,14 +43,18 @@ impl SignatureHelp {
     }
 
     fn push_call_param(&mut self, param: &str) {
-        self.push_param('(', param);
+        self.push_param("(", param);
     }
 
     fn push_generic_param(&mut self, param: &str) {
-        self.push_param('<', param);
+        self.push_param("<", param);
     }
 
-    fn push_param(&mut self, opening_delim: char, param: &str) {
+    fn push_record_field(&mut self, param: &str) {
+        self.push_param("{ ", param);
+    }
+
+    fn push_param(&mut self, opening_delim: &str, param: &str) {
         if !self.signature.ends_with(opening_delim) {
             self.signature.push_str(", ");
         }
@@ -85,6 +95,13 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                     }
                     return signature_help_for_generics(&sema, garg_list, token);
                 },
+                ast::RecordExpr(record) => {
+                    let cursor_outside = record.record_expr_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_record_lit(&sema, record, token);
+                },
                 _ => (),
             }
         }
@@ -92,8 +109,10 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
         if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if expr.syntax().text().contains_char('\n') {
-                return None;
+            if !matches!(expr, ast::Expr::RecordExpr(..))
+                && expr.syntax().text().contains_char('\n')
+            {
+                break;
             }
         }
     }
@@ -107,18 +126,16 @@ fn signature_help_for_call(
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     // Find the calling expression and its NameRef
-    let mut node = arg_list.syntax().parent()?;
+    let mut nodes = arg_list.syntax().ancestors().skip(1);
     let calling_node = loop {
-        if let Some(callable) = ast::CallableExpr::cast(node.clone()) {
-            if callable
+        if let Some(callable) = ast::CallableExpr::cast(nodes.next()?) {
+            let inside_callable = callable
                 .arg_list()
-                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
-            {
+                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()));
+            if inside_callable {
                 break callable;
             }
         }
-
-        node = node.parent()?;
     };
 
     let (callable, active_parameter) = callable_for_node(sema, &calling_node, &token)?;
@@ -201,59 +218,11 @@ fn signature_help_for_call(
 
 fn signature_help_for_generics(
     sema: &Semantics<'_, RootDatabase>,
-    garg_list: ast::GenericArgList,
+    arg_list: ast::GenericArgList,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let arg_list = garg_list
-        .syntax()
-        .ancestors()
-        .filter_map(ast::GenericArgList::cast)
-        .find(|list| list.syntax().text_range().contains(token.text_range().start()))?;
-
-    let mut active_parameter = arg_list
-        .generic_args()
-        .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
-        .count();
-
-    let first_arg_is_non_lifetime = arg_list
-        .generic_args()
-        .next()
-        .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
-
-    let mut generics_def = if let Some(path) =
-        arg_list.syntax().ancestors().find_map(ast::Path::cast)
-    {
-        let res = sema.resolve_path(&path)?;
-        let generic_def: hir::GenericDef = match res {
-            hir::PathResolution::Def(hir::ModuleDef::Adt(it)) => it.into(),
-            hir::PathResolution::Def(hir::ModuleDef::Function(it)) => it.into(),
-            hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
-            hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
-            hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => it.into(),
-            hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))
-            | hir::PathResolution::Def(hir::ModuleDef::Const(_))
-            | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
-            | hir::PathResolution::Def(hir::ModuleDef::Module(_))
-            | hir::PathResolution::Def(hir::ModuleDef::Static(_)) => return None,
-            hir::PathResolution::BuiltinAttr(_)
-            | hir::PathResolution::ToolModule(_)
-            | hir::PathResolution::Local(_)
-            | hir::PathResolution::TypeParam(_)
-            | hir::PathResolution::ConstParam(_)
-            | hir::PathResolution::SelfType(_)
-            | hir::PathResolution::DeriveHelper(_) => return None,
-        };
-
-        generic_def
-    } else if let Some(method_call) = arg_list.syntax().parent().and_then(ast::MethodCallExpr::cast)
-    {
-        // recv.method::<$0>()
-        let method = sema.resolve_method_call(&method_call)?;
-        method.into()
-    } else {
-        return None;
-    };
-
+    let (mut generics_def, mut active_parameter, first_arg_is_non_lifetime) =
+        generic_def_for_node(sema, &arg_list, &token)?;
     let mut res = SignatureHelp {
         doc: None,
         signature: String::new(),
@@ -292,9 +261,9 @@ fn signature_help_for_generics(
             // eg. `None::<u8>`
             // We'll use the signature of the enum, but include the docs of the variant.
             res.doc = it.docs(db).map(|it| it.into());
-            let it = it.parent_enum(db);
-            format_to!(res.signature, "enum {}", it.name(db));
-            generics_def = it.into();
+            let enum_ = it.parent_enum(db);
+            format_to!(res.signature, "enum {}", enum_.name(db));
+            generics_def = enum_.into();
         }
         // These don't have generic args that can be specified
         hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
@@ -366,6 +335,83 @@ fn add_assoc_type_bindings(
             }
         }
     }
+}
+
+fn signature_help_for_record_lit(
+    sema: &Semantics<'_, RootDatabase>,
+    record: ast::RecordExpr,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let active_parameter = record
+        .record_expr_field_list()?
+        .syntax()
+        .children_with_tokens()
+        .filter_map(syntax::NodeOrToken::into_token)
+        .filter(|t| t.kind() == syntax::T![,])
+        .take_while(|t| t.text_range().start() <= token.text_range().start())
+        .count();
+
+    let mut res = SignatureHelp {
+        doc: None,
+        signature: String::new(),
+        parameters: vec![],
+        active_parameter: Some(active_parameter),
+    };
+
+    let fields;
+
+    let db = sema.db;
+    let path_res = sema.resolve_path(&record.path()?)?;
+    if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+        fields = variant.fields(db);
+        let en = variant.parent_enum(db);
+
+        res.doc = en.docs(db).map(|it| it.into());
+        format_to!(res.signature, "enum {}::{} {{ ", en.name(db), variant.name(db));
+    } else {
+        let adt = match path_res {
+            PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
+            PathResolution::Def(ModuleDef::Adt(adt)) => adt,
+            _ => return None,
+        };
+
+        match adt {
+            hir::Adt::Struct(it) => {
+                fields = it.fields(db);
+                res.doc = it.docs(db).map(|it| it.into());
+                format_to!(res.signature, "struct {} {{ ", it.name(db));
+            }
+            hir::Adt::Union(it) => {
+                fields = it.fields(db);
+                res.doc = it.docs(db).map(|it| it.into());
+                format_to!(res.signature, "union {} {{ ", it.name(db));
+            }
+            _ => return None,
+        }
+    }
+
+    let mut fields =
+        fields.into_iter().map(|field| (field.name(db), Some(field))).collect::<FxIndexMap<_, _>>();
+    let mut buf = String::new();
+    for field in record.record_expr_field_list()?.fields() {
+        let Some((field, _, ty)) = sema.resolve_record_field(&field) else { continue };
+        let name = field.name(db);
+        format_to!(buf, "{name}: {}", ty.display_truncated(db, Some(20)));
+        res.push_record_field(&buf);
+        buf.clear();
+
+        if let Some(field) = fields.get_mut(&name) {
+            *field = None;
+        }
+    }
+    for (name, field) in fields {
+        let Some(field) = field else { continue };
+        format_to!(buf, "{name}: {}", field.ty(db).display_truncated(db, Some(20)));
+        res.push_record_field(&buf);
+        buf.clear();
+    }
+    res.signature.push_str(" }");
+    Some(res)
 }
 
 #[cfg(test)]
@@ -1402,6 +1448,123 @@ fn take<C, Error>(
 "#,
             expect![[r#"
                 () -> i32
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal() {
+        check(
+            r#"
+struct Strukt<T, U = ()> {
+    t: T,
+    u: U,
+    unit: (),
+}
+fn f() {
+    Strukt {
+        u: 0,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { u: i32, t: T, unit: () }
+                                ------  ^^^^  --------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal_nonexistent_field() {
+        check(
+            r#"
+struct Strukt {
+    a: u8,
+}
+fn f() {
+    Strukt {
+        b: 8,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { a: u8 }
+                                -----
+            "#]],
+        );
+    }
+
+    #[test]
+    fn tuple_variant_record_literal() {
+        check(
+            r#"
+enum Opt {
+    Some(u8),
+}
+fn f() {
+    Opt::Some {$0}
+}
+"#,
+            expect![[r#"
+                enum Opt::Some { 0: u8 }
+                                 ^^^^^
+            "#]],
+        );
+        check(
+            r#"
+enum Opt {
+    Some(u8),
+}
+fn f() {
+    Opt::Some {0:0,$0}
+}
+"#,
+            expect![[r#"
+                enum Opt::Some { 0: u8 }
+                                 -----
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal_self() {
+        check(
+            r#"
+struct S { t: u8 }
+impl S {
+    fn new() -> Self {
+        Self { $0 }
+    }
+}
+        "#,
+            expect![[r#"
+                struct S { t: u8 }
+                           ^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_in_nested_method_in_lambda() {
+        check(
+            r#"
+enum A {
+    A,
+    B
+}
+
+fn bar(_: A) { }
+
+fn main() {
+    let foo = Foo;
+    std::thread::spawn(move || { bar(A:$0) } );
+}
+"#,
+            expect![[r#"
+                fn bar(_: A)
+                       ^^^^
             "#]],
         );
     }

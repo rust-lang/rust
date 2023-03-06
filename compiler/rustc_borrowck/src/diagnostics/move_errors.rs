@@ -467,7 +467,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
                     "consider borrowing here",
-                    "&".to_string(),
+                    '&',
                     Applicability::MaybeIncorrect,
                 );
             }

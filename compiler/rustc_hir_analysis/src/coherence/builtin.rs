@@ -11,7 +11,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,
@@ -50,7 +50,7 @@ impl<'tcx> Checker<'tcx> {
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     // Destructors only work on local ADT types.
-    match tcx.type_of(impl_did).kind() {
+    match tcx.type_of(impl_did).subst_identity().kind() {
         ty::Adt(def, _) if def.did().is_local() => return,
         ty::Error(_) => return,
         _ => {}
@@ -64,7 +64,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = tcx.type_of(impl_did);
+    let self_type = tcx.type_of(impl_did).subst_identity();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -202,12 +202,11 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId)
 fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-    let span = tcx.hir().span(impl_hir_id);
+    let span = tcx.def_span(impl_did);
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
-    let source = tcx.type_of(impl_did);
+    let source = tcx.type_of(impl_did).subst_identity();
     assert!(!source.has_escaping_bound_vars());
     let target = {
         let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
@@ -371,7 +370,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err.to_string()));
     });
 
-    let source = tcx.type_of(impl_did);
+    let source = tcx.type_of(impl_did).subst_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
@@ -438,7 +437,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
 
             // Here we are considering a case of converting
-            // `S<P0...Pn>` to S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+            // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
             // which acts like a pointer to `U`, but carries along some extra data of type `T`:
             //
             //     struct Foo<T, U> {
@@ -483,7 +482,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                    if tcx.type_of(f.did).is_phantom_data() {
+                    if tcx.type_of(f.did).subst_identity().is_phantom_data() {
                         // Ignore PhantomData fields
                         return None;
                     }

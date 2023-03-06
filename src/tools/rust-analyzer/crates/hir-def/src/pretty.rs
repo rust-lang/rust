@@ -3,10 +3,10 @@
 use std::fmt::{self, Write};
 
 use hir_expand::mod_path::PathKind;
+use intern::Interned;
 use itertools::Itertools;
 
 use crate::{
-    intern::Interned,
     path::{GenericArg, GenericArgs, Path},
     type_ref::{Mutability, TraitBoundModifier, TypeBound, TypeRef},
 };
@@ -71,7 +71,7 @@ pub(crate) fn print_generic_args(generics: &GenericArgs, buf: &mut dyn Write) ->
         first = false;
         print_generic_arg(arg, buf)?;
     }
-    for binding in &generics.bindings {
+    for binding in generics.bindings.iter() {
         if !first {
             write!(buf, ", ")?;
         }

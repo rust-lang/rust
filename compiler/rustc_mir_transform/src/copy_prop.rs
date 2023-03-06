@@ -22,7 +22,7 @@ pub struct CopyProp;
 
 impl<'tcx> MirPass<'tcx> for CopyProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 1
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -96,7 +96,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     fully_moved
 }
 
-/// Utility to help performing subtitution of `*pattern` by `target`.
+/// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     fully_moved: BitSet<Local>,
@@ -124,7 +124,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
         if let Some(new_projection) = self.process_projection(&place.projection, loc) {
-            place.projection = self.tcx().intern_place_elems(&new_projection);
+            place.projection = self.tcx().mk_place_elems(&new_projection);
         }
 
         let observes_address = match ctxt {

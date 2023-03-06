@@ -103,7 +103,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 self.enforce_const_invariance(generics, variances);
 
                 // Functions are permitted to have unused generic parameters: make those invariant.
-                if let ty::FnDef(..) = tcx.type_of(def_id).kind() {
+                if let ty::FnDef(..) = tcx.type_of(def_id).subst_identity().kind() {
                     for variance in variances.iter_mut() {
                         if *variance == ty::Bivariant {
                             *variance = ty::Invariant;

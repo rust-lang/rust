@@ -78,7 +78,7 @@ impl<'tcx> Search<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
     type BreakTy = Ty<'tcx>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -110,7 +110,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 return ControlFlow::Continue(());
             }
             ty::Array(_, n)
-                if { n.try_eval_usize(self.tcx, ty::ParamEnv::reveal_all()) == Some(0) } =>
+                if { n.try_eval_target_usize(self.tcx, ty::ParamEnv::reveal_all()) == Some(0) } =>
             {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.

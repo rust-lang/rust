@@ -7,9 +7,11 @@ use chalk_recursive::Cache;
 use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 
 use base_db::CrateId;
-use hir_def::{lang_item::LangItemTarget, TraitId};
+use hir_def::{
+    lang_item::{LangItem, LangItemTarget},
+    TraitId,
+};
 use stdx::panic_context;
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, AliasEq, AliasTy, Canonical, DomainGoal, Goal,
@@ -177,18 +179,18 @@ pub enum FnTrait {
 }
 
 impl FnTrait {
-    const fn lang_item_name(self) -> &'static str {
+    const fn lang_item(self) -> LangItem {
         match self {
-            FnTrait::FnOnce => "fn_once",
-            FnTrait::FnMut => "fn_mut",
-            FnTrait::Fn => "fn",
+            FnTrait::FnOnce => LangItem::FnOnce,
+            FnTrait::FnMut => LangItem::FnMut,
+            FnTrait::Fn => LangItem::Fn,
         }
     }
 
     pub fn get_id(&self, db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
-        let target = db.lang_item(krate, SmolStr::new_inline(self.lang_item_name()))?;
+        let target = db.lang_item(krate, self.lang_item())?;
         match target {
-            LangItemTarget::TraitId(t) => Some(t),
+            LangItemTarget::Trait(t) => Some(t),
             _ => None,
         }
     }
