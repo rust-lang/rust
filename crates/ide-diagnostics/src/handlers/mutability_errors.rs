@@ -70,6 +70,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
         ctx.sema.diagnostics_display_range(ast).range,
     )
     .severity(Severity::WeakWarning)
+    .experimental() // Not supporting `#[allow(unused_mut)]` leads to false positive.
     .with_fixes(fixes)
 }
 
