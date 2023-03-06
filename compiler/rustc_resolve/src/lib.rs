@@ -966,7 +966,7 @@ pub struct Resolver<'a, 'tcx> {
     /// A small map keeping true kinds of built-in macros that appear to be fn-like on
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
-    registered_tools: RegisteredTools,
+    registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let registered_tools = macros::registered_tools(tcx.sess, &krate.attrs);
+        let registered_tools = tcx.registered_tools(());
 
         let features = tcx.sess.features_untracked();
 
@@ -1424,7 +1424,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_impls: self.trait_impls,
             proc_macros,
             confused_type_with_std_module,
-            registered_tools: self.registered_tools,
             doc_link_resolutions: self.doc_link_resolutions,
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
@@ -2055,4 +2054,8 @@ impl Finalize {
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
         Finalize { node_id, path_span, root_span, report_private: true }
     }
+}
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    providers.registered_tools = macros::registered_tools;
 }

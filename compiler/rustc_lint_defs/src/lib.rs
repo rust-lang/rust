@@ -8,7 +8,7 @@ extern crate rustc_macros;
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
@@ -593,6 +593,8 @@ impl LintBuffer {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)
     }
 }
+
+pub type RegisteredTools = FxIndexSet<Ident>;
 
 /// Declares a static item of type `&'static Lint`.
 ///

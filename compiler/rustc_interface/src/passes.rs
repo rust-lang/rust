@@ -178,7 +178,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
+    pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -557,6 +557,7 @@ fn resolver_for_lowering<'tcx>(
     (): (),
 ) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
     let arenas = Resolver::arenas();
+    let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let krate = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(tcx, &krate, &arenas);
     let krate = configure_and_expand(krate, &mut resolver);
@@ -637,6 +638,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
+    rustc_resolve::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);

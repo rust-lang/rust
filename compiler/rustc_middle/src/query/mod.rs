@@ -26,6 +26,11 @@ rustc_queries! {
         desc { "triggering a delay span bug" }
     }
 
+    query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
+        arena_cache
+        desc { "compute registered tools for crate" }
+    }
+
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         feedable
         no_hash
