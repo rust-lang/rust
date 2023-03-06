@@ -119,18 +119,28 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
+            // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
+            (
+                ty::Alias(AliasKind::Projection, _),
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+            )
+            | (
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+                ty::Alias(AliasKind::Projection, _),
+            ) if self.tcx.trait_solver_next() => {
+                bug!()
+            }
+
+            (_, ty::Alias(AliasKind::Projection, _)) | (ty::Alias(AliasKind::Projection, _), _)
+                if self.tcx.trait_solver_next() =>
+            {
+                relation.register_type_equate_obligation(a, b);
+                Ok(a)
+            }
+
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
-            }
-
-            (ty::Alias(AliasKind::Projection, _), _) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(a, b);
-                Ok(b)
-            }
-            (_, ty::Alias(AliasKind::Projection, _)) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(b, a);
-                Ok(a)
             }
 
             _ => ty::relate::super_relate_tys(relation, a, b),
