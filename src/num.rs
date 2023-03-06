@@ -40,6 +40,22 @@ pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
     })
 }
 
+fn codegen_three_way_compare<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    signed: bool,
+    lhs: Value,
+    rhs: Value,
+) -> CValue<'tcx> {
+    // This emits `(lhs > rhs) - (lhs < rhs)`, which is cranelift's preferred form per
+    // <https://github.com/bytecodealliance/wasmtime/blob/8052bb9e3b792503b225f2a5b2ba3bc023bff462/cranelift/codegen/src/prelude_opt.isle#L41-L47>
+    let gt_cc = crate::num::bin_op_to_intcc(BinOp::Gt, signed).unwrap();
+    let lt_cc = crate::num::bin_op_to_intcc(BinOp::Lt, signed).unwrap();
+    let gt = fx.bcx.ins().icmp(gt_cc, lhs, rhs);
+    let lt = fx.bcx.ins().icmp(lt_cc, lhs, rhs);
+    let val = fx.bcx.ins().isub(gt, lt);
+    CValue::by_val(val, fx.layout_of(fx.tcx.ty_ordering_enum(Some(fx.mir.span))))
+}
+
 fn codegen_compare_bin_op<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
@@ -47,6 +63,10 @@ fn codegen_compare_bin_op<'tcx>(
     lhs: Value,
     rhs: Value,
 ) -> CValue<'tcx> {
+    if bin_op == BinOp::Cmp {
+        return codegen_three_way_compare(fx, signed, lhs, rhs);
+    }
+
     let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
     let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
@@ -59,7 +79,7 @@ pub(crate) fn codegen_binop<'tcx>(
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
     match bin_op {
-        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
+        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Cmp => {
             match in_lhs.layout().ty.kind() {
                 ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
                     let signed = type_sign(in_lhs.layout().ty);
@@ -160,7 +180,7 @@ pub(crate) fn codegen_int_binop<'tcx>(
         }
         BinOp::Offset => unreachable!("Offset is not an integer operation"),
         // Compare binops handles by `codegen_binop`.
-        BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => {
+        BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge | BinOp::Cmp => {
             unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty);
         }
     };

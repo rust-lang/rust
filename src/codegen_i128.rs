@@ -68,7 +68,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 Some(CValue::by_val(ret_val, lhs.layout()))
             }
         }
-        BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => None,
+        BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne | BinOp::Cmp => None,
         BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => None,
     }
 }
@@ -134,6 +134,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
         BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Div | BinOp::Rem => unreachable!(),
+        BinOp::Cmp => unreachable!(),
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => unreachable!(),
         BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => unreachable!(),
     }
