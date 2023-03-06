@@ -78,8 +78,7 @@ pub(crate) fn emit_unescape_error(
                 }
             };
             let sugg = sugg.unwrap_or_else(|| {
-                let is_byte = mode.is_byte();
-                let prefix = if is_byte { "b" } else { "" };
+                let prefix = mode.prefix_noraw();
                 let mut escaped = String::with_capacity(lit.len());
                 let mut chrs = lit.chars().peekable();
                 while let Some(first) = chrs.next() {
@@ -97,7 +96,11 @@ pub(crate) fn emit_unescape_error(
                     };
                 }
                 let sugg = format!("{prefix}\"{escaped}\"");
-                MoreThanOneCharSugg::Quotes { span: span_with_quotes, is_byte, sugg }
+                MoreThanOneCharSugg::Quotes {
+                    span: span_with_quotes,
+                    is_byte: mode == Mode::Byte,
+                    sugg,
+                }
             });
             handler.emit_err(UnescapeError::MoreThanOneChar {
                 span: span_with_quotes,
@@ -112,7 +115,7 @@ pub(crate) fn emit_unescape_error(
                 char_span,
                 escaped_sugg: c.escape_default().to_string(),
                 escaped_msg: escaped_char(c),
-                byte: mode.is_byte(),
+                byte: mode == Mode::Byte,
             });
         }
         EscapeError::BareCarriageReturn => {
@@ -126,12 +129,15 @@ pub(crate) fn emit_unescape_error(
         EscapeError::InvalidEscape => {
             let (c, span) = last_char();
 
-            let label =
-                if mode.is_byte() { "unknown byte escape" } else { "unknown character escape" };
+            let label = if mode == Mode::Byte || mode == Mode::ByteStr {
+                "unknown byte escape"
+            } else {
+                "unknown character escape"
+            };
             let ec = escaped_char(c);
             let mut diag = handler.struct_span_err(span, &format!("{}: `{}`", label, ec));
             diag.span_label(span, label);
-            if c == '{' || c == '}' && !mode.is_byte() {
+            if c == '{' || c == '}' && matches!(mode, Mode::Str | Mode::RawStr) {
                 diag.help(
                     "if used in a formatting string, curly braces are escaped with `{{` and `}}`",
                 );
@@ -141,7 +147,7 @@ pub(crate) fn emit_unescape_error(
                      version control settings",
                 );
             } else {
-                if !mode.is_byte() {
+                if mode == Mode::Str || mode == Mode::Char {
                     diag.span_suggestion(
                         span_with_quotes,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
