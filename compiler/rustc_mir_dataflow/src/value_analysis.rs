@@ -690,7 +690,7 @@ impl Map {
         }
 
         // Recurse with all fields of this place.
-        iter_fields(ty, tcx, |variant, field, ty| {
+        iter_fields(ty, tcx, ty::ParamEnv::reveal_all(), |variant, field, ty| {
             if let Some(variant) = variant {
                 projection.push(PlaceElem::Downcast(None, variant));
                 let _ = self.make_place(local, projection);
@@ -939,6 +939,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 pub fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     mut f: impl FnMut(Option<VariantIdx>, Field, Ty<'tcx>),
 ) {
     match ty.kind() {
@@ -956,14 +957,14 @@ pub fn iter_fields<'tcx>(
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
                     let field_ty = f_def.ty(tcx, substs);
                     let field_ty = tcx
-                        .try_normalize_erasing_regions(ty::ParamEnv::reveal_all(), field_ty)
-                        .unwrap_or(field_ty);
+                        .try_normalize_erasing_regions(param_env, field_ty)
+                        .unwrap_or_else(|_| tcx.erase_regions(field_ty));
                     f(variant, f_index.into(), field_ty);
                 }
             }
         }
         ty::Closure(_, substs) => {
-            iter_fields(substs.as_closure().tupled_upvars_ty(), tcx, f);
+            iter_fields(substs.as_closure().tupled_upvars_ty(), tcx, param_env, f);
         }
         _ => (),
     }

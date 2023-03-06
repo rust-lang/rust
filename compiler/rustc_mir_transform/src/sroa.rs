@@ -4,7 +4,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 
 pub struct ScalarReplacementOfAggregates;
@@ -18,11 +18,12 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
         let mut excluded = excluded_locals(body);
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         loop {
             debug!(?excluded);
             let escaping = escaping_locals(&excluded, body);
             debug!(?escaping);
-            let replacements = compute_flattening(tcx, body, escaping);
+            let replacements = compute_flattening(tcx, param_env, body, escaping);
             debug!(?replacements);
             let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
             if !all_dead_locals.is_empty() {
@@ -144,6 +145,7 @@ impl<'tcx> ReplacementMap<'tcx> {
 /// The replacement will be done later in `ReplacementVisitor`.
 fn compute_flattening<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     escaping: BitSet<Local>,
 ) -> ReplacementMap<'tcx> {
@@ -155,7 +157,7 @@ fn compute_flattening<'tcx>(
         }
         let decl = body.local_decls[local].clone();
         let ty = decl.ty;
-        iter_fields(ty, tcx, |variant, field, field_ty| {
+        iter_fields(ty, tcx, param_env, |variant, field, field_ty| {
             if variant.is_some() {
                 // Downcasts are currently not supported.
                 return;
