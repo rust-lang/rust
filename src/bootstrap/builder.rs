@@ -1888,6 +1888,9 @@ impl<'a> Builder<'a> {
         // Try to use a sysroot-relative bindir, in case it was configured absolutely.
         cargo.env("RUSTC_INSTALL_BINDIR", self.config.bindir_relative());
 
+        // Enable sparse protocol while building locally to make compile times faster. 
+        cargo.env("CARGO_REGISTRIES_CRATES_IO_PROTOCOL", "sparse");
+
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
         // When we build Rust dylibs they're all intended for intermediate
