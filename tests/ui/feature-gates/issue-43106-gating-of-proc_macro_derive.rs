@@ -11,7 +11,7 @@
 //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 mod proc_macro_derive1 {
     mod inner { #![proc_macro_derive()] }
-    // (no error issued here if there was one on outer module)
+    //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 }
 
 mod proc_macro_derive2 {

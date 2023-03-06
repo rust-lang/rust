@@ -15,6 +15,7 @@ use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
+use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
@@ -45,6 +46,7 @@ enum DisallowTildeConstContext<'a> {
 
 struct AstValidator<'a> {
     session: &'a Session,
+    is_proc_macro_crate: bool,
 
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod: Option<&'a Item>,
@@ -53,8 +55,6 @@ struct AstValidator<'a> {
     in_trait_impl: bool,
 
     in_const_trait_impl: bool,
-
-    has_proc_macro_decls: bool,
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
@@ -633,6 +633,69 @@ impl<'a> AstValidator<'a> {
             )
         }
     }
+
+    fn check_proc_macro_attr(&mut self, item: &Item) {
+        let mut found_attr: Option<&Attribute> = None;
+        for attr in &item.attrs {
+            if self.session.is_proc_macro_attr(&attr) {
+                if let Some(prev_attr) = found_attr {
+                    let prev_item = prev_attr.get_normal_item();
+                    let item = attr.get_normal_item();
+                    let path_str = pprust::path_to_string(&item.path);
+                    let msg = if item.path.segments[0].ident.name
+                        == prev_item.path.segments[0].ident.name
+                    {
+                        format!(
+                            "only one `#[{}]` attribute is allowed on any given function",
+                            path_str,
+                        )
+                    } else {
+                        format!(
+                            "`#[{}]` and `#[{}]` attributes cannot both be applied
+                            to the same function",
+                            path_str,
+                            pprust::path_to_string(&prev_item.path),
+                        )
+                    };
+
+                    self.session
+                        .struct_span_err(attr.span, &msg)
+                        .span_label(prev_attr.span, "previous attribute here")
+                        .emit();
+
+                    return;
+                }
+
+                found_attr = Some(attr);
+            }
+        }
+
+        let Some(attr) = found_attr else { return };
+
+        if !matches!(item.kind, ast::ItemKind::Fn(..)) {
+            let msg = format!(
+                "the `#[{}]` attribute may only be used on bare functions",
+                pprust::path_to_string(&attr.get_normal_item().path),
+            );
+
+            self.session.span_err(attr.span, &msg);
+            return;
+        }
+
+        if self.session.opts.test {
+            return;
+        }
+
+        if !self.is_proc_macro_crate {
+            let msg = format!(
+                "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
+                pprust::path_to_string(&attr.get_normal_item().path),
+            );
+
+            self.session.span_err(attr.span, &msg);
+            return;
+        }
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -799,9 +862,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
-        if item.attrs.iter().any(|attr| self.session.is_proc_macro_attr(attr)) {
-            self.has_proc_macro_decls = true;
-        }
+        self.check_proc_macro_attr(item);
 
         if self.session.contains_name(&item.attrs, sym::no_mangle) {
             self.check_nomangle_item_asciionly(item.ident, item.span);
@@ -1463,13 +1524,14 @@ fn deny_equality_constraints(
     this.err_handler().emit_err(err);
 }
 
-pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
+pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) {
+    let is_proc_macro_crate = session.crate_types().contains(&CrateType::ProcMacro);
     let mut validator = AstValidator {
         session,
         extern_mod: None,
         in_trait_impl: false,
         in_const_trait_impl: false,
-        has_proc_macro_decls: false,
+        is_proc_macro_crate,
         outer_impl_trait: None,
         disallow_tilde_const: None,
         is_impl_trait_banned: false,
@@ -1477,8 +1539,6 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
-
-    validator.has_proc_macro_decls
 }
 
 /// Used to forbid `let` expressions in certain syntactic locations.

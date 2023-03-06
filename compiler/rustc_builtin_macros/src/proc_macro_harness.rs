@@ -1,7 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
-use rustc_ast_pretty::pprust;
 use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::Session;
@@ -39,18 +38,12 @@ struct CollectProcMacros<'a> {
     in_root: bool,
     handler: &'a rustc_errors::Handler,
     source_map: &'a SourceMap,
-    is_proc_macro_crate: bool,
-    is_test_crate: bool,
 }
 
 pub fn inject(
     sess: &Session,
     resolver: &mut dyn ResolverExpand,
     mut krate: ast::Crate,
-    is_proc_macro_crate: bool,
-    has_proc_macro_decls: bool,
-    is_test_crate: bool,
-    handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
@@ -59,22 +52,14 @@ pub fn inject(
         sess,
         macros: Vec::new(),
         in_root: true,
-        handler,
+        handler: sess.diagnostic(),
         source_map: sess.source_map(),
-        is_proc_macro_crate,
-        is_test_crate,
     };
 
-    if has_proc_macro_decls || is_proc_macro_crate {
-        visit::walk_crate(&mut collect, &krate);
-    }
+    visit::walk_crate(&mut collect, &krate);
     let macros = collect.macros;
 
-    if !is_proc_macro_crate {
-        return krate;
-    }
-
-    if is_test_crate {
+    if sess.opts.test {
         return krate;
     }
 
@@ -86,7 +71,7 @@ pub fn inject(
 
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
-        if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
+        if self.in_root && vis.kind.is_pub() {
             self.handler.span_err(
                 sp,
                 "`proc-macro` crate types currently cannot export any items other \
@@ -160,54 +145,14 @@ impl<'a> CollectProcMacros<'a> {
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.kind {
-            if self.is_proc_macro_crate && self.sess.contains_name(&item.attrs, sym::macro_export) {
+            if self.sess.contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
             }
         }
 
-        // First up, make sure we're checking a bare function. If we're not then
-        // we're just not interested in this item.
-        //
-        // If we find one, try to locate a `#[proc_macro_derive]` attribute on it.
-        let is_fn = matches!(item.kind, ast::ItemKind::Fn(..));
-
-        let mut found_attr: Option<&'a ast::Attribute> = None;
-
-        for attr in &item.attrs {
-            if self.sess.is_proc_macro_attr(&attr) {
-                if let Some(prev_attr) = found_attr {
-                    let prev_item = prev_attr.get_normal_item();
-                    let item = attr.get_normal_item();
-                    let path_str = pprust::path_to_string(&item.path);
-                    let msg = if item.path.segments[0].ident.name
-                        == prev_item.path.segments[0].ident.name
-                    {
-                        format!(
-                            "only one `#[{}]` attribute is allowed on any given function",
-                            path_str,
-                        )
-                    } else {
-                        format!(
-                            "`#[{}]` and `#[{}]` attributes cannot both be applied
-                            to the same function",
-                            path_str,
-                            pprust::path_to_string(&prev_item.path),
-                        )
-                    };
-
-                    self.handler
-                        .struct_span_err(attr.span, &msg)
-                        .span_label(prev_attr.span, "previous attribute here")
-                        .emit();
-
-                    return;
-                }
-
-                found_attr = Some(attr);
-            }
-        }
+        let found_attr = item.attrs.iter().find(|attr| self.sess.is_proc_macro_attr(&attr));
 
         let Some(attr) = found_attr else {
             self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
@@ -217,27 +162,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         };
 
-        if !is_fn {
-            let msg = format!(
-                "the `#[{}]` attribute may only be used on bare functions",
-                pprust::path_to_string(&attr.get_normal_item().path),
-            );
-
-            self.handler.span_err(attr.span, &msg);
-            return;
-        }
-
-        if self.is_test_crate {
-            return;
-        }
-
-        if !self.is_proc_macro_crate {
-            let msg = format!(
-                "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
-                pprust::path_to_string(&attr.get_normal_item().path),
-            );
-
-            self.handler.span_err(attr.span, &msg);
+        if self.sess.opts.test {
             return;
         }
 

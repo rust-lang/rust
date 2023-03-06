@@ -5,6 +5,12 @@ LL | #[proc_macro_derive()]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `#[proc_macro_derive]` attribute may only be used on bare functions
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:13:17
+   |
+LL |     mod inner { #![proc_macro_derive()] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_derive]` attribute may only be used on bare functions
   --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:18:17
    |
 LL |     mod inner { #![proc_macro_derive()] }
@@ -34,5 +40,5 @@ error: the `#[proc_macro_derive]` attribute may only be used on bare functions
 LL |     #[proc_macro_derive()] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

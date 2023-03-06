@@ -280,24 +280,17 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
     });
 
-    let has_proc_macro_decls = sess.time("AST_validation", || {
+    sess.time("AST_validation", || {
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, resolver.lint_buffer())
     });
 
     let is_proc_macro_crate = sess.crate_types().contains(&CrateType::ProcMacro);
 
-    krate = sess.time("maybe_create_a_macro_crate", || {
-        let is_test_crate = sess.opts.test;
-        rustc_builtin_macros::proc_macro_harness::inject(
-            sess,
-            resolver,
-            krate,
-            is_proc_macro_crate,
-            has_proc_macro_decls,
-            is_test_crate,
-            sess.diagnostic(),
-        )
-    });
+    if is_proc_macro_crate {
+        krate = sess.time("maybe_create_a_macro_crate", || {
+            rustc_builtin_macros::proc_macro_harness::inject(sess, resolver, krate)
+        });
+    }
 
     // Done with macro expansion!
 

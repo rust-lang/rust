@@ -10,8 +10,6 @@
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_macros::fluent_messages;
