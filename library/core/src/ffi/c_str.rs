@@ -79,7 +79,6 @@ use crate::str;
 ///
 /// [str]: prim@str "str"
 #[derive(Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
 #[cfg_attr(not(bootstrap), lang = "CStr")]
