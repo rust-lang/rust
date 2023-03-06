@@ -194,7 +194,7 @@ pub enum LiteralKind {
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
-    /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` is invalid.
+    /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
     RawCStr { n_hashes: Option<u8> },
 }
 
