@@ -16,8 +16,20 @@ use crate::{extract_cdb_version, extract_gdb_version};
 mod tests;
 
 /// The result of parse_cfg_name_directive.
+#[derive(Clone, PartialEq, Debug)]
+struct ParsedNameDirective {
+    comment: Option<String>,
+    outcome: MatchOutcome,
+}
+
+impl ParsedNameDirective {
+    fn invalid() -> Self {
+        Self { comment: None, outcome: MatchOutcome::NoMatch }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum ParsedNameDirective {
+enum MatchOutcome {
     /// No match.
     NoMatch,
     /// Match.
@@ -647,7 +659,7 @@ impl Config {
     }
 
     fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
-        if self.parse_cfg_name_directive(line, prefix) == ParsedNameDirective::Match {
+        if self.parse_cfg_name_directive(line, prefix).outcome == MatchOutcome::Match {
             let from = parse_normalization_string(&mut line)?;
             let to = parse_normalization_string(&mut line)?;
             Some((from, to))
@@ -668,13 +680,15 @@ impl Config {
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
         if !line.as_bytes().starts_with(prefix.as_bytes()) {
-            return ParsedNameDirective::NoMatch;
+            return ParsedNameDirective::invalid();
         }
         if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-            return ParsedNameDirective::NoMatch;
+            return ParsedNameDirective::invalid();
         }
+        let line = &line[prefix.len() + 1..];
 
-        let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
+        let (name, comment) =
+            line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
 
         let matches_pointer_width = || {
             name.strip_suffix("bit")
@@ -723,7 +737,10 @@ impl Config {
                 None => false,
             };
 
-        if is_match { ParsedNameDirective::Match } else { ParsedNameDirective::NoMatch }
+        ParsedNameDirective {
+            comment: comment.map(|c| c.trim().trim_start_matches('-').trim().to_string()),
+            outcome: if is_match { MatchOutcome::Match } else { MatchOutcome::NoMatch },
+        }
     }
 
     fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
@@ -992,19 +1009,40 @@ pub fn make_test_description<R: Read>(
                 }
             };
         }
-        ignore = match config.parse_cfg_name_directive(ln, "ignore") {
-            ParsedNameDirective::Match => {
-                ignore_message = Some("cfg -> ignore => Match");
-                true
-            }
-            ParsedNameDirective::NoMatch => ignore,
-        };
+
+        {
+            let parsed = config.parse_cfg_name_directive(ln, "ignore");
+            ignore = match parsed.outcome {
+                MatchOutcome::Match => {
+                    ignore_message = Some(match parsed.comment {
+                        // The ignore reason must be a &'static str, so we have to leak memory to
+                        // create it. This is fine, as the header is parsed only at the start of
+                        // compiletest so it won't grow indefinitely.
+                        Some(comment) => Box::leak(Box::<str>::from(format!(
+                            "cfg -> ignore => Match ({comment})"
+                        ))),
+                        None => "cfg -> ignore => Match",
+                    });
+                    true
+                }
+                MatchOutcome::NoMatch => ignore,
+            };
+        }
 
         if config.has_cfg_prefix(ln, "only") {
-            ignore = match config.parse_cfg_name_directive(ln, "only") {
-                ParsedNameDirective::Match => ignore,
-                ParsedNameDirective::NoMatch => {
-                    ignore_message = Some("cfg -> only => NoMatch");
+            let parsed = config.parse_cfg_name_directive(ln, "only");
+            ignore = match parsed.outcome {
+                MatchOutcome::Match => ignore,
+                MatchOutcome::NoMatch => {
+                    ignore_message = Some(match parsed.comment {
+                        // The ignore reason must be a &'static str, so we have to leak memory to
+                        // create it. This is fine, as the header is parsed only at the start of
+                        // compiletest so it won't grow indefinitely.
+                        Some(comment) => Box::leak(Box::<str>::from(format!(
+                            "cfg -> only => NoMatch ({comment})"
+                        ))),
+                        None => "cfg -> only => NoMatch",
+                    });
                     true
                 }
             };
