@@ -62,6 +62,7 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -144,12 +145,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             let at = self.at(&self.cause, self.fcx.param_env).define_opaque_types(true);
-            if self.use_lub {
+            let result = if self.use_lub {
                 at.lub(b, a)
             } else {
                 at.sup(b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
+            }?;
+
+            if self.tcx.trait_solver_next() {
+                for obligation in &result.obligations {
+                    if !self.predicate_may_hold(obligation) {
+                        return Err(TypeError::Mismatch);
+                    }
+                }
             }
+
+            Ok(result)
         })
     }
 
