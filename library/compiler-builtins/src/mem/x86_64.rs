@@ -173,7 +173,6 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
-
 // In order to process more than on byte simultaneously when executing strlen,
 // two things must be considered:
 // * An n byte read with an n-byte aligned address will never cross
@@ -190,7 +189,7 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
     use core::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_movemask_epi8, _mm_set1_epi8};
 
     let mut n = 0;
-    
+
     // The use of _mm_movemask_epi8 and company allow for speedups,
     // but they aren't cheap by themselves. Thus, possibly small strings
     // are handled in simple loops.
@@ -266,11 +265,10 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
         if *s == 0 {
             return n;
         }
-
         n += 1;
         s = s.add(1);
     }
-    
+
     // Check bytes in steps of eight until a zero
     // byte is discovered.
 
