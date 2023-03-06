@@ -23,8 +23,6 @@
 // the function passed as the first argument.
 //
 //===----------------------------------------------------------------------===//
-#include <optional>
-
 #include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
@@ -32,6 +30,7 @@
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -277,11 +276,11 @@ castToDiffeFunctionArgType(IRBuilder<> &Builder, llvm::CallInst *CI,
   return Builder.CreateBitCast(value, destType);
 }
 
-static std::optional<StringRef> getMetadataName(llvm::Value *res);
+static Optional<StringRef> getMetadataName(llvm::Value *res);
 
 // if all phi arms are (recursively) based on the same metaString, use that
-static std::optional<StringRef> recursePhiReads(PHINode *val) {
-  std::optional<StringRef> finalMetadata;
+static Optional<StringRef> recursePhiReads(PHINode *val) {
+  Optional<StringRef> finalMetadata;
   SmallVector<PHINode *, 1> todo = {val};
   SmallSet<PHINode *, 1> done;
   while (todo.size()) {
@@ -295,12 +294,12 @@ static std::optional<StringRef> recursePhiReads(PHINode *val) {
       if (auto phi = dyn_cast<PHINode>(newVal)) {
         todo.push_back(phi);
       } else {
-        std::optional<StringRef> metaString = getMetadataName(newVal);
+        auto metaString = getMetadataName(newVal);
         if (metaString) {
           if (!finalMetadata) {
             finalMetadata = metaString;
           } else if (finalMetadata != metaString) {
-            return std::nullopt;
+            return {};
           }
         }
       }
@@ -309,7 +308,7 @@ static std::optional<StringRef> recursePhiReads(PHINode *val) {
   return finalMetadata;
 }
 
-static std::optional<StringRef> getMetadataName(llvm::Value *res) {
+static Optional<StringRef> getMetadataName(llvm::Value *res) {
   if (auto av = dyn_cast<MetadataAsValue>(res)) {
     return cast<MDString>(av->getMetadata())->getString();
   } else if ((isa<LoadInst>(res) || isa<CastInst>(res)) &&
@@ -342,7 +341,7 @@ static std::optional<StringRef> getMetadataName(llvm::Value *res) {
     if (isa<PHINode>(res)) {
       return recursePhiReads(cast<PHINode>(res));
     }
-    return std::nullopt;
+    return {};
   }
 }
 
@@ -484,7 +483,7 @@ public:
     // initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
-  std::optional<Function *> parseFunctionParameter(CallInst *CI) {
+  Function *parseFunctionParameter(CallInst *CI) {
     Value *fn = CI->getArgOperand(0);
 
     // determine function to differentiate
@@ -498,19 +497,19 @@ public:
       EmitFailure("NoFunctionToDifferentiate", CI->getDebugLoc(), CI,
                   "failed to find fn to differentiate", *CI, " - found - ",
                   *fn);
-      return std::nullopt;
+      return nullptr;
     }
     if (cast<Function>(fn)->empty()) {
       EmitFailure("EmptyFunctionToDifferentiate", CI->getDebugLoc(), CI,
                   "failed to find fn to differentiate", *CI, " - found - ",
                   *fn);
-      return std::nullopt;
+      return nullptr;
     }
 
     return cast<Function>(fn);
   }
 
-  static std::optional<unsigned> parseWidthParameter(CallInst *CI) {
+  static Optional<unsigned> parseWidthParameter(CallInst *CI) {
     unsigned width = 1;
 
 #if LLVM_VERSION_MAJOR >= 14
@@ -528,7 +527,7 @@ public:
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "vector width declared more than once",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
 
 #if LLVM_VERSION_MAJOR >= 14
@@ -540,7 +539,7 @@ public:
             EmitFailure("MissingVectorWidth", CI->getDebugLoc(), CI,
                         "constant integer followong enzyme_width is missing",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
 
           Value *width_arg = CI->getArgOperand(i + 1);
@@ -551,14 +550,14 @@ public:
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "enzyme_width must be a constant integer",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
 
           if (!found) {
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "illegal enzyme vector argument width ",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
         }
       }
@@ -578,10 +577,12 @@ public:
     DIFFE_TYPE retType;
   };
 
-  static std::optional<Options> handleArguments(
-      IRBuilder<> &Builder, CallInst *CI, Function *fn, DerivativeMode mode,
-      bool sizeOnly, std::vector<DIFFE_TYPE> &constants,
-      SmallVectorImpl<Value *> &args, std::map<int, Type *> &byVal) {
+  static Optional<Options> handleArguments(IRBuilder<> &Builder, CallInst *CI,
+                                           Function *fn, DerivativeMode mode,
+                                           bool sizeOnly,
+                                           std::vector<DIFFE_TYPE> &constants,
+                                           SmallVectorImpl<Value *> &args,
+                                           std::map<int, Type *> &byVal) {
     std::map<unsigned, Value *> batchOffset;
     FunctionType *FT = fn->getFunctionType();
 
@@ -608,9 +609,9 @@ public:
 
     // find and handle enzyme_width
     if (auto parsedWidth = parseWidthParameter(CI)) {
-      width = parsedWidth.value();
+      width = *parsedWidth;
     } else {
-      return std::nullopt;
+      return {};
     }
 
     // handle different argument order for struct return.
@@ -657,7 +658,7 @@ public:
                 "IllegalReturnType", CI->getDebugLoc(), CI,
                 "Return type of __enzyme_autodiff has to be a struct with",
                 width, "elements of the same type.");
-            return std::nullopt;
+            return {};
           }
         } else {
           shadow = sretPt;
@@ -685,18 +686,18 @@ public:
 #endif
     {
       Value *res = CI->getArgOperand(i);
-      std::optional<DIFFE_TYPE> opt_ty;
-      std::optional<StringRef> metaString = getMetadataName(res);
+      Optional<DIFFE_TYPE> opt_ty;
+      auto metaString = getMetadataName(res);
 
       // handle metadata
-      if (metaString.has_value() && metaString.value().startswith("enzyme_")) {
+      if (metaString && metaString->startswith("enzyme_")) {
         if (*metaString == "enzyme_byref") {
           ++i;
           if (!isa<ConstantInt>(CI->getArgOperand(i))) {
             EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
                         "illegal enzyme byref size ", *CI->getArgOperand(i),
                         "in", *CI);
-            return std::nullopt;
+            return {};
           }
           byRefSize = cast<ConstantInt>(CI->getArgOperand(i))->getZExtValue();
           assert(byRefSize > 0);
@@ -715,7 +716,7 @@ public:
                         "enzyme_batch must be followd by an integer "
                         "offset.",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneedv") {
@@ -729,7 +730,7 @@ public:
                         "enzyme_batch must be followd by an integer "
                         "offset.",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneed") {
@@ -745,7 +746,7 @@ public:
                         "enzyme_batch must be followd by an integer "
                         "offset.",
                         *CI->getArgOperand(i), " in", *CI);
-            return std::nullopt;
+            return {};
           }
           continue;
         } else if (*metaString == "enzyme_out") {
@@ -762,7 +763,7 @@ public:
             EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
                         "illegal enzyme allocated size ", *CI->getArgOperand(i),
                         "in", *CI);
-            return std::nullopt;
+            return {};
           }
           allocatedTapeSize =
               cast<ConstantInt>(CI->getArgOperand(i))->getZExtValue();
@@ -784,7 +785,7 @@ public:
           EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
                       "illegal enzyme metadata classification ", *CI,
                       *metaString);
-          return std::nullopt;
+          return {};
         }
         if (sizeOnly) {
           assert(opt_ty);
@@ -851,7 +852,7 @@ public:
               EmitFailure("BadDiffRet", CI->getDebugLoc(), CI,
                           "Bad DiffRet type ", *differet, " expected ",
                           *fn->getReturnType());
-              return std::nullopt;
+              return {};
             }
             continue;
           } else if (tape == nullptr) {
@@ -870,7 +871,7 @@ public:
         EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
                     "Had too many arguments to __enzyme_autodiff", *CI,
                     " - extra arg - ", *res);
-        return std::nullopt;
+        return {};
       }
       assert(truei < FT->getNumParams());
 
@@ -914,7 +915,7 @@ public:
                       "Cannot cast __enzyme_autodiff primal argument ", i,
                       ", found ", *res, ", type ", *res->getType(),
                       " - to arg ", truei, " ", *PTy);
-          return std::nullopt;
+          return {};
         }
       }
 #if LLVM_VERSION_MAJOR >= 9
@@ -941,7 +942,7 @@ public:
                         i, ", need shadow of type ", *PTy,
                         " to shadow primal argument ", *args.back(),
                         " at call ", *CI);
-            return std::nullopt;
+            return {};
           }
 
           // cast diffe
@@ -973,14 +974,14 @@ public:
                   "NonPointerBatch", CI->getDebugLoc(), CI,
                   "Batched argument at index ", i,
                   " must be of pointer type, found: ", *element->getType());
-              return std::nullopt;
+              return {};
             }
           }
           if (PTy != element->getType()) {
             element = castToDiffeFunctionArgType(Builder, CI, FT, PTy, i, mode,
                                                  element, truei);
             if (!element) {
-              return std::nullopt;
+              return {};
             }
           }
 
@@ -1011,12 +1012,12 @@ public:
           "EnzymeInsufficientArgs", CI->getDebugLoc(), CI,
           "Insufficient number of args passed to derivative call required ",
           numParams, " primal args, found ", truei);
-      return std::nullopt;
+      return {};
     }
 
-    return std::optional<Options>({differet, tape, width, allocatedTapeSize,
-                                   freeMemory, returnUsed, tapeIsPointer,
-                                   differentialReturn, retType});
+    return Optional<Options>({differet, tape, width, allocatedTapeSize,
+                              freeMemory, returnUsed, tapeIsPointer,
+                              differentialReturn, retType});
   }
 
   static FnTypeInfo
@@ -1066,19 +1067,16 @@ public:
     SmallVector<Value *, 4> args;
     SmallVector<BATCH_TYPE, 4> arg_types;
     IRBuilder<> Builder(CI);
-    Function *F;
-    if (auto parsedFunction = parseFunctionParameter(CI)) {
-      F = parsedFunction.value();
-    } else {
+    Function *F = parseFunctionParameter(CI);
+    if (!F)
       return false;
-    }
 
     assert(F);
     FunctionType *FT = F->getFunctionType();
 
     // find and handle enzyme_width
     if (auto parsedWidth = parseWidthParameter(CI)) {
-      width = parsedWidth.value();
+      width = *parsedWidth;
     } else {
       return false;
     }
@@ -1113,10 +1111,10 @@ public:
       auto PTy = FT->getParamType(truei);
 
       BATCH_TYPE ty = width == 1 ? BATCH_TYPE::SCALAR : BATCH_TYPE::VECTOR;
-      std::optional<StringRef> metaString = getMetadataName(res);
+      auto metaString = getMetadataName(res);
 
       // handle metadata
-      if (metaString.has_value() && metaString.value().startswith("enzyme_")) {
+      if (metaString && metaString->startswith("enzyme_")) {
         if (*metaString == "enzyme_scalar") {
           ty = BATCH_TYPE::SCALAR;
         } else if (*metaString == "enzyme_vector") {
@@ -1242,15 +1240,9 @@ public:
   bool HandleAutoDiff(CallInst *CI, DerivativeMode mode, bool sizeOnly) {
 
     // determine function to differentiate
-    Function *fn;
-    if (auto parsedFunction = parseFunctionParameter(CI)) {
-      fn = parsedFunction.value();
-    } else {
+    Function *fn = parseFunctionParameter(CI);
+    if (!fn)
       return false;
-    }
-
-    auto FT = fn->getFunctionType();
-    assert(fn);
 
     IRBuilder<> Builder(CI);
 
@@ -1272,7 +1264,7 @@ public:
     auto options = handleArguments(Builder, CI, fn, mode, sizeOnly, constants,
                                    args, byVal);
 
-    if (!options.has_value()) {
+    if (!options) {
       return false;
     }
 
@@ -1628,14 +1620,9 @@ public:
 
   bool HandleProbProg(CallInst *CI, ProbProgMode mode) {
     IRBuilder<> Builder(CI);
-    Function *F;
-    if (auto parsedFunction = parseFunctionParameter(CI)) {
-      F = parsedFunction.value();
-    } else {
+    Function *F = parseFunctionParameter(CI);
+    if (!F)
       return false;
-    }
-
-    assert(F);
 
     bool sret = false;
     SmallVector<Value *, 4> args;
@@ -1649,10 +1636,10 @@ public:
 #endif
     {
       Value *res = CI->getArgOperand(i);
-      std::optional<StringRef> metaString = getMetadataName(res);
+      auto metaString = getMetadataName(res);
 
       // handle metadata
-      if (metaString && metaString.value().startswith("enzyme_")) {
+      if (metaString && metaString->startswith("enzyme_")) {
         if (*metaString == "enzyme_interface") {
           ++i;
           dynamic_interface = CI->getArgOperand(i);
