@@ -240,8 +240,14 @@ impl fmt::Display for LitKind {
                     string = symbol
                 )?;
             }
-            // TODO need to reescape
-            LitKind::CStr(..) => todo!(),
+            LitKind::CStr(ref bytes, StrStyle::Cooked) => {
+                write!(f, "c\"{}\"", escape_byte_str_symbol(bytes))?
+            }
+            LitKind::CStr(ref bytes, StrStyle::Raw(n)) => {
+                // This can only be valid UTF-8.
+                let symbol = str::from_utf8(bytes).unwrap();
+                write!(f, "cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize),)?;
+            }
             LitKind::Int(n, ty) => {
                 write!(f, "{n}")?;
                 match ty {

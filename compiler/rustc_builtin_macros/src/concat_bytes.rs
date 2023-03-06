@@ -19,8 +19,9 @@ fn invalid_type_err(
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
     match ast::LitKind::from_token_lit(token_lit) {
         Ok(ast::LitKind::CStr(_, _)) => {
-            // TODO
-            cx.span_err(span, "cannot concatenate C string litearls");
+            // FIXME(c_str_literals): should concatenation of C string literals
+            // include the null bytes in the end?
+            cx.span_err(span, "cannot concatenate C string literals");
         }
         Ok(ast::LitKind::Char(_)) => {
             let sugg =

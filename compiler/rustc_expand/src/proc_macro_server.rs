@@ -61,8 +61,8 @@ impl FromInternal<token::LitKind> for LitKind {
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
-            // TODO
-            token::CStr | token::CStrRaw(_) => todo!(),
+            token::CStr => LitKind::CStr,
+            token::CStrRaw(n) => LitKind::CStrRaw(n),
             token::Err => LitKind::Err,
             token::Bool => unreachable!(),
         }
@@ -80,6 +80,8 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::StrRaw(n) => token::StrRaw(n),
             LitKind::ByteStr => token::ByteStr,
             LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::CStr => token::CStr,
+            LitKind::CStrRaw(n) => token::CStrRaw(n),
             LitKind::Err => token::Err,
         }
     }
