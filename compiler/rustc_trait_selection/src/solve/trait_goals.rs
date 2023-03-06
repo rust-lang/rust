@@ -215,6 +215,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
+
+        // FIXME(non_lifetime_binders): Higher-ranked Fn trait candidates are not (yet) supported.
+        // Check that the inputs don't capture any placeholder types.
+        if goal.predicate.trait_ref.substs[1].has_non_region_placeholders() {
+            return Err(NoSolution);
+        }
+
         let Some(tupled_inputs_and_output) =
             structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,

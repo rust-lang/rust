@@ -760,7 +760,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+        // FIXME(non_lifetime_binders): Perform the equivalent of a "leak check" here.
+        let mut nested = self.infcx.commit_if_ok(|_| {
+            let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+            if self
+                .infcx
+                .resolve_vars_if_possible(substs.as_closure().sig())
+                .has_non_region_placeholders()
+            {
+                return Err(SelectionError::Unimplemented);
+            }
+
+            Ok(nested)
+        })?;
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 

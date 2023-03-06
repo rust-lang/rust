@@ -244,7 +244,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                // FIXME(non_lifetime_binder): Don't infer a signature with late-bound ty/ct vars
+                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue()
+                    && !inferred_sig.has_non_region_late_bound()
+                {
                     expected_sig = inferred_sig;
                 }
             }

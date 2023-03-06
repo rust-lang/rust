@@ -308,13 +308,22 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
         let Some(tupled_inputs_and_output) =
-        structural_traits::extract_tupled_inputs_and_output_from_callable(
-            tcx,
-            goal.predicate.self_ty(),
-            goal_kind,
-        )? else {
-        return ecx.make_canonical_response(Certainty::AMBIGUOUS);
-    };
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
+                tcx,
+                goal.predicate.self_ty(),
+                goal_kind,
+            )? else {
+            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+        };
+
+        // FIXME(non_lifetime_binders): Higher-ranked Fn trait candidates are not (yet) supported.
+        // Make sure that the inputs/output don't capture any placeholder types.
+        if (goal.predicate.projection_ty.substs[1], goal.predicate.term)
+            .has_non_region_placeholders()
+        {
+            return Err(NoSolution);
+        }
+
         let output_is_sized_pred = tupled_inputs_and_output
             .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
 
