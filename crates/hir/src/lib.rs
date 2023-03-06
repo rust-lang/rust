@@ -1677,6 +1677,10 @@ impl Function {
             .collect()
     }
 
+    pub fn num_params(self, db: &dyn HirDatabase) -> usize {
+        db.function_data(self.id).params.len()
+    }
+
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
         if self.self_param(db).is_none() {
             return None;
@@ -3857,11 +3861,13 @@ impl Type {
     }
 }
 
+// FIXME: Document this
 #[derive(Debug)]
 pub struct Callable {
     ty: Type,
     sig: CallableSig,
     callee: Callee,
+    /// Whether this is a method that was called with method call syntax.
     pub(crate) is_bound_method: bool,
 }
 
@@ -3895,14 +3901,14 @@ impl Callable {
             Other => CallableKind::Other,
         }
     }
-    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {
+    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(ast::SelfParam, Type)> {
         let func = match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
         let src = func.lookup(db.upcast()).source(db.upcast());
         let param_list = src.value.param_list()?;
-        param_list.self_param()
+        Some((param_list.self_param()?, self.ty.derived(self.sig.params()[0].clone())))
     }
     pub fn n_params(&self) -> usize {
         self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }
