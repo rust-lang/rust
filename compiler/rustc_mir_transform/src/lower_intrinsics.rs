@@ -81,7 +81,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
+                    sym::wrapping_add
+                    | sym::wrapping_sub
+                    | sym::wrapping_mul
+                    | sym::three_way_compare => {
                         if let Some(target) = *target {
                             let lhs;
                             let rhs;
@@ -94,6 +97,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 sym::wrapping_add => BinOp::Add,
                                 sym::wrapping_sub => BinOp::Sub,
                                 sym::wrapping_mul => BinOp::Mul,
+                                sym::three_way_compare => BinOp::Cmp,
                                 _ => bug!("unexpected intrinsic"),
                             };
                             block.statements.push(Statement {

@@ -1,0 +1,34 @@
+- // MIR for `three_way_compare_signed` before LowerIntrinsics
++ // MIR for `three_way_compare_signed` after LowerIntrinsics
+  
+  fn three_way_compare_signed(_1: i16, _2: i16) -> () {
+      debug a => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:33: +0:34
+      debug b => _2;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:41: +0:42
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:49: +0:49
+      let _3: std::cmp::Ordering;          // in scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:46
+      let mut _4: i16;                     // in scope 0 at $DIR/lower_intrinsics.rs:+1:41: +1:42
+      let mut _5: i16;                     // in scope 0 at $DIR/lower_intrinsics.rs:+1:44: +1:45
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:46
+          StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:41: +1:42
+          _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:41: +1:42
+          StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:44: +1:45
+          _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:44: +1:45
+-         _3 = three_way_compare::<i16>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:46
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:90:5: 90:40
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i16, i16) -> std::cmp::Ordering {three_way_compare::<i16>}, val: Value(<ZST>) }
++         _3 = Cmp(move _4, move _5);      // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:46
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:46
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:45: +1:46
+          StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:45: +1:46
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:46: +1:47
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:+0:49: +2:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+2:2: +2:2
+      }
+  }
+  

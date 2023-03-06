@@ -260,6 +260,11 @@ impl<'tcx> BinOp {
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool
             }
+            &BinOp::Cmp => {
+                // these should be integer-like types of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                tcx.ty_ordering_enum(None)
+            }
         }
     }
 }
@@ -301,6 +306,7 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
+            BinOp::Cmp => unreachable!(),
             BinOp::Offset => unreachable!(),
         }
     }

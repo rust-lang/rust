@@ -7,6 +7,7 @@ use crate::common::{self, IntPredicate};
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
@@ -598,6 +599,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.icmp(base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed), lhs, rhs)
                 }
+            }
+            mir::BinOp::Cmp => {
+                use std::cmp::Ordering;
+                debug_assert!(!is_float);
+                // FIXME: To avoid this PR changing behaviour, the operations used
+                // here are those from <https://github.com/rust-lang/rust/pull/63767>,
+                // as tested by `tests/codegen/integer-cmp.rs`.
+                // Something in future might want to pick different ones. For example,
+                // maybe the ones from Clang's `<=>` operator in C++20 (see
+                // <https://github.com/llvm/llvm-project/issues/60012>) or once we
+                // update to new LLVM, something to take advantage of the new folds in
+                // <https://github.com/llvm/llvm-project/issues/59666>.
+                let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
+                let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                let is_ne = bx.icmp(pred(hir::BinOpKind::Ne), lhs, rhs);
+                let ge = bx.select(
+                    is_ne,
+                    bx.cx().const_i8(Ordering::Greater as i8),
+                    bx.cx().const_i8(Ordering::Equal as i8),
+                );
+                bx.select(is_lt, bx.cx().const_i8(Ordering::Less as i8), ge)
             }
         }
     }

@@ -59,6 +59,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> (Scalar<M::Provenance>, bool, Ty<'tcx>) {
+        let res = Ord::cmp(&lhs, &rhs) as i8;
+        return (Scalar::from_i8(res), false, self.tcx.ty_ordering_enum(None));
+    }
+
     fn binary_char_op(
         &self,
         bin_op: mir::BinOp,
@@ -66,6 +71,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         r: char,
     ) -> (Scalar<M::Provenance>, bool, Ty<'tcx>) {
         use rustc_middle::mir::BinOp::*;
+
+        if bin_op == Cmp {
+            return self.three_way_compare(l, r);
+        }
 
         let res = match bin_op {
             Eq => l == r,
@@ -211,6 +220,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let r = self.sign_extend(r, right_layout) as i128;
                 return Ok((Scalar::from_bool(op(&l, &r)), false, self.tcx.types.bool));
             }
+            if bin_op == Cmp {
+                let l = self.sign_extend(l, left_layout) as i128;
+                let r = self.sign_extend(r, right_layout) as i128;
+                return Ok(self.three_way_compare(l, r));
+            }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
                 Div if r == 0 => throw_ub!(DivisionByZero),
                 Rem if r == 0 => throw_ub!(RemainderByZero),
@@ -248,6 +262,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     left_layout.ty,
                 ));
             }
+        }
+
+        if bin_op == Cmp {
+            return Ok(self.three_way_compare(l, r));
         }
 
         let (val, ty) = match bin_op {

@@ -78,7 +78,7 @@ fn check_binop(op: mir::BinOp) -> bool {
     use mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le | Ne
-        | Ge | Gt => true,
+        | Ge | Gt | Cmp => true,
         Offset => false,
     }
 }

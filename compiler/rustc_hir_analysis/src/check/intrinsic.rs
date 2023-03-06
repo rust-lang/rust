@@ -99,6 +99,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
         | sym::cttz
         | sym::bswap
         | sym::bitreverse
+        | sym::three_way_compare
         | sym::discriminant_value
         | sym::type_id
         | sym::likely
@@ -315,6 +316,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::cttz_nonzero
             | sym::bswap
             | sym::bitreverse => (1, vec![param(0)], param(0)),
+
+            sym::three_way_compare => {
+                (1, vec![param(0), param(0)], tcx.ty_ordering_enum(Some(it.span)))
+            }
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 (1, vec![param(0), param(0)], tcx.mk_tup(&[param(0), tcx.types.bool]))

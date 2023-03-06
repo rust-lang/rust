@@ -716,6 +716,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
+    #[track_caller]
+    pub fn ty_ordering_enum(self, span: Option<Span>) -> Ty<'tcx> {
+        let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
+        self.type_of(ordering_enum).no_bound_vars().unwrap()
+    }
+
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     #[track_caller]
     pub fn ty_error(self, reported: ErrorGuaranteed) -> Ty<'tcx> {

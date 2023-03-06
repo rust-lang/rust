@@ -1271,6 +1271,8 @@ pub enum BinOp {
     Ge,
     /// The `>` operator (greater than)
     Gt,
+    /// The `<=>` operator (three-way comparison, like `Ord::cmp`)
+    Cmp,
     /// The `ptr.offset` operator
     Offset,
 }

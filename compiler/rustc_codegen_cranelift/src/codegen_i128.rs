@@ -148,6 +148,7 @@ pub(crate) fn maybe_codegen<'tcx>(
             assert!(!checked);
             None
         }
+        BinOp::Cmp => None,
         BinOp::Shl | BinOp::Shr => None,
     }
 }

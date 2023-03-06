@@ -17,7 +17,7 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
-        Eq | Ne | Lt | Le | Gt | Ge => false,
+        Eq | Ne | Lt | Le | Gt | Ge | Cmp => false,
     }
 }
 /// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
@@ -26,7 +26,8 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge
+        | Cmp => true,
         Offset | Shl | Shr => false,
     }
 }

@@ -40,6 +40,23 @@ pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
     })
 }
 
+fn codegen_three_way_compare<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    signed: bool,
+    lhs: Value,
+    rhs: Value,
+) -> CValue<'tcx> {
+    let gt_cc = crate::num::bin_op_to_intcc(BinOp::Gt, signed).unwrap();
+    let lt_cc = crate::num::bin_op_to_intcc(BinOp::Lt, signed).unwrap();
+    let gt = fx.bcx.ins().icmp(gt_cc, lhs, rhs);
+    let lt = fx.bcx.ins().icmp(lt_cc, lhs, rhs);
+    // Cranelift no longer has a single-bit type, so the comparison results
+    // are already `I8`s, which we can subtract to get the -1/0/+1 we want.
+    // See <https://github.com/bytecodealliance/wasmtime/pull/5031>.
+    let val = fx.bcx.ins().isub(gt, lt);
+    CValue::by_val(val, fx.layout_of(fx.tcx.types.i8))
+}
+
 fn codegen_compare_bin_op<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
@@ -47,6 +64,10 @@ fn codegen_compare_bin_op<'tcx>(
     lhs: Value,
     rhs: Value,
 ) -> CValue<'tcx> {
+    if bin_op == BinOp::Cmp {
+        return codegen_three_way_compare(fx, signed, lhs, rhs);
+    }
+
     let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
     let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
@@ -59,7 +80,7 @@ pub(crate) fn codegen_binop<'tcx>(
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
     match bin_op {
-        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
+        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Cmp => {
             match in_lhs.layout().ty.kind() {
                 ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
                     let signed = type_sign(in_lhs.layout().ty);
