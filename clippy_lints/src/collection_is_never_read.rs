@@ -98,10 +98,16 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
         // Method call on `id` in a statement ignores any return value, so it's not a read access:
         //
         // id.foo(...); // Not reading `id`.
+        //
+        // Only assuming this for "official" methods defined on the type. For methods defined in extension
+        // traits (identified as local, based on the orphan rule), pessimistically assume that they might
+        // have side effects, so consider them a read.
         if let Some(Node::Expr(parent)) = get_parent_node(cx.tcx, expr.hir_id)
             && let ExprKind::MethodCall(_, receiver, _, _) = parent.kind
             && path_to_local_id(receiver, id)
             && let Some(Node::Stmt(..)) = get_parent_node(cx.tcx, parent.hir_id)
+            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
+            && !method_def_id.is_local()
         {
             return ControlFlow::Continue(());
         }

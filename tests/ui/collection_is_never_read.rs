@@ -133,3 +133,23 @@ fn not_read_if_return_value_not_used() {
     let x = vec![1, 2, 3]; // WARNING
     x.is_empty();
 }
+
+fn extension_traits() {
+    trait VecExt<T> {
+        fn method_with_side_effect(&self);
+        fn method_without_side_effect(&self);
+    }
+
+    impl<T> VecExt<T> for Vec<T> {
+        fn method_with_side_effect(&self) {
+            println!("my length: {}", self.len());
+        }
+        fn method_without_side_effect(&self) {}
+    }
+
+    let x = vec![1, 2, 3]; // Ok
+    x.method_with_side_effect();
+
+    let y = vec![1, 2, 3]; // Ok (false negative)
+    y.method_without_side_effect();
+}
