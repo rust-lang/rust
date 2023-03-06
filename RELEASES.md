@@ -1,3 +1,209 @@
+Version 1.68.0 (2023-03-09)
+==========================
+
+<a id="1.68.0-Language"></a>
+
+Language
+--------
+
+- [Stabilize default_alloc_error_handler](https://github.com/rust-lang/rust/pull/102318/)
+  This allows usage of `alloc` on stable without requiring the 
+  definition of a handler for allocation failure. Defining custom handlers is still unstable.
+- [Stabilize `efiapi` calling convention.](https://github.com/rust-lang/rust/pull/105795/)
+- [Remove implicit promotion for types with drop glue](https://github.com/rust-lang/rust/pull/105085/)
+
+<a id="1.68.0-Compiler"></a>
+
+Compiler
+--------
+
+- [Change `bindings_with_variant_name` to deny-by-default](https://github.com/rust-lang/rust/pull/104154/)
+- [Allow .. to be parsed as let initializer](https://github.com/rust-lang/rust/pull/105701/)
+- [Add `armv7-sony-vita-newlibeabihf` as a tier 3 target](https://github.com/rust-lang/rust/pull/105712/)
+- [Always check alignment during compile-time const evaluation](https://github.com/rust-lang/rust/pull/104616/)
+- [Disable "split dwarf inlining" by default.](https://github.com/rust-lang/rust/pull/106709/)
+- [Add vendor to Fuchsia's target triple](https://github.com/rust-lang/rust/pull/106429/)
+- [Enable sanitizers for s390x-linux](https://github.com/rust-lang/rust/pull/107127/)
+
+<a id="1.68.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Loosen the bound on the Debug implementation of Weak.](https://github.com/rust-lang/rust/pull/90291/)
+- [Make `std::task::Context` !Send and !Sync](https://github.com/rust-lang/rust/pull/95985/)
+- [PhantomData layout guarantees](https://github.com/rust-lang/rust/pull/104081/)
+- [Don't derive Debug for `OnceWith` & `RepeatWith`](https://github.com/rust-lang/rust/pull/104163/)
+- [Implement DerefMut for PathBuf](https://github.com/rust-lang/rust/pull/105018/)
+- [Add O(1) `Vec -> VecDeque` conversion guarantee](https://github.com/rust-lang/rust/pull/105128/)
+- [Leak amplification for peek_mut() to ensure BinaryHeap's invariant is always met](https://github.com/rust-lang/rust/pull/105851/)
+
+<a id="1.68.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`{core,std}::pin::pin!`](https://doc.rust-lang.org/stable/std/pin/macro.pin.html)
+- [`impl From<bool> for {f32,f64}`](https://doc.rust-lang.org/stable/std/primitive.f32.html#impl-From%3Cbool%3E-for-f32)
+- [`std::path::MAIN_SEPARATOR_STR`](https://doc.rust-lang.org/stable/std/path/constant.MAIN_SEPARATOR_STR.html)
+- [`impl DerefMut for PathBuf`](https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#impl-DerefMut-for-PathBuf)
+
+These APIs are now stable in const contexts:
+
+- [`VecDeque::new`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.new)
+
+<a id="1.68.0-Cargo"></a>
+
+Cargo
+-----
+
+- [Stabilize sparse registry support for crates.io](https://github.com/rust-lang/cargo/pull/11224/)
+- [`cargo build --verbose` tells you more about why it recompiles.](https://github.com/rust-lang/cargo/pull/11407/)
+- [Show progress of crates.io index update even `net.git-fetch-with-cli` option enabled](https://github.com/rust-lang/cargo/pull/11579/)
+
+<a id="1.68.0-Misc"></a>
+
+Misc
+----
+
+<a id="1.68.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+
+- [Add `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` to future-incompat report](https://github.com/rust-lang/rust/pull/103418/)
+- [Only specify `--target` by default for `-Zgcc-ld=lld` on wasm](https://github.com/rust-lang/rust/pull/101792/)
+- [Bump `IMPLIED_BOUNDS_ENTAILMENT` to Deny + ReportNow](https://github.com/rust-lang/rust/pull/106465/)
+- [`std::task::Context` no longer implements Send and Sync](https://github.com/rust-lang/rust/pull/95985)
+
+<a id="1.68.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Encode spans relative to the enclosing item](https://github.com/rust-lang/rust/pull/84762/)
+- [Don't normalize in AstConv](https://github.com/rust-lang/rust/pull/101947/)
+- [Find the right lower bound region in the scenario of partial order relations](https://github.com/rust-lang/rust/pull/104765/)
+- [Fix impl block in const expr](https://github.com/rust-lang/rust/pull/104889/)
+- [Check ADT fields for copy implementations considering regions](https://github.com/rust-lang/rust/pull/105102/)
+- [rustdoc: simplify JS search routine by not messing with lev distance](https://github.com/rust-lang/rust/pull/105796/)
+- [Enable ThinLTO for rustc on `x86_64-pc-windows-msvc`](https://github.com/rust-lang/rust/pull/103591/)
+- [Enable ThinLTO for rustc on `x86_64-apple-darwin`](https://github.com/rust-lang/rust/pull/103647/)
+
+Version 1.67.1 (2023-02-09)
+===========================
+
+- [Fix interoperability with thin archives.](https://github.com/rust-lang/rust/pull/107360)
+- [Fix an internal error in the compiler build process.](https://github.com/rust-lang/rust/pull/105624)
+- [Downgrade `clippy::uninlined_format_args` to pedantic.](https://github.com/rust-lang/rust-clippy/pull/10265)
+
+Version 1.67.0 (2023-01-26)
+==========================
+
+<a id="1.67.0-Language"></a>
+
+Language
+--------
+
+- [Make `Sized` predicates coinductive, allowing cycles.](https://github.com/rust-lang/rust/pull/100386/)
+- [`#[must_use]` annotations on `async fn` also affect the `Future::Output`.](https://github.com/rust-lang/rust/pull/100633/)
+- [Elaborate supertrait obligations when deducing closure signatures.](https://github.com/rust-lang/rust/pull/101834/)
+- [Invalid literals are no longer an error under `cfg(FALSE)`.](https://github.com/rust-lang/rust/pull/102944/)
+- [Unreserve braced enum variants in value namespace.](https://github.com/rust-lang/rust/pull/103578/)
+
+<a id="1.67.0-Compiler"></a>
+
+Compiler
+--------
+
+- [Enable varargs support for calling conventions other than `C` or `cdecl`.](https://github.com/rust-lang/rust/pull/97971/)
+- [Add new MIR constant propagation based on dataflow analysis.](https://github.com/rust-lang/rust/pull/101168/)
+- [Optimize field ordering by grouping m\*2^n-sized fields with equivalently aligned ones.](https://github.com/rust-lang/rust/pull/102750/)
+- [Stabilize native library modifier `verbatim`.](https://github.com/rust-lang/rust/pull/104360/)
+
+Added and removed targets:
+
+- [Add a tier 3 target for PowerPC on AIX](https://github.com/rust-lang/rust/pull/102293/), `powerpc64-ibm-aix`.
+- [Add a tier 3 target for the Sony PlayStation 1](https://github.com/rust-lang/rust/pull/102689/), `mipsel-sony-psx`.
+- [Add tier 3 `no_std` targets for the QNX Neutrino RTOS](https://github.com/rust-lang/rust/pull/102701/),
+  `aarch64-unknown-nto-qnx710` and `x86_64-pc-nto-qnx710`.
+- [Remove tier 3 `linuxkernel` targets](https://github.com/rust-lang/rust/pull/104015/) (not used by the actual kernel).
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+<a id="1.67.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Merge `crossbeam-channel` into `std::sync::mpsc`.](https://github.com/rust-lang/rust/pull/93563/)
+- [Fix inconsistent rounding of 0.5 when formatted to 0 decimal places.](https://github.com/rust-lang/rust/pull/102935/)
+- [Derive `Eq` and `Hash` for `ControlFlow`.](https://github.com/rust-lang/rust/pull/103084/)
+- [Don't build `compiler_builtins` with `-C panic=abort`.](https://github.com/rust-lang/rust/pull/103786/)
+
+<a id="1.67.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`{integer}::checked_ilog`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog)
+- [`{integer}::checked_ilog2`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog2)
+- [`{integer}::checked_ilog10`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog10)
+- [`{integer}::ilog`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog)
+- [`{integer}::ilog2`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog2)
+- [`{integer}::ilog10`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog10)
+- [`NonZeroU*::ilog2`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#method.ilog2)
+- [`NonZeroU*::ilog10`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#method.ilog10)
+- [`NonZero*::BITS`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#associatedconstant.BITS)
+
+These APIs are now stable in const contexts:
+
+- [`char::from_u32`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.from_u32)
+- [`char::from_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.from_digit)
+- [`char::to_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_digit)
+- [`core::char::from_u32`](https://doc.rust-lang.org/stable/core/char/fn.from_u32.html)
+- [`core::char::from_digit`](https://doc.rust-lang.org/stable/core/char/fn.from_digit.html)
+
+<a id="1.67.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+
+- [The layout of `repr(Rust)` types now groups m\*2^n-sized fields with
+  equivalently aligned ones.](https://github.com/rust-lang/rust/pull/102750/)
+  This is intended to be an optimization, but it is also known to increase type
+  sizes in a few cases for the placement of enum tags. As a reminder, the layout
+  of `repr(Rust)` types is an implementation detail, subject to change.
+- [0.5 now rounds to 0 when formatted to 0 decimal places.](https://github.com/rust-lang/rust/pull/102935/)
+  This makes it consistent with the rest of floating point formatting that
+  rounds ties toward even digits.
+- [Chains of `&&` and `||` will now drop temporaries from their sub-expressions in
+  evaluation order, left-to-right.](https://github.com/rust-lang/rust/pull/103293/)
+  Previously, it was "twisted" such that the _first_ expression dropped its
+  temporaries _last_, after all of the other expressions dropped in order.
+- [Underscore suffixes on string literals are now a hard error.](https://github.com/rust-lang/rust/pull/103914/)
+  This has been a future-compatibility warning since 1.20.0.
+- [Stop passing `-export-dynamic` to `wasm-ld`.](https://github.com/rust-lang/rust/pull/105405/)
+- [`main` is now mangled as `__main_void` on `wasm32-wasi`.](https://github.com/rust-lang/rust/pull/105468/)
+- [Cargo now emits an error if there are multiple registries in the configuration
+  with the same index URL.](https://github.com/rust-lang/cargo/pull/10592)
+
+<a id="1.67.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Rewrite LLVM's archive writer in Rust.](https://github.com/rust-lang/rust/pull/97485/)
+
 Version 1.66.1 (2023-01-10)
 ===========================
 
