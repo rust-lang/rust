@@ -92,7 +92,21 @@ pub fn register_plugins<'a>(
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
+    let is_executable_crate = crate_types.contains(&CrateType::Executable);
+    let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
+    if crate_types.len() > 1 {
+        if is_executable_crate {
+            sess.emit_err(errors::MixedBinCrate);
+        }
+        if is_proc_macro_crate {
+            sess.emit_err(errors::MixedProcMacroCrate);
+        }
+    }
     sess.init_crate_types(crate_types);
+
+    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+        sess.emit_warning(errors::ProcMacroCratePanicAbort);
+    }
 
     let stable_crate_id = StableCrateId::new(
         crate_name,
@@ -270,22 +284,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, resolver.lint_buffer())
     });
 
-    let crate_types = sess.crate_types();
-    let is_executable_crate = crate_types.contains(&CrateType::Executable);
-    let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
-
-    if crate_types.len() > 1 {
-        if is_executable_crate {
-            sess.emit_err(errors::MixedBinCrate);
-        }
-        if is_proc_macro_crate {
-            sess.emit_err(errors::MixedProcMacroCrate);
-        }
-    }
-
-    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
-        sess.emit_warning(errors::ProcMacroCratePanicAbort);
-    }
+    let is_proc_macro_crate = sess.crate_types().contains(&CrateType::ProcMacro);
 
     krate = sess.time("maybe_create_a_macro_crate", || {
         let is_test_crate = sess.opts.test;
