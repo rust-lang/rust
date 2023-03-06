@@ -159,7 +159,7 @@ pub enum Debugger {
 }
 
 impl Debugger {
-    fn to_str(&self) -> &'static str {
+    pub(crate) fn to_str(&self) -> &'static str {
         match self {
             Debugger::Cdb => "cdb",
             Debugger::Gdb => "gdb",
@@ -396,7 +396,7 @@ impl Config {
         })
     }
 
-    fn target_cfg(&self) -> &TargetCfg {
+    pub fn target_cfg(&self) -> &TargetCfg {
         self.target_cfg.borrow_with(|| TargetCfg::new(self))
     }
 
@@ -451,12 +451,12 @@ impl Config {
 
 #[derive(Clone, Debug)]
 pub struct TargetCfg {
-    arch: String,
-    os: String,
-    env: String,
-    abi: String,
-    families: Vec<String>,
-    pointer_width: u32,
+    pub(crate) arch: String,
+    pub(crate) os: String,
+    pub(crate) env: String,
+    pub(crate) abi: String,
+    pub(crate) families: Vec<String>,
+    pub(crate) pointer_width: u32,
     endian: Endian,
     panic: PanicStrategy,
 }

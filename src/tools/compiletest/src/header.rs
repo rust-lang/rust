@@ -8,7 +8,7 @@ use std::process::Command;
 
 use tracing::*;
 
-use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
+use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
@@ -17,14 +17,16 @@ mod tests;
 
 /// The result of parse_cfg_name_directive.
 #[derive(Clone, PartialEq, Debug)]
-struct ParsedNameDirective {
-    comment: Option<String>,
+struct ParsedNameDirective<'a> {
+    name: Option<&'a str>,
+    pretty_reason: Option<String>,
+    comment: Option<&'a str>,
     outcome: MatchOutcome,
 }
 
-impl ParsedNameDirective {
+impl ParsedNameDirective<'_> {
     fn invalid() -> Self {
-        Self { comment: None, outcome: MatchOutcome::NoMatch }
+        Self { name: None, pretty_reason: None, comment: None, outcome: MatchOutcome::NoMatch }
     }
 }
 
@@ -678,7 +680,7 @@ impl Config {
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
-    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
+    fn parse_cfg_name_directive<'a>(&self, line: &'a str, prefix: &str) -> ParsedNameDirective<'a> {
         if !line.as_bytes().starts_with(prefix.as_bytes()) {
             return ParsedNameDirective::invalid();
         }
@@ -690,56 +692,124 @@ impl Config {
         let (name, comment) =
             line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
 
-        let matches_pointer_width = || {
-            name.strip_suffix("bit")
-                .and_then(|width| width.parse::<u32>().ok())
-                .map(|width| self.get_pointer_width() == width)
-                .unwrap_or(false)
-        };
+        let mut is_match = None;
+
+        macro_rules! maybe_condition {
+            (name: $name:expr, $(condition: $condition:expr,)? message: $($message:tt)*) => {
+                if let Some(expected) = $name {
+                    if name == expected $(&& $condition)? {
+                        is_match = Some(format!($($message)*));
+                    }
+                }
+            };
+        }
+        macro_rules! condition {
+            (name: $name:expr, $(condition: $condition:expr,)? message: $($message:tt)*) => {
+                maybe_condition! {
+                    name: Some($name),
+                    $(condition: $condition,)*
+                    message: $($message)*
+                }
+            };
+        }
+
+        condition! {
+            name: "test",
+            message: "always"
+        }
+        condition! {
+            name: &self.target,
+            message: "when the target is {name}"
+        }
+
+        let target_cfg = self.target_cfg();
+        condition! {
+            name: &target_cfg.os,
+            message: "when the operative system is {name}"
+        }
+        condition! {
+            name: &target_cfg.env,
+            message: "when the target environment is {name}"
+        }
+        condition! {
+            name: &target_cfg.abi,
+            message: "when the ABI is {name}"
+        }
+        condition! {
+            name: &target_cfg.arch,
+            message: "when the architecture is {name}"
+        }
+        condition! {
+            name: format!("{}bit", target_cfg.pointer_width),
+            message: "when the pointer width is {name}"
+        }
+        for family in &target_cfg.families {
+            condition! {
+                name: family,
+                message: "when the target family is {name}"
+            }
+        }
 
         // If something is ignored for emscripten, it likely also needs to be
         // ignored for wasm32-unknown-unknown.
         // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
         // (in contrast to `wasm32` which also matches non-bare targets like
         // asmjs-unknown-emscripten).
-        let matches_wasm32_alias = || {
-            self.target == "wasm32-unknown-unknown" && matches!(name, "emscripten" | "wasm32-bare")
-        };
+        condition! {
+            name: "emscripten",
+            condition: self.target == "wasm32-unknown-unknown",
+            message: "when the target is WASM",
+        }
+        condition! {
+            name: "wasm32-bare",
+            condition: self.target == "wasm32-unknown-unknown",
+            message: "when the target is WASM"
+        }
 
-        let is_match = name == "test" ||
-            self.target == name ||                              // triple
-            self.matches_os(name) ||
-            self.matches_env(name) ||
-            self.matches_abi(name) ||
-            self.matches_family(name) ||
-            self.target.ends_with(name) ||                      // target and env
-            self.matches_arch(name) ||
-            matches_wasm32_alias() ||
-            matches_pointer_width() ||
-            name == self.stage_id.split('-').next().unwrap() || // stage
-            name == self.channel ||                             // channel
-            (self.target != self.host && name == "cross-compile") ||
-            (name == "endian-big" && self.is_big_endian()) ||
-            (self.remote_test_client.is_some() && name == "remote") ||
-            match self.compare_mode {
-                Some(CompareMode::Polonius) => name == "compare-mode-polonius",
-                Some(CompareMode::Chalk) => name == "compare-mode-chalk",
-                Some(CompareMode::NextSolver) => name == "compare-mode-next-solver",
-                Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
-                Some(CompareMode::SplitDwarfSingle) => name == "compare-mode-split-dwarf-single",
-                None => false,
-            } ||
-            (cfg!(debug_assertions) && name == "debug") ||
-            match self.debugger {
-                Some(Debugger::Cdb) => name == "cdb",
-                Some(Debugger::Gdb) => name == "gdb",
-                Some(Debugger::Lldb) => name == "lldb",
-                None => false,
-            };
+        condition! {
+            name: &self.channel,
+            message: "when the release channel is {name}",
+        }
+        condition! {
+            name: "cross-compile",
+            condition: self.target != self.host,
+            message: "when cross-compiling"
+        }
+        condition! {
+            name: "endian-big",
+            condition: self.is_big_endian(),
+            message: "on big-endian targets",
+        }
+        condition! {
+            name: self.stage_id.split('-').next().unwrap(),
+            message: "when the bootstrapping stage is {name}",
+        }
+        condition! {
+            name: "remote",
+            condition: self.remote_test_client.is_some(),
+            message: "when running tests remotely",
+        }
+        condition! {
+            name: "debug",
+            condition: cfg!(debug_assertions),
+            message: "when building with debug assertions",
+        }
+        maybe_condition! {
+            name: self.debugger.as_ref().map(|d| d.to_str()),
+            message: "when the debugger is {name}",
+        }
+        maybe_condition! {
+            name: self.compare_mode
+                .as_ref()
+                .map(|d| format!("compare-mode-{}", d.to_str())),
+            message: "when comparing with {name}",
+        }
 
         ParsedNameDirective {
-            comment: comment.map(|c| c.trim().trim_start_matches('-').trim().to_string()),
-            outcome: if is_match { MatchOutcome::Match } else { MatchOutcome::NoMatch },
+            name: Some(name),
+            comment: comment.map(|c| c.trim().trim_start_matches('-').trim()),
+            outcome: if is_match.is_some() { MatchOutcome::Match } else { MatchOutcome::NoMatch },
+            pretty_reason: is_match,
         }
     }
 
@@ -1014,15 +1084,14 @@ pub fn make_test_description<R: Read>(
             let parsed = config.parse_cfg_name_directive(ln, "ignore");
             ignore = match parsed.outcome {
                 MatchOutcome::Match => {
-                    ignore_message = Some(match parsed.comment {
-                        // The ignore reason must be a &'static str, so we have to leak memory to
-                        // create it. This is fine, as the header is parsed only at the start of
-                        // compiletest so it won't grow indefinitely.
-                        Some(comment) => Box::leak(Box::<str>::from(format!(
-                            "cfg -> ignore => Match ({comment})"
-                        ))),
-                        None => "cfg -> ignore => Match",
-                    });
+                    let reason = parsed.pretty_reason.unwrap();
+                    // The ignore reason must be a &'static str, so we have to leak memory to
+                    // create it. This is fine, as the header is parsed only at the start of
+                    // compiletest so it won't grow indefinitely.
+                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
+                        Some(comment) => format!("ignored {reason} ({comment})"),
+                        None => format!("ignored {reason}"),
+                    })) as &str);
                     true
                 }
                 MatchOutcome::NoMatch => ignore,
@@ -1034,15 +1103,14 @@ pub fn make_test_description<R: Read>(
             ignore = match parsed.outcome {
                 MatchOutcome::Match => ignore,
                 MatchOutcome::NoMatch => {
-                    ignore_message = Some(match parsed.comment {
-                        // The ignore reason must be a &'static str, so we have to leak memory to
-                        // create it. This is fine, as the header is parsed only at the start of
-                        // compiletest so it won't grow indefinitely.
-                        Some(comment) => Box::leak(Box::<str>::from(format!(
-                            "cfg -> only => NoMatch ({comment})"
-                        ))),
-                        None => "cfg -> only => NoMatch",
-                    });
+                    let name = parsed.name.unwrap();
+                    // The ignore reason must be a &'static str, so we have to leak memory to
+                    // create it. This is fine, as the header is parsed only at the start of
+                    // compiletest so it won't grow indefinitely.
+                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
+                        Some(comment) => format!("did not match only-{name} ({comment})"),
+                        None => format!("did not match only-{name}"),
+                    })) as &str);
                     true
                 }
             };
