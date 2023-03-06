@@ -700,12 +700,18 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Error(_) => p!("[type error]"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
-            ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon(bv) => {
-                    self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
+            ty::Bound(debruijn, bound_ty) => {
+                if self.should_print_verbose() {
+                    p!(write("Bound({:?}, {:?})", debruijn, bound_ty))
+                } else {
+                    match bound_ty.kind {
+                        ty::BoundTyKind::Anon(bv) => {
+                            self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
+                        }
+                        ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
+                    }
                 }
-                ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
-            },
+            }
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
             }
@@ -736,8 +742,10 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => match placeholder.name {
-                ty::BoundTyKind::Anon(_) => p!(write("Placeholder({:?})", placeholder)),
-                ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
+                ty::BoundTyKind::Param(_, name) if !self.should_print_verbose() => {
+                    p!(write("{}", name))
+                }
+                _ => p!(write("Placeholder({:?})", placeholder)),
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
