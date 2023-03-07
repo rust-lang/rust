@@ -530,7 +530,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                                 place.local
                             );
                         }
-                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                        ConstPropMode::NoPropagation => {
                             trace!("can't propagate into {:?}", place);
                             if place.local != RETURN_PLACE {
                                 Self::remove_const(&mut self.ecx, place.local);
@@ -567,7 +567,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                             Self::remove_const(&mut self.ecx, place.local);
                         }
                     }
-                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                    ConstPropMode::NoPropagation => {
                         Self::remove_const(&mut self.ecx, place.local);
                     }
                 }

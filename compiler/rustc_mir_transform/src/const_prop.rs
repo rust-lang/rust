@@ -718,8 +718,6 @@ pub enum ConstPropMode {
     FullConstProp,
     /// The `Local` can only be propagated into and from its own block.
     OnlyInsideOwnBlock,
-    /// The `Local` can be propagated into but reads cannot be propagated.
-    OnlyPropagateInto,
     /// The `Local` cannot be part of propagation at all. Any statement
     /// referencing it either for reading or writing will not get propagated.
     NoPropagation,
@@ -729,8 +727,6 @@ pub struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
-    // Cache of locals' information
-    local_kinds: IndexVec<Local, LocalKind>,
 }
 
 impl CanConstProp {
@@ -743,10 +739,6 @@ impl CanConstProp {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
             found_assignment: BitSet::new_empty(body.local_decls.len()),
-            local_kinds: IndexVec::from_fn_n(
-                |local| body.local_kind(local),
-                body.local_decls.len(),
-            ),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
@@ -759,24 +751,10 @@ impl CanConstProp {
                     continue;
                 }
             }
-            // Cannot use args at all
-            // Cannot use locals because if x < y { y - x } else { x - y } would
-            //        lint for x != y
-            // FIXME(oli-obk): lint variables until they are used in a condition
-            // FIXME(oli-obk): lint if return value is constant
-            if cpv.local_kinds[local] == LocalKind::Arg {
-                *val = ConstPropMode::OnlyPropagateInto;
-                trace!(
-                    "local {:?} can't be const propagated because it's a function argument",
-                    local
-                );
-            } else if cpv.local_kinds[local] == LocalKind::Var {
-                *val = ConstPropMode::OnlyInsideOwnBlock;
-                trace!(
-                    "local {:?} will only be propagated inside its block, because it's a user variable",
-                    local
-                );
-            }
+        }
+        // Consider that arguments are assigned on entry.
+        for arg in body.args_iter() {
+            cpv.found_assignment.insert(arg);
         }
         cpv.visit_body(&body);
         cpv.can_const_prop
@@ -806,7 +784,6 @@ impl Visitor<'_> for CanConstProp {
                         // states as applicable.
                         ConstPropMode::OnlyInsideOwnBlock => {}
                         ConstPropMode::NoPropagation => {}
-                        ConstPropMode::OnlyPropagateInto => {}
                         other @ ConstPropMode::FullConstProp => {
                             trace!(
                                 "local {:?} can't be propagated because of multiple assignments. Previous state: {:?}",
@@ -897,7 +874,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                                 place.local
                             );
                         }
-                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                        ConstPropMode::NoPropagation => {
                             trace!("can't propagate into {:?}", place);
                             if place.local != RETURN_PLACE {
                                 Self::remove_const(&mut self.ecx, place.local);
@@ -933,7 +910,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                             Self::remove_const(&mut self.ecx, place.local);
                         }
                     }
-                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                    ConstPropMode::NoPropagation => {
                         Self::remove_const(&mut self.ecx, place.local);
                     }
                 }
