@@ -52,14 +52,31 @@ pub enum SimplifiedType {
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatParams {
     /// Treat parameters as placeholders in the given environment.
-    ///
-    /// Note that this also causes us to treat projections as if they were
-    /// placeholders. This is only correct if the given projection cannot
-    /// be normalized in the current context. Even if normalization fails,
-    /// it may still succeed later if the projection contains any inference
-    /// variables.
     AsPlaceholder,
     AsInfer,
+}
+
+/// During fast-rejection, we have the choice of treating projection types
+/// as either simplifyable or not, depending on whether we expect the projection
+/// to be normalized/rigid.
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum TreatProjections {
+    /// In candidates, we may be able to normalize the projection
+    /// after instantiating the candidate and equating it with a goal.
+    ///
+    /// We must assume that the `impl<T> Trait<T> for <T as Id>::This`
+    /// can apply to all self types so we don't return a simplified type
+    /// for `<T as Id>::This`.
+    DefaultCandidate,
+    /// In the old solver we don't try to normalize projections
+    /// when looking up impls and only access them by using the
+    /// current self type. This means that if the self type is
+    /// a projection which could later be normalized, we must not
+    /// treat it as rigid.
+    DefaultLookup,
+    /// We can treat projections in the self type as opaque as
+    /// we separately look up impls for the normalized self type.
+    NextSolverLookup,
 }
 
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
@@ -87,6 +104,7 @@ pub fn simplify_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     treat_params: TreatParams,
+    treat_projections: TreatProjections,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -118,16 +136,10 @@ pub fn simplify_type<'tcx>(
             TreatParams::AsPlaceholder => Some(PlaceholderSimplifiedType),
             TreatParams::AsInfer => None,
         },
-        ty::Alias(..) => match treat_params {
-            // When treating `ty::Param` as a placeholder, projections also
-            // don't unify with anything else as long as they are fully normalized.
-            //
-            // We will have to be careful with lazy normalization here.
-            TreatParams::AsPlaceholder if !ty.has_non_region_infer() => {
-                debug!("treating `{}` as a placeholder", ty);
-                Some(PlaceholderSimplifiedType)
-            }
-            TreatParams::AsPlaceholder | TreatParams::AsInfer => None,
+        ty::Alias(..) => match treat_projections {
+            TreatProjections::DefaultLookup if !ty.needs_infer() => Some(PlaceholderSimplifiedType),
+            TreatProjections::NextSolverLookup => Some(PlaceholderSimplifiedType),
+            TreatProjections::DefaultCandidate | TreatProjections::DefaultLookup => None,
         },
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,

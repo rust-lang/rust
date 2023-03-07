@@ -26,7 +26,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::mir::interpret;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
@@ -1859,6 +1859,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         self.tcx,
                         trait_ref.self_ty(),
                         TreatParams::AsInfer,
+                        TreatProjections::DefaultCandidate,
                     );
 
                     fx_hash_map

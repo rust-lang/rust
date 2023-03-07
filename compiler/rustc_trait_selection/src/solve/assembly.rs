@@ -8,6 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
+use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
@@ -299,9 +300,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        tcx.for_each_relevant_impl(
+        tcx.for_each_relevant_impl_treating_projections(
             goal.predicate.trait_def_id(tcx),
             goal.predicate.self_ty(),
+            TreatProjections::NextSolverLookup,
             |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(result) => candidates
                     .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
