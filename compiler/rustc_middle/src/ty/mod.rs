@@ -2279,6 +2279,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated `#[marker]` and prevents item overrides.
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn impls_are_allowed_to_overlap(
         self,
         def_id1: DefId,
@@ -2297,19 +2298,11 @@ impl<'tcx> TyCtxt<'tcx> {
         match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
             (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
                 // `#[rustc_reservation_impl]` impls don't overlap with anything
-                debug!(
-                    "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (reservations)",
-                    def_id1, def_id2
-                );
                 return Some(ImplOverlapKind::Permitted { marker: false });
             }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
                 // `impl AutoTrait for Type` + `impl !AutoTrait for Type`
-                debug!(
-                    "impls_are_allowed_to_overlap({:?}, {:?}) - None (differing polarities)",
-                    def_id1, def_id2
-                );
                 return None;
             }
             (ImplPolarity::Positive, ImplPolarity::Positive)
@@ -2324,30 +2317,18 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         if is_marker_overlap {
-            debug!(
-                "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (marker overlap)",
-                def_id1, def_id2
-            );
             Some(ImplOverlapKind::Permitted { marker: true })
         } else {
             if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
                 if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
                     if self_ty1 == self_ty2 {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - issue #33140 HACK",
-                            def_id1, def_id2
-                        );
                         return Some(ImplOverlapKind::Issue33140);
                     } else {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - found {:?} != {:?}",
-                            def_id1, def_id2, self_ty1, self_ty2
-                        );
+                        debug!("found {self_ty1:?} != {self_ty2:?}");
                     }
                 }
             }
 
-            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = None", def_id1, def_id2);
             None
         }
     }

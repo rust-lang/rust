@@ -21,6 +21,7 @@ pub struct FutureCompatOverlapError<'tcx> {
 }
 
 /// The result of attempting to insert an impl into a group of children.
+#[derive(Debug)]
 enum Inserted<'tcx> {
     /// The impl was inserted as a new child in this group of children.
     BecameNewSibling(Option<FutureCompatOverlapError<'tcx>>),
@@ -82,6 +83,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
 
     /// Attempt to insert an impl into this set of children, while comparing for
     /// specialization relationships.
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     fn insert(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -92,18 +94,13 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
 
-        debug!("insert(impl_def_id={:?}, simplified_self={:?})", impl_def_id, simplified_self,);
-
         let possible_siblings = match simplified_self {
             Some(st) => PotentialSiblings::Filtered(filtered_children(self, st)),
             None => PotentialSiblings::Unfiltered(iter_children(self)),
         };
 
         for possible_sibling in possible_siblings {
-            debug!(
-                "insert: impl_def_id={:?}, simplified_self={:?}, possible_sibling={:?}",
-                impl_def_id, simplified_self, possible_sibling,
-            );
+            debug!(?possible_sibling);
 
             let create_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>| {
                 let trait_ref = overlap.impl_header.trait_ref.unwrap();
