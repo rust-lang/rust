@@ -29,19 +29,17 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     assert_eq!(&local.name, CRATE_NAME);
 
     // Find items in the local crate.
-    assert!(has_root_item(tcx, &local, (DefKind::Fn, "foo_bar")));
-    assert!(has_root_item(tcx, &local, (DefKind::Mod, "foo")));
-    assert!(!has_root_item(tcx, &local, (DefKind::Fn, "foo::bar")));
+    let items = stable_mir::all_local_items();
+    assert!(has_item(tcx, &items, (DefKind::Fn, "foo_bar")));
+    assert!(has_item(tcx, &items, (DefKind::Fn, "foo::bar")));
 
-    // Check that we can find items in the `std` crate.
-    let std_crate = stable_mir::find_crate("std").unwrap();
-    assert!(has_root_item(tcx, &std_crate, (DefKind::Mod, "std::any")));
-    assert!(!has_root_item(tcx, &std_crate, (DefKind::Fn, "std::any::type_name")));
+    // Find the `std` crate.
+    assert!(stable_mir::find_crate("std").is_some());
 }
 
 // Use internal API to find a function in a crate.
-fn has_root_item(tcx: TyCtxt, krate: &stable_mir::Crate, item: (DefKind, &str)) -> bool {
-    krate.root_items.iter().any(|crate_item| {
+fn has_item(tcx: TyCtxt, items: &stable_mir::CrateItems, item: (DefKind, &str)) -> bool {
+    items.iter().any(|crate_item| {
         let def_id = rustc_internal::item_def_id(crate_item);
         tcx.def_kind(def_id) == item.0 && tcx.def_path_str(def_id) == item.1
     })

@@ -31,8 +31,6 @@ pub struct Crate {
     pub(crate) id: CrateNum,
     pub name: Symbol,
     pub is_local: bool,
-    /// The items defined in the root of this crate.
-    pub root_items: CrateItems,
 }
 
 /// Holds information about an item in the crate.
@@ -49,4 +47,14 @@ pub fn local_crate() -> Crate {
 /// Try to find a crate with the given name.
 pub fn find_crate(name: &str) -> Option<Crate> {
     crate::rustc_smir::find_crate(name)
+}
+
+/// Try to find a crate with the given name.
+pub fn external_crates() -> Vec<Crate> {
+    crate::rustc_smir::external_crates()
+}
+
+/// Retrieve all items in the local crate that have a MIR associated with them.
+pub fn all_local_items() -> CrateItems {
+    crate::rustc_smir::all_local_items()
 }

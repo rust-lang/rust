@@ -9,12 +9,17 @@
 
 use crate::stable_mir::{self};
 use rustc_middle::ty::{tls::with, TyCtxt};
-use rustc_span::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
 use tracing::debug;
 
 /// Get information about the local crate.
 pub fn local_crate() -> stable_mir::Crate {
     with(|tcx| smir_crate(tcx, LOCAL_CRATE))
+}
+
+/// Retrieve a list of all external crates.
+pub fn external_crates() -> Vec<stable_mir::Crate> {
+    with(|tcx| tcx.crates(()).iter().map(|crate_num| smir_crate(tcx, *crate_num)).collect())
 }
 
 /// Find a crate with the given name.
@@ -27,26 +32,17 @@ pub fn find_crate(name: &str) -> Option<stable_mir::Crate> {
     })
 }
 
+/// Retrieve all items of the local crate that have a MIR associated with them.
+pub fn all_local_items() -> stable_mir::CrateItems {
+    with(|tcx| {
+        tcx.mir_keys(()).iter().map(|item| stable_mir::CrateItem(item.to_def_id())).collect()
+    })
+}
+
 /// Build a stable mir crate from a given crate number.
 fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
     let crate_name = tcx.crate_name(crate_num).to_string();
     let is_local = crate_num == LOCAL_CRATE;
-    let mod_id = DefId { index: CRATE_DEF_INDEX, krate: crate_num };
-    let items = if is_local {
-        tcx.hir_module_items(mod_id.expect_local())
-            .items()
-            .map(|item| {
-                let def_id = item.owner_id.def_id.to_def_id();
-                stable_mir::CrateItem(def_id)
-            })
-            .collect()
-    } else {
-        tcx.module_children(mod_id)
-            .iter()
-            .filter_map(|item| item.res.opt_def_id())
-            .map(stable_mir::CrateItem)
-            .collect::<Vec<_>>()
-    };
     debug!(?crate_name, ?crate_num, "smir_crate");
-    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local, root_items: items }
+    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
 }
