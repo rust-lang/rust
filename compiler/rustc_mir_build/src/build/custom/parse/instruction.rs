@@ -1,5 +1,6 @@
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -142,7 +143,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     }
 
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
-        parse_by_kind!(self, expr_id, _, "rvalue",
+        parse_by_kind!(self, expr_id, expr, "rvalue",
             @call("mir_discriminant", args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
             @call("mir_checked", args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
@@ -167,6 +168,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::Repeat { value, count } => Ok(
                 Rvalue::Repeat(self.parse_operand(*value)?, *count)
             ),
+            ExprKind::Cast { source } => {
+                let source = self.parse_operand(*source)?;
+                let source_ty = source.ty(self.body.local_decls(), self.tcx);
+                let cast_kind = mir_cast_kind(source_ty, expr.ty);
+                Ok(Rvalue::Cast(cast_kind, source, expr.ty))
+            },
             _ => self.parse_operand(expr_id).map(Rvalue::Use),
         )
     }
