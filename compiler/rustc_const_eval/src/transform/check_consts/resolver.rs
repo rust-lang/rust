@@ -224,9 +224,6 @@ where
 
         // We ignore borrow on drop because custom drop impls are not allowed in consts.
         // FIXME: Reconsider if accounting for borrows in drops is necessary for const drop.
-
-        // We need to assign qualifs to the dropped location before visiting the operand that
-        // replaces it since qualifs can be cleared on move.
         self.super_terminator(terminator, location);
     }
 }
