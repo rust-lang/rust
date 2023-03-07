@@ -85,6 +85,7 @@ fn start<T: Termination + 'static>(
     main: fn() -> T,
     argc: isize,
     argv: *const *const u8,
+    _sigpipe: u8,
 ) -> isize {
     if argc == 3 {
         unsafe { puts(*argv); }
@@ -228,6 +229,7 @@ fn main() {
     } as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
+    #[allow(unreachable_code)]
     match FUNC_REF {
         Some(_) => {},
         None => assert!(false),

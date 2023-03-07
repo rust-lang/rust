@@ -36,7 +36,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let context = &cx.context;
     let byte_type = context.new_type::<u8>();
-    let typ = context.new_array_type(None, byte_type, bytes.len() as i32);
+    let typ = context.new_array_type(None, byte_type, bytes.len() as u64);
     let elements: Vec<_> =
         bytes.iter()
         .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
@@ -115,8 +115,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.usize_type, i)
     }
 
-    fn const_u8(&self, _i: u8) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_u8(&self, i: u8) -> RValue<'gcc> {
+        self.const_uint(self.type_u8(), i as u64)
     }
 
     fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
@@ -133,7 +133,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .1;
         let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
+            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }
@@ -174,8 +174,18 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
-                // TODO(bjorn3): assert size is correct
-                self.const_bitcast(value, ty)
+                let bytesize = layout.size(self).bytes();
+                if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
+                    // NOTE: since the intrinsic _xabort is called with a bitcast, which
+                    // is non-const, but expects a constant, do a normal cast instead of a bitcast.
+                    // FIXME(antoyo): fix bitcast to work in constant contexts.
+                    // TODO(antoyo): perhaps only use bitcast for pointers?
+                    self.context.new_cast(None, value, ty)
+                }
+                else {
+                    // TODO(bjorn3): assert size is correct
+                    self.const_bitcast(value, ty)
+                }
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
@@ -227,11 +237,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: ConstAllocation<'tcx>, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
         assert_eq!(alloc.inner().align, layout.align.abi);
-        let ty = self.type_ptr_to(layout.gcc_type(self, true));
+        let ty = self.type_ptr_to(layout.gcc_type(self));
         let value =
             if layout.size == Size::ZERO {
                 let value = self.const_usize(alloc.inner().align.bytes());
-                self.context.new_cast(None, value, ty)
+                self.const_bitcast(value, ty)
             }
             else {
                 let init = const_alloc_to_gcc(self, alloc);

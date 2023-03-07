@@ -76,7 +76,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[lang = "panic"]
 #[track_caller]
 #[no_mangle]
-pub fn panic(_msg: &str) -> ! {
+pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\0" as *const str as *const u8);
         intrinsics::abort();
@@ -102,6 +102,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 
 mod intrinsics {
     extern "rust-intrinsic" {
+        #[rustc_safe_intrinsic]
         pub fn abort() -> !;
     }
 }

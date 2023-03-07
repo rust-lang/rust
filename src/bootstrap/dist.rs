@@ -324,7 +324,7 @@ impl Step for Mingw {
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        if !host.ends_with("pc-windows-gnu") {
+        if !host.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
             return None;
         }
 
@@ -380,7 +380,7 @@ impl Step for Rustc {
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.ends_with("pc-windows-gnu") {
+        if host.ends_with("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
             make_win_dist(tarball.image_dir(), &tmpdir(builder), host, builder);
             tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }

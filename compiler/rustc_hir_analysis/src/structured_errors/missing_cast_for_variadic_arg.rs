@@ -1,5 +1,5 @@
-use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
+use crate::{errors, structured_errors::StructuredDiagnostic};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -21,25 +21,24 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = self.sess.struct_span_err_with_code(
-            self.span,
-            &format!("can't pass `{}` to variadic function", self.ty),
-            self.code(),
-        );
+        let (sugg_span, replace, help) =
+            if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
+                (Some(self.span), format!("{} as {}", snippet, self.cast_ty), None)
+            } else {
+                (None, "".to_string(), Some(()))
+            };
+
+        let mut err = self.sess.create_err(errors::PassToVariadicFunction {
+            span: self.span,
+            ty: self.ty,
+            cast_ty: self.cast_ty,
+            help,
+            replace,
+            sugg_span,
+        });
 
         if self.ty.references_error() {
             err.downgrade_to_delayed_bug();
-        }
-
-        if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
-            err.span_suggestion(
-                self.span,
-                &format!("cast the value to `{}`", self.cast_ty),
-                format!("{} as {}", snippet, self.cast_ty),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            err.help(&format!("cast the value to `{}`", self.cast_ty));
         }
 
         err

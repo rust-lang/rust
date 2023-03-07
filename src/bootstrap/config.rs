@@ -190,6 +190,7 @@ pub struct Config {
     pub dist_sign_folder: Option<PathBuf>,
     pub dist_upload_addr: Option<String>,
     pub dist_compression_formats: Option<Vec<String>>,
+    pub dist_include_mingw_linker: bool,
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
@@ -700,6 +701,7 @@ define_config! {
         src_tarball: Option<bool> = "src-tarball",
         missing_tools: Option<bool> = "missing-tools",
         compression_formats: Option<Vec<String>> = "compression-formats",
+        include_mingw_linker: Option<bool> = "include-mingw-linker",
     }
 }
 
@@ -816,6 +818,7 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.deny_warnings = true;
         config.bindir = "bin".into();
+        config.dist_include_mingw_linker = true;
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
@@ -1299,6 +1302,7 @@ impl Config {
             config.dist_compression_formats = t.compression_formats;
             set(&mut config.rust_dist_src, t.src_tarball);
             set(&mut config.missing_tools, t.missing_tools);
+            set(&mut config.dist_include_mingw_linker, t.include_mingw_linker)
         }
 
         if let Some(r) = build.rustfmt {

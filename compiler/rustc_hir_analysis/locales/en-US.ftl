@@ -155,3 +155,11 @@ hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
 hir_analysis_cannot_capture_late_bound_const_in_anon_const =
     cannot capture late-bound const parameter in a constant
     .label = parameter defined here
+
+hir_analysis_variances_of = {$variances_of}
+
+hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
+    .suggestion = cast the value to `{$cast_ty}`
+    .help = cast the value to `{$cast_ty}`
+
+hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`

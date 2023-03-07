@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use gccjit::{RValue, Struct, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_codegen_ssa::common::TypeKind;
@@ -202,8 +200,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         value.get_type()
     }
 
-    fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
-        if let Some(struct_type) = ty.is_struct() {
+    fn type_array(&self, ty: Type<'gcc>, len: u64) -> Type<'gcc> {
+        // TODO: remove this as well?
+        /*if let Some(struct_type) = ty.is_struct() {
             if struct_type.get_field_count() == 0 {
                 // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
                 // size of usize::MAX in test_binary_search, we workaround this by setting the size to
@@ -211,14 +210,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 // FIXME(antoyo): fix gccjit API.
                 len = 0;
             }
-        }
-
-        // NOTE: see note above. Some other test uses usize::MAX.
-        if len == u64::MAX {
-            len = 0;
-        }
-
-        let len: i32 = len.try_into().expect("array len");
+        }*/
 
         self.context.new_array_type(None, ty, len)
     }
@@ -247,10 +239,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
         self.context.new_opaque_struct_type(None, name)
     }
-
-    pub fn type_bool(&self) -> Type<'gcc> {
-        self.context.new_type::<bool>()
-    }
 }
 
 pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {
@@ -273,7 +261,7 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         assert_eq!(offset.align_to(padding_align) + padding, target_offset);
         result.push(cx.type_padding_filler(padding, padding_align));
 
-        result.push(field.gcc_type(cx, !field.ty.is_any_ptr())); // FIXME(antoyo): might need to check if the type is inside another, like Box<Type>.
+        result.push(field.gcc_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
