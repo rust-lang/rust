@@ -711,6 +711,7 @@ fn ensure_must_run<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     key: &Q::Key,
+    check_cache: bool,
 ) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
     Q: QueryConfig<Qcx>,
@@ -743,6 +744,11 @@ where
         }
     };
 
+    // We do not need the value at all, so do not check the cache.
+    if !check_cache {
+        return (false, None);
+    }
+
     let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
     (!loadable, Some(dep_node))
 }
@@ -750,7 +756,7 @@ where
 #[derive(Debug)]
 pub enum QueryMode {
     Get,
-    Ensure,
+    Ensure { check_cache: bool },
 }
 
 #[inline(always)]
@@ -765,8 +771,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run(query, qcx, &key);
+    let dep_node = if let QueryMode::Ensure { check_cache } = mode {
+        let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
         if !must_run {
             return None;
         }
