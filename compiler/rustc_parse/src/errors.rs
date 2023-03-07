@@ -939,6 +939,7 @@ pub(crate) struct ExpectedIdentifier {
     pub token: Token,
     pub suggest_raw: Option<SuggEscapeToUseAsIdentifier>,
     pub suggest_remove_comma: Option<SuggRemoveComma>,
+    pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
@@ -975,9 +976,17 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
             sugg.add_to_diagnostic(&mut diag);
         }
 
+        if let Some(help) = self.help_cannot_start_number {
+            help.add_to_diagnostic(&mut diag);
+        }
+
         diag
     }
 }
+
+#[derive(Subdiagnostic)]
+#[help(parse_invalid_identifier_with_leading_number)]
+pub(crate) struct HelpIdentifierStartsWithNumber;
 
 pub(crate) struct ExpectedSemi {
     pub span: Span,
@@ -1202,14 +1211,6 @@ pub(crate) struct PatternMethodParamWithoutBody {
 #[derive(Diagnostic)]
 #[diag(parse_self_param_not_first)]
 pub(crate) struct SelfParamNotFirst {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_invalid_identifier_with_leading_number)]
-pub(crate) struct InvalidIdentiferStartsWithNumber {
     #[primary_span]
     #[label]
     pub span: Span,
