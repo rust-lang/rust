@@ -300,6 +300,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::nearbyintf64 => (0, vec![tcx.types.f64], tcx.types.f64),
             sym::roundf32 => (0, vec![tcx.types.f32], tcx.types.f32),
             sym::roundf64 => (0, vec![tcx.types.f64], tcx.types.f64),
+            sym::roundevenf32 => (0, vec![tcx.types.f32], tcx.types.f32),
+            sym::roundevenf64 => (0, vec![tcx.types.f64], tcx.types.f64),
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 (1, vec![tcx.mk_imm_ptr(param(0))], param(0))
