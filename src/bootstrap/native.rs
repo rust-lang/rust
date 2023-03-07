@@ -520,10 +520,6 @@ impl Step for Llvm {
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
-    if !builder.config.llvm_version_check {
-        return;
-    }
-
     if builder.config.dry_run() {
         return;
     }
