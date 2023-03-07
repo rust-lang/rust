@@ -75,11 +75,6 @@ changelog-seen = 2
 # or alternatively ...
 #ccache = "/path/to/ccache"
 
-# If an external LLVM root is specified, we automatically check the version by
-# default to make sure it's within the range that we're expecting, but setting
-# this flag will indicate that this version check should not be done.
-#version-check = true
-
 # When true, link libstdc++ statically into the rustc_llvm.
 # This is useful if you don't want to use the dynamic version of that
 # library provided by LLVM.
