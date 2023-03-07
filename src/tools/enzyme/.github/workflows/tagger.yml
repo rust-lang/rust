@@ -1,0 +1,52 @@
+name: Tag CI
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  build:
+    name: Enzyme Tag CI
+    runs-on: ubuntu-latest
+    steps:
+    - uses: tibdex/github-app-token@v1
+      id: generate_token
+      with:
+        app_id: ${{ secrets.APP_ID }}
+        private_key: ${{ secrets.APP_PRIVATE_KEY }}
+        repository: JuliaPackaging/Yggdrasil
+
+    - uses: actions/checkout@v3
+      with:
+          repository: 'JuliaPackaging/Yggdrasil'
+          path: ygg
+
+    - uses: actions/checkout@v3
+      with:
+        path: enz
+    - name: replace
+      run: |
+          cd ygg
+          git rm -rf E/Enzyme
+          mkdir -p E/Enzyme/
+          cd E/Enzyme
+          cp ../../../enz/.packaging/build_tarballs.jl build_tarballs.jl
+          sed "s~%ENZYME_VERSION%~${GITHUB_REF}~g" build_tarballs.jl -i
+          sed "s~%ENZYME_HASH%~${GITHUB_SHA}~g" build_tarballs.jl -i
+          git add .
+    - name: Create Pull Request
+      id: cpr
+      uses: peter-evans/create-pull-request@v3
+      with:
+        path: ygg
+        commit-message: "Upgrade enzyme to ${{ github.ref }}"
+        title: "Upgrade enzyme to ${{ github.ref }}"
+        token: ${{ steps.generate_token.outputs.token }}
+        reviewers: vchuravy
+        branch: enzyme/${{ github.ref }}
+        body: "Automatic PR generated for https://github.com/wsmoses/Enzyme "
+    - name: Check outputs
+      run: |
+        echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
+        echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"

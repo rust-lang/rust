@@ -1,0 +1,47 @@
+name: C/C++ CI
+
+on: 
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  build:
+    name: Integration CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["7", "8", "9", "10", "11", "12", "13"] #, "14"]
+        build: ["Release"] # "RelWithDebInfo"
+        os: [ubuntu-20.04, ubuntu-18.04]
+    
+    timeout-minutes: 45 
+    steps:
+    - name: add llvm 
+      run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          sudo apt-add-repository "deb http://apt.llvm.org/`lsb_release -c | cut -f2`/ llvm-toolchain-`lsb_release -c | cut -f2`-${{ matrix.llvm }} main" || true
+          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev libomp-${{ matrix.llvm }}-dev clang-${{ matrix.llvm }} libclang-${{ matrix.llvm }}-dev libeigen3-dev libboost-dev
+          sudo python3 -m pip install --upgrade pip setuptools
+          sudo python3 -m pip install lit
+          sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
+          if [[ '${{ matrix.llvm }}' == '13' ]]; then
+            sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
+            sudo sed -i 's/llvm-omp-device-info//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
+          fi
+    - uses: actions/checkout@v3
+    - name: mkdir
+      run: cd enzyme && rm -rf build && mkdir build
+    - name: cmake
+      run: |
+          cd enzyme/build 
+          cmake .. -DLLVM_EXTERNAL_LIT=`which lit` -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
+    - name: make
+      run: cd enzyme/build && make -j`nproc` LLVMEnzyme-${{ matrix.llvm }}
+    - name: make check-enzyme-integration
+      run: cd enzyme/build && make check-enzyme-integration -j`nproc`

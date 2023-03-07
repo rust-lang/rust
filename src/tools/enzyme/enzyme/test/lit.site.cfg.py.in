@@ -1,0 +1,72 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+#config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+config.llvm_ver = "@LLVM_VERSION_MAJOR@"
+config.llvm_obj_root = "@LLVM_BINARY_DIR@"
+config.llvm_tools_dir = "@LLVM_TOOLS_BINARY_DIR@"
+config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
+config.enzyme_obj_root = "@ENZYME_BINARY_DIR@"
+config.target_triple = "@TARGET_TRIPLE@"
+
+config.llvm_shlib_ext = "@LLVM_SHLIBEXT@"
+
+config.targets_to_build = "@TARGETS_TO_BUILD@"
+
+## Check the current platform with regex
+import re
+EAT_ERR_ON_X86 = ' '
+if (re.match(r'^x86_64*', '@TARGET_TRIPLE@') == None) :
+  EAT_ERR_ON_X86 = '|| echo \"error is eaten\"'
+
+for arch in config.targets_to_build.split():
+    config.available_features.add(arch.lower() + '-registered-target')
+
+# Support substitution of the tools and libs dirs with user parameters. This is
+# used when we can't determine the tool dir at configuration time.
+try:
+    config.llvm_tools_dir = config.llvm_tools_dir % lit_config.params
+    config.llvm_libs_dir = config.llvm_libs_dir % lit_config.params
+except KeyError:
+    e = sys.exc_info()[1]
+    key, = e.args
+    lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+# excludes: A list of directories to exclude from the testsuite. The 'Inputs'
+# subdirectories contain auxiliary inputs for various tests in their parent
+# directories.
+config.excludes = ['Inputs']
+
+config.substitutions.append(('%shlibext', config.llvm_shlib_ext))
+config.substitutions.append(('%lli', config.llvm_tools_dir + "/lli" + (" --jit-kind=mcjit" if int(config.llvm_ver) >= 13 else "")
+))
+config.substitutions.append(('%opt', config.llvm_tools_dir + "/opt"))
+config.substitutions.append(('%eopt', config.enzyme_obj_root + "/Enzyme/MLIR/enzymemlir-opt"))
+config.substitutions.append(('%llvmver', config.llvm_ver))
+config.substitutions.append(('%FileCheck', config.llvm_tools_dir + "/FileCheck"))
+config.substitutions.append(('%clang', config.llvm_tools_dir + "/clang"))
+config.substitutions.append(('%O0TBAA', "-O1 -Xclang -disable-llvm-passes"))
+config.substitutions.append(('%loadEnzyme', ''
+                                 + (" --enable-new-pm=0" if int(config.llvm_ver) >= 13 else "")
+                                 + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme-' + config.llvm_ver + config.llvm_shlib_ext 
+                                 + (" --enzyme-attributor=0" if int(config.llvm_ver) >= 13 else "")
+                                 ))
+config.substitutions.append(('%newLoadEnzyme', ''
+                                 + (" --enable-new-pm=1" if int(config.llvm_ver) in (12,13) else "")
+                                 + ' -load-pass-plugin=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme-' + config.llvm_ver + config.llvm_shlib_ext 
+                                 + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme-' + config.llvm_ver + config.llvm_shlib_ext 
+                                 + (" --enzyme-attributor=0" if int(config.llvm_ver) >= 13 else "")
+                                 ))
+config.substitutions.append(('%loadBC', ''
+                                 + ' @ENZYME_BINARY_DIR@/BCLoad/BCPass-' + config.llvm_ver + config.llvm_shlib_ext
+                                 ))
+config.substitutions.append(('%BClibdir', '@ENZYME_SOURCE_DIR@/bclib/'))
+oldPM = (((" -fno-experimental-new-pass-manager" if int(config.llvm_ver) <= 14 else "-flegacy-pass-manager") if int(config.llvm_ver) >= 13 else "")
+          + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext)
+newPM = ((" -fexperimental-new-pass-manager" if int(config.llvm_ver) < 13 else "")
+          + ' -fpass-plugin=@ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
+          + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext)
+config.substitutions.append(('%loadClangEnzyme', oldPM if int(config.llvm_ver) <= 15 else newPM))
+config.substitutions.append(('%newLoadClangEnzyme', newPM))
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@ENZYME_SOURCE_DIR@/test/lit.cfg.py")

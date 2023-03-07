@@ -1,0 +1,21 @@
+// available ubuntu versions: [18, 20, 22]
+// available llvm versions: [7, 8, 9, 10, 11, 12, 13, 14, 15]
+{
+    "name": "Enzyme",
+    "image": "ghcr.io/enzymead/enzyme-dev-docker/ubuntu-20-llvm-12:latest",
+    "mounts": [
+        "source=enzyme-bashhistory,target=/commandhistory,type=volume",
+        "source=enzyme-extensions,target=/root/.vscode-server/extensions,type=volume",
+        "source=enzyme-extensions-insiders,target=/root/.vscode-server-insiders/extensions,type=volume",
+        "source=enzyme-build,target=${containerWorkspaceFolder}/enzyme/build,type=volume",
+    ],
+    "postCreateCommand": "sudo chown vscode ./enzyme/build",
+    "runArgs": ["--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools-extension-pack"
+            ]
+        }
+    }
+}

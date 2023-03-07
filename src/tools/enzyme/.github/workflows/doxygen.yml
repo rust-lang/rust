@@ -1,0 +1,25 @@
+name: Build and deploy Doxygen to Scripts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  docs:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: mattnotmitt/doxygen-action@v1.9.2
+        with:
+          working-directory: 'enzyme/'
+          doxyfile-path: 'doxygen.cfg'
+
+      - uses: wsmoses/action-deploy-scripts@main
+        with:
+          locker: 'enzyme-compiler'
+          remote: doxygen
+          privateKey: ${{ secrets.SCRIPTS_PRIVATE_KEY }}
+          rmRemote: true
+          local: enzyme/doxygen/html
