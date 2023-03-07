@@ -197,23 +197,30 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
             return Ok(*ty);
         }
 
+        let (kind, data) = match *ty.kind() {
+            ty::Alias(kind, data) => (kind, data),
+            _ => {
+                let res = ty.try_super_fold_with(self)?;
+                self.cache.insert(ty, res);
+                return Ok(res);
+            }
+        };
+
         // See note in `rustc_trait_selection::traits::project` about why we
         // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
-        let res = match *ty.kind() {
+        let res = match kind {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. })
-                if !substs.has_escaping_bound_vars() =>
-            {
+            ty::Opaque if !data.substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self)?,
 
                     Reveal::All => {
-                        let substs = substs.try_fold_with(self)?;
+                        let substs = data.substs.try_fold_with(self)?;
                         let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             // A closure or generator may have itself as in its upvars.
@@ -228,7 +235,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                             return ty.try_super_fold_with(self);
                         }
 
-                        let generic_ty = self.interner().type_of(def_id);
+                        let generic_ty = self.interner().type_of(data.def_id);
                         let concrete_ty = generic_ty.subst(self.interner(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
@@ -248,7 +255,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 }
             }
 
-            ty::Alias(ty::Projection, data) if !data.has_escaping_bound_vars() => {
+            ty::Opaque => ty.try_super_fold_with(self)?,
+
+            ty::Projection if !data.has_escaping_bound_vars() => {
                 // This branch is just an optimization: when we don't have escaping bound vars,
                 // we don't need to replace them with placeholders (see branch below).
 
@@ -297,7 +306,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 }
             }
 
-            ty::Alias(ty::Projection, data) => {
+            ty::Projection => {
                 // See note in `rustc_trait_selection::traits::project`
 
                 let tcx = self.infcx.tcx;
@@ -353,8 +362,6 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     res
                 }
             }
-
-            _ => ty.try_super_fold_with(self)?,
         };
 
         self.cache.insert(ty, res);
