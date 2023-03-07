@@ -20,3 +20,11 @@ pub trait Shazam {}
 pub fn bippety<X>() -> &'static X where X: Shazam {
     panic!()
 }
+
+pub struct Drizzel<T>(T);
+
+impl<T> Drizzel<T> {
+    pub fn boppety(&self) -> &T where T: Shazam {
+        panic!();
+    }
+}

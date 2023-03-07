@@ -484,7 +484,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
     // for its bounds.
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
-        if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
+        for where_pred in generics.where_predicates.iter().filter(|g| match g {
             WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
             _ => false,
         }) {
