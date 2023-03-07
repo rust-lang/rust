@@ -511,6 +511,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
+
+        // Recurse into statement before applying the assignment.
+        self.super_statement(statement, location);
+
         match statement.kind {
             StatementKind::Assign(box (place, ref rval)) => {
                 let can_const_prop = self.ecx.machine.can_const_prop[place.local];
@@ -576,8 +580,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             }
             _ => {}
         }
-
-        self.super_statement(statement, location);
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
