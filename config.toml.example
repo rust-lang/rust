@@ -659,6 +659,10 @@ changelog-seen = 2
 # Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
 #validate-mir-opts = 3
 
+# Copy the linker, DLLs, and various libraries from MinGW into the rustc toolchain.
+# Only applies when the host or target is pc-windows-gnu.
+#include-mingw-linker = true
+
 # =============================================================================
 # Options for specific targets
 #
