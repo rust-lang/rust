@@ -540,19 +540,16 @@ LL +     fn multiple_inputs_output_not_elided<'b>(x: &u8, y: &'b u8, z: &'b u8) 
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:508:13
+  --> $DIR/needless_lifetimes.rs:511:9
    |
-LL |             fn one_input<'a>(x: &'a u8) -> &'a u8 {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     local_one_input_macro!();
-   |     ------------------------ in this macro invocation
+LL |         fn one_input<'a>(x: &'a u8) -> &'a u8 {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `local_one_input_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_mod_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: elide the lifetimes
    |
-LL -             fn one_input<'a>(x: &'a u8) -> &'a u8 {
-LL +             fn one_input(x: &u8) -> &u8 {
+LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
+LL +         fn one_input(x: &u8) -> &u8 {
    |
 
 error: aborting due to 46 previous errors
