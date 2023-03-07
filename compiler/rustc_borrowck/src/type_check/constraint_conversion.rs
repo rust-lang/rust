@@ -116,7 +116,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
             let subject = match outlives_requirement.subject {
                 ClosureOutlivesSubject::Region(re) => closure_mapping[re].into(),
-                ClosureOutlivesSubject::Ty(ty) => ty.into(),
+                ClosureOutlivesSubject::Ty(subject_ty) => {
+                    subject_ty.instantiate(self.tcx, |vid| closure_mapping[vid]).into()
+                }
             };
 
             self.category = outlives_requirement.category;

@@ -8,7 +8,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
@@ -289,13 +289,6 @@ pub struct ConstQualifs {
 /// instance of the closure is created, the corresponding free regions
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
-///
-/// In some cases, we have to record outlives requirements between types and
-/// regions as well. In that case, if those types include any regions, those
-/// regions are recorded using their external names (`ReStatic`,
-/// `ReEarlyBound`, `ReFree`). We use these because in a query response we
-/// cannot use `ReVar` (which is what we use internally within the rest of the
-/// NLL code).
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ClosureRegionRequirements<'tcx> {
     /// The number of external regions defined on the closure. In our
@@ -392,14 +385,57 @@ pub enum ClosureOutlivesSubject<'tcx> {
     /// Subject is a type, typically a type parameter, but could also
     /// be a projection. Indicates a requirement like `T: 'a` being
     /// passed to the caller, where the type here is `T`.
-    ///
-    /// The type here is guaranteed not to contain any free regions at
-    /// present.
-    Ty(Ty<'tcx>),
+    Ty(ClosureOutlivesSubjectTy<'tcx>),
 
     /// Subject is a free region from the closure. Indicates a requirement
     /// like `'a: 'b` being passed to the caller; the region here is `'a`.
     Region(ty::RegionVid),
+}
+
+/// Represents a `ty::Ty` for use in [`ClosureOutlivesSubject`].
+///
+/// This abstraction is necessary because the type may include `ReVar` regions,
+/// which is what we use internally within NLL code, and they can't be used in
+/// a query response.
+///
+/// DO NOT implement `TypeVisitable` or `TypeFoldable` traits, because this
+/// type is not recognized as a binder for late-bound region.
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct ClosureOutlivesSubjectTy<'tcx> {
+    inner: Ty<'tcx>,
+}
+
+impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
+    /// All regions of `ty` must be of kind `ReVar` and must represent
+    /// universal regions *external* to the closure.
+    pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+        let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
+            ty::ReVar(vid) => {
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::new(vid.index()),
+                    kind: ty::BrAnon(vid.as_u32(), None),
+                };
+                tcx.mk_re_late_bound(depth, br)
+            }
+            _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
+        });
+
+        Self { inner }
+    }
+
+    pub fn instantiate(
+        self,
+        tcx: TyCtxt<'tcx>,
+        mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        tcx.fold_regions(self.inner, |r, depth| match r.kind() {
+            ty::ReLateBound(debruijn, br) => {
+                debug_assert_eq!(debruijn, depth);
+                map(ty::RegionVid::new(br.var.index()))
+            }
+            _ => bug!("unexpected region {r:?}"),
+        })
+    }
 }
 
 /// The constituent parts of a mir constant of kind ADT or array.
