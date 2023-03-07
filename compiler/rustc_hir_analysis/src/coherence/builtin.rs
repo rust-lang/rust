@@ -86,7 +86,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 tcx.sess,
                 span,
                 E0204,
-                "the trait `Copy` may not be implemented for this type"
+                "the trait `Copy` cannot be implemented for this type"
             );
 
             // We'll try to suggest constraining type parameters to fulfill the requirements of

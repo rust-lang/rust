@@ -31,7 +31,7 @@ impl<'tcx, T> Clone for List<'tcx, T> {
 }
 
 impl<'tcx, T> Copy for List<'tcx, T> {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR the trait `Copy` cannot be implemented for this type
 
 fn assert_is_copy<T: Copy>() {}
 

@@ -1,4 +1,4 @@
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/opt-in-copy.rs:7:15
    |
 LL |     but_i_cant: CantCopyThis,
@@ -7,7 +7,7 @@ LL |     but_i_cant: CantCopyThis,
 LL | impl Copy for IWantToCopyThis {}
    |               ^^^^^^^^^^^^^^^
 
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/opt-in-copy.rs:19:15
    |
 LL |     ButICant(CantCopyThisEither),

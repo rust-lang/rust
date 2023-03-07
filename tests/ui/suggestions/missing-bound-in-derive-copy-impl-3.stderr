@@ -1,4 +1,4 @@
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/missing-bound-in-derive-copy-impl-3.rs:10:17
    |
 LL | #[derive(Debug, Copy, Clone)]

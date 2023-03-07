@@ -60,7 +60,7 @@ error[E0412]: cannot find type `NotDefined` in this scope
 LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                     ^^^^^^^^^^ not found in this scope
 
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/issue-50480.rs:1:17
    |
 LL | #[derive(Clone, Copy)]
@@ -73,7 +73,7 @@ LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/issue-50480.rs:9:17
    |
 LL | #[derive(Clone, Copy)]

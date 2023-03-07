@@ -52,19 +52,19 @@ LL | impl Copy for [MyType] {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0206]: the trait `Copy` may not be implemented for this type
+error[E0206]: the trait `Copy` cannot be implemented for this type
   --> $DIR/coherence-impls-copy.rs:21:15
    |
 LL | impl Copy for &'static mut MyType {}
    |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
-error[E0206]: the trait `Copy` may not be implemented for this type
+error[E0206]: the trait `Copy` cannot be implemented for this type
   --> $DIR/coherence-impls-copy.rs:25:15
    |
 LL | impl Copy for (MyType, MyType) {}
    |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
-error[E0206]: the trait `Copy` may not be implemented for this type
+error[E0206]: the trait `Copy` cannot be implemented for this type
   --> $DIR/coherence-impls-copy.rs:30:15
    |
 LL | impl Copy for [MyType] {}
