@@ -238,6 +238,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             && has_changed
             && !self.in_projection_eq_hack
             && !self.search_graph.in_cycle()
+            && false
         {
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
             let canonical_response =
