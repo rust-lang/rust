@@ -1,4 +1,4 @@
-use crate::structured_errors::StructuredDiagnostic;
+use crate::{errors, structured_errors::StructuredDiagnostic};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
@@ -21,14 +21,11 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = self.sess.struct_span_err_with_code(
-            self.span,
-            &format!(
-                "cannot cast thin pointer `{}` to fat pointer `{}`",
-                self.expr_ty, self.cast_ty
-            ),
-            self.code(),
-        );
+        let mut err = self.sess.create_err(errors::CastThinPointerToFatPointer {
+            span: self.span,
+            expr_ty: self.expr_ty,
+            cast_ty: self.cast_ty.to_owned(),
+        });
 
         if self.expr_ty.references_error() {
             err.downgrade_to_delayed_bug();
