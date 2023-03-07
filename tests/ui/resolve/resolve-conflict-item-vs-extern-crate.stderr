@@ -1,0 +1,11 @@
+error[E0260]: the name `std` is defined multiple times
+  --> $DIR/resolve-conflict-item-vs-extern-crate.rs:2:1
+   |
+LL | mod std {}
+   | ^^^^^^^ `std` redefined here
+   |
+   = note: `std` must be defined only once in the type namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0260`.

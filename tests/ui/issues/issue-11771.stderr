@@ -1,0 +1,39 @@
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-11771.rs:3:7
+   |
+LL |     1 +
+   |       ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `Add<()>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
+
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-11771.rs:8:7
+   |
+LL |     1 +
+   |       ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `Add<()>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,10 @@
+error: expected iterable, found keyword `in`
+  --> $DIR/if-in-in.rs:4:14
+   |
+LL |     for i in in 1..2 {
+   |           ---^^
+   |           |
+   |           help: remove the duplicated `in`
+
+error: aborting due to previous error
+

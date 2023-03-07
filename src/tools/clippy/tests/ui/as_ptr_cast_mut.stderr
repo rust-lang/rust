@@ -1,0 +1,16 @@
+error: casting the result of `as_ptr` to *mut u8
+  --> $DIR/as_ptr_cast_mut.rs:21:13
+   |
+LL |     let _ = string.as_ptr() as *mut u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `string.as_mut_ptr()`
+   |
+   = note: `-D clippy::as-ptr-cast-mut` implied by `-D warnings`
+
+error: casting the result of `as_ptr` to *mut i8
+  --> $DIR/as_ptr_cast_mut.rs:22:22
+   |
+LL |     let _: *mut i8 = string.as_ptr() as *mut _;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `string.as_mut_ptr()`
+
+error: aborting due to 2 previous errors
+

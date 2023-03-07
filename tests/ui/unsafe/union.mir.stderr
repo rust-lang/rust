@@ -1,0 +1,19 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:30:20
+   |
+LL |         Foo { bar: _a } => {},
+   |                    ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:32:11
+   |
+LL |     match foo {
+   |           ^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

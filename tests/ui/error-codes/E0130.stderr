@@ -1,0 +1,9 @@
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/E0130.rs:2:12
+   |
+LL |     fn foo((a, b): (u32, u32));
+   |            ^^^^^^ pattern not allowed in foreign function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0130`.

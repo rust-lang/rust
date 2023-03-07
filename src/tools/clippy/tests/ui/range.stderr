@@ -1,0 +1,10 @@
+error: it is more idiomatic to use `v1.iter().enumerate()`
+  --> $DIR/range.rs:5:14
+   |
+LL |     let _x = v1.iter().zip(0..v1.len());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
+
+error: aborting due to previous error
+

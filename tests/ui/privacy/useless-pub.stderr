@@ -1,0 +1,21 @@
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/useless-pub.rs:8:5
+   |
+LL |     pub fn foo(&self) {}
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/useless-pub.rs:12:10
+   |
+LL |     V1 { pub f: i32 },
+   |          ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/useless-pub.rs:13:8
+   |
+LL |     V2(pub i32),
+   |        ^^^ `pub` not permitted here because it's implied
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

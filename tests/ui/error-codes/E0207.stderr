@@ -1,0 +1,9 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/E0207.rs:3:6
+   |
+LL | impl<T: Default> Foo {
+   |      ^ unconstrained type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0207`.

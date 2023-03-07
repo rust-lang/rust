@@ -1,0 +1,54 @@
+[package]
+name = "rustc_codegen_cranelift"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+# This is used just to teach rust-analyzer how to check the build system. required-features is used
+# to disable it for regular builds.
+name = "y"
+path = "./y.rs"
+required-features = ["__check_build_system_using_ra"]
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+# These have to be in sync with each other
+cranelift-codegen = { version = "0.92", features = ["unwind", "all-arch"] }
+cranelift-frontend = { version = "0.92" }
+cranelift-module = { version = "0.92" }
+# NOTE vendored as src/cranelift_native.rs
+# FIXME revert back to the external crate with Cranelift 0.93
+#cranelift-native = { version = "0.92" }
+cranelift-jit = { version = "0.92", optional = true }
+cranelift-object = { version = "0.92" }
+target-lexicon = "0.12.0"
+gimli = { version = "0.26.0", default-features = false, features = ["write"]}
+object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
+
+indexmap = "1.9.1"
+libloading = { version = "0.7.3", optional = true }
+once_cell = "1.10.0"
+smallvec = "1.8.1"
+
+[patch.crates-io]
+# Uncomment to use local checkout of cranelift
+#cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
+#cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
+#cranelift-module = { path = "../wasmtime/cranelift/module" }
+#cranelift-native = { path = "../wasmtime/cranelift/native" }
+#cranelift-jit = { path = "../wasmtime/cranelift/jit" }
+#cranelift-object = { path = "../wasmtime/cranelift/object" }
+
+#gimli = { path = "../" }
+
+[features]
+# Enable features not ready to be enabled when compiling as part of rustc
+unstable-features = ["jit", "inline_asm"]
+jit = ["cranelift-jit", "libloading"]
+inline_asm = []
+__check_build_system_using_ra = []
+
+[package.metadata.rust-analyzer]
+rustc_private = true

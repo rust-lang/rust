@@ -1,0 +1,11 @@
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/E0025.rs:8:21
+   |
+LL |     let Foo { a: x, a: y, b: 0 } = x;
+   |               ----  ^^^^ multiple uses of `a` in pattern
+   |               |
+   |               first use of `a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0025`.

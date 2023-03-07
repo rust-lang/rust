@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Sanity checking performed by rustbuild before actually executing anything.
 //!
 //! This module contains the implementation of ensuring that the build
@@ -18,108 +8,148 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 
-use build_helper::output;
+use crate::cache::INTERNER;
+use crate::config::Target;
+use crate::util::output;
+use crate::Build;
 
-use Build;
+pub struct Finder {
+    cache: HashMap<OsString, Option<PathBuf>>,
+    path: OsString,
+}
+
+impl Finder {
+    pub fn new() -> Self {
+        Self { cache: HashMap::new(), path: env::var_os("PATH").unwrap_or_default() }
+    }
+
+    pub fn maybe_have<S: Into<OsString>>(&mut self, cmd: S) -> Option<PathBuf> {
+        let cmd: OsString = cmd.into();
+        let path = &self.path;
+        self.cache
+            .entry(cmd.clone())
+            .or_insert_with(|| {
+                for path in env::split_paths(path) {
+                    let target = path.join(&cmd);
+                    let mut cmd_exe = cmd.clone();
+                    cmd_exe.push(".exe");
+
+                    if target.is_file()                   // some/path/git
+                    || path.join(&cmd_exe).exists()   // some/path/git.exe
+                    || target.join(&cmd_exe).exists()
+                    // some/path/git/git.exe
+                    {
+                        return Some(target);
+                    }
+                }
+                None
+            })
+            .clone()
+    }
+
+    pub fn must_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> PathBuf {
+        self.maybe_have(&cmd).unwrap_or_else(|| {
+            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd.as_ref());
+        })
+    }
+}
 
 pub fn check(build: &mut Build) {
-    let mut checked = HashSet::new();
-    let path = env::var_os("PATH").unwrap_or(OsString::new());
+    let path = env::var_os("PATH").unwrap_or_default();
     // On Windows, quotes are invalid characters for filename paths, and if
     // one is present as part of the PATH then that can lead to the system
     // being unable to identify the files properly. See
     // https://github.com/rust-lang/rust/issues/34959 for more details.
-    if cfg!(windows) {
-        if path.to_string_lossy().contains("\"") {
-            panic!("PATH contains invalid character '\"'");
-        }
+    if cfg!(windows) && path.to_string_lossy().contains('\"') {
+        panic!("PATH contains invalid character '\"'");
     }
-    let have_cmd = |cmd: &OsStr| {
-        for path in env::split_paths(&path) {
-            let target = path.join(cmd);
-            let mut cmd_alt = cmd.to_os_string();
-            cmd_alt.push(".exe");
-            if target.exists() ||
-               target.with_extension("exe").exists() ||
-               target.join(cmd_alt).exists() {
-                return Some(target);
-            }
-        }
-        return None;
-    };
 
-    let mut need_cmd = |cmd: &OsStr| {
-        if !checked.insert(cmd.to_owned()) {
-            return
-        }
-        if have_cmd(cmd).is_none() {
-            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd);
-        }
-    };
-
-    // If we've got a git directory we're gona need git to update
+    let mut cmd_finder = Finder::new();
+    // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if fs::metadata(build.src.join(".git")).is_ok() {
-        need_cmd("git".as_ref());
+    if build.rust_info().is_managed_git_subrepository() {
+        cmd_finder.must_have("git");
     }
 
-    // We need cmake, but only if we're actually building LLVM
-    for host in build.config.host.iter() {
-        if let Some(config) = build.config.target_config.get(host) {
-            if config.llvm_config.is_some() {
-                continue
-            }
-        }
-        need_cmd("cmake".as_ref());
-        if build.config.ninja {
-            // Some Linux distros rename `ninja` to `ninja-build`.
-            // CMake can work with either binary name.
-            if have_cmd("ninja-build".as_ref()).is_none() {
-                need_cmd("ninja".as_ref());
-            }
-        }
-        break
-    }
+    // We need cmake, but only if we're actually building LLVM or sanitizers.
+    let building_llvm = build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+        && build
+            .hosts
+            .iter()
+            .map(|host| {
+                build
+                    .config
+                    .target_config
+                    .get(host)
+                    .map(|config| config.llvm_config.is_none())
+                    .unwrap_or(true)
+            })
+            .any(|build_llvm_ourselves| build_llvm_ourselves);
+    let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
+    if need_cmake {
+        if cmd_finder.maybe_have("cmake").is_none() {
+            eprintln!(
+                "
+Couldn't find required command: cmake
 
-    if build.config.python.is_none() {
-        build.config.python = have_cmd("python2.7".as_ref());
-    }
-    if build.config.python.is_none() {
-        build.config.python = have_cmd("python2".as_ref());
-    }
-    if build.config.python.is_none() {
-        need_cmd("python".as_ref());
-        build.config.python = Some("python".into());
-    }
-    need_cmd(build.config.python.as_ref().unwrap().as_ref());
-
-
-    if let Some(ref s) = build.config.nodejs {
-        need_cmd(s.as_ref());
-    } else {
-        // Look for the nodejs command, needed for emscripten testing
-        if let Some(node) = have_cmd("node".as_ref()) {
-            build.config.nodejs = Some(node);
-        } else if let Some(node) = have_cmd("nodejs".as_ref()) {
-            build.config.nodejs = Some(node);
+You should install cmake, or set `download-ci-llvm = true` in the
+`[llvm]` section section of `config.toml` to download LLVM rather
+than building it.
+"
+            );
+            crate::detail_exit(1);
         }
     }
 
-    if let Some(ref gdb) = build.config.gdb {
-        need_cmd(gdb.as_ref());
-    } else {
-        build.config.gdb = have_cmd("gdb".as_ref());
-    }
+    build.config.python = build
+        .config
+        .python
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
+        .or_else(|| cmd_finder.maybe_have("python"))
+        .or_else(|| cmd_finder.maybe_have("python3"))
+        .or_else(|| cmd_finder.maybe_have("python2"));
+
+    build.config.nodejs = build
+        .config
+        .nodejs
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("node"))
+        .or_else(|| cmd_finder.maybe_have("nodejs"));
+
+    build.config.npm = build
+        .config
+        .npm
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("npm"));
+
+    build.config.gdb = build
+        .config
+        .gdb
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("gdb"));
+
+    build.config.reuse = build
+        .config
+        .reuse
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("reuse"));
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in build.config.target.iter() {
+    for target in &build.targets {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -127,64 +157,92 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        need_cmd(build.cc(target).as_ref());
-        if let Some(ar) = build.ar(target) {
-            need_cmd(ar.as_ref());
-        }
-    }
-    for host in build.config.host.iter() {
-        need_cmd(build.cxx(host).as_ref());
-    }
-
-    // The msvc hosts don't use jemalloc, turn it off globally to
-    // avoid packaging the dummy liballoc_jemalloc on that platform.
-    for host in build.config.host.iter() {
-        if host.contains("msvc") {
-            build.config.use_jemalloc = false;
-        }
-    }
-
-    // Externally configured LLVM requires FileCheck to exist
-    let filecheck = build.llvm_filecheck(&build.config.build);
-    if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-        panic!("FileCheck executable {:?} does not exist", filecheck);
-    }
-
-    for target in build.config.target.iter() {
-        // Can't compile for iOS unless we're on OSX
-        if target.contains("apple-ios") &&
-           !build.config.build.contains("apple-darwin") {
-            panic!("the iOS target is only supported on OSX");
+        // We don't use a C compiler on wasm32
+        if target.contains("wasm32") {
+            continue;
         }
 
-        // Make sure musl-root is valid if specified
-        if target.contains("musl") && !target.contains("mips") {
-            match build.musl_root(target) {
-                Some(root) => {
-                    if fs::metadata(root.join("lib/libc.a")).is_err() {
-                        panic!("couldn't find libc.a in musl dir: {}",
-                               root.join("lib").display());
-                    }
-                    if fs::metadata(root.join("lib/libunwind.a")).is_err() {
-                        panic!("couldn't find libunwind.a in musl dir: {}",
-                               root.join("lib").display());
-                    }
-                }
-                None => {
-                    panic!("when targeting MUSL either the rust.musl-root \
-                            option or the target.$TARGET.musl-root option must \
-                            be specified in config.toml")
-                }
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
+        }
+
+        if !build.config.dry_run() {
+            cmd_finder.must_have(build.cc(*target));
+            if let Some(ar) = build.ar(*target) {
+                cmd_finder.must_have(ar);
+            }
+        }
+    }
+
+    for host in &build.hosts {
+        if !build.config.dry_run() {
+            cmd_finder.must_have(build.cxx(*host).unwrap());
+        }
+    }
+
+    if build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
+        // Externally configured LLVM requires FileCheck to exist
+        let filecheck = build.llvm_filecheck(build.build);
+        if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
+            panic!("FileCheck executable {:?} does not exist", filecheck);
+        }
+    }
+
+    for target in &build.targets {
+        build
+            .config
+            .target_config
+            .entry(*target)
+            .or_insert_with(|| Target::from_triple(&target.triple));
+
+        if target.contains("-none-") || target.contains("nvptx") {
+            if build.no_std(*target) == Some(false) {
+                panic!("All the *-none-* and nvptx* targets are no-std targets")
             }
         }
 
-        if target.contains("msvc") {
+        // Make sure musl-root is valid
+        if target.contains("musl") {
+            // If this is a native target (host is also musl) and no musl-root is given,
+            // fall back to the system toolchain in /usr before giving up
+            if build.musl_root(*target).is_none() && build.config.build == *target {
+                let target = build.config.target_config.entry(*target).or_default();
+                target.musl_root = Some("/usr".into());
+            }
+            match build.musl_libdir(*target) {
+                Some(libdir) => {
+                    if fs::metadata(libdir.join("libc.a")).is_err() {
+                        panic!("couldn't find libc.a in musl libdir: {}", libdir.display());
+                    }
+                }
+                None => panic!(
+                    "when targeting MUSL either the rust.musl-root \
+                            option or the target.$TARGET.musl-root option must \
+                            be specified in config.toml"
+                ),
+            }
+        }
+
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
+        }
+
+        if need_cmake && target.contains("msvc") {
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
             let out = output(Command::new("cmake").arg("--help"));
             if !out.contains("Visual Studio") {
-                panic!("
+                panic!(
+                    "
 cmake does not support Visual Studio generators.
 
 This is likely due to it being an msys/cygwin build of cmake,
@@ -195,40 +253,13 @@ If you are building under msys2 try installing the mingw-w64-x86_64-cmake
 package instead of cmake:
 
 $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
-");
+"
+                );
             }
         }
-
-        if target.contains("arm-linux-android") {
-            need_cmd("adb".as_ref());
-        }
-    }
-
-    for host in build.flags.host.iter() {
-        if !build.config.host.contains(host) {
-            panic!("specified host `{}` is not in the ./configure list", host);
-        }
-    }
-    for target in build.flags.target.iter() {
-        if !build.config.target.contains(target) {
-            panic!("specified target `{}` is not in the ./configure list",
-                   target);
-        }
-    }
-
-    let run = |cmd: &mut Command| {
-        cmd.output().map(|output| {
-            String::from_utf8_lossy(&output.stdout)
-                   .lines().next().unwrap()
-                   .to_string()
-        })
-    };
-    build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
-    if build.lldb_version.is_some() {
-        build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
     }
 
     if let Some(ref s) = build.config.ccache {
-        need_cmd(s.as_ref());
+        cmd_finder.must_have(s);
     }
 }

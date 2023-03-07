@@ -1,0 +1,19 @@
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/repr-transparent-other-items.rs:3:8
+   |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+LL | fn cant_repr_this() {}
+   | ---------------------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/repr-transparent-other-items.rs:6:8
+   |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+LL | static CANT_REPR_THIS: u32 = 0;
+   | ------------------------------- not a struct, enum, or union
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

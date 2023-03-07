@@ -1,0 +1,9 @@
+error[E0609]: no field `baa` on type `BuildData`
+  --> $DIR/struct-fields-typo.rs:11:17
+   |
+LL |     let x = foo.baa;
+   |                 ^^^ help: a field with a similar name exists: `bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

@@ -1,0 +1,47 @@
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:13
+   |
+LL | fn car() -> dyn NotObjectSafe {
+   |             ^^^^^^^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
+   |
+LL | trait NotObjectSafe {
+   |       ------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:17
+   |
+LL | fn cat() -> Box<dyn NotObjectSafe> {
+   |                 ^^^^^^^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
+   |
+LL | trait NotObjectSafe {
+   |       ------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

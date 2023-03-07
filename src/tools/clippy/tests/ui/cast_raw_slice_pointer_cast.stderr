@@ -1,0 +1,46 @@
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:9:35
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) as *const [u8] };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+   |
+   = note: `-D clippy::cast-slice-from-raw-parts` implied by `-D warnings`
+
+error: casting the result of `from_raw_parts_mut` to *mut [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:10:35
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts_mut(mptr, 1) as *mut [u8] };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts_mut(mptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:11:26
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:14:30
+   |
+LL |         let _: *const [u8] = unsafe { slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:16:30
+   |
+LL |         let _: *const [u8] = unsafe { one::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:20:30
+   |
+LL |         let _: *const [u8] = unsafe { slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> $DIR/cast_raw_slice_pointer_cast.rs:22:30
+   |
+LL |         let _: *const [u8] = unsafe { one::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: aborting due to 7 previous errors
+

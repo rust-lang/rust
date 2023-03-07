@@ -1,0 +1,94 @@
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:11:29
+   |
+LL |     let len = sample.iter().collect::<Vec<_>>().len();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+   |
+   = note: `-D clippy::needless-collect` implied by `-D warnings`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:12:22
+   |
+LL |     if sample.iter().collect::<Vec<_>>().is_empty() {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:15:28
+   |
+LL |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == 1)`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:20:35
+   |
+LL |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:21:35
+   |
+LL |     sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:28:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().len();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:29:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().is_empty();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:30:28
+   |
+LL |     sample.iter().cloned().collect::<LinkedList<_>>().contains(&1);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == 1)`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:31:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().contains(&&1);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &1)`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:34:19
+   |
+LL |     sample.iter().collect::<BinaryHeap<_>>().len();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:35:19
+   |
+LL |     sample.iter().collect::<BinaryHeap<_>>().is_empty();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:40:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:41:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:63:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:64:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: aborting due to 15 previous errors
+

@@ -1,0 +1,21 @@
+error[E0658]: use of unstable library feature 'structural_match'
+  --> $DIR/feature-gate.rs:29:6
+   |
+LL | impl std::marker::StructuralPartialEq for Foo { }
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #31434 <https://github.com/rust-lang/rust/issues/31434> for more information
+   = help: add `#![feature(structural_match)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'structural_match'
+  --> $DIR/feature-gate.rs:31:6
+   |
+LL | impl std::marker::StructuralEq for Foo { }
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #31434 <https://github.com/rust-lang/rust/issues/31434> for more information
+   = help: add `#![feature(structural_match)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

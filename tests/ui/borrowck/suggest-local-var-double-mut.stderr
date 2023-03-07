@@ -1,0 +1,44 @@
+error[E0499]: cannot borrow `*self` as mutable more than once at a time
+  --> $DIR/suggest-local-var-double-mut.rs:12:22
+   |
+LL |             self.foo(self.bar());
+   |             ---------^^^^^^^^^^-
+   |             |    |   |
+   |             |    |   second mutable borrow occurs here
+   |             |    first borrow later used by call
+   |             first mutable borrow occurs here
+   |
+help: try adding a local storing this argument...
+  --> $DIR/suggest-local-var-double-mut.rs:12:22
+   |
+LL |             self.foo(self.bar());
+   |                      ^^^^^^^^^^
+help: ...and then using that local as the argument to this call
+  --> $DIR/suggest-local-var-double-mut.rs:12:13
+   |
+LL |             self.foo(self.bar());
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error[E0499]: cannot borrow `*self` as mutable more than once at a time
+  --> $DIR/suggest-local-var-double-mut.rs:24:39
+   |
+LL |             Self::foo(self, Self::bar(self));
+   |             --------- ----            ^^^^ second mutable borrow occurs here
+   |             |         |
+   |             |         first mutable borrow occurs here
+   |             first borrow later used by call
+   |
+help: try adding a local storing this argument...
+  --> $DIR/suggest-local-var-double-mut.rs:24:29
+   |
+LL |             Self::foo(self, Self::bar(self));
+   |                             ^^^^^^^^^^^^^^^
+help: ...and then using that local as the argument to this call
+  --> $DIR/suggest-local-var-double-mut.rs:24:13
+   |
+LL |             Self::foo(self, Self::bar(self));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

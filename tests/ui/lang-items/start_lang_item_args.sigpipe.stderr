@@ -1,0 +1,8 @@
+error: parameter 4 of the `start` lang item is incorrect
+  --> $DIR/start_lang_item_args.rs:96:80
+   |
+LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: i64) -> isize {
+   |                                                                                ^^^ help: change the type from `i64` to `u8`
+
+error: aborting due to previous error
+

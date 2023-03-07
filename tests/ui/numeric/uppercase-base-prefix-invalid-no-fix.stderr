@@ -1,0 +1,50 @@
+error: invalid suffix `X1a3` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:5:9
+   |
+LL |     _ = 123X1a3;
+   |         ^^^^^^^ invalid suffix `X1a3`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `O123` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:10:9
+   |
+LL |     _ = 456O123;
+   |         ^^^^^^^ invalid suffix `O123`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `B101` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:15:9
+   |
+LL |     _ = 789B101;
+   |         ^^^^^^^ invalid suffix `B101`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `XYZ` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:20:9
+   |
+LL |     _ = 0XYZ;
+   |         ^^^^ invalid suffix `XYZ`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `OPQ` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:25:9
+   |
+LL |     _ = 0OPQ;
+   |         ^^^^ invalid suffix `OPQ`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `BCD` for number literal
+  --> $DIR/uppercase-base-prefix-invalid-no-fix.rs:30:9
+   |
+LL |     _ = 0BCD;
+   |         ^^^^ invalid suffix `BCD`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 6 previous errors
+

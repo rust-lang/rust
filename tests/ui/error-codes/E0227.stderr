@@ -1,0 +1,9 @@
+error[E0227]: ambiguous lifetime bound, explicit lifetime bound required
+  --> $DIR/E0227.rs:7:10
+   |
+LL |     baz: dyn FooBar<'foo, 'bar>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0227`.

@@ -1,0 +1,15 @@
+error[E0158]: associated consts cannot be referenced in patterns
+  --> $DIR/associated-const-type-parameter-arms.rs:20:9
+   |
+LL |         A::X => println!("A::X"),
+   |         ^^^^
+
+error[E0158]: associated consts cannot be referenced in patterns
+  --> $DIR/associated-const-type-parameter-arms.rs:22:9
+   |
+LL |         B::X => println!("B::X"),
+   |         ^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

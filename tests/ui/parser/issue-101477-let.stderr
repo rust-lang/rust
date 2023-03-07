@@ -1,0 +1,8 @@
+error: unexpected `==`
+  --> $DIR/issue-101477-let.rs:4:11
+   |
+LL |     let x == 2;
+   |           ^^ help: try using `=` instead
+
+error: aborting due to previous error
+

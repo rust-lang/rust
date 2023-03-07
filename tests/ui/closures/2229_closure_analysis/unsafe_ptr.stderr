@@ -1,0 +1,93 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/unsafe_ptr.rs:25:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/unsafe_ptr.rs:45:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/unsafe_ptr.rs:28:6
+   |
+LL | /      || unsafe {
+LL | |
+LL | |
+LL | |         println!("{:?}", (*t.0).s);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/unsafe_ptr.rs:31:26
+   |
+LL |         println!("{:?}", (*t.0).s);
+   |                          ^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/unsafe_ptr.rs:28:6
+   |
+LL | /      || unsafe {
+LL | |
+LL | |
+LL | |         println!("{:?}", (*t.0).s);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ImmBorrow
+  --> $DIR/unsafe_ptr.rs:31:26
+   |
+LL |         println!("{:?}", (*t.0).s);
+   |                          ^^^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/unsafe_ptr.rs:48:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = unsafe { &mut (*p).s };
+...  |
+LL | |         *x = "s".into();
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/unsafe_ptr.rs:51:31
+   |
+LL |         let x = unsafe { &mut (*p).s };
+   |                               ^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/unsafe_ptr.rs:48:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = unsafe { &mut (*p).s };
+...  |
+LL | |         *x = "s".into();
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> ImmBorrow
+  --> $DIR/unsafe_ptr.rs:51:31
+   |
+LL |         let x = unsafe { &mut (*p).s };
+   |                               ^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

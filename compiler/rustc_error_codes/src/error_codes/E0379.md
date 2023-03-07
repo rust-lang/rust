@@ -1,0 +1,14 @@
+A trait method was declared const.
+
+Erroneous code example:
+
+```compile_fail,E0379
+trait Foo {
+    const fn bar() -> u32; // error!
+}
+```
+
+Trait methods cannot be declared `const` by design. For more information, see
+[RFC 911].
+
+[RFC 911]: https://github.com/rust-lang/rfcs/pull/911

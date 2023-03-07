@@ -1,0 +1,56 @@
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:16:14
+   |
+LL |     unsafe { u.f.0 = Vec::new() };
+   |              ^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:18:19
+   |
+LL |     unsafe { &mut u.f.0 };
+   |                   ^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:20:14
+   |
+LL |     unsafe { u.f.0.push(0) };
+   |              ^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:24:14
+   |
+LL |     unsafe { u.f.0.0 = Vec::new() };
+   |              ^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:26:19
+   |
+LL |     unsafe { &mut u.f.0.0 };
+   |                   ^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:28:14
+   |
+LL |     unsafe { u.f.0.0.push(0) };
+   |              ^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: aborting due to 6 previous errors
+

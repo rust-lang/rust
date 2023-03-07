@@ -1,0 +1,4 @@
+error: requires `sized` lang_item
+
+error: aborting due to previous error
+

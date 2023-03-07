@@ -1,0 +1,9 @@
+error[E0608]: cannot index into a value of type `()`
+  --> $DIR/index_message.rs:3:13
+   |
+LL |     let _ = z[0];
+   |             ^^^^ help: to access tuple elements, use: `z.0`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0608`.

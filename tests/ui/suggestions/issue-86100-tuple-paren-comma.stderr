@@ -1,0 +1,62 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-86100-tuple-paren-comma.rs:9:22
+   |
+LL |     let _x: (i32,) = (5);
+   |             ------   ^^^ expected `(i32,)`, found integer
+   |             |
+   |             expected due to this
+   |
+   = note: expected tuple `(i32,)`
+               found type `{integer}`
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     let _x: (i32,) = (5,);
+   |                        +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86100-tuple-paren-comma.rs:13:9
+   |
+LL |     foo((Some(3)));
+   |     --- ^^^^^^^^^ expected `(_,)`, found `Option<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected tuple `(_,)`
+               found enum `Option<{integer}>`
+note: function defined here
+  --> $DIR/issue-86100-tuple-paren-comma.rs:5:4
+   |
+LL | fn foo<T>(_t: (T,)) {}
+   |    ^^^    --------
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     foo((Some(3),));
+   |                 +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86100-tuple-paren-comma.rs:17:22
+   |
+LL |     let _s = S { _s: ("abc".to_string()) };
+   |                      ^^^^^^^^^^^^^^^^^^^ expected `(String,)`, found `String`
+   |
+   = note: expected tuple `(String,)`
+             found struct `String`
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     let _s = S { _s: ("abc".to_string(),) };
+   |                                        +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86100-tuple-paren-comma.rs:23:22
+   |
+LL |     let _x: (i32,) = (t);
+   |             ------   ^^^ expected a tuple with 1 element, found one with 2 elements
+   |             |
+   |             expected due to this
+   |
+   = note: expected tuple `(i32,)`
+              found tuple `({integer}, {integer})`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

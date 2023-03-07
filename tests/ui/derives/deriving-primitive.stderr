@@ -1,0 +1,14 @@
+error: cannot find derive macro `FromPrimitive` in this scope
+  --> $DIR/deriving-primitive.rs:1:10
+   |
+LL | #[derive(FromPrimitive)]
+   |          ^^^^^^^^^^^^^
+
+error: cannot find derive macro `FromPrimitive` in this scope
+  --> $DIR/deriving-primitive.rs:1:10
+   |
+LL | #[derive(FromPrimitive)]
+   |          ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

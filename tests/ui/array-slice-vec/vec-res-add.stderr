@@ -1,0 +1,11 @@
+error[E0369]: cannot add `Vec<R>` to `Vec<R>`
+  --> $DIR/vec-res-add.rs:16:15
+   |
+LL |     let k = i + j;
+   |             - ^ - Vec<R>
+   |             |
+   |             Vec<R>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

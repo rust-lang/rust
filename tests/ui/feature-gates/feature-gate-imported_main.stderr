@@ -1,0 +1,12 @@
+error[E0658]: using an imported function as entry point `main` is experimental
+  --> $DIR/feature-gate-imported_main.rs:6:5
+   |
+LL | use foo::bar as main;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #28937 <https://github.com/rust-lang/rust/issues/28937> for more information
+   = help: add `#![feature(imported_main)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

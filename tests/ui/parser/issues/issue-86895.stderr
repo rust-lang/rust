@@ -1,0 +1,8 @@
+error: expected one of `async`, `extern`, `fn`, or `unsafe`, found keyword `pub`
+  --> $DIR/issue-86895.rs:1:7
+   |
+LL | const pub () {}
+   |       ^^^ expected one of `async`, `extern`, `fn`, or `unsafe`
+
+error: aborting due to previous error
+

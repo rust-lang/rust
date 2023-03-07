@@ -1,0 +1,39 @@
+name: Release
+on:
+  push:
+    tags:
+    - '*'
+jobs:
+
+  build:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    - name: Compress artifacts
+      shell: bash
+      run: |
+        ls -lha ./artifacts
+        mkdir assets
+        for DIR in $(ls ./artifacts); do
+          tar czf "assets/$DIR.tar.gz" -C "artifacts/$DIR" .
+        done
+        ls -lha ./assets
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Installing gh CLI..."
+        curl -L https://github.com/cli/cli/releases/download/v2.17.0/gh_2.17.0_linux_amd64.tar.gz | tar xvz  --strip-components=2 --exclude=man
+        chmod +x ./gh
+
+        ./gh release create --repo "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"  ./assets/*
+

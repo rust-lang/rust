@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/needs_where_clause.rs:11:6
+   |
+LL |   b: [f32; complex_maths::<T>(N)],
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); complex_maths::<T>(N)]:`
+
+error: aborting due to previous error
+

@@ -1,0 +1,15 @@
+error[E0119]: conflicting implementations of trait `Clone` for type `Node<[_]>`
+  --> $DIR/issue-48728.rs:4:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^ conflicting implementation for `Node<[_]>`
+...
+LL | impl<T: Clone + ?Sized> Clone for Node<[T]> {
+   | ------------------------------------------- first implementation here
+   |
+   = note: upstream crates may add a new impl of trait `std::clone::Clone` for type `[_]` in future versions
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

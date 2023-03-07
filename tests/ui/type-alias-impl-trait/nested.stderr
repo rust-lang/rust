@@ -1,0 +1,12 @@
+error[E0277]: `Bar` doesn't implement `Debug`
+  --> $DIR/nested.rs:15:22
+   |
+LL |     println!("{:?}", bar());
+   |                      ^^^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `Bar`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

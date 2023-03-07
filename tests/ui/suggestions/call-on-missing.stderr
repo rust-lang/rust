@@ -1,0 +1,75 @@
+error[E0599]: no method named `bar` found for fn item `fn() -> Foo {foo}` in the current scope
+  --> $DIR/call-on-missing.rs:12:9
+   |
+LL |     foo.bar();
+   |         ^^^ method not found in `fn() -> Foo {foo}`
+   |
+help: use parentheses to call this function
+   |
+LL |     foo().bar();
+   |        ++
+
+error[E0609]: no field `i` on type `fn() -> Foo {foo}`
+  --> $DIR/call-on-missing.rs:16:9
+   |
+LL |     foo.i;
+   |         ^
+   |
+help: use parentheses to call this function
+   |
+LL |     foo().i;
+   |        ++
+
+error[E0599]: no method named `bar` found for struct `Box<dyn Fn() -> Foo>` in the current scope
+  --> $DIR/call-on-missing.rs:22:14
+   |
+LL |     callable.bar();
+   |              ^^^ method not found in `Box<dyn Fn() -> Foo>`
+   |
+help: use parentheses to call this trait object
+   |
+LL |     callable().bar();
+   |             ++
+
+error[E0609]: no field `i` on type `Box<dyn Fn() -> Foo>`
+  --> $DIR/call-on-missing.rs:26:14
+   |
+LL |     callable.i;
+   |              ^ unknown field
+   |
+help: use parentheses to call this trait object
+   |
+LL |     callable().i;
+   |             ++
+
+error[E0599]: no method named `bar` found for type parameter `T` in the current scope
+  --> $DIR/call-on-missing.rs:32:7
+   |
+LL | fn type_param<T: Fn() -> Foo>(t: T) {
+   |               - method `bar` not found for this type parameter
+LL |     t.bar();
+   |       ^^^ method not found in `T`
+   |
+help: use parentheses to call this type parameter
+   |
+LL |     t().bar();
+   |      ++
+
+error[E0609]: no field `i` on type `T`
+  --> $DIR/call-on-missing.rs:36:7
+   |
+LL | fn type_param<T: Fn() -> Foo>(t: T) {
+   |               - type parameter 'T' declared here
+...
+LL |     t.i;
+   |       ^
+   |
+help: use parentheses to call this type parameter
+   |
+LL |     t().i;
+   |      ++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.

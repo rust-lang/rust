@@ -1,0 +1,68 @@
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:8:22
+   |
+LL |     f: for<'xa, 'xb: 'xa+'xa> fn(&'xa i32, &'xb i32) -> &'xa i32)
+   |                      ^^^ ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:16:34
+   |
+LL | fn bar2<'a, 'b, F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(
+   |                                  ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:31:28
+   |
+LL |     where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32
+   |                            ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:43:25
+   |
+LL |     where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32
+   |                         ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:51:28
+   |
+LL | struct S1<F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(F);
+   |                            ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:53:40
+   |
+LL | struct S2<F>(F) where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32;
+   |                                        ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:55:37
+   |
+LL | struct S3<F>(F) where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32;
+   |                                     ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:58:29
+   |
+LL | struct S_fnty(for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32);
+   |                             ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:61:33
+   |
+LL | type T1 = Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
+   |                                 ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:65:34
+   |
+LL |     let _ : Option<for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32> = None;
+   |                                  ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/higher-lifetime-bounds.rs:67:42
+   |
+LL |     let _ : Option<Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
+   |                                          ^^^
+
+error: aborting due to 11 previous errors
+

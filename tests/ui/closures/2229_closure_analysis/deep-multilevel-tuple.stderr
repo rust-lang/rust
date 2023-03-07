@@ -1,0 +1,61 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/deep-multilevel-tuple.rs:8:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/deep-multilevel-tuple.rs:14:18
+   |
+LL |         let x = &t.0.0.0;
+   |                  ^^^^^^^
+note: Capturing t[(1, 0),(1, 0),(1, 0)] -> MutBorrow
+  --> $DIR/deep-multilevel-tuple.rs:16:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^
+note: Capturing t[] -> ImmBorrow
+  --> $DIR/deep-multilevel-tuple.rs:19:26
+   |
+LL |         println!("{:?}", t);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[] -> MutBorrow
+  --> $DIR/deep-multilevel-tuple.rs:16:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^ t[] captured as MutBorrow here
+...
+LL |         println!("{:?}", t);
+   |                          ^ t[] used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

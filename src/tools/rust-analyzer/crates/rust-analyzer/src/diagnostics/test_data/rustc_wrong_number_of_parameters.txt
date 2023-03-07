@@ -1,0 +1,184 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/ty/select.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 103,
+                    character: 17,
+                },
+                end: Position {
+                    line: 103,
+                    character: 29,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: Some(
+                String(
+                    "E0061",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0061",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/ty/select.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 218,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 230,
+                                    character: 5,
+                                },
+                            },
+                        },
+                        message: "defined here",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/ty/select.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 218,
+                    character: 4,
+                },
+                end: Position {
+                    line: 230,
+                    character: 5,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "E0061",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0061",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "defined here",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/ty/select.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 103,
+                                    character: 17,
+                                },
+                                end: Position {
+                                    line: 103,
+                                    character: 29,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+]

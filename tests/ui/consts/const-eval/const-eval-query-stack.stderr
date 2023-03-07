@@ -1,0 +1,13 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-eval-query-stack.rs:16:16
+   |
+LL | const X: i32 = 1 / 0;
+   |                ^^^^^ attempt to divide `1_i32` by zero
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `X`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `X`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `X`
+#3 [lint_mod] linting top-level module
+#4 [analysis] running analysis passes on this crate
+end of query stack

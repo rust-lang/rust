@@ -1,0 +1,12 @@
+error[E0392]: parameter `N` is never used
+  --> $DIR/unused-type-param-suggestion.rs:3:16
+   |
+LL | struct Example<N>;
+   |                ^ unused parameter
+   |
+   = help: consider removing `N`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `N` to be a const parameter, use `const N: usize` instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0392`.

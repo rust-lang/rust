@@ -1,0 +1,11 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/issue-3021.rs:12:22
+   |
+LL |            self.v0 = k0 ^ 0x736f6d6570736575;
+   |                      ^^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0434`.

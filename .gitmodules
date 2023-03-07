@@ -1,19 +1,38 @@
-[submodule "src/llvm"]
-	path = src/llvm
-	url = https://github.com/rust-lang/llvm.git
-	branch = master
-[submodule "src/compiler-rt"]
-	path = src/compiler-rt
-	url = https://github.com/rust-lang/compiler-rt.git
-[submodule "src/rt/hoedown"]
-	path = src/rt/hoedown
-	url = https://github.com/rust-lang/hoedown.git
-[submodule "src/jemalloc"]
-	path = src/jemalloc
-	url = https://github.com/rust-lang/jemalloc.git
 [submodule "src/rust-installer"]
-	path = src/rust-installer
+	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
-[submodule "src/liblibc"]
-	path = src/liblibc
-	url = https://github.com/rust-lang/libc.git
+	shallow = true
+[submodule "src/doc/nomicon"]
+	path = src/doc/nomicon
+	url = https://github.com/rust-lang/nomicon.git
+[submodule "src/tools/cargo"]
+	path = src/tools/cargo
+	url = https://github.com/rust-lang/cargo.git
+[submodule "src/doc/reference"]
+	path = src/doc/reference
+	url = https://github.com/rust-lang/reference.git
+[submodule "src/doc/book"]
+	path = src/doc/book
+	url = https://github.com/rust-lang/book.git
+[submodule "src/doc/rust-by-example"]
+	path = src/doc/rust-by-example
+	url = https://github.com/rust-lang/rust-by-example.git
+[submodule "library/stdarch"]
+	path = library/stdarch
+	url = https://github.com/rust-lang/stdarch.git
+[submodule "src/doc/rustc-dev-guide"]
+	path = src/doc/rustc-dev-guide
+	url = https://github.com/rust-lang/rustc-dev-guide.git
+[submodule "src/doc/edition-guide"]
+	path = src/doc/edition-guide
+	url = https://github.com/rust-lang/edition-guide.git
+[submodule "src/llvm-project"]
+	path = src/llvm-project
+	url = https://github.com/rust-lang/llvm-project.git
+	branch = rustc/15.0-2022-12-07
+[submodule "src/doc/embedded-book"]
+	path = src/doc/embedded-book
+	url = https://github.com/rust-embedded/book.git
+[submodule "library/backtrace"]
+	path = library/backtrace
+	url = https://github.com/rust-lang/backtrace-rs.git

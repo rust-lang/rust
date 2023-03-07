@@ -1,0 +1,2 @@
+error: the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)
+

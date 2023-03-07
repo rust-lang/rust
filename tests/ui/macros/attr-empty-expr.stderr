@@ -1,0 +1,20 @@
+error: removing an expression is not supported in this position
+  --> $DIR/attr-empty-expr.rs:8:13
+   |
+LL |     let _ = #[test] 0;
+   |             ^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/attr-empty-expr.rs:9:13
+   |
+LL |     let _ = #[bench] 1;
+   |             ^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/attr-empty-expr.rs:10:13
+   |
+LL |     let _ = #[test_case] 2;
+   |             ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

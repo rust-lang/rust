@@ -1,0 +1,48 @@
+error: character literal may only contain one codepoint
+  --> $DIR/unicode-character-literal.rs:7:18
+   |
+LL |     let _spade = '♠️';
+   |                  ^^^
+   |
+note: this `♠` is followed by the combining mark `\u{fe0f}`
+  --> $DIR/unicode-character-literal.rs:7:19
+   |
+LL |     let _spade = '♠️';
+   |                   ^
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     let _spade = "♠️";
+   |                  ~~~
+
+error: character literal may only contain one codepoint
+  --> $DIR/unicode-character-literal.rs:12:14
+   |
+LL |     let _s = 'ṩ̂̊';
+   |              ^^^
+   |
+note: this `s` is followed by the combining marks `\u{323}\u{307}\u{302}\u{30a}`
+  --> $DIR/unicode-character-literal.rs:12:15
+   |
+LL |     let _s = 'ṩ̂̊';
+   |               ^
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     let _s = "ṩ̂̊";
+   |              ~~~
+
+error: character literal may only contain one codepoint
+  --> $DIR/unicode-character-literal.rs:17:14
+   |
+LL |     let _a = 'Å';
+   |              ^-^
+   |               |
+   |               help: consider using the normalized form `\u{c5}` of this character: `Å`
+   |
+note: this `A` is followed by the combining mark `\u{30a}`
+  --> $DIR/unicode-character-literal.rs:17:15
+   |
+LL |     let _a = 'Å';
+   |               ^
+
+error: aborting due to 3 previous errors
+

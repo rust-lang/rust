@@ -1,0 +1,40 @@
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:8:20
+   |
+LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+   |
+   = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
+
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:10:20
+   |
+LL |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `all(|x| x > 2)`
+
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:12:25
+   |
+LL |     let _: i32 = (0..3).fold(0, |acc, x| acc + x);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `sum()`
+
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:14:25
+   |
+LL |     let _: i32 = (0..3).fold(1, |acc, x| acc * x);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `product()`
+
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:19:41
+   |
+LL |     let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:49:10
+   |
+LL |         .fold(false, |acc, x| acc || x > 2);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+
+error: aborting due to 6 previous errors
+

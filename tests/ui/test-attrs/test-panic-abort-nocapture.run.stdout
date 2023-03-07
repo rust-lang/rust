@@ -1,0 +1,23 @@
+
+running 4 tests
+test it_fails ... about to fail
+FAILED
+test it_panics - should panic ... about to panic
+ok
+test it_works ... about to succeed
+ok
+test it_writes_to_stdio ... hello, world
+testing123
+ok
+
+failures:
+
+---- it_fails stdout ----
+---- it_fails stderr ----
+
+
+failures:
+    it_fails
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

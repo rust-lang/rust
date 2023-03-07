@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/sneaky-array-repeat-expr.rs:11:20
+   |
+LL |     let bar = [(); <()>::Assoc];
+   |                    ^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/sneaky-array-repeat-expr.rs:25:21
+   |
+LL |     let bar2 = [(); <()>::Assoc2];
+   |                     ^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+

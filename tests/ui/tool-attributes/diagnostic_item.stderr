@@ -1,0 +1,11 @@
+error[E0658]: diagnostic items compiler internal support for linting
+  --> $DIR/diagnostic_item.rs:1:1
+   |
+LL | #[rustc_diagnostic_item = "foomp"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

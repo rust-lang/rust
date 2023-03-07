@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/issue-13727.rs:7:5
+   |
+LL |     512 => print!("0b1111\n"),
+   |     ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-13727.rs:2:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

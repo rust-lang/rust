@@ -1,0 +1,132 @@
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:7:1
+   |
+LL | use std::sync::atomic::AtomicU32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:8:1
+   |
+LL | use std::time::Instant as Sneaky;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:12:33
+   |
+LL | fn bad_return_type() -> fn() -> Sneaky {
+   |                                 ^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:16:28
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
+   |                            ^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:16:39
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::io::Read` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:18:22
+   |
+LL | fn trait_obj(_: &dyn std::io::Read) {}
+   |                      ^^^^^^^^^^^^^
+
+error: `usize` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:20:33
+   |
+LL | fn full_and_single_path_prim(_: usize, _: bool) {}
+   |                                 ^^^^^
+
+error: `bool` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:20:43
+   |
+LL | fn full_and_single_path_prim(_: usize, _: bool) {}
+   |                                           ^^^^
+
+error: `usize` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:22:28
+   |
+LL | fn const_generics<const C: usize>() {}
+   |                            ^^^^^
+
+error: `usize` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:24:24
+   |
+LL | struct GenArg<const U: usize>([u8; U]);
+   |                        ^^^^^
+
+error: `std::net::Ipv4Addr` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:28:10
+   |
+LL | fn ip(_: std::net::Ipv4Addr) {}
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: no IPv4 allowed (from clippy.toml)
+
+error: `std::net::TcpListener` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:30:16
+   |
+LL | fn listener(_: std::net::TcpListener) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::collections::HashMap` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:34:48
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::collections::HashMap` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:34:12
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:35:13
+   |
+LL |     let _ = Sneaky::now();
+   |             ^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:36:13
+   |
+LL |     let _ = foo::atomic::AtomicU32::new(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:37:17
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:37:48
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `syn::TypePath` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:38:43
+   |
+LL |     let _: std::collections::BTreeMap<(), syn::TypePath> = Default::default();
+   |                                           ^^^^^^^^^^^^^
+
+error: `syn::Ident` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:39:13
+   |
+LL |     let _ = syn::Ident::new("", todo!());
+   |             ^^^^^^^^^^
+
+error: `usize` is not allowed according to config
+  --> $DIR/conf_disallowed_types.rs:41:12
+   |
+LL |     let _: usize = 64_usize;
+   |            ^^^^^
+
+error: aborting due to 21 previous errors
+

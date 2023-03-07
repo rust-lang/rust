@@ -1,0 +1,10 @@
+#![feature(prelude_import)]
+#![no_std]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+// needs-asm-support
+// check-pass
+// compile-flags: -Zunpretty=expanded
+global_asm! ("x: .byte 42");

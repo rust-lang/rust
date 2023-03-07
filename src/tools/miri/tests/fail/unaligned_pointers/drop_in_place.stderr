@@ -1,0 +1,20 @@
+error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
+  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   |
+LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::ptr::drop_in_place::<PartialDrop> - shim(Some(PartialDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+note: inside `main`
+  --> $DIR/drop_in_place.rs:LL:CC
+   |
+LL |         core::ptr::drop_in_place(p);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,0 +1,9 @@
+error[E0609]: no field `is_failure` on type `!`
+  --> $DIR/issue-13847.rs:2:12
+   |
+LL |     return.is_failure
+   |            ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

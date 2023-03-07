@@ -1,0 +1,14 @@
+error: statics with a custom `#[link_section]` must be a simple list of bytes on the wasm target with no extra levels of indirection such as references
+  --> $DIR/wasm-custom-section-relocations.rs:4:1
+   |
+LL | pub static A: &[u8] = &[1];
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: statics with a custom `#[link_section]` must be a simple list of bytes on the wasm target with no extra levels of indirection such as references
+  --> $DIR/wasm-custom-section-relocations.rs:13:1
+   |
+LL | pub static D: &usize = &C;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

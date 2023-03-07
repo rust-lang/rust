@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/issue-90455.rs:5:8
+   |
+LL |     n: [u64; num_limbs(N)],
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); num_limbs(N)]:`
+
+error: aborting due to previous error
+

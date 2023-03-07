@@ -1,0 +1,9 @@
+error[E0253]: `foo` is not directly importable
+  --> $DIR/import-trait-method.rs:5:5
+   |
+LL | use Foo::foo;
+   |     ^^^^^^^^ cannot be imported directly
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0253`.

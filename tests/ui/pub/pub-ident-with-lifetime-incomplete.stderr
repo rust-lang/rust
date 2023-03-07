@@ -1,0 +1,8 @@
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/pub-ident-with-lifetime-incomplete.rs:4:4
+   |
+LL | pub   foo<'a>
+   |    ^^^
+
+error: aborting due to previous error
+

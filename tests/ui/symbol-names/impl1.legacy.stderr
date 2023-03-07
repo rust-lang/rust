@@ -1,0 +1,74 @@
+error: symbol-name(_ZN5impl13foo3Foo3bar17<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:14:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(impl1::foo::Foo::bar::<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:14:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(impl1::foo::Foo::bar)
+  --> $DIR/impl1.rs:14:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(foo::Foo::bar)
+  --> $DIR/impl1.rs:21:9
+   |
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:32:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(impl1::bar::<impl impl1::foo::Foo>::baz::<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:32:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(impl1::bar::<impl impl1::foo::Foo>::baz)
+  --> $DIR/impl1.rs:32:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(bar::<impl foo::Foo>::baz)
+  --> $DIR/impl1.rs:39:9
+   |
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN209_$LT$$u5b$$RF$dyn$u20$impl1..Foo$u2b$Assoc$u20$$u3d$$u20$extern$u20$$u22$C$u22$$u20$fn$LP$$RF$u8$C$$u20$...$RP$$u2b$impl1..AutoTrait$u3b$$u20$3$u5d$$u20$as$u20$impl1..main..$u7b$$u7b$closure$u7d$$u7d$..Bar$GT$6method17<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:62:13
+   |
+LL |             #[rustc_symbol_name]
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::AutoTrait; 3] as impl1::main::{{closure}}::Bar>::method::<SYMBOL_HASH>)
+  --> $DIR/impl1.rs:62:13
+   |
+LL |             #[rustc_symbol_name]
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::AutoTrait; 3] as impl1::main::{{closure}}::Bar>::method)
+  --> $DIR/impl1.rs:62:13
+   |
+LL |             #[rustc_symbol_name]
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(<[&dyn Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
+  --> $DIR/impl1.rs:69:13
+   |
+LL |             #[rustc_def_path]
+   |             ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

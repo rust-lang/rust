@@ -1,0 +1,21 @@
+error[E0277]: expected a `Fn<(char,)>` closure, found `char`
+  --> $DIR/root-obligation.rs:6:38
+   |
+LL |         .filter(|c| "aeiou".contains(c))
+   |                             -------- ^ expected an `Fn<(char,)>` closure, found `char`
+   |                             |
+   |                             required by a bound introduced by this call
+   |
+   = help: the trait `Fn<(char,)>` is not implemented for `char`
+   = note: required for `&char` to implement `FnOnce<(char,)>`
+   = note: required for `&char` to implement `Pattern<'_>`
+note: required by a bound in `core::str::<impl str>::contains`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+help: consider dereferencing here
+   |
+LL |         .filter(|c| "aeiou".contains(*c))
+   |                                      +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

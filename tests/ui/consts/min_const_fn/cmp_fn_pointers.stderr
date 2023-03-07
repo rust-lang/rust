@@ -1,0 +1,16 @@
+error[E0277]: can't compare `fn()` with `_` in const contexts
+  --> $DIR/cmp_fn_pointers.rs:2:16
+   |
+LL |     unsafe { x == y }
+   |                ^^ no implementation for `fn() == _`
+   |
+   = help: the trait `~const PartialEq<_>` is not implemented for `fn()`
+note: the trait `PartialEq<_>` is implemented for `fn()`, but that implementation is not `const`
+  --> $DIR/cmp_fn_pointers.rs:2:16
+   |
+LL |     unsafe { x == y }
+   |                ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,16 @@
+error[E0277]: can't compare `*const ()` with `*const ()` in const contexts
+  --> $DIR/issue-25826.rs:3:52
+   |
+LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const () };
+   |                                                    ^ no implementation for `*const () < *const ()` and `*const () > *const ()`
+   |
+   = help: the trait `~const PartialOrd` is not implemented for `*const ()`
+note: the trait `PartialOrd` is implemented for `*const ()`, but that implementation is not `const`
+  --> $DIR/issue-25826.rs:3:52
+   |
+LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const () };
+   |                                                    ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

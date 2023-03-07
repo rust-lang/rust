@@ -1,0 +1,8 @@
+error: unknown start of token: \u{25cf}
+  --> $DIR/lex-bad-token.rs:1:1
+   |
+LL | ●
+   | ^
+
+error: aborting due to previous error
+

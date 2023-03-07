@@ -1,0 +1,9 @@
+error[E0614]: type `!` cannot be dereferenced
+  --> $DIR/issue-17373.rs:2:5
+   |
+LL |     *return
+   |     ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0614`.

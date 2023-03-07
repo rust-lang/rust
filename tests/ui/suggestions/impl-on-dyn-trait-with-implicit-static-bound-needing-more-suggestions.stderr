@@ -1,0 +1,21 @@
+error[E0515]: cannot return reference to function parameter `val`
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:21:9
+   |
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to function parameter `val`
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
+   |
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to function parameter `val`
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
+   |
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

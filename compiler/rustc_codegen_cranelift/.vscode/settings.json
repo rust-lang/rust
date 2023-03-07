@@ -1,0 +1,46 @@
+{
+    "editor.formatOnSave": true,
+
+    // source for rustc_* is not included in the rust-src component; disable the errors about this
+    "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate", "unresolved-macro-call"],
+    "rust-analyzer.imports.granularity.enforce": true,
+    "rust-analyzer.imports.granularity.group": "module",
+    "rust-analyzer.imports.prefix": "crate",
+    "rust-analyzer.cargo.features": ["unstable-features", "__check_build_system_using_ra"],
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        {
+            "crates": [
+                {
+                    "root_module": "./example/mini_core.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/mini_core_hello_world.rs",
+                    "edition": "2018",
+                    "deps": [{ "crate": 0, "name": "mini_core" }],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/mod_bench.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        },
+        {
+            "sysroot_src": "./download/sysroot/sysroot_src/library",
+            "crates": [
+                {
+                    "root_module": "./example/std_example.rs",
+                    "edition": "2015",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        }
+    ]
+}

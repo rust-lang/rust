@@ -1,0 +1,57 @@
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:13:5
+   |
+LL |     &raw const a;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:14:5
+   |
+LL |     &raw mut a;
+   |     ^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:19:13
+   |
+LL |     let x = &raw const y;
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:20:13
+   |
+LL |     let x = &raw mut y;
+   |             ^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:7:10
+   |
+LL | is_expr!(&raw const a);
+   |          ^^^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error[E0658]: raw address of syntax is experimental
+  --> $DIR/feature-raw-ref-op.rs:8:10
+   |
+LL | is_expr!(&raw mut a);
+   |          ^^^^^^^^
+   |
+   = note: see issue #64490 <https://github.com/rust-lang/rust/issues/64490> for more information
+   = help: add `#![feature(raw_ref_op)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

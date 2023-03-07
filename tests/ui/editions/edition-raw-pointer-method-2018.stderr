@@ -1,0 +1,9 @@
+error[E0699]: the type of this value must be known to call a method on a raw pointer on it
+  --> $DIR/edition-raw-pointer-method-2018.rs:9:15
+   |
+LL |     let _ = y.is_null();
+   |               ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0699`.

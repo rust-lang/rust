@@ -1,0 +1,8 @@
+error: [o]
+  --> $DIR/variance-associated-consts.rs:13:1
+   |
+LL | struct Foo<T: Trait> {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

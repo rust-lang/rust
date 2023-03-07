@@ -1,0 +1,16 @@
+error: borrow as raw pointer
+  --> $DIR/borrow_as_ptr.rs:6:14
+   |
+LL |     let _p = &val as *const i32;
+   |              ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of!(val)`
+   |
+   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
+
+error: borrow as raw pointer
+  --> $DIR/borrow_as_ptr.rs:9:18
+   |
+LL |     let _p_mut = &mut val_mut as *mut i32;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(val_mut)`
+
+error: aborting due to 2 previous errors
+

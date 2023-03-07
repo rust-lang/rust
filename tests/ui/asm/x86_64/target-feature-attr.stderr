@@ -1,0 +1,26 @@
+error: register class `ymm_reg` requires the `avx` target feature
+  --> $DIR/target-feature-attr.rs:18:40
+   |
+LL |     asm!("vaddps {2:y}, {0:y}, {1:y}", in(ymm_reg) x, in(ymm_reg) y, lateout(ymm_reg) x);
+   |                                        ^^^^^^^^^^^^^
+
+error: register class `ymm_reg` requires the `avx` target feature
+  --> $DIR/target-feature-attr.rs:18:55
+   |
+LL |     asm!("vaddps {2:y}, {0:y}, {1:y}", in(ymm_reg) x, in(ymm_reg) y, lateout(ymm_reg) x);
+   |                                                       ^^^^^^^^^^^^^
+
+error: register class `ymm_reg` requires the `avx` target feature
+  --> $DIR/target-feature-attr.rs:18:70
+   |
+LL |     asm!("vaddps {2:y}, {0:y}, {1:y}", in(ymm_reg) x, in(ymm_reg) y, lateout(ymm_reg) x);
+   |                                                                      ^^^^^^^^^^^^^^^^^^
+
+error: register class `kreg` requires at least one of the following target features: avx512bw, avx512f
+  --> $DIR/target-feature-attr.rs:33:23
+   |
+LL |     asm!("/* {0} */", in(kreg) x);
+   |                       ^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

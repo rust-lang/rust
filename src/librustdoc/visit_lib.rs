@@ -1,89 +1,73 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use rustc::middle::cstore::CrateStore;
-use rustc::middle::privacy::{AccessLevels, AccessLevel};
-use rustc::hir::def::Def;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
-use rustc::ty::Visibility;
-
-use std::cell::RefMut;
-
-use clean::{AttributesExt, NestedAttributesExt};
+use crate::core::DocContext;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_middle::ty::TyCtxt;
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
-/// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
-/// specific rustdoc annotations into account (i.e. `doc(hidden)`)
-pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    cx: &'a ::core::DocContext<'b, 'tcx>,
-    cstore: &'a CrateStore<'tcx>,
-    // Accessibility levels for reachable nodes
-    access_levels: RefMut<'a, AccessLevels<DefId>>,
-    // Previous accessibility level, None means unreachable
-    prev_level: Option<AccessLevel>,
+#[derive(Default)]
+pub(crate) struct RustdocEffectiveVisibilities {
+    extern_public: DefIdSet,
 }
 
-impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
-    pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
-        LibEmbargoVisitor {
-            cx: cx,
-            cstore: &*cx.sess().cstore,
-            access_levels: cx.access_levels.borrow_mut(),
-            prev_level: Some(AccessLevel::Public),
+macro_rules! define_method {
+    ($method:ident) => {
+        pub(crate) fn $method(&self, tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+            match def_id.as_local() {
+                Some(def_id) => tcx.effective_visibilities(()).$method(def_id),
+                None => self.extern_public.contains(&def_id),
+            }
+        }
+    };
+}
+
+impl RustdocEffectiveVisibilities {
+    define_method!(is_directly_public);
+    define_method!(is_exported);
+    define_method!(is_reachable);
+}
+
+pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
+    assert!(!def_id.is_local());
+    LibEmbargoVisitor {
+        tcx: cx.tcx,
+        extern_public: &mut cx.cache.effective_visibilities.extern_public,
+        visited_mods: Default::default(),
+    }
+    .visit_item(def_id)
+}
+
+/// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
+/// specific rustdoc annotations into account (i.e., `doc(hidden)`)
+struct LibEmbargoVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    // Effective visibilities for reachable nodes
+    extern_public: &'a mut DefIdSet,
+    // Keeps track of already visited modules, in case a module re-exports its parent
+    visited_mods: DefIdSet,
+}
+
+impl LibEmbargoVisitor<'_, '_> {
+    fn visit_mod(&mut self, def_id: DefId) {
+        if !self.visited_mods.insert(def_id) {
+            return;
+        }
+
+        for item in self.tcx.module_children(def_id).iter() {
+            if let Some(def_id) = item.res.opt_def_id() {
+                if item.vis.is_public() {
+                    self.visit_item(def_id);
+                }
+            }
         }
     }
 
-    pub fn visit_lib(&mut self, cnum: CrateNum) {
-        let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-        self.update(did, Some(AccessLevel::Public));
-        self.visit_mod(did);
-    }
-
-    // Updates node level and returns the updated level
-    fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let is_hidden = self.cx.tcx.get_attrs(did).lists("doc").has_word("hidden");
-
-        let old_level = self.access_levels.map.get(&did).cloned();
-        // Accessibility levels can only grow
-        if level > old_level && !is_hidden {
-            self.access_levels.map.insert(did, level.unwrap());
-            level
-        } else {
-            old_level
-        }
-    }
-
-    pub fn visit_mod(&mut self, def_id: DefId) {
-        for item in self.cstore.item_children(def_id) {
-            self.visit_item(item.def);
-        }
-    }
-
-    fn visit_item(&mut self, def: Def) {
-        let def_id = def.def_id();
-        let vis = self.cstore.visibility(def_id);
-        let inherited_item_level = if vis == Visibility::Public {
-            self.prev_level
-        } else {
-            None
-        };
-
-        let item_level = self.update(def_id, inherited_item_level);
-
-        if let Def::Mod(..) = def {
-            let orig_level = self.prev_level;
-
-            self.prev_level = item_level;
-            self.visit_mod(def_id);
-            self.prev_level = orig_level;
+    fn visit_item(&mut self, def_id: DefId) {
+        if !self.tcx.is_doc_hidden(def_id) {
+            self.extern_public.insert(def_id);
+            if self.tcx.def_kind(def_id) == DefKind::Mod {
+                self.visit_mod(def_id);
+            }
         }
     }
 }

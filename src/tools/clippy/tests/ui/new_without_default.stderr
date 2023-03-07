@@ -1,0 +1,124 @@
+error: you should consider adding a `Default` implementation for `Foo`
+  --> $DIR/new_without_default.rs:12:5
+   |
+LL | /     pub fn new() -> Foo {
+LL | |         Foo
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::new-without-default` implied by `-D warnings`
+help: try adding this
+   |
+LL + impl Default for Foo {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `Bar`
+  --> $DIR/new_without_default.rs:20:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Bar
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl Default for Bar {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `LtKo<'c>`
+  --> $DIR/new_without_default.rs:84:5
+   |
+LL | /     pub fn new() -> LtKo<'c> {
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<'c> Default for LtKo<'c> {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
+  --> $DIR/new_without_default.rs:177:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         NewNotEqualToDerive { foo: 1 }
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl Default for NewNotEqualToDerive {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `FooGenerics<T>`
+  --> $DIR/new_without_default.rs:185:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self(Default::default())
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<T> Default for FooGenerics<T> {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `BarGenerics<T>`
+  --> $DIR/new_without_default.rs:192:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self(Default::default())
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<T: Copy> Default for BarGenerics<T> {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `Foo<T>`
+  --> $DIR/new_without_default.rs:203:9
+   |
+LL | /         pub fn new() -> Self {
+LL | |             todo!()
+LL | |         }
+   | |_________^
+   |
+help: try adding this
+   |
+LL ~     impl<T> Default for Foo<T> {
+LL +         fn default() -> Self {
+LL +             Self::new()
+LL +         }
+LL +     }
+LL + 
+LL ~     impl<T> Foo<T> {
+   |
+
+error: aborting due to 7 previous errors
+

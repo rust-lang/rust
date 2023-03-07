@@ -1,0 +1,3 @@
+{"message":"`--error-format=pretty-json` is unstable","code":null,"level":"error","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: `--error-format=pretty-json` is unstable\u001b[0m
+
+"}

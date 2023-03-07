@@ -1,0 +1,19 @@
+[package]
+name = "panic_abort"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Implementation of Rust panics via process aborts"
+edition = "2021"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+alloc = { path = "../alloc" }
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
+core = { path = "../core" }
+libc = { version = "0.2", default-features = false }
+compiler_builtins = "0.1.0"

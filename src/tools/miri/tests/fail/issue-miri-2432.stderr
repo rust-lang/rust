@@ -1,0 +1,15 @@
+error: Undefined Behavior: `dyn` call trying to call something that is not a method
+  --> $DIR/issue-miri-2432.rs:LL:CC
+   |
+LL |     <dyn X as X>::foo(&());
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `dyn` call trying to call something that is not a method
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/issue-miri-2432.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

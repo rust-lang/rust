@@ -1,0 +1,14 @@
+error: functions tagged with `#[proc_macro]` must be `pub`
+  --> $DIR/visibility-path.rs:12:1
+   |
+LL | pub(self) fn outer(input: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions tagged with `#[proc_macro]` must currently reside in the root of the crate
+  --> $DIR/visibility-path.rs:21:5
+   |
+LL |     pub(super) fn inner(input: TokenStream) -> TokenStream {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

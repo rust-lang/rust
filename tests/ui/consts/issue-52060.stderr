@@ -1,0 +1,11 @@
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-52060.rs:4:26
+   |
+LL | static B: [u32; 1] = [0; A.len()];
+   |                          ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0013`.

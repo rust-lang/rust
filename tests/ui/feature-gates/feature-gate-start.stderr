@@ -1,0 +1,12 @@
+error[E0658]: `#[start]` functions are experimental and their signature may change over time
+  --> $DIR/feature-gate-start.rs:2:1
+   |
+LL | fn foo(_: isize, _: *const *const u8) -> isize { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #29633 <https://github.com/rust-lang/rust/issues/29633> for more information
+   = help: add `#![feature(start)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,14 @@
+error[E0516]: `typeof` is a reserved keyword but unimplemented
+  --> $DIR/issue-100183.rs:2:9
+   |
+LL |     y: (typeof("hey"),),
+   |         ^^^^^^^^^^^^^ reserved keyword
+   |
+help: consider replacing `typeof(...)` with an actual type
+   |
+LL |     y: (&'static str,),
+   |         ~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0516`.

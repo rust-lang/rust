@@ -1,0 +1,75 @@
+error: `assert!(true)` will be optimized out by the compiler
+  --> $DIR/assertions_on_constants.rs:10:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove it
+   = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
+
+error: `assert!(false)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:11:5
+   |
+LL |     assert!(false);
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: use `panic!()` or `unreachable!()`
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> $DIR/assertions_on_constants.rs:12:5
+   |
+LL |     assert!(true, "true message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:13:5
+   |
+LL |     assert!(false, "false message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:16:5
+   |
+LL |     assert!(false, "{}", msg.to_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> $DIR/assertions_on_constants.rs:19:5
+   |
+LL |     assert!(B);
+   |     ^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(false)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:22:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: use `panic!()` or `unreachable!()`
+
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:23:5
+   |
+LL |     assert!(C, "C message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `debug_assert!(true)` will be optimized out by the compiler
+  --> $DIR/assertions_on_constants.rs:25:5
+   |
+LL |     debug_assert!(true);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: aborting due to 9 previous errors
+

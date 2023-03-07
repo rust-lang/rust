@@ -1,0 +1,8 @@
+error: cannot use unsized non-slice type `Username` in constant patterns
+  --> $DIR/issue-87046.rs:28:13
+   |
+LL |             ROOT_USER => true,
+   |             ^^^^^^^^^
+
+error: aborting due to previous error
+

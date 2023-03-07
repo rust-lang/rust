@@ -1,0 +1,13 @@
+error: macro expansion ignores token `;` and any following
+  --> $DIR/issue-30007.rs:2:20
+   |
+LL |     () => ( String ; );
+   |                    ^
+...
+LL |     let i: Vec<t!()>;
+   |                ---- caused by the macro expansion here
+   |
+   = note: the usage of `t!` is likely invalid in type context
+
+error: aborting due to previous error
+

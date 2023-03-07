@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `i32` as `!`
+  --> $DIR/coerce-to-bang-cast.rs:4:13
+   |
+LL |     let y = {return; 22} as !;
+   |             ^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0605]: non-primitive cast: `i32` as `!`
+  --> $DIR/coerce-to-bang-cast.rs:9:13
+   |
+LL |     let y = 22 as !;
+   |             ^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

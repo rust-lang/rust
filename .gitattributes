@@ -3,8 +3,16 @@
 * text=auto eol=lf
 *.cpp rust
 *.h rust
-*.rs rust
-src/etc/pkg/rust-logo.ico binary
-src/etc/pkg/rust-logo.png binary
+*.rs rust diff=rust
+*.fixed linguist-language=Rust
+*.mir linguist-language=Rust
+src/etc/installer/gfx/* binary
+src/vendor/** -text
+Cargo.lock linguist-generated=false
+config.toml.example linguist-language=TOML
+
+# Older git versions try to fix line endings on images and fonts, this prevents it.
+*.png binary
+*.ico binary
 *.woff binary
-src/vendor/* binary
+*.woff2 binary

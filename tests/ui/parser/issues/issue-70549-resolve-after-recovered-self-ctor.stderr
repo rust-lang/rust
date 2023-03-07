@@ -1,0 +1,56 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |                 ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |            -----^^^^
+   |            |    |
+   |            |    expected one of `:`, `@`, or `|`
+   |            help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: unexpected lifetime `'static` in pattern
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:13
+   |
+LL |     fn bar(&'static mur Self) {}
+   |             ^^^^^^^ help: remove the lifetime
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |                         ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |            -------------^^^^
+   |            |            |
+   |            |            expected one of `:`, `@`, or `|`
+   |            help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: expected one of `:`, `@`, or `|`, found keyword `Self`
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:14:17
+   |
+LL |     fn baz(&mur Self @ _) {}
+   |                 ^^^^ expected one of `:`, `@`, or `|`
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
+   |
+LL |     fn foo(&mur Self) {}
+   |                 ^^^^ help: use curly brackets: `Self { /* fields */ }`
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
+   |
+LL |     fn bar(&'static mur Self) {}
+   |                         ^^^^ help: use curly brackets: `Self { /* fields */ }`
+
+error: aborting due to 8 previous errors
+

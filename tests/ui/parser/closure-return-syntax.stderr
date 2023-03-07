@@ -1,0 +1,13 @@
+error: expected `{`, found `22`
+  --> $DIR/closure-return-syntax.rs:5:23
+   |
+LL |     let x = || -> i32 22;
+   |                       ^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |     let x = || -> i32 { 22 };
+   |                       +    +
+
+error: aborting due to previous error
+

@@ -1,0 +1,9 @@
+A `#![feature]` attribute was declared multiple times.
+
+Erroneous code example:
+
+```compile_fail,E0636
+#![allow(stable_features)]
+#![feature(rust1)]
+#![feature(rust1)] // error: the feature `rust1` has already been declared
+```

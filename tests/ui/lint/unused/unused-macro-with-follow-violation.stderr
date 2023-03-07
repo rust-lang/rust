@@ -1,0 +1,10 @@
+error: `$e:expr` is followed by `+`, which is not allowed for `expr` fragments
+  --> $DIR/unused-macro-with-follow-violation.rs:4:14
+   |
+LL |     ($e:expr +) => ()
+   |              ^ not allowed after `expr` fragments
+   |
+   = note: allowed there are: `=>`, `,` or `;`
+
+error: aborting due to previous error
+

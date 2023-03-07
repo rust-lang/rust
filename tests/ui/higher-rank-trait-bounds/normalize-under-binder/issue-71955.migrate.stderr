@@ -1,0 +1,79 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-71955.rs:54:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'r, 's> FnOnce<(&'r &'s str,)>`
+              found type `for<'r> FnOnce<(&'r &str,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-71955.rs:54:24
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |                        ^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-71955.rs:34:9
+   |
+LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71955.rs:54:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `FnOnce<(&&str,)>`
+              found type `for<'r> FnOnce<(&'r &str,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-71955.rs:54:24
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |                        ^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-71955.rs:34:44
+   |
+LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
+   |                                            ^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'r, 's> FnOnce<(&'r Wrapper<'s>,)>`
+              found type `for<'r> FnOnce<(&'r Wrapper<'_>,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-71955.rs:58:24
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |                        ^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-71955.rs:34:9
+   |
+LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `FnOnce<(&Wrapper<'_>,)>`
+              found type `for<'r> FnOnce<(&'r Wrapper<'_>,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-71955.rs:58:24
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |                        ^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-71955.rs:34:44
+   |
+LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
+   |                                            ^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

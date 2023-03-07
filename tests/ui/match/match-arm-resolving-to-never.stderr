@@ -1,0 +1,18 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-arm-resolving-to-never.rs:17:17
+   |
+LL | /     match E::F {
+LL | |         E::A => 1,
+LL | |         E::B => 2,
+LL | |         E::C => 3,
+LL | |         E::D => 4,
+LL | |         E::E => unimplemented!(""),
+   | |                 ------------------ this and all prior arms are found to be of type `{integer}`
+LL | |         E::F => "",
+   | |                 ^^ expected integer, found `&str`
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

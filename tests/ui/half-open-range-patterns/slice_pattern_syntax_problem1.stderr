@@ -1,0 +1,30 @@
+error[E0658]: `X..` patterns in slices are experimental
+  --> $DIR/slice_pattern_syntax_problem1.rs:4:10
+   |
+LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
+   |          ^^^^^^^
+   |
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
+   = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/slice_pattern_syntax_problem1.rs:4:23
+   |
+LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
+   |                       ^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/slice_pattern_syntax_problem1.rs:4:32
+   |
+LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
+   |                                ^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

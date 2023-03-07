@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `i32: Bar<u32>` is not satisfied
+  --> $DIR/cross-fn-cache-hole.rs:16:11
+   |
+LL |     where i32: Foo<u32, A>
+   |           ^^^^^^^^^^^^^^^^ the trait `Bar<u32>` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,9 @@
+error[E0161]: cannot move a value of type `dyn Bar`
+  --> $DIR/object-safety-by-value-self-use.rs:15:5
+   |
+LL |     t.bar()
+   |     ^^^^^^^ the size of `dyn Bar` cannot be statically determined
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0161`.

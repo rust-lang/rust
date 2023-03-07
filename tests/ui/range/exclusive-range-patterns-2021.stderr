@@ -1,0 +1,27 @@
+error[E0783]: `...` range patterns are deprecated
+  --> $DIR/exclusive-range-patterns-2021.rs:6:9
+   |
+LL |         0...3 => {}
+   |         ^---^
+   |          |
+   |          help: use `..=` for an inclusive range
+
+error[E0783]: `...` range patterns are deprecated
+  --> $DIR/exclusive-range-patterns-2021.rs:8:9
+   |
+LL |         4...10 => {}
+   |         ^---^^
+   |          |
+   |          help: use `..=` for an inclusive range
+
+error[E0783]: `...` range patterns are deprecated
+  --> $DIR/exclusive-range-patterns-2021.rs:10:10
+   |
+LL |         (11...100) => {}
+   |          ^^---^^^
+   |            |
+   |            help: use `..=` for an inclusive range
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0783`.

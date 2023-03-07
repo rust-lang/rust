@@ -1,0 +1,14 @@
+error: missing `struct` for struct definition
+  --> $DIR/track4.rs:LL:CC
+   |
+LL | pub onion {
+   |    ^
+-Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/item.rs:LL:CC
+   |
+help: add `struct` here to parse `onion` as a public struct
+   |
+LL | pub struct onion {
+   |     ++++++
+
+error: aborting due to previous error
+

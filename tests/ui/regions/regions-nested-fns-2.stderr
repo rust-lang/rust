@@ -1,0 +1,17 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/regions-nested-fns-2.rs:7:25
+   |
+LL |         |z| {
+   |         --- value captured here
+LL |             if false { &y } else { z }
+   |                        -^
+   |                        ||
+   |                        |borrowed value does not live long enough
+   |                        returning this value requires that `y` is borrowed for `'static`
+...
+LL | }
+   | - `y` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

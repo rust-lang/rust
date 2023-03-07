@@ -1,0 +1,11 @@
+error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
+  --> $DIR/def_id_nocore.rs:27:19
+   |
+LL |     pub fn as_ref(self) -> &'static str {
+   |                   ^^^^
+   |
+   = help: consider choosing a less ambiguous name
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -1,0 +1,9 @@
+error[E0533]: expected value, found struct variant `Foo::Variant`
+  --> $DIR/issue-18252.rs:6:13
+   |
+LL |     let f = Foo::Variant(42);
+   |             ^^^^^^^^^^^^ not a value
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0533`.

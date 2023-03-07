@@ -1,0 +1,48 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:8:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("This uses new capture analyysis to capture s={}", s);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing s[] -> ImmBorrow
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:14:69
+   |
+LL |         println!("This uses new capture analyysis to capture s={}", s);
+   |                                                                     ^
+
+error: Min Capture analysis includes:
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("This uses new capture analyysis to capture s={}", s);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture s[] -> ImmBorrow
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:14:69
+   |
+LL |         println!("This uses new capture analyysis to capture s={}", s);
+   |                                                                     ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

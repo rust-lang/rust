@@ -1,0 +1,16 @@
+error[E0458]: unknown link kind `wonderful_unicorn`, expected one of: static, dylib, framework, raw-dylib
+  --> $DIR/E0458.rs:1:15
+   |
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
+   |               ^^^^^^^^^^^^^^^^^^^ unknown link kind
+
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/E0458.rs:1:1
+   |
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0458, E0459.
+For more information about an error, try `rustc --explain E0458`.

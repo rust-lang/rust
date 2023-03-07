@@ -1,0 +1,25 @@
+error[E0178]: expected a path on the left-hand side of `+`, not `&Copy`
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:4:12
+   |
+LL |     let _: &Copy + 'static;
+   |            ^^^^^^^^^^^^^^^ help: try adding parentheses: `&(Copy + 'static)`
+
+error[E0178]: expected a path on the left-hand side of `+`, not `&'static Copy`
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:6:12
+   |
+LL |     let _: &'static Copy + 'static;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ help: try adding parentheses: `&'static (Copy + 'static)`
+
+error[E0038]: the trait `Copy` cannot be made into an object
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:4:12
+   |
+LL |     let _: &Copy + 'static;
+   |            ^^^^^ `Copy` cannot be made into an object
+   |
+   = note: the trait cannot be made into an object because it requires `Self: Sized`
+   = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0178.
+For more information about an error, try `rustc --explain E0038`.

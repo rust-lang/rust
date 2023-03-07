@@ -1,0 +1,61 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/deep-multilevel-struct.rs:34:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/deep-multilevel-struct.rs:37:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &p.a.p.x;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0),(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/deep-multilevel-struct.rs:40:18
+   |
+LL |         let x = &p.a.p.x;
+   |                  ^^^^^^^
+note: Capturing p[(1, 0),(1, 0),(1, 0)] -> MutBorrow
+  --> $DIR/deep-multilevel-struct.rs:42:9
+   |
+LL |         p.b.q.y = 9;
+   |         ^^^^^^^
+note: Capturing p[] -> ImmBorrow
+  --> $DIR/deep-multilevel-struct.rs:45:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/deep-multilevel-struct.rs:37:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &p.a.p.x;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> MutBorrow
+  --> $DIR/deep-multilevel-struct.rs:42:9
+   |
+LL |         p.b.q.y = 9;
+   |         ^^^^^^^ p[] captured as MutBorrow here
+...
+LL |         println!("{:?}", p);
+   |                          ^ p[] used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

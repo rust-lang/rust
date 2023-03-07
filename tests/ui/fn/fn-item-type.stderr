@@ -1,0 +1,92 @@
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:22:19
+   |
+LL |     eq(foo::<u8>, bar::<u8>);
+   |     --            ^^^^^^^^^ expected fn item, found a different fn item
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
+              found fn item `fn(_) -> _ {bar::<u8>}`
+   = note: different fn items have unique types, even if their signatures are the same
+note: function defined here
+  --> $DIR/fn-item-type.rs:11:4
+   |
+LL | fn eq<T>(x: T, y: T) {}
+   |    ^^          ----
+   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:29:19
+   |
+LL |     eq(foo::<u8>, foo::<i8>);
+   |     --            ^^^^^^^^^ expected `u8`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
+              found fn item `fn(_) -> _ {foo::<i8>}`
+   = note: different fn items have unique types, even if their signatures are the same
+note: function defined here
+  --> $DIR/fn-item-type.rs:11:4
+   |
+LL | fn eq<T>(x: T, y: T) {}
+   |    ^^          ----
+   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:34:23
+   |
+LL |     eq(bar::<String>, bar::<Vec<u8>>);
+   |     --                ^^^^^^^^^^^^^^ expected `String`, found `Vec<u8>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn item `fn(_) -> _ {bar::<String>}`
+              found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
+   = note: different fn items have unique types, even if their signatures are the same
+note: function defined here
+  --> $DIR/fn-item-type.rs:11:4
+   |
+LL | fn eq<T>(x: T, y: T) {}
+   |    ^^          ----
+   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:40:26
+   |
+LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
+   |     --                   ^^^^^^^^^^^^^^^^^ expected `u8`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn item `fn() {<u8 as Foo>::foo}`
+              found fn item `fn() {<u16 as Foo>::foo}`
+   = note: different fn items have unique types, even if their signatures are the same
+note: function defined here
+  --> $DIR/fn-item-type.rs:11:4
+   |
+LL | fn eq<T>(x: T, y: T) {}
+   |    ^^          ----
+   = help: consider casting both fn items to fn pointers using `as fn()`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:45:19
+   |
+LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
+   |     --            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn item, found fn pointer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
+           found fn pointer `fn(_) -> _`
+   = help: consider casting the fn item to a fn pointer: `foo::<u8> as fn(isize) -> isize`
+note: function defined here
+  --> $DIR/fn-item-type.rs:11:4
+   |
+LL | fn eq<T>(x: T, y: T) {}
+   |    ^^          ----
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

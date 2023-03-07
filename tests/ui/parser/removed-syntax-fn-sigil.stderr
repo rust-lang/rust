@@ -1,0 +1,10 @@
+error: expected `(`, found `~`
+  --> $DIR/removed-syntax-fn-sigil.rs:2:14
+   |
+LL |     let x: fn~() = || ();
+   |         -    ^ expected `(`
+   |         |
+   |         while parsing the type for `x`
+
+error: aborting due to previous error
+

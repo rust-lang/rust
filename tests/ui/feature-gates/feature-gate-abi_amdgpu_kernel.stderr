@@ -1,0 +1,97 @@
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:7:8
+   |
+LL | extern "amdgpu-kernel" fn fu() {}
+   |        ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:11:12
+   |
+LL |     extern "amdgpu-kernel" fn mu();
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:12:12
+   |
+LL |     extern "amdgpu-kernel" fn dmu() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:18:12
+   |
+LL |     extern "amdgpu-kernel" fn mu() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:23:12
+   |
+LL |     extern "amdgpu-kernel" fn imu() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:27:19
+   |
+LL | type TAU = extern "amdgpu-kernel" fn();
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0658]: amdgpu-kernel ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:29:8
+   |
+LL | extern "amdgpu-kernel" {}
+   |        ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51575 <https://github.com/rust-lang/rust/issues/51575> for more information
+   = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:29:1
+   |
+LL | extern "amdgpu-kernel" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:7:1
+   |
+LL | extern "amdgpu-kernel" fn fu() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:12:5
+   |
+LL |     extern "amdgpu-kernel" fn dmu() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:18:5
+   |
+LL |     extern "amdgpu-kernel" fn mu() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:23:5
+   |
+LL |     extern "amdgpu-kernel" fn imu() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0570, E0658.
+For more information about an error, try `rustc --explain E0570`.

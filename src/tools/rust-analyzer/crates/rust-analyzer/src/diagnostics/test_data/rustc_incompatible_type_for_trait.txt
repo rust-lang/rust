@@ -1,0 +1,64 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/ty/list_iter.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 51,
+                    character: 4,
+                },
+                end: Position {
+                    line: 51,
+                    character: 47,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: Some(
+                String(
+                    "E0053",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0053",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "method `next` has an incompatible type for trait\nexpected type `fn(&mut ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&ty::Ref<M>>`\n   found type `fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>`",
+            related_information: None,
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+]

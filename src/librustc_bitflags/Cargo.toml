@@ -1,9 +1,0 @@
-[package]
-authors = ["The Rust Project Developers"]
-name = "rustc_bitflags"
-version = "0.0.0"
-
-[lib]
-name = "rustc_bitflags"
-path = "lib.rs"
-doctest = false

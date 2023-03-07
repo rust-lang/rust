@@ -1,0 +1,16 @@
+error[E0621]: explicit lifetime required in the type of `s`
+  --> $DIR/regions-glb-free-free.rs:15:13
+   |
+LL |           pub fn set_desc(self, s: &str) -> Flag<'a> {
+   |                                    ---- help: add explicit lifetime `'a` to the type of `s`: `&'a str`
+LL | /             Flag {
+LL | |                 name: self.name,
+LL | |                 desc: s,
+LL | |                 max_count: self.max_count,
+LL | |                 value: self.value
+LL | |             }
+   | |_____________^ lifetime `'a` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

@@ -1,0 +1,11 @@
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/issue-91556.rs:2:19
+   |
+LL |   let _ = format!(concat!("{0}𝖳𝖾𝗌𝗍{"), i);
+   |                   ^^^^^^^^^^^^^^^^^^^ expected `'}'` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

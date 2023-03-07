@@ -1,0 +1,15 @@
+error[E0715]: impls for marker traits cannot contain items
+  --> $DIR/override-item-on-marker-trait.rs:10:1
+   |
+LL | impl Marker for OverrideConst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0715]: impls for marker traits cannot contain items
+  --> $DIR/override-item-on-marker-trait.rs:16:1
+   |
+LL | impl Marker for OverrideFn {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0715`.

@@ -1,0 +1,8 @@
+error: expected item, found `[`
+  --> $DIR/shebang-doc-comment.rs:2:1
+   |
+LL | [allow(unused_variables)]
+   | ^ expected item
+
+error: aborting due to previous error
+

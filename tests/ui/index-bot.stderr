@@ -1,0 +1,9 @@
+error[E0608]: cannot index into a value of type `!`
+  --> $DIR/index-bot.rs:2:5
+   |
+LL |     (return)[0];
+   |     ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0608`.

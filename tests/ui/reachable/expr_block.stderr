@@ -1,0 +1,26 @@
+error: unreachable expression
+  --> $DIR/expr_block.rs:10:9
+   |
+LL |         return;
+   |         ------ any code following this expression is unreachable
+LL |         22
+   |         ^^ unreachable expression
+   |
+note: the lint level is defined here
+  --> $DIR/expr_block.rs:4:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable statement
+  --> $DIR/expr_block.rs:25:9
+   |
+LL |         return;
+   |         ------ any code following this expression is unreachable
+LL |         println!("foo");
+   |         ^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

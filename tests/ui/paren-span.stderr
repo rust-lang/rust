@@ -1,0 +1,9 @@
+error[E0616]: field `x` of struct `S` is private
+  --> $DIR/paren-span.rs:19:14
+   |
+LL |     paren!(s.x);
+   |              ^ private field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0616`.

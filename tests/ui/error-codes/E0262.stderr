@@ -1,0 +1,9 @@
+error[E0262]: invalid lifetime parameter name: `'static`
+  --> $DIR/E0262.rs:1:8
+   |
+LL | fn foo<'static>(x: &'static str) { }
+   |        ^^^^^^^ 'static is a reserved lifetime name
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0262`.

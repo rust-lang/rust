@@ -1,0 +1,31 @@
+The `optimize` attribute was malformed.
+
+Erroneous code example:
+
+```compile_fail,E0722
+#![feature(optimize_attribute)]
+
+#[optimize(something)] // error: invalid argument
+pub fn something() {}
+```
+
+The `#[optimize]` attribute should be used as follows:
+
+- `#[optimize(size)]` -- instructs the optimization pipeline to generate code
+  that's smaller rather than faster
+
+- `#[optimize(speed)]` -- instructs the optimization pipeline to generate code
+  that's faster rather than smaller
+
+For example:
+
+```
+#![feature(optimize_attribute)]
+
+#[optimize(size)]
+pub fn something() {}
+```
+
+See [RFC 2412] for more details.
+
+[RFC 2412]: https://rust-lang.github.io/rfcs/2412-optimize-attr.html

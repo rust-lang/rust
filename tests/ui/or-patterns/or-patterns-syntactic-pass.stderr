@@ -1,0 +1,13 @@
+warning: box pattern syntax is experimental
+  --> $DIR/or-patterns-syntactic-pass.rs:70:10
+   |
+LL |     let (box 0 | 1); // Unstable; we *can* change the precedence if we want.
+   |          ^^^^^
+   |
+   = note: see issue #29641 <https://github.com/rust-lang/rust/issues/29641> for more information
+   = help: add `#![feature(box_patterns)]` to the crate attributes to enable
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: 1 warning emitted
+

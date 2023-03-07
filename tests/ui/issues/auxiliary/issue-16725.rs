@@ -1,0 +1,3 @@
+extern "C" {
+    fn bar();
+}

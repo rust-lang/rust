@@ -1,0 +1,13 @@
+error: macro expansion ignores token `let` and any following
+  --> $DIR/issue-54441.rs:3:9
+   |
+LL |         let
+   |         ^^^
+...
+LL |     m!();
+   |     ---- caused by the macro expansion here
+   |
+   = note: the usage of `m!` is likely invalid in foreign item context
+
+error: aborting due to previous error
+

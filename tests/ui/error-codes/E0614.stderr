@@ -1,0 +1,9 @@
+error[E0614]: type `u32` cannot be dereferenced
+  --> $DIR/E0614.rs:3:5
+   |
+LL |     *y;
+   |     ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0614`.

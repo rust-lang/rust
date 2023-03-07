@@ -1,0 +1,12 @@
+error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
+  --> $DIR/expand-to-unstable.rs:8:10
+   |
+LL | #[derive(Unstable)]
+   |          ^^^^^^^^
+   |
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
+   = note: this error originates in the derive macro `Unstable` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

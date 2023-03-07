@@ -1,0 +1,49 @@
+// run-rustfix
+
+fn main() {
+    unsafe {
+        let _slice: &[usize] = std::slice::from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
+        let _slice: &[usize] = std::slice::from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        let _slice: &[usize] = std::slice::from_raw_parts_mut(core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        std::ptr::copy::<usize>(core::ptr::NonNull::dangling().as_ptr(), std::ptr::NonNull::dangling().as_ptr(), 0);
+        std::ptr::copy::<usize>(std::ptr::NonNull::dangling().as_ptr(), core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        std::ptr::copy_nonoverlapping::<usize>(core::ptr::NonNull::dangling().as_ptr(), std::ptr::NonNull::dangling().as_ptr(), 0);
+        std::ptr::copy_nonoverlapping::<usize>(std::ptr::NonNull::dangling().as_ptr(), core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        struct A; // zero sized struct
+        assert_eq!(std::mem::size_of::<A>(), 0);
+
+        let _a: A = std::ptr::read(core::ptr::NonNull::dangling().as_ptr());
+        let _a: A = std::ptr::read(core::ptr::NonNull::dangling().as_ptr());
+
+        let _a: A = std::ptr::read_unaligned(core::ptr::NonNull::dangling().as_ptr());
+        let _a: A = std::ptr::read_unaligned(core::ptr::NonNull::dangling().as_ptr());
+
+        let _a: A = std::ptr::read_volatile(core::ptr::NonNull::dangling().as_ptr());
+        let _a: A = std::ptr::read_volatile(core::ptr::NonNull::dangling().as_ptr());
+
+        let _a: A = std::ptr::replace(core::ptr::NonNull::dangling().as_ptr(), A);
+
+        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
+        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        let _slice: *const [usize] = std::ptr::slice_from_raw_parts_mut(core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        std::ptr::swap::<A>(core::ptr::NonNull::dangling().as_ptr(), &mut A);
+        std::ptr::swap::<A>(&mut A, core::ptr::NonNull::dangling().as_ptr());
+
+        std::ptr::swap_nonoverlapping::<A>(core::ptr::NonNull::dangling().as_ptr(), &mut A, 0);
+        std::ptr::swap_nonoverlapping::<A>(&mut A, core::ptr::NonNull::dangling().as_ptr(), 0);
+
+        std::ptr::write(core::ptr::NonNull::dangling().as_ptr(), A);
+
+        std::ptr::write_unaligned(core::ptr::NonNull::dangling().as_ptr(), A);
+
+        std::ptr::write_volatile(core::ptr::NonNull::dangling().as_ptr(), A);
+
+        std::ptr::write_bytes::<usize>(core::ptr::NonNull::dangling().as_ptr(), 42, 0);
+    }
+}

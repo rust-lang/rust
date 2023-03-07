@@ -1,0 +1,13 @@
+error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `Fn` closure
+  --> $DIR/issue-52663-span-decl-captured-variable.rs:8:26
+   |
+LL |        let x = (vec![22], vec![44]);
+   |            - captured outer variable
+LL |        expect_fn(|| drop(x.0));
+   |                  --      ^^^ move occurs because `x.0` has type `Vec<i32>`, which does not implement the `Copy` trait
+   |                  |
+   |                  captured by this `Fn` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,24 @@
+error: methods called `new` usually return `Self`
+  --> $DIR/methods.rs:105:5
+   |
+LL | /     fn new() -> i32 {
+LL | |         0
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
+
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+  --> $DIR/methods.rs:126:13
+   |
+LL |       let _ = v.iter().filter(|&x| {
+   |  _____________^
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next();
+   | |___________________________^
+   |
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+

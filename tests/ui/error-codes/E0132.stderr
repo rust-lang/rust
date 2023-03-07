@@ -1,0 +1,9 @@
+error[E0132]: start function is not allowed to have type parameters
+  --> $DIR/E0132.rs:4:5
+   |
+LL | fn f< T >() {}
+   |     ^^^^^ start function cannot have type parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0132`.

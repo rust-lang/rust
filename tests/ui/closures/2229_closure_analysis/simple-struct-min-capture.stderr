@@ -1,0 +1,56 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/simple-struct-min-capture.rs:23:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/simple-struct-min-capture.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         p.x += 10;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0)] -> MutBorrow
+  --> $DIR/simple-struct-min-capture.rs:29:9
+   |
+LL |         p.x += 10;
+   |         ^^^
+note: Capturing p[] -> ImmBorrow
+  --> $DIR/simple-struct-min-capture.rs:32:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/simple-struct-min-capture.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         p.x += 10;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> MutBorrow
+  --> $DIR/simple-struct-min-capture.rs:29:9
+   |
+LL |         p.x += 10;
+   |         ^^^ p[] captured as MutBorrow here
+...
+LL |         println!("{:?}", p);
+   |                          ^ p[] used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

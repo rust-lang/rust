@@ -1,0 +1,12 @@
+error[E0307]: invalid `self` parameter type: T
+  --> $DIR/issue-66312.rs:4:22
+   |
+LL |     fn is_some(self: T);
+   |                      ^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0307`.

@@ -1,0 +1,15 @@
+error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+  --> $DIR/E0657.rs:10:31
+   |
+LL |     -> Box<for<'a> Id<impl Lt<'a>>>
+   |                               ^^
+
+error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+  --> $DIR/E0657.rs:19:35
+   |
+LL |         -> Box<for<'a> Id<impl Lt<'a>>>
+   |                                   ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

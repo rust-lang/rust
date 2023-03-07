@@ -1,0 +1,34 @@
+error: `0 as *const _` detected
+  --> $DIR/zero_ptr.rs:5:13
+   |
+LL |     let _ = 0 as *const usize;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::null::<usize>()`
+   |
+   = note: `-D clippy::zero-ptr` implied by `-D warnings`
+
+error: `0 as *mut _` detected
+  --> $DIR/zero_ptr.rs:6:13
+   |
+LL |     let _ = 0 as *mut f64;
+   |             ^^^^^^^^^^^^^ help: try: `std::ptr::null_mut::<f64>()`
+
+error: `0 as *const _` detected
+  --> $DIR/zero_ptr.rs:7:24
+   |
+LL |     let _: *const u8 = 0 as *const _;
+   |                        ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: `0 as *const _` detected
+  --> $DIR/zero_ptr.rs:10:9
+   |
+LL |     foo(0 as *const _, 0 as *mut _);
+   |         ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: `0 as *mut _` detected
+  --> $DIR/zero_ptr.rs:10:24
+   |
+LL |     foo(0 as *const _, 0 as *mut _);
+   |                        ^^^^^^^^^^^ help: try: `std::ptr::null_mut()`
+
+error: aborting due to 5 previous errors
+

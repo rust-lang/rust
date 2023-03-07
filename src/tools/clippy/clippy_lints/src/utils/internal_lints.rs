@@ -1,0 +1,12 @@
+pub mod clippy_lints_internal;
+pub mod collapsible_calls;
+pub mod compiler_lint_functions;
+pub mod if_chain_style;
+pub mod interning_defined_symbol;
+pub mod invalid_paths;
+pub mod lint_without_lint_pass;
+pub mod metadata_collector;
+pub mod msrv_attr_impl;
+pub mod outer_expn_data_pass;
+pub mod produce_ice;
+pub mod unnecessary_def_path;

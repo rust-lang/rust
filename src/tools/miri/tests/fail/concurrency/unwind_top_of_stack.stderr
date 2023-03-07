@@ -1,0 +1,18 @@
+thread '<unnamed>' panicked at 'explicit panic', $DIR/unwind_top_of_stack.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: Undefined Behavior: unwinding past the topmost frame of the stack
+  --> $DIR/unwind_top_of_stack.rs:LL:CC
+   |
+LL | / extern "C-unwind" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
+LL | |
+LL | |     panic!()
+LL | | }
+   | |_^ unwinding past the topmost frame of the stack
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `thread_start` at $DIR/unwind_top_of_stack.rs:LL:CC
+
+error: aborting due to previous error
+

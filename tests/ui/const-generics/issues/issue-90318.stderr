@@ -1,0 +1,24 @@
+error: overly complex generic constant
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: overly complex generic constant
+  --> $DIR/issue-90318.rs:21:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,26 @@
+error[E0764]: mutable references are not allowed in the final value of constants
+  --> $DIR/issue-17718-const-bad-values.rs:1:34
+   |
+LL | const C1: &'static mut [usize] = &mut [];
+   |                                  ^^^^^^^
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-const-bad-values.rs:5:46
+   |
+LL | const C2: &'static mut usize = unsafe { &mut S };
+   |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-const-bad-values.rs:5:46
+   |
+LL | const C2: &'static mut usize = unsafe { &mut S };
+   |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0013, E0764.
+For more information about an error, try `rustc --explain E0013`.

@@ -1,0 +1,24 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/infer-arg-test.rs:7:17
+   |
+LL | struct BadInfer<_>;
+   |                 ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/infer-arg-test.rs:13:17
+   |
+LL | fn bad_infer_fn<_>() {}
+   |                 ^ expected identifier, found reserved identifier
+
+error[E0392]: parameter `_` is never used
+  --> $DIR/infer-arg-test.rs:7:17
+   |
+LL | struct BadInfer<_>;
+   |                 ^ unused parameter
+   |
+   = help: consider removing `_`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `_` to be a const parameter, use `const _: usize` instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

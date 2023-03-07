@@ -1,0 +1,51 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/by-move-pattern-binding.rs:14:11
+   |
+LL |     match &s.x {
+   |           ^^^^
+LL |         &E::Foo => {}
+LL |         &E::Bar(identifier) => f(identifier.clone())
+   |                 ----------
+   |                 |
+   |                 data moved here
+   |                 move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -         &E::Bar(identifier) => f(identifier.clone())
+LL +         E::Bar(identifier) => f(identifier.clone())
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/by-move-pattern-binding.rs:22:34
+   |
+LL |     if let &E::Bar(identifier) = &s.x {
+   |                    ----------    ^^^^
+   |                    |
+   |                    data moved here
+   |                    move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     if let &E::Bar(identifier) = &s.x {
+LL +     if let E::Bar(identifier) = &s.x {
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/by-move-pattern-binding.rs:25:31
+   |
+LL |     let &E::Bar(identifier) = &s.x else {
+   |                 ----------    ^^^^
+   |                 |
+   |                 data moved here
+   |                 move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     let &E::Bar(identifier) = &s.x else {
+LL +     let E::Bar(identifier) = &s.x else {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

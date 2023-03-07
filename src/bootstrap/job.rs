@@ -1,16 +1,6 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Job management on Windows for bootstrapping
 //!
-//! Most of the time when you're running a build system (e.g. make) you expect
+//! Most of the time when you're running a build system (e.g., make) you expect
 //! Ctrl-C or abnormal termination to actually terminate the entire tree of
 //! process in play, not just the one at the top. This currently works "by
 //! default" on Unix platforms because Ctrl-C actually sends a signal to the
@@ -37,98 +27,34 @@
 //! Note that this module has a #[cfg(windows)] above it as none of this logic
 //! is required on Unix.
 
-#![allow(bad_style, dead_code)]
+#![allow(nonstandard_style, dead_code)]
 
+use crate::Build;
 use std::env;
 use std::io;
 use std::mem;
+use std::ptr;
 
-type HANDLE = *mut u8;
-type BOOL = i32;
-type DWORD = u32;
-type LPHANDLE = *mut HANDLE;
-type LPVOID = *mut u8;
-type JOBOBJECTINFOCLASS = i32;
-type SIZE_T = usize;
-type LARGE_INTEGER = i64;
-type UINT = u32;
-type ULONG_PTR = usize;
-type ULONGLONG = u64;
+use winapi::shared::minwindef::{DWORD, FALSE, LPVOID};
+use winapi::um::errhandlingapi::SetErrorMode;
+use winapi::um::handleapi::{CloseHandle, DuplicateHandle};
+use winapi::um::jobapi2::{AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject};
+use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcess};
+use winapi::um::winbase::{BELOW_NORMAL_PRIORITY_CLASS, SEM_NOGPFAULTERRORBOX};
+use winapi::um::winnt::{
+    JobObjectExtendedLimitInformation, DUPLICATE_SAME_ACCESS, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
+};
 
-const FALSE: BOOL = 0;
-const DUPLICATE_SAME_ACCESS: DWORD = 0x2;
-const PROCESS_DUP_HANDLE: DWORD = 0x40;
-const JobObjectExtendedLimitInformation: JOBOBJECTINFOCLASS = 9;
-const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
-const SEM_FAILCRITICALERRORS: UINT = 0x0001;
-const SEM_NOGPFAULTERRORBOX: UINT = 0x0002;
-
-extern "system" {
-    fn CreateJobObjectW(lpJobAttributes: *mut u8, lpName: *const u8) -> HANDLE;
-    fn CloseHandle(hObject: HANDLE) -> BOOL;
-    fn GetCurrentProcess() -> HANDLE;
-    fn OpenProcess(dwDesiredAccess: DWORD,
-                   bInheritHandle: BOOL,
-                   dwProcessId: DWORD) -> HANDLE;
-    fn DuplicateHandle(hSourceProcessHandle: HANDLE,
-                       hSourceHandle: HANDLE,
-                       hTargetProcessHandle: HANDLE,
-                       lpTargetHandle: LPHANDLE,
-                       dwDesiredAccess: DWORD,
-                       bInheritHandle: BOOL,
-                       dwOptions: DWORD) -> BOOL;
-    fn AssignProcessToJobObject(hJob: HANDLE, hProcess: HANDLE) -> BOOL;
-    fn SetInformationJobObject(hJob: HANDLE,
-                               JobObjectInformationClass: JOBOBJECTINFOCLASS,
-                               lpJobObjectInformation: LPVOID,
-                               cbJobObjectInformationLength: DWORD) -> BOOL;
-    fn SetErrorMode(mode: UINT) -> UINT;
-}
-
-#[repr(C)]
-struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
-    BasicLimitInformation: JOBOBJECT_BASIC_LIMIT_INFORMATION,
-    IoInfo: IO_COUNTERS,
-    ProcessMemoryLimit: SIZE_T,
-    JobMemoryLimit: SIZE_T,
-    PeakProcessMemoryUsed: SIZE_T,
-    PeakJobMemoryUsed: SIZE_T,
-}
-
-#[repr(C)]
-struct IO_COUNTERS {
-    ReadOperationCount: ULONGLONG,
-    WriteOperationCount: ULONGLONG,
-    OtherOperationCount: ULONGLONG,
-    ReadTransferCount: ULONGLONG,
-    WriteTransferCount: ULONGLONG,
-    OtherTransferCount: ULONGLONG,
-}
-
-#[repr(C)]
-struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
-    PerProcessUserTimeLimit: LARGE_INTEGER,
-    PerJobUserTimeLimit: LARGE_INTEGER,
-    LimitFlags: DWORD,
-    MinimumWorkingsetSize: SIZE_T,
-    MaximumWorkingsetSize: SIZE_T,
-    ActiveProcessLimit: DWORD,
-    Affinity: ULONG_PTR,
-    PriorityClass: DWORD,
-    SchedulingClass: DWORD,
-}
-
-pub unsafe fn setup() {
-    // Tell Windows to not show any UI on errors (such as not finding a required dll
-    // during startup or terminating abnormally).  This is important for running tests,
-    // since some of them use abnormal termination by design.
-    // This mode is inherited by all child processes.
-    let mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
-    SetErrorMode(mode | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+pub unsafe fn setup(build: &mut Build) {
+    // Enable the Windows Error Reporting dialog which msys disables,
+    // so we can JIT debug rustc
+    let mode = SetErrorMode(0);
+    SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 
     // Create a new job object for us to use
-    let job = CreateJobObjectW(0 as *mut _, 0 as *const _);
-    assert!(job != 0 as *mut _, "{}", io::Error::last_os_error());
+    let job = CreateJobObjectW(ptr::null_mut(), ptr::null());
+    assert!(!job.is_null(), "{}", io::Error::last_os_error());
 
     // Indicate that when all handles to the job object are gone that all
     // process in the object should be killed. Note that this includes our
@@ -136,10 +62,16 @@ pub unsafe fn setup() {
     // children will reside in the job by default.
     let mut info = mem::zeroed::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
     info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-    let r = SetInformationJobObject(job,
-                                    JobObjectExtendedLimitInformation,
-                                    &mut info as *mut _ as LPVOID,
-                                    mem::size_of_val(&info) as DWORD);
+    if build.config.low_priority {
+        info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
+        info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS;
+    }
+    let r = SetInformationJobObject(
+        job,
+        JobObjectExtendedLimitInformation,
+        &mut info as *mut _ as LPVOID,
+        mem::size_of_val(&info) as DWORD,
+    );
     assert!(r != 0, "{}", io::Error::last_os_error());
 
     // Assign our process to this job object. Note that if this fails, one very
@@ -154,14 +86,14 @@ pub unsafe fn setup() {
     let r = AssignProcessToJobObject(job, GetCurrentProcess());
     if r == 0 {
         CloseHandle(job);
-        return
+        return;
     }
 
-    // If we've got a parent process (e.g. the python script that called us)
+    // If we've got a parent process (e.g., the python script that called us)
     // then move ownership of this job object up to them. That way if the python
-    // script is killed (e.g. via ctrl-c) then we'll all be torn down.
+    // script is killed (e.g., via ctrl-c) then we'll all be torn down.
     //
-    // If we don't have a parent (e.g. this was run directly) then we
+    // If we don't have a parent (e.g., this was run directly) then we
     // intentionally leak the job object handle. When our process exits
     // (normally or abnormally) it will close the handle implicitly, causing all
     // processes in the job to be cleaned up.
@@ -171,15 +103,34 @@ pub unsafe fn setup() {
     };
 
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
-    assert!(parent != 0 as *mut _, "{}", io::Error::last_os_error());
-    let mut parent_handle = 0 as *mut _;
-    let r = DuplicateHandle(GetCurrentProcess(), job,
-                            parent, &mut parent_handle,
-                            0, FALSE, DUPLICATE_SAME_ACCESS);
+
+    // If we get a null parent pointer here, it is possible that either
+    // we have got an invalid pid or the parent process has been closed.
+    // Since the first case rarely happens
+    // (only when wrongly setting the environmental variable),
+    // so it might be better to improve the experience of the second case
+    // when users have interrupted the parent process and we don't finish
+    // duplicating the handle yet.
+    // We just need close the job object if that occurs.
+    if parent.is_null() {
+        CloseHandle(job);
+        return;
+    }
+
+    let mut parent_handle = ptr::null_mut();
+    let r = DuplicateHandle(
+        GetCurrentProcess(),
+        job,
+        parent,
+        &mut parent_handle,
+        0,
+        FALSE,
+        DUPLICATE_SAME_ACCESS,
+    );
 
     // If this failed, well at least we tried! An example of DuplicateHandle
-    // failing in the past has been when the wrong python2 package spawed this
-    // build system (e.g. the `python2` package in MSYS instead of
+    // failing in the past has been when the wrong python2 package spawned this
+    // build system (e.g., the `python2` package in MSYS instead of
     // `mingw-w64-x86_64-python2`. Not sure why it failed, but the "failure
     // mode" here is that we only clean everything up when the build system
     // dies, not when the python parent does, so not too bad.

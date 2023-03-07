@@ -1,0 +1,75 @@
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:2:21
+   |
+LL |     let a: String = &String::from("a");
+   |            ------   ^^^^^^^^^^^^^^^^^^ expected `String`, found `&String`
+   |            |
+   |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL -     let a: String = &String::from("a");
+LL +     let a: String = String::from("a");
+   |
+help: alternatively, consider changing the type annotation
+   |
+LL |     let a: &String = &String::from("a");
+   |            +
+
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:4:21
+   |
+LL |     let b: String = &format!("b");
+   |            ------   ^^^^^^^^^^^^^ expected `String`, found `&String`
+   |            |
+   |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL -     let b: String = &format!("b");
+LL +     let b: String = format!("b");
+   |
+help: alternatively, consider changing the type annotation
+   |
+LL |     let b: &String = &format!("b");
+   |            +
+
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:6:21
+   |
+LL |     let c: String = &mut format!("c");
+   |            ------   ^^^^^^^^^^^^^^^^^ expected `String`, found `&mut String`
+   |            |
+   |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL -     let c: String = &mut format!("c");
+LL +     let c: String = format!("c");
+   |
+help: alternatively, consider changing the type annotation
+   |
+LL |     let c: &mut String = &mut format!("c");
+   |            ++++
+
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:8:21
+   |
+LL |     let d: String = &mut (format!("d"));
+   |            ------   ^^^^^^^^^^^^^^^^^^^ expected `String`, found `&mut String`
+   |            |
+   |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL -     let d: String = &mut (format!("d"));
+LL +     let d: String = format!("d"));
+   |
+help: alternatively, consider changing the type annotation
+   |
+LL |     let d: &mut String = &mut (format!("d"));
+   |            ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

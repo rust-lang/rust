@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `foo`
+  --> $DIR/issue-28388-1.rs:3:5
+   |
+LL | use foo::{};
+   |     ^^^^^^^ no `foo` in the root
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

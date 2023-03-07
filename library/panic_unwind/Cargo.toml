@@ -1,0 +1,20 @@
+[package]
+name = "panic_unwind"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Implementation of Rust panics via stack unwinding"
+edition = "2021"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+alloc = { path = "../alloc" }
+core = { path = "../core" }
+libc = { version = "0.2", default-features = false }
+unwind = { path = "../unwind" }
+compiler_builtins = "0.1.0"
+cfg-if = "1.0"

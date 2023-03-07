@@ -1,0 +1,22 @@
+error: use of `flat_map` with an identity function
+  --> $DIR/flat_map_identity.rs:10:22
+   |
+LL |     let _ = iterator.flat_map(|x| x);
+   |                      ^^^^^^^^^^^^^^^ help: try: `flatten()`
+   |
+   = note: `-D clippy::flat-map-identity` implied by `-D warnings`
+
+error: use of `flat_map` with an identity function
+  --> $DIR/flat_map_identity.rs:13:22
+   |
+LL |     let _ = iterator.flat_map(convert::identity);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: use of `flat_map` with an identity function
+  --> $DIR/flat_map_identity.rs:16:22
+   |
+LL |     let _ = iterator.flat_map(|x| return x);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: aborting due to 3 previous errors
+

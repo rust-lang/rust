@@ -1,0 +1,11 @@
+error[E0062]: field `x` specified more than once
+  --> $DIR/E0062.rs:8:9
+   |
+LL |         x: 0,
+   |         ---- first use of `x`
+LL |         x: 0,
+   |         ^ used more than once
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0062`.

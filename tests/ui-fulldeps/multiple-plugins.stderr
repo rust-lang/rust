@@ -1,0 +1,16 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
+  --> $DIR/multiple-plugins.rs:9:1
+   |
+LL | #![plugin(multiple_plugins_1)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
+  --> $DIR/multiple-plugins.rs:10:1
+   |
+LL | #![plugin(multiple_plugins_2)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
+
+warning: 2 warnings emitted
+

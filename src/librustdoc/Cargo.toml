@@ -1,31 +1,39 @@
 [package]
-authors = ["The Rust Project Developers"]
 name = "rustdoc"
 version = "0.0.0"
-build = "build.rs"
+edition = "2021"
 
 [lib]
-name = "rustdoc"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]
-arena = { path = "../libarena" }
-rustc = { path = "../librustc" }
-rustc_back = { path = "../librustc_back" }
-rustc_const_eval = { path = "../librustc_const_eval" }
-rustc_driver = { path = "../librustc_driver" }
-rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_errors = { path = "../librustc_errors" }
-rustc_lint = { path = "../librustc_lint" }
-rustc_metadata = { path = "../librustc_metadata" }
-rustc_resolve = { path = "../librustc_resolve" }
-rustc_trans = { path = "../librustc_trans" }
-serialize = { path = "../libserialize" }
-syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
-log = { path = "../liblog" }
+arrayvec = { version = "0.7", default-features = false }
+askama = { version = "0.11", default-features = false, features = ["config"] }
+itertools = "0.10.1"
+minifier = "0.2.2"
+once_cell = "1.10.0"
+regex = "1"
+rustdoc-json-types = { path = "../rustdoc-json-types" }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+smallvec = "1.8.1"
+tempfile = "3"
+tracing = "0.1"
+tracing-tree = "0.2.0"
 
-[build-dependencies]
-build_helper = { path = "../build_helper" }
-gcc = "0.3.27"
+[dependencies.tracing-subscriber]
+version = "0.3.3"
+default-features = false
+features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
+
+[target.'cfg(windows)'.dependencies]
+rayon = "1.5.1"
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+[features]
+jemalloc = []
+
+[package.metadata.rust-analyzer]
+rustc_private = true

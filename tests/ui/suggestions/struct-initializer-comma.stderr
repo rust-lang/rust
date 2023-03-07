@@ -1,0 +1,23 @@
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `second`
+  --> $DIR/struct-initializer-comma.rs:12:9
+   |
+LL |     let _ = Foo {
+   |             --- while parsing this struct
+LL |
+LL |         first: true
+   |                    -
+   |                    |
+   |                    expected one of `,`, `.`, `?`, `}`, or an operator
+   |                    help: try adding a comma: `,`
+LL |         second: 25
+   |         ^^^^^^ unexpected token
+
+error[E0063]: missing field `second` in initializer of `Foo`
+  --> $DIR/struct-initializer-comma.rs:9:13
+   |
+LL |     let _ = Foo {
+   |             ^^^ missing `second`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

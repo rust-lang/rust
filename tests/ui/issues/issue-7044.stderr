@@ -1,0 +1,13 @@
+error[E0428]: the name `X` is defined multiple times
+  --> $DIR/issue-7044.rs:2:1
+   |
+LL | static X: isize = 0;
+   | -------------------- previous definition of the value `X` here
+LL | struct X;
+   | ^^^^^^^^^ `X` redefined here
+   |
+   = note: `X` must be defined only once in the value namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0428`.

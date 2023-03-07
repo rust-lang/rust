@@ -1,0 +1,8 @@
+CHECK: libunwind::Registers_x86_64::jumpto
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      shlq    $0, (%rsp)
+CHECK-NEXT: lfence
+CHECK-NEXT: retq

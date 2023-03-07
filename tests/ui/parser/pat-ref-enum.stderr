@@ -1,0 +1,8 @@
+error: expected identifier, found enum pattern
+  --> $DIR/pat-ref-enum.rs:3:11
+   |
+LL |       ref Some(i) => {}
+   |           ^^^^
+
+error: aborting due to previous error
+

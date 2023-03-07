@@ -1,0 +1,14 @@
+// run-rustfix
+#![warn(clippy::uninlined_format_args)]
+
+fn main() {
+    let local_i32 = 1;
+    let local_f64 = 2.0;
+    let local_opt: Option<i32> = Some(3);
+
+    println!("val='{local_i32}'");
+    println!("Hello x is {local_f64:.local_i32$}");
+    println!("Hello {local_i32} is {local_f64:.*}", 5);
+    println!("Hello {local_i32} is {local_f64:.*}", 5);
+    println!("{local_i32}, {}", local_opt.unwrap());
+}

@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `TraitWithAssoc` for type `((&str,),)`
+  --> $DIR/unsound-overlap.rs:20:1
+   |
+LL | impl<T: A> TraitWithAssoc for T {
+   | ------------------------------- first implementation here
+...
+LL | impl TraitWithAssoc for ((&str,),) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `((&str,),)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

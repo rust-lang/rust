@@ -1,0 +1,17 @@
+error[E0432]: unresolved import `alloc`
+  --> $DIR/issue-54006.rs:6:5
+   |
+LL | use alloc::vec;
+   |     ^^^^^ help: a similar path exists: `core::alloc`
+
+error: cannot determine resolution for the macro `vec`
+  --> $DIR/issue-54006.rs:10:18
+   |
+LL |     let mut xs = vec![];
+   |                  ^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

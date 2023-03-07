@@ -1,0 +1,8 @@
+error: malformed `crate_type` attribute input
+  --> $DIR/invalid-crate-type-macro.rs:1:1
+   |
+LL | #![crate_type = foo!()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![crate_type = "bin|lib|..."]`
+
+error: aborting due to previous error
+

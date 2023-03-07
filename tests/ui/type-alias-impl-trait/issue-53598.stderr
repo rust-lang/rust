@@ -1,0 +1,8 @@
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-53598.rs:20:9
+   |
+LL |         S::<T>(Default::default())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,23 @@
+error: future cannot be sent between threads safely
+  --> $DIR/drop-track-field-assign-nonsend.rs:45:17
+   |
+LL |     assert_send(agent.handle());
+   |                 ^^^^^^^^^^^^^^ future returned by `handle` is not `Send`
+   |
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<String>`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/drop-track-field-assign-nonsend.rs:23:38
+   |
+LL |         let mut info = self.info_result.clone();
+   |             -------- has type `InfoResult` which is not `Send`
+...
+LL |         let _ = send_element(element).await;
+   |                                      ^^^^^^ await occurs here, with `mut info` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/drop-track-field-assign-nonsend.rs:40:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to previous error
+

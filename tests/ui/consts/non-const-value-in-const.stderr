@@ -1,0 +1,20 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/non-const-value-in-const.rs:3:20
+   |
+LL |     const Y: i32 = x;
+   |     -------        ^ non-constant value
+   |     |
+   |     help: consider using `let` instead of `const`: `let Y`
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/non-const-value-in-const.rs:6:17
+   |
+LL |     let x = 5;
+   |     ----- help: consider using `const` instead of `let`: `const x`
+...
+LL |     let _ = [0; x];
+   |                 ^ non-constant value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0435`.

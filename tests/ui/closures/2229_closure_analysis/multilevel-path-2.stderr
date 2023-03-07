@@ -1,0 +1,48 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/multilevel-path-2.rs:17:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/multilevel-path-2.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", w.p.x);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:23:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/multilevel-path-2.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", w.p.x);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:23:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

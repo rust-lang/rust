@@ -1,0 +1,8 @@
+error: expected `]`, found `token`
+  --> $DIR/attr-bad-meta-3.rs:1:10
+   |
+LL | #[path() token]
+   |          ^^^^^ expected `]`
+
+error: aborting due to previous error
+

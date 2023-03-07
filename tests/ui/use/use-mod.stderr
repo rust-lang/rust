@@ -1,0 +1,33 @@
+error[E0430]: `self` import can only appear once in an import list
+  --> $DIR/use-mod.rs:2:5
+   |
+LL |     self,
+   |     ^^^^ can only appear once in an import list
+...
+LL |     self
+   |     ---- another `self` import appears here
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-mod.rs:9:6
+   |
+LL | use {self};
+   |      ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0252]: the name `bar` is defined multiple times
+  --> $DIR/use-mod.rs:5:5
+   |
+LL |     self,
+   |     ---- previous import of the module `bar` here
+...
+LL |     self
+   |     ^^^^
+   |     |
+   |     `bar` reimported here
+   |     help: remove unnecessary import
+   |
+   = note: `bar` must be defined only once in the type namespace of this module
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0252, E0430, E0431.
+For more information about an error, try `rustc --explain E0252`.

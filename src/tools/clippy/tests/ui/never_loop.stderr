@@ -1,0 +1,143 @@
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:10:5
+   |
+LL | /     loop {
+LL | |         // clippy::never_loop
+LL | |         x += 1;
+LL | |         if x == 1 {
+...  |
+LL | |         break;
+LL | |     }
+   | |_____^
+   |
+   = note: `#[deny(clippy::never_loop)]` on by default
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:32:5
+   |
+LL | /     loop {
+LL | |         // never loops
+LL | |         x += 1;
+LL | |         break;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:52:5
+   |
+LL | /     loop {
+LL | |         // never loops
+LL | |         while i == 0 {
+LL | |             // never loops
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:54:9
+   |
+LL | /         while i == 0 {
+LL | |             // never loops
+LL | |             break;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:66:9
+   |
+LL | /         loop {
+LL | |             // never loops
+LL | |             if x == 5 {
+LL | |                 break;
+LL | |             }
+LL | |             continue 'outer;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:102:5
+   |
+LL | /     while let Some(y) = x {
+LL | |         // never loops
+LL | |         return;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:109:5
+   |
+LL | /     for x in 0..10 {
+LL | |         // never loops
+LL | |         match x {
+LL | |             1 => break,
+LL | |             _ => return,
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL |     if let Some(x) = (0..10).next() {
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:157:5
+   |
+LL | /     'outer: while a {
+LL | |         // never loops
+LL | |         while a {
+LL | |             if a {
+...  |
+LL | |         break 'outer;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:172:9
+   |
+LL | /         while false {
+LL | |             break 'label;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:223:13
+   |
+LL |       let _ = loop {
+   |  _____________^
+LL | |         let Some(x) = x else {
+LL | |             return;
+LL | |         };
+LL | |
+LL | |         break x;
+LL | |     };
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:244:5
+   |
+LL | /     'a: loop {
+LL | |         'b: {
+LL | |             break 'b 'c: {
+LL | |                 break 'a;
+LL | |             };
+LL | |         }
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:278:13
+   |
+LL | /             for _ in 0..20 {
+LL | |                 break 'block;
+LL | |             }
+   | |_____________^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL |             if let Some(_) = (0..20).next() {
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 12 previous errors
+

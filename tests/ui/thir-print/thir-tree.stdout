@@ -1,0 +1,43 @@
+DefId(0:3 ~ thir_tree[8f1d]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: Some(Node(2))
+        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+        kind: 
+            Scope {
+                region_scope: Destruction(2)
+                lint_level: Inherited
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: Some(Node(2))
+                        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                        kind: 
+                            Scope {
+                                region_scope: Node(2)
+                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree[8f1d]::main).2))
+                                value:
+                                    Expr {
+                                        ty: ()
+                                        temp_lifetime: Some(Node(2))
+                                        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                                        kind: 
+                                            Block {
+                                                targeted_by_break: false
+                                                opt_destruction_scope: None
+                                                span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                                                region_scope: Node(1)
+                                                safety_mode: Safe
+                                                stmts: []
+                                                expr: []
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+

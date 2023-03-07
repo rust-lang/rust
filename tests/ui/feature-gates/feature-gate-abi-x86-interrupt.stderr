@@ -1,0 +1,66 @@
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:8:8
+   |
+LL | extern "x86-interrupt" fn f7() {}
+   |        ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:10:12
+   |
+LL |     extern "x86-interrupt" fn m7();
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:11:12
+   |
+LL |     extern "x86-interrupt" fn dm7() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:18:12
+   |
+LL |     extern "x86-interrupt" fn m7() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:23:12
+   |
+LL |     extern "x86-interrupt" fn im7() {}
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:26:18
+   |
+LL | type A7 = extern "x86-interrupt" fn();
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error[E0658]: x86-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:28:8
+   |
+LL | extern "x86-interrupt" {}
+   |        ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information
+   = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

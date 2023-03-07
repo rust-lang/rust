@@ -1,0 +1,8 @@
+error: allocators must be statics
+  --> $DIR/function-allocator.rs:2:1
+   |
+LL | fn foo() {}
+   | ^^^^^^^^^^^
+
+error: aborting due to previous error
+

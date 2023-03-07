@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct, unit variant or constant, found function `foo::bar`
+  --> $DIR/issue-12863.rs:5:9
+   |
+LL |         foo::bar => {}
+   |         ^^^^^^^^ not a unit struct, unit variant or constant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

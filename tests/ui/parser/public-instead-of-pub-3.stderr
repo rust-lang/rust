@@ -1,0 +1,13 @@
+error: expected one of `!` or `::`, found keyword `const`
+  --> $DIR/public-instead-of-pub-3.rs:3:12
+   |
+LL |     public const X: i32 = 123;
+   |            ^^^^^ expected one of `!` or `::`
+   |
+help: write `pub` instead of `public` to make the item public
+   |
+LL |     pub const X: i32 = 123;
+   |     ~~~
+
+error: aborting due to previous error
+

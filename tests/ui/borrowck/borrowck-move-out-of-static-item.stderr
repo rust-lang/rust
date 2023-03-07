@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of static item `BAR`
+  --> $DIR/borrowck-move-out-of-static-item.rs:15:10
+   |
+LL |     test(BAR);
+   |          ^^^ move occurs because `BAR` has type `Foo`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

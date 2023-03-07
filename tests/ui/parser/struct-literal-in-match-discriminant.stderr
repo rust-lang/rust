@@ -1,0 +1,18 @@
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-in-match-discriminant.rs:6:11
+   |
+LL |       match Foo {
+   |  ___________^
+LL | |         x: 3
+LL | |     } {
+   | |_____^
+   |
+help: surround the struct literal with parentheses
+   |
+LL ~     match (Foo {
+LL |         x: 3
+LL ~     }) {
+   |
+
+error: aborting due to previous error
+

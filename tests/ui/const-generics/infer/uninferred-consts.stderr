@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/uninferred-consts.rs:9:9
+   |
+LL |     Foo.foo();
+   |         ^^^ cannot infer the value of the const parameter `A` declared on the method `foo`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     Foo.foo::<A, B>();
+   |            ++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,0 +1,16 @@
+warning: unnecessary `unsafe` block
+  --> $DIR/union_destructure.rs:35:5
+   |
+LL |     unsafe {
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` on by default
+
+warning: unnecessary `unsafe` block
+  --> $DIR/union_destructure.rs:41:5
+   |
+LL |     unsafe {
+   |     ^^^^^^ unnecessary `unsafe` block
+
+warning: 2 warnings emitted
+

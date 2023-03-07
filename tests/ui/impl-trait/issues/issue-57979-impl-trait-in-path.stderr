@@ -1,0 +1,9 @@
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/issue-57979-impl-trait-in-path.rs:8:48
+   |
+LL | pub fn demo(_: impl Quux<(), Assoc=<() as Quux<impl Bar>>::Assoc>) { }
+   |                                                ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0667`.

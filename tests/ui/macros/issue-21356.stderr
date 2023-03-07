@@ -1,0 +1,10 @@
+error: invalid fragment specifier `t_ty`
+  --> $DIR/issue-21356.rs:3:22
+   |
+LL | macro_rules! test { ($wrong:t_ty ..) => () }
+   |                      ^^^^^^^^^^^
+   |
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+
+error: aborting due to previous error
+

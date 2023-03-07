@@ -1,0 +1,12 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/issue-104768.rs:1:10
+   |
+LL | const A: &_ = 0_u32;
+   |          ^^
+   |          |
+   |          not allowed in type signatures
+   |          help: replace with the correct type: `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

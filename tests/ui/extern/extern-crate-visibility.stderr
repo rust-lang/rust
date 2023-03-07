@@ -1,0 +1,27 @@
+error[E0603]: crate import `core` is private
+  --> $DIR/extern-crate-visibility.rs:6:10
+   |
+LL | use foo::core::cell;
+   |          ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/extern-crate-visibility.rs:2:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: crate import `core` is private
+  --> $DIR/extern-crate-visibility.rs:9:10
+   |
+LL |     foo::core::cell::Cell::new(0);
+   |          ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/extern-crate-visibility.rs:2:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

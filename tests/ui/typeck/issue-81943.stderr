@@ -1,0 +1,51 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-81943.rs:7:9
+   |
+LL |   f(|x| lib::d!(x));
+   |         ^^^^^^^^^^ expected `()`, found `i32`
+   |
+   = note: this error originates in the macro `lib::d` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/issue-81943.rs:8:28
+   |
+LL |   f(|x| match x { tmp => { g(tmp) } });
+   |         -------------------^^^^^^----
+   |         |                  |
+   |         |                  expected `()`, found `i32`
+   |         expected this to be `()`
+   |
+help: consider using a semicolon here
+   |
+LL |   f(|x| match x { tmp => { g(tmp); } });
+   |                                  +
+help: consider using a semicolon here
+   |
+LL |   f(|x| match x { tmp => { g(tmp) } };);
+   |                                      +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-81943.rs:10:38
+   |
+LL |     ($e:expr) => { match $e { x => { g(x) } } }
+   |                    ------------------^^^^----
+   |                    |                 |
+   |                    |                 expected `()`, found `i32`
+   |                    expected this to be `()`
+LL |   }
+LL |   f(|x| d!(x));
+   |         ----- in this macro invocation
+   |
+   = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using a semicolon here
+   |
+LL |     ($e:expr) => { match $e { x => { g(x); } } }
+   |                                          +
+help: consider using a semicolon here
+   |
+LL |     ($e:expr) => { match $e { x => { g(x) } }; }
+   |                                              +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

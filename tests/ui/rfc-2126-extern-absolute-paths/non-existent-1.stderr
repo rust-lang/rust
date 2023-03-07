@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `xcrate`
+  --> $DIR/non-existent-1.rs:3:5
+   |
+LL | use xcrate::S;
+   |     ^^^^^^ use of undeclared crate or module `xcrate`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

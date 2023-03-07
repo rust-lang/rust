@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await-closure.rs:16:18
+   |
+LL |         take_u32(x)
+   |         -------- ^ expected `u32`, found future
+   |         |
+   |         arguments to this function are incorrect
+   |
+note: calling an async function returns a future
+  --> $DIR/suggest-missing-await-closure.rs:16:18
+   |
+LL |         take_u32(x)
+   |                  ^
+note: function defined here
+  --> $DIR/suggest-missing-await-closure.rs:6:4
+   |
+LL | fn take_u32(_x: u32) {}
+   |    ^^^^^^^^ -------
+help: consider `await`ing on the `Future`
+   |
+LL |         take_u32(x.await)
+   |                   ++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

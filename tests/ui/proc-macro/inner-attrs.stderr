@@ -1,0 +1,26 @@
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:64:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:68:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:72:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:76:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: aborting due to 4 previous errors
+

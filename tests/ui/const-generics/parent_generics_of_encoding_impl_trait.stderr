@@ -1,0 +1,15 @@
+error[E0284]: type annotations needed
+  --> $DIR/parent_generics_of_encoding_impl_trait.rs:9:5
+   |
+LL |     generics_of_parent_impl_trait::foo([()]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `foo`
+   |
+note: required by a bound in `foo`
+  --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:6:48
+   |
+LL | pub fn foo<const N: usize>(foo: impl Into<[(); N + 1]>) {
+   |                                                ^^^^^ required by this bound in `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.

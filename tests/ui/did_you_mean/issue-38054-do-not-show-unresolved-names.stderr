@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `Foo`
+  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:1:5
+   |
+LL | use Foo;
+   |     ^^^ no `Foo` in the root
+
+error[E0432]: unresolved import `Foo1`
+  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:3:5
+   |
+LL | use Foo1;
+   |     ^^^^ no `Foo1` in the root
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

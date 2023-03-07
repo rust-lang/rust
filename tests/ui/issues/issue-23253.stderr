@@ -1,0 +1,9 @@
+error[E0609]: no field `a` on type `Foo`
+  --> $DIR/issue-23253.rs:4:14
+   |
+LL |     Foo::Bar.a;
+   |              ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

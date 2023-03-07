@@ -1,0 +1,12 @@
+error[E0375]: implementing the trait `CoerceUnsized` requires multiple coercions
+  --> $DIR/E0375.rs:10:12
+   |
+LL | impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^ requires multiple coercions
+   |
+   = note: `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+   = note: currently, 2 fields need coercions: `b` (`T` to `U`), `c` (`U` to `T`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0375`.

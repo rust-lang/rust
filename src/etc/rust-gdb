@@ -1,23 +1,24 @@
 #!/bin/sh
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
 # Exit if anything fails
 set -e
 
+# Prefer rustc in the same directory as this script
+DIR="$(dirname "$0")"
+if [ -x "$DIR/rustc" ]; then
+  RUSTC="$DIR/rustc"
+else
+  RUSTC="rustc"
+fi
+
 # Find out where the pretty printer Python module is
-RUSTC_SYSROOT=`rustc --print=sysroot`
+RUSTC_SYSROOT="$("$RUSTC" --print=sysroot)"
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 
 # Run GDB with the additional arguments that load the pretty printers
-PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" gdb \
-  -d "$GDB_PYTHON_MODULE_DIRECTORY" \
+# Set the environment variable `RUST_GDB` to overwrite the call to a
+# different/specific command (defaults to `gdb`).
+RUST_GDB="${RUST_GDB:-gdb}"
+PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" exec ${RUST_GDB} \
+  --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
   "$@"

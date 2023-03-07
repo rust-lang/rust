@@ -1,0 +1,11 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
+  --> $DIR/issue-10401.rs:3:5
+   |
+LL |     a += { "b" };
+   |     -^^^^^^^^^^^
+   |     |
+   |     cannot use `+=` on type `&str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0368`.

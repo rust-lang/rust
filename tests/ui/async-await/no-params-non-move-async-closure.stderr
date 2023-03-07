@@ -1,0 +1,11 @@
+error[E0708]: `async` non-`move` closures with parameters are not currently supported
+  --> $DIR/no-params-non-move-async-closure.rs:6:13
+   |
+LL |     let _ = async |x: u8| {};
+   |             ^^^^^^^^^^^^^
+   |
+   = help: consider using `let` statements to manually capture variables by reference before entering an `async move` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0708`.

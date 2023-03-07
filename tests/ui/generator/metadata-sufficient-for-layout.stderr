@@ -1,0 +1,8 @@
+error: fatal error triggered by #[rustc_error]
+  --> $DIR/metadata-sufficient-for-layout.rs:25:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+

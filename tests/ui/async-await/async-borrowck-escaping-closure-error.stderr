@@ -1,0 +1,21 @@
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/async-borrowck-escaping-closure-error.rs:5:15
+   |
+LL |     Box::new((async || x)())
+   |               ^^^^^^^^ - `x` is borrowed here
+   |               |
+   |               may outlive borrowed value `x`
+   |
+note: closure is returned here
+  --> $DIR/async-borrowck-escaping-closure-error.rs:5:5
+   |
+LL |     Box::new((async || x)())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     Box::new((async move || x)())
+   |                     ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0373`.

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Build configuration for Rust's release channels.
 //!
 //! Implements the stable/beta/nightly channel distinctions by setting various
@@ -15,79 +5,156 @@
 //! `package_vers`, and otherwise indicating to the compiler what it should
 //! print out as part of its version information.
 
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 
-use build_helper::output;
+use crate::util::output;
+use crate::util::t;
+use crate::Build;
 
-use Build;
+#[derive(Clone, Default)]
+pub enum GitInfo {
+    /// This is not a git repository.
+    #[default]
+    Absent,
+    /// This is a git repository.
+    /// If the info should be used (`ignore_git` is false), this will be
+    /// `Some`, otherwise it will be `None`.
+    Present(Option<Info>),
+    /// This is not a git repostory, but the info can be fetched from the
+    /// `git-commit-info` file.
+    RecordedForTarball(Info),
+}
 
-pub fn collect(build: &mut Build) {
-    // Currently the canonical source for the release number (e.g. 1.10.0) and
-    // the prerelease version (e.g. `.1`) is in `mk/main.mk`. We "parse" that
-    // here to learn about those numbers.
-    let mut main_mk = String::new();
-    t!(t!(File::open(build.src.join("mk/main.mk"))).read_to_string(&mut main_mk));
-    let mut release_num = "";
-    let mut prerelease_version = "";
-    for line in main_mk.lines() {
-        if line.starts_with("CFG_RELEASE_NUM") {
-            release_num = line.split('=').skip(1).next().unwrap().trim();
+#[derive(Clone)]
+pub struct Info {
+    pub commit_date: String,
+    pub sha: String,
+    pub short_sha: String,
+}
+
+impl GitInfo {
+    pub fn new(ignore_git: bool, dir: &Path) -> GitInfo {
+        // See if this even begins to look like a git dir
+        if !dir.join(".git").exists() {
+            match read_commit_info_file(dir) {
+                Some(info) => return GitInfo::RecordedForTarball(info),
+                None => return GitInfo::Absent,
+            }
         }
-        if line.starts_with("CFG_PRERELEASE_VERSION") {
-            prerelease_version = line.split('=').skip(1).next().unwrap().trim();
+
+        // Make sure git commands work
+        match Command::new("git").arg("rev-parse").current_dir(dir).output() {
+            Ok(ref out) if out.status.success() => {}
+            _ => return GitInfo::Absent,
+        }
+
+        // If we're ignoring the git info, we don't actually need to collect it, just make sure this
+        // was a git repo in the first place.
+        if ignore_git {
+            return GitInfo::Present(None);
+        }
+
+        // Ok, let's scrape some info
+        let ver_date = output(
+            Command::new("git")
+                .current_dir(dir)
+                .arg("log")
+                .arg("-1")
+                .arg("--date=short")
+                .arg("--pretty=format:%cd"),
+        );
+        let ver_hash = output(Command::new("git").current_dir(dir).arg("rev-parse").arg("HEAD"));
+        let short_ver_hash = output(
+            Command::new("git").current_dir(dir).arg("rev-parse").arg("--short=9").arg("HEAD"),
+        );
+        GitInfo::Present(Some(Info {
+            commit_date: ver_date.trim().to_string(),
+            sha: ver_hash.trim().to_string(),
+            short_sha: short_ver_hash.trim().to_string(),
+        }))
+    }
+
+    pub fn info(&self) -> Option<&Info> {
+        match self {
+            GitInfo::Absent => None,
+            GitInfo::Present(info) => info.as_ref(),
+            GitInfo::RecordedForTarball(info) => Some(info),
         }
     }
 
-    // Depending on the channel, passed in `./configure --release-channel`,
-    // determine various properties of the build.
-    match &build.config.channel[..] {
-        "stable" => {
-            build.release = release_num.to_string();
-            build.package_vers = build.release.clone();
-            build.unstable_features = false;
-        }
-        "beta" => {
-            build.release = format!("{}-beta{}", release_num,
-                                   prerelease_version);
-            build.package_vers = "beta".to_string();
-            build.unstable_features = false;
-        }
-        "nightly" => {
-            build.release = format!("{}-nightly", release_num);
-            build.package_vers = "nightly".to_string();
-            build.unstable_features = true;
-        }
-        _ => {
-            build.release = format!("{}-dev", release_num);
-            build.package_vers = build.release.clone();
-            build.unstable_features = true;
-        }
+    pub fn sha(&self) -> Option<&str> {
+        self.info().map(|s| &s.sha[..])
     }
-    build.version = build.release.clone();
 
-    // If we have a git directory, add in some various SHA information of what
-    // commit this compiler was compiled from.
-    if build.src.join(".git").is_dir() {
-        let ver_date = output(Command::new("git").current_dir(&build.src)
-                                      .arg("log").arg("-1")
-                                      .arg("--date=short")
-                                      .arg("--pretty=format:%cd"));
-        let ver_hash = output(Command::new("git").current_dir(&build.src)
-                                      .arg("rev-parse").arg("HEAD"));
-        let short_ver_hash = output(Command::new("git")
-                                            .current_dir(&build.src)
-                                            .arg("rev-parse")
-                                            .arg("--short=9")
-                                            .arg("HEAD"));
-        let ver_date = ver_date.trim().to_string();
-        let ver_hash = ver_hash.trim().to_string();
-        let short_ver_hash = short_ver_hash.trim().to_string();
-        build.version.push_str(&format!(" ({} {})", short_ver_hash,
-                                       ver_date));
-        build.ver_date = Some(ver_date.to_string());
-        build.ver_hash = Some(ver_hash);
-        build.short_ver_hash = Some(short_ver_hash);
+    pub fn sha_short(&self) -> Option<&str> {
+        self.info().map(|s| &s.short_sha[..])
     }
+
+    pub fn commit_date(&self) -> Option<&str> {
+        self.info().map(|s| &s.commit_date[..])
+    }
+
+    pub fn version(&self, build: &Build, num: &str) -> String {
+        let mut version = build.release(num);
+        if let Some(ref inner) = self.info() {
+            version.push_str(" (");
+            version.push_str(&inner.short_sha);
+            version.push(' ');
+            version.push_str(&inner.commit_date);
+            version.push(')');
+        }
+        version
+    }
+
+    /// Returns whether this directory has a `.git` directory which should be managed by bootstrap.
+    pub fn is_managed_git_subrepository(&self) -> bool {
+        match self {
+            GitInfo::Absent | GitInfo::RecordedForTarball(_) => false,
+            GitInfo::Present(_) => true,
+        }
+    }
+
+    /// Returns whether this is being built from a tarball.
+    pub fn is_from_tarball(&self) -> bool {
+        match self {
+            GitInfo::Absent | GitInfo::Present(_) => false,
+            GitInfo::RecordedForTarball(_) => true,
+        }
+    }
+}
+
+/// Read the commit information from the `git-commit-info` file given the
+/// project root.
+pub fn read_commit_info_file(root: &Path) -> Option<Info> {
+    if let Ok(contents) = fs::read_to_string(root.join("git-commit-info")) {
+        let mut lines = contents.lines();
+        let sha = lines.next();
+        let short_sha = lines.next();
+        let commit_date = lines.next();
+        let info = match (commit_date, sha, short_sha) {
+            (Some(commit_date), Some(sha), Some(short_sha)) => Info {
+                commit_date: commit_date.to_owned(),
+                sha: sha.to_owned(),
+                short_sha: short_sha.to_owned(),
+            },
+            _ => panic!("the `git-comit-info` file is malformed"),
+        };
+        Some(info)
+    } else {
+        None
+    }
+}
+
+/// Write the commit information to the `git-commit-info` file given the project
+/// root.
+pub fn write_commit_info_file(root: &Path, info: &Info) {
+    let commit_info = format!("{}\n{}\n{}\n", info.sha, info.short_sha, info.commit_date);
+    t!(fs::write(root.join("git-commit-info"), &commit_info));
+}
+
+/// Write the commit hash to the `git-commit-hash` file given the project root.
+pub fn write_commit_hash_file(root: &Path, sha: &str) {
+    t!(fs::write(root.join("git-commit-hash"), sha));
 }

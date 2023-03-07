@@ -1,0 +1,34 @@
+[package]
+name = "unwind"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+edition = "2021"
+include = [
+  '/libunwind/*',
+]
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../core" }
+libc = { version = "0.2.79", features = ['rustc-dep-of-std'], default-features = false }
+compiler_builtins = "0.1.0"
+cfg-if = "1.0"
+
+[build-dependencies]
+cc = "1.0.76"
+
+[features]
+
+# Only applies for Linux and Fuchsia targets
+# Static link to the in-tree build of llvm libunwind
+llvm-libunwind = []
+
+# Only applies for Linux and Fuchsia targets
+# If crt-static is enabled, static link to `libunwind.a` provided by system
+# If crt-static is disabled, dynamic link to `libunwind.so` provided by system
+system-llvm-libunwind = []

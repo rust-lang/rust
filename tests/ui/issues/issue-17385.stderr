@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/issue-17385.rs:18:5
+   |
+LL |     let foo = X(1);
+   |         --- move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+LL |     drop(foo);
+   |          --- value moved here
+LL |     match foo {
+   |     ^^^^^^^^^ value used here after move
+
+error[E0382]: use of moved value: `e`
+  --> $DIR/issue-17385.rs:25:11
+   |
+LL |     let e = Enum::Variant2;
+   |         - move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+LL |     drop(e);
+   |          - value moved here
+LL |     match e {
+   |           ^ value used here after move
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

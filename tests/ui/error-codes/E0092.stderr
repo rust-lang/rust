@@ -1,0 +1,9 @@
+error[E0092]: unrecognized atomic operation function: `foo`
+  --> $DIR/E0092.rs:3:5
+   |
+LL |     fn atomic_foo();
+   |     ^^^^^^^^^^^^^^^^ unrecognized atomic operation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0092`.

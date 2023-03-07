@@ -1,0 +1,14 @@
+error[E0393]: the type parameter `T` must be explicitly specified
+  --> $DIR/E0393.rs:3:47
+   |
+LL | trait A<T=Self> {}
+   | --------------- type parameter `T` must be specified for this
+LL |
+LL | fn together_we_will_rule_the_galaxy(son: &dyn A) {}
+   |                                               ^ help: set the type parameter to the desired type: `A<T>`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0393`.

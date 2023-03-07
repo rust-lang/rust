@@ -1,0 +1,23 @@
+error[E0049]: method `foo` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/E0049.rs:8:11
+   |
+LL |     fn foo<T: Default>(x: T) -> Self;
+   |            - expected 1 type parameter
+...
+LL |     fn foo(x: bool) -> Self { Bar }
+   |           ^ found 0 type parameters
+
+error[E0049]: method `fuzz` has 0 type parameters but its trait declaration has 2 type parameters
+  --> $DIR/E0049.rs:18:12
+   |
+LL |     fn fuzz<A: Default, B>(x: A, y: B) -> Self;
+   |             -           -
+   |             |
+   |             expected 2 type parameters
+...
+LL |     fn fuzz(x: bool, y: bool) -> Self { Baz }
+   |            ^ found 0 type parameters
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0049`.

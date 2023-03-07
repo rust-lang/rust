@@ -1,0 +1,11 @@
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gated-feature-in-macro-arg.rs:8:16
+   |
+LL |         extern "rust-intrinsic" {
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

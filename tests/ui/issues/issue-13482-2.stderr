@@ -1,0 +1,9 @@
+error[E0527]: pattern requires 0 elements but array has 2
+  --> $DIR/issue-13482-2.rs:6:9
+   |
+LL |         [] => None,
+   |         ^^ expected 2 elements
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0527`.

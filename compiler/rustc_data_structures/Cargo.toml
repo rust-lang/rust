@@ -1,0 +1,46 @@
+[package]
+name = "rustc_data_structures"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+arrayvec = { version = "0.7", default-features = false }
+bitflags = "1.2.1"
+cfg-if = "1.0"
+ena = "0.14.1"
+indexmap = { version = "1.9.1" }
+jobserver_crate = { version = "0.1.13", package = "jobserver" }
+libc = "0.2"
+measureme = "10.0.0"
+rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
+rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc-hash = "1.1.0"
+rustc_index = { path = "../rustc_index", package = "rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+smallvec = { version = "1.8.1", features = [
+    "const_generics",
+    "union",
+    "may_dangle",
+] }
+stable_deref_trait = "1.0.0"
+stacker = "0.1.15"
+tempfile = "3.2"
+thin-vec = "0.2.12"
+tracing = "0.1"
+elsa = "1.8"
+
+[dependencies.parking_lot]
+version = "0.11"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "psapi", "winerror"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+memmap2 = "0.2.1"
+
+[features]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]

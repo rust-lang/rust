@@ -1,0 +1,34 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "x"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+      COMMA ","
+      WHITESPACE " "
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "y"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 16: missing type for function parameter

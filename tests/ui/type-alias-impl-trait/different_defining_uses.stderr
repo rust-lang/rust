@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_defining_uses.rs:13:5
+   |
+LL |     42i32
+   |     ^^^^^ expected `&'static str`, got `i32`
+   |
+note: previous use here
+  --> $DIR/different_defining_uses.rs:9:5
+   |
+LL |     ""
+   |     ^^
+
+error: aborting due to previous error
+

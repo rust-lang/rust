@@ -1,0 +1,8 @@
+error: missing angle brackets in associated item path
+  --> $DIR/issue-89388.rs:5:24
+   |
+LL |     let _ = option.map([_]::to_vec);
+   |                        ^^^^^^^^^^^ help: try: `<[_]>::to_vec`
+
+error: aborting due to previous error
+

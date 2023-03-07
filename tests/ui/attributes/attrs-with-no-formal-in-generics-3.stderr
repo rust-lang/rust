@@ -1,0 +1,8 @@
+error: trailing attribute after generic parameter
+  --> $DIR/attrs-with-no-formal-in-generics-3.rs:8:44
+   |
+LL |     where Q: for <#[allow(unused)] 'a, 'b, #[oops]> Fn(RefIntPair<'a,'b>) -> &'b u32
+   |                                            ^^^^^^^ attributes must go before parameters
+
+error: aborting due to previous error
+

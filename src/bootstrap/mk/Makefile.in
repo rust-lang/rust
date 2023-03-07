@@ -1,27 +1,16 @@
-# Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
-include config.mk
-include $(CFG_SRC_DIR)mk/util.mk
-
 ifdef VERBOSE
+Q :=
 BOOTSTRAP_ARGS := -v
 else
+Q := @
 BOOTSTRAP_ARGS :=
 endif
 
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
-	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
-	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 2 $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
 
 help:
 	$(Q)echo 'Welcome to the rustbuild build system!'
@@ -36,45 +25,59 @@ clean:
 	$(Q)$(BOOTSTRAP) clean $(BOOTSTRAP_ARGS)
 
 rustc-stage1:
-	$(Q)$(BOOTSTRAP) build --stage 1 src/libtest $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 1 library/test $(BOOTSTRAP_ARGS)
 rustc-stage2:
-	$(Q)$(BOOTSTRAP) build --stage 2 src/libtest $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 2 library/test $(BOOTSTRAP_ARGS)
 
 docs: doc
 doc:
-	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
 nomicon:
-	$(Q)$(BOOTSTRAP) doc src/doc/nomicon $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/nomicon $(BOOTSTRAP_ARGS)
 book:
-	$(Q)$(BOOTSTRAP) doc src/doc/book $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/book $(BOOTSTRAP_ARGS)
 standalone-docs:
-	$(Q)$(BOOTSTRAP) doc src/doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc $(BOOTSTRAP_ARGS)
 check:
-	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(BOOTSTRAP_ARGS)
 check-aux:
-	$(Q)$(BOOTSTRAP) test \
+	$(Q)$(BOOTSTRAP) test --stage 2 \
+		src/tools/cargo \
 		src/tools/cargotest \
-		src/test/pretty \
-		src/test/run-pass/pretty \
-		src/test/run-fail/pretty \
-		src/test/run-pass-valgrind/pretty \
-		src/test/run-pass-fulldeps/pretty \
-		src/test/run-fail-fulldeps/pretty \
 		$(BOOTSTRAP_ARGS)
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
-	$(Q)$(BOOTSTRAP) test distcheck $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 distcheck $(BOOTSTRAP_ARGS)
 install:
-	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) install $(BOOTSTRAP_ARGS)
 tidy:
-	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 src/tools/tidy $(BOOTSTRAP_ARGS)
+prepare:
+	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
 
-check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
-check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-musl
+TESTS_IN_2 := \
+	tests/ui \
+	src/tools/linkchecker
+
+## MSVC native builders
+
+# these intentionally don't use `$(BOOTSTRAP)` so we can test the shebang on Windows
+ci-subset-1:
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TESTS_IN_2:%=--exclude %)
+ci-subset-2:
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TESTS_IN_2)
+
+## MingW native builders
+
+TESTS_IN_MINGW_2 := \
+	tests/ui
+
+ci-mingw-subset-1:
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
+ci-mingw-subset-2:
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2)
 
 
 .PHONY: dist

@@ -1,0 +1,7 @@
+# Expect errors from these deprecated configs
+cyclomatic-complexity-threshold = 2
+blacklisted-names = [ "..", "wibble" ]
+
+# that one is white-listed
+[third-party]
+clippy-feature = "nightly"

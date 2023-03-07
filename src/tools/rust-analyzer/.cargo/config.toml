@@ -1,0 +1,11 @@
+[alias]
+xtask = "run --package xtask --bin xtask --"
+tq = "test -- -q"
+qt = "tq"
+lint = "clippy --all-targets -- -Aclippy::collapsible_if -Aclippy::needless_pass_by_value -Aclippy::nonminimal_bool -Aclippy::redundant_pattern_matching --cap-lints warn"
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+
+[env]
+CARGO_WORKSPACE_DIR = { value = "", relative = true }

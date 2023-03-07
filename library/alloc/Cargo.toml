@@ -1,0 +1,37 @@
+[package]
+name = "alloc"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "The Rust core allocation and collections library"
+autotests = false
+autobenches = false
+edition = "2021"
+
+[dependencies]
+core = { path = "../core" }
+compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
+
+[dev-dependencies]
+rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.3.0"
+
+[[test]]
+name = "collectionstests"
+path = "tests/lib.rs"
+
+[[bench]]
+name = "collectionsbenches"
+path = "benches/lib.rs"
+test = true
+
+[[bench]]
+name = "vec_deque_append_bench"
+path = "benches/vec_deque_append.rs"
+harness = false
+
+[features]
+compiler-builtins-mem = ['compiler_builtins/mem']
+compiler-builtins-c = ["compiler_builtins/c"]
+compiler-builtins-no-asm = ["compiler_builtins/no-asm"]
+compiler-builtins-mangled-names = ["compiler_builtins/mangled-names"]

@@ -1,0 +1,9 @@
+error[E0026]: struct `Thing` does not have a field named `z`
+  --> $DIR/E0026.rs:9:23
+   |
+LL |         Thing { x, y, z } => {}
+   |                       ^ struct `Thing` does not have this field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0026`.

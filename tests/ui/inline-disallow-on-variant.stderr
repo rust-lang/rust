@@ -1,0 +1,12 @@
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-disallow-on-variant.rs:2:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |
+LL |     Variant,
+   |     ------- not a function or closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0518`.

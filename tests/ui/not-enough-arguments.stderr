@@ -1,0 +1,47 @@
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> $DIR/not-enough-arguments.rs:27:3
+   |
+LL |   foo(1, 2, 3);
+   |   ^^^--------- an argument of type `isize` is missing
+   |
+note: function defined here
+  --> $DIR/not-enough-arguments.rs:5:4
+   |
+LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
+   |    ^^^ --------  --------  --------  -------
+help: provide the argument
+   |
+LL |   foo(1, 2, 3, /* isize */);
+   |      ~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0061]: this function takes 6 arguments but 3 arguments were supplied
+  --> $DIR/not-enough-arguments.rs:29:3
+   |
+LL |   bar(1, 2, 3);
+   |   ^^^--------- three arguments of type `i32`, `i32`, and `i32` are missing
+   |
+note: function defined here
+  --> $DIR/not-enough-arguments.rs:10:4
+   |
+LL | fn bar(
+   |    ^^^
+LL |     a: i32,
+   |     ------
+LL |     b: i32,
+   |     ------
+LL |     c: i32,
+   |     ------
+LL |     d: i32,
+   |     ------
+LL |     e: i32,
+   |     ------
+LL |     f: i32,
+   |     ------
+help: provide the arguments
+   |
+LL |   bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
+   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

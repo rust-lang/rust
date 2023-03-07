@@ -1,0 +1,19 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:6:13
+   |
+LL | impl<'a, T> Trait<'a> for T {
+   |             ^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:1:18
+   |
+LL | trait Trait<'a>: 'a {
+   |                  ^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | impl<'a, T: 'a> Trait<'a> for T {
+   |           ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

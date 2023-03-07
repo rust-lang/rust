@@ -1,0 +1,43 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-49934.rs:10:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |     println!("Hello, world!");
+   |     -------------------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-49934.rs:14:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |     "Hello, world!";
+   |     ---------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-49934.rs:18:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |     let _ = "Hello, world!";
+   |     ------------------------ not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-49934.rs:22:13
+   |
+LL |     let _ = #[derive(Debug)] "Hello, world!";
+   |             ^^^^^^^^^^^^^^^^ --------------- not a `struct`, `enum` or `union`
+   |             |
+   |             not applicable here
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-49934.rs:27:9
+   |
+LL |         #[derive(Debug)]
+   |         ^^^^^^^^^^^^^^^^ not applicable here
+LL |         "Hello, world!",
+   |         --------------- not a `struct`, `enum` or `union`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

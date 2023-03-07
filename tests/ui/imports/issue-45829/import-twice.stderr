@@ -1,0 +1,13 @@
+error[E0252]: the name `A` is defined multiple times
+  --> $DIR/import-twice.rs:6:14
+   |
+LL | use foo::{A, A};
+   |           -  ^ `A` reimported here
+   |           |
+   |           previous import of the type `A` here
+   |
+   = note: `A` must be defined only once in the type namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0252`.

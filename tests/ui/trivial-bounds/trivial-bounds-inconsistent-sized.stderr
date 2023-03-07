@@ -1,0 +1,22 @@
+warning: trait bound str: Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:14:31
+   |
+LL | struct S(str, str) where str: Sized;
+   |                               ^^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: trait bound for<'a> T<(dyn A + 'a)>: Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:17:49
+   |
+LL | fn unsized_local() where for<'a> T<dyn A + 'a>: Sized {
+   |                                                 ^^^^^
+
+warning: trait bound str: Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:22:35
+   |
+LL | fn return_str() -> str where str: Sized {
+   |                                   ^^^^^
+
+warning: 3 warnings emitted
+

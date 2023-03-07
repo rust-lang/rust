@@ -1,0 +1,24 @@
+An unknown external lang item was used.
+
+Erroneous code example:
+
+```compile_fail,E0264
+#![feature(lang_items)]
+
+extern "C" {
+    #[lang = "cake"] // error: unknown external lang item: `cake`
+    fn cake();
+}
+```
+
+A list of available external lang items is available in
+`src/librustc_middle/middle/weak_lang_items.rs`. Example:
+
+```
+#![feature(lang_items)]
+
+extern "C" {
+    #[lang = "panic_impl"] // ok!
+    fn cake();
+}
+```

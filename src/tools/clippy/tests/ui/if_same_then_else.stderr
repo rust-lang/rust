@@ -1,0 +1,112 @@
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:23:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
+...  |
+LL | |         foo();
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:31:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+...  |
+LL | |         foo();
+LL | |     }
+   | |_____^
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:67:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         0.0
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:69:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         0.0
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:74:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         -0.0
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:76:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         -0.0
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:90:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         42
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:92:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         42
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:97:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:104:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+...  |
+LL | |         bar + 1;
+LL | |     }
+   | |_____^
+
+error: aborting due to 5 previous errors
+

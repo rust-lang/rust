@@ -1,0 +1,14 @@
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use2.rs:11:5
+   |
+LL |     t
+   |     ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

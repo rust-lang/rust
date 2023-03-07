@@ -1,0 +1,7 @@
+[package]
+name = "rustc_arena"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

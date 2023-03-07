@@ -1,0 +1,25 @@
+When using generators (or async) all type variables must be bound so a
+generator can be constructed.
+
+Erroneous code example:
+
+```edition2018,compile_fail,E0698
+async fn bar<T>() -> () {}
+
+async fn foo() {
+    bar().await; // error: cannot infer type for `T`
+}
+```
+
+In the above example `T` is unknowable by the compiler.
+To fix this you must bind `T` to a concrete type such as `String`
+so that a generator can then be constructed:
+
+```edition2018
+async fn bar<T>() -> () {}
+
+async fn foo() {
+    bar::<String>().await;
+    //   ^^^^^^^^ specify type explicitly
+}
+```

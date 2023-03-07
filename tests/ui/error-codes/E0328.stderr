@@ -1,0 +1,9 @@
+error[E0328]: explicit impls for the `Unsize` trait are not permitted
+  --> $DIR/E0328.rs:7:1
+   |
+LL | impl<T> Unsize<T> for MyType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Unsize` not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0328`.

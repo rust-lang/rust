@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/type-alias-impl-trait-with-cycle-error2.rs:7:12
+   |
+LL | type Foo = impl Bar<Foo, Item = Foo>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

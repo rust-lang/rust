@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing local data `*p`
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:13:12
+   |
+LL |     let xc = x_coord(&*p);
+   |                      --- `*p` is borrowed here
+LL |     assert_eq!(*xc, 3);
+LL |     return xc;
+   |            ^^ returns a value referencing data owned by the current function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0515`.

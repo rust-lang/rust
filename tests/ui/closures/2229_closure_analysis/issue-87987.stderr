@@ -1,0 +1,14 @@
+warning: fields `field_1` and `field_2` are never read
+  --> $DIR/issue-87987.rs:5:5
+   |
+LL | struct Props {
+   |        ----- fields in this struct
+LL |     field_1: u32,
+   |     ^^^^^^^
+LL |     field_2: u32,
+   |     ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

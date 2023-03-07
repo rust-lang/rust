@@ -1,0 +1,16 @@
+/target
+**/*.rs.bk
+*.rlib
+*.o
+perf.data
+perf.data.old
+*.events
+*.string*
+/y.bin
+/y.bin.dSYM
+/y.exe
+/y.pdb
+/build
+/dist
+/rust
+/download

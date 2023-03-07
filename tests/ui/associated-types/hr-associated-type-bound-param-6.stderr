@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `for<'b> T: X<'b, T>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:12:12
+   |
+LL | impl<S, T> X<'_, T> for (S,) {
+   |            ^^^^^^^^ the trait `for<'b> X<'b, T>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | impl<S, T: for<'b> X<'b, T>> X<'_, T> for (S,) {
+   |          ++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

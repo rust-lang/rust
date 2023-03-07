@@ -1,0 +1,21 @@
+error[E0658]: const operands for inline assembly are unstable
+  --> $DIR/feature-gate-asm_const.rs:6:25
+   |
+LL |     asm!("mov eax, {}", const N + 1);
+   |                         ^^^^^^^^^^^
+   |
+   = note: see issue #93332 <https://github.com/rust-lang/rust/issues/93332> for more information
+   = help: add `#![feature(asm_const)]` to the crate attributes to enable
+
+error[E0658]: const operands for inline assembly are unstable
+  --> $DIR/feature-gate-asm_const.rs:13:29
+   |
+LL |         asm!("mov eax, {}", const 123);
+   |                             ^^^^^^^^^
+   |
+   = note: see issue #93332 <https://github.com/rust-lang/rust/issues/93332> for more information
+   = help: add `#![feature(asm_const)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

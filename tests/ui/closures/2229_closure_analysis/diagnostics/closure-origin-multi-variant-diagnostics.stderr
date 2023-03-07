@@ -1,0 +1,21 @@
+error[E0382]: use of moved value: `c`
+  --> $DIR/closure-origin-multi-variant-diagnostics.rs:26:13
+   |
+LL |     let a = c;
+   |             - value moved here
+LL |     let b = c;
+   |             ^ value used here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `point.0` out of its environment
+  --> $DIR/closure-origin-multi-variant-diagnostics.rs:16:52
+   |
+LL |         if let MultiVariant::Point(ref mut x, _) = point {
+   |                                                    ^^^^^
+help: consider mutably borrowing `c`
+   |
+LL |     let a = &mut c;
+   |             ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

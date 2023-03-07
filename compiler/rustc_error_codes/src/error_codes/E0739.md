@@ -1,0 +1,12 @@
+`#[track_caller]` can not be applied on struct.
+
+Erroneous code example:
+
+```compile_fail,E0739
+#[track_caller]
+struct Bar {
+    a: u8,
+}
+```
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md

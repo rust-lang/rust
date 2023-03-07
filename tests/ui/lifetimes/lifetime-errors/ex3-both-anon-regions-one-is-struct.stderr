@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-one-is-struct.rs:7:5
+   |
+LL | fn foo(mut x: Ref, y: &u32) {
+   |        -----          - let's call the lifetime of this reference `'1`
+   |        |
+   |        has type `Ref<'_, '2>`
+LL |     x.b = y;
+   |     ^^^^^^^ assignment requires that `'1` must outlive `'2`
+
+error: aborting due to previous error
+

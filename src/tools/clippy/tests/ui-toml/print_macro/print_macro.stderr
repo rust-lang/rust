@@ -1,0 +1,18 @@
+error: use of `print!`
+  --> $DIR/print_macro.rs:6:5
+   |
+LL |     print!("{n}");
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-stdout` implied by `-D warnings`
+
+error: use of `eprint!`
+  --> $DIR/print_macro.rs:7:5
+   |
+LL |     eprint!("{n}");
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-stderr` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+

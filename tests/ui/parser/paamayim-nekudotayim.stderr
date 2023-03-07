@@ -1,0 +1,8 @@
+error: expected identifier, found `;`
+  --> $DIR/paamayim-nekudotayim.rs:4:7
+   |
+LL |     ::;
+   |       ^ expected identifier
+
+error: aborting due to previous error
+

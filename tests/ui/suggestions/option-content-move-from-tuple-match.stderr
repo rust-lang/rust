@@ -1,0 +1,20 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/option-content-move-from-tuple-match.rs:2:11
+   |
+LL |     match (a, b) {
+   |           ^^^^^^
+LL |
+LL |         (None, &c) => &c.unwrap(),
+   |                 -
+   |                 |
+   |                 data moved here
+   |                 move occurs because `c` has type `Option<String>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (None, &ref c) => &c.unwrap(),
+   |                 +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,66 @@
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:8:8
+   |
+LL | extern "wasm" fn fu() {}
+   |        ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:11:12
+   |
+LL |     extern "wasm" fn mu();
+   |            ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:12:12
+   |
+LL |     extern "wasm" fn dmu() {}
+   |            ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:17:12
+   |
+LL |     extern "wasm" fn mu() {}
+   |            ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:21:12
+   |
+LL |     extern "wasm" fn imu() {}
+   |            ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:24:19
+   |
+LL | type TAU = extern "wasm" fn();
+   |                   ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error[E0658]: wasm ABI is experimental and subject to change
+  --> $DIR/feature-gate-wasm_abi.rs:26:8
+   |
+LL | extern "wasm" {}
+   |        ^^^^^^
+   |
+   = note: see issue #83788 <https://github.com/rust-lang/rust/issues/83788> for more information
+   = help: add `#![feature(wasm_abi)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,9 @@
+error[E0262]: invalid lifetime parameter name: `'static`
+  --> $DIR/regions-name-static.rs:1:12
+   |
+LL | struct Foo<'static> {
+   |            ^^^^^^^ 'static is a reserved lifetime name
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0262`.

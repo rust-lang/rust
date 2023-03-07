@@ -1,0 +1,4 @@
+#!
+
+// check-pass
+fn main() {}

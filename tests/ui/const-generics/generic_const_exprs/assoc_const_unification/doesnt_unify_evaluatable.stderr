@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/doesnt_unify_evaluatable.rs:9:11
+   |
+LL |     bar::<{ T::ASSOC }>();
+   |           ^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { T::ASSOC }]:`
+
+error: aborting due to previous error
+

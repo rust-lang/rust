@@ -1,18 +1,8 @@
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
 # This script allows to use LLDB in a way similar to GDB's batch mode. That is, given a text file
 # containing LLDB commands (one command per line), this script will execute the commands one after
 # the other.
 # LLDB also has the -s and -S commandline options which also execute a list of commands from a text
-# file. However, this command are execute `immediately`: a the command of a `run` or `continue`
+# file. However, this command are execute `immediately`: the command of a `run` or `continue`
 # command will be executed immediately after the `run` or `continue`, without waiting for the next
 # breakpoint to be hit. This a command sequence like the following will not yield reliable results:
 #
@@ -28,12 +18,17 @@ import lldb
 import os
 import sys
 import threading
-import thread
 import re
 import time
 
+try:
+    import thread
+except ModuleNotFoundError:
+    # The `thread` module was renamed to `_thread` in Python 3.
+    import _thread as thread
+
 # Set this to True for additional output
-DEBUG_OUTPUT = False
+DEBUG_OUTPUT = True
 
 
 def print_debug(s):
@@ -50,7 +45,10 @@ def normalize_whitespace(s):
 
 def breakpoint_callback(frame, bp_loc, dict):
     """This callback is registered with every breakpoint and makes sure that the
-    frame containing the breakpoint location is selected"""
+    frame containing the breakpoint location is selected """
+
+    # HACK(eddyb) print a newline to avoid continuing an unfinished line.
+    print("")
     print("Hit breakpoint " + str(bp_loc))
 
     # Select the frame and the thread containing it
@@ -81,7 +79,7 @@ def execute_command(command_interpreter, command):
 
     if res.Succeeded():
         if res.HasResult():
-            print(normalize_whitespace(res.GetOutput()), end='\n')
+            print(normalize_whitespace(res.GetOutput() or ''), end='\n')
 
         # If the command introduced any breakpoints, make sure to register
         # them with the breakpoint
@@ -104,7 +102,7 @@ def execute_command(command_interpreter, command):
                     registered_breakpoints.add(breakpoint_id)
                 else:
                     print("Error while trying to register breakpoint callback, id = " +
-                          str(breakpoint_id))
+                          str(breakpoint_id) + ", message = " + str(res.GetError()))
     else:
         print(res.GetError())
 
@@ -141,11 +139,17 @@ def start_breakpoint_listener(target):
 def start_watchdog():
     """Starts a watchdog thread that will terminate the process after a certain
     period of time"""
-    watchdog_start_time = time.clock()
+
+    try:
+        from time import clock
+    except ImportError:
+        from time import perf_counter as clock
+
+    watchdog_start_time = clock()
     watchdog_max_time = watchdog_start_time + 30
 
     def watchdog():
-        while time.clock() < watchdog_max_time:
+        while clock() < watchdog_max_time:
             time.sleep(1)
         print("TIMEOUT: lldb_batchmode.py has been running for too long. Aborting!")
         thread.interrupt_main()
@@ -158,6 +162,7 @@ def start_watchdog():
 ####################################################################################################
 # ~main
 ####################################################################################################
+
 
 if len(sys.argv) != 3:
     print("usage: python lldb_batchmode.py target-path script-path")

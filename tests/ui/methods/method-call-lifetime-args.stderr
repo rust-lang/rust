@@ -1,0 +1,26 @@
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/method-call-lifetime-args.rs:9:15
+   |
+LL |     S::late::<'static>(S, &0, &0);
+   |               ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/method-call-lifetime-args.rs:4:13
+   |
+LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
+   |             ^^
+
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/method-call-lifetime-args.rs:11:24
+   |
+LL |     S::late_implicit::<'static>(S, &0, &0);
+   |                        ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/method-call-lifetime-args.rs:5:31
+   |
+LL |     fn late_implicit(self, _: &u8, _: &u8) {}
+   |                               ^
+
+error: aborting due to 2 previous errors
+

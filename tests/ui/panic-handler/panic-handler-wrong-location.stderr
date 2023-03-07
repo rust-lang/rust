@@ -1,0 +1,11 @@
+error[E0718]: `panic_impl` language item must be applied to a function
+  --> $DIR/panic-handler-wrong-location.rs:6:1
+   |
+LL | #[panic_handler]
+   | ^^^^^^^^^^^^^^^^ attribute should be applied to a function, not a static item
+
+error: `#[panic_handler]` function required, but not found
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0718`.

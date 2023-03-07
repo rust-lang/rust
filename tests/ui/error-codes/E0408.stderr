@@ -1,0 +1,11 @@
+error[E0408]: variable `y` is not bound in all patterns
+  --> $DIR/E0408.rs:5:19
+   |
+LL |         Some(y) | None => {}
+   |              -    ^^^^ pattern doesn't bind `y`
+   |              |
+   |              variable not in all patterns
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0408`.

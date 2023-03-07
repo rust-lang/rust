@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/cannot-infer-const-args.rs:6:5
+   |
+LL |     foo();
+   |     ^^^ cannot infer the value of the const parameter `X` declared on the function `foo`
+   |
+help: consider specifying the generic argument
+   |
+LL |     foo::<X>();
+   |        +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

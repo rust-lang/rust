@@ -1,0 +1,13 @@
+error[E0252]: the name `X` is defined multiple times
+  --> $DIR/double-type-import.rs:3:9
+   |
+LL |     pub use self::bar::X;
+   |             ------------ previous import of the type `X` here
+LL |     use self::bar::X;
+   |         ^^^^^^^^^^^^ `X` reimported here
+   |
+   = note: `X` must be defined only once in the type namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0252`.

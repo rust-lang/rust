@@ -1,0 +1,64 @@
+error: cannot find macro `unknown_macro` in this scope
+  --> $DIR/impl-fn-nesting.rs:32:13
+   |
+LL |             unknown_macro!();
+   |             ^^^^^^^^^^^^^
+
+error[E0405]: cannot find trait `UnknownBound` in this scope
+  --> $DIR/impl-fn-nesting.rs:11:13
+   |
+LL | pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
+   |             ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `UnknownType` in this scope
+  --> $DIR/impl-fn-nesting.rs:11:30
+   |
+LL | pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
+   |                              ^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `UnknownTrait` in this scope
+  --> $DIR/impl-fn-nesting.rs:14:10
+   |
+LL |     impl UnknownTrait for ValidType {}
+   |          ^^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `UnknownTrait` in this scope
+  --> $DIR/impl-fn-nesting.rs:15:27
+   |
+LL |     impl<T: UnknownBound> UnknownTrait for T {}
+   |                           ^^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `UnknownBound` in this scope
+  --> $DIR/impl-fn-nesting.rs:15:13
+   |
+LL |     impl<T: UnknownBound> UnknownTrait for T {}
+   |             ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `UnknownType` in this scope
+  --> $DIR/impl-fn-nesting.rs:18:25
+   |
+LL |     impl ValidTrait for UnknownType {}
+   |                         ^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `UnknownBound` in this scope
+  --> $DIR/impl-fn-nesting.rs:20:53
+   |
+LL |     impl ValidTrait for ValidType where ValidTrait: UnknownBound {}
+   |                                                     ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `UnknownType` in this scope
+  --> $DIR/impl-fn-nesting.rs:25:21
+   |
+LL |         type Item = UnknownType;
+   |                     ^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `UnknownType` in this scope
+  --> $DIR/impl-fn-nesting.rs:44:37
+   |
+LL |             pub fn doubly_nested(c: UnknownType) {
+   |                                     ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0405, E0412.
+For more information about an error, try `rustc --explain E0405`.

@@ -1,0 +1,22 @@
+error[E0767]: use of unreachable label `'some_label`
+  --> $DIR/issue-66702-break-outside-loop-val.rs:5:18
+   |
+LL |     'some_label: loop {
+   |     ----------- unreachable label defined here
+LL |         || break 'some_label ();
+   |                  ^^^^^^^^^^^ unreachable label `'some_label`
+   |
+   = note: labels are unreachable through functions, closures, async blocks and modules
+
+error[E0267]: `break` inside of a closure
+  --> $DIR/issue-66702-break-outside-loop-val.rs:5:12
+   |
+LL |         || break 'some_label ();
+   |         -- ^^^^^^^^^^^^^^^^^^^^ cannot `break` inside of a closure
+   |         |
+   |         enclosing closure
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0267, E0767.
+For more information about an error, try `rustc --explain E0267`.

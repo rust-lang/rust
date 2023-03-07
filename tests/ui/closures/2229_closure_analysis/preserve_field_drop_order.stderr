@@ -1,0 +1,228 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/preserve_field_drop_order.rs:23:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/preserve_field_drop_order.rs:49:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/preserve_field_drop_order.rs:75:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.0);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:29:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:32:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:36:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Capturing b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:39:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.0);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:29:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:32:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Min Capture b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:36:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:39:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:52:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.1);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:55:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:58:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:62:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:65:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:52:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.1);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:58:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:55:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Min Capture b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:65:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:62:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:78:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", b.1);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:81:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Capturing a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:84:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:87:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:91:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:78:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", b.1);
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture b[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:91:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:81:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Min Capture a[(0, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:87:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:84:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

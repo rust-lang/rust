@@ -1,0 +1,10 @@
+// run-rustfix
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+
+fn main() {
+    drop(&mut Foo) //~ ERROR explicit use of destructor method
+}

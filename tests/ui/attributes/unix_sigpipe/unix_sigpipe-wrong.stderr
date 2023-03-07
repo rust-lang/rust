@@ -1,0 +1,8 @@
+error: valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `sig_dfl`
+  --> $DIR/unix_sigpipe-wrong.rs:3:1
+   |
+LL | #[unix_sigpipe = "wrong"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

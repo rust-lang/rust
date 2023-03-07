@@ -1,0 +1,9 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-43431.rs:9:27
+   |
+LL |         <Self as Fn(A) -> B>::call(self, (a,))
+   |                           ^ associated type not allowed here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0229`.

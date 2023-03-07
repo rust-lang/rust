@@ -1,0 +1,11 @@
+error[E0370]: enum discriminant overflowed
+  --> $DIR/E0370.rs:7:5
+   |
+LL |     Y,
+   |     ^ overflowed on value after 9223372036854775807
+   |
+   = note: explicitly set `Y = -9223372036854775808` if that is desired outcome
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0370`.

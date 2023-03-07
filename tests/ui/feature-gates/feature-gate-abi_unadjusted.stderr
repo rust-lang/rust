@@ -1,0 +1,11 @@
+error[E0658]: unadjusted ABI is an implementation detail and perma-unstable
+  --> $DIR/feature-gate-abi_unadjusted.rs:1:8
+   |
+LL | extern "unadjusted" fn foo() {
+   |        ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_unadjusted)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

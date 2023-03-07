@@ -1,0 +1,32 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:16:1
+   |
+LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
+   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type Bar
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {}
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:19:1
+   |
+LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to uninhabited type Bar
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:22:1
+   |
+LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a value of uninhabited type Bar
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {}
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,66 @@
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:8:8
+   |
+LL | extern "msp430-interrupt" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:12:12
+   |
+LL |     extern "msp430-interrupt" fn m();
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:15:12
+   |
+LL |     extern "msp430-interrupt" fn dm() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:21:12
+   |
+LL |     extern "msp430-interrupt" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:26:12
+   |
+LL |     extern "msp430-interrupt" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:30:18
+   |
+LL | type TA = extern "msp430-interrupt" fn();
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:33:8
+   |
+LL | extern "msp430-interrupt" {}
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `NoToSocketAddrs: ToSocketAddrs` is not satisfied
+  --> $DIR/issue-39029.rs:16:38
+   |
+LL |     let _errors = TcpListener::bind(&bad);
+   |                   -----------------  ^^^ the trait `ToSocketAddrs` is not implemented for `NoToSocketAddrs`
+   |                   |
+   |                   required by a bound introduced by this call
+   |
+   = note: required for `&NoToSocketAddrs` to implement `ToSocketAddrs`
+note: required by a bound in `TcpListener::bind`
+  --> $SRC_DIR/std/src/net/tcp.rs:LL:COL
+help: consider dereferencing here
+   |
+LL |     let _errors = TcpListener::bind(&*bad);
+   |                                      +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

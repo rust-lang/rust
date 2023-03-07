@@ -1,0 +1,15 @@
+error[E0091]: type parameter `T` is unused
+  --> $DIR/E0091.rs:1:10
+   |
+LL | type Foo<T> = u32;
+   |          ^ unused type parameter
+
+error[E0091]: type parameter `B` is unused
+  --> $DIR/E0091.rs:2:14
+   |
+LL | type Foo2<A, B> = Box<A>;
+   |              ^ unused type parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0091`.

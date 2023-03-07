@@ -1,0 +1,8 @@
+error: fatal error triggered by #[rustc_error]
+  --> $DIR/rustc-error.rs:4:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+

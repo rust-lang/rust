@@ -1,0 +1,9 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/issue-105334.rs:1:11
+   |
+LL | impl Vec< br##"*.."## > {}
+   |           ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0747`.

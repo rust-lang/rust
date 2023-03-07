@@ -1,0 +1,9 @@
+error[E0776]: `#[cmse_nonsecure_entry]` requires C ABI
+  --> $DIR/wrong-abi.rs:9:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0776`.

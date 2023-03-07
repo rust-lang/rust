@@ -1,0 +1,9 @@
+error[E0468]: an `extern crate` loading macros must be at the crate root
+  --> $DIR/macro-crate-nonterminal-non-root.rs:5:5
+   |
+LL |     extern crate macro_crate_nonterminal;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0468`.

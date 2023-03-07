@@ -1,0 +1,138 @@
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:22:1
+   |
+LL | / impl std::default::Default for FooDefault<'_> {
+LL | |     fn default() -> Self {
+LL | |         Self {
+LL | |             a: false,
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:43:1
+   |
+LL | / impl std::default::Default for TupleDefault {
+LL | |     fn default() -> Self {
+LL | |         Self(false, 0, 0u64)
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:95:1
+   |
+LL | / impl Default for StrDefault<'_> {
+LL | |     fn default() -> Self {
+LL | |         Self("")
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:121:1
+   |
+LL | / impl Default for Y {
+LL | |     fn default() -> Self {
+LL | |         Self(mac!())
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:160:1
+   |
+LL | / impl Default for WithoutSelfCurly {
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfCurly { a: false }
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:168:1
+   |
+LL | / impl Default for WithoutSelfParan {
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfParan(false)
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:218:1
+   |
+LL | / impl Default for RepeatDefault1 {
+LL | |     fn default() -> Self {
+LL | |         RepeatDefault1 { a: [0; 32] }
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:252:1
+   |
+LL | / impl Default for SimpleEnum {
+LL | |     fn default() -> Self {
+LL | |         SimpleEnum::Bar
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it...
+   |
+LL | #[derive(Default)]
+   |
+help: ...and mark the default variant
+   |
+LL ~     #[default]
+LL ~     Bar,
+   |
+
+error: aborting due to 8 previous errors
+

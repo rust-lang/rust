@@ -1,0 +1,31 @@
+error[E0277]: the trait bound `for<'de> EmptyBis<'de>: Foo<'_>` is not satisfied
+  --> $DIR/issue-96223.rs:49:17
+   |
+LL |     icey_bounds(&p);
+   |     ----------- ^^ the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo<'de>` is implemented for `Baz<T>`
+note: required for `Baz<EmptyBis<'de>>` to implement `for<'de> Foo<'de>`
+  --> $DIR/issue-96223.rs:16:14
+   |
+LL | impl<'de, T> Foo<'de> for Baz<T> where T: Foo<'de> {}
+   |              ^^^^^^^^     ^^^^^^          -------- unsatisfied trait bound introduced here
+note: required for `Empty` to implement `Dummy<EmptyMarker>`
+  --> $DIR/issue-96223.rs:20:9
+   |
+LL | impl<M> Dummy<M> for Empty
+   |         ^^^^^^^^     ^^^^^
+...
+LL |     for<'de> Baz<<M::Bar as Bar<'de>>::Inner>: Foo<'de>,
+   |                                                -------- unsatisfied trait bound introduced here
+note: required by a bound in `icey_bounds`
+  --> $DIR/issue-96223.rs:45:19
+   |
+LL | fn icey_bounds<D: Dummy<EmptyMarker>>(p: &D) {}
+   |                   ^^^^^^^^^^^^^^^^^^ required by this bound in `icey_bounds`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

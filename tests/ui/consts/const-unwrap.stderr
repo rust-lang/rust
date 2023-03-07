@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-unwrap.rs:7:18
+   |
+LL | const BAR: i32 = Option::<i32>::None.unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'called `Option::unwrap()` on a `None` value', $DIR/const-unwrap.rs:7:38
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

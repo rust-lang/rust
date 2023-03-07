@@ -1,0 +1,14 @@
+error: unused extern crate
+  --> $DIR/extern-crate-used.rs:18:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ help: remove it
+   |
+note: the lint level is defined here
+  --> $DIR/extern-crate-used.rs:6:9
+   |
+LL | #![deny(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

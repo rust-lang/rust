@@ -1,0 +1,179 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:6:9
+   |
+LL | fn duplicate_t<T>(t: T) -> (T, T) {
+   |                   - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn duplicate_t<T: Copy>(t: T) -> (T, T) {
+   |                 ++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:11:9
+   |
+LL | fn duplicate_opt<T>(t: Option<T>) -> (Option<T>, Option<T>) {
+   |                     - move occurs because `t` has type `Option<T>`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn duplicate_opt<T: Copy>(t: Option<T>) -> (Option<T>, Option<T>) {
+   |                   ++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:16:9
+   |
+LL | fn duplicate_tup1<T>(t: (T,)) -> ((T,), (T,)) {
+   |                      - move occurs because `t` has type `(T,)`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn duplicate_tup1<T: Copy>(t: (T,)) -> ((T,), (T,)) {
+   |                    ++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:21:9
+   |
+LL | fn duplicate_tup2<A, B>(t: (A, B)) -> ((A, B), (A, B)) {
+   |                         - move occurs because `t` has type `(A, B)`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameters
+   |
+LL | fn duplicate_tup2<A: Copy, B: Copy>(t: (A, B)) -> ((A, B), (A, B)) {
+   |                    ++++++   ++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:26:9
+   |
+LL | fn duplicate_custom<T>(t: S<T>) -> (S<T>, S<T>) {
+   |                        - move occurs because `t` has type `S<T>`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn duplicate_custom<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) {
+   |                      ++++++++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:44:9
+   |
+LL | fn duplicate_custom_1<T>(t: S<T>) -> (S<T>, S<T>) where {
+   |                          - move occurs because `t` has type `S<T>`, which does not implement the `Copy` trait
+LL |
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn duplicate_custom_1<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) where {
+   |                        ++++++++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:52:9
+   |
+LL | fn duplicate_custom_2<T>(t: S<T>) -> (S<T>, S<T>)
+   |                          - move occurs because `t` has type `S<T>`, which does not implement the `Copy` trait
+...
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider further restricting this bound
+   |
+LL |     T: A + Copy + Trait,
+   |          ++++++++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:61:9
+   |
+LL | fn duplicate_custom_3<T>(t: S<T>) -> (S<T>, S<T>)
+   |                          - move occurs because `t` has type `S<T>`, which does not implement the `Copy` trait
+...
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider further restricting this bound
+   |
+LL |     T: A + Copy + Trait,
+   |          ++++++++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:69:9
+   |
+LL | fn duplicate_custom_4<T: A>(t: S<T>) -> (S<T>, S<T>)
+   |                             - move occurs because `t` has type `S<T>`, which does not implement the `Copy` trait
+...
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider further restricting this bound
+   |
+LL | fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
+   |                            ++++++++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:75:9
+   |
+LL | fn existing_colon<T:>(t: T) {
+   |                       - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn existing_colon<T: Copy>(t: T) {
+   |                      ++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:83:9
+   |
+LL | fn existing_colon_in_where<T>(t: T)
+   |                               - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+...
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider further restricting type parameter `T`
+   |
+LL |     T:, T: Copy
+   |       ~~~~~~~~~
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

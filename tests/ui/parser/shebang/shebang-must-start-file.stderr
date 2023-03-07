@@ -1,0 +1,8 @@
+error: expected `[`, found `/`
+  --> $DIR/shebang-must-start-file.rs:2:3
+   |
+LL | #!/bin/bash
+   |   ^ expected `[`
+
+error: aborting due to previous error
+

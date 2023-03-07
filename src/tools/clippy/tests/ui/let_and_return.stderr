@@ -1,0 +1,45 @@
+error: returning the result of a `let` binding from a block
+  --> $DIR/let_and_return.rs:7:5
+   |
+LL |     let x = 5;
+   |     ---------- unnecessary `let` binding
+LL |     x
+   |     ^
+   |
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
+help: return the expression directly
+   |
+LL ~     
+LL ~     5
+   |
+
+error: returning the result of a `let` binding from a block
+  --> $DIR/let_and_return.rs:13:9
+   |
+LL |         let x = 5;
+   |         ---------- unnecessary `let` binding
+LL |         x
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         5
+   |
+
+error: returning the result of a `let` binding from a block
+  --> $DIR/let_and_return.rs:164:13
+   |
+LL |             let clone = Arc::clone(&self.foo);
+   |             ---------------------------------- unnecessary `let` binding
+LL |             clone
+   |             ^^^^^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             Arc::clone(&self.foo) as _
+   |
+
+error: aborting due to 3 previous errors
+

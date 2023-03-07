@@ -1,0 +1,10 @@
+[package]
+name = "rustc_feature"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_span = { path = "../rustc_span" }

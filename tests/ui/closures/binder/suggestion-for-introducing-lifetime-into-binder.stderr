@@ -1,0 +1,33 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/suggestion-for-introducing-lifetime-into-binder.rs:3:16
+   |
+LL |     for<> |_: &'a ()| -> () {};
+   |                ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     for<'a, > |_: &'a ()| -> () {};
+   |         +++
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/suggestion-for-introducing-lifetime-into-binder.rs:5:18
+   |
+LL |     for<'a> |_: &'b ()| -> () {};
+   |                  ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL |     for<'b, 'a> |_: &'b ()| -> () {};
+   |         +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn main<'b>() {
+   |        ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

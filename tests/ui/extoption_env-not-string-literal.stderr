@@ -1,0 +1,8 @@
+error: argument must be a string literal
+  --> $DIR/extoption_env-not-string-literal.rs:1:25
+   |
+LL | fn main() { option_env!(10); }
+   |                         ^^
+
+error: aborting due to previous error
+

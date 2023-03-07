@@ -1,0 +1,9 @@
+warning[E0705]: the feature `test_2018_feature` is included in the Rust 2018 edition
+  --> $DIR/E0705.rs:6:12
+   |
+LL | #![feature(test_2018_feature)]
+   |            ^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+
+For more information about this error, try `rustc --explain E0705`.

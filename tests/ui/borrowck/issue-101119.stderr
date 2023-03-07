@@ -1,0 +1,15 @@
+error[E0382]: use of moved value: `state`
+  --> $DIR/issue-101119.rs:7:14
+   |
+LL | fn fill_memory_blocks_mt(state: &mut State) {
+   |                          ----- move occurs because `state` has type `&mut State`, which does not implement the `Copy` trait
+LL |     loop {
+LL |         once(move || {
+   |              ^^^^^^^ value moved into closure here, in previous iteration of loop
+LL |
+LL |             fill_segment(state);
+   |                          ----- use occurs due to use in closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

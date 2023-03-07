@@ -1,0 +1,60 @@
+error: generator cannot be shared between threads safely
+  --> $DIR/not-send-sync.rs:17:17
+   |
+LL |       assert_sync(|| {
+   |  _________________^
+LL | |
+LL | |         let a = NotSync;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |_____^ generator is not `Sync`
+   |
+   = help: within `[generator@$DIR/not-send-sync.rs:17:17: 17:19]`, the trait `Sync` is not implemented for `NotSync`
+note: generator is not `Sync` as this value is used across a yield
+  --> $DIR/not-send-sync.rs:20:9
+   |
+LL |         let a = NotSync;
+   |             - has type `NotSync` which is not `Sync`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+LL |         drop(a);
+LL |     });
+   |     - `a` is later dropped here
+note: required by a bound in `assert_sync`
+  --> $DIR/not-send-sync.rs:14:23
+   |
+LL |     fn assert_sync<T: Sync>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_sync`
+
+error: generator cannot be sent between threads safely
+  --> $DIR/not-send-sync.rs:24:17
+   |
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         let a = NotSend;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |_____^ generator is not `Send`
+   |
+   = help: within `[generator@$DIR/not-send-sync.rs:24:17: 24:19]`, the trait `Send` is not implemented for `NotSend`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/not-send-sync.rs:27:9
+   |
+LL |         let a = NotSend;
+   |             - has type `NotSend` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+LL |         drop(a);
+LL |     });
+   |     - `a` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/not-send-sync.rs:15:23
+   |
+LL |     fn assert_send<T: Send>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+

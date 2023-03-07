@@ -1,0 +1,8 @@
+error: invalid label name `'break`
+  --> $DIR/issue-46311.rs:2:5
+   |
+LL |     'break: loop {
+   |     ^^^^^^
+
+error: aborting due to previous error
+

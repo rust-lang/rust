@@ -1,0 +1,21 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/issue-99828.rs:1:43
+   |
+LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
+   |                                           ^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+
+error: expected associated type bound, found constant
+  --> $DIR/issue-99828.rs:1:43
+   |
+LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
+   |                                           ^^^^^^^^^
+   |
+note: associated type defined here
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

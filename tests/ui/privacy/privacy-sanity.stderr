@@ -1,0 +1,123 @@
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:13:1
+   |
+LL | pub impl Tr for S {
+   | ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:14:5
+   |
+LL |     pub fn f() {}
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:15:5
+   |
+LL |     pub const C: u8 = 0;
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:16:5
+   |
+LL |     pub type T = u8;
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:18:1
+   |
+LL | pub impl S {
+   | ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:23:1
+   |
+LL | pub extern "C" {
+   | ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual foreign items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:39:5
+   |
+LL |     pub impl Tr for S {
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:40:9
+   |
+LL |         pub fn f() {}
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:41:9
+   |
+LL |         pub const C: u8 = 0;
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:42:9
+   |
+LL |         pub type T = u8;
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:44:5
+   |
+LL |     pub impl S {
+   |     ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:49:5
+   |
+LL |     pub extern "C" {
+   |     ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual foreign items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:68:5
+   |
+LL |     pub impl Tr for S {
+   |     ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:69:9
+   |
+LL |         pub fn f() {}
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:70:9
+   |
+LL |         pub const C: u8 = 0;
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:71:9
+   |
+LL |         pub type T = u8;
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:73:5
+   |
+LL |     pub impl S {
+   |     ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/privacy-sanity.rs:78:5
+   |
+LL |     pub extern "C" {
+   |     ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual foreign items instead
+
+error: aborting due to 18 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

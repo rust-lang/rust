@@ -1,0 +1,30 @@
+/*
+This whole CSS file is used only in case rustdoc is rendered with javascript disabled. Since a lot
+of content is hidden by default (depending on the settings too), we have to overwrite some of the
+rules.
+*/
+
+#main-content .attributes {
+	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
+	margin-left: 0 !important;
+}
+
+#copy-path {
+	/* It requires JS to work so no need to display it in this case. */
+	display: none;
+}
+
+nav.sub {
+	/* The search bar and related controls don't work without JS */
+	display: none;
+}
+
+.source .sidebar {
+	display: none;
+}
+
+.notable-traits {
+	/* layout requires javascript
+	    https://github.com/rust-lang/rust/issues/102576 */
+	display: none;
+}

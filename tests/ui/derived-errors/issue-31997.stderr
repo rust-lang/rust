@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/issue-31997.rs:14:21
+   |
+LL |     try!(closure(|| bar(core::ptr::null_mut())));
+   |                     ^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

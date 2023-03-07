@@ -1,0 +1,22 @@
+error[E0259]: the name `core` is defined multiple times
+  --> $DIR/weak-lang-item.rs:9:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ `core` reimported here
+   |
+   = note: `core` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | extern crate core as other_core;
+   |
+
+error: `#[panic_handler]` function required, but not found
+
+error: language item required, but not found: `eh_personality`
+   |
+   = note: this can occur when a binary crate with `#![no_std]` is compiled for a target where `eh_personality` is defined in the standard library
+   = help: you may be able to compile for a target that doesn't need `eh_personality`, specify a target with `--target` or in `.cargo/config`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0259`.

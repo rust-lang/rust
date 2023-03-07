@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+  --> $DIR/negative-reasoning.rs:19:1
+   |
+LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
+   | ------------------------------------------- first implementation here
+...
+LL | impl AnotherTrait for D<OpaqueType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
+   |
+   = note: upstream crates may add a new impl of trait `std::fmt::Debug` for type `OpaqueType` in future versions
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

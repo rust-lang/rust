@@ -1,0 +1,21 @@
+error: unknown start of token: \u{a7}
+  --> $DIR/issue-69130.rs:4:4
+   |
+LL | M (§& u8)}
+   |    ^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-69130.rs:4:5
+   |
+LL | M (§& u8)}
+   |     ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ enum F<'a> {
+LL ~ M (§&'a  u8)}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

@@ -1,0 +1,56 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-analysis-3.rs:19:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/capture-analysis-3.rs:22:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b.c;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(0, 0),(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-3.rs:25:18
+   |
+LL |         let _x = a.b.c;
+   |                  ^^^^^
+note: Capturing a[(0, 0)] -> ImmBorrow
+  --> $DIR/capture-analysis-3.rs:28:26
+   |
+LL |         println!("{:?}", a.b);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-analysis-3.rs:22:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b.c;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-3.rs:25:18
+   |
+LL |         let _x = a.b.c;
+   |                  ^^^^^ a[(0, 0)] captured as ByValue here
+...
+LL |         println!("{:?}", a.b);
+   |                          ^^^ a[(0, 0)] used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

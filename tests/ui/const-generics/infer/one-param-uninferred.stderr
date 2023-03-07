@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/one-param-uninferred.rs:9:23
+   |
+LL |     let _: [u8; 17] = foo();
+   |                       ^^^ cannot infer the value of the const parameter `M` declared on the function `foo`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     let _: [u8; 17] = foo::<17, M>();
+   |                          +++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

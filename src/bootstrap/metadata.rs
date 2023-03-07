@@ -1,96 +1,59 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use std::collections::HashMap;
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
-use build_helper::output;
-use rustc_serialize::json;
+use serde_derive::Deserialize;
 
-use {Build, Crate};
+use crate::cache::INTERNER;
+use crate::util::output;
+use crate::{Build, Crate};
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 struct Output {
     packages: Vec<Package>,
-    resolve: Resolve,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 struct Package {
-    id: String,
     name: String,
     source: Option<String>,
     manifest_path: String,
+    dependencies: Vec<Dependency>,
 }
 
-#[derive(RustcDecodable)]
-struct Resolve {
-    nodes: Vec<ResolveNode>,
-}
-
-#[derive(RustcDecodable)]
-struct ResolveNode {
-    id: String,
-    dependencies: Vec<String>,
+#[derive(Deserialize)]
+struct Dependency {
+    name: String,
+    source: Option<String>,
 }
 
 pub fn build(build: &mut Build) {
-    build_krate(build, "src/rustc/std_shim");
-    build_krate(build, "src/rustc/test_shim");
-    build_krate(build, "src/rustc");
-}
-
-fn build_krate(build: &mut Build, krate: &str) {
     // Run `cargo metadata` to figure out what crates we're testing.
-    //
-    // Down below we're going to call `cargo test`, but to test the right set
-    // of packages we're going to have to know what `-p` arguments to pass it
-    // to know what crates to test. Here we run `cargo metadata` to learn about
-    // the dependency graph and what `-p` arguments there are.
-    let mut cargo = Command::new(&build.cargo);
-    cargo.arg("metadata")
-         .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
+    let mut cargo = Command::new(&build.initial_cargo);
+    cargo
+        .arg("metadata")
+        .arg("--format-version")
+        .arg("1")
+        .arg("--no-deps")
+        .arg("--manifest-path")
+        .arg(build.src.join("Cargo.toml"));
     let output = output(&mut cargo);
-    let output: Output = json::decode(&output).unwrap();
-    let mut id2name = HashMap::new();
+    let output: Output = serde_json::from_str(&output).unwrap();
     for package in output.packages {
         if package.source.is_none() {
-            id2name.insert(package.id, package.name.clone());
+            let name = INTERNER.intern_string(package.name);
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
-            build.crates.insert(package.name.clone(), Crate {
-                build_step: format!("build-crate-{}", package.name),
-                doc_step: format!("doc-crate-{}", package.name),
-                test_step: format!("test-crate-{}", package.name),
-                bench_step: format!("bench-crate-{}", package.name),
-                name: package.name,
-                deps: Vec::new(),
-                path: path,
-            });
-        }
-    }
-
-    for node in output.resolve.nodes {
-        let name = match id2name.get(&node.id) {
-            Some(name) => name,
-            None => continue,
-        };
-
-        let krate = build.crates.get_mut(name).unwrap();
-        for dep in node.dependencies.iter() {
-            let dep = match id2name.get(dep) {
-                Some(dep) => dep,
-                None => continue,
-            };
-            krate.deps.push(dep.clone());
+            let deps = package
+                .dependencies
+                .into_iter()
+                .filter(|dep| dep.source.is_none())
+                .map(|dep| INTERNER.intern_string(dep.name))
+                .collect();
+            let krate = Crate { name, deps, path };
+            let relative_path = krate.local_path(build);
+            build.crates.insert(name, krate);
+            let existing_path = build.crate_paths.insert(relative_path, name);
+            assert!(existing_path.is_none(), "multiple crates with the same path");
         }
     }
 }

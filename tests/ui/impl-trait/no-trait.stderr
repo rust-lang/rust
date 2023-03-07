@@ -1,0 +1,8 @@
+error: at least one trait must be specified
+  --> $DIR/no-trait.rs:1:11
+   |
+LL | fn f() -> impl 'static {}
+   |           ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

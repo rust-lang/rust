@@ -1,0 +1,22 @@
+SOURCE_FILE@0..24
+  CONST@0..23
+    CONST_KW@0..5 "const"
+    WHITESPACE@5..6 " "
+    MUT_KW@6..9 "mut"
+    WHITESPACE@9..10 " "
+    NAME@10..13
+      IDENT@10..13 "FOO"
+    COLON@13..14 ":"
+    WHITESPACE@14..15 " "
+    TUPLE_TYPE@15..17
+      L_PAREN@15..16 "("
+      R_PAREN@16..17 ")"
+    WHITESPACE@17..18 " "
+    EQ@18..19 "="
+    WHITESPACE@19..20 " "
+    TUPLE_EXPR@20..22
+      L_PAREN@20..21 "("
+      R_PAREN@21..22 ")"
+    SEMICOLON@22..23 ";"
+  WHITESPACE@23..24 "\n"
+error 6..9: const globals cannot be mutable

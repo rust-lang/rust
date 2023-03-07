@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-impl.rs:21:18
+   |
+LL |         unsafe { transmute(x) }
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `&T` (pointer to `T`)
+   = note: target type: `&isize` (N bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

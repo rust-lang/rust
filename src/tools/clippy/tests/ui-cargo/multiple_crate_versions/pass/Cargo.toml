@@ -1,0 +1,10 @@
+[package]
+name = "multiple_crate_versions"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+regex = "1.3.7"
+serde = "1.0.110"

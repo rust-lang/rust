@@ -1,0 +1,11 @@
+error: attribute should be applied to a function definition
+  --> $DIR/issue-83475.rs:6:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct XEmpty2;
+   | --------------- not a function definition
+
+error: aborting due to previous error
+

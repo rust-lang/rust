@@ -1,0 +1,9 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:16:30
+   |
+LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
+   |                              ^^^^^ associated type not allowed here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0229`.

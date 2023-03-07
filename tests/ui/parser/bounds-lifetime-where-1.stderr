@@ -1,0 +1,8 @@
+error: expected `:`, found `;`
+  --> $DIR/bounds-lifetime-where-1.rs:1:16
+   |
+LL | type A where 'a;
+   |                ^ expected `:`
+
+error: aborting due to previous error
+

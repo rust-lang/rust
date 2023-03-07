@@ -1,0 +1,24 @@
+error[E0603]: unit struct `C` is private
+  --> $DIR/issue-13407.rs:6:8
+   |
+LL |     A::C = 1;
+   |        ^ private unit struct
+   |
+note: the unit struct `C` is defined here
+  --> $DIR/issue-13407.rs:2:5
+   |
+LL |     struct C;
+   |     ^^^^^^^^^
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-13407.rs:6:10
+   |
+LL |     A::C = 1;
+   |     ---- ^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0070, E0603.
+For more information about an error, try `rustc --explain E0070`.

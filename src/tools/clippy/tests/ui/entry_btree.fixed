@@ -1,0 +1,18 @@
+// run-rustfix
+
+#![warn(clippy::map_entry)]
+#![allow(dead_code)]
+
+use std::collections::BTreeMap;
+
+fn foo() {}
+
+fn btree_map<K: Eq + Ord + Copy, V: Copy>(m: &mut BTreeMap<K, V>, k: K, v: V) {
+    // insert then do something, use if let
+    if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
+        e.insert(v);
+        foo();
+    }
+}
+
+fn main() {}

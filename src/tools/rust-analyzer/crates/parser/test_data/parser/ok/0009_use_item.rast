@@ -1,0 +1,21 @@
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          COLON2 "::"
+          NAME_REF
+            IDENT "bar"
+    SEMICOLON ";"

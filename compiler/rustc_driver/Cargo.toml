@@ -1,0 +1,10 @@
+[package]
+name = "rustc_driver"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+rustc_driver_impl = { path = "../rustc_driver_impl" }

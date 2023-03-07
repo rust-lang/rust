@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-77092.rs:11:26
+   |
+LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
+   |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
+   |
+help: consider specifying the generic arguments
+   |
+LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
+   |                                             ++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

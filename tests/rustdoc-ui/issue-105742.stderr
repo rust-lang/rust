@@ -1,0 +1,35 @@
+error[E0107]: missing generics for associated type `SVec::Item`
+  --> $DIR/issue-105742.rs:16:38
+   |
+LL |     fn len(&self) -> <Self as SVec>::Item;
+   |                                      ^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-105742.rs:14:10
+   |
+LL |     type Item<'a, T>;
+   |          ^^^^ --
+help: add missing lifetime argument
+   |
+LL |     fn len(&self) -> <Self as SVec>::Item<'_>;
+   |                                          ++++
+
+error[E0107]: missing generics for associated type `SVec::Item`
+  --> $DIR/issue-105742.rs:16:38
+   |
+LL |     fn len(&self) -> <Self as SVec>::Item;
+   |                                      ^^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `T`
+  --> $DIR/issue-105742.rs:14:10
+   |
+LL |     type Item<'a, T>;
+   |          ^^^^     -
+help: add missing generic argument
+   |
+LL |     fn len(&self) -> <Self as SVec>::Item<T>;
+   |                                          +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

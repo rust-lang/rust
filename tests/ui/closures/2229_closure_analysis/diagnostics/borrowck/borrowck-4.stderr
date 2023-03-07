@@ -1,0 +1,22 @@
+error[E0373]: closure may outlive the current function, but it borrows `p`, which is owned by the current function
+  --> $DIR/borrowck-4.rs:10:17
+   |
+LL |     let mut c = || {
+   |                 ^^ may outlive borrowed value `p`
+...
+LL |        println!("{:?}", p);
+   |                         - `p` is borrowed here
+   |
+note: closure is returned here
+  --> $DIR/borrowck-4.rs:15:5
+   |
+LL |     c
+   |     ^
+help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let mut c = move || {
+   |                 ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0373`.

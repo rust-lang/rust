@@ -1,2 +1,0 @@
-// ignore-license
-void foo() {}

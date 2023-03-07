@@ -1,0 +1,16 @@
+error[E0764]: mutable references are not allowed in the final value of statics
+  --> $DIR/issue-46604.rs:1:25
+   |
+LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
+   |                         ^^^^^^^^^^^^^^^^^^^^
+
+error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
+  --> $DIR/issue-46604.rs:6:5
+   |
+LL |     buf[0]=2;
+   |     ^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0764.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,0 +1,9 @@
+error[E0522]: definition of an unknown language item: `cookie`
+  --> $DIR/E0522.rs:3:1
+   |
+LL | #[lang = "cookie"]
+   | ^^^^^^^^^^^^^^^^^^ definition of unknown language item `cookie`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0522`.

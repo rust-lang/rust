@@ -1,0 +1,13 @@
+error[E0254]: the name `core` is defined multiple times
+  --> $DIR/unresolved-extern-mod-suggestion.rs:2:5
+   |
+LL | extern crate core;
+   | ------------------ previous import of the extern crate `core` here
+LL | use core;
+   |     ^^^^ `core` reimported here
+   |
+   = note: `core` must be defined only once in the type namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0254`.

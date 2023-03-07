@@ -1,0 +1,52 @@
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:12:9
+   |
+LL |     ///     - First String:
+   |         ^^^^ help: consider using four spaces per tab
+   |
+   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:13:9
+   |
+LL |     ///         - needs to be inside here
+   |         ^^^^^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:16:9
+   |
+LL |     ///     - Second String:
+   |         ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:17:9
+   |
+LL |     ///         - needs to be inside here
+   |         ^^^^^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:8:5
+   |
+LL | ///     - first        one
+   |     ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:8:13
+   |
+LL | ///     - first        one
+   |                ^^^^^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:9:5
+   |
+LL | ///     - second    one
+   |     ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/tabs_in_doc_comments.rs:9:14
+   |
+LL | ///     - second    one
+   |                 ^^^^ help: consider using four spaces per tab
+
+error: aborting due to 8 previous errors
+

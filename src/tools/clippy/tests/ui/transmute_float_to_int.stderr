@@ -1,0 +1,40 @@
+error: transmute from a `f32` to a `u32`
+  --> $DIR/transmute_float_to_int.rs:4:27
+   |
+LL |     let _: u32 = unsafe { std::mem::transmute(1f32) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f32.to_bits()`
+   |
+   = note: `-D clippy::transmute-float-to-int` implied by `-D warnings`
+
+error: transmute from a `f32` to a `i32`
+  --> $DIR/transmute_float_to_int.rs:5:27
+   |
+LL |     let _: i32 = unsafe { std::mem::transmute(1f32) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f32.to_bits() as i32`
+
+error: transmute from a `f64` to a `u64`
+  --> $DIR/transmute_float_to_int.rs:6:27
+   |
+LL |     let _: u64 = unsafe { std::mem::transmute(1f64) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f64.to_bits()`
+
+error: transmute from a `f64` to a `i64`
+  --> $DIR/transmute_float_to_int.rs:7:27
+   |
+LL |     let _: i64 = unsafe { std::mem::transmute(1f64) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f64.to_bits() as i64`
+
+error: transmute from a `f64` to a `u64`
+  --> $DIR/transmute_float_to_int.rs:8:27
+   |
+LL |     let _: u64 = unsafe { std::mem::transmute(1.0) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1.0f64.to_bits()`
+
+error: transmute from a `f64` to a `u64`
+  --> $DIR/transmute_float_to_int.rs:9:27
+   |
+LL |     let _: u64 = unsafe { std::mem::transmute(-1.0) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(-1.0f64).to_bits()`
+
+error: aborting due to 6 previous errors
+

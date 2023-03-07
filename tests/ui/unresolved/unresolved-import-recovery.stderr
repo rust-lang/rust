@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `unresolved`
+  --> $DIR/unresolved-import-recovery.rs:4:13
+   |
+LL |     pub use unresolved;
+   |             ^^^^^^^^^^ no `unresolved` in the root
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

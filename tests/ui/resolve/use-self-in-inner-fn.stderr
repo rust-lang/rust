@@ -1,0 +1,15 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/use-self-in-inner-fn.rs:6:25
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         fn peach(this: &Self) {
+   |                         ^^^^
+   |                         |
+   |                         use of generic parameter from outer function
+   |                         use a type here instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0401`.

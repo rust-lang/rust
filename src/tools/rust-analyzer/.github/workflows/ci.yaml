@@ -1,0 +1,173 @@
+# Please make sure that the `needs` fields for both `end-success` and `end-failure`
+# are updated when adding new jobs!
+
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - auto
+      - try
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CI: 1
+  RUST_BACKTRACE: short
+  RUSTFLAGS: "-D warnings -W unreachable-pub -W bare-trait-objects"
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  rust:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: Rust
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: deny_c
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 20
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add rustfmt rust-src
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+
+      - name: Bump opt-level
+        if: matrix.os == 'ubuntu-latest'
+        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - name: Compile (tests)
+        run: cargo test --no-run --locked
+
+      # It's faster to `test` before `build` ¯\_(ツ)_/¯
+      - name: Compile (rust-analyzer)
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo build --quiet
+
+      - name: Test
+        run: cargo test -- --nocapture --quiet
+
+      - name: Run analysis-stats on rust-analyzer
+        if: matrix.os == 'ubuntu-latest'
+        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats .
+
+      - name: Run analysis-stats on rust std library
+        if: matrix.os == 'ubuntu-latest'
+        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
+
+  # Weird targets to catch non-portable code
+  rust-cross:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: Rust Cross
+    runs-on: ubuntu-latest
+
+    env:
+      targets: "powerpc-unknown-linux-gnu x86_64-unknown-linux-musl"
+      # The rust-analyzer binary is not expected to compile on WASM, but the IDE
+      # crate should
+      targets_ide: "wasm32-unknown-unknown"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ env.targets }} ${{ env.targets_ide }}
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+
+      - name: Check
+        run: |
+          for target in ${{ env.targets }}; do
+            cargo check --target=$target --all-targets
+          done
+          for target in ${{ env.targets_ide }}; do
+            cargo check -p ide --target=$target --all-targets
+          done
+
+  typescript:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: TypeScript
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install xvfb
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y xvfb
+
+      - run: npm ci
+        working-directory: ./editors/code
+
+      #    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
+      #      if: runner.os == 'Linux'
+      #      working-directory: ./editors/code
+
+      - run: npm run lint
+        working-directory: ./editors/code
+
+      - name: Run VS Code tests (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          VSCODE_CLI: 1
+        run: xvfb-run npm test
+        working-directory: ./editors/code
+
+      - name: Run VS Code tests (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          VSCODE_CLI: 1
+        run: npm test
+        working-directory: ./editors/code
+
+      - run: npm run pretest
+        working-directory: ./editors/code
+
+      - run: npm run package --scripts-prepend-node-path
+        working-directory: ./editors/code
+
+  end-success:
+    name: bors build finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [rust, rust-cross, typescript]
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors build finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [rust, rust-cross, typescript]
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

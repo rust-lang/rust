@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/return-ref-mut-issue-46557.rs:5:5
+   |
+LL |     let ref mut x = 1234543;
+   |                     ------- temporary value created here
+LL |     x
+   |     ^ returns a value referencing data owned by the current function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0515`.

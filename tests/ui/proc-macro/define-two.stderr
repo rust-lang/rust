@@ -1,0 +1,14 @@
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/define-two.rs:15:21
+   |
+LL | #[proc_macro_derive(A)]
+   |                     - previous definition of the macro `A` here
+...
+LL | #[proc_macro_derive(A)]
+   |                     ^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the macro namespace of this module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0428`.

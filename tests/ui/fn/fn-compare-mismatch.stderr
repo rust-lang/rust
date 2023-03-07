@@ -1,0 +1,28 @@
+error[E0369]: binary operation `==` cannot be applied to type `fn() {f}`
+  --> $DIR/fn-compare-mismatch.rs:4:15
+   |
+LL |     let x = f == g;
+   |             - ^^ - fn() {g}
+   |             |
+   |             fn() {f}
+   |
+help: use parentheses to call these
+   |
+LL |     let x = f() == g();
+   |              ++     ++
+
+error[E0308]: mismatched types
+  --> $DIR/fn-compare-mismatch.rs:4:18
+   |
+LL |     let x = f == g;
+   |                  ^ expected fn item, found a different fn item
+   |
+   = note: expected fn item `fn() {f}`
+              found fn item `fn() {g}`
+   = note: different fn items have unique types, even if their signatures are the same
+   = help: consider casting both fn items to fn pointers using `as fn()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

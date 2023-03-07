@@ -1,0 +1,18 @@
+error: unconstrained generic constant
+  --> $DIR/ensure_is_evaluatable.rs:9:5
+   |
+LL |     bar()
+   |     ^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); N + 1]:`
+note: required by a bound in `bar`
+  --> $DIR/ensure_is_evaluatable.rs:15:10
+   |
+LL | fn bar<const N: usize>() -> [(); N]
+   |    --- required by a bound in this function
+LL | where
+LL |     [(); N + 1]:,
+   |          ^^^^^ required by this bound in `bar`
+
+error: aborting due to previous error
+

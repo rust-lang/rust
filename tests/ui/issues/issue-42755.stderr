@@ -1,0 +1,8 @@
+error: repetition matches empty token tree
+  --> $DIR/issue-42755.rs:2:7
+   |
+LL |     ($($p:vis)*) => {}
+   |       ^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,21 @@
+warning: unused variable: `g2`
+  --> $DIR/destructure-pattern-closure-within-closure.rs:10:17
+   |
+LL |         let (_, g2) = g;
+   |                 ^^ help: if this is intentional, prefix it with an underscore: `_g2`
+   |
+note: the lint level is defined here
+  --> $DIR/destructure-pattern-closure-within-closure.rs:3:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `t2`
+  --> $DIR/destructure-pattern-closure-within-closure.rs:13:21
+   |
+LL |             let (_, t2) = t;
+   |                     ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+
+warning: 2 warnings emitted
+

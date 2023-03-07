@@ -1,0 +1,30 @@
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "outer"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "tree"
+      COLON2 "::"
+      USE_TREE_LIST
+        L_CURLY "{"
+        USE_TREE
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "inner"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "tree"
+        R_CURLY "}"
+    SEMICOLON ";"
+  WHITESPACE "\n"

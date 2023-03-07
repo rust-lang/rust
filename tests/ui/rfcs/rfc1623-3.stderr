@@ -1,0 +1,35 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/rfc1623-3.rs:8:42
+   |
+LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
+   |                             ---  ---     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL | static NON_ELIDABLE_FN: &for<'a> fn(&'a u8, &'a u8) -> &'a u8 =
+   |                          +++++++     ++      ++         ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/rfc1623-3.rs:10:39
+   |
+LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
+   |                          ---  ---     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
+   |                       +++++++     ++      ++         ++
+
+error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'a, 'b> fn(&'a u8, &'b u8) -> &u8`
+  --> $DIR/rfc1623-3.rs:10:6
+   |
+LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0605.
+For more information about an error, try `rustc --explain E0106`.

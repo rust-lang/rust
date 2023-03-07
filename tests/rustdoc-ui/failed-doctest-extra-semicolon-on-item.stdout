@@ -1,0 +1,24 @@
+
+running 1 test
+test $DIR/failed-doctest-extra-semicolon-on-item.rs - m (line 11) ... FAILED
+
+failures:
+
+---- $DIR/failed-doctest-extra-semicolon-on-item.rs - m (line 11) stdout ----
+error: expected item, found `;`
+  --> $DIR/failed-doctest-extra-semicolon-on-item.rs:12:12
+   |
+LL | struct S {}; // unexpected semicolon after struct def
+   |            ^ help: remove this semicolon
+   |
+   = help: braced struct declarations are not followed by a semicolon
+
+error: aborting due to previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/failed-doctest-extra-semicolon-on-item.rs - m (line 11)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

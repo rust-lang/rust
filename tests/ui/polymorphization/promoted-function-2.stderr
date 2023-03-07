@@ -1,0 +1,17 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/promoted-function-2.rs:4:12
+   |
+LL | #![feature(generic_const_exprs, rustc_attrs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: item has unused generic parameters
+  --> $DIR/promoted-function-2.rs:8:4
+   |
+LL | fn test<T>() {
+   |    ^^^^ - generic parameter `T` is unused
+
+error: aborting due to previous error; 1 warning emitted
+

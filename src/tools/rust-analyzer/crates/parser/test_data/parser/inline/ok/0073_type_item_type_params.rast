@@ -1,0 +1,20 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Result"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    TUPLE_TYPE
+      L_PAREN "("
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

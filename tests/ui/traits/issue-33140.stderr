@@ -1,0 +1,31 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/issue-33140.rs:9:1
+   |
+LL | impl Trait for dyn Send + Sync {
+   | ------------------------------ first implementation here
+...
+LL | impl Trait for dyn Sync + Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait2` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/issue-33140.rs:22:1
+   |
+LL | impl Trait2 for dyn Send + Sync {
+   | ------------------------------- first implementation here
+...
+LL | impl Trait2 for dyn Sync + Send + Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error[E0592]: duplicate definitions with name `abc`
+  --> $DIR/issue-33140.rs:29:5
+   |
+LL |     fn abc() -> bool {
+   |     ^^^^^^^^^^^^^^^^ duplicate definitions for `abc`
+...
+LL |     fn abc() -> bool {
+   |     ---------------- other definition for `abc`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0592.
+For more information about an error, try `rustc --explain E0119`.

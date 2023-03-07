@@ -1,0 +1,21 @@
+error[E0268]: `continue` outside of a loop
+  --> $DIR/closure-array-break-length.rs:2:13
+   |
+LL |     |_: [_; continue]| {};
+   |             ^^^^^^^^ cannot `continue` outside of a loop
+
+error[E0268]: `continue` outside of a loop
+  --> $DIR/closure-array-break-length.rs:4:19
+   |
+LL |     while |_: [_; continue]| {} {}
+   |                   ^^^^^^^^ cannot `continue` outside of a loop
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/closure-array-break-length.rs:6:19
+   |
+LL |     while |_: [_; break]| {} {}
+   |                   ^^^^^ cannot `break` outside of a loop or labeled block
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

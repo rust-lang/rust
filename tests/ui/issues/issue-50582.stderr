@@ -1,0 +1,31 @@
+error[E0658]: `for` is not allowed in a `const`
+  --> $DIR/issue-50582.rs:2:20
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
+   = help: add `#![feature(const_for)]` to the crate attributes to enable
+
+error[E0277]: cannot add `()` to `{integer}` in const contexts
+  --> $DIR/issue-50582.rs:2:18
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                  ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `~const Add<()>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.

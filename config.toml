@@ -1,0 +1,20 @@
+changelog-seen = 2
+
+[build]
+target = ["wasm32-wasmer-wasi", "wasm64-wasmer-wasi"]
+extended = true
+tools = [ "clippy", "rustfmt" ]
+configure-args = []
+
+[rust]
+lld = true
+llvm-tools = true
+
+[llvm]
+download-ci-llvm = false
+
+[target.wasm32-wasmer-wasi]
+wasi-root = "../wasix-libc/sysroot32"
+
+[target.wasm64-wasmer-wasi]
+wasi-root = "../wasix-libc/sysroot64"

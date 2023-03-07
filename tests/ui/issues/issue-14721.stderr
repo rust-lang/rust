@@ -1,0 +1,9 @@
+error[E0609]: no field `desc` on type `&str`
+  --> $DIR/issue-14721.rs:3:24
+   |
+LL |     println!("{}", foo.desc);
+   |                        ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

@@ -1,0 +1,80 @@
+error[E0071]: expected struct, variant or union type, found type parameter `Self`
+  --> $DIR/struct-path-self.rs:5:17
+   |
+LL |         let s = Self {};
+   |                 ^^^^ not a struct
+
+error[E0109]: type arguments are not allowed on self type
+  --> $DIR/struct-path-self.rs:7:24
+   |
+LL |         let z = Self::<u8> {};
+   |                 ----   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on self type
+   |
+help: the `Self` type doesn't accept type parameters
+   |
+LL -         let z = Self::<u8> {};
+LL +         let z = Self {};
+   |
+
+error[E0071]: expected struct, variant or union type, found type parameter `Self`
+  --> $DIR/struct-path-self.rs:7:17
+   |
+LL |         let z = Self::<u8> {};
+   |                 ^^^^^^^^^^ not a struct
+
+error[E0071]: expected struct, variant or union type, found type parameter `Self`
+  --> $DIR/struct-path-self.rs:11:13
+   |
+LL |             Self { .. } => {}
+   |             ^^^^ not a struct
+
+error[E0109]: type arguments are not allowed on self type
+  --> $DIR/struct-path-self.rs:20:24
+   |
+LL |         let z = Self::<u8> {};
+   |                 ----   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on self type
+   |
+note: `Self` is of type `S`
+  --> $DIR/struct-path-self.rs:1:8
+   |
+LL | struct S;
+   |        ^ `Self` corresponds to this type, which doesn't have generic parameters
+...
+LL | impl Tr for S {
+   | ------------- `Self` is on type `S` in this `impl`
+help: the `Self` type doesn't accept type parameters
+   |
+LL -         let z = Self::<u8> {};
+LL +         let z = Self {};
+   |
+
+error[E0109]: type arguments are not allowed on self type
+  --> $DIR/struct-path-self.rs:30:24
+   |
+LL |         let z = Self::<u8> {};
+   |                 ----   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on self type
+   |
+note: `Self` is of type `S`
+  --> $DIR/struct-path-self.rs:1:8
+   |
+LL | struct S;
+   |        ^ `Self` corresponds to this type, which doesn't have generic parameters
+...
+LL | impl S {
+   | ------ `Self` is on type `S` in this `impl`
+help: the `Self` type doesn't accept type parameters
+   |
+LL -         let z = Self::<u8> {};
+LL +         let z = Self {};
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0071, E0109.
+For more information about an error, try `rustc --explain E0071`.

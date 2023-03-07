@@ -1,0 +1,27 @@
+error[E0599]: no method named `as_mut` found for reference `&Wrapper<Option<i32>>` in the current scope
+  --> $DIR/field-method-suggestion-using-return-ty.rs:5:14
+   |
+LL |         self.as_mut()
+   |              ^^^^^^ method not found in `&Wrapper<Option<i32>>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_mut`, perhaps you need to implement it:
+           candidate #1: `AsMut`
+help: one of the expressions' fields has a method of the same name
+   |
+LL |         self.0.as_mut()
+   |              ++
+
+error[E0599]: no method named `as_mut` found for reference `&Wrapper<Option<i32>>` in the current scope
+  --> $DIR/field-method-suggestion-using-return-ty.rs:12:14
+   |
+LL |         self.as_mut()
+   |              ^^^^^^ method not found in `&Wrapper<Option<i32>>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_mut`, perhaps you need to implement it:
+           candidate #1: `AsMut`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

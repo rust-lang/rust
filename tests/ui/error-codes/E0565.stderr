@@ -1,0 +1,9 @@
+error[E0565]: meta item in `repr` must be an identifier
+  --> $DIR/E0565.rs:2:8
+   |
+LL | #[repr("C")]
+   |        ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0565`.

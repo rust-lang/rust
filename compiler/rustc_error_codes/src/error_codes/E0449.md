@@ -1,0 +1,38 @@
+A visibility qualifier was used when it was unnecessary.
+
+Erroneous code examples:
+
+```compile_fail,E0449
+struct Bar;
+
+trait Foo {
+    fn foo();
+}
+
+pub impl Bar {} // error: unnecessary visibility qualifier
+
+pub impl Foo for Bar { // error: unnecessary visibility qualifier
+    pub fn foo() {} // error: unnecessary visibility qualifier
+}
+```
+
+To fix this error, please remove the visibility qualifier when it is not
+required. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    fn foo();
+}
+
+// Directly implemented methods share the visibility of the type itself,
+// so `pub` is unnecessary here
+impl Bar {}
+
+// Trait methods share the visibility of the trait, so `pub` is
+// unnecessary in either case
+impl Foo for Bar {
+    fn foo() {}
+}
+```

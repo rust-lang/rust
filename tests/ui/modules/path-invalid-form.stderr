@@ -1,0 +1,8 @@
+error: malformed `path` attribute input
+  --> $DIR/path-invalid-form.rs:1:1
+   |
+LL | #[path = 123]
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[path = "file"]`
+
+error: aborting due to previous error
+

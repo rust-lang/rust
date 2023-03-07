@@ -1,0 +1,26 @@
+error: [+, +]
+  --> $DIR/variance-trait-bounds.rs:16:1
+   |
+LL | struct TestStruct<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:21:1
+   |
+LL | enum TestEnum<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:26:1
+   |
+LL | struct TestContraStruct<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:31:1
+   |
+LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

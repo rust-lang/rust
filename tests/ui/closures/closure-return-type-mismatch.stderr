@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/closure-return-type-mismatch.rs:7:9
+   |
+LL |         a
+   |         ^ expected `&str`, found `bool`
+   |
+note: return type inferred to be `&str` here
+  --> $DIR/closure-return-type-mismatch.rs:4:20
+   |
+LL |             return "test";
+   |                    ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/closure-return-type-mismatch.rs:12:20
+   |
+LL |             return "hello"
+   |                    ^^^^^^^ expected `bool`, found `&str`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,29 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/normalization.rs:10:31
+   |
+LL |     let a = 22;
+   |         - binding `a` declared here
+LL |     let _: <() as Foo>::Out = &a;
+   |            ----------------   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `a` is borrowed for `'static`
+...
+LL | }
+   | - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/normalization.rs:13:40
+   |
+LL |     let a = 22;
+   |         - binding `a` declared here
+LL |     let _: <&'static () as Foo>::Out = &a;
+   |            -------------------------   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `a` is borrowed for `'static`
+...
+LL | }
+   | - `a` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

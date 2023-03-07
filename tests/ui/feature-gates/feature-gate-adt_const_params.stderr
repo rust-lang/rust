@@ -1,0 +1,11 @@
+error: `&'static str` is forbidden as the type of a const generic parameter
+  --> $DIR/feature-gate-adt_const_params.rs:1:24
+   |
+LL | struct Foo<const NAME: &'static str>;
+   |                        ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
+
+error: aborting due to previous error
+

@@ -1,0 +1,27 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/issue-20831-debruijn.rs:28:33
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
+  --> $DIR/issue-20831-debruijn.rs:28:58
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined here...
+  --> $DIR/issue-20831-debruijn.rs:26:6
+   |
+LL | impl<'a> Publisher<'a> for MyStruct<'a> {
+   |      ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-20831-debruijn.rs:28:33
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `<MyStruct<'a> as Publisher<'_>>`
+              found `<MyStruct<'_> as Publisher<'_>>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

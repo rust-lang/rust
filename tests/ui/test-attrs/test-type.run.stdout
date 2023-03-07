@@ -1,0 +1,8 @@
+
+running 3 tests
+test test_no_run ... ignored, msg
+test test_ok ... ok
+test test_panic - should panic ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+

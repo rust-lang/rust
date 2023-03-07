@@ -1,0 +1,10 @@
+// run-rustfix
+#![warn(clippy::borrow_as_ptr)]
+
+fn main() {
+    let val = 1;
+    let _p = std::ptr::addr_of!(val);
+
+    let mut val_mut = 1;
+    let _p_mut = std::ptr::addr_of_mut!(val_mut);
+}

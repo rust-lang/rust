@@ -1,0 +1,17 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/non_const_fn.rs:7:16
+   |
+LL | static C: () = foo();
+   |                ^^^^^ calling non-const function `foo`
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/non_const_fn.rs:7:16
+   |
+LL | static C: () = foo();
+   |                ^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,33 @@
+warning: value assigned to `a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:20:9
+   |
+LL |         a = s;
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+note: the lint level is defined here
+  --> $DIR/liveness_unintentional_copy.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `a`
+  --> $DIR/liveness_unintentional_copy.rs:20:9
+   |
+LL |         a = s;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `a`
+  --> $DIR/liveness_unintentional_copy.rs:36:9
+   |
+LL |         a += x;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: 3 warnings emitted
+

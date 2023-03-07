@@ -1,0 +1,98 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      UNSAFE_KW "unsafe"
+      WHITESPACE " "
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      UNSAFE_KW "unsafe"
+      WHITESPACE " "
+      ABI
+        EXTERN_KW "extern"
+        WHITESPACE " "
+        STRING "\"C\""
+      WHITESPACE " "
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "D"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      ABI
+        EXTERN_KW "extern"
+        WHITESPACE " "
+        STRING "\"C\""
+      WHITESPACE " "
+      FN_KW "fn"
+      WHITESPACE " "
+      PARAM_LIST
+        L_PAREN "("
+        WHITESPACE " "
+        PARAM
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "u8"
+        WHITESPACE " "
+        COMMA ","
+        WHITESPACE " "
+        PARAM
+          DOT3 "..."
+        WHITESPACE " "
+        R_PAREN ")"
+      WHITESPACE " "
+      RET_TYPE
+        THIN_ARROW "->"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u8"
+    SEMICOLON ";"
+  WHITESPACE "\n"

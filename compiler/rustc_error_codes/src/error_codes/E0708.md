@@ -1,0 +1,26 @@
+`async` non-`move` closures with parameters are currently not supported.
+
+Erroneous code example:
+
+```compile_fail,edition2018,E0708
+#![feature(async_closure)]
+
+fn main() {
+    let add_one = async |num: u8| { // error!
+        num + 1
+    };
+}
+```
+
+`async` with non-move is currently not supported with the current
+version, you can use successfully by using move:
+
+```edition2018
+#![feature(async_closure)]
+
+fn main() {
+    let add_one = async move |num: u8| { // ok!
+        num + 1
+    };
+}
+```

@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `error` in this scope
+  --> $DIR/cast-errors-issue-43825.rs:2:17
+   |
+LL |     let error = error;
+   |                 ^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

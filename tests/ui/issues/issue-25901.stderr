@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `A: Deref` is not satisfied
+  --> $DIR/issue-25901.rs:4:24
+   |
+LL | static S: &'static B = &A;
+   |                        ^^ the trait `~const Deref` is not implemented for `A`
+   |
+note: the trait `Deref` is implemented for `A`, but that implementation is not `const`
+  --> $DIR/issue-25901.rs:4:24
+   |
+LL | static S: &'static B = &A;
+   |                        ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

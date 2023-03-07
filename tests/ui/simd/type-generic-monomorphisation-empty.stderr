@@ -1,0 +1,4 @@
+error: monomorphising SIMD type `Simd<0>` of zero length
+
+error: aborting due to previous error
+

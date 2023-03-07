@@ -1,0 +1,14 @@
+error[E0277]: can't compare `i32` with `Foo`
+  --> $DIR/self-referential-2.rs:6:13
+   |
+LL | fn bar() -> Bar {
+   |             ^^^ no implementation for `i32 == Foo`
+LL |     42_i32
+   |     ------ return type was inferred to be `i32` here
+   |
+   = help: the trait `PartialEq<Foo>` is not implemented for `i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

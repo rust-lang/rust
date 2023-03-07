@@ -1,0 +1,8 @@
+error: expected pattern, found `}`
+  --> $DIR/issue-31804.rs:6:1
+   |
+LL | }
+   | ^ expected pattern
+
+error: aborting due to previous error
+

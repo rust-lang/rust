@@ -1,0 +1,11 @@
+error[E0658]: the `#[needs_allocator]` attribute is an experimental feature
+  --> $DIR/feature-gate-needs-allocator.rs:1:1
+   |
+LL | #![needs_allocator]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(allocator_internals)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

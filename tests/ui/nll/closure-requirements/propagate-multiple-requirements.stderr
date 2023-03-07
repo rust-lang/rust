@@ -1,0 +1,17 @@
+error[E0597]: `local_arr` does not live long enough
+  --> $DIR/propagate-multiple-requirements.rs:15:14
+   |
+LL |     let mut out: &mut &'static [i32] = &mut (&[1] as _);
+   |                  ------------------- type annotation requires that `local_arr` is borrowed for `'static`
+LL |     once(|mut z: &[i32], mut out_val: &mut &[i32]| {
+   |          ----------------------------------------- value captured here
+...
+LL |         z = &local_arr;
+   |              ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `local_arr` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

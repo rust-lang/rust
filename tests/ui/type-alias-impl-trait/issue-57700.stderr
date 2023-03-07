@@ -1,0 +1,8 @@
+error: type parameter `impl Deref<Target = Self>` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-57700.rs:16:9
+   |
+LL |         self
+   |         ^^^^
+
+error: aborting due to previous error
+

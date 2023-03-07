@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: partially resolved path in a macro
+  --> $DIR/extern-macro.rs:5:13
+   |
+LL |     let _ = Foo::bar!();
+   |             ^^^^^^^^ partially resolved path in a macro
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
+  --> $DIR/issue-38821.rs:23:17
+   |
+LL | #[derive(Debug, Copy, Clone)]
+   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |
+note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
+  --> $DIR/issue-38821.rs:9:18
+   |
+LL | impl<T: NotNull> IntoNullable for T {
+   |         -------  ^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting the associated type
+   |
+LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
+   |                                                                       +++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

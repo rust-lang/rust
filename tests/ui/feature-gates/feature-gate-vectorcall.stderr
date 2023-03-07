@@ -1,0 +1,59 @@
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:12:8
+   |
+LL | extern "vectorcall" fn f() {}
+   |        ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:15:12
+   |
+LL |     extern "vectorcall" fn m();
+   |            ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:17:12
+   |
+LL |     extern "vectorcall" fn dm() {}
+   |            ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:22:12
+   |
+LL |     extern "vectorcall" fn m() {}
+   |            ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:26:12
+   |
+LL |     extern "vectorcall" fn im() {}
+   |            ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:29:18
+   |
+LL | type TA = extern "vectorcall" fn();
+   |                  ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error[E0658]: vectorcall is experimental and subject to change
+  --> $DIR/feature-gate-vectorcall.rs:31:8
+   |
+LL | extern "vectorcall" {}
+   |        ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

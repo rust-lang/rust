@@ -1,0 +1,3 @@
+fn other() -> &str {
+    "other"
+}

@@ -1,0 +1,12 @@
+error: associated lifetimes are not supported
+  --> $DIR/recover-assoc-lifetime-constraint.rs:3:11
+   |
+LL |     bar::<Item = 'a>();
+   |           ^^^^^^^--
+   |                  |
+   |                  the lifetime is given here
+   |
+   = help: if you meant to specify a trait object, write `dyn Trait + 'lifetime`
+
+error: aborting due to previous error
+

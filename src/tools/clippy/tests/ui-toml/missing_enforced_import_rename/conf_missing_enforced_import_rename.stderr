@@ -1,0 +1,40 @@
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:5:20
+   |
+LL | use std::process::{exit as wrong_exit, Child as Kid};
+   |                    ^^^^^^^^^^^^^^^^^^ help: try: `exit as goodbye`
+   |
+   = note: `-D clippy::missing-enforced-import-renames` implied by `-D warnings`
+
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:6:1
+   |
+LL | use std::thread::sleep;
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: try: `use std::thread::sleep as thread_sleep`
+
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:9:11
+   |
+LL |     any::{type_name, Any},
+   |           ^^^^^^^^^ help: try: `type_name as ident`
+
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:10:5
+   |
+LL |     clone,
+   |     ^^^^^ help: try: `clone as foo`
+
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:11:5
+   |
+LL |     sync :: Mutex,
+   |     ^^^^^^^^^^^^^ help: try: `sync :: Mutex as StdMutie`
+
+error: this import should be renamed
+  --> $DIR/conf_missing_enforced_import_rename.rs:15:5
+   |
+LL |     use std::collections::BTreeMap as OopsWrongRename;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `use std::collections::BTreeMap as Map`
+
+error: aborting due to 6 previous errors
+

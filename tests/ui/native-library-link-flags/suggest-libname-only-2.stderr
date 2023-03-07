@@ -1,0 +1,6 @@
+error: could not find native static library `bar.lib`, perhaps an -L flag is missing?
+   |
+   = help: only provide the library name `bar`, not the full filename
+
+error: aborting due to previous error
+

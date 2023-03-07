@@ -1,0 +1,24 @@
+error: expected type, found `0`
+  --> $DIR/type-ascription-instead-of-statement-end.rs:5:5
+   |
+LL |     println!("test"):
+   |                     - help: try using a semicolon: `;`
+LL |     0;
+   |     ^ expected type
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+
+error: expected type, found `0`
+  --> $DIR/type-ascription-instead-of-statement-end.rs:9:23
+   |
+LL |     println!("test"): 0;
+   |                     - ^ expected type
+   |                     |
+   |                     tried to parse a type due to this type ascription
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+
+error: aborting due to 2 previous errors
+

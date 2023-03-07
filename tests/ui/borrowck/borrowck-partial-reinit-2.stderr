@@ -1,0 +1,13 @@
+error[E0382]: assign of moved value: `t`
+  --> $DIR/borrowck-partial-reinit-2.rs:15:5
+   |
+LL |     let mut t = Test { a: 1, b: None};
+   |         ----- move occurs because `t` has type `Test`, which does not implement the `Copy` trait
+LL |     let mut u = Test { a: 2, b: Some(Box::new(t))};
+   |                                               - value moved here
+LL |     t.b = Some(Box::new(u));
+   |     ^^^ value assigned here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

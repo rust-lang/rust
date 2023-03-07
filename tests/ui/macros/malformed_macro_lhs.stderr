@@ -1,0 +1,8 @@
+error: invalid macro matcher; matchers must be contained in balanced delimiters
+  --> $DIR/malformed_macro_lhs.rs:2:5
+   |
+LL |     t => (1);
+   |     ^
+
+error: aborting due to previous error
+

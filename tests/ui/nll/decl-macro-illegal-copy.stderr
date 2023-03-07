@@ -1,0 +1,14 @@
+error[E0382]: use of moved value: `wrapper.inner`
+  --> $DIR/decl-macro-illegal-copy.rs:21:9
+   |
+LL |     $wrapper.inner
+   |     -------------- value moved here
+...
+LL |         wrapper.inner,
+   |         ^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `wrapper.inner` has type `NonCopy`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

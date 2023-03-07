@@ -1,0 +1,40 @@
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
+  --> $DIR/issue-87199.rs:8:8
+   |
+LL | fn arg<T: ?Send>(_: T) {}
+   |        ^
+
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
+  --> $DIR/issue-87199.rs:10:12
+   |
+LL | fn ref_arg<T: ?Send>(_: &T) {}
+   |            ^
+
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
+  --> $DIR/issue-87199.rs:12:13
+   |
+LL | fn ret() -> impl Iterator<Item = ()> + ?Send { std::iter::empty() }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/issue-87199.rs:18:22
+   |
+LL |     ref_arg::<[i32]>(&[5]);
+   |     ---------------- ^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+note: required by a bound in `ref_arg`
+  --> $DIR/issue-87199.rs:10:12
+   |
+LL | fn ref_arg<T: ?Send>(_: &T) {}
+   |            ^ required by this bound in `ref_arg`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn ref_arg<T: ?Send + ?Sized>(_: &T) {}
+   |                     ++++++++
+
+error: aborting due to previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

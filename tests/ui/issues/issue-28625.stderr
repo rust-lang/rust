@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/issue-28625.rs:12:14
+   |
+LL |     unsafe { std::mem::transmute(a) }
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `&ArrayPeano<T>` (N bits)
+   = note: target type: `&[T]` (N bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

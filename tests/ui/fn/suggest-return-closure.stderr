@@ -1,0 +1,36 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:1:17
+   |
+LL | fn fn_once() -> _ {
+   |                 ^
+   |                 |
+   |                 not allowed in type signatures
+   |                 help: replace with an appropriate return type: `impl FnOnce()`
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:13:16
+   |
+LL | fn fn_mut() -> _ {
+   |                ^
+   |                |
+   |                not allowed in type signatures
+   |                help: replace with an appropriate return type: `impl FnMut(char)`
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:25:13
+   |
+LL | fn fun() -> _ {
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             help: replace with an appropriate return type: `impl Fn() -> i32`
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

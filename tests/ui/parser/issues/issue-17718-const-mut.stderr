@@ -1,0 +1,10 @@
+error: const globals cannot be mutable
+  --> $DIR/issue-17718-const-mut.rs:2:1
+   |
+LL | const
+   | ----- help: you might want to declare a static instead: `static`
+LL | mut
+   | ^^^ cannot be mutable
+
+error: aborting due to previous error
+

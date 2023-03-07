@@ -1,0 +1,17 @@
+error[E0609]: no field `foo` on type `Foo`
+  --> $DIR/E0609.rs:8:15
+   |
+LL |     let _ = x.foo;
+   |               ^^^ unknown field
+   |
+   = note: available fields are: `x`
+
+error[E0609]: no field `1` on type `Bar`
+  --> $DIR/E0609.rs:11:7
+   |
+LL |     y.1;
+   |       ^ unknown field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

@@ -1,0 +1,9 @@
+error[E0565]: item in `deprecated` must be a key/value pair
+  --> $DIR/E0565-1.rs:2:14
+   |
+LL | #[deprecated("since")]
+   |              ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0565`.

@@ -1,0 +1,26 @@
+[package]
+name = "rustc_mir_build"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+rustc_arena = { path = "../rustc_arena" }
+tracing = "0.1"
+either = "1"
+rustc_middle = { path = "../rustc_middle" }
+rustc_apfloat = { path = "../rustc_apfloat" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_index = { path = "../rustc_index" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_ast = { path = "../rustc_ast" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

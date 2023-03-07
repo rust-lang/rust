@@ -1,0 +1,16 @@
+error[E0458]: unknown link kind `link-arg`, expected one of: static, dylib, framework, raw-dylib
+  --> $DIR/link-arg-from-rs.rs:6:15
+   |
+LL | #[link(kind = "link-arg")]
+   |               ^^^^^^^^^^ unknown link kind
+
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/link-arg-from-rs.rs:6:1
+   |
+LL | #[link(kind = "link-arg")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0458, E0459.
+For more information about an error, try `rustc --explain E0458`.

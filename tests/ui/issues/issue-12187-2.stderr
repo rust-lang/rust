@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `&T`
+  --> $DIR/issue-12187-2.rs:6:9
+   |
+LL |     let &v = new();
+   |         ^^
+   |
+help: consider giving this pattern a type, where the placeholders `_` are specified
+   |
+LL |     let &v: &T = new();
+   |           ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

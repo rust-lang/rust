@@ -1,0 +1,1 @@
+#![crate_name = "foo"]

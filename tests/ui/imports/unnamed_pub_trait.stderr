@@ -1,0 +1,20 @@
+error[E0599]: no method named `method` found for struct `S` in the current scope
+  --> $DIR/unnamed_pub_trait.rs:13:7
+   |
+LL |     S.method();
+   |       ^^^^^^ method not found in `S`
+   |
+  ::: $DIR/auxiliary/unnamed_pub_trait_source.rs:7:23
+   |
+LL |     pub trait Tr { fn method(&self); }
+   |                       ------ the method is available for `S` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use unnamed_pub_trait_source::prelude::*; // trait Tr
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

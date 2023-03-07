@@ -1,0 +1,61 @@
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:3:5
+   |
+LL |     [i32; 4]::clone(&a);
+   |     ^^^^^^^^^^^^^^^ help: try: `<[i32; 4]>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:6:5
+   |
+LL |     [i32]::as_ref(&a);
+   |     ^^^^^^^^^^^^^ help: try: `<[i32]>::as_ref`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:9:5
+   |
+LL |     (u8)::clone(&0);
+   |     ^^^^^^^^^^^ help: try: `<(u8)>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:12:5
+   |
+LL |     (u8, u8)::clone(&(0, 0));
+   |     ^^^^^^^^^^^^^^^ help: try: `<(u8, u8)>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:15:6
+   |
+LL |     &(u8)::clone(&0);
+   |      ^^^^^^^^^^^ help: try: `<(u8)>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:18:10
+   |
+LL |     10 + (u8)::clone(&0);
+   |          ^^^^^^^^^^^ help: try: `<(u8)>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:32:13
+   |
+LL |     let _ = ty!()::clone(&0);
+   |             ^^^^^^^^^^^^ help: try: `<ty!()>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:34:5
+   |
+LL |     ty!()::clone(&0);
+   |     ^^^^^^^^^^^^ help: try: `<ty!()>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:23:19
+   |
+LL |     ($ty: ty) => ($ty::clone(&0))
+   |                   ^^^^^^^^^^ help: try: `<$ty>::clone`
+...
+LL |     expr!(u8);
+   |     --------- in this macro invocation
+   |
+   = note: this error originates in the macro `expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
+

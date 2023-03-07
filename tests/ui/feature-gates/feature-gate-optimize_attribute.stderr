@@ -1,0 +1,55 @@
+error[E0658]: the `#[optimize]` attribute is an experimental feature
+  --> $DIR/feature-gate-optimize_attribute.rs:7:1
+   |
+LL | #[optimize(size)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+
+error[E0658]: the `#[optimize]` attribute is an experimental feature
+  --> $DIR/feature-gate-optimize_attribute.rs:10:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+
+error[E0658]: the `#[optimize]` attribute is an experimental feature
+  --> $DIR/feature-gate-optimize_attribute.rs:13:1
+   |
+LL | #[optimize(banana)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+
+error[E0658]: the `#[optimize]` attribute is an experimental feature
+  --> $DIR/feature-gate-optimize_attribute.rs:4:1
+   |
+LL | #[optimize(size)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+
+error[E0658]: the `#[optimize]` attribute is an experimental feature
+  --> $DIR/feature-gate-optimize_attribute.rs:2:1
+   |
+LL | #![optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+
+error[E0722]: invalid argument
+  --> $DIR/feature-gate-optimize_attribute.rs:13:12
+   |
+LL | #[optimize(banana)]
+   |            ^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0658, E0722.
+For more information about an error, try `rustc --explain E0658`.

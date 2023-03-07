@@ -1,0 +1,47 @@
+error[E0428]: the name `my_macro` is defined multiple times
+  --> $DIR/macro-namespace-reserved.rs:25:1
+   |
+LL | pub fn my_macro(input: TokenStream) -> TokenStream {
+   | -------------------------------------------------- previous definition of the macro `my_macro` here
+...
+LL | macro my_macro() {}
+   | ^^^^^^^^^^^^^^^^ `my_macro` redefined here
+   |
+   = note: `my_macro` must be defined only once in the macro namespace of this module
+
+error[E0428]: the name `my_macro_attr` is defined multiple times
+  --> $DIR/macro-namespace-reserved.rs:26:1
+   |
+LL | pub fn my_macro_attr(input: TokenStream, _: TokenStream) -> TokenStream {
+   | ----------------------------------------------------------------------- previous definition of the macro `my_macro_attr` here
+...
+LL | macro my_macro_attr() {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `my_macro_attr` redefined here
+   |
+   = note: `my_macro_attr` must be defined only once in the macro namespace of this module
+
+error[E0428]: the name `MyTrait` is defined multiple times
+  --> $DIR/macro-namespace-reserved.rs:27:1
+   |
+LL | #[proc_macro_derive(MyTrait)]
+   |                     ------- previous definition of the macro `MyTrait` here
+...
+LL | macro MyTrait() {}
+   | ^^^^^^^^^^^^^^^ `MyTrait` redefined here
+   |
+   = note: `MyTrait` must be defined only once in the macro namespace of this module
+
+error[E0428]: the name `SameName` is defined multiple times
+  --> $DIR/macro-namespace-reserved.rs:35:1
+   |
+LL | #[proc_macro_derive(SameName)]
+   |                     -------- previous definition of the macro `SameName` here
+...
+LL | pub fn SameName(input: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SameName` redefined here
+   |
+   = note: `SameName` must be defined only once in the macro namespace of this module
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

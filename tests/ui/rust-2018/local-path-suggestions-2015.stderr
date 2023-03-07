@@ -1,0 +1,12 @@
+error[E0432]: unresolved import `foobar`
+  --> $DIR/local-path-suggestions-2015.rs:24:5
+   |
+LL | use foobar::Baz;
+   |     ^^^^^^
+   |     |
+   |     unresolved import
+   |     help: a similar path exists: `aux_baz::foobar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

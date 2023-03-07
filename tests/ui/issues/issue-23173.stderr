@@ -1,0 +1,39 @@
+error[E0599]: no variant or associated item named `Homura` found for enum `Token` in the current scope
+  --> $DIR/issue-23173.rs:9:23
+   |
+LL | enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
+   | ---------- variant or associated item `Homura` not found for this enum
+...
+LL |     use_token(&Token::Homura);
+   |                       ^^^^^^ variant or associated item not found in `Token`
+
+error[E0599]: no function or associated item named `method` found for struct `Struct` in the current scope
+  --> $DIR/issue-23173.rs:10:13
+   |
+LL | struct Struct {
+   | ------------- function or associated item `method` not found for this struct
+...
+LL |     Struct::method();
+   |             ^^^^^^ function or associated item not found in `Struct`
+
+error[E0599]: no function or associated item named `method` found for struct `Struct` in the current scope
+  --> $DIR/issue-23173.rs:11:13
+   |
+LL | struct Struct {
+   | ------------- function or associated item `method` not found for this struct
+...
+LL |     Struct::method;
+   |             ^^^^^^ function or associated item not found in `Struct`
+
+error[E0599]: no associated item named `Assoc` found for struct `Struct` in the current scope
+  --> $DIR/issue-23173.rs:12:13
+   |
+LL | struct Struct {
+   | ------------- associated item `Assoc` not found for this struct
+...
+LL |     Struct::Assoc;
+   |             ^^^^^ associated item not found in `Struct`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

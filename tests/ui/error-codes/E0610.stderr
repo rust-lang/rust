@@ -1,0 +1,9 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/E0610.rs:3:15
+   |
+LL |     let _ = x.foo;
+   |               ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0610`.

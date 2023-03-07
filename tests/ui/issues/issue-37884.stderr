@@ -1,0 +1,22 @@
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-37884.rs:6:5
+   |
+LL |     fn next(&'a mut self) -> Option<Self::Item>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&mut RepeatMut<'a, T>) -> Option<_>`
+              found signature `fn(&'a mut RepeatMut<'a, T>) -> Option<_>`
+note: the anonymous lifetime as defined here...
+  --> $DIR/issue-37884.rs:6:5
+   |
+LL |     fn next(&'a mut self) -> Option<Self::Item>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/issue-37884.rs:3:6
+   |
+LL | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
+   |      ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

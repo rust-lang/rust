@@ -1,0 +1,111 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          BOX_PAT
+            BOX_KW "box"
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "i"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          BOX_PAT
+            BOX_KW "box"
+            WHITESPACE " "
+            RECORD_PAT
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Outer"
+              WHITESPACE " "
+              RECORD_PAT_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                RECORD_PAT_FIELD
+                  BOX_PAT
+                    BOX_KW "box"
+                    WHITESPACE " "
+                    IDENT_PAT
+                      NAME
+                        IDENT "i"
+                COMMA ","
+                WHITESPACE " "
+                RECORD_PAT_FIELD
+                  NAME_REF
+                    IDENT "j"
+                  COLON ":"
+                  WHITESPACE " "
+                  BOX_PAT
+                    BOX_KW "box"
+                    WHITESPACE " "
+                    TUPLE_STRUCT_PAT
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Inner"
+                      L_PAREN "("
+                      BOX_PAT
+                        BOX_KW "box"
+                        WHITESPACE " "
+                        REF_PAT
+                          AMP "&"
+                          IDENT_PAT
+                            NAME
+                              IDENT "x"
+                      R_PAREN ")"
+                WHITESPACE " "
+                R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          BOX_PAT
+            BOX_KW "box"
+            WHITESPACE " "
+            IDENT_PAT
+              REF_KW "ref"
+              WHITESPACE " "
+              MUT_KW "mut"
+              WHITESPACE " "
+              NAME
+                IDENT "i"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

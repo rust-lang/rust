@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/typeck.rs:9:22
+   |
+LL |         Ok(x) if let Err(_) = x => {},
+   |                      ^^^^^^   - this expression has type `Option<bool>`
+   |                      |
+   |                      expected `Option<bool>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<bool>`
+              found enum `Result<_, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck.rs:11:22
+   |
+LL |         Ok(x) if let 0 = x => {},
+   |                      ^   - this expression has type `Option<bool>`
+   |                      |
+   |                      expected `Option<bool>`, found integer
+   |
+   = note: expected enum `Option<bool>`
+              found type `{integer}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

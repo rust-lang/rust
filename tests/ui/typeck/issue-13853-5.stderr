@@ -1,0 +1,9 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-13853-5.rs:7:10
+   |
+LL | impl<'a, T: Deserializable> Deserializable for &'a str {
+   |          ^ unconstrained type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0207`.

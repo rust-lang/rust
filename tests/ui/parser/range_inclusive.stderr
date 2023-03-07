@@ -1,0 +1,11 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/range_inclusive.rs:5:15
+   |
+LL |     for _ in 1..= {}
+   |               ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0586`.

@@ -1,0 +1,8 @@
+error: `Foo` cannot be used in patterns
+  --> $DIR/structural-match.rs:15:9
+   |
+LL |         VALUE => (),
+   |         ^^^^^
+
+error: aborting due to previous error
+

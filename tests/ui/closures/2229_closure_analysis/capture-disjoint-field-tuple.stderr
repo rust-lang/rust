@@ -1,0 +1,48 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-disjoint-field-tuple.rs:8:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/capture-disjoint-field-tuple.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", t.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0)] -> ImmBorrow
+  --> $DIR/capture-disjoint-field-tuple.rs:14:24
+   |
+LL |         println!("{}", t.0);
+   |                        ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-disjoint-field-tuple.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", t.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ImmBorrow
+  --> $DIR/capture-disjoint-field-tuple.rs:14:24
+   |
+LL |         println!("{}", t.0);
+   |                        ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

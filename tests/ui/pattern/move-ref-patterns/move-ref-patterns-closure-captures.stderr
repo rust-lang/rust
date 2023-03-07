@@ -1,0 +1,63 @@
+error[E0525]: expected a closure that implements the `FnMut` trait, but this closure only implements `FnOnce`
+  --> $DIR/move-ref-patterns-closure-captures.rs:9:14
+   |
+LL |     let c1 = || {
+   |              ^^ this closure implements `FnOnce`, not `FnMut`
+...
+LL |         drop::<U>(_x1);
+   |                   --- closure is `FnOnce` because it moves the variable `_x1` out of its environment
+...
+LL |     accept_fn_mut(&c1);
+   |     ------------- --- the requirement to implement `FnMut` derives from here
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `accept_fn_mut`
+  --> $DIR/move-ref-patterns-closure-captures.rs:4:31
+   |
+LL |     fn accept_fn_mut(_: &impl FnMut()) {}
+   |                               ^^^^^^^ required by this bound in `accept_fn_mut`
+
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
+  --> $DIR/move-ref-patterns-closure-captures.rs:9:14
+   |
+LL |     let c1 = || {
+   |              ^^ this closure implements `FnOnce`, not `Fn`
+...
+LL |         drop::<U>(_x1);
+   |                   --- closure is `FnOnce` because it moves the variable `_x1` out of its environment
+...
+LL |     accept_fn(&c1);
+   |     --------- --- the requirement to implement `Fn` derives from here
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `accept_fn`
+  --> $DIR/move-ref-patterns-closure-captures.rs:5:27
+   |
+LL |     fn accept_fn(_: &impl Fn()) {}
+   |                           ^^^^ required by this bound in `accept_fn`
+
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/move-ref-patterns-closure-captures.rs:20:14
+   |
+LL |     let c2 = || {
+   |              ^^ this closure implements `FnMut`, not `Fn`
+...
+LL |         drop::<&mut U>(_x2);
+   |                        --- closure is `FnMut` because it mutates the variable `_x2` here
+...
+LL |     accept_fn(&c2);
+   |     --------- --- the requirement to implement `Fn` derives from here
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `accept_fn`
+  --> $DIR/move-ref-patterns-closure-captures.rs:5:27
+   |
+LL |     fn accept_fn(_: &impl Fn()) {}
+   |                           ^^^^ required by this bound in `accept_fn`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0525`.

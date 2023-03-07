@@ -1,0 +1,37 @@
+error[E0382]: use of moved value: `my_str`
+  --> $DIR/borrowck-drop-from-guard.rs:11:23
+   |
+LL |     let my_str = "hello".to_owned();
+   |         ------ move occurs because `my_str` has type `String`, which does not implement the `Copy` trait
+LL |     match Some(42) {
+LL |         Some(_) if { drop(my_str); false } => {}
+   |                           ------ value moved here
+LL |         Some(_) => {}
+LL |         None => { foo(my_str); }
+   |                       ^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if { drop(my_str.clone()); false } => {}
+   |                                 ++++++++
+
+error[E0382]: use of moved value: `my_str`
+  --> $DIR/borrowck-drop-from-guard.rs:18:23
+   |
+LL |     let my_str = "hello".to_owned();
+   |         ------ move occurs because `my_str` has type `String`, which does not implement the `Copy` trait
+LL |     match Some(42) {
+LL |         Some(_) if let Some(()) = { drop(my_str); None } => {}
+   |                                          ------ value moved here
+LL |         Some(_) => {}
+LL |         None => { foo(my_str); }
+   |                       ^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if let Some(()) = { drop(my_str.clone()); None } => {}
+   |                                                ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

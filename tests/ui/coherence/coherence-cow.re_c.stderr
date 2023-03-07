@@ -1,0 +1,14 @@
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/coherence-cow.rs:26:1
+   |
+LL | impl<T,U> Remote for Pair<Cover<T>,U> { }
+   | ^^^^^^^^^^^^^^^^^^^^^----------------
+   | |                    |
+   | |                    `Pair` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0117`.

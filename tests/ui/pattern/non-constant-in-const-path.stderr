@@ -1,0 +1,28 @@
+error[E0080]: runtime values cannot be referenced in patterns
+  --> $DIR/non-constant-in-const-path.rs:8:15
+   |
+LL |     let 0u8..=x = 0;
+   |               ^
+
+error[E0158]: statics cannot be referenced in patterns
+  --> $DIR/non-constant-in-const-path.rs:10:15
+   |
+LL |     let 0u8..=FOO = 0;
+   |               ^^^
+
+error[E0080]: runtime values cannot be referenced in patterns
+  --> $DIR/non-constant-in-const-path.rs:13:15
+   |
+LL |         0 ..= x => {}
+   |               ^
+
+error[E0158]: statics cannot be referenced in patterns
+  --> $DIR/non-constant-in-const-path.rs:15:15
+   |
+LL |         0 ..= FOO => {}
+   |               ^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0080, E0158.
+For more information about an error, try `rustc --explain E0080`.

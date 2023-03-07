@@ -1,0 +1,115 @@
+error: constant item has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:6:5
+   |
+LL |     const CONST: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:5:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+
+error: static item has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:8:5
+   |
+LL |     static STATIC: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:7:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: struct has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:10:5
+   |
+LL |     struct Struct;
+   |     ^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:9:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: enum has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:12:5
+   |
+LL |     enum Enum {}
+   |     ^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:11:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: module has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:14:5
+   |
+LL |     mod module {}
+   |     ^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:13:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: impl has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:33:13
+   |
+LL |             impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^
+...
+LL |     with_safety_comment!(i32);
+   |     ------------------------- in this macro invocation
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:32:13
+   |
+LL |             // Safety: unnecessary
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `with_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expression has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:48:5
+   |
+LL |     24
+   |     ^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:47:5
+   |
+LL |     // SAFETY: unnecessary
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: statement has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:42:5
+   |
+LL |     let num = 42;
+   |     ^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:41:5
+   |
+LL |     // SAFETY: unnecessary
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: statement has unnecessary safety comment
+  --> $DIR/unnecessary_safety_comment.rs:45:5
+   |
+LL |     if num > 24 {}
+   |     ^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/unnecessary_safety_comment.rs:44:5
+   |
+LL |     // SAFETY: unnecessary
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,21 @@
+error[E0773]: attempted to define built-in macro more than once
+  --> $DIR/duplicate-builtin.rs:13:5
+   |
+LL | /     pub macro test($item:item) {
+LL | |
+LL | |         /* compiler built-in */
+LL | |     }
+   | |_____^
+   |
+note: previously defined here
+  --> $DIR/duplicate-builtin.rs:6:1
+   |
+LL | / pub macro test($item:item) {
+LL | |
+LL | |     /* compiler built-in */
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0773`.

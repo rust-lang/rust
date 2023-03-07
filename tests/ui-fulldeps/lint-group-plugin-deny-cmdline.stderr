@@ -1,0 +1,26 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
+  --> $DIR/lint-group-plugin-deny-cmdline.rs:7:1
+   |
+LL | #![plugin(lint_group_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error: item is named 'lintme'
+  --> $DIR/lint-group-plugin-deny-cmdline.rs:10:1
+   |
+LL | fn lintme() { }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: `-D test-lint` implied by `-D lint-me`
+
+error: item is named 'pleaselintme'
+  --> $DIR/lint-group-plugin-deny-cmdline.rs:12:1
+   |
+LL | fn pleaselintme() { }
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D please-lint` implied by `-D lint-me`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

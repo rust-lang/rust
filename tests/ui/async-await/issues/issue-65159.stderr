@@ -1,0 +1,16 @@
+error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-65159.rs:5:20
+   |
+LL | async fn copy() -> Result<()>
+   |                    ^^^^^^ -- supplied 1 generic argument
+   |                    |
+   |                    expected 2 generic arguments
+   |
+help: add missing generic argument
+   |
+LL | async fn copy() -> Result<(), E>
+   |                             +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

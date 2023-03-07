@@ -1,0 +1,11 @@
+error[E0560]: struct `Simba` has no field named `father`
+  --> $DIR/E0560.rs:6:32
+   |
+LL |     let s = Simba { mother: 1, father: 0 };
+   |                                ^^^^^^ `Simba` does not have this field
+   |
+   = note: available fields are: `mother`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0560`.

@@ -1,0 +1,16 @@
+error[E0391]: cycle detected when const-evaluating + checking `Y::A::{constant#0}`
+  --> $DIR/issue-23302-2.rs:4:9
+   |
+LL |     A = Y::B as isize,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires const-evaluating + checking `Y::A::{constant#0}` again
+note: cycle used when simplifying constant for the type system `Y::A::{constant#0}`
+  --> $DIR/issue-23302-2.rs:4:9
+   |
+LL |     A = Y::B as isize,
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

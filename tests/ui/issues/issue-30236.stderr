@@ -1,0 +1,9 @@
+error[E0091]: type parameter `Unused` is unused
+  --> $DIR/issue-30236.rs:2:5
+   |
+LL |     Unused
+   |     ^^^^^^ unused type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0091`.

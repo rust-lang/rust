@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `f999` in this scope
+  --> $DIR/import-glob-0.rs:14:5
+   |
+LL |     f999();
+   |     ^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

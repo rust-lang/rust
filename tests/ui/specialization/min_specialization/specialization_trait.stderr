@@ -1,0 +1,20 @@
+error: cannot specialize on `'static` lifetime
+  --> $DIR/specialization_trait.rs:11:1
+   |
+LL | impl SpecMarker for &'static u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: specializing impl repeats parameter `T`
+  --> $DIR/specialization_trait.rs:16:1
+   |
+LL | impl<T> SpecMarker for (T, T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot specialize on trait `Clone`
+  --> $DIR/specialization_trait.rs:21:9
+   |
+LL | impl<T: Clone> SpecMarker for [T] {
+   |         ^^^^^
+
+error: aborting due to 3 previous errors
+

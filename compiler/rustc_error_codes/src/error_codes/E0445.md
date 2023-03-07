@@ -1,0 +1,33 @@
+A private trait was used on a public type parameter bound.
+
+Erroneous code examples:
+
+```compile_fail,E0445
+#![deny(private_in_public)]
+
+trait Foo {
+    fn dummy(&self) { }
+}
+
+pub trait Bar : Foo {} // error: private trait in public interface
+pub struct Bar2<T: Foo>(pub T); // same error
+pub fn foo<T: Foo> (t: T) {} // same error
+
+fn main() {}
+```
+
+To solve this error, please ensure that the trait is also public. The trait
+can be made inaccessible if necessary by placing it into a private inner
+module, but it still has to be marked with `pub`. Example:
+
+```
+pub trait Foo { // we set the Foo trait public
+    fn dummy(&self) { }
+}
+
+pub trait Bar : Foo {} // ok!
+pub struct Bar2<T: Foo>(pub T); // ok!
+pub fn foo<T: Foo> (t: T) {} // ok!
+
+fn main() {}
+```

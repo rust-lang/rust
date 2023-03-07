@@ -1,0 +1,23 @@
+error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-bad-nested-calls-free.rs:25:17
+   |
+LL |     add(
+   |     --- immutable borrow later used by call
+LL |         &*a,
+   |         --- immutable borrow occurs here
+LL |         rewrite(&mut a));
+   |                 ^^^^^^ mutable borrow occurs here
+
+error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-bad-nested-calls-free.rs:32:17
+   |
+LL |     add(
+   |     --- immutable borrow later used by call
+LL |         &*a,
+   |         --- immutable borrow occurs here
+LL |         rewrite(&mut a));
+   |                 ^^^^^^ mutable borrow occurs here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

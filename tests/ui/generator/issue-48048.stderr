@@ -1,0 +1,11 @@
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/issue-48048.rs:9:9
+   |
+LL |         x.0({
+   |         ^^^
+LL |             yield;
+   |             ----- possible yield occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0626`.

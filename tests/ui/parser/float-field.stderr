@@ -1,0 +1,349 @@
+error: expected at least one digit in exponent
+  --> $DIR/float-field.rs:10:9
+   |
+LL |     { s.1e+; }
+   |         ^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/float-field.rs:13:9
+   |
+LL |     { s.1e-; }
+   |         ^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/float-field.rs:25:7
+   |
+LL |     s.0x1.;
+   |       ^^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/float-field.rs:28:7
+   |
+LL |     s.0x1.1;
+   |       ^^^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/float-field.rs:30:7
+   |
+LL |     s.0x1.1e1;
+   |       ^^^^^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/float-field.rs:36:9
+   |
+LL |     { s.0x1.1e+1; }
+   |         ^^^^^^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/float-field.rs:39:9
+   |
+LL |     { s.0x1.1e-1; }
+   |         ^^^^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/float-field.rs:48:9
+   |
+LL |     { s.1e+f32; }
+   |         ^^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/float-field.rs:51:9
+   |
+LL |     { s.1e-f32; }
+   |         ^^^^^^
+
+error: unexpected token: `;`
+  --> $DIR/float-field.rs:7:9
+   |
+LL |     s.1.;
+   |         ^
+
+error: unexpected token: `1e+`
+  --> $DIR/float-field.rs:10:9
+   |
+LL |     { s.1e+; }
+   |         ^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+`
+  --> $DIR/float-field.rs:10:9
+   |
+LL |     { s.1e+; }
+   |         ^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e-`
+  --> $DIR/float-field.rs:13:9
+   |
+LL |     { s.1e-; }
+   |         ^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-`
+  --> $DIR/float-field.rs:13:9
+   |
+LL |     { s.1e-; }
+   |         ^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e+1`
+  --> $DIR/float-field.rs:16:9
+   |
+LL |     { s.1e+1; }
+   |         ^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+1`
+  --> $DIR/float-field.rs:16:9
+   |
+LL |     { s.1e+1; }
+   |         ^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e-1`
+  --> $DIR/float-field.rs:18:9
+   |
+LL |     { s.1e-1; }
+   |         ^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-1`
+  --> $DIR/float-field.rs:18:9
+   |
+LL |     { s.1e-1; }
+   |         ^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1.1e+1`
+  --> $DIR/float-field.rs:20:9
+   |
+LL |     { s.1.1e+1; }
+   |         ^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1e+1`
+  --> $DIR/float-field.rs:20:9
+   |
+LL |     { s.1.1e+1; }
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1.1e-1`
+  --> $DIR/float-field.rs:22:9
+   |
+LL |     { s.1.1e-1; }
+   |         ^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1e-1`
+  --> $DIR/float-field.rs:22:9
+   |
+LL |     { s.1.1e-1; }
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `;`
+  --> $DIR/float-field.rs:25:11
+   |
+LL |     s.0x1.;
+   |           ^
+
+error: expected expression, found `;`
+  --> $DIR/float-field.rs:32:14
+   |
+LL |     { s.0x1e+; }
+   |              ^ expected expression
+
+error: expected expression, found `;`
+  --> $DIR/float-field.rs:33:14
+   |
+LL |     { s.0x1e-; }
+   |              ^ expected expression
+
+error: unexpected token: `0x1.1e+1`
+  --> $DIR/float-field.rs:36:9
+   |
+LL |     { s.0x1.1e+1; }
+   |         ^^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1e+1`
+  --> $DIR/float-field.rs:36:9
+   |
+LL |     { s.0x1.1e+1; }
+   |         ^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `0x1.1e-1`
+  --> $DIR/float-field.rs:39:9
+   |
+LL |     { s.0x1.1e-1; }
+   |         ^^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1e-1`
+  --> $DIR/float-field.rs:39:9
+   |
+LL |     { s.0x1.1e-1; }
+   |         ^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/float-field.rs:42:7
+   |
+LL |     s.1e1f32;
+   |       ^^^^^^ invalid suffix `f32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/float-field.rs:45:7
+   |
+LL |     s.1.1f32;
+   |       ^^^^^^ invalid suffix `f32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/float-field.rs:46:7
+   |
+LL |     s.1.1e1f32;
+   |       ^^^^^^^^ invalid suffix `f32`
+
+error: unexpected token: `1e+f32`
+  --> $DIR/float-field.rs:48:9
+   |
+LL |     { s.1e+f32; }
+   |         ^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+f32`
+  --> $DIR/float-field.rs:48:9
+   |
+LL |     { s.1e+f32; }
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e-f32`
+  --> $DIR/float-field.rs:51:9
+   |
+LL |     { s.1e-f32; }
+   |         ^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-f32`
+  --> $DIR/float-field.rs:51:9
+   |
+LL |     { s.1e-f32; }
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e+1f32`
+  --> $DIR/float-field.rs:54:9
+   |
+LL |     { s.1e+1f32; }
+   |         ^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+1f32`
+  --> $DIR/float-field.rs:54:9
+   |
+LL |     { s.1e+1f32; }
+   |         ^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1e-1f32`
+  --> $DIR/float-field.rs:56:9
+   |
+LL |     { s.1e-1f32; }
+   |         ^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-1f32`
+  --> $DIR/float-field.rs:56:9
+   |
+LL |     { s.1e-1f32; }
+   |         ^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1.1e+1f32`
+  --> $DIR/float-field.rs:58:9
+   |
+LL |     { s.1.1e+1f32; }
+   |         ^^^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1e+1f32`
+  --> $DIR/float-field.rs:58:9
+   |
+LL |     { s.1.1e+1f32; }
+   |         ^^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: unexpected token: `1.1e-1f32`
+  --> $DIR/float-field.rs:60:9
+   |
+LL |     { s.1.1e-1f32; }
+   |         ^^^^^^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1e-1f32`
+  --> $DIR/float-field.rs:60:9
+   |
+LL |     { s.1.1e-1f32; }
+   |         ^^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error[E0609]: no field `1e1` on type `S`
+  --> $DIR/float-field.rs:6:7
+   |
+LL |     s.1e1;
+   |       ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `1e1` on type `(u8, u8)`
+  --> $DIR/float-field.rs:9:9
+   |
+LL |     s.1.1e1;
+   |         ^^^
+
+error[E0609]: no field `0x1e1` on type `S`
+  --> $DIR/float-field.rs:24:7
+   |
+LL |     s.0x1e1;
+   |       ^^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0x1` on type `S`
+  --> $DIR/float-field.rs:25:7
+   |
+LL |     s.0x1.;
+   |       ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0x1` on type `S`
+  --> $DIR/float-field.rs:28:7
+   |
+LL |     s.0x1.1;
+   |       ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0x1` on type `S`
+  --> $DIR/float-field.rs:30:7
+   |
+LL |     s.0x1.1e1;
+   |       ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0x1e` on type `S`
+  --> $DIR/float-field.rs:34:7
+   |
+LL |     s.0x1e+1;
+   |       ^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0x1e` on type `S`
+  --> $DIR/float-field.rs:35:7
+   |
+LL |     s.0x1e-1;
+   |       ^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `1e1` on type `S`
+  --> $DIR/float-field.rs:42:7
+   |
+LL |     s.1e1f32;
+   |       ^^^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `f32` on type `(u8, u8)`
+  --> $DIR/float-field.rs:44:9
+   |
+LL |     s.1.f32;
+   |         ^^^
+
+error[E0609]: no field `1e1` on type `(u8, u8)`
+  --> $DIR/float-field.rs:46:7
+   |
+LL |     s.1.1e1f32;
+   |       ^^^^^^^^
+
+error: aborting due to 55 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

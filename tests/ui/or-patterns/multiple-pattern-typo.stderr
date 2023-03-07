@@ -1,0 +1,56 @@
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:7:15
+   |
+LL |         1 | 2 || 3 => (),
+   |         -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:12:16
+   |
+LL |         (1 | 2 || 3) => (),
+   |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |          |
+   |          while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:17:16
+   |
+LL |         (1 | 2 || 3,) => (),
+   |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |          |
+   |          while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:24:18
+   |
+LL |         TS(1 | 2 || 3) => (),
+   |            -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |            |
+   |            while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:31:23
+   |
+LL |         NS { f: 1 | 2 || 3 } => (),
+   |                 -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |                 |
+   |                 while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:36:16
+   |
+LL |         [1 | 2 || 3] => (),
+   |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |          |
+   |          while parsing this or-pattern starting here
+
+error: unexpected token `||` in pattern
+  --> $DIR/multiple-pattern-typo.rs:41:9
+   |
+LL |         || 1 | 2 | 3 => (),
+   |         ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: aborting due to 7 previous errors
+

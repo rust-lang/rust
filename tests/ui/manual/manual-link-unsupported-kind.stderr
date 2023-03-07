@@ -1,0 +1,2 @@
+error: unknown library kind `raw-dylib`, expected one of: static, dylib, framework, link-arg
+

@@ -1,168 +1,57 @@
 # rustbuild - Bootstrapping Rust
 
 This is an in-progress README which is targeted at helping to explain how Rust
-is bootstrapped and in general some of the technical details of the build
+is bootstrapped and in general, some of the technical details of the build
 system.
 
-> **Note**: This build system is currently under active development and is not
-> intended to be the primarily used one just yet. The makefiles are currently
-> the ones that are still "guaranteed to work" as much as possible at least.
+Note that this README only covers internal information, not how to use the tool.
+Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further information.
 
-## Using rustbuild
+[bootstrapping-dev-guide]: https://rustc-dev-guide.rust-lang.org/building/bootstrapping.html
 
-The rustbuild build system has a primary entry point, a top level `x.py` script:
+## Introduction
 
-```
-python ./x.py build
-```
+The build system defers most of the complicated logic managing invocations
+of rustc and rustdoc to Cargo itself. However, moving through various stages
+and copying artifacts is still necessary for it to do. Each time rustbuild
+is invoked, it will iterate through the list of predefined steps and execute
+each serially in turn if it matches the paths passed or is a default rule.
+For each step rustbuild relies on the step internally being incremental and
+parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
+to appropriate test harnesses and such.
 
-Note that if you're on Unix you should be able to execute the script directly:
-
-```
-./x.py build
-```
-
-The script accepts commands, flags, and arguments to determine what to do:
-
-* `build` - a general purpose command for compiling code. Alone `build` will
-  bootstrap the entire compiler, and otherwise arguments passed indicate what to
-  build. For example:
-
-  ```
-  # build the whole compiler
-  ./x.py build
-
-  # build the stage1 compiler
-  ./x.py build --stage 1
-
-  # build stage0 libstd
-  ./x.py build --stage 0 src/libstd
-
-  # build a particular crate in stage0
-  ./x.py build --stage 0 src/libtest
-  ```
-
-  If files are dirty that would normally be rebuilt from stage 0, that can be
-  overidden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
-  that belong to stage n or earlier:
-
-  ```
-  # keep old build products for stage 0 and build stage 1
-  ./x.py build --keep-stage 0 --stage 1
-  ```
-
-* `test` - a command for executing unit tests. Like the `build` command this
-  will execute the entire test suite by default, and otherwise it can be used to
-  select which test suite is run:
-
-  ```
-  # run all unit tests
-  ./x.py test
-
-  # execute the run-pass test suite
-  ./x.py test src/test/run-pass
-
-  # execute only some tests in the run-pass test suite
-  ./x.py test src/test/run-pass --test-args substring-of-test-name
-
-  # execute tests in the standard library in stage0
-  ./x.py test --stage 0 src/libstd
-
-  # execute all doc tests
-  ./x.py test src/doc
-  ```
-
-* `doc` - a command for building documentation. Like above can take arguments
-  for what to document.
-
-## Configuring rustbuild
-
-There are currently two primary methods for configuring the rustbuild build
-system. First, the `./configure` options serialized in `config.mk` will be
-parsed and read. That is, if any `./configure` options are passed, they'll be
-handled naturally.
-
-Next, rustbuild offers a TOML-based configuration system with a `config.toml`
-file in the same location as `config.mk`. An example of this configuration can
-be found at `src/bootstrap/config.toml.example`, and the configuration file
-can also be passed as `--config path/to/config.toml` if the build system is
-being invoked manually (via the python script).
-
-Finally, rustbuild makes use of the [gcc-rs crate] which has [its own
-method][env-vars] of configuring C compilers and C flags via environment
-variables.
-
-[gcc-rs crate]: https://github.com/alexcrichton/gcc-rs
-[env-vars]: https://github.com/alexcrichton/gcc-rs#external-configuration-via-environment-variables
-
-## Build stages
+## Build phases
 
 The rustbuild build system goes through a few phases to actually build the
 compiler. What actually happens when you invoke rustbuild is:
 
-1. The entry point script, `x.py` is run. This script is
-   responsible for downloading the stage0 compiler/Cargo binaries, and it then
-   compiles the build system itself (this folder). Finally, it then invokes the
-   actual `bootstrap` binary build system.
+1. The entry point script(`x` for unix like systems, `x.ps1` for windows systems,
+   `x.py` cross-platform) is run. This script is responsible for downloading the stage0
+   compiler/Cargo binaries, and it then compiles the build system itself (this folder).
+   Finally, it then invokes the actual `bootstrap` binary build system.
 2. In Rust, `bootstrap` will slurp up all configuration, perform a number of
-   sanity checks (compilers exist for example), and then start building the
+   sanity checks (whether compilers exist, for example), and then start building the
    stage0 artifacts.
-3. The stage0 `cargo` downloaded earlier is used to build the standard library
+3. The stage0 `cargo`, downloaded earlier, is used to build the standard library
    and the compiler, and then these binaries are then copied to the `stage1`
    directory. That compiler is then used to generate the stage1 artifacts which
-   are then copied to the stage2 directory, and then finally the stage2
+   are then copied to the stage2 directory, and then finally, the stage2
    artifacts are generated using that compiler.
 
 The goal of each stage is to (a) leverage Cargo as much as possible and failing
 that (b) leverage Rust as much as possible!
-
-## Incremental builds
-
-You can configure rustbuild to use incremental compilation. Because
-incremental is new and evolving rapidly, if you want to use it, it is
-recommended that you replace the snapshot with a locally installed
-nightly build of rustc. You will want to keep this up to date.
-
-To follow this course of action, first thing you will want to do is to
-install a nightly, presumably using `rustup`. You will then want to
-configure your directory to use this build, like so:
-
-```
-# configure to use local rust instead of downloding a beta.
-# `--local-rust-root` is optional here. If elided, we will
-# use whatever rustc we find on your PATH.
-> configure --enable-rustbuild --local-rust-root=~/.cargo/ --enable-local-rebuild
-```
-
-After that, you can use the `--incremental` flag to actually do
-incremental builds:
-
-```
-> ../x.py build --incremental
-```
-
-The `--incremental` flag will store incremental compilation artifacts
-in `build/<host>/stage0-incremental`. Note that we only use incremental
-compilation for the stage0 -> stage1 compilation -- this is because
-the stage1 compiler is changing, and we don't try to cache and reuse
-incremental artifacts across different versions of the compiler. For
-this reason, `--incremental` defaults to `--stage 1` (though you can
-manually select a higher stage, if you prefer).
-
-You can always drop the `--incremental` to build as normal (but you
-will still be using the local nightly as your bootstrap).
 
 ## Directory Layout
 
 This build system houses all output under the `build` directory, which looks
 like this:
 
-```
+```sh
 # Root folder of all output. Everything is scoped underneath here
 build/
 
   # Location where the stage0 compiler downloads are all cached. This directory
-  # only contains the tarballs themselves as they're extracted elsewhere.
+  # only contains the tarballs themselves, as they're extracted elsewhere.
   cache/
     2015-12-19/
     2016-01-15/
@@ -185,10 +74,10 @@ build/
   # hand.
   x86_64-unknown-linux-gnu/
 
-    # The build artifacts for the `compiler-rt` library for the target this
-    # folder is under. The exact layout here will likely depend on the platform,
-    # and this is also built with CMake so the build system is also likely
-    # different.
+    # The build artifacts for the `compiler-rt` library for the target that
+    # this folder is under. The exact layout here will likely depend on the
+    # platform, and this is also built with CMake, so the build system is
+    # also likely different.
     compiler-rt/
       build/
 
@@ -196,11 +85,11 @@ build/
     llvm/
 
       # build folder (e.g. the platform-specific build system). Like with
-      # compiler-rt this is compiled with CMake
+      # compiler-rt, this is compiled with CMake
       build/
 
       # Installation of LLVM. Note that we run the equivalent of 'make install'
-      # for LLVM to setup these folders.
+      # for LLVM, to setup these folders.
       bin/
       lib/
       include/
@@ -213,25 +102,24 @@ build/
 
     # Output for all compiletest-based test suites
     test/
-      run-pass/
-      compile-fail/
+      ui/
       debuginfo/
       ...
 
     # Location where the stage0 Cargo and Rust compiler are unpacked. This
     # directory is purely an extracted and overlaid tarball of these two (done
-    # by the bootstrapy python script). In theory the build system does not
+    # by the bootstrap python script). In theory, the build system does not
     # modify anything under this directory afterwards.
     stage0/
 
-    # These to build directories are the cargo output directories for builds of
-    # the standard library and compiler, respectively. Internally these may also
+    # These to-build directories are the cargo output directories for builds of
+    # the standard library and compiler, respectively. Internally, these may also
     # have other target directories, which represent artifacts being compiled
     # from the host to the specified target.
     #
     # Essentially, each of these directories is filled in by one `cargo`
     # invocation. The build system instruments calling Cargo in the right order
-    # with the right variables to ensure these are filled in correctly.
+    # with the right variables to ensure that these are filled in correctly.
     stageN-std/
     stageN-test/
     stageN-rustc/
@@ -246,8 +134,8 @@ build/
     # being compiled (e.g. after libstd has been built), *this* is used as the
     # sysroot for the stage0 compiler being run.
     #
-    # Basically this directory is just a temporary artifact use to configure the
-    # stage0 compiler to ensure that the libstd we just built is used to
+    # Basically, this directory is just a temporary artifact used to configure the
+    # stage0 compiler to ensure that the libstd that we just built is used to
     # compile the stage1 compiler.
     stage0-sysroot/lib/
 
@@ -256,75 +144,61 @@ build/
     # system will link (using hard links) output from stageN-{std,rustc} into
     # each of these directories.
     #
-    # In theory there is no extra build output in these directories.
+    # In theory these are working rustc sysroot directories, meaning there is
+    # no extra build output in these directories.
     stage1/
     stage2/
     stage3/
 ```
 
-## Cargo projects
-
-The current build is unfortunately not quite as simple as `cargo build` in a
-directory, but rather the compiler is split into three different Cargo projects:
-
-* `src/rustc/std_shim` - a project which builds and compiles libstd
-* `src/rustc/test_shim` - a project which builds and compiles libtest
-* `src/rustc` - the actual compiler itself
-
-Each "project" has a corresponding Cargo.lock file with all dependencies, and
-this means that building the compiler involves running Cargo three times. The
-structure here serves two goals:
-
-1. Facilitating dependencies coming from crates.io. These dependencies don't
-   depend on `std`, so libstd is a separate project compiled ahead of time
-   before the actual compiler builds.
-2. Splitting "host artifacts" from "target artifacts". That is, when building
-   code for an arbitrary target you don't need the entire compiler, but you'll
-   end up needing libraries like libtest that depend on std but also want to use
-   crates.io dependencies. Hence, libtest is split out as its own project that
-   is sequenced after `std` but before `rustc`. This project is built for all
-   targets.
-
-There is some loss in build parallelism here because libtest can be compiled in
-parallel with a number of rustc artifacts, but in theory the loss isn't too bad!
-
-## Build tools
-
-We've actually got quite a few tools that we use in the compiler's build system
-and for testing. To organize these, each tool is a project in `src/tools` with a
-corresponding `Cargo.toml`. All tools are compiled with Cargo (currently having
-independent `Cargo.lock` files) and do not currently explicitly depend on the
-compiler or standard library. Compiling each tool is sequenced after the
-appropriate libstd/libtest/librustc compile above.
-
 ## Extending rustbuild
 
-So you'd like to add a feature to the rustbuild build system or just fix a bug.
-Great! One of the major motivational factors for moving away from `make` is that
-Rust is in theory much easier to read, modify, and write. If you find anything
-excessively confusing, please open an issue on this and we'll try to get it
-documented or simplified pronto.
+When you use the bootstrap system, you'll call it through the entry point script
+(`x`, `x.ps1`, or `x.py`). However, most of the code lives in `src/bootstrap`.
+`bootstrap` has a difficult problem: it is written in Rust, but yet it is run
+before the Rust compiler is built! To work around this, there are two components
+of bootstrap: the main one written in rust, and `bootstrap.py`. `bootstrap.py`
+is what gets run by entry point script. It takes care of downloading the `stage0`
+compiler, which will then build the bootstrap binary written in Rust.
 
-First up, you'll probably want to read over the documentation above as that'll
-give you a high level overview of what rustbuild is doing. You also probably
-want to play around a bit yourself by just getting it up and running before you
-dive too much into the actual build system itself.
+Because there are two separate codebases behind `x.py`, they need to
+be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
+parse `config.toml` and read the same command line arguments. `bootstrap.py`
+keeps these in sync by setting various environment variables, and the
+programs sometimes have to add arguments that are explicitly ignored, to be
+read by the other.
 
-After that, each module in rustbuild should have enough documentation to keep
-you up and running. Some general areas that you may be interested in modifying
-are:
+Some general areas that you may be interested in modifying are:
 
-* Adding a new build tool? Take a look at `bootstrap/step.rs` for examples of
+* Adding a new build tool? Take a look at `bootstrap/tool.rs` for examples of
   other tools.
 * Adding a new compiler crate? Look no further! Adding crates can be done by
   adding a new directory with `Cargo.toml` followed by configuring all
   `Cargo.toml` files accordingly.
-* Adding a new dependency from crates.io? We're still working on that, so hold
-  off on that for now.
-* Adding a new configuration option? Take a look at `bootstrap/config.rs` or
-  perhaps `bootstrap/flags.rs` and then modify the build elsewhere to read that
-  option.
+* Adding a new dependency from crates.io? This should just work inside the
+  compiler artifacts stage (everything other than libtest and libstd).
+* Adding a new configuration option? You'll want to modify `bootstrap/flags.rs`
+  for command line flags and then `bootstrap/config.rs` to copy the flags to the
+  `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
-If you have any questions feel free to reach out on `#rust-internals` on IRC or
-open an issue in the bug tracker!
+If you make a major change, please remember to:
+
++ Update `VERSION` in `src/bootstrap/main.rs`.
+* Update `changelog-seen = N` in `config.toml.example`.
+* Add an entry in `src/bootstrap/CHANGELOG.md`.
+
+A 'major change' includes
+
+* A new option or
+* A change in the default options.
+
+Changes that do not affect contributors to the compiler or users
+building rustc from source don't need an update to `VERSION`.
+
+If you have any questions, feel free to reach out on the `#t-infra/bootstrap` channel
+at [Rust Bootstrap Zulip server][rust-bootstrap-zulip]. When you encounter bugs,
+please file issues on the [Rust issue tracker][rust-issue-tracker].
+
+[rust-bootstrap-zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-infra.2Fbootstrap
+[rust-issue-tracker]: https://github.com/rust-lang/rust/issues

@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: `Vec` is a struct, not a module
+  --> $DIR/macro-path-prelude-fail-1.rs:3:9
+   |
+LL |         Vec::clone!();
+   |         ^^^ `Vec` is a struct, not a module
+
+error[E0433]: failed to resolve: `u8` is a builtin type, not a module
+  --> $DIR/macro-path-prelude-fail-1.rs:4:9
+   |
+LL |         u8::clone!();
+   |         ^^ `u8` is a builtin type, not a module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

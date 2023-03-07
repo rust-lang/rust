@@ -1,0 +1,8 @@
+error: malformed `track_caller` attribute input
+  --> $DIR/error-odd-syntax.rs:1:1
+   |
+LL | #[track_caller(1)]
+   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[track_caller]`
+
+error: aborting due to previous error
+

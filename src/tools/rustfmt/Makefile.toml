@@ -1,0 +1,71 @@
+[env]
+CFG_RELEASE = { value = "${CARGO_MAKE_RUST_VERSION}", condition = { env_not_set = ["CFG_RELEASE"] } }
+CFG_RELEASE_CHANNEL = { value = "${CARGO_MAKE_RUST_CHANNEL}", condition = { env_not_set = ["CFG_RELEASE_CHANNEL"] } }
+
+[tasks.build-bin]
+command = "cargo"
+args = [
+  "build",
+  "--bin",
+  "rustfmt",
+  "--bin",
+  "cargo-fmt",
+]
+
+[tasks.build-bins]
+command = "cargo"
+args = [
+  "build",
+  "--bins",
+]
+
+[tasks.install]
+command = "cargo"
+args = [
+  "install",
+  "--path",
+  ".",
+  "--force",
+  "--locked", # Respect Cargo.lock
+]
+
+[tasks.release]
+command = "cargo"
+args = [
+  "build",
+	"--release",
+]
+
+[tasks.test]
+command = "cargo"
+args = [
+  "test",
+]
+
+[tasks.test-all]
+dependencies = ["build-bin"]
+run_task = { name = ["test", "test-ignored"] }
+
+[tasks.test-ignored]
+command = "cargo"
+args = [
+  "test",
+	"--",
+	"--ignored",
+]
+
+[tasks.b]
+alias = "build"
+
+[tasks.bb]
+alias = "build-bin"
+
+[tasks.bins]
+alias = "build-bins"
+
+[tasks.c]
+alias = "check"
+
+[tasks.t]
+alias = "test"
+

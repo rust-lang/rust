@@ -1,0 +1,46 @@
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:42:12
+   |
+LL |         if borrowed.to_owned() == owned {}
+   |            ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:43:21
+   |
+LL |         if owned == borrowed.to_owned() {}
+   |            ---------^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            help: try: `borrowed == owned`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:61:21
+   |
+LL |         if owned == borrowed.to_owned() {}
+   |                     ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:62:12
+   |
+LL |         if borrowed.to_owned() == owned {}
+   |            ^^^^^^^^^^^^^^^^^^^---------
+   |            |
+   |            help: try: `owned == borrowed`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:88:20
+   |
+LL |         if "Hi" == borrowed.to_string() {}
+   |            --------^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            help: try: `borrowed == "Hi"`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/asymmetric_partial_eq.rs:89:12
+   |
+LL |         if borrowed.to_string() == "Hi" {}
+   |            ^^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
+
+error: aborting due to 6 previous errors
+

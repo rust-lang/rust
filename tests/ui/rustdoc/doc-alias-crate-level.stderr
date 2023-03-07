@@ -1,0 +1,14 @@
+error: '\'' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/doc-alias-crate-level.rs:7:15
+   |
+LL | #[doc(alias = "shouldn't work!")]
+   |               ^^^^^^^^^^^^^^^^^
+
+error: `#![doc(alias = "...")]` isn't allowed as a crate-level attribute
+  --> $DIR/doc-alias-crate-level.rs:5:8
+   |
+LL | #![doc(alias = "not working!")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

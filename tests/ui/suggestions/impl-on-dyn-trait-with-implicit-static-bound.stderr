@@ -1,0 +1,105 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:21:9
+   |
+LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
+   |               --     --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self::<T>()
+   |         ^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:15:32
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> {
+   |                                ^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self<K>(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> + '_ {
+   |                                               ++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:70:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:65:14
+   |
+LL |     impl dyn ObjectTrait {
+   |              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl dyn ObjectTrait + '_ {
+   |                          ++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:90:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:87:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:110:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         MyTrait::use_self(val)
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:106:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0521`.

@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'unstable_default'
+  --> $DIR/generics-default-stability-where.rs:7:45
+   |
+LL | impl<T> Trait3<usize> for T where T: Trait2<usize> {
+   |                                             ^^^^^
+   |
+   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

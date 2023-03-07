@@ -1,0 +1,12 @@
+error[E0658]: trait aliases are experimental
+  --> $DIR/feature-gate-trait-alias.rs:1:1
+   |
+LL | trait Foo = Default;
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #41517 <https://github.com/rust-lang/rust/issues/41517> for more information
+   = help: add `#![feature(trait_alias)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

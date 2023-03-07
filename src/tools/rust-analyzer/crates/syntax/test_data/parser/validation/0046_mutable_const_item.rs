@@ -1,0 +1,1 @@
+const mut FOO: () = ();

@@ -1,0 +1,12 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-12796.rs:3:22
+   |
+LL |         fn inner(_: &Self) {
+   |                      ^^^^
+   |                      |
+   |                      use of generic parameter from outer function
+   |                      can't use `Self` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0401`.

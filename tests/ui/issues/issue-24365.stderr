@@ -1,0 +1,21 @@
+error[E0609]: no field `b` on type `Foo`
+  --> $DIR/issue-24365.rs:10:22
+   |
+LL |     println!("{}", a.b);
+   |                      ^
+
+error[E0609]: no field `attr_name_idx` on type `&Attribute`
+  --> $DIR/issue-24365.rs:17:18
+   |
+LL |     let z = (&x).attr_name_idx;
+   |                  ^^^^^^^^^^^^^
+
+error[E0609]: no field `attr_name_idx` on type `Attribute`
+  --> $DIR/issue-24365.rs:18:15
+   |
+LL |     let y = x.attr_name_idx;
+   |               ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

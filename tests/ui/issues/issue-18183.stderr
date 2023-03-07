@@ -1,0 +1,9 @@
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/issue-18183.rs:1:20
+   |
+LL | pub struct Foo<Bar=Bar>(Bar);
+   |                    ^^^ defaulted generic parameters cannot be forward declared
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0128`.

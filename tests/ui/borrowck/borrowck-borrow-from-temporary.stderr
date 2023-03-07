@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/borrowck-borrow-from-temporary.rs:10:5
+   |
+LL |     let &Foo(ref x) = &id(Foo(3));
+   |                        ---------- temporary value created here
+LL |     x
+   |     ^ returns a value referencing data owned by the current function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0515`.

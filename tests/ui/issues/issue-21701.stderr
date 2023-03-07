@@ -1,0 +1,30 @@
+error[E0618]: expected function, found `U`
+  --> $DIR/issue-21701.rs:2:13
+   |
+LL | fn foo<U>(t: U) {
+   |           - `t` has type `U`
+LL |     let y = t();
+   |             ^--
+   |             |
+   |             call expression requires function
+
+error[E0618]: expected function, found struct `Bar`
+  --> $DIR/issue-21701.rs:9:13
+   |
+LL | struct Bar;
+   | ---------- struct `Bar` defined here
+...
+LL |     let f = Bar();
+   |             ^^^--
+   |             |
+   |             call expression requires function
+   |
+help: `Bar` is a unit struct, and does not take parentheses to be constructed
+   |
+LL -     let f = Bar();
+LL +     let f = Bar;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0618`.

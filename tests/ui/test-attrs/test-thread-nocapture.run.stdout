@@ -1,0 +1,20 @@
+
+running 2 tests
+test thready_fail ... fee
+fie
+foe
+fum
+FAILED
+test thready_pass ... fee
+fie
+foe
+fum
+ok
+
+failures:
+
+failures:
+    thready_fail
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

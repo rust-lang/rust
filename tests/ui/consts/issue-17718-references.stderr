@@ -1,0 +1,27 @@
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-references.rs:9:29
+   |
+LL | const T2: &'static usize = &S;
+   |                             ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-references.rs:14:19
+   |
+LL | const T6: usize = S;
+   |                   ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/issue-17718-references.rs:19:33
+   |
+LL | const T10: Struct = Struct { a: S };
+   |                                 ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0013`.

@@ -1,0 +1,9 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-expr-path.rs:14:26
+   |
+LL |     let x: isize = Foo::<A=usize>::bar();
+   |                          ^^^^^^^ associated type not allowed here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0229`.

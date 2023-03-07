@@ -1,0 +1,78 @@
+name: Clippy Test
+
+on:
+  push:
+    # Ignore bors branches, since they are covered by `clippy_bors.yml`
+    branches-ignore:
+      - auto
+      - try
+    # Don't run Clippy tests, when only text files were modified
+    paths-ignore:
+    - 'COPYRIGHT'
+    - 'LICENSE-*'
+    - '**.md'
+    - '**.txt'
+  pull_request:
+    # Don't run Clippy tests, when only text files were modified
+    paths-ignore:
+    - 'COPYRIGHT'
+    - 'LICENSE-*'
+    - '**.md'
+    - '**.txt'
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TARGET_DIR: '${{ github.workspace }}/target'
+  NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
+
+jobs:
+  base:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_bors.yml
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: Checkout
+      uses: actions/checkout@v3.0.2
+
+    - name: Install toolchain
+      run: rustup show active-toolchain
+
+    # Run
+    - name: Set LD_LIBRARY_PATH (Linux)
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
+
+    - name: Build
+      run: cargo build --features deny-warnings,internal
+
+    - name: Test
+      run: cargo test --features deny-warnings,internal
+
+    - name: Test clippy_lints
+      run: cargo test --features deny-warnings,internal
+      working-directory: clippy_lints
+
+    - name: Test clippy_utils
+      run: cargo test --features deny-warnings,internal
+      working-directory: clippy_utils
+
+    - name: Test rustc_tools_util
+      run: cargo test --features deny-warnings
+      working-directory: rustc_tools_util
+
+    - name: Test clippy_dev
+      run: cargo test --features deny-warnings
+      working-directory: clippy_dev
+
+    - name: Test clippy-driver
+      run: bash .github/driver.sh
+      env:
+        OS: ${{ runner.os }}

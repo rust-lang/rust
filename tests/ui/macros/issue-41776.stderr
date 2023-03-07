@@ -1,0 +1,8 @@
+error: argument must be a string literal
+  --> $DIR/issue-41776.rs:2:14
+   |
+LL |     include!(line!());
+   |              ^^^^^^^
+
+error: aborting due to previous error
+

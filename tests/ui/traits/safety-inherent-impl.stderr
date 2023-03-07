@@ -1,0 +1,11 @@
+error[E0197]: inherent impls cannot be unsafe
+  --> $DIR/safety-inherent-impl.rs:5:13
+   |
+LL | unsafe impl SomeStruct {
+   | ------      ^^^^^^^^^^ inherent impl for this type
+   | |
+   | unsafe because of this
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0197`.

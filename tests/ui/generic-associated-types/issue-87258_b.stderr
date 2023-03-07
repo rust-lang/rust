@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/issue-87258_b.rs:16:49
+   |
+LL | type Helper<'xenon, 'yttrium, KABOOM: Trait2> = impl Trait1;
+   |                                                 ^^^^^^^^^^^
+   |
+   = note: `Helper` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

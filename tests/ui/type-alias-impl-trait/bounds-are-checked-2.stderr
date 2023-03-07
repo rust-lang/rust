@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Clone` is not satisfied
+  --> $DIR/bounds-are-checked-2.rs:9:5
+   |
+LL |     t
+   |     ^ the trait `Clone` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | type X<T: std::clone::Clone> = impl Clone;
+   |         +++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

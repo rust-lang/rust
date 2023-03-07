@@ -1,0 +1,48 @@
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:7:17
+   |
+LL | type Ma = (u32, !, i32);
+   |                 ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:8:20
+   |
+LL | type Meeshka = Vec<!>;
+   |                    ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:9:24
+   |
+LL | type Mow = &'static fn(!) -> !;
+   |                        ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:10:27
+   |
+LL | type Skwoz = &'static mut !;
+   |                           ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:13:16
+   |
+LL |     type Wub = !;
+   |                ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

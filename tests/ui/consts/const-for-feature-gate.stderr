@@ -1,0 +1,12 @@
+error[E0658]: `for` is not allowed in a `const`
+  --> $DIR/const-for-feature-gate.rs:4:5
+   |
+LL |     for _ in 0..5 {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
+   = help: add `#![feature(const_for)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

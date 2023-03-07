@@ -1,0 +1,9 @@
+error[E0648]: `export_name` may not contain null characters
+  --> $DIR/E0648.rs:1:1
+   |
+LL | #[export_name="\0foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0648`.

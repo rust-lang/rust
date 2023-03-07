@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:2:35
+   |
+LL |     let _: std::num::NonZeroU64 = 1;
+   |            --------------------   ^ expected `NonZeroU64`, found integer
+   |            |
+   |            expected due to this
+   |
+help: consider calling `NonZeroU64::new`
+   |
+LL |     let _: std::num::NonZeroU64 = NonZeroU64::new(1).unwrap();
+   |                                   ++++++++++++++++ ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:6:43
+   |
+LL |     let _: Option<std::num::NonZeroU64> = 1;
+   |            ----------------------------   ^ expected `Option<NonZeroU64>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<NonZeroU64>`
+              found type `{integer}`
+help: consider calling `NonZeroU64::new`
+   |
+LL |     let _: Option<std::num::NonZeroU64> = NonZeroU64::new(1);
+   |                                           ++++++++++++++++ +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

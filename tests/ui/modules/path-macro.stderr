@@ -1,0 +1,8 @@
+error: malformed `path` attribute input
+  --> $DIR/path-macro.rs:5:1
+   |
+LL | #[path = foo!()]
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[path = "file"]`
+
+error: aborting due to previous error
+

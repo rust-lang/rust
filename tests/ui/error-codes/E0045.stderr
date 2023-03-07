@@ -1,0 +1,9 @@
+error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
+  --> $DIR/E0045.rs:1:17
+   |
+LL | extern "Rust" { fn foo(x: u8, ...); }
+   |                 ^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0045`.

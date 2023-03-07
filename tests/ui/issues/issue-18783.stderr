@@ -1,0 +1,33 @@
+error[E0499]: cannot borrow `y` as mutable more than once at a time
+  --> $DIR/issue-18783.rs:7:21
+   |
+LL |     c.push(Box::new(|| y = 0));
+   |                     -- - first borrow occurs due to use of `y` in closure
+   |                     |
+   |                     first mutable borrow occurs here
+LL |     c.push(Box::new(|| y = 0));
+   |                     ^^ - second borrow occurs due to use of `y` in closure
+   |                     |
+   |                     second mutable borrow occurs here
+LL |
+LL | }
+   | - first borrow might be used here, when `c` is dropped and runs the destructor for type `RefCell<Vec<Box<dyn FnMut()>>>`
+
+error[E0499]: cannot borrow `y` as mutable more than once at a time
+  --> $DIR/issue-18783.rs:16:29
+   |
+LL |     Push::push(&c, Box::new(|| y = 0));
+   |                             -- - first borrow occurs due to use of `y` in closure
+   |                             |
+   |                             first mutable borrow occurs here
+LL |     Push::push(&c, Box::new(|| y = 0));
+   |                             ^^ - second borrow occurs due to use of `y` in closure
+   |                             |
+   |                             second mutable borrow occurs here
+LL |
+LL | }
+   | - first borrow might be used here, when `c` is dropped and runs the destructor for type `RefCell<Vec<Box<dyn FnMut()>>>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

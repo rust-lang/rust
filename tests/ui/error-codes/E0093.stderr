@@ -1,0 +1,9 @@
+error[E0093]: unrecognized intrinsic function: `foo`
+  --> $DIR/E0093.rs:3:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^ unrecognized intrinsic
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0093`.

@@ -1,0 +1,8 @@
+error: `~const` and `?` are mutually exclusive
+  --> $DIR/tilde-const-invalid-places.rs:4:25
+   |
+LL | struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);
+   |                         ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

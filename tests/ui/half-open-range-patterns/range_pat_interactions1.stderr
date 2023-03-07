@@ -1,0 +1,36 @@
+error: expected one of `=>`, `if`, or `|`, found `+`
+  --> $DIR/range_pat_interactions1.rs:19:17
+   |
+LL |             0..5+1 => errors_only.push(x),
+   |                 ^ expected one of `=>`, `if`, or `|`
+
+error[E0408]: variable `n` is not bound in all patterns
+  --> $DIR/range_pat_interactions1.rs:10:25
+   |
+LL |         if let n @ 2..3|4 = x {
+   |                -        ^ pattern doesn't bind `n`
+   |                |
+   |                variable not in all patterns
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions1.rs:10:20
+   |
+LL |         if let n @ 2..3|4 = x {
+   |                    ^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions1.rs:14:23
+   |
+LL |         } else if let 2..3 | 4 = x {
+   |                       ^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0408, E0658.
+For more information about an error, try `rustc --explain E0408`.
