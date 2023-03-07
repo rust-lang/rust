@@ -16,7 +16,7 @@ rm Cargo.lock test_target/Cargo.lock 2>/dev/null || true
 rm -r sysroot/ 2>/dev/null || true
 
 # Build libs
-export RUSTFLAGS="$RUSTFLAGS -Z force-unstable-if-unmarked -Cpanic=abort"
+export RUSTFLAGS="$RUSTFLAGS -Z force-unstable-if-unmarked"
 if [[ "$1" == "--release" ]]; then
     sysroot_channel='release'
     RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=3" cargo build --target $TARGET_TRIPLE --release
