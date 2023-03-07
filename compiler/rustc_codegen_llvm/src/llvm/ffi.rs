@@ -641,9 +641,6 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern "C" {
-    pub type PassManagerBuilder;
-}
-extern "C" {
     pub type Pass;
 }
 extern "C" {
