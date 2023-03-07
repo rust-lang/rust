@@ -43,30 +43,11 @@ impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     }
 }
 
-fn universe_of_universal_region(region: ty::Region<'_>) -> ty::UniverseIndex {
-    match *region {
-        ty::ReStatic | ty::ReFree(..) | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
-        ty::RePlaceholder(placeholder) => placeholder.universe,
-        _ => bug!("universe(): encountered region {:?}", region),
-    }
-}
-
-pub struct UniverseError;
-
 impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
-    type Error = UniverseError;
+    type Error = NoError;
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        let universe = value1.universe.min(value2.universe);
-        if [value1.value, value2.value]
-            .into_iter()
-            .flatten()
-            .any(|val| universe.cannot_name(universe_of_universal_region(val)))
-        {
-            Err(UniverseError)
-        } else {
-            Ok(Self { value: [value1.value, value2.value].into_iter().flatten().next(), universe })
-        }
+        Ok(cmp::min_by_key(*value1, *value2, |val| (val.universe, val.value.is_none())))
     }
 }
 

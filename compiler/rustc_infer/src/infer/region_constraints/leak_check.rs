@@ -98,13 +98,13 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 }
 
-struct LeakCheck<'me, 'tcx> {
+struct LeakCheck<'me, 'rcc, 'tcx> {
     tcx: TyCtxt<'tcx>,
     universe_at_start_of_snapshot: ty::UniverseIndex,
     /// Only used when reporting region errors.
     overly_polymorphic: bool,
     mini_graph: &'me MiniGraph<'tcx>,
-    rcc: &'me RegionConstraintCollector<'me, 'tcx>,
+    rcc: &'me mut RegionConstraintCollector<'rcc, 'tcx>,
 
     // Initially, for each SCC S, stores a placeholder `P` such that `S = P`
     // must hold.
@@ -127,14 +127,14 @@ struct LeakCheck<'me, 'tcx> {
     scc_universes: IndexVec<LeakCheckScc, SccUniverse<'tcx>>,
 }
 
-impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
+impl<'me, 'rcc, 'tcx> LeakCheck<'me, 'rcc, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         universe_at_start_of_snapshot: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
         overly_polymorphic: bool,
         mini_graph: &'me MiniGraph<'tcx>,
-        rcc: &'me RegionConstraintCollector<'me, 'tcx>,
+        rcc: &'me mut RegionConstraintCollector<'rcc, 'tcx>,
     ) -> Self {
         let dummy_scc_universe = SccUniverse { universe: max_universe, region: None };
         Self {

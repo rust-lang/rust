@@ -2,9 +2,6 @@
 //
 // In particular, we test this pattern in trait solving, where it is not connected
 // to any part of the source code.
-//
-// check-pass
-// Oops!
 
 use std::cell::Cell;
 
@@ -28,5 +25,5 @@ fn main() {
     //     yielding `fn(&!b u32)`, in a fresh universe U1
     //   - So we get `?a = !b` but the universe U0 assigned to `?a` cannot name `!b`.
 
-    foo::<()>();
+    foo::<()>(); //~ ERROR implementation of `Trait` is not general enough
 }

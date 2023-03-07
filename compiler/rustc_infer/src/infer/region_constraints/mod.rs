@@ -13,7 +13,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::vec::IndexVec;
-use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion, UniverseError};
+use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReLateBound, ReVar};
@@ -460,14 +460,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Returns the universe for the given variable.
-    pub(super) fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
-        // WARN UB ahead!
-        unsafe {
-            (&mut *(self as *const Self as *mut Self))
-                .unification_table_mut()
-                .probe_value(vid)
-                .universe
-        }
+    pub(super) fn var_universe(&mut self, vid: RegionVid) -> ty::UniverseIndex {
+        self.unification_table_mut().probe_value(vid).universe
     }
 
     /// Returns the origin for the given variable.
@@ -527,20 +521,15 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             match (sub, sup) {
                 (Region(Interned(ReVar(sub), _)), Region(Interned(ReVar(sup), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
-                    self.unification_table_mut()
-                        .unify_var_var(*sub, *sup)
-                        .unwrap_or_else(|UniverseError| {});
+                    self.unification_table_mut().union(*sub, *sup);
                     self.any_unifications = true;
                 }
                 (Region(Interned(ReVar(vid), _)), value)
                 | (value, Region(Interned(ReVar(vid), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table_mut()
-                        .unify_var_value(
-                            *vid,
-                            UnifiedRegion { universe: ty::UniverseIndex::MAX, value: Some(value) },
-                        )
-                        .unwrap_or_else(|UniverseError| {});
+                    let value =
+                        UnifiedRegion { universe: self.universe(value), value: Some(value) };
+                    self.unification_table_mut().union_value(*vid, value);
                     self.any_unifications = true;
                 }
                 (_, _) => {}
@@ -699,7 +688,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         new_r
     }
 
-    pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+    pub fn universe(&mut self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
             ty::ReStatic
             | ty::ReErased
