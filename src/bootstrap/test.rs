@@ -2052,7 +2052,7 @@ impl Step for CrateLibrustc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("rustc-main")
+        run.crates_or_deps(&["rustc-main"])
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2094,7 +2094,7 @@ impl Step for Crate {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("test")
+        run.crates_or_deps(&["test", "proc_macro"])
     }
 
     fn make_run(run: RunConfig<'_>) {

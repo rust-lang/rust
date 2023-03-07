@@ -5491,7 +5491,6 @@ dependencies = [
  "getopts",
  "panic_abort",
  "panic_unwind",
- "proc_macro",
  "std",
 ]
 

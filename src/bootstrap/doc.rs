@@ -438,7 +438,9 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.all_krates("test").path("library").default_condition(builder.config.docs)
+        run.all_krates(&["test", "proc_macro"])
+            .path("library")
+            .default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -635,7 +637,7 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.crate_or_deps("rustc-main")
+        run.crates_or_deps(&["rustc-main"])
             .path("compiler")
             .default_condition(builder.config.compiler_docs)
     }
@@ -721,7 +723,7 @@ impl Step for Rustc {
         };
         // Find dependencies for top level crates.
         let compiler_crates = root_crates.iter().flat_map(|krate| {
-            builder.in_tree_crates(krate, Some(target)).into_iter().map(|krate| krate.name)
+            builder.in_tree_crates(&[krate], Some(target)).into_iter().map(|krate| krate.name)
         });
 
         let mut to_open = None;
@@ -759,7 +761,7 @@ macro_rules! tool_doc {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.crate_or_deps($should_run).default_condition(builder.config.compiler_docs)
+                run.crates_or_deps(&[$should_run]).default_condition(builder.config.compiler_docs)
             }
 
             fn make_run(run: RunConfig<'_>) {

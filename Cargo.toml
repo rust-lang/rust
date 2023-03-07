@@ -3,6 +3,7 @@ members = [
   "compiler/rustc",
   "library/std",
   "library/test",
+  "library/proc_macro",
   "src/rustdoc-json-types",
   "src/tools/build_helper",
   "src/tools/cargotest",

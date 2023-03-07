@@ -422,8 +422,8 @@ impl<'a> ShouldRun<'a> {
         }
     }
 
-    /// Indicates it should run if the command-line selects the given crate or
-    /// any of its (local) dependencies.
+    /// Indicates it should run if the command-line selects the given crates or
+    /// any of their (local) dependencies.
     ///
     /// Compared to `krate`, this treats the dependencies as aliases for the
     /// same job. Generally it is preferred to use `krate`, and treat each
@@ -431,9 +431,9 @@ impl<'a> ShouldRun<'a> {
     /// (which uses `krate`) will test just `liballoc`. However, `./x.py check
     /// src/liballoc` (which uses `all_krates`) will check all of `libtest`.
     /// `all_krates` should probably be removed at some point.
-    pub fn all_krates(mut self, name: &str) -> Self {
+    pub fn all_krates(mut self, names: &[&str]) -> Self {
         let mut set = BTreeSet::new();
-        for krate in self.builder.in_tree_crates(name, None) {
+        for krate in self.builder.in_tree_crates(names, None) {
             let path = krate.local_path(self.builder);
             set.insert(TaskPath { path, kind: Some(self.kind) });
         }
@@ -445,8 +445,8 @@ impl<'a> ShouldRun<'a> {
     /// any of its (local) dependencies.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
-    pub fn crate_or_deps(self, name: &str) -> Self {
-        let crates = self.builder.in_tree_crates(name, None);
+    pub fn crates_or_deps(self, names: &[&str]) -> Self {
+        let crates = self.builder.in_tree_crates(names, None);
         self.crates(crates)
     }
 

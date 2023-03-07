@@ -79,7 +79,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test").path("library")
+        run.all_krates(&["test", "proc_macro"]).path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -163,7 +163,7 @@ impl Step for Std {
         // Explicitly pass -p for all dependencies krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        for krate in builder.in_tree_crates("test", Some(target)) {
+        for krate in builder.in_tree_crates(&["test", "proc_macro"], Some(target)) {
             cargo.arg("-p").arg(krate.name);
         }
 
@@ -202,7 +202,7 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("rustc-main").path("compiler")
+        run.all_krates(&["rustc-main"]).path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -248,7 +248,7 @@ impl Step for Rustc {
         // Explicitly pass -p for all compiler krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        for krate in builder.in_tree_crates("rustc-main", Some(target)) {
+        for krate in builder.in_tree_crates(&["rustc-main"], Some(target)) {
             cargo.arg("-p").arg(krate.name);
         }
 

@@ -1316,12 +1316,12 @@ impl Build {
         }
     }
 
-    /// Returns a Vec of all the dependencies of the given root crate,
-    /// including transitive dependencies and the root itself. Only includes
+    /// Returns a Vec of all the dependencies of the given root crates,
+    /// including transitive dependencies and the roots itself. Only includes
     /// "local" crates (those in the local source tree, not from a registry).
-    fn in_tree_crates(&self, root: &str, target: Option<TargetSelection>) -> Vec<&Crate> {
+    fn in_tree_crates(&self, roots: &[&str], target: Option<TargetSelection>) -> Vec<&Crate> {
         let mut ret = Vec::new();
-        let mut list = vec![INTERNER.intern_str(root)];
+        let mut list: Vec<_> = roots.iter().map(|root| INTERNER.intern_str(*root)).collect();
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = self

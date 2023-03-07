@@ -36,7 +36,7 @@ impl Step for CleanAll {
 }
 
 macro_rules! clean_crate_tree {
-    ( $( $name:ident, $mode:path, $root_crate:literal);+ $(;)? ) => { $(
+    ( $( $name:ident, $mode:path, $root_crates:expr);+ $(;)? ) => { $(
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub struct $name {
             compiler: Compiler,
@@ -47,7 +47,7 @@ macro_rules! clean_crate_tree {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let crates = run.builder.in_tree_crates($root_crate, None);
+                let crates = run.builder.in_tree_crates(&$root_crates, None);
                 run.crates(crates)
             }
 
@@ -80,8 +80,8 @@ macro_rules! clean_crate_tree {
 }
 
 clean_crate_tree! {
-    Rustc, Mode::Rustc, "rustc-main";
-    Std, Mode::Std, "test";
+    Rustc, Mode::Rustc, ["rustc-main"];
+    Std, Mode::Std, ["test", "proc_macro"];
 }
 
 fn clean_default(build: &Build, all: bool) {

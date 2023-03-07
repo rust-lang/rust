@@ -55,7 +55,7 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let builder = run.builder;
-        run.crate_or_deps("test")
+        run.crates_or_deps(&["test", "proc_macro"])
             .path("library")
             .lazy_default_condition(Box::new(|| !builder.download_rustc()))
     }
@@ -364,10 +364,13 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         features.push_str(compiler_builtins_c_feature);
 
         cargo
+            .args(&["-p", "proc_macro"])
+            .args(&["-p", "std"])
+            .args(&["-p", "test"])
             .arg("--features")
             .arg(features)
             .arg("--manifest-path")
-            .arg(builder.src.join("library/test/Cargo.toml"));
+            .arg(builder.src.join("Cargo.toml"));
 
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
@@ -614,7 +617,7 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let mut crates = run.builder.in_tree_crates("rustc-main", None);
+        let mut crates = run.builder.in_tree_crates(&["rustc-main"], None);
         for (i, krate) in crates.iter().enumerate() {
             if krate.name == "rustc-main" {
                 crates.swap_remove(i);
