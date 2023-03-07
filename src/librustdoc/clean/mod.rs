@@ -2065,23 +2065,81 @@ fn clean_bare_fn_ty<'tcx>(
     BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
-/// This visitor is used to go through only the "top level" of a item and not enter any sub
-/// item while looking for a given `Ident` which is stored into `item` if found.
-struct OneLevelVisitor<'hir> {
+/// Get DefId of of an item's user-visible parent.
+///
+/// "User-visible" should account for re-exporting and inlining, which is why this function isn't
+/// just `tcx.parent(def_id)`. If the provided `path` has more than one path element, the `DefId`
+/// of the second-to-last will be given.
+///
+/// ```text
+/// use crate::foo::Bar;
+///            ^^^ DefId of this item will be returned
+/// ```
+///
+/// If the provided path has only one item, `tcx.parent(def_id)` will be returned instead.
+fn get_path_parent_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    path: &hir::UsePath<'_>,
+) -> Option<DefId> {
+    if let [.., parent_segment, _] = &path.segments {
+        match parent_segment.res {
+            hir::def::Res::Def(_, parent_def_id) => Some(parent_def_id),
+            _ if parent_segment.ident.name == kw::Crate => {
+                // In case the "parent" is the crate, it'll give `Res::Err` so we need to
+                // circumvent it this way.
+                Some(tcx.parent(def_id))
+            }
+            _ => None,
+        }
+    } else {
+        // If the path doesn't have a parent, then the parent is the current module.
+        Some(tcx.parent(def_id))
+    }
+}
+
+/// This visitor is used to find an HIR Item based on its `use` path. This doesn't use the ordinary
+/// name resolver because it does not walk all the way through a chain of re-exports.
+pub(crate) struct OneLevelVisitor<'hir> {
     map: rustc_middle::hir::map::Map<'hir>,
-    item: Option<&'hir hir::Item<'hir>>,
+    pub(crate) item: Option<&'hir hir::Item<'hir>>,
     looking_for: Ident,
     target_def_id: LocalDefId,
 }
 
 impl<'hir> OneLevelVisitor<'hir> {
-    fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
+    pub(crate) fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
         Self { map, item: None, looking_for: Ident::empty(), target_def_id }
     }
 
-    fn reset(&mut self, looking_for: Ident) {
-        self.looking_for = looking_for;
+    pub(crate) fn find_target(
+        &mut self,
+        tcx: TyCtxt<'_>,
+        def_id: DefId,
+        path: &hir::UsePath<'_>,
+    ) -> Option<&'hir hir::Item<'hir>> {
+        let parent_def_id = get_path_parent_def_id(tcx, def_id, path)?;
+        let parent = self.map.get_if_local(parent_def_id)?;
+
+        // We get the `Ident` we will be looking for into `item`.
+        self.looking_for = path.segments[path.segments.len() - 1].ident;
+        // We reset the `item`.
         self.item = None;
+
+        match parent {
+            hir::Node::Item(parent_item) => {
+                hir::intravisit::walk_item(self, parent_item);
+            }
+            hir::Node::Crate(m) => {
+                hir::intravisit::walk_mod(
+                    self,
+                    m,
+                    tcx.local_def_id_to_hir_id(parent_def_id.as_local().unwrap()),
+                );
+            }
+            _ => return None,
+        }
+        self.item
     }
 }
 
@@ -2129,41 +2187,7 @@ fn get_all_import_attributes<'hir>(
             add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
         }
 
-        let def_id = if let [.., parent_segment, _] = &path.segments {
-            match parent_segment.res {
-                hir::def::Res::Def(_, def_id) => def_id,
-                _ if parent_segment.ident.name == kw::Crate => {
-                    // In case the "parent" is the crate, it'll give `Res::Err` so we need to
-                    // circumvent it this way.
-                    tcx.parent(item.owner_id.def_id.to_def_id())
-                }
-                _ => break,
-            }
-        } else {
-            // If the path doesn't have a parent, then the parent is the current module.
-            tcx.parent(item.owner_id.def_id.to_def_id())
-        };
-
-        let Some(parent) = hir_map.get_if_local(def_id) else { break };
-
-        // We get the `Ident` we will be looking for into `item`.
-        let looking_for = path.segments[path.segments.len() - 1].ident;
-        visitor.reset(looking_for);
-
-        match parent {
-            hir::Node::Item(parent_item) => {
-                hir::intravisit::walk_item(&mut visitor, parent_item);
-            }
-            hir::Node::Crate(m) => {
-                hir::intravisit::walk_mod(
-                    &mut visitor,
-                    m,
-                    tcx.local_def_id_to_hir_id(def_id.as_local().unwrap()),
-                );
-            }
-            _ => break,
-        }
-        if let Some(i) = visitor.item {
+        if let Some(i) = visitor.find_target(tcx, item.owner_id.def_id.to_def_id(), path) {
             item = i;
         } else {
             break;

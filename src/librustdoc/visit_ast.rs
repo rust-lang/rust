@@ -15,7 +15,7 @@ use rustc_span::Span;
 
 use std::mem;
 
-use crate::clean::{cfg::Cfg, AttributesExt, NestedAttributesExt};
+use crate::clean::{cfg::Cfg, AttributesExt, NestedAttributesExt, OneLevelVisitor};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -220,6 +220,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         renamed: Option<Symbol>,
         glob: bool,
         please_inline: bool,
+        path: &hir::UsePath<'_>,
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
 
@@ -260,6 +261,22 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         if !self.view_item_stack.insert(res_did) {
+            return false;
+        }
+
+        if !please_inline &&
+            let mut visitor = OneLevelVisitor::new(self.cx.tcx.hir(), res_did) &&
+            let Some(item) = visitor.find_target(self.cx.tcx, def_id.to_def_id(), path) &&
+            let item_def_id = item.owner_id.def_id &&
+            item_def_id != def_id &&
+            self
+                .cx
+                .cache
+                .effective_visibilities
+                .is_directly_public(self.cx.tcx, item_def_id.to_def_id()) &&
+            !inherits_doc_hidden(self.cx.tcx, item_def_id)
+        {
+            // The imported item is public and not `doc(hidden)` so no need to inline it.
             return false;
         }
 
@@ -361,6 +378,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             ident,
                             is_glob,
                             please_inline,
+                            path,
                         ) {
                             continue;
                         }
