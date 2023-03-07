@@ -71,7 +71,7 @@ pub fn report_suspicious_mismatch_block(
         .collect();
 
     // sort by `lo`, so the large block spans in the front
-    matched_spans.sort_by(|a, b| a.0.lo().cmp(&b.0.lo()));
+    matched_spans.sort_by_key(|(span, _)| span.lo());
 
     // We use larger block whose identation is well to cover those inner mismatched blocks
     // O(N^2) here, but we are on error reporting path, so it is fine
