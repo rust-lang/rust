@@ -1,6 +1,7 @@
 //! MIR lowering for places
 
 use super::*;
+use hir_expand::name;
 
 macro_rules! not_supported {
     ($x: expr) => {

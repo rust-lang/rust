@@ -15,7 +15,7 @@ use hir_def::{
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, EnumVariantId, HasModule,
 };
-use hir_expand::name;
+use hir_expand::name::Name;
 use la_arena::ArenaMap;
 
 use crate::{
@@ -1453,6 +1453,16 @@ fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
 }
 
 pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
+    let _p = profile::span("mir_body_query").detail(|| match def {
+        DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
+        DefWithBodyId::StaticId(it) => db.static_data(it).name.clone().to_string(),
+        DefWithBodyId::ConstId(it) => {
+            db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
+        }
+        DefWithBodyId::VariantId(it) => {
+            db.enum_data(it.parent).variants[it.local_id].name.to_string()
+        }
+    });
     let body = db.body(def);
     let infer = db.infer(def);
     let result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;

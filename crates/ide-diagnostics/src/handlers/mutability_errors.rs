@@ -22,8 +22,8 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
         }
         let edit = edit_builder.finish();
         Some(vec![fix(
-            "remove_mut",
-            "Remove unnecessary `mut`",
+            "add_mut",
+            "Change it to be mutable",
             SourceChange::from_text_edit(file_id, edit),
             use_range,
         )])
@@ -66,7 +66,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
     Diagnostic::new(
         "unused-mut",
-        "remove this `mut`",
+        "variable does not need to be mutable",
         ctx.sema.diagnostics_display_range(ast).range,
     )
     .severity(Severity::WeakWarning)
@@ -89,7 +89,7 @@ mod tests {
 fn f(_: i32) {}
 fn main() {
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     f(x);
 }
 "#,
@@ -264,7 +264,7 @@ fn main() {
 fn f(_: i32) {}
 fn main() {
     let mut x = (2, 7);
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     f(x.1);
 }
 "#,
@@ -298,7 +298,7 @@ fn main() {
             r#"
 fn main() {
     let mut x = &mut 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     *x = 5;
 }
 "#,
@@ -343,7 +343,7 @@ fn main() {
 fn main() {
     match (2, 3) {
         (x, mut y) => {
-          //^^^^^ 💡 weak: remove this `mut`
+          //^^^^^ 💡 weak: variable does not need to be mutable
             x = 7;
           //^^^^^ 💡 error: cannot mutate immutable variable `x`
         }
@@ -364,7 +364,7 @@ fn main() {
 fn main() {
     return;
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -374,7 +374,7 @@ fn main() {
 fn main() {
     loop {}
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -395,7 +395,7 @@ fn main(b: bool) {
         g();
     }
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -409,7 +409,7 @@ fn main(b: bool) {
         return;
     }
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -423,7 +423,7 @@ fn main(b: bool) {
 fn f(_: i32) {}
 fn main() {
     let mut x;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     x = 5;
     f(x);
 }
@@ -434,7 +434,7 @@ fn main() {
 fn f(_: i32) {}
 fn main(b: bool) {
     let mut x;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     if b {
         x = 1;
     } else {
@@ -477,15 +477,15 @@ fn f(_: i32) {}
 fn main() {
     loop {
         let mut x = 1;
-          //^^^^^ 💡 weak: remove this `mut`
+          //^^^^^ 💡 weak: variable does not need to be mutable
         f(x);
         if let mut y = 2 {
-             //^^^^^ 💡 weak: remove this `mut`
+             //^^^^^ 💡 weak: variable does not need to be mutable
             f(y);
         }
         match 3 {
             mut z => f(z),
-          //^^^^^ 💡 weak: remove this `mut`
+          //^^^^^ 💡 weak: variable does not need to be mutable
         }
     }
 }
@@ -498,7 +498,7 @@ fn main() {
         check_diagnostics(
             r#"
 fn f(mut x: i32) {
-   //^^^^^ 💡 weak: remove this `mut`
+   //^^^^^ 💡 weak: variable does not need to be mutable
 }
 "#,
         );
@@ -519,7 +519,7 @@ fn f(x: i32) {
 //- minicore: iterators
 fn f(x: [(i32, u8); 10]) {
     for (a, mut b) in x {
-          //^^^^^ 💡 weak: remove this `mut`
+          //^^^^^ 💡 weak: variable does not need to be mutable
         a = 2;
       //^^^^^ 💡 error: cannot mutate immutable variable `a`
     }
@@ -567,7 +567,7 @@ fn f() {
 fn f(_: i32) {}
 fn main() {
     let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7));
-             //^^^^^ 💡 weak: remove this `mut`
+             //^^^^^ 💡 weak: variable does not need to be mutable
     f(x);
 }
 "#,
@@ -583,7 +583,7 @@ fn f(_: i32) {}
 fn main() {
     #[allow(unused_mut)]
     let mut x = 2;
-      //^^^^^ 💡 weak: remove this `mut`
+      //^^^^^ 💡 weak: variable does not need to be mutable
     f(x);
 }
 "#,

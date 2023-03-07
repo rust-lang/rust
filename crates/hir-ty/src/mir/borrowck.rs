@@ -33,6 +33,7 @@ pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
 ) -> Result<Arc<BorrowckResult>, MirLowerError> {
+    let _p = profile::span("borrowck_query");
     let body = db.mir_body(def)?;
     let r = BorrowckResult { mutability_of_locals: mutability_of_locals(&body), mir_body: body };
     Ok(Arc::new(r))
