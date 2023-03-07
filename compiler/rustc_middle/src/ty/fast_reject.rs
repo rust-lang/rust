@@ -193,26 +193,19 @@ impl DeepRejectCtxt {
         obligation_substs: SubstsRef<'tcx>,
         impl_substs: SubstsRef<'tcx>,
     ) -> bool {
-        iter::zip(obligation_substs, impl_substs)
-            .all(|(obl, imp)| self.generic_args_may_unify(obl, imp))
-    }
-
-    pub fn generic_args_may_unify<'tcx>(
-        self,
-        obligation_arg: ty::GenericArg<'tcx>,
-        impl_arg: ty::GenericArg<'tcx>,
-    ) -> bool {
-        match (obligation_arg.unpack(), impl_arg.unpack()) {
-            // We don't fast reject based on regions for now.
-            (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
-            (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
-                self.types_may_unify(obl, imp)
+        iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
+            match (obl.unpack(), imp.unpack()) {
+                // We don't fast reject based on regions for now.
+                (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
+                (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
+                    self.types_may_unify(obl, imp)
+                }
+                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
+                    self.consts_may_unify(obl, imp)
+                }
+                _ => bug!("kind mismatch: {obl} {imp}"),
             }
-            (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
-                self.consts_may_unify(obl, imp)
-            }
-            _ => bug!("kind mismatch: {obligation_arg} {impl_arg}"),
-        }
+        })
     }
 
     pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
