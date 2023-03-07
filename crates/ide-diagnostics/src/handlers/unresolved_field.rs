@@ -132,4 +132,17 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn no_diagnostic_on_unknown() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    x.foo;
+    (&x).foo;
+    (&((x,),),).foo;
+}
+"#,
+        );
+    }
 }

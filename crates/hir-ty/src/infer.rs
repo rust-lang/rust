@@ -567,7 +567,7 @@ impl<'a> InferenceContext<'a> {
             {
                 *ty = table.resolve_completely(ty.clone());
                 // FIXME: Remove this when we are on par with rustc in terms of inference
-                if ty.is_unknown() {
+                if ty.contains_unknown() {
                     return false;
                 }
 
@@ -576,7 +576,7 @@ impl<'a> InferenceContext<'a> {
                 {
                     let clear = if let Some(ty) = field_with_same_name {
                         *ty = table.resolve_completely(ty.clone());
-                        ty.is_unknown()
+                        ty.contains_unknown()
                     } else {
                         false
                     };
