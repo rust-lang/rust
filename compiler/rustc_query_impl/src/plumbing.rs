@@ -264,7 +264,9 @@ macro_rules! feedable {
 
 macro_rules! hash_result {
     ([]) => {{
-        Some(dep_graph::hash_result)
+        Some(|hcx, result| {
+            dep_graph::hash_result(hcx, &restore(*result))
+        })
     }};
     ([(no_hash) $($rest:tt)*]) => {{
         None
@@ -469,7 +471,7 @@ macro_rules! define_queries {
 
         $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
-            type Value = query_values::$name<'tcx>;
+            type Value = Erase<query_values::$name<'tcx>>;
             const NAME: &'static str = stringify!($name);
 
             #[inline]
@@ -490,20 +492,20 @@ macro_rules! define_queries {
             fn query_cache<'a>(tcx: QueryCtxt<'tcx>) -> &'a Self::Cache
                 where 'tcx:'a
             {
-                &tcx.query_system.caches.$name
+                tcx.query_system.caches.$name.cache()
             }
 
             fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
-                tcx.$name(key)
+                erase(tcx.$name(key))
             }
 
             #[inline]
             #[allow(unused_variables)]
             fn compute(qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
-                query_provided_to_value::$name(
+                erase(query_provided_to_value::$name(
                     qcx.tcx,
                     get_provider!([$($modifiers)*][qcx, $name, key])(qcx.tcx, key)
-                )
+                ))
             }
 
             #[inline]
@@ -516,6 +518,7 @@ macro_rules! define_queries {
                                 dep_node
                             );
                             value.map(|value| query_provided_to_value::$name(qcx.tcx, value))
+                                .map(erase)
                         })
                     } else {
                         None
@@ -645,12 +648,12 @@ macro_rules! define_queries {
                     $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
                         tcx,
                         stringify!($name),
-                        &tcx.query_system.caches.$name,
+                        tcx.query_system.caches.$name.cache(),
                         string_cache,
                     )
                 },
                 encode_query_results: expand_if_cached!([$($modifiers)*], |tcx, encoder, query_result_index|
-                    $crate::on_disk_cache::encode_query_results::<_, super::queries::$name<'_>>(tcx, encoder, query_result_index)
+                    $crate::on_disk_cache::encode_query_results::<_, super::queries::$name<'_>, _>(tcx, encoder, query_result_index)
                 ),
             }})*
         }
@@ -695,7 +698,7 @@ macro_rules! define_queries_struct {
             $(
                 $(#[$attr])*
                 $name: QueryState<
-                    <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
+                    query_keys::$name<'tcx>,
                     rustc_middle::dep_graph::DepKind,
                 >,
             )*
@@ -737,7 +740,7 @@ macro_rules! define_queries_struct {
                 span: Span,
                 key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
                 mode: QueryMode,
-            ) -> Option<query_values::$name<'tcx>> {
+            ) -> Option<Erase<query_values::$name<'tcx>>> {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<'tcx>, _, rustc_middle::dep_graph::DepKind>(qcx, span, key, mode)
             })*

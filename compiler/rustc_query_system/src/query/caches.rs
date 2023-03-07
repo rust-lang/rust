@@ -55,14 +55,14 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
+impl<K: Eq + Hash, V: Copy> QueryStorage for DefaultCache<K, V> {
     type Value = V;
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
 
@@ -127,13 +127,13 @@ impl<V> Default for SingleCache<V> {
     }
 }
 
-impl<V: Copy + Debug> QueryStorage for SingleCache<V> {
+impl<V: Copy> QueryStorage for SingleCache<V> {
     type Value = V;
 }
 
 impl<V> QueryCache for SingleCache<V>
 where
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = ();
 
@@ -173,14 +173,14 @@ impl<K: Idx, V> Default for VecCache<K, V> {
     }
 }
 
-impl<K: Eq + Idx, V: Copy + Debug> QueryStorage for VecCache<K, V> {
+impl<K: Eq + Idx, V: Copy> QueryStorage for VecCache<K, V> {
     type Value = V;
 }
 
 impl<K, V> QueryCache for VecCache<K, V>
 where
     K: Eq + Idx + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
 

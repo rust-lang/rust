@@ -69,6 +69,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::query::erase::{erase, restore, Erase};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 
@@ -246,7 +247,30 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(
-                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache;
+                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>>::Cache;
+            )*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_cache {
+            $(
+                #[derive(Default)]
+                pub struct $name<'tcx> {
+                    _phantom_lt: std::marker::PhantomData<&'tcx ()>,
+                    _phantom_key: std::marker::PhantomData<super::query_keys::$name<'tcx>>,
+                    _phantom_value: std::marker::PhantomData<super::query_values::$name<'tcx>>,
+                    cache: super::query_storage::$name<'static>,
+                }
+
+                impl<'tcx> $name<'tcx> {
+                    pub fn cache(&'tcx self) -> &'tcx super::query_storage::$name<'tcx> {
+                        unsafe {
+                            std::mem::transmute::<
+                                &super::query_storage::$name<'_>,
+                                &super::query_storage::$name<'_>,
+                            >(&self.cache)
+                        }
+                    }
+                }
             )*
         }
 
@@ -270,7 +294,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<'tcx> {
-            $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
+            $($(#[$attr])* pub $name: query_cache::$name<'tcx>,)*
         }
 
         impl<'tcx> TyCtxtEnsure<'tcx> {
@@ -280,7 +304,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                match try_get_cached(self.tcx, self.tcx.query_system.caches.$name.cache(), &key) {
                     Some(_) => return,
                     None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
                 };
@@ -305,10 +329,11 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                let value = match try_get_cached(self.tcx, self.tcx.query_system.caches.$name.cache(), &key) {
                     Some(value) => value,
                     None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
-                }
+                };
+                restore(value)
             })*
         }
 
@@ -372,7 +397,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<$V>;)*
+            ) -> Option<Erase<$V>>;)*
         }
     };
 }
@@ -400,10 +425,11 @@ macro_rules! define_feedable {
 
                 let tcx = self.tcx;
                 let value = query_provided_to_value::$name(tcx, value);
-                let cache = &tcx.query_system.caches.$name;
+                let cache = tcx.query_system.caches.$name.cache();
 
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
+                        let old = restore(old);
                         bug!(
                             "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                             stringify!($name),
@@ -418,7 +444,7 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, value, dep_node_index);
+                        cache.complete(key, erase(value), dep_node_index);
                         value
                     }
                 }

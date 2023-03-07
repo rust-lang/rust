@@ -10,6 +10,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
+use rustc_middle::query::erase::{restore_ref, Erase, EraseType};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
@@ -1056,14 +1057,14 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     }
 }
 
-pub fn encode_query_results<'a, 'tcx, CTX, Q>(
+pub fn encode_query_results<'a, 'tcx, CTX, Q, V>(
     tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
     CTX: QueryContext + 'tcx,
-    Q: super::QueryConfig<CTX>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
+    Q: super::QueryConfig<CTX, Value = Erase<V>>,
+    V: EraseType + std::fmt::Debug + Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx
         .dep_context()
@@ -1081,6 +1082,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
+            let value = restore_ref(value);
             encoder.encode_tagged(dep_node, value);
         }
     });
