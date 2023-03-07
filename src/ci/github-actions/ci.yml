@@ -749,9 +749,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            <<: *job-linux-xl
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: PGO_HOST=x86_64-apple-darwin python3 src/ci/stage-build.py python3 x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-xl
 
   master:
     name: master
