@@ -121,27 +121,22 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
             types::ascription(p);
         }
 
-        let mut is_block_like_expr_after_eq = false;
+        let mut expr_after_eq: Option<CompletedMarker> = None;
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            let expr = expressions::expr(p);
-
-            if let Some(expr) = expr {
-                is_block_like_expr_after_eq = match expr.kind() {
-                    IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => true,
-                    _ => false,
-                };
-            }
+            expr_after_eq = expressions::expr(p);
         }
 
         if p.at(T![else]) {
             // test_err let_else_right_curly_brace
             // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
-            if is_block_like_expr_after_eq {
-                p.error(
-                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                )
+            if let Some(expr) = expr_after_eq {
+                if BlockLike::is_blocklike(expr.kind()) {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed",
+                    )
+                }
             }
 
             // test let_else

@@ -163,10 +163,8 @@ pub(super) fn atom_expr(
             return None;
         }
     };
-    let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
-        _ => BlockLike::NotBlock,
-    };
+    let blocklike =
+        if BlockLike::is_blocklike(done.kind()) { BlockLike::Block } else { BlockLike::NotBlock };
     Some((done, blocklike))
 }
 
