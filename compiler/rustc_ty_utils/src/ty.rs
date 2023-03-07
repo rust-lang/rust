@@ -142,12 +142,14 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
     {
         let sig = tcx.fn_sig(def_id).subst_identity();
-        sig.visit_with(&mut ImplTraitInTraitFinder {
+        // We accounted for the binder of the fn sig, so skip the binder.
+        sig.skip_binder().visit_with(&mut ImplTraitInTraitFinder {
             tcx,
             fn_def_id: def_id,
             bound_vars: sig.bound_vars(),
             predicates: &mut predicates,
             seen: FxHashSet::default(),
+            depth: ty::INNERMOST,
         });
     }
 
@@ -244,15 +246,36 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
     seen: FxHashSet<DefId>,
+    depth: ty::DebruijnIndex,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        binder: &ty::Binder<'tcx, T>,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        self.depth.shift_in(1);
+        let binder = binder.super_visit_with(self);
+        self.depth.shift_out(1);
+        binder
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
             && self.tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
             && self.tcx.impl_trait_in_trait_parent(alias_ty.def_id) == self.fn_def_id
             && self.seen.insert(alias_ty.def_id)
         {
+            // We have entered some binders as we've walked into the
+            // bounds of the RPITIT. Shift these binders back out when
+            // constructing the top-level projection predicate.
+            let alias_ty = self.tcx.fold_regions(alias_ty, |re, _| {
+                if let ty::ReLateBound(index, bv) = re.kind() {
+                    self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                } else {
+                    re
+                }
+            });
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
