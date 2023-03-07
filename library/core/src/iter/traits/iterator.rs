@@ -69,7 +69,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[doc(notable_trait)]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[cfg_attr(not(bootstrap), const_trait)]
+#[const_trait]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[rustc_diagnostic_item = "IteratorItem"]
