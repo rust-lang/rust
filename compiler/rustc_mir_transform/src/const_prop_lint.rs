@@ -1,13 +1,11 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use std::cell::Cell;
-
 use either::{Left, Right};
 
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
-    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
+    self, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -254,10 +252,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local] = LocalState {
-            value: LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit)),
-            layout: Cell::new(None),
-        };
+        ecx.frame_mut().locals[local].value =
+            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
