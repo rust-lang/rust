@@ -10,7 +10,7 @@ use crate::builder::Builder;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
-use yansi_term::Color;
+use termcolor::{Color, ColorSpec, WriteColor};
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
@@ -139,16 +139,12 @@ impl<'a> Renderer<'a> {
     }
 
     fn render_test_outcome_verbose(&self, outcome: Outcome<'_>, test: &TestOutcome) {
+        print!("test {} ... ", test.name);
+        self.builder.colored_stdout(|stdout| outcome.write_long(stdout)).unwrap();
         if let Some(exec_time) = test.exec_time {
-            println!(
-                "test {} ... {} (in {:.2?})",
-                test.name,
-                outcome.long(self.builder),
-                Duration::from_secs_f64(exec_time)
-            );
-        } else {
-            println!("test {} ... {}", test.name, outcome.long(self.builder));
+            print!(" ({exec_time:.2?})");
         }
+        println!();
     }
 
     fn render_test_outcome_terse(&mut self, outcome: Outcome<'_>, _: &TestOutcome) {
@@ -163,7 +159,7 @@ impl<'a> Renderer<'a> {
         }
 
         self.terse_tests_in_line += 1;
-        print!("{}", outcome.short(self.builder));
+        self.builder.colored_stdout(|stdout| outcome.write_short(stdout)).unwrap();
         let _ = std::io::stdout().flush();
     }
 
@@ -208,10 +204,11 @@ impl<'a> Renderer<'a> {
             }
         }
 
+        print!("\ntest result: ");
+        self.builder.colored_stdout(|stdout| outcome.write_long(stdout)).unwrap();
         println!(
-            "\ntest result: {}. {} passed; {} failed; {} ignored; {} measured; \
-             {} filtered out; finished in {:.2?}\n",
-            outcome.long(self.builder),
+            ". {} passed; {} failed; {} ignored; {} measured; {} filtered out; \
+             finished in {:.2?}\n",
             suite.passed,
             suite.failed,
             suite.ignored,
@@ -276,25 +273,51 @@ enum Outcome<'a> {
 }
 
 impl Outcome<'_> {
-    fn short(&self, builder: &Builder<'_>) -> String {
+    fn write_short(&self, writer: &mut dyn WriteColor) -> Result<(), std::io::Error> {
         match self {
-            Outcome::Ok => builder.color_for_stdout(Color::Green, "."),
-            Outcome::BenchOk => builder.color_for_stdout(Color::Cyan, "b"),
-            Outcome::Failed => builder.color_for_stdout(Color::Red, "F"),
-            Outcome::Ignored { .. } => builder.color_for_stdout(Color::Yellow, "i"),
-        }
-    }
-
-    fn long(&self, builder: &Builder<'_>) -> String {
-        match self {
-            Outcome::Ok => builder.color_for_stdout(Color::Green, "ok"),
-            Outcome::BenchOk => builder.color_for_stdout(Color::Cyan, "benchmarked"),
-            Outcome::Failed => builder.color_for_stdout(Color::Red, "FAILED"),
-            Outcome::Ignored { reason: None } => builder.color_for_stdout(Color::Yellow, "ignored"),
-            Outcome::Ignored { reason: Some(reason) } => {
-                builder.color_for_stdout(Color::Yellow, &format!("ignored, {reason}"))
+            Outcome::Ok => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))?;
+                write!(writer, ".")?;
+            }
+            Outcome::BenchOk => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))?;
+                write!(writer, "b")?;
+            }
+            Outcome::Failed => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Red)))?;
+                write!(writer, "F")?;
+            }
+            Outcome::Ignored { .. } => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+                write!(writer, "i")?;
             }
         }
+        writer.reset()
+    }
+
+    fn write_long(&self, writer: &mut dyn WriteColor) -> Result<(), std::io::Error> {
+        match self {
+            Outcome::Ok => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))?;
+                write!(writer, "ok")?;
+            }
+            Outcome::BenchOk => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))?;
+                write!(writer, "benchmarked")?;
+            }
+            Outcome::Failed => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Red)))?;
+                write!(writer, "FAILED")?;
+            }
+            Outcome::Ignored { reason } => {
+                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+                write!(writer, "ignored")?;
+                if let Some(reason) = reason {
+                    write!(writer, ", {reason}")?;
+                }
+            }
+        }
+        writer.reset()
     }
 }
 

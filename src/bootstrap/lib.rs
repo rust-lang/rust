@@ -89,7 +89,7 @@ pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
-use yansi_term::Color;
+use termcolor::{ColorChoice, StandardStream, WriteColor};
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -1577,21 +1577,29 @@ to download LLVM rather than building it.
         self.config.ninja_in_file
     }
 
-    pub fn color_for_stdout(&self, color: Color, message: &str) -> String {
-        self.color_for_inner(color, message, self.config.stdout_is_tty)
+    pub fn colored_stdout<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+        self.colored_stream_inner(StandardStream::stdout, self.config.stdout_is_tty, f)
     }
 
-    pub fn color_for_stderr(&self, color: Color, message: &str) -> String {
-        self.color_for_inner(color, message, self.config.stderr_is_tty)
+    pub fn colored_stderr<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+        self.colored_stream_inner(StandardStream::stderr, self.config.stderr_is_tty, f)
     }
 
-    fn color_for_inner(&self, color: Color, message: &str, is_tty: bool) -> String {
-        let use_color = match self.config.color {
-            flags::Color::Always => true,
-            flags::Color::Never => false,
-            flags::Color::Auto => is_tty,
+    fn colored_stream_inner<R, F, C>(&self, constructor: C, is_tty: bool, f: F) -> R
+    where
+        C: Fn(ColorChoice) -> StandardStream,
+        F: FnOnce(&mut dyn WriteColor) -> R,
+    {
+        let choice = match self.config.color {
+            flags::Color::Always => ColorChoice::Always,
+            flags::Color::Never => ColorChoice::Never,
+            flags::Color::Auto if !is_tty => ColorChoice::Never,
+            flags::Color::Auto => ColorChoice::Auto,
         };
-        if use_color { color.paint(message).to_string() } else { message.to_string() }
+        let mut stream = constructor(choice);
+        let result = f(&mut stream);
+        stream.reset().unwrap();
+        result
     }
 }
 
