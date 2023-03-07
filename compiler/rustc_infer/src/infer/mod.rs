@@ -114,24 +114,26 @@ pub struct InferCtxtInner<'tcx> {
     float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
+    ///
     /// This is initially `Some(_)` but when
     /// `resolve_regions_and_report_errors` is invoked, this gets set to `None`
     /// -- further attempts to perform unification, etc., may fail if new
     /// region constraints would've been added.
     region_constraint_storage: Option<RegionConstraintStorage<'tcx>>,
 
-    /// A set of constraints that regionck must validate. Each
-    /// constraint has the form `T:'a`, meaning "some type `T` must
+    /// A set of constraints that regionck must validate.
+    ///
+    /// Each constraint has the form `T:'a`, meaning "some type `T` must
     /// outlive the lifetime 'a". These constraints derive from
     /// instantiated type parameters. So if you had a struct defined
-    /// like
+    /// like the following:
     /// ```ignore (illustrative)
-    ///     struct Foo<T:'static> { ... }
+    /// struct Foo<T: 'static> { ... }
     /// ```
-    /// then in some expression `let x = Foo { ... }` it will
+    /// In some expression `let x = Foo { ... }`, it will
     /// instantiate the type parameter `T` with a fresh type `$0`. At
     /// the same time, it will record a region obligation of
-    /// `$0:'static`. This will get checked later by regionck. (We
+    /// `$0: 'static`. This will get checked later by regionck. (We
     /// can't generally check these things right away because we have
     /// to wait until types are resolved.)
     ///
@@ -268,7 +270,7 @@ pub struct InferCtxt<'tcx> {
     /// Caches the results of trait evaluation.
     pub evaluation_cache: select::EvaluationCache<'tcx>,
 
-    /// the set of predicates on which errors have been reported, to
+    /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
@@ -291,7 +293,7 @@ pub struct InferCtxt<'tcx> {
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 
     /// Track how many errors were reported when this infcx is created.
-    /// If the number of errors increases, that's also a sign (line
+    /// If the number of errors increases, that's also a sign (like
     /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
     // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
@@ -313,7 +315,7 @@ pub struct InferCtxt<'tcx> {
     /// During coherence we have to assume that other crates may add
     /// additional impls which we currently don't know about.
     ///
-    /// To deal with this evaluation should be conservative
+    /// To deal with this evaluation, we should be conservative
     /// and consider the possibility of impls from outside this crate.
     /// This comes up primarily when resolving ambiguity. Imagine
     /// there is some trait reference `$0: Bar` where `$0` is an
@@ -323,7 +325,7 @@ pub struct InferCtxt<'tcx> {
     /// bound to some type that in a downstream crate that implements
     /// `Bar`.
     ///
-    /// Outside of coherence we set this to false because we are only
+    /// Outside of coherence, we set this to false because we are only
     /// interested in types that the user could actually have written.
     /// In other words, we consider `$0: Bar` to be unimplemented if
     /// there is no type that the user could *actually name* that
@@ -373,7 +375,7 @@ pub enum SubregionOrigin<'tcx> {
     Subtype(Box<TypeTrace<'tcx>>),
 
     /// When casting `&'a T` to an `&'b Trait` object,
-    /// relating `'a` to `'b`
+    /// relating `'a` to `'b`.
     RelateObjectBound(Span),
 
     /// Some type parameter was instantiated with the given type,
@@ -384,7 +386,7 @@ pub enum SubregionOrigin<'tcx> {
     /// that must outlive some other region.
     RelateRegionParamBound(Span),
 
-    /// Creating a pointer `b` to contents of another reference
+    /// Creating a pointer `b` to contents of another reference.
     Reborrow(Span),
 
     /// (&'a &'b T) where a >= b
@@ -398,7 +400,7 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 
-    /// Checking that the bounds of a trait's associated type hold for a given impl
+    /// Checking that the bounds of a trait's associated type hold for a given impl.
     CheckAssociatedTypeBounds {
         parent: Box<SubregionOrigin<'tcx>>,
         impl_item_def_id: LocalDefId,
@@ -435,32 +437,33 @@ pub enum LateBoundRegionConversionTime {
     AssocTypeProjection(DefId),
 }
 
-/// Reasons to create a region inference variable
+/// Reasons to create a region inference variable.
 ///
-/// See `error_reporting` module for more details
+/// See `error_reporting` module for more details.
 #[derive(Copy, Clone, Debug)]
 pub enum RegionVariableOrigin {
-    /// Region variables created for ill-categorized reasons,
-    /// mostly indicates places in need of refactoring
+    /// Region variables created for ill-categorized reasons.
+    ///
+    /// They mostly indicate places in need of refactoring.
     MiscVariable(Span),
 
-    /// Regions created by a `&P` or `[...]` pattern
+    /// Regions created by a `&P` or `[...]` pattern.
     PatternRegion(Span),
 
-    /// Regions created by `&` operator
+    /// Regions created by `&` operator.
+    ///
     AddrOfRegion(Span),
-
-    /// Regions created as part of an autoref of a method receiver
+    /// Regions created as part of an autoref of a method receiver.
     Autoref(Span),
 
-    /// Regions created as part of an automatic coercion
+    /// Regions created as part of an automatic coercion.
     Coercion(Span),
 
-    /// Region variables created as the values for early-bound regions
+    /// Region variables created as the values for early-bound regions.
     EarlyBoundRegion(Span, Symbol),
 
     /// Region variables created for bound regions
-    /// in a function or method that is called
+    /// in a function or method that is called.
     LateBoundRegion(Span, ty::BoundRegionKind, LateBoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
@@ -534,7 +537,7 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
     }
 }
 
-/// Used to configure inference contexts before their creation
+/// Used to configure inference contexts before their creation.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
@@ -835,9 +838,9 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Scan the constraints produced since `snapshot` began and returns:
     ///
-    /// - `None` -- if none of them involve "region outlives" constraints
-    /// - `Some(true)` -- if there are `'a: 'b` constraints where `'a` or `'b` is a placeholder
-    /// - `Some(false)` -- if there are `'a: 'b` constraints but none involve placeholders
+    /// - `None` -- if none of them involves "region outlives" constraints.
+    /// - `Some(true)` -- if there are `'a: 'b` constraints where `'a` or `'b` is a placeholder.
+    /// - `Some(false)` -- if there are `'a: 'b` constraints but none involve placeholders.
     pub fn region_constraints_added_in_snapshot(
         &self,
         snapshot: &CombinedSnapshot<'tcx>,
@@ -1770,7 +1773,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-/// Helper for `ty_or_const_infer_var_changed` (see comment on that), currently
+/// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), currently
 /// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
 #[derive(Copy, Clone, Debug)]
 pub enum TyOrConstInferVar<'tcx> {
