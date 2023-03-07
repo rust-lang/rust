@@ -122,6 +122,7 @@ pub(super) fn explicit_item_bounds(
             };
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
         _ => bug!("item_bounds called on {:?}", def_id),
     };
     ty::EarlyBinder::bind(bounds)

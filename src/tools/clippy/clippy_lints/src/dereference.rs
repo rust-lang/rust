@@ -1424,6 +1424,7 @@ fn ty_auto_deref_stability<'tcx>(
                 continue;
             },
             ty::Param(_) => TyPosition::new_deref_stable_for_result(precedence, ty),
+            ty::Alias(ty::Weak, _) => unreachable!("should have been normalized away above"),
             ty::Alias(ty::Inherent, _) => unreachable!("inherent projection should have been normalized away above"),
             ty::Alias(ty::Projection, _) if ty.has_non_region_param() => {
                 TyPosition::new_deref_stable_for_result(precedence, ty)

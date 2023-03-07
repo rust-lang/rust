@@ -63,6 +63,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
+            ty::Alias(ty::Weak, _) => bug!("type_name: unexpected weak projection"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
             ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),
             ty::GeneratorWitnessMIR(..) => bug!("type_name: unexpected `GeneratorWitnessMIR`"),

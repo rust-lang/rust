@@ -448,6 +448,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
+
+    /// Obligations emitted during the normalization of a weak type alias.
+    TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

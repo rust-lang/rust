@@ -508,10 +508,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Alias(ty::Inherent, _)
+            | ty::Alias(ty::Weak, _)
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
-            // Excluding IATs here as they don't have meaningful item bounds.
+            // Excluding IATs and type aliases here as they don't have meaningful item bounds.
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
 

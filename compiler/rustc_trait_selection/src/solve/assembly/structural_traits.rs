@@ -33,7 +33,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         ty::Dynamic(..)
         | ty::Param(..)
         | ty::Foreign(..)
-        | ty::Alias(ty::Projection | ty::Inherent, ..)
+        | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {

@@ -1458,7 +1458,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
     ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.tcx().at(span).type_of(did).subst(self.tcx(), substs)
+        let ty = self.tcx().at(span).type_of(did);
+
+        if matches!(self.tcx().def_kind(did), DefKind::TyAlias)
+            && ty.skip_binder().has_opaque_types()
+        {
+            // Type aliases referring to types that contain opaque types (but aren't just directly
+            // referencing a single opaque type) get encoded as a type alias that normalization will
+            // then actually instantiate the where bounds of.
+            let alias_ty = self.tcx().mk_alias_ty(did, substs);
+            self.tcx().mk_alias(ty::Weak, alias_ty)
+        } else {
+            ty.subst(self.tcx(), substs)
+        }
     }
 
     fn conv_object_ty_poly_trait_ref(

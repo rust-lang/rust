@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Param(..)
-            | ty::Alias(ty::Projection | ty::Inherent, ..)
+            | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)

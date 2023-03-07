@@ -208,6 +208,9 @@ fn do_orphan_check_impl<'tcx>(
                     // }
                     // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
                     AliasKind::Projection => "associated type",
+                    // type Foo = (impl Sized, bool)
+                    // impl AutoTrait for Foo {}
+                    AliasKind::Weak => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
                     AliasKind::Opaque => "opaque type",

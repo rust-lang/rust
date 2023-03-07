@@ -1,0 +1,15 @@
+error[E0277]: can't compare `&i32` with `Bar<'a, 'b>`
+  --> $DIR/self-referential-3.rs:5:31
+   |
+LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Bar<'a, 'b>`
+LL |
+LL |     i
+   |     - return type was inferred to be `&i32` here
+   |
+   = help: the trait `PartialEq<Bar<'a, 'b>>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

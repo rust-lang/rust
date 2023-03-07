@@ -3198,6 +3198,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
+            ObligationCauseCode::TypeAlias(ref nested, span, def_id) => {
+                // #74711: avoid a stack overflow
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        predicate,
+                        param_env,
+                        nested,
+                        obligated_types,
+                        seen_requirements,
+                    )
+                });
+                let mut multispan = MultiSpan::from(span);
+                multispan.push_span_label(span, "required by this bound");
+                err.span_note(
+                    multispan,
+                    format!(
+                        "required by a bound on the type alias `{}`",
+                        self.infcx.tcx.item_name(def_id)
+                    ),
+                );
+            }
             ObligationCauseCode::FunctionArgumentObligation {
                 arg_hir_id,
                 call_hir_id,

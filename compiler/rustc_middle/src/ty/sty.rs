@@ -1231,6 +1231,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
             DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
+            DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
