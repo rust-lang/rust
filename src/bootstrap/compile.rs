@@ -137,7 +137,7 @@ impl Step for Std {
         target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo, true);
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
@@ -309,7 +309,13 @@ fn copy_self_contained_objects(
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
+pub fn std_cargo(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    stage: u32,
+    cargo: &mut Cargo,
+    add_crates: bool,
+) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -363,10 +369,11 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         features += &builder.std_features(target);
         features.push_str(compiler_builtins_c_feature);
 
+        if add_crates {
+            cargo.args(&["-p", "proc_macro"]).args(&["-p", "std"]).args(&["-p", "test"]);
+        }
+
         cargo
-            .args(&["-p", "proc_macro"])
-            .args(&["-p", "std"])
-            .args(&["-p", "test"])
             .arg("--features")
             .arg(features)
             .arg("--manifest-path")

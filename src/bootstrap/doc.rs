@@ -594,7 +594,7 @@ fn doc_std(
 
     let run_cargo_rustdoc_for = |package: &str| {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
-        compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+        compile::std_cargo(builder, target, compiler.stage, &mut cargo, false);
         cargo
             .arg("--target-dir")
             .arg(&*target_dir.to_string_lossy())
