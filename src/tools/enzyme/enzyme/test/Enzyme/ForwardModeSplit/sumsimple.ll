@@ -41,7 +41,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to double***
 ; CHECK-NEXT:   %truetape = load double**, double*** %0
-; CHECK-NEXT:   %1 = add nuw i64 %n, 1
+; CHECK-NEXT:   %1 = add {{(nuw )?}}i64 %n, 1
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: for.cond:                                         ; preds = %for.body, %entry

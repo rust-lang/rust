@@ -30,11 +30,9 @@
 #ifndef ENZYME_LOGIC_H
 #define ENZYME_LOGIC_H
 
+#include <algorithm>
 #include <set>
 #include <utility>
-
-#include "SCEV/ScalarEvolutionExpander.h"
-#include "SCEV/TargetLibraryInfo.h"
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
@@ -43,8 +41,11 @@
 
 #include "llvm/Analysis/AliasAnalysis.h"
 
+#include "llvm/ADT/SmallVector.h"
+
 #include "ActivityAnalysis.h"
 #include "FunctionUtils.h"
+#include "TraceUtils.h"
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
@@ -107,30 +108,30 @@ public:
   //! returned struct
   std::map<AugmentedStruct, int> returns;
 
-  std::map<llvm::CallInst *, const std::map<llvm::Argument *, bool>>
-      uncacheable_args_map;
+  std::map<llvm::CallInst *, const std::vector<bool>> overwritten_args_map;
 
   std::map<llvm::Instruction *, bool> can_modref_map;
 
   std::set<ssize_t> tapeIndiciesToFree;
 
+  bool isComplete;
+
   AugmentedReturn(
       llvm::Function *fn, llvm::Type *tapeType,
       std::map<std::pair<llvm::Instruction *, CacheType>, int> tapeIndices,
       std::map<AugmentedStruct, int> returns,
-      std::map<llvm::CallInst *, const std::map<llvm::Argument *, bool>>
-          uncacheable_args_map,
+      std::map<llvm::CallInst *, const std::vector<bool>> overwritten_args_map,
       std::map<llvm::Instruction *, bool> can_modref_map)
       : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns),
-        uncacheable_args_map(uncacheable_args_map),
-        can_modref_map(can_modref_map) {}
+        overwritten_args_map(overwritten_args_map),
+        can_modref_map(can_modref_map), isComplete(false) {}
 };
 
 struct ReverseCacheKey {
   llvm::Function *todiff;
   DIFFE_TYPE retType;
   const std::vector<DIFFE_TYPE> constant_args;
-  std::map<llvm::Argument *, bool> uncacheable_args;
+  std::vector<bool> overwritten_args;
   bool returnUsed;
   bool shadowReturnUsed;
   DerivativeMode mode;
@@ -145,7 +146,7 @@ struct ReverseCacheKey {
       return todiff == rhs.todiff &&
              retType == rhs.retType &&
              constant_args == rhs.constant_args &&
-             uncacheable_args == rhs.uncacheable_args &&
+             overwritten_args == rhs.overwritten_args &&
              returnUsed == rhs.returnUsed &&
              shadowReturnUsed == rhs.shadowReturnUsed &&
              mode == rhs.mode &&
@@ -167,21 +168,23 @@ struct ReverseCacheKey {
     if (rhs.retType < retType)
       return false;
 
-    if (constant_args < rhs.constant_args)
+    if (std::lexicographical_compare(constant_args.begin(), constant_args.end(),
+                                     rhs.constant_args.begin(),
+                                     rhs.constant_args.end()))
       return true;
-    if (rhs.constant_args < constant_args)
+    if (std::lexicographical_compare(
+            rhs.constant_args.begin(), rhs.constant_args.end(),
+            constant_args.begin(), constant_args.end()))
       return false;
 
-    for (auto &arg : todiff->args()) {
-      auto foundLHS = uncacheable_args.find(&arg);
-      assert(foundLHS != uncacheable_args.end());
-      auto foundRHS = rhs.uncacheable_args.find(&arg);
-      assert(foundRHS != rhs.uncacheable_args.end());
-      if (foundLHS->second < foundRHS->second)
-        return true;
-      if (foundRHS->second < foundLHS->second)
-        return false;
-    }
+    if (std::lexicographical_compare(
+            overwritten_args.begin(), overwritten_args.end(),
+            rhs.overwritten_args.begin(), rhs.overwritten_args.end()))
+      return true;
+    if (std::lexicographical_compare(
+            rhs.overwritten_args.begin(), rhs.overwritten_args.end(),
+            overwritten_args.begin(), overwritten_args.end()))
+      return false;
 
     if (returnUsed < rhs.returnUsed)
       return true;
@@ -196,6 +199,11 @@ struct ReverseCacheKey {
     if (mode < rhs.mode)
       return true;
     if (rhs.mode < mode)
+      return false;
+
+    if (width < rhs.width)
+      return true;
+    if (rhs.width < width)
       return false;
 
     if (freeMemory < rhs.freeMemory)
@@ -232,14 +240,93 @@ public:
 
   EnzymeLogic(bool PostOpt) : PostOpt(PostOpt) {}
 
-  using AugmentedCacheKey =
-      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
-                 std::vector<DIFFE_TYPE> /*constant_args*/,
-                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*returnUsed*/, bool /*shadowReturnUsed*/,
-                 const FnTypeInfo, bool, bool, bool, unsigned>;
+  struct AugmentedCacheKey {
+    llvm::Function *fn;
+    DIFFE_TYPE retType;
+    const std::vector<DIFFE_TYPE> constant_args;
+    std::vector<bool> overwritten_args;
+    bool returnUsed;
+    bool shadowReturnUsed;
+    const FnTypeInfo typeInfo;
+    bool freeMemory;
+    bool AtomicAdd;
+    bool omp;
+    unsigned width;
+
+    inline bool operator<(const AugmentedCacheKey &rhs) const {
+      if (fn < rhs.fn)
+        return true;
+      if (rhs.fn < fn)
+        return false;
+
+      if (retType < rhs.retType)
+        return true;
+      if (rhs.retType < retType)
+        return false;
+
+      if (std::lexicographical_compare(
+              constant_args.begin(), constant_args.end(),
+              rhs.constant_args.begin(), rhs.constant_args.end()))
+        return true;
+      if (std::lexicographical_compare(
+              rhs.constant_args.begin(), rhs.constant_args.end(),
+              constant_args.begin(), constant_args.end()))
+        return false;
+
+      if (std::lexicographical_compare(
+              overwritten_args.begin(), overwritten_args.end(),
+              rhs.overwritten_args.begin(), rhs.overwritten_args.end()))
+        return true;
+      if (std::lexicographical_compare(
+              rhs.overwritten_args.begin(), rhs.overwritten_args.end(),
+              overwritten_args.begin(), overwritten_args.end()))
+        return false;
+
+      if (returnUsed < rhs.returnUsed)
+        return true;
+      if (rhs.returnUsed < returnUsed)
+        return false;
+
+      if (shadowReturnUsed < rhs.shadowReturnUsed)
+        return true;
+      if (rhs.shadowReturnUsed < shadowReturnUsed)
+        return false;
+
+      if (freeMemory < rhs.freeMemory)
+        return true;
+      if (rhs.freeMemory < freeMemory)
+        return false;
+
+      if (AtomicAdd < rhs.AtomicAdd)
+        return true;
+      if (rhs.AtomicAdd < AtomicAdd)
+        return false;
+
+      if (omp < rhs.omp)
+        return true;
+      if (rhs.omp < omp)
+        return false;
+
+      if (typeInfo < rhs.typeInfo)
+        return true;
+      if (rhs.typeInfo < typeInfo)
+        return false;
+
+      if (width < rhs.width)
+        return true;
+      if (rhs.width < width)
+        return false;
+
+      // equal
+      return false;
+    }
+  };
+
+  std::map<llvm::Function *, llvm::Function *> NoFreeCachedFunctions;
+  llvm::Function *CreateNoFree(llvm::Function *todiff);
+  llvm::Value *CreateNoFree(llvm::Value *todiff);
+
   std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
-  std::map<AugmentedCacheKey, bool> AugmentedCachedFinished;
 
   /// Create an augmented forward pass.
   ///  \p todiff is the function to differentiate
@@ -247,28 +334,97 @@ public:
   ///  \p constant_args is the activity info of the arguments
   ///  \p returnUsed is whether the primal's return should also be returned
   ///  \p typeInfo is the type info information about the calling context
-  ///  \p _uncacheable_args marks whether an argument may be rewritten before
+  ///  \p _overwritten_args marks whether an argument may be rewritten before
   ///  loads in the generated function (and thus cannot be cached). \p
   ///  forceAnonymousTape forces the tape to be an i8* rather than the true tape
   ///  structure \p AtomicAdd is whether to perform all adjoint updates to
   ///  memory in an atomic way
   const AugmentedReturn &CreateAugmentedPrimal(
       llvm::Function *todiff, DIFFE_TYPE retType,
-      const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
+      llvm::ArrayRef<DIFFE_TYPE> constant_args, TypeAnalysis &TA,
       bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &typeInfo,
-      const std::map<llvm::Argument *, bool> _uncacheable_args,
-      bool forceAnonymousTape, unsigned width, bool AtomicAdd,
-      bool omp = false);
+      const std::vector<bool> _overwritten_args, bool forceAnonymousTape,
+      unsigned width, bool AtomicAdd, bool omp = false);
 
   std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
 
-  using ForwardCacheKey =
-      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
-                 std::vector<DIFFE_TYPE> /*constant_args*/,
-                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*retval*/, DerivativeMode, unsigned, llvm::Type *,
-                 const FnTypeInfo>;
+  struct ForwardCacheKey {
+    llvm::Function *todiff;
+    DIFFE_TYPE retType;
+    const std::vector<DIFFE_TYPE> constant_args;
+    std::vector<bool> overwritten_args;
+    bool returnUsed;
+    DerivativeMode mode;
+    unsigned width;
+    llvm::Type *additionalType;
+    const FnTypeInfo typeInfo;
+
+    inline bool operator<(const ForwardCacheKey &rhs) const {
+      if (todiff < rhs.todiff)
+        return true;
+      if (rhs.todiff < todiff)
+        return false;
+
+      if (retType < rhs.retType)
+        return true;
+      if (rhs.retType < retType)
+        return false;
+
+      if (std::lexicographical_compare(
+              constant_args.begin(), constant_args.end(),
+              rhs.constant_args.begin(), rhs.constant_args.end()))
+        return true;
+      if (std::lexicographical_compare(
+              rhs.constant_args.begin(), rhs.constant_args.end(),
+              constant_args.begin(), constant_args.end()))
+        return false;
+
+      if (std::lexicographical_compare(
+              overwritten_args.begin(), overwritten_args.end(),
+              rhs.overwritten_args.begin(), rhs.overwritten_args.end()))
+        return true;
+      if (std::lexicographical_compare(
+              rhs.overwritten_args.begin(), rhs.overwritten_args.end(),
+              overwritten_args.begin(), overwritten_args.end()))
+        return false;
+
+      if (returnUsed < rhs.returnUsed)
+        return true;
+      if (rhs.returnUsed < returnUsed)
+        return false;
+
+      if (mode < rhs.mode)
+        return true;
+      if (rhs.mode < mode)
+        return false;
+
+      if (width < rhs.width)
+        return true;
+      if (rhs.width < width)
+        return false;
+
+      if (additionalType < rhs.additionalType)
+        return true;
+      if (rhs.additionalType < additionalType)
+        return false;
+
+      if (typeInfo < rhs.typeInfo)
+        return true;
+      if (rhs.typeInfo < typeInfo)
+        return false;
+      // equal
+      return false;
+    }
+  };
+
   std::map<ForwardCacheKey, llvm::Function *> ForwardCachedFunctions;
+
+  using BatchCacheKey = std::tuple<llvm::Function *, unsigned,
+                                   std::vector<BATCH_TYPE>, BATCH_TYPE>;
+  std::map<BatchCacheKey, llvm::Function *> BatchCachedFunctions;
+
+  using TraceCacheKey = std::tuple<llvm::Function *, ProbProgMode, bool>;
+  std::map<TraceCacheKey, llvm::Function *> TraceCachedFunctions;
 
   /// Create the derivative function itself.
   ///  \p todiff is the function to differentiate
@@ -278,7 +434,7 @@ public:
   ///  \p dretUsed is whether the shadow return value should also be returned
   ///  \p additionalArg is the type (or null) of an additional type in the
   ///  signature to hold the tape. \p typeInfo is the type info information
-  ///  about the calling context \p _uncacheable_args marks whether an argument
+  ///  about the calling context \p _overwritten_args marks whether an argument
   ///  may be rewritten before loads in the generated function (and thus cannot
   ///  be cached). \p augmented is the data structure created by prior call to
   ///  an augmented forward pass \p AtomicAdd is whether to perform all adjoint
@@ -288,14 +444,24 @@ public:
                                           const AugmentedReturn *augmented,
                                           bool omp = false);
 
+  llvm::Function *CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,
+                                    llvm::ArrayRef<DIFFE_TYPE> constant_args,
+                                    TypeAnalysis &TA, bool returnValue,
+                                    DerivativeMode mode, bool freeMemory,
+                                    unsigned width, llvm::Type *additionalArg,
+                                    const FnTypeInfo &typeInfo,
+                                    const std::vector<bool> _overwritten_args,
+                                    const AugmentedReturn *augmented,
+                                    bool omp = false);
+
+  llvm::Function *CreateBatch(llvm::Function *tobatch, unsigned width,
+                              llvm::ArrayRef<BATCH_TYPE> arg_types,
+                              BATCH_TYPE ret_type);
+
   llvm::Function *
-  CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,
-                    const std::vector<DIFFE_TYPE> &constant_args,
-                    TypeAnalysis &TA, bool returnValue, DerivativeMode mode,
-                    bool freeMemory, unsigned width, llvm::Type *additionalArg,
-                    const FnTypeInfo &typeInfo,
-                    const std::map<llvm::Argument *, bool> _uncacheable_args,
-                    const AugmentedReturn *augmented, bool omp = false);
+  CreateTrace(llvm::Function *totrace,
+              llvm::SmallPtrSetImpl<llvm::Function *> &GenerativeFunctions,
+              ProbProgMode mode, bool dynamic_interface);
 
   void clear();
 };
@@ -306,15 +472,14 @@ extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
 };
 
 class GradientUtils;
-bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils,
-                       TypeResults &TR);
+bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils);
 
 bool legalCombinedForwardReverse(
     llvm::CallInst *origop,
     const std::map<llvm::ReturnInst *, llvm::StoreInst *> &replacedReturns,
-    std::vector<llvm::Instruction *> &postCreate,
-    std::vector<llvm::Instruction *> &userReplace, GradientUtils *gutils,
-    TypeResults &TR,
+    llvm::SmallVectorImpl<llvm::Instruction *> &postCreate,
+    llvm::SmallVectorImpl<llvm::Instruction *> &userReplace,
+    GradientUtils *gutils,
     const llvm::SmallPtrSetImpl<const llvm::Instruction *>
         &unnecessaryInstructions,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &oldUnreachable,

@@ -51,7 +51,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       loop:
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ [[TMP12:%.*]], [[END:%.*]] ], [ zeroinitializer, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ [[TMP5:%.*]], [[END:%.*]] ], [ 0.000000e+00, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ [[TMP8:%.*]], [[END]] ], [ 0.000000e+00, [[ENTRY]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ [[TMP11:%.*]], [[END]] ], [ 0.000000e+00, [[ENTRY]] ]
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[END]] ], [ 0, [[ENTRY]] ]
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i64 [[IV]], 1
 ; CHECK-NEXT:    [[G0:%.*]] = getelementptr inbounds double, double* [[X]], i64 [[IV]]
@@ -73,15 +75,12 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:    %"ld2'ipl" = load double, double* %"gep2'ipg", align 8
 ; CHECK-NEXT:    %"ld2'ipl3" = load double, double* %"gep2'ipg1", align 8
 ; CHECK-NEXT:    %"ld2'ipl4" = load double, double* %"gep2'ipg2", align 8
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP5:%.*]] = fadd fast double %"ld2'ipl", [[TMP4]]
+; CHECK-NEXT:    [[TMP5]] = fadd fast double %"ld2'ipl", [[TMP0_0]]
 ; CHECK-NEXT:    [[TMP6:%.*]] = insertvalue [3 x double] undef, double [[TMP5]], 0
-; CHECK-NEXT:    [[TMP7:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP8:%.*]] = fadd fast double %"ld2'ipl3", [[TMP7]]
+; CHECK-NEXT:    [[TMP8]] = fadd fast double %"ld2'ipl3", [[TMP0_1]]
 ; CHECK-NEXT:    [[TMP9:%.*]] = insertvalue [3 x double] [[TMP6]], double [[TMP8]], 1
-; CHECK-NEXT:    [[TMP10:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP11:%.*]] = fadd fast double %"ld2'ipl4", [[TMP10]]
-; CHECK-NEXT:    [[TMP12]] = insertvalue [3 x double] [[TMP9]], double [[TMP11]], 2
+; CHECK-NEXT:    [[TMP11]] = fadd fast double %"ld2'ipl4", [[TMP0_2]]
+; CHECK-NEXT:    [[TMP12:%.*]] = insertvalue [3 x double] [[TMP9]], double [[TMP11]], 2
 ; CHECK-NEXT:    [[CMP2:%.*]] = icmp ne i64 [[IV_NEXT]], 10
 ; CHECK-NEXT:    br i1 [[CMP2]], label [[LOOP]], label [[EXIT:%.*]]
 ; CHECK:       exit:

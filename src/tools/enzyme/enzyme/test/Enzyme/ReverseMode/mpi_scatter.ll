@@ -47,7 +47,7 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %11 = load i32, i32* %2
 ; CHECK-NEXT:   %12 = zext i32 %11 to i64
 ; CHECK-NEXT:   %13 = mul nuw nsw i64 %9, %12
-; CHECK-NEXT:   %14 = tail call i8* @malloc(i64 %13)
+; CHECK-NEXT:   %14 = tail call noalias nonnull i8* @malloc(i64 %13)
 ; CHECK-NEXT:   br label %invertentry_post
 
 ; CHECK: invertentry_post:                                 ; preds = %invertentry_root, %entry

@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme" -enzyme-preopt=false -S | FileCheck %s
 
 
 @.str = private unnamed_addr constant [18 x i8] c"W(o=%d, i=%d)=%f\0A\00", align 1
@@ -11,7 +12,7 @@ entry:
 
 define void @callee(i64* %from, i64* %to) {
 entry:
-  store i64 ptrtoint ([18 x i8]* @.str to i64), i64* %to
+  store i64 ptrtoint ([18 x i8]* @.str to i64), i64* %to, align 4
   ret void
 }
 

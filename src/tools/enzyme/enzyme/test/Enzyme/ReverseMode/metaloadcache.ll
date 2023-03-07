@@ -45,7 +45,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %a, align 8
 ; CHECK-NEXT:   %mul = fmul double %0, %0
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double, double } undef, double %0, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double, double } {{(undef|poison)}}, double %0, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { double, double } %.fca.0.insert, double %mul, 1
 ; CHECK-NEXT:   ret { double, double } %.fca.1.insert
 ; CHECK-NEXT: }

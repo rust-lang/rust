@@ -1,7 +1,7 @@
-# <img src="https://enzyme.mit.edu/logo.svg" width="75" align=left> The Enzyme High-Performance Automatic Differentiator of LLVM
+# <img src="https://enzyme.mit.edu/logo.svg" width="75" align=left> The Enzyme High-Performance Automatic Differentiator of LLVM and MLIR
 
 
-Enzyme is a plugin that performs automatic differentiation (AD) of statically analyzable LLVM.
+Enzyme is a plugin that performs automatic differentiation (AD) of statically analyzable LLVM and MLIR.
 
 Enzyme can be used by calling `__enzyme_autodiff` on a function to be differentiated as shown below. 
 Running the Enzyme transformation pass then replaces the call to `__enzyme_autodiff` with the gradient of its first argument.
@@ -42,7 +42,7 @@ spack install enzyme
 
 To get involved or if you have questions, please join our [mailing list](https://groups.google.com/d/forum/enzyme-dev).
 
-If using this code in an academic setting, please cite the following two papers (first for Enzyme as a whole, then for GPU+optimizations):
+If using this code in an academic setting, please cite the following three papers (first for Enzyme as a whole, second for GPU+optimizations, and third for AD of all other parallel programs (OpenMP, MPI, Julia Tasks, etc.)):
 ```
 @inproceedings{NEURIPS2020_9332c513,
  author = {Moses, William and Churavy, Valentin},
@@ -71,6 +71,19 @@ keywords = {CUDA, LLVM, ROCm, HPC, AD, GPU, automatic differentiation},
 location = {St. Louis, Missouri},
 series = {SC '21}
 }
+@inproceedings{10.5555/3571885.3571964,
+author = {Moses, William S. and Narayanan, Sri Hari Krishna and Paehler, Ludger and Churavy, Valentin and Schanen, Michel and H\"{u}ckelheim, Jan and Doerfert, Johannes and Hovland, Paul},
+title = {Scalable Automatic Differentiation of Multiple Parallel Paradigms through Compiler Augmentation},
+year = {2022},
+isbn = {9784665454445},
+publisher = {IEEE Press},
+booktitle = {Proceedings of the International Conference on High Performance Computing, Networking, Storage and Analysis},
+articleno = {60},
+numpages = {18},
+keywords = {automatic differentiation, tasks, OpenMP, compiler, Julia, parallel, Enzyme, C++, RAJA, hybrid parallelization, MPI, distributed, LLVM},
+location = {Dallas, Texas},
+series = {SC '22}
+}
 ```
 
-Both [Julia bindings](https://github.com/wsmoses/Enzyme.jl) and [Rust bindings](https://github.com/rust-ml/oxide-enzyme) are available for Enzyme.
+Both [Julia bindings](https://github.com/EnzymeAD/Enzyme.jl#readme) and [Rust bindings](https://github.com/EnzymeAD/rust#readme) are available for Enzyme.

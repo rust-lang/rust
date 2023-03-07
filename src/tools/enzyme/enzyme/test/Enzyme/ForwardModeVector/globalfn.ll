@@ -96,7 +96,20 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 ; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [3 x double] %"x'", 2
 ; CHECK-NEXT:    store double [[TMP5]], double* %"alloc'ipa2"
 ; CHECK-NEXT:    %"arrayidx'ipg" = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global_shadow, i64 0, i64 [[IDX]]
+; CHECK-NEXT:    %arrayidx = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global, i64 0, i64 %idx
 ; CHECK-NEXT:    %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg"
+; CHECK-NEXT:   %fp = load void (double*)*, void (double*)** %arrayidx
+; CHECK-NEXT:   %6 = bitcast void (double*)* %fp to i8*
+; CHECK-NEXT:   %7 = bitcast void (double*)* %"fp'ipl" to i8*
+; CHECK-NEXT:   %8 = icmp eq i8* %6, %7
+; CHECK-NEXT:   br i1 %8, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %{{.*}} = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str.3, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:                 ; preds = %entry
 ; CHECK-NEXT:    [[TMP6:%.*]] = bitcast void (double*)* %"fp'ipl" to void (double*, [3 x double*])**
 ; CHECK-NEXT:    [[TMP7:%.*]] = load void (double*, [3 x double*])*, void (double*, [3 x double*])** [[TMP6]]
 ; CHECK-NEXT:    call void [[TMP7]](double* [[ALLOC]], [3 x double*] [[TMP2]])

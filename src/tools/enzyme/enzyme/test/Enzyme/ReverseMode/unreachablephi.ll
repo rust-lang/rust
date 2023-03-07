@@ -19,7 +19,7 @@ top:
   %i10 = getelementptr inbounds i8, i8 addrspace(11)* %i3, i64 56
   %i11 = bitcast i8 addrspace(11)* %i10 to i64 addrspace(11)*
   %i12 = load i64, i64 addrspace(11)* %i11, align 8
-  %i13 = call i64 @jl_object_id({} addrspace(10)* nonnull %arg1)
+  %i13 = call i64 @jl_object_id({} addrspace(10)* nonnull %arg1) "nofree"
   %i14 = shl i64 %i13, 21
   %i15 = xor i64 %i14, -1
   %i16 = add i64 %i13, %i15

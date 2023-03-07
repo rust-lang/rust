@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-lower-globals -mem2reg -sroa -simplifycfg -instsimplify -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-lower-globals -sroa -instsimplify -adce -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(sroa,instsimplify,adce)" -enzyme-preopt=false -enzyme-lower-globals -S | FileCheck %s
 
 @global = external dso_local local_unnamed_addr global double, align 8
 

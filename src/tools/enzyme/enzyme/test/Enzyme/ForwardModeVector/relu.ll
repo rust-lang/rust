@@ -43,11 +43,12 @@ attributes #1 = { nounwind readnone noinline }
 ; CHECK-NEXT:    br i1 [[CMP_I]], label [[COND_TRUE_I:%.*]], label [[FWDDIFFE2RELU_EXIT:%.*]]
 ; CHECK:       cond.true.i:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call {{(fast )?}}[2 x double] @fwddiffe2f(double [[X]], [2 x double] [double 0.000000e+00, double 1.000000e+00])
+; CHECK-NEXT:    [[TMP0_0:%.*]] = extractvalue [2 x double] [[TMP0]], 0
+; CHECK-NEXT:    [[TMP0_1:%.*]] = extractvalue [2 x double] [[TMP0]], 1
 ; CHECK-NEXT:    br label [[FWDDIFFE2RELU_EXIT]]
 ; CHECK:       fwddiffe2relu.exit:
-; CHECK-NEXT:    [[TMP1:%.*]] = phi {{(fast )?}}[2 x double] [ [[TMP0]], [[COND_TRUE_I]] ], [ zeroinitializer, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP2:%.*]] = extractvalue [2 x double] [[TMP1]], 0
-; CHECK-NEXT:    [[TMP3:%.*]] = insertvalue [[STRUCT_GRADIENTS:%.*]] zeroinitializer, double [[TMP2]], 0
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [2 x double] [[TMP1]], 1
-; CHECK-NEXT:    [[TMP5:%.*]] = insertvalue [[STRUCT_GRADIENTS]] [[TMP3]], double [[TMP4]], 1
+; CHECK-NEXT:    [[TMP1_0:%.*]] = phi {{(fast )?}}double [ [[TMP0_0]], [[COND_TRUE_I]] ], [ 0.000000e+00, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP1_1:%.*]] = phi {{(fast )?}}double [ [[TMP0_1]], [[COND_TRUE_I]] ], [ 0.000000e+00, [[ENTRY]] ]
+; CHECK-NEXT:    [[TMP3:%.*]] = insertvalue [[STRUCT_GRADIENTS:%.*]] zeroinitializer, double [[TMP1_0]], 0
+; CHECK-NEXT:    [[TMP5:%.*]] = insertvalue [[STRUCT_GRADIENTS]] [[TMP3]], double [[TMP1_1]], 1
 ; CHECK-NEXT:    ret [[STRUCT_GRADIENTS]] [[TMP5]]

@@ -38,7 +38,7 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %3 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to i8*), i32* %0)
 ; CHECK-NEXT:   %4 = load i32, i32* %0
 ; CHECK-NEXT:   %5 = zext i32 %4 to i64
-; CHECK-NEXT:   %6 = tail call i8* @malloc(i64 %5)
+; CHECK-NEXT:   %6 = tail call noalias nonnull i8* @malloc(i64 %5)
 ; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
 ; CHECK-NEXT:   %7 = load i8*, i8** @"__enzyme_mpi_sumFloat@double"
 ; CHECK-NEXT:   %8 = call i32 @MPI_Reduce_scatter_block(i8* %"recv_buf'", i8* %6, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i8* %7, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))

@@ -68,9 +68,13 @@ static llvm::cl::opt<std::string>
 static llvm::cl::opt<bool>
     InactiveArgs("activity-analysis-inactive-args", cl::init(false), cl::Hidden,
                  cl::desc("Whether all args are inactive"));
+
+static llvm::cl::opt<bool>
+    DuplicatedRet("activity-analysis-duplicated-ret", cl::init(false),
+                  cl::Hidden, cl::desc("Whether the return is duplicated"));
 namespace {
 
-class ActivityAnalysisPrinter : public FunctionPass {
+class ActivityAnalysisPrinter final : public FunctionPass {
 public:
   static char ID;
   ActivityAnalysisPrinter() : FunctionPass(ID) {}
@@ -97,15 +101,15 @@ public:
       } else if (a.getType()->isPointerTy()) {
         auto et = a.getType()->getPointerElementType();
         if (et->isFPOrFPVectorTy()) {
-          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
         } else if (et->isPointerTy()) {
-          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
         }
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);
       }
       type_args.Arguments.insert(
-          std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+          std::pair<Argument *, TypeTree>(&a, dt.Only(-1, nullptr)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
       type_args.KnownValues.insert(
@@ -118,14 +122,14 @@ public:
     } else if (F.getReturnType()->isPointerTy()) {
       auto et = F.getReturnType()->getPointerElementType();
       if (et->isFPOrFPVectorTy()) {
-        dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+        dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
       } else if (et->isPointerTy()) {
-        dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+        dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
       }
     } else if (F.getReturnType()->isIntOrIntVectorTy()) {
       dt = ConcreteType(BaseType::Integer);
     }
-    type_args.Return = dt.Only(-1);
+    type_args.Return = dt.Only(-1, nullptr);
 
     PreProcessCache PPC;
     TypeAnalysis TA(PPC.FAM);
@@ -146,6 +150,8 @@ public:
     DIFFE_TYPE ActiveReturns = F.getReturnType()->isFPOrFPVectorTy()
                                    ? DIFFE_TYPE::OUT_DIFF
                                    : DIFFE_TYPE::CONSTANT;
+    if (DuplicatedRet)
+      ActiveReturns = DIFFE_TYPE::DUP_ARG;
     SmallPtrSet<BasicBlock *, 4> notForAnalysis(getGuaranteedUnreachable(&F));
     ActivityAnalyzer ATA(PPC, PPC.FAM.getResult<AAManager>(F), notForAnalysis,
                          TLI, ConstantValues, ActiveValues, ActiveReturns);

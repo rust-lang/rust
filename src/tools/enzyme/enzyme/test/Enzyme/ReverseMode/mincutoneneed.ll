@@ -47,7 +47,7 @@ exit:                                             ; preds = %loop
 ; CHECK: loop:                                             ; preds = %loop, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %loop ], [ 0, %entry ]
 ; CHECK-NEXT:   %0 = getelementptr inbounds double, double* %tapeArg, i64 %iv
-; CHECK-NEXT:   %tmp24 = load double, double* %0, align 8, !invariant.group !1
+; CHECK-NEXT:   %tmp24 = load double, double* %0, align 8, !invariant.group !
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %tmp27 = icmp eq i64 %iv, 16
 ; CHECK-NEXT:   br i1 %tmp27, label %invertexit, label %loop

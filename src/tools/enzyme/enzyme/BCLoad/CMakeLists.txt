@@ -10,8 +10,8 @@ set_target_properties(blasheaders PROPERTIES EXCLUDE_FROM_ALL TRUE)
 elseif (${Clang_FOUND})
 include(ExternalProject)
 ExternalProject_Add(gsl
-    GIT_REPOSITORY https://github.com/ampl/gsl
-    GIT_TAG 6e40fb13a501393f3a9deb7c4fcbee85241a0339
+    GIT_REPOSITORY https://github.com/EnzymeAD/gsl
+    GIT_TAG 5805b8323f75834c121fd65464cc55f2828f5b05
     PREFIX gsl
     BUILD_IN_SOURCE 1
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsl/install
@@ -22,6 +22,20 @@ ExternalProject_Add(gsl
     TEST_COMMAND      ""
 )
 set_target_properties(gsl PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+ExternalProject_Add(gsl64
+    GIT_REPOSITORY https://github.com/EnzymeAD/gsl
+    GIT_TAG 5805b8323f75834c121fd65464cc55f2828f5b05
+    PREFIX gsl64
+    BUILD_IN_SOURCE 1
+    INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsl64/install
+    CONFIGURE_COMMAND sh -c ${CMAKE_CURRENT_SOURCE_DIR}/fixgsl64.sh
+    BUILD_COMMAND  sh -c "$<TARGET_FILE:clang> cblas/*.c ${BC_LOAD_FLAGS} -I . -I .. -S -emit-llvm -O1"
+    INSTALL_COMMAND ""
+    UPDATE_COMMAND ""
+    TEST_COMMAND      ""
+)
+set_target_properties(gsl64 PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 
 ExternalProject_Add(openblas
@@ -39,8 +53,8 @@ ExternalProject_Add(openblas
 set_target_properties(openblas PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 ExternalProject_Add(fblas
-    GIT_REPOSITORY https://github.com/UCSantaCruzComputationalGenomicsLab/clapack
-    GIT_TAG 8bac8d5cd7aa8506b11cdb2cfa2ce8a2e03048f3
+    GIT_REPOSITORY https://github.com/EnzymeAD/clapack
+    GIT_TAG 42603bf49ac2b27a7c00c53f92fa648748476510
     PREFIX fblas
     BUILD_IN_SOURCE 1
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/openblas/install
@@ -52,7 +66,7 @@ ExternalProject_Add(fblas
 )
 set_target_properties(fblas PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-add_custom_target(blasheaders cp "${CMAKE_CURRENT_SOURCE_DIR}/makeblas.cmake" "${CMAKE_CURRENT_BINARY_DIR}/gsl/CMakeLists.txt" && cd "${CMAKE_CURRENT_BINARY_DIR}/gsl" && ${CMAKE_COMMAND} . DEPENDS gsl fblas ${CMAKE_CURRENT_SOURCE_DIR}/makeblas.cmake)
+add_custom_target(blasheaders cp "${CMAKE_CURRENT_SOURCE_DIR}/makeblas.cmake" "${CMAKE_CURRENT_BINARY_DIR}/gsl/CMakeLists.txt" && cd "${CMAKE_CURRENT_BINARY_DIR}/gsl" && ${CMAKE_COMMAND} . DEPENDS gsl gsl64 fblas ${CMAKE_CURRENT_SOURCE_DIR}/makeblas.cmake)
 set_target_properties(blasheaders PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif()
 

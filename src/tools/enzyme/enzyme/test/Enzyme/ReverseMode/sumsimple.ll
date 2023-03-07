@@ -38,7 +38,7 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffef(double* %x, double* %"x'", double** %y, double** %"y'", i64 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = add i64 %n, 1
+; CHECK-NEXT:   %0 = add {{(nuw )?}}i64 %n, 1
 ; CHECK-NEXT:   %1 = add nuw i64 %0, 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %1, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
@@ -59,7 +59,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %add = fadd fast double %[[finaly]], %2
 ; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   %[[cachegep:.+]] = getelementptr inbounds double*, double** %[[antimallocs]], i64 %iv
-; CHECK-NEXT:   store double* %[[ipload]], double** %[[cachegep]], align 8, !invariant.group !0
+; CHECK-NEXT:   store double* %[[ipload]], double** %[[cachegep]], align 8, !invariant.group ![[g0:[0-9]+]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: invertentry:
@@ -74,7 +74,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK: incinvertfor.cond:
 ; CHECK-NEXT:   %[[sub]] = add nsw i64 %[[ivp]], -1
 ; CHECK-NEXT:   %8 = getelementptr inbounds double*, double** %[[antimallocs]], i64 %[[sub]]
-; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group !0
+; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group ![[g0]]
 ; CHECK-NEXT:   %10 = load double, double* %9
 ; CHECK-NEXT:   store double %10, double* %9
 ; CHECK-NEXT:   %11 = load double, double* %"x'"
@@ -84,4 +84,4 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT: }
 
 
-; CHECK: !0 = distinct !{}
+; CHECK: ![[g0]] = distinct !{}

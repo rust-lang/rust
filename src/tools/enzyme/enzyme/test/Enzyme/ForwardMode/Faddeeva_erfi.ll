@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -instcombine -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -early-cse -instcombine -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(early-cse,instcombine)" -enzyme-preopt=false -S | FileCheck %s
 
 declare { double, double } @Faddeeva_erfi({ double, double }, double)
 

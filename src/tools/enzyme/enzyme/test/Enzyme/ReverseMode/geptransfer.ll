@@ -56,12 +56,11 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %[[same:.+]] = fadd fast double %[[zerod]], %[[dder]]
 ; CHECK-NEXT:   %[[backlcptr4:.+]] = bitcast double %[[same]] to i64
 
-; CHECK-NEXT:   %[[lcptr2:.+]] = load i64, i64* %"cptr2'ipg"
-; CHECK-DAG:    %[[bcptr2:.+]] = bitcast i64 %[[lcptr2]] to double
+; CHECK-NEXT:   %[[lcptr2:.+]] = bitcast i64* %"cptr2'ipg" to double*
+; CHECK-DAG:    %[[bcptr2:.+]] = load double, double* %[[lcptr2]]
 ; CHECK-DAG:    %[[bcptr4:.+]] = bitcast i64 %[[backlcptr4]] to double
 ; CHECK-NEXT:   %[[mmadd:.+]] = fadd fast double %[[bcptr2]], %[[bcptr4]]
-; CHECK-NEXT:   %[[cbadd:.+]] = bitcast double %[[mmadd]] to i64
-; CHECK-NEXT:   store i64 %[[cbadd]], i64* %"cptr2'ipg"
+; CHECK-NEXT:   store double %[[mmadd]], double* %[[lcptr2]]
 ; CHECK-NEXT:   %[[lptr3:.+]] = load i64, i64* %"ptr3'ipg"
 ; CHECK-NEXT:   store i64 0, i64* %"ptr3'ipg"
 
@@ -70,11 +69,10 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:  %[[fasd:.+]] = fadd fast double %[[zerod2]], %[[bczd]]
 ; CHECK-NEXT:  %[[nlptr3:.+]] = bitcast double %[[fasd]] to i64
 
-; CHECK-NEXT:   %[[lptr2:.+]] = load i64, i64* %"ptr2'ipg"
-; CHECK-DAG:    %[[dptr2:.+]] = bitcast i64 %[[lptr2]] to double
+; CHECK-NEXT:   %[[lptr2:.+]] = bitcast i64* %"ptr2'ipg" to double*
+; CHECK-DAG:    %[[dptr2:.+]] = load double, double* %[[lptr2]]
 ; CHECK-DAG:    %[[dptr3:.+]] = bitcast i64 %[[nlptr3]] to double
 ; CHECK-NEXT:   %[[ladd:.+]] = fadd fast double %[[dptr2]], %[[dptr3]]
-; CHECK-NEXT:   %[[fs:.+]] = bitcast double %[[ladd]] to i64
-; CHECK-NEXT:   store i64 %[[fs]], i64* %"ptr2'ipg"
+; CHECK-NEXT:   store double %[[ladd]], double* %[[lptr2]]
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -1,9 +1,9 @@
-# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B hand-raw.ll results.txt -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B hand-raw.ll results.json -f %s
 
 .PHONY: clean
 
 clean:
-	rm -f *.ll *.o results.txt
+	rm -f *.ll *.o results.txt results.json
 
 %-unopt.ll: %.cpp
 	clang++ $(BENCH) $^ -O2 -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
@@ -18,5 +18,5 @@ clean:
 hand.o: hand-opt.ll
 	clang++ $^ -o $@ -lblas $(BENCHLINK)
 
-results.txt: hand.o
-	./$^ | tee $@
+results.json: hand.o
+	./$^

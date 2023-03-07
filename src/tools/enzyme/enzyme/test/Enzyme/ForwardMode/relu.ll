@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -inline -early-cse -instcombine -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme" -enzyme-preopt=false -S | FileCheck %s
 
 ; __attribute__((noinline))
 ; double f(double x) {
@@ -43,15 +44,15 @@ declare double @__enzyme_fwddiff(double (double)*, ...) #0
 attributes #0 = { nounwind }
 attributes #1 = { nounwind readnone noinline }
 
-; CHECK: define dso_local double @drelu(double %x)
+; CHECK: define internal double @fwddifferelu(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %fwddifferelu.exit
-; CHECK: cond.true.i:                                ; preds = %entry
-; CHECK-NEXT:   %0 = call fast double @fwddiffef(double %x, double 1.000000e+00)
-; CHECK-NEXT:   br label %fwddifferelu.exit
-; CHECK: fwddifferelu.exit:                                   ; preds = %entry, %cond.true.i
-; CHECK-NEXT:   %[[cond:.+]] = phi{{( fast)?}} double [ %0, %cond.true.i ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   %cmp = fcmp fast ogt double %x, 0.000000e+00
+; CHECK-NEXT:   br i1 %cmp, label %cond.true, label %cond.end
+; CHECK: cond.true:                                ; preds = %entry
+; CHECK-NEXT:   %0 = call fast double @fwddiffef(double %x, double %"x'")
+; CHECK-NEXT:   br label %cond.end
+; CHECK: cond.end:
+; CHECK-NEXT:   %[[cond:.+]] = phi{{( fast)?}} double [ %0, %cond.true ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %[[cond]]
 ; CHECK-NEXT: }
 

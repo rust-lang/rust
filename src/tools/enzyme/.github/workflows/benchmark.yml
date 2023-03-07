@@ -22,7 +22,7 @@ jobs:
       matrix:
         llvm: ["7",  "8", "9", "10", "11", "12", "13"] #, "14"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
-        os: [self-hosted]
+        os: [openstack18]
     timeout-minutes: 120 
     steps:
     - name: add llvm 
@@ -51,3 +51,9 @@ jobs:
       run: cd enzyme/build && make bench-enzyme
     - name: results
       run: cat enzyme/benchmarks/*/*/results.txt
+    - name: graph results
+      run: |
+          for p in enzyme/benchmarks/ReverseMode/*/results.json; do
+          python3 enzyme/benchmarks/upload-results.py $p --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+          done
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'

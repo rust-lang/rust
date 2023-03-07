@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -correlated-propagation -simplifycfg -S -early-cse | FileCheck %s
+; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -correlated-propagation -simplifycfg -early-cse -S | FileCheck %s -check-prefixes STORE,SHARED; fi
+; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -correlated-propagation -simplifycfg -early-cse -S | FileCheck %s -check-prefixes MEMCPY,SHARED; fi
 
 ; void __enzyme_autodiff(void*, ...);
 
@@ -67,54 +68,56 @@ attributes #3 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn)
-; CHECK-NEXT: entry:
+; SHARED: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn)
+; SHARED-NEXT: entry:
 ; TODO-NEXT:   %[[a1:.+]] = zext i32 %N to i64
-; CHECK:   %[[a2:.+]] = add{{( nuw)?}}{{( nsw)?}} i64 %[[a1:.+]], 1
-; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a2]], 8
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   br label %for.body
+; SHARED:   %[[a2:.+]] = add{{( nuw)?}}{{( nsw)?}} i64 %[[a1:.+]], 1
+; SHARED-NEXT:   %mallocsize = mul nuw nsw i64 %[[a2]], 8
+; SHARED-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; SHARED-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
+; MEMCPY-NEXT:   %2 = bitcast double* %x to i8*
+; MEMCPY-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %malloccall, i8* nonnull align 8 %2, i64 %mallocsize, i1 false)
+; SHARED-NEXT:   br label %for.body
 
-; CHECK: for.cond.cleanup:                                 ; preds = %for.body
-; CHECK-NEXT:   store double 0.000000e+00, double* %x, align 8, !tbaa !2
-; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   br label %invertfor.body
+; SHARED: for.cond.cleanup:                                 ; preds = %for.body
+; SHARED-NEXT:   store double 0.000000e+00, double* %x, align 8, !tbaa !2
+; SHARED-NEXT:   store double 0.000000e+00, double* %"x'", align 8
+; SHARED-NEXT:   br label %invertfor.body
 
-; CHECK: for.body:                                         ; preds = %for.body, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %[[a3:.+]] = trunc i64 %iv to i32
-; CHECK-NEXT:   %idxprom = zext i32 %[[a3]] to i64
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
-; CHECK-NEXT:   %[[a4:.+]] = load double, double* %arrayidx, align 8, !tbaa !2
-; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %iv
-; CHECK-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !tbaa !2, !invariant.group !6
-; CHECK-NEXT:   %inc = add i32 %[[a3]], 1
-; CHECK-NEXT:   %cmp = icmp ugt i32 %inc, %N
-; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
+; SHARED: for.body:                                         ; preds = %for.body, %entry
+; SHARED-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
+; SHARED-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; SHARED-NEXT:   %[[a3:.+]] = trunc i64 %iv to i32
+; STORE-NEXT:   %idxprom = zext i32 %[[a3]] to i64
+; STORE-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
+; STORE-NEXT:   %[[a4:.+]] = load double, double* %arrayidx, align 8, !tbaa !2
+; STORE-NEXT:   %[[a5:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %iv
+; STORE-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !tbaa !2, !invariant.group !
+; SHARED-NEXT:   %inc = add i32 %[[a3]], 1
+; SHARED-NEXT:   %cmp = icmp ugt i32 %inc, %N
+; SHARED-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
 
-; CHECK: invertentry:                                      ; preds = %invertfor.body
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   ret void
+; SHARED: invertentry:                                      ; preds = %invertfor.body
+; SHARED-NEXT:   tail call void @free(i8* nonnull %malloccall)
+; SHARED-NEXT:   ret void
 
-; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %for.cond.cleanup
-; CHECK:   %"add'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"add'de.0", %incinvertfor.body ]
-; CHECK:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
-; CHECK-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, !tbaa !2, !invariant.group !6
-; CHECK-NEXT:   %m0diffe = fmul fast double %"add'de.0", %[[a7]]
-; CHECK-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
-; CHECK-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32
-; CHECK-NEXT:   %idxprom_unwrap = zext i32 %[[unwrap]] to i64
-; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %idxprom_unwrap
-; CHECK-NEXT:   %[[a9:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[a10:.+]] = fadd fast double %[[a9]], %[[a8]]
-; CHECK-NEXT:   store double %[[a10]], double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[a11:.+]] = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %[[a11]], label %invertentry, label %incinvertfor.body
+; SHARED: invertfor.body:                                   ; preds = %incinvertfor.body, %for.cond.cleanup
+; SHARED:   %"add'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"add'de.0", %incinvertfor.body ]
+; SHARED:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
+; SHARED-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
+; SHARED-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, {{(!tbaa !2, )?}}!invariant.group !
+; SHARED-NEXT:   %m0diffe = fmul fast double %"add'de.0", %[[a7]]
+; SHARED-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
+; SHARED-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32
+; SHARED-NEXT:   %idxprom_unwrap = zext i32 %[[unwrap]] to i64
+; SHARED-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %idxprom_unwrap
+; SHARED-NEXT:   %[[a9:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
+; SHARED-NEXT:   %[[a10:.+]] = fadd fast double %[[a9]], %[[a8]]
+; SHARED-NEXT:   store double %[[a10]], double* %"arrayidx'ipg_unwrap", align 8
+; SHARED-NEXT:   %[[a11:.+]] = icmp eq i64 %"iv'ac.0", 0
+; SHARED-NEXT:   br i1 %[[a11]], label %invertentry, label %incinvertfor.body
 
-; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %[[a12]] = add nsw i64 %"iv'ac.0", -1
-; CHECK-NEXT:   br label %invertfor.body
-; CHECK-NEXT: }
+; SHARED: incinvertfor.body:                                ; preds = %invertfor.body
+; SHARED-NEXT:   %[[a12]] = add nsw i64 %"iv'ac.0", -1
+; SHARED-NEXT:   br label %invertfor.body
+; SHARED-NEXT: }

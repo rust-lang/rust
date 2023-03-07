@@ -19,18 +19,16 @@ jobs:
         version:
           - '1.6'
           - '1.7'
-          - 'nightly'
+          - '1.8'
         os:
           - ubuntu-latest
           - macOS-latest
         arch:
           - x64
-    timeout-minutes: 30 
+    timeout-minutes: 60 
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
       with:
         repository: 'wsmoses/Enzyme.jl'
         path: ./jl

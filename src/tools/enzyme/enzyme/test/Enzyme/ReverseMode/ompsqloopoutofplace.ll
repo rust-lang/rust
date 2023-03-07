@@ -134,7 +134,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   %_unwrap9 = load i64, i64* %.omp.ub_smpl
 ; CHECK-NEXT:   %cmp6_unwrap10 = icmp ugt i64 %_unwrap9, %sub4
 ; CHECK-NEXT:   %cond_unwrap11 = select i1 %cmp6_unwrap10, i64 %sub4, i64 %_unwrap9
-; CHECK-NEXT:   %add29_unwrap = add i64 %cond_unwrap11, 1
+; CHECK-NEXT:   %add29_unwrap = add {{(nuw )?}}i64 %cond_unwrap11, 1
 ; CHECK-NEXT:   %cmp730_unwrap = icmp ult i64 %_unwrap8, %add29_unwrap
 ; CHECK-NEXT:   br i1 %cmp730_unwrap, label %invertomp.loop.exit.loopexit, label %invertomp.precond.then
 
@@ -142,7 +142,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertomp.precond.then:                           ; preds = %invertomp.inner.for.body, %omp.precond.then
-; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !13
+; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7
 ; CHECK-NEXT:   call void @__kmpc_for_static_fini(%struct.ident_t* @1, i32 %_unwrap)
 ; CHECK-NEXT:   br label %invertentry
 
@@ -154,7 +154,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   %1 = load double, double* %"outidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"outidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds double, double* %tmp, i64 %_unwrap3
-; CHECK-NEXT:   %_unwrap4 = load double, double* %arrayidx_unwrap, align 8, !tbaa !9, !invariant.group !16
+; CHECK-NEXT:   %_unwrap4 = load double, double* %arrayidx_unwrap, align 8, !tbaa !9
 ; CHECK-NEXT:   %2 = call fast double @sqrt(double %_unwrap4)
 ; CHECK-NEXT:   %3 = fmul fast double 5.000000e-01, %1
 ; CHECK-NEXT:   %4 = fdiv fast double %3, %2

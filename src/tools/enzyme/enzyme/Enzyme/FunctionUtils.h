@@ -48,6 +48,15 @@
 class PreProcessCache {
 public:
   PreProcessCache();
+  PreProcessCache(PreProcessCache &) = delete;
+  // Using the default move constructor will botch the FAM/MAM proxy passes
+  // since now the new location of FAM/MAM will not be used. Therefore, use a
+  // custom move constructor and default initialize these, and move the
+  // cache/origin maps.
+  PreProcessCache(PreProcessCache &&prev) : PreProcessCache() {
+    cache = std::move(prev.cache);
+    CloneOrigin = std::move(prev.CloneOrigin);
+  };
 
   llvm::FunctionAnalysisManager FAM;
   llvm::ModuleAnalysisManager MAM;
@@ -62,7 +71,7 @@ public:
   llvm::Function *CloneFunctionWithReturns(
       DerivativeMode mode, unsigned width, llvm::Function *&F,
       llvm::ValueToValueMapTy &ptrInputs,
-      const std::vector<DIFFE_TYPE> &constant_args,
+      llvm::ArrayRef<DIFFE_TYPE> constant_args,
       llvm::SmallPtrSetImpl<llvm::Value *> &constants,
       llvm::SmallPtrSetImpl<llvm::Value *> &nonconstant,
       llvm::SmallPtrSetImpl<llvm::Value *> &returnvals, ReturnType returnValue,
@@ -70,6 +79,7 @@ public:
       bool diffeReturnArg, llvm::Type *additionalArg = nullptr);
 
   void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
+  void LowerAllocAddr(llvm::Function *NewF);
   void AlwaysInline(llvm::Function *NewF);
   void optimizeIntermediate(llvm::Function *F);
 
@@ -346,11 +356,17 @@ static inline void calculateUnusedStores(
   }
 }
 
+void RecursivelyReplaceAddressSpace(llvm::Value *AI, llvm::Value *rep,
+                                    bool legal);
+
+void ReplaceFunctionImplementation(llvm::Module &M);
+
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val);
-#endif
 
 llvm::FunctionType *getFunctionTypeForClone(
     llvm::FunctionType *FTy, DerivativeMode mode, unsigned width,
-    llvm::Type *additionalArg, const std::vector<DIFFE_TYPE> &constant_args,
+    llvm::Type *additionalArg, llvm::ArrayRef<DIFFE_TYPE> constant_args,
     bool diffeReturnArg, ReturnType returnValue, DIFFE_TYPE returnType);
+
+#endif

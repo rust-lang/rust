@@ -1,6 +1,10 @@
 name: Enzyme CI
 
-on: [push]
+on: 
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build-linux:
@@ -37,7 +41,7 @@ jobs:
             sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
             sudo sed -i 's/llvm-omp-device-info//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
           fi
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
@@ -51,7 +55,10 @@ jobs:
     - name: make check-activityanalysis
       run: cd enzyme/build && make check-activityanalysis -j`nproc`
     - name: make check-enzyme
-      run: cd enzyme/build && make check-enzyme -j`nproc`
+      run: cd enzyme/build && make check-enzyme-bench -j`nproc`
+    - name: graph results
+      run: python3 enzyme/test/upload-results.py enzyme/build/test/Enzyme/results.json --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'
   
   build-macos:
     name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} macOS
@@ -60,23 +67,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["8", "9", "11", "12", "13"] #, "14"]
+        llvm: ["8", "9", "11", "12", "13", "14", "15"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
   
     timeout-minutes: 30 
     steps:
     - name: add llvm 
       run: |
+          brew update
           brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
           sudo python3 -m pip install --upgrade pip setuptools
-          sudo python3 -m pip install lit
-    - uses: actions/checkout@v2
+          sudo python3 -m pip install lit requests
+    - uses: actions/checkout@v3
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
       run: |
-          cd enzyme/build 
-          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=`brew --prefix llvm@${{ matrix.llvm }}`/lib/cmake/llvm
+          llvm_prefix=`brew --prefix llvm@${{ matrix.llvm }}`
+          cd enzyme/build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=${llvm_prefix}/lib/cmake/llvm
     - name: make
       run: cd enzyme/build && make -j 3
     - name: make check-typeanalysis
@@ -84,4 +93,32 @@ jobs:
     - name: make check-activityanalysis
       run: cd enzyme/build && make check-activityanalysis -j 3
     - name: make check-enzyme
-      run: cd enzyme/build && make check-enzyme -j 3
+      run: cd enzyme/build && make check-enzyme-bench -j 3
+    - name: graph results
+      run: python3 enzyme/test/upload-results.py enzyme/build/test/Enzyme/results.json --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'
+
+  build-xcode:
+    name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} macOS XCode
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["13"] #, "14"]
+        build: ["Release"] # "RelWithDebInfo"
+
+    timeout-minutes: 30
+    steps:
+    - name: add llvm
+      run: |
+          brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
+          sudo python3 -m pip install --upgrade pip setuptools
+          sudo python3 -m pip install lit
+    - uses: actions/checkout@v3
+    - name: mkdir
+      run: cd enzyme && rm -rf build && mkdir build
+    - name: cmake
+      run: |
+          cd enzyme/build
+          cmake .. -GXcode -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=`brew --prefix llvm@${{ matrix.llvm }}`/lib/cmake/llvm

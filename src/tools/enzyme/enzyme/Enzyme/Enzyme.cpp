@@ -30,7 +30,9 @@
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Passes/PassBuilder.h"
 
@@ -50,6 +52,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #if LLVM_VERSION_MAJOR >= 11
 #include "llvm/Analysis/InlineAdvisor.h"
+#include "llvm/IR/AbstractCallSite.h"
 #endif
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
@@ -60,7 +63,11 @@
 #include "ActivityAnalysis.h"
 #include "EnzymeLogic.h"
 #include "GradientUtils.h"
+#include "TraceInterface.h"
+#include "TraceUtils.h"
 #include "Utils.h"
+
+#include "InstructionBatcher.h"
 
 #include "llvm/Transforms/Utils.h"
 
@@ -93,127 +100,33 @@ llvm::cl::opt<bool> EnzymeOMPOpt("enzyme-omp-opt", cl::init(false), cl::Hidden,
 #endif
 namespace {
 
-template <const char *handlername, DerivativeMode Mode, int numargs>
-static void
-handleCustomDerivative(llvm::Module &M, llvm::GlobalVariable &g,
-                       std::vector<GlobalVariable *> &globalsToErase) {
-  if (g.hasInitializer()) {
-    if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
-      if (CA->getNumOperands() != numargs) {
-        llvm::errs() << M << "\n";
-        llvm::errs() << "Use of " << handlername
-                     << " must be a "
-                        "constant of size "
-                     << numargs << " " << g << "\n";
-        llvm_unreachable(handlername);
-      } else {
-        Function *Fs[numargs];
-        for (size_t i = 0; i < numargs; i++) {
-          Value *V = CA->getOperand(i);
-          while (auto CE = dyn_cast<ConstantExpr>(V)) {
-            V = CE->getOperand(0);
-          }
-          if (auto CA = dyn_cast<ConstantAggregate>(V))
-            V = CA->getOperand(0);
-          while (auto CE = dyn_cast<ConstantExpr>(V)) {
-            V = CE->getOperand(0);
-          }
-          if (auto F = dyn_cast<Function>(V)) {
-            Fs[i] = F;
-          } else {
-            llvm::errs() << M << "\n";
-            llvm::errs() << "Param of " << handlername
-                         << " must be a "
-                            "function"
-                         << g << "\n"
-                         << *V << "\n";
-            llvm_unreachable(handlername);
-          }
-        }
-
-        if (Mode == DerivativeMode::ReverseModeGradient) {
-          assert(numargs == 3);
-          Fs[0]->setMetadata(
-              "enzyme_augment",
-              llvm::MDTuple::get(Fs[0]->getContext(),
-                                 {llvm::ValueAsMetadata::get(Fs[1])}));
-          Fs[0]->setMetadata(
-              "enzyme_gradient",
-              llvm::MDTuple::get(Fs[0]->getContext(),
-                                 {llvm::ValueAsMetadata::get(Fs[2])}));
-        } else if (Mode == DerivativeMode::ForwardMode) {
-          assert(numargs == 2);
-          Fs[0]->setMetadata(
-              "enzyme_derivative",
-              llvm::MDTuple::get(Fs[0]->getContext(),
-                                 {llvm::ValueAsMetadata::get(Fs[1])}));
-        } else if (Mode == DerivativeMode::ForwardModeSplit) {
-          assert(numargs == 3);
-          Fs[0]->setMetadata(
-              "enzyme_augment",
-              llvm::MDTuple::get(Fs[0]->getContext(),
-                                 {llvm::ValueAsMetadata::get(Fs[1])}));
-          Fs[0]->setMetadata(
-              "enzyme_splitderivative",
-              llvm::MDTuple::get(Fs[0]->getContext(),
-                                 {llvm::ValueAsMetadata::get(Fs[2])}));
-        } else
-          assert("Unknown mode");
-      }
-    } else {
-      llvm::errs() << M << "\n";
-      llvm::errs() << "Use of " << handlername
-                   << " must be a "
-                      "constant aggregate "
-                   << g << "\n";
-      llvm_unreachable(handlername);
-    }
-  } else {
-    llvm::errs() << M << "\n";
-    llvm::errs() << "Use of " << handlername
-                 << " must be a "
-                    "constant array of size "
-                 << numargs << " " << g << "\n";
-    llvm_unreachable(handlername);
-  }
-  globalsToErase.push_back(&g);
-}
-
-static void
-handleInactiveFunction(llvm::Module &M, llvm::GlobalVariable &g,
-                       std::vector<GlobalVariable *> &globalsToErase) {
-  if (g.hasInitializer()) {
-    Value *V = g.getInitializer();
-    while (auto CE = dyn_cast<ConstantExpr>(V)) {
-      V = CE->getOperand(0);
-    }
-    if (auto CA = dyn_cast<ConstantAggregate>(V))
-      V = CA->getOperand(0);
-    while (auto CE = dyn_cast<ConstantExpr>(V)) {
-      V = CE->getOperand(0);
-    }
-    if (auto F = dyn_cast<Function>(V)) {
-      F->addAttribute(AttributeList::FunctionIndex,
-                      Attribute::get(g.getContext(), "enzyme_inactive"));
-    } else {
-      llvm::errs() << M << "\n";
-      llvm::errs() << "Param of __enzyme_inactivefn must be a "
-                      "function"
-                   << g << "\n"
-                   << *V << "\n";
-      llvm_unreachable("__enzyme_inactivefn");
-    }
-  } else {
-    llvm::errs() << M << "\n";
-    llvm::errs() << "Use of __enzyme_inactivefn must be a "
-                    "constant function "
-                 << g << "\n";
-    llvm_unreachable("__enzyme_register_gradient");
-  }
-  globalsToErase.push_back(&g);
-}
-
 static void handleKnownFunctions(llvm::Function &F) {
+  if (F.getName() == "memcmp") {
+    F.addFnAttr(Attribute::ReadOnly);
+    F.addFnAttr(Attribute::ArgMemOnly);
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#else
+    F.addFnAttr("nofree");
+#endif
+    for (int i = 0; i < 2; i++)
+      if (F.getFunctionType()->getParamType(i)->isPointerTy()) {
+        F.addParamAttr(i, Attribute::NoCapture);
+        F.addParamAttr(i, Attribute::WriteOnly);
+      }
+  }
+  if (F.getName() ==
+      "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_createERmm") {
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::NoFree);
+#else
+    F.addFnAttr("nofree");
+#endif
+  }
   if (F.getName() == "MPI_Irecv" || F.getName() == "PMPI_Irecv") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
     F.addFnAttr(Attribute::NoUnwind);
@@ -363,6 +276,38 @@ castToDiffeFunctionArgType(IRBuilder<> &Builder, llvm::CallInst *CI,
   return Builder.CreateBitCast(value, destType);
 }
 
+static Optional<StringRef> getMetadataName(llvm::Value *res);
+
+// if all phi arms are (recursively) based on the same metaString, use that
+static Optional<StringRef> recursePhiReads(PHINode *val) {
+  Optional<StringRef> finalMetadata;
+  SmallVector<PHINode *, 1> todo = {val};
+  SmallSet<PHINode *, 1> done;
+  while (todo.size()) {
+    auto phiInst = todo.back();
+    todo.pop_back();
+    if (done.count(phiInst))
+      continue;
+    done.insert(phiInst);
+    for (unsigned j = 0; j < phiInst->getNumIncomingValues(); ++j) {
+      auto newVal = phiInst->getIncomingValue(j);
+      if (auto phi = dyn_cast<PHINode>(newVal)) {
+        todo.push_back(phi);
+      } else {
+        auto metaString = getMetadataName(newVal);
+        if (metaString) {
+          if (!finalMetadata) {
+            finalMetadata = metaString;
+          } else if (finalMetadata != metaString) {
+            return {};
+          }
+        }
+      }
+    }
+  }
+  return finalMetadata;
+}
+
 static Optional<StringRef> getMetadataName(llvm::Value *res) {
   if (auto av = dyn_cast<MetadataAsValue>(res)) {
     return cast<MDString>(av->getMetadata())->getString();
@@ -393,76 +338,180 @@ static Optional<StringRef> getMetadataName(llvm::Value *res) {
   } else if (auto gv = dyn_cast<AllocaInst>(res)) {
     return gv->getName();
   } else {
-    return Optional<StringRef>();
+    if (isa<PHINode>(res)) {
+      return recursePhiReads(cast<PHINode>(res));
+    }
+    return {};
   }
 }
 
-class Enzyme : public ModulePass {
+static Value *adaptReturnedVector(CallInst *CI, Value *diffret,
+                                  IRBuilder<> &Builder, unsigned width) {
+  /// Actual return type (including struct return)
+  Type *returnType =
+      CI->hasStructRetAttr()
+          ? dyn_cast<PointerType>(CI->getArgOperand(0)->getType())
+                ->getPointerElementType()
+          : CI->getType();
+
+  if (StructType *sty = dyn_cast<StructType>(returnType)) {
+    Value *agg = ConstantAggregateZero::get(sty);
+
+    for (unsigned int i = 0; i < width; i++) {
+      Value *elem = Builder.CreateExtractValue(diffret, {i});
+#if LLVM_VERSION_MAJOR >= 11
+      if (auto vty = dyn_cast<FixedVectorType>(elem->getType())) {
+#else
+      if (auto vty = dyn_cast<VectorType>(elem->getType())) {
+#endif
+        for (unsigned j = 0; j < vty->getNumElements(); ++j) {
+          Value *vecelem = Builder.CreateExtractElement(elem, j);
+          agg = Builder.CreateInsertValue(agg, vecelem, {i * j});
+        }
+      } else {
+        agg = Builder.CreateInsertValue(agg, elem, {i});
+      }
+    }
+    diffret = agg;
+  }
+  return diffret;
+}
+
+static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
+                                IRBuilder<> &Builder, DerivativeMode mode) {
+  StructType *CIsty = dyn_cast<StructType>(CI->getType());
+  StructType *diffretsty = dyn_cast<StructType>(diffret->getType());
+  if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
+      !CI->getType()->isEmptyTy() &&
+      (!CI->getType()->isVoidTy() || CI->hasStructRetAttr())) {
+    if (diffret->getType() == CI->getType()) {
+      CI->replaceAllUsesWith(diffret);
+    } else if (CIsty && diffretsty && CIsty->isLayoutIdentical(diffretsty)) {
+      IRBuilder<> Builder(CI);
+      Value *newStruct = UndefValue::get(CIsty);
+      for (unsigned int i = 0; i < CIsty->getStructNumElements(); i++) {
+        Value *elem = Builder.CreateExtractValue(diffret, {i});
+        newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
+      }
+      CI->replaceAllUsesWith(newStruct);
+    } else if (CI->hasStructRetAttr()) {
+      Value *sret = CI->getArgOperand(0);
+      PointerType *stype = cast<PointerType>(sret->getType());
+#if LLVM_VERSION_MAJOR >= 15
+      auto sret_ty = CI->getParamStructRetType(0);
+#else
+      auto sret_ty = stype->getPointerElementType();
+#endif
+      StructType *st = dyn_cast<StructType>(sret_ty);
+
+      // Assign results to struct allocated at the call site.
+      if (st && st->isLayoutIdentical(diffretsty)) {
+        for (unsigned int i = 0; i < st->getNumElements(); i++) {
+#if LLVM_VERSION_MAJOR > 7
+          Value *sgep = Builder.CreateStructGEP(
+              sret->getType()->getPointerElementType(), sret, i);
+#else
+          Value *sgep = Builder.CreateStructGEP(sret, i);
+#endif
+          Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}), sgep);
+        }
+      } else {
+        auto &DL = fn->getParent()->getDataLayout();
+        if (DL.getTypeSizeInBits(sret_ty) !=
+            DL.getTypeSizeInBits(diffret->getType())) {
+          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                      "Cannot cast return type of gradient ",
+                      *diffret->getType(), *diffret, ", to desired type ",
+                      *stype->getPointerElementType());
+          return false;
+        }
+        Builder.CreateStore(
+            diffret, Builder.CreatePointerCast(
+                         sret, PointerType::get(diffret->getType(),
+                                                stype->getAddressSpace())));
+      }
+    } else if (mode == DerivativeMode::ReverseModePrimal) {
+      auto &DL = fn->getParent()->getDataLayout();
+      if (DL.getTypeSizeInBits(CI->getType()) >=
+          DL.getTypeSizeInBits(diffret->getType())) {
+        IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+        auto AL = EB.CreateAlloca(CI->getType());
+        Builder.CreateStore(
+            diffret, Builder.CreatePointerCast(
+                         AL, PointerType::getUnqual(diffret->getType())));
+#if LLVM_VERSION_MAJOR > 7
+        Value *cload = Builder.CreateLoad(CI->getType(), AL);
+#else
+        Value *cload = Builder.CreateLoad(AL);
+#endif
+        CI->replaceAllUsesWith(cload);
+      } else {
+        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                    "Cannot cast return type of gradient ", *diffret->getType(),
+                    *diffret, ", to desired type ", *CI->getType());
+        return false;
+      }
+    } else {
+
+      unsigned idxs[] = {0};
+      auto diffreti = Builder.CreateExtractValue(diffret, idxs);
+      if (diffreti->getType() == CI->getType()) {
+        CI->replaceAllUsesWith(diffreti);
+      } else if (diffret->getType() == CI->getType()) {
+        CI->replaceAllUsesWith(diffret);
+      } else {
+        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                    "Cannot cast return type of gradient ",
+                    *diffreti->getType(), *diffreti, ", to desired type ",
+                    *CI->getType());
+        return false;
+      }
+    }
+  } else {
+    CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
+  }
+  CI->eraseFromParent();
+
+  return true;
+}
+
+class EnzymeBase {
 public:
   EnzymeLogic Logic;
-  static char ID;
-  Enzyme(bool PostOpt = false)
-      : ModulePass(ID), Logic(PostOpt | EnzymePostOpt) {
+  EnzymeBase(bool PostOpt)
+      : Logic(EnzymePostOpt.getNumOccurrences() ? EnzymePostOpt : PostOpt) {
     // initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<TargetLibraryInfoWrapperPass>();
-
-    // AU.addRequiredID(LCSSAID);
-
-    // LoopInfo is required to ensure that all loops have preheaders
-    // AU.addRequired<LoopInfoWrapperPass>();
-
-    // AU.addRequiredID(llvm::LoopSimplifyID);//<LoopSimplifyWrapperPass>();
-  }
-
-  /// Return whether successful
-  bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, DerivativeMode mode,
-                      bool sizeOnly) {
-
+  Function *parseFunctionParameter(CallInst *CI) {
     Value *fn = CI->getArgOperand(0);
-
-    std::vector<DIFFE_TYPE> constants;
-    SmallVector<Value *, 2> args;
 
     // determine function to differentiate
     if (CI->hasStructRetAttr()) {
       fn = CI->getArgOperand(1);
     }
 
-    while (auto ci = dyn_cast<CastInst>(fn)) {
-      fn = ci->getOperand(0);
-    }
-    while (auto ci = dyn_cast<BlockAddress>(fn)) {
-      fn = ci->getFunction();
-    }
-    while (auto ci = dyn_cast<ConstantExpr>(fn)) {
-      fn = ci->getOperand(0);
-    }
-    if (!isa<Function>(fn)) {
+    fn = GetFunctionFromValue(fn);
+
+    if (!fn || !isa<Function>(fn)) {
       EmitFailure("NoFunctionToDifferentiate", CI->getDebugLoc(), CI,
                   "failed to find fn to differentiate", *CI, " - found - ",
                   *fn);
-      return false;
+      return nullptr;
     }
     if (cast<Function>(fn)->empty()) {
       EmitFailure("EmptyFunctionToDifferentiate", CI->getDebugLoc(), CI,
                   "failed to find fn to differentiate", *CI, " - found - ",
                   *fn);
-      return false;
+      return nullptr;
     }
-    auto FT = cast<Function>(fn)->getFunctionType();
-    assert(fn);
 
-    IRBuilder<> Builder(CI);
-    unsigned truei = 0;
+    return cast<Function>(fn);
+  }
+
+  static Optional<unsigned> parseWidthParameter(CallInst *CI) {
     unsigned width = 1;
-    std::map<unsigned, Value *> batchOffset;
-    bool returnUsed = !cast<Function>(fn)->getReturnType()->isVoidTy() &&
-                      !cast<Function>(fn)->getReturnType()->isEmptyTy();
 
-    // determine width
 #if LLVM_VERSION_MAJOR >= 14
     for (auto [i, found] = std::tuple{0u, false}; i < CI->arg_size(); ++i)
 #else
@@ -478,7 +527,7 @@ public:
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "vector width declared more than once",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
 
 #if LLVM_VERSION_MAJOR >= 14
@@ -490,7 +539,7 @@ public:
             EmitFailure("MissingVectorWidth", CI->getDebugLoc(), CI,
                         "constant integer followong enzyme_width is missing",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
 
           Value *width_arg = CI->getArgOperand(i + 1);
@@ -501,23 +550,72 @@ public:
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "enzyme_width must be a constant integer",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
 
           if (!found) {
             EmitFailure("IllegalVectorWidth", CI->getDebugLoc(), CI,
                         "illegal enzyme vector argument width ",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
         }
       }
     }
+    return width;
+  }
+
+  struct Options {
+    Value *differet;
+    Value *tape;
+    unsigned width;
+    int allocatedTapeSize;
+    bool freeMemory;
+    bool returnUsed;
+    bool tapeIsPointer;
+    bool differentialReturn;
+    DIFFE_TYPE retType;
+  };
+
+  static Optional<Options> handleArguments(IRBuilder<> &Builder, CallInst *CI,
+                                           Function *fn, DerivativeMode mode,
+                                           bool sizeOnly,
+                                           std::vector<DIFFE_TYPE> &constants,
+                                           SmallVectorImpl<Value *> &args,
+                                           std::map<int, Type *> &byVal) {
+    std::map<unsigned, Value *> batchOffset;
+    FunctionType *FT = fn->getFunctionType();
+
+    Value *differet = nullptr;
+    Value *tape = nullptr;
+    unsigned width = 1;
+    int allocatedTapeSize = -1;
+    bool freeMemory = true;
+    bool tapeIsPointer = false;
+    unsigned truei = 0;
+    unsigned byRefSize = 0;
+
+    DIFFE_TYPE retType = whatType(fn->getReturnType(), mode);
+
+    bool returnUsed =
+        !fn->getReturnType()->isVoidTy() && !fn->getReturnType()->isEmptyTy();
+
+    bool differentialReturn = (mode == DerivativeMode::ReverseModeCombined ||
+                               mode == DerivativeMode::ReverseModeGradient) &&
+                              (retType == DIFFE_TYPE::OUT_DIFF);
+
+    bool sret = CI->hasStructRetAttr() ||
+                fn->hasParamAttribute(0, Attribute::StructRet);
+
+    // find and handle enzyme_width
+    if (auto parsedWidth = parseWidthParameter(CI)) {
+      width = *parsedWidth;
+    } else {
+      return {};
+    }
 
     // handle different argument order for struct return.
-    bool sret = CI->hasStructRetAttr() ||
-                cast<Function>(fn)->hasParamAttribute(0, Attribute::StructRet);
-    if (cast<Function>(fn)->hasParamAttribute(0, Attribute::StructRet)) {
+    if (fn->hasParamAttribute(0, Attribute::StructRet)) {
       Type *fnsrety = cast<PointerType>(FT->getParamType(0));
 
       truei = 1;
@@ -560,7 +658,7 @@ public:
                 "IllegalReturnType", CI->getDebugLoc(), CI,
                 "Return type of __enzyme_autodiff has to be a struct with",
                 width, "elements of the same type.");
-            return false;
+            return {};
           }
         } else {
           shadow = sretPt;
@@ -581,31 +679,6 @@ public:
       constants.push_back(DIFFE_TYPE::DUP_ARG);
     }
 
-    if (EnzymePrint)
-      llvm::errs() << "prefn:\n" << *fn << "\n";
-
-    auto Arch =
-        llvm::Triple(
-            CI->getParent()->getParent()->getParent()->getTargetTriple())
-            .getArch();
-
-    bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
-                     Arch == Triple::amdgcn;
-
-    bool freeMemory = true;
-
-    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode);
-
-    bool differentialReturn = (mode == DerivativeMode::ReverseModeCombined ||
-                               mode == DerivativeMode::ReverseModeGradient) &&
-                              (retType == DIFFE_TYPE::OUT_DIFF);
-
-    std::map<int, Type *> byVal;
-    llvm::Value *differet = nullptr;
-    llvm::Value *tape = nullptr;
-    bool tapeIsPointer = false;
-    int allocatedTapeSize = -1;
-
 #if LLVM_VERSION_MAJOR >= 14
     for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
 #else
@@ -613,51 +686,27 @@ public:
 #endif
     {
       Value *res = CI->getArgOperand(i);
-      if (truei >= FT->getNumParams()) {
-        if (!isa<MetadataAsValue>(res) &&
-            (mode == DerivativeMode::ReverseModeGradient ||
-             mode == DerivativeMode::ForwardModeSplit)) {
-          if (differentialReturn && differet == nullptr) {
-            differet = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal)) {
-#if LLVM_VERSION_MAJOR > 7
-              differet = Builder.CreateLoad(
-                  differet->getType()->getPointerElementType(), differet);
-#else
-              differet = Builder.CreateLoad(differet);
-#endif
-            }
-            assert(differet->getType() == cast<Function>(fn)->getReturnType());
-            continue;
-          } else if (tape == nullptr) {
-            tape = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal)) {
-#if LLVM_VERSION_MAJOR > 7
-              tape = Builder.CreateLoad(
-                  tape->getType()->getPointerElementType(), tape);
-#else
-              tape = Builder.CreateLoad(tape);
-#endif
-            }
-            continue;
-          }
-        }
-        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
-                    "Had too many arguments to __enzyme_autodiff", *CI,
-                    " - extra arg - ", *res);
-        return false;
-      }
-      assert(truei < FT->getNumParams());
-      auto PTy = FT->getParamType(truei);
-      DIFFE_TYPE ty = whatType(PTy, mode);
-      Optional<StringRef> metaString = getMetadataName(res);
+      Optional<DIFFE_TYPE> opt_ty;
+      auto metaString = getMetadataName(res);
 
       // handle metadata
-      if (metaString && metaString.getValue().startswith("enzyme_")) {
+      if (metaString && metaString->startswith("enzyme_")) {
+        if (*metaString == "enzyme_byref") {
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme byref size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return {};
+          }
+          byRefSize = cast<ConstantInt>(CI->getArgOperand(i))->getZExtValue();
+          assert(byRefSize > 0);
+          continue;
+        }
         if (*metaString == "enzyme_dup") {
-          ty = DIFFE_TYPE::DUP_ARG;
+          opt_ty = DIFFE_TYPE::DUP_ARG;
         } else if (*metaString == "enzyme_dupv") {
-          ty = DIFFE_TYPE::DUP_ARG;
+          opt_ty = DIFFE_TYPE::DUP_ARG;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
           if (offset_arg->getType()->isIntegerTy()) {
@@ -667,11 +716,11 @@ public:
                         "enzyme_batch must be followd by an integer "
                         "offset.",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneedv") {
-          ty = DIFFE_TYPE::DUP_NONEED;
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
           if (offset_arg->getType()->isIntegerTy()) {
@@ -681,15 +730,29 @@ public:
                         "enzyme_batch must be followd by an integer "
                         "offset.",
                         *CI->getArgOperand(i), " in", *CI);
-            return false;
+            return {};
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneed") {
-          ty = DIFFE_TYPE::DUP_NONEED;
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
+        } else if (*metaString == "enzyme_dupnoneedv") {
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
+          ++i;
+          Value *offset_arg = CI->getArgOperand(i);
+          if (offset_arg->getType()->isIntegerTy()) {
+            batchOffset[i + 1] = offset_arg;
+          } else {
+            EmitFailure("IllegalVectorOffset", CI->getDebugLoc(), CI,
+                        "enzyme_batch must be followd by an integer "
+                        "offset.",
+                        *CI->getArgOperand(i), " in", *CI);
+            return {};
+          }
+          continue;
         } else if (*metaString == "enzyme_out") {
-          ty = DIFFE_TYPE::OUT_DIFF;
+          opt_ty = DIFFE_TYPE::OUT_DIFF;
         } else if (*metaString == "enzyme_const") {
-          ty = DIFFE_TYPE::CONSTANT;
+          opt_ty = DIFFE_TYPE::CONSTANT;
         } else if (*metaString == "enzyme_noret") {
           returnUsed = false;
           continue;
@@ -700,7 +763,7 @@ public:
             EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
                         "illegal enzyme allocated size ", *CI->getArgOperand(i),
                         "in", *CI);
-            return false;
+            return {};
           }
           allocatedTapeSize =
               cast<ConstantInt>(CI->getArgOperand(i))->getZExtValue();
@@ -720,16 +783,100 @@ public:
           continue;
         } else {
           EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
-                      "illegal enzyme metadata classification ", *CI);
-          return false;
+                      "illegal enzyme metadata classification ", *CI,
+                      *metaString);
+          return {};
         }
         if (sizeOnly) {
-          constants.push_back(ty);
+          assert(opt_ty);
+          constants.push_back(*opt_ty);
+          truei++;
           continue;
         }
         ++i;
         res = CI->getArgOperand(i);
       }
+
+      if (byRefSize) {
+        Type *subTy = res->getType()->getPointerElementType();
+        auto &DL = fn->getParent()->getDataLayout();
+        auto BitSize = DL.getTypeSizeInBits(subTy);
+        if (BitSize / 8 != byRefSize) {
+          EmitFailure("IllegalByRefSize", CI->getDebugLoc(), CI,
+                      "illegal enzyme pointer type size ", *res, " expected ",
+                      byRefSize, " (bytes) actual size ", BitSize,
+                      " (bits) in ", *CI);
+        }
+#if LLVM_VERSION_MAJOR > 7
+        res = Builder.CreateLoad(subTy, res);
+#else
+        res = Builder.CreateLoad(res);
+#endif
+        byRefSize = 0;
+      }
+
+      if (truei >= FT->getNumParams()) {
+        if (!isa<MetadataAsValue>(res) &&
+            (mode == DerivativeMode::ReverseModeGradient ||
+             mode == DerivativeMode::ForwardModeSplit)) {
+          if (differentialReturn && differet == nullptr) {
+            differet = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              differet = Builder.CreateLoad(
+                  differet->getType()->getPointerElementType(), differet);
+#else
+              differet = Builder.CreateLoad(differet);
+#endif
+            }
+            if (differet->getType() != fn->getReturnType())
+              if (auto ST0 = dyn_cast<StructType>(differet->getType()))
+                if (auto ST1 = dyn_cast<StructType>(fn->getReturnType()))
+                  if (ST0->isLayoutIdentical(ST1)) {
+                    IRBuilder<> B(&Builder.GetInsertBlock()
+                                       ->getParent()
+                                       ->getEntryBlock()
+                                       .front());
+                    auto AI = B.CreateAlloca(ST1);
+                    Builder.CreateStore(differet,
+                                        Builder.CreatePointerCast(
+                                            AI, PointerType::getUnqual(ST0)));
+#if LLVM_VERSION_MAJOR > 7
+                    differet = Builder.CreateLoad(ST1, AI);
+#else
+                    differet = Builder.CreateLoad(AI);
+#endif
+                  }
+
+            if (differet->getType() != fn->getReturnType()) {
+              EmitFailure("BadDiffRet", CI->getDebugLoc(), CI,
+                          "Bad DiffRet type ", *differet, " expected ",
+                          *fn->getReturnType());
+              return {};
+            }
+            continue;
+          } else if (tape == nullptr) {
+            tape = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              tape = Builder.CreateLoad(
+                  tape->getType()->getPointerElementType(), tape);
+#else
+              tape = Builder.CreateLoad(tape);
+#endif
+            }
+            continue;
+          }
+        }
+        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
+                    "Had too many arguments to __enzyme_autodiff", *CI,
+                    " - extra arg - ", *res);
+        return {};
+      }
+      assert(truei < FT->getNumParams());
+
+      auto PTy = FT->getParamType(truei);
+      DIFFE_TYPE ty = opt_ty ? *opt_ty : whatType(PTy, mode);
 
       constants.push_back(ty);
 
@@ -768,7 +915,7 @@ public:
                       "Cannot cast __enzyme_autodiff primal argument ", i,
                       ", found ", *res, ", type ", *res->getType(),
                       " - to arg ", truei, " ", *PTy);
-          return false;
+          return {};
         }
       }
 #if LLVM_VERSION_MAJOR >= 9
@@ -795,7 +942,7 @@ public:
                         i, ", need shadow of type ", *PTy,
                         " to shadow primal argument ", *args.back(),
                         " at call ", *CI);
-            return false;
+            return {};
           }
 
           // cast diffe
@@ -813,6 +960,9 @@ public:
                       ConstantInt::get(batchOffset[i - 1]->getType(), v)));
 #else
               element = Builder.CreateGEP(
+#if LLVM_VERSION_MAJOR >= 14
+                  elementPtrTy,
+#endif
                   element,
                   Builder.CreateMul(
                       batchOffset[i - 1],
@@ -820,14 +970,18 @@ public:
 #endif
               element = Builder.CreateBitCast(element, elementPtrTy);
             } else {
-              return false;
+              EmitFailure(
+                  "NonPointerBatch", CI->getDebugLoc(), CI,
+                  "Batched argument at index ", i,
+                  " must be of pointer type, found: ", *element->getType());
+              return {};
             }
           }
           if (PTy != element->getType()) {
             element = castToDiffeFunctionArgType(Builder, CI, FT, PTy, i, mode,
                                                  element, truei);
             if (!element) {
-              return false;
+              return {};
             }
           }
 
@@ -852,35 +1006,282 @@ public:
 
       ++truei;
     }
+    if (truei < FT->getNumParams()) {
+      auto numParams = FT->getNumParams();
+      EmitFailure(
+          "EnzymeInsufficientArgs", CI->getDebugLoc(), CI,
+          "Insufficient number of args passed to derivative call required ",
+          numParams, " primal args, found ", truei);
+      return {};
+    }
 
-    std::map<Argument *, bool> volatile_args;
-    FnTypeInfo type_args(cast<Function>(fn));
+    return Optional<Options>({differet, tape, width, allocatedTapeSize,
+                              freeMemory, returnUsed, tapeIsPointer,
+                              differentialReturn, retType});
+  }
+
+  static FnTypeInfo
+  populate_overwritten_args(TypeAnalysis &TA, llvm::Function *fn,
+                            DerivativeMode mode,
+                            std::vector<bool> &overwritten_args) {
+    FnTypeInfo type_args(fn);
     for (auto &a : type_args.Function->args()) {
-      volatile_args[&a] = !(mode == DerivativeMode::ReverseModeCombined);
+      overwritten_args.push_back(
+          !(mode == DerivativeMode::ReverseModeCombined));
       TypeTree dt;
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
       } else if (a.getType()->isPointerTy()) {
-        auto et = a.getType()->getPointerElementType();
-        if (et->isFPOrFPVectorTy()) {
-          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
-        } else if (et->isPointerTy()) {
-          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+#if LLVM_VERSION_MAJOR >= 15
+        if (a.getContext().supportsTypedPointers()) {
+#endif
+          auto et = a.getType()->getPointerElementType();
+          if (et->isFPOrFPVectorTy()) {
+            dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
+          } else if (et->isPointerTy()) {
+            dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
+          }
+#if LLVM_VERSION_MAJOR >= 15
         }
+#endif
         dt.insert({}, BaseType::Pointer);
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);
       }
       type_args.Arguments.insert(
-          std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+          std::pair<Argument *, TypeTree>(&a, dt.Only(-1, nullptr)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
       type_args.KnownValues.insert(
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
     }
 
-    TypeAnalysis TA(Logic.PPC.FAM);
     type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
+    return type_args;
+  }
+
+  bool HandleBatch(CallInst *CI) {
+    unsigned width = 1;
+    unsigned truei = 0;
+    std::map<unsigned, Value *> batchOffset;
+    SmallVector<Value *, 4> args;
+    SmallVector<BATCH_TYPE, 4> arg_types;
+    IRBuilder<> Builder(CI);
+    Function *F = parseFunctionParameter(CI);
+    if (!F)
+      return false;
+
+    assert(F);
+    FunctionType *FT = F->getFunctionType();
+
+    // find and handle enzyme_width
+    if (auto parsedWidth = parseWidthParameter(CI)) {
+      width = *parsedWidth;
+    } else {
+      return false;
+    }
+
+    // handle different argument order for struct return.
+    bool sret =
+        CI->hasStructRetAttr() || F->hasParamAttribute(0, Attribute::StructRet);
+
+    if (F->hasParamAttribute(0, Attribute::StructRet)) {
+      truei = 1;
+      Value *sretPt = CI->getArgOperand(0);
+
+      args.push_back(sretPt);
+      arg_types.push_back(BATCH_TYPE::VECTOR);
+    }
+
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
+#else
+    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i)
+#endif
+    {
+      Value *res = CI->getArgOperand(i);
+
+      if (truei >= FT->getNumParams()) {
+        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
+                    "Had too many arguments to __enzyme_batch", *CI,
+                    " - extra arg - ", *res);
+        return false;
+      }
+      assert(truei < FT->getNumParams());
+      auto PTy = FT->getParamType(truei);
+
+      BATCH_TYPE ty = width == 1 ? BATCH_TYPE::SCALAR : BATCH_TYPE::VECTOR;
+      auto metaString = getMetadataName(res);
+
+      // handle metadata
+      if (metaString && metaString->startswith("enzyme_")) {
+        if (*metaString == "enzyme_scalar") {
+          ty = BATCH_TYPE::SCALAR;
+        } else if (*metaString == "enzyme_vector") {
+          ty = BATCH_TYPE::VECTOR;
+        } else if (*metaString == "enzyme_buffer") {
+          ty = BATCH_TYPE::VECTOR;
+          ++i;
+          Value *offset_arg = CI->getArgOperand(i);
+          if (offset_arg->getType()->isIntegerTy()) {
+            batchOffset[i + 1] = offset_arg;
+          } else {
+            EmitFailure("IllegalVectorOffset", CI->getDebugLoc(), CI,
+                        "enzyme_batch must be followd by an integer "
+                        "offset.",
+                        *CI->getArgOperand(i), " in", *CI);
+            return false;
+          }
+          continue;
+        } else if (*metaString == "enzyme_width") {
+          ++i;
+          continue;
+        } else {
+          EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
+                      "illegal enzyme metadata classification ", *CI,
+                      *metaString);
+          return false;
+        }
+        ++i;
+        res = CI->getArgOperand(i);
+      }
+
+      arg_types.push_back(ty);
+
+      // wrap vector
+      if (ty == BATCH_TYPE::VECTOR) {
+        Value *res = nullptr;
+        bool batch = batchOffset.count(i - 1) != 0;
+
+        for (unsigned v = 0; v < width; ++v) {
+#if LLVM_VERSION_MAJOR >= 14
+          if (i >= CI->arg_size())
+#else
+          if (i >= CI->getNumArgOperands())
+#endif
+          {
+            EmitFailure("MissingVectorArg", CI->getDebugLoc(), CI,
+                        "__enzyme_batch missing vector argument at index ", i,
+                        ", need argument of type ", *PTy, " at call ", *CI);
+            return false;
+          }
+
+          // vectorize pointer
+          Value *element = CI->getArgOperand(i);
+          if (batch) {
+            if (auto elementPtrTy = dyn_cast<PointerType>(element->getType())) {
+              element = Builder.CreateBitCast(
+                  element, PointerType::get(Type::getInt8Ty(CI->getContext()),
+                                            elementPtrTy->getAddressSpace()));
+#if LLVM_VERSION_MAJOR >= 7
+              element = Builder.CreateGEP(
+                  Type::getInt8Ty(CI->getContext()), element,
+                  Builder.CreateMul(
+                      batchOffset[i - 1],
+                      ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#else
+              element = Builder.CreateGEP(
+                  element,
+                  Builder.CreateMul(
+                      batchOffset[i - 1],
+                      ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#endif
+              element = Builder.CreateBitCast(element, elementPtrTy);
+            } else {
+              return false;
+            }
+          }
+
+          if (width > 1) {
+            res =
+                res ? Builder.CreateInsertValue(res, element, {v})
+                    : Builder.CreateInsertValue(UndefValue::get(ArrayType::get(
+                                                    element->getType(), width)),
+                                                element, {v});
+
+            if (v < width - 1 && !batch) {
+              ++i;
+            }
+
+          } else {
+            res = element;
+          }
+        }
+
+        args.push_back(res);
+
+      } else if (ty == BATCH_TYPE::SCALAR) {
+        args.push_back(res);
+      }
+
+      truei++;
+    }
+
+    BATCH_TYPE ret_type = (F->getReturnType()->isVoidTy() || width == 1)
+                              ? BATCH_TYPE::SCALAR
+                              : BATCH_TYPE::VECTOR;
+
+    auto newFunc = Logic.CreateBatch(F, width, arg_types, ret_type);
+
+    if (!newFunc)
+      return false;
+
+    Value *batch =
+        Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
+
+    batch = adaptReturnedVector(CI, batch, Builder, width);
+
+    replaceOriginalCall(CI, F, batch, Builder, DerivativeMode::ForwardMode);
+
+    return true;
+  }
+
+  /// Return whether successful
+  bool HandleAutoDiff(CallInst *CI, DerivativeMode mode, bool sizeOnly) {
+
+    // determine function to differentiate
+    Function *fn = parseFunctionParameter(CI);
+    if (!fn)
+      return false;
+
+    IRBuilder<> Builder(CI);
+
+    if (EnzymePrint)
+      llvm::errs() << "prefn:\n" << *fn << "\n";
+
+    auto Arch =
+        llvm::Triple(
+            CI->getParent()->getParent()->getParent()->getTargetTriple())
+            .getArch();
+
+    bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
+                     Arch == Triple::amdgcn;
+
+    std::map<int, Type *> byVal;
+    std::vector<DIFFE_TYPE> constants;
+    SmallVector<Value *, 2> args;
+
+    auto options = handleArguments(Builder, CI, fn, mode, sizeOnly, constants,
+                                   args, byVal);
+
+    if (!options) {
+      return false;
+    }
+
+    auto differet = options->differet;
+    auto tape = options->tape;
+    auto width = options->width;
+    auto allocatedTapeSize = options->allocatedTapeSize;
+    auto freeMemory = options->freeMemory;
+    auto returnUsed = options->returnUsed;
+    auto tapeIsPointer = options->tapeIsPointer;
+    auto differentialReturn = options->differentialReturn;
+    auto retType = options->retType;
+
+    TypeAnalysis TA(Logic.PPC.FAM);
+    std::vector<bool> overwritten_args;
+    FnTypeInfo type_args =
+        populate_overwritten_args(TA, fn, mode, overwritten_args);
 
     // differentiate fn
     Function *newFunc = nullptr;
@@ -889,18 +1290,18 @@ public:
     switch (mode) {
     case DerivativeMode::ForwardMode:
       newFunc = Logic.CreateForwardDiff(
-          cast<Function>(fn), retType, constants, TA,
+          fn, retType, constants, TA,
           /*should return*/ false, mode, freeMemory, width,
-          /*addedType*/ nullptr, type_args, volatile_args,
+          /*addedType*/ nullptr, type_args, overwritten_args,
           /*augmented*/ nullptr);
       break;
     case DerivativeMode::ForwardModeSplit: {
       bool forceAnonymousTape = !sizeOnly && allocatedTapeSize == -1;
       aug = &Logic.CreateAugmentedPrimal(
-          cast<Function>(fn), retType, constants, TA,
+          fn, retType, constants, TA,
           /*returnUsed*/ false, /*shadowReturnUsed*/ false, type_args,
-          volatile_args, forceAnonymousTape, width, /*atomicAdd*/ AtomicAdd);
-      auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+          overwritten_args, forceAnonymousTape, width, /*atomicAdd*/ AtomicAdd);
+      auto &DL = fn->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
         assert(!aug->tapeType);
         if (aug->returns.find(AugmentedStruct::Tape) != aug->returns.end()) {
@@ -933,18 +1334,18 @@ public:
         tapeType = PointerType::getInt8PtrTy(fn->getContext());
       }
       newFunc = Logic.CreateForwardDiff(
-          cast<Function>(fn), retType, constants, TA,
+          fn, retType, constants, TA,
           /*should return*/ false, mode, freeMemory, width,
-          /*addedType*/ tapeType, type_args, volatile_args, aug);
+          /*addedType*/ tapeType, type_args, overwritten_args, aug);
       break;
     }
     case DerivativeMode::ReverseModeCombined:
       assert(freeMemory);
       newFunc = Logic.CreatePrimalAndGradient(
-          (ReverseCacheKey){.todiff = cast<Function>(fn),
+          (ReverseCacheKey){.todiff = fn,
                             .retType = retType,
                             .constant_args = constants,
-                            .uncacheable_args = volatile_args,
+                            .overwritten_args = overwritten_args,
                             .returnUsed = false,
                             .shadowReturnUsed = false,
                             .mode = mode,
@@ -961,10 +1362,10 @@ public:
       bool shadowReturnUsed = returnUsed && (retType == DIFFE_TYPE::DUP_ARG ||
                                              retType == DIFFE_TYPE::DUP_NONEED);
       aug = &Logic.CreateAugmentedPrimal(
-          cast<Function>(fn), retType, constants, TA, returnUsed,
-          shadowReturnUsed, type_args, volatile_args, forceAnonymousTape, width,
+          fn, retType, constants, TA, returnUsed, shadowReturnUsed, type_args,
+          overwritten_args, forceAnonymousTape, width,
           /*atomicAdd*/ AtomicAdd);
-      auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+      auto &DL = fn->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
         assert(!aug->tapeType);
         if (aug->returns.find(AugmentedStruct::Tape) != aug->returns.end()) {
@@ -1000,10 +1401,10 @@ public:
         newFunc = aug->fn;
       else
         newFunc = Logic.CreatePrimalAndGradient(
-            (ReverseCacheKey){.todiff = cast<Function>(fn),
+            (ReverseCacheKey){.todiff = fn,
                               .retType = retType,
                               .constant_args = constants,
-                              .uncacheable_args = volatile_args,
+                              .overwritten_args = overwritten_args,
                               .returnUsed = false,
                               .shadowReturnUsed = false,
                               .mode = mode,
@@ -1016,25 +1417,27 @@ public:
     }
     }
 
-    if (!newFunc)
+    if (!newFunc) {
+      StringRef n = fn->getName();
+      EmitFailure("FailedToDifferentiate", fn->getSubprogram(),
+                  &*fn->getEntryBlock().begin(),
+                  "Could not generate derivative function of ", n);
       return false;
+    }
 
     if (differentialReturn) {
       if (differet)
         args.push_back(differet);
-      else if (cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy()) {
-        Constant *seed =
-            ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0);
+      else if (fn->getReturnType()->isFPOrFPVectorTy()) {
+        Constant *seed = ConstantFP::get(fn->getReturnType(), 1.0);
         if (width == 1) {
           args.push_back(seed);
         } else {
-          ArrayType *arrayType =
-              ArrayType::get(cast<Function>(fn)->getReturnType(), width);
+          ArrayType *arrayType = ArrayType::get(fn->getReturnType(), width);
           args.push_back(ConstantArray::get(
               arrayType, SmallVector<Constant *, 3>(width, seed)));
         }
-      } else if (auto ST = dyn_cast<StructType>(
-                     cast<Function>(fn)->getReturnType())) {
+      } else if (auto ST = dyn_cast<StructType>(fn->getReturnType())) {
         SmallVector<Constant *, 2> csts;
         for (auto e : ST->elements()) {
           csts.push_back(ConstantFP::get(e, 1.0));
@@ -1046,7 +1449,7 @@ public:
     if ((mode == DerivativeMode::ReverseModeGradient ||
          mode == DerivativeMode::ForwardModeSplit) &&
         tape && tapeType) {
-      auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+      auto &DL = fn->getParent()->getDataLayout();
       if (tapeIsPointer) {
         tape = Builder.CreateBitCast(
             tape, PointerType::get(
@@ -1075,7 +1478,6 @@ public:
       assert(tape->getType() == tapeType);
       args.push_back(tape);
     }
-    assert(newFunc);
 
     if (EnzymePrint) {
       llvm::errs() << "postfn:\n" << *newFunc << "\n";
@@ -1144,8 +1546,6 @@ public:
         }
       }
     }
-    StructType *CIsty = dyn_cast<StructType>(CI->getType());
-    StructType *diffretsty = dyn_cast<StructType>(diffret->getType());
 
     // Adapt the returned vector type to the struct type expected by our calling
     // convention.
@@ -1154,103 +1554,10 @@ public:
         (mode == DerivativeMode::ForwardMode ||
          mode == DerivativeMode::ForwardModeSplit)) {
 
-      /// Actual return type (including struct return)
-      Type *returnType =
-          CI->hasStructRetAttr()
-              ? dyn_cast<PointerType>(CI->getArgOperand(0)->getType())
-                    ->getPointerElementType()
-              : CI->getType();
-
-      if (StructType *sty = dyn_cast<StructType>(returnType)) {
-        Value *agg = ConstantAggregateZero::get(sty);
-
-        for (unsigned int i = 0; i < width; i++) {
-          Value *elem = Builder.CreateExtractValue(diffret, {i});
-#if LLVM_VERSION_MAJOR >= 11
-          if (auto vty = dyn_cast<FixedVectorType>(elem->getType())) {
-#else
-          if (auto vty = dyn_cast<VectorType>(elem->getType())) {
-#endif
-            for (unsigned j = 0; j < vty->getNumElements(); ++j) {
-              Value *vecelem = Builder.CreateExtractElement(elem, j);
-              agg = Builder.CreateInsertValue(agg, vecelem, {i * j});
-            }
-          } else {
-            agg = Builder.CreateInsertValue(agg, elem, {i});
-          }
-        }
-        diffret = agg;
-      }
+      diffret = adaptReturnedVector(CI, diffret, Builder, width);
     }
 
-    if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
-        !CI->getType()->isEmptyTy() &&
-        (!CI->getType()->isVoidTy() || CI->hasStructRetAttr())) {
-      if (diffret->getType() == CI->getType()) {
-        CI->replaceAllUsesWith(diffret);
-      } else if (CIsty && diffretsty && CIsty->isLayoutIdentical(diffretsty)) {
-        IRBuilder<> Builder(CI);
-        Value *newStruct = UndefValue::get(CIsty);
-        for (unsigned int i = 0; i < CIsty->getStructNumElements(); i++) {
-          Value *elem = Builder.CreateExtractValue(diffret, {i});
-          newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
-        }
-        CI->replaceAllUsesWith(newStruct);
-      } else if (mode == DerivativeMode::ReverseModePrimal) {
-        auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
-        if (DL.getTypeSizeInBits(CI->getType()) >=
-            DL.getTypeSizeInBits(diffret->getType())) {
-          IRBuilder<> EB(
-              &CI->getParent()->getParent()->getEntryBlock().front());
-          auto AL = EB.CreateAlloca(CI->getType());
-          Builder.CreateStore(
-              diffret, Builder.CreatePointerCast(
-                           AL, PointerType::getUnqual(diffret->getType())));
-#if LLVM_VERSION_MAJOR > 7
-          Value *cload = Builder.CreateLoad(CI->getType(), AL);
-#else
-          Value *cload = Builder.CreateLoad(AL);
-#endif
-          CI->replaceAllUsesWith(cload);
-        } else {
-          llvm::errs() << *CI << " - " << *diffret << "\n";
-          assert(0 && " what");
-        }
-      } else if (CI->hasStructRetAttr()) {
-        Value *sret = CI->getArgOperand(0);
-
-        // Assign results to struct allocated at the call site.
-        if (StructType *st = cast<StructType>(diffret->getType())) {
-          for (unsigned int i = 0; i < st->getNumElements(); i++) {
-#if LLVM_VERSION_MAJOR > 7
-            Value *sgep = Builder.CreateStructGEP(
-                sret->getType()->getPointerElementType(), sret, i);
-#else
-            Value *sgep = Builder.CreateStructGEP(sret, i);
-#endif
-            Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}), sgep);
-          }
-        }
-      } else {
-
-        unsigned idxs[] = {0};
-        auto diffreti = Builder.CreateExtractValue(diffret, idxs);
-        if (diffreti->getType() == CI->getType()) {
-          CI->replaceAllUsesWith(diffreti);
-        } else if (diffret->getType() == CI->getType()) {
-          CI->replaceAllUsesWith(diffret);
-        } else {
-          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                      "Cannot cast return type of gradient ",
-                      *diffreti->getType(), *diffreti, ", to desired type ",
-                      *CI->getType());
-          return false;
-        }
-      }
-    } else {
-      CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
-    }
-    CI->eraseFromParent();
+    replaceOriginalCall(CI, fn, diffret, Builder, mode);
 
     if (Logic.PostOpt) {
 #if LLVM_VERSION_MAJOR >= 11
@@ -1258,8 +1565,6 @@ public:
 
       llvm::SetVector<CallInst *> Q;
       Q.insert(diffretc);
-      TargetLibraryInfoWrapperPass TLIWP(
-          Triple(newFunc->getParent()->getTargetTriple()));
       while (Q.size()) {
         auto cur = *Q.begin();
         Function *outerFunc = cur->getParent()->getParent();
@@ -1276,7 +1581,7 @@ public:
             };
             auto GetTLI =
                 [&](llvm::Function &F) -> const llvm::TargetLibraryInfo & {
-              return TLIWP.getTLI(F);
+              return Logic.PPC.FAM.getResult<TargetLibraryAnalysis>(F);
             };
 
             auto GetInlineCost = [&](CallBase &CB) {
@@ -1313,20 +1618,121 @@ public:
     return true;
   }
 
-  bool lowerEnzymeCalls(Function &F, bool &successful,
-                        std::set<Function *> &done) {
+  bool HandleProbProg(CallInst *CI, ProbProgMode mode) {
+    IRBuilder<> Builder(CI);
+    Function *F = parseFunctionParameter(CI);
+    if (!F)
+      return false;
+
+    bool sret = false;
+    SmallVector<Value *, 4> args;
+    Value *conditioning_trace = nullptr;
+    Value *dynamic_interface = nullptr;
+
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
+#else
+    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i)
+#endif
+    {
+      Value *res = CI->getArgOperand(i);
+      auto metaString = getMetadataName(res);
+
+      // handle metadata
+      if (metaString && metaString->startswith("enzyme_")) {
+        if (*metaString == "enzyme_interface") {
+          ++i;
+          dynamic_interface = CI->getArgOperand(i);
+          continue;
+        } else if (*metaString == "enzyme_condition") {
+          ++i;
+          conditioning_trace = CI->getArgOperand(i);
+          continue;
+        } else {
+          EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
+                      "illegal enzyme metadata classification ", *CI,
+                      *metaString);
+          return false;
+        }
+      }
+
+      args.push_back(res);
+    }
+
+    // Interface
+    bool has_dynamic_interface = dynamic_interface != nullptr;
+    std::unique_ptr<TraceInterface> interface;
+    if (has_dynamic_interface) {
+      interface =
+          std::unique_ptr<DynamicTraceInterface>(new DynamicTraceInterface(
+              dynamic_interface, CI->getParent()->getParent()));
+    } else {
+      interface = std::unique_ptr<StaticTraceInterface>(
+          new StaticTraceInterface(F->getParent()));
+    }
+
+    if (dynamic_interface)
+      args.push_back(dynamic_interface);
+
+    if (mode == ProbProgMode::Condition)
+      args.push_back(conditioning_trace);
+
+    // Determine generative functions
+    SmallPtrSet<Function *, 4> generativeFunctions;
+    SetVector<Function *, std::deque<Function *>> workList;
+    workList.insert(interface->getSampleFunction());
+    generativeFunctions.insert(interface->getSampleFunction());
+
+    while (!workList.empty()) {
+      auto todo = *workList.begin();
+      workList.erase(workList.begin());
+
+#if LLVM_VERSION_MAJOR > 10
+      for (auto &&U : todo->uses()) {
+        if (auto ACS = AbstractCallSite(&U)) {
+          auto fun = ACS.getInstruction()->getParent()->getParent();
+          auto [it, inserted] = generativeFunctions.insert(fun);
+          if (inserted)
+            workList.insert(fun);
+        }
+      }
+#else
+      for (auto &&U : todo->uses()) {
+        if (auto &&call = dyn_cast<CallInst>(U.getUser())) {
+          auto &&fun = call->getParent()->getParent();
+          auto &&[it, inserted] = generativeFunctions.insert(fun);
+          if (inserted)
+            workList.insert(fun);
+        }
+      }
+#endif
+    }
+    auto newFunc =
+        Logic.CreateTrace(F, generativeFunctions, mode, has_dynamic_interface);
+
+    Value *trace =
+        Builder.CreateCall(interface->newTraceTy(), interface->newTrace(), {});
+
+    args.push_back(trace);
+
+    Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
+
+    if (CI->getType() != trace->getType())
+      trace = Builder.CreatePointerCast(trace, CI->getType());
+
+    CI->replaceAllUsesWith(trace);
+    CI->eraseFromParent();
+
+    return true;
+  }
+
+  bool lowerEnzymeCalls(Function &F, std::set<Function *> &done) {
     if (done.count(&F))
       return false;
     done.insert(&F);
 
     if (F.empty())
       return false;
-
-#if LLVM_VERSION_MAJOR >= 10
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
-#else
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-#endif
 
     bool Changed = false;
 
@@ -1359,7 +1765,10 @@ public:
               Fn->getName().contains("__enzyme_fwdsplit") ||
               Fn->getName().contains("__enzyme_augmentfwd") ||
               Fn->getName().contains("__enzyme_augmentsize") ||
-              Fn->getName().contains("__enzyme_reverse")))
+              Fn->getName().contains("__enzyme_reverse") ||
+              Fn->getName().contains("__enzyme_batch") ||
+              Fn->getName().contains("__enzyme_trace") ||
+              Fn->getName().contains("__enzyme_condition")))
           continue;
 
         SmallVector<Value *, 16> CallArgs(II->arg_begin(), II->arg_end());
@@ -1395,6 +1804,8 @@ public:
     MapVector<CallInst *, DerivativeMode> toLower;
     MapVector<CallInst *, DerivativeMode> toVirtual;
     MapVector<CallInst *, DerivativeMode> toSize;
+    SmallVector<CallInst *, 4> toBatch;
+    MapVector<CallInst *, ProbProgMode> toProbProg;
     SetVector<CallInst *> InactiveCalls;
     SetVector<CallInst *> IterCalls;
   retry:;
@@ -1499,6 +1910,12 @@ public:
         if (Fn->getName() == "__fd_sincos_1" || Fn->getName() == "__fd_cos_1" ||
             Fn->getName() == "__mth_i_ipowi") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
+        }
+        if (Fn->getName().contains("strcmp")) {
+          Fn->addParamAttr(0, Attribute::ReadOnly);
+          Fn->addParamAttr(1, Attribute::ReadOnly);
+          Fn->addFnAttr(Attribute::ReadOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
         }
         if (Fn->getName() == "f90io_fmtw_end" ||
             Fn->getName() == "f90io_unf_end") {
@@ -1607,30 +2024,44 @@ public:
         bool enableEnzyme = false;
         bool virtualCall = false;
         bool sizeOnly = false;
-        DerivativeMode mode;
+        bool batch = false;
+        bool probProg = false;
+        DerivativeMode derivativeMode;
+        ProbProgMode probProgMode;
         if (Fn->getName().contains("__enzyme_autodiff")) {
           enableEnzyme = true;
-          mode = DerivativeMode::ReverseModeCombined;
+          derivativeMode = DerivativeMode::ReverseModeCombined;
         } else if (Fn->getName().contains("__enzyme_fwddiff")) {
           enableEnzyme = true;
-          mode = DerivativeMode::ForwardMode;
+          derivativeMode = DerivativeMode::ForwardMode;
         } else if (Fn->getName().contains("__enzyme_fwdsplit")) {
           enableEnzyme = true;
-          mode = DerivativeMode::ForwardModeSplit;
+          derivativeMode = DerivativeMode::ForwardModeSplit;
         } else if (Fn->getName().contains("__enzyme_augmentfwd")) {
           enableEnzyme = true;
-          mode = DerivativeMode::ReverseModePrimal;
+          derivativeMode = DerivativeMode::ReverseModePrimal;
         } else if (Fn->getName().contains("__enzyme_augmentsize")) {
           enableEnzyme = true;
           sizeOnly = true;
-          mode = DerivativeMode::ReverseModePrimal;
+          derivativeMode = DerivativeMode::ReverseModePrimal;
         } else if (Fn->getName().contains("__enzyme_reverse")) {
           enableEnzyme = true;
-          mode = DerivativeMode::ReverseModeGradient;
+          derivativeMode = DerivativeMode::ReverseModeGradient;
         } else if (Fn->getName().contains("__enzyme_virtualreverse")) {
           enableEnzyme = true;
           virtualCall = true;
-          mode = DerivativeMode::ReverseModeCombined;
+          derivativeMode = DerivativeMode::ReverseModeCombined;
+        } else if (Fn->getName().contains("__enzyme_batch")) {
+          enableEnzyme = true;
+          batch = true;
+        } else if (Fn->getName().contains("__enzyme_trace")) {
+          enableEnzyme = true;
+          probProgMode = ProbProgMode::Trace;
+          probProg = true;
+        } else if (Fn->getName().contains("__enzyme_condition")) {
+          enableEnzyme = true;
+          probProgMode = ProbProgMode::Condition;
+          probProg = true;
         }
 
         if (enableEnzyme) {
@@ -1670,20 +2101,23 @@ public:
             }
             goto retry;
           }
-
           if (virtualCall)
-            toVirtual[CI] = mode;
+            toVirtual[CI] = derivativeMode;
           else if (sizeOnly)
-            toSize[CI] = mode;
-          else
-            toLower[CI] = mode;
+            toSize[CI] = derivativeMode;
+          else if (batch)
+            toBatch.push_back(CI);
+          else if (probProg) {
+            toProbProg[CI] = probProgMode;
+          } else
+            toLower[CI] = derivativeMode;
 
           if (auto dc = dyn_cast<Function>(fn)) {
             // Force postopt on any inner functions in the nested
             // AD case.
             bool tmp = Logic.PostOpt;
             Logic.PostOpt = true;
-            Changed |= lowerEnzymeCalls(*dc, successful, done);
+            Changed |= lowerEnzymeCalls(*dc, done);
             Logic.PostOpt = tmp;
           }
         }
@@ -1718,15 +2152,15 @@ public:
 
     // Perform all the size replacements first to create constants
     for (auto pair : toSize) {
-      successful &= HandleAutoDiff(pair.first, TLI, pair.second,
-                                   /*sizeOnly*/ true);
+      bool successful = HandleAutoDiff(pair.first, pair.second,
+                                       /*sizeOnly*/ true);
       Changed = true;
       if (!successful)
         break;
     }
     for (auto pair : toLower) {
-      successful &= HandleAutoDiff(pair.first, TLI, pair.second,
-                                   /*sizeOnly*/ false);
+      bool successful = HandleAutoDiff(pair.first, pair.second,
+                                       /*sizeOnly*/ false);
       Changed = true;
       if (!successful)
         break;
@@ -1752,10 +2186,19 @@ public:
                        Arch == Triple::amdgcn;
 
       auto val = GradientUtils::GetOrCreateShadowConstant(
-          Logic, TLI, TA, fn, pair.second, /*width*/ 1, AtomicAdd);
+          Logic, Logic.PPC.FAM.getResult<TargetLibraryAnalysis>(F), TA, fn,
+          pair.second, /*width*/ 1, AtomicAdd);
       CI->replaceAllUsesWith(ConstantExpr::getPointerCast(val, CI->getType()));
       CI->eraseFromParent();
       Changed = true;
+    }
+
+    for (auto call : toBatch) {
+      HandleBatch(call);
+    }
+
+    for (auto &&[call, mode] : toProbProg) {
+      HandleProbProg(call, mode);
     }
 
     if (Changed && EnzymeAttributor) {
@@ -1763,7 +2206,7 @@ public:
       // dead internal functions, which invalidates Enzyme's cache
       // code left here to re-enable upon Attributor patch
 
-#if LLVM_VERSION_MAJOR >= 13 && !defined(FLANG)
+#if LLVM_VERSION_MAJOR >= 13 && !defined(FLANG) && !defined(ROCM)
 
       AnalysisGetter AG(Logic.PPC.FAM);
       SetVector<Function *> Functions;
@@ -1804,8 +2247,8 @@ public:
                    /*DeleteFns*/ false);
 #endif
       for (Function *F : Functions) {
-        // Populate the Attributor with abstract attribute opportunities in the
-        // function and the information cache with IR information.
+        // Populate the Attributor with abstract attribute opportunities in
+        // the function and the information cache with IR information.
         A.identifyDefaultAbstractAttributes(*F);
       }
       A.run();
@@ -1815,44 +2258,16 @@ public:
     return Changed;
   }
 
-  bool runOnModule(Module &M) override {
-    constexpr static const char gradient_handler_name[] =
-        "__enzyme_register_gradient";
-    constexpr static const char derivative_handler_name[] =
-        "__enzyme_register_derivative";
-    constexpr static const char splitderivative_handler_name[] =
-        "__enzyme_register_splitderivative";
-
+  bool run(Module &M) {
     Logic.clear();
 
     bool changed = false;
-    std::vector<GlobalVariable *> globalsToErase;
-    for (GlobalVariable &g : M.globals()) {
-      if (g.getName().contains(gradient_handler_name)) {
-        handleCustomDerivative<gradient_handler_name,
-                               DerivativeMode::ReverseModeGradient, 3>(
-            M, g, globalsToErase);
-      } else if (g.getName().contains(derivative_handler_name)) {
-        handleCustomDerivative<derivative_handler_name,
-                               DerivativeMode::ForwardMode, 2>(M, g,
-                                                               globalsToErase);
-      } else if (g.getName().contains(splitderivative_handler_name)) {
-        handleCustomDerivative<splitderivative_handler_name,
-                               DerivativeMode::ForwardModeSplit, 3>(
-            M, g, globalsToErase);
-      } else if (g.getName().contains("__enzyme_inactivefn")) {
-        handleInactiveFunction(M, g, globalsToErase);
-      }
-    }
-    for (auto g : globalsToErase) {
-      g->eraseFromParent();
-    }
     for (Function &F : M) {
       handleAnnotations(F);
       handleKnownFunctions(F);
       if (F.empty())
         continue;
-      std::vector<Instruction *> toErase;
+      SmallVector<Instruction *, 4> toErase;
       for (BasicBlock &BB : F) {
         for (Instruction &I : BB) {
           if (auto CI = dyn_cast<CallInst>(&I)) {
@@ -1915,19 +2330,10 @@ public:
       if (F.empty())
         continue;
 
-      bool successful = true;
-      changed |= lowerEnzymeCalls(F, successful, done);
-
-      if (!successful) {
-        M.getContext().diagnose(
-            (EnzymeFailure("FailedToDifferentiate", F.getSubprogram(),
-                           &*F.getEntryBlock().begin())
-             << "EnzymeFailure when replacing __enzyme_autodiff calls in "
-             << F.getName()));
-      }
+      changed |= lowerEnzymeCalls(F, done);
     }
 
-    std::vector<CallInst *> toErase;
+    SmallVector<CallInst *, 4> toErase;
     for (Function &F : M) {
       if (F.empty())
         continue;
@@ -1968,6 +2374,91 @@ public:
       changed = true;
     }
 
+    SmallPtrSet<CallInst *, 4> sample_calls;
+    for (auto &&func : M) {
+      for (auto &&BB : func) {
+        for (auto &&Inst : BB) {
+          if (auto CI = dyn_cast<CallInst>(&Inst)) {
+            Function *enzyme_sample = CI->getCalledFunction();
+            if (enzyme_sample && enzyme_sample->getName().contains(
+                                     TraceInterface::sampleFunctionName)) {
+              if (CI->getNumOperands() < 3) {
+                EmitFailure(
+                    "IllegalNumberOfArguments", CI->getDebugLoc(), CI,
+                    "Not enough arguments passed to call to __enzyme_sample");
+              }
+              Function *samplefn = GetFunctionFromValue(CI->getOperand(0));
+              unsigned expected =
+                  samplefn->getFunctionType()->getNumParams() + 3;
+#if LLVM_VERSION_MAJOR >= 14
+              unsigned actual = CI->arg_size();
+#else
+              unsigned actual = CI->getNumArgOperands();
+#endif
+              if (actual - 3 != samplefn->getFunctionType()->getNumParams()) {
+                EmitFailure("IllegalNumberOfArguments", CI->getDebugLoc(), CI,
+                            "Illegal number of arguments passed to call to "
+                            "__enzyme_sample.",
+                            " Expected: ", expected, " got: ", actual);
+              }
+              Function *pdf = GetFunctionFromValue(CI->getArgOperand(1));
+
+              for (unsigned i = 0;
+                   i < samplefn->getFunctionType()->getNumParams(); ++i) {
+                Value *ci_arg = CI->getArgOperand(i + 3);
+                Value *sample_arg = samplefn->arg_begin() + i;
+                Value *pdf_arg = pdf->arg_begin() + i;
+
+                if (ci_arg->getType() != sample_arg->getType()) {
+                  EmitFailure(
+                      "IllegalSampleType", CI->getDebugLoc(), CI,
+                      "Type of: ", *ci_arg, " (", *ci_arg->getType(), ")",
+                      " does not match the argument type of the sample "
+                      "function: ",
+                      *samplefn, " at: ", i, " (", *sample_arg->getType(), ")");
+                }
+                if (ci_arg->getType() != pdf_arg->getType()) {
+                  EmitFailure("IllegalSampleType", CI->getDebugLoc(), CI,
+                              "Type of: ", *ci_arg, " (", *ci_arg->getType(),
+                              ")",
+                              " does not match the argument type of the "
+                              "density function: ",
+                              *pdf, " at: ", i, " (", *pdf_arg->getType(), ")");
+                }
+              }
+
+              if ((pdf->arg_end() - 1)->getType() !=
+                  samplefn->getReturnType()) {
+                EmitFailure(
+                    "IllegalSampleType", CI->getDebugLoc(), CI,
+                    "Return type of ", *samplefn, " (",
+                    *samplefn->getReturnType(), ")",
+                    " does not match the last argument type of the density "
+                    "function: ",
+                    *pdf, " (", *(pdf->arg_end() - 1)->getType(), ")");
+              }
+              sample_calls.insert(CI);
+            }
+          }
+        }
+      }
+    }
+
+    // Replace calls to __enzyme_sample with the actual sample calls after
+    // running prob prog
+    for (auto call : sample_calls) {
+      Function *samplefn = GetFunctionFromValue(call->getArgOperand(0));
+
+      SmallVector<Value *, 2> args;
+      for (auto it = call->arg_begin() + 3; it != call->arg_end(); it++) {
+        args.push_back(*it);
+      }
+      CallInst *choice =
+          CallInst::Create(samplefn->getFunctionType(), samplefn, args);
+
+      ReplaceInstWithInst(call, choice);
+    }
+
     for (const auto &pair : Logic.PPC.cache)
       pair.second->eraseFromParent();
     Logic.clear();
@@ -1990,8 +2481,8 @@ public:
       auto PM = PB.buildModuleSimplificationPipeline(
           PassBuilder::OptimizationLevel::O2, ThinOrFullLTOPhase::None);
 #else
-    auto PM = PB.buildModuleSimplificationPipeline(
-        PassBuilder::OptimizationLevel::O2, PassBuilder::ThinLTOPhase::None);
+      auto PM = PB.buildModuleSimplificationPipeline(
+          PassBuilder::OptimizationLevel::O2, PassBuilder::ThinLTOPhase::None);
 #endif
       PM.run(M, MAM);
 #if LLVM_VERSION_MAJOR >= 13
@@ -2009,13 +2500,31 @@ public:
   }
 };
 
+class EnzymeOldPM : public EnzymeBase, public ModulePass {
+public:
+  static char ID;
+  EnzymeOldPM(bool PostOpt = false) : EnzymeBase(PostOpt), ModulePass(ID) {}
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
+
+    // AU.addRequiredID(LCSSAID);
+
+    // LoopInfo is required to ensure that all loops have preheaders
+    // AU.addRequired<LoopInfoWrapperPass>();
+
+    // AU.addRequiredID(llvm::LoopSimplifyID);//<LoopSimplifyWrapperPass>();
+  }
+  bool runOnModule(Module &M) override { return run(M); }
+};
+
 } // namespace
 
-char Enzyme::ID = 0;
+char EnzymeOldPM::ID = 0;
 
-static RegisterPass<Enzyme> X("enzyme", "Enzyme Pass");
+static RegisterPass<EnzymeOldPM> X("enzyme", "Enzyme Pass");
 
-ModulePass *createEnzymePass(bool PostOpt) { return new Enzyme(PostOpt); }
+ModulePass *createEnzymePass(bool PostOpt) { return new EnzymeOldPM(PostOpt); }
 
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
@@ -2024,4 +2533,119 @@ ModulePass *createEnzymePass(bool PostOpt) { return new Enzyme(PostOpt); }
 
 extern "C" void AddEnzymePass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createEnzymePass(/*PostOpt*/ false));
+}
+
+#include "llvm/Passes/PassPlugin.h"
+
+class EnzymeNewPM final : public EnzymeBase,
+                          public AnalysisInfoMixin<EnzymeNewPM> {
+  friend struct llvm::AnalysisInfoMixin<EnzymeNewPM>;
+
+private:
+  static llvm::AnalysisKey Key;
+
+public:
+  using Result = llvm::PreservedAnalyses;
+  EnzymeNewPM(bool PostOpt = false) : EnzymeBase(PostOpt) {}
+
+  Result run(llvm::Module &M, llvm::ModuleAnalysisManager &MAM) {
+    return EnzymeBase::run(M) ? PreservedAnalyses::none()
+                              : PreservedAnalyses::all();
+  }
+
+  static bool isRequired() { return true; }
+};
+
+AnalysisKey EnzymeNewPM::Key;
+
+#include "PreserveNVVM.h"
+#ifdef ENZYME_RUNPASS
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/IPO/GlobalOpt.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/LoopDeletion.h"
+#include "llvm/Transforms/Scalar/SROA.h"
+#endif
+
+extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+llvmGetPassPluginInfo() {
+  return {LLVM_PLUGIN_API_VERSION, "EnzymeNewPM", "v0.1",
+          [](llvm::PassBuilder &PB) {
+#ifdef ENZYME_RUNPASS
+#if LLVM_VERSION_MAJOR < 14
+            using OptimizationLevel = llvm::PassBuilder::OptimizationLevel;
+#endif
+#if LLVM_VERSION_MAJOR >= 12
+            auto loadPass = [](ModulePassManager &MPM, OptimizationLevel)
+#else
+            auto loadPass = [](ModulePassManager &MPM)
+#endif
+            {
+              MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true));
+              FunctionPassManager OptimizerPM;
+              FunctionPassManager OptimizerPM2;
+#if LLVM_VERSION_MAJOR >= 14
+              OptimizerPM.addPass(llvm::GVNPass());
+              OptimizerPM.addPass(llvm::SROAPass());
+#else
+              OptimizerPM.addPass(llvm::GVN());
+              OptimizerPM.addPass(llvm::SROA());
+#endif
+              MPM.addPass(
+                  createModuleToFunctionPassAdaptor(std::move(OptimizerPM)));
+              MPM.addPass(EnzymeNewPM(/*PostOpt=*/true));
+              MPM.addPass(PreserveNVVMNewPM(/*Begin*/ false));
+#if LLVM_VERSION_MAJOR >= 14
+              OptimizerPM2.addPass(llvm::GVNPass());
+              OptimizerPM2.addPass(llvm::SROAPass());
+#else
+              OptimizerPM2.addPass(llvm::GVN());
+              OptimizerPM2.addPass(llvm::SROA());
+#endif
+
+              LoopPassManager LPM1;
+              LPM1.addPass(LoopDeletionPass());
+              OptimizerPM2.addPass(
+                  createFunctionToLoopPassAdaptor(std::move(LPM1)));
+
+              MPM.addPass(
+                  createModuleToFunctionPassAdaptor(std::move(OptimizerPM2)));
+              MPM.addPass(GlobalOptPass());
+            };
+// TODO need for perf reasons to move Enzyme pass to the pre vectorization.
+#if LLVM_VERSION_MAJOR >= 12
+            PB.registerPipelineEarlySimplificationEPCallback(loadPass);
+#else
+            PB.registerPipelineStartEPCallback(loadPass);
+#endif
+
+#if LLVM_VERSION_MAJOR >= 12
+            auto loadNVVM = [](ModulePassManager &MPM, OptimizationLevel)
+#else
+            auto loadNVVM = [](ModulePassManager &MPM)
+#endif
+            { MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true)); };
+
+            // We should register at vectorizer start for consistency, however,
+            // that requires a functionpass, and we have a modulepass.
+            // PB.registerVectorizerStartEPCallback(loadPass);
+            PB.registerPipelineStartEPCallback(loadNVVM);
+#if LLVM_VERSION_MAJOR >= 15
+            PB.registerFullLinkTimeOptimizationEarlyEPCallback(loadNVVM);
+#endif
+#endif
+            PB.registerPipelineParsingCallback(
+                [](llvm::StringRef Name, llvm::ModulePassManager &MPM,
+                   llvm::ArrayRef<llvm::PassBuilder::PipelineElement>) {
+                  if (Name == "enzyme") {
+                    MPM.addPass(EnzymeNewPM());
+                    return true;
+                  }
+                  if (Name == "preserve-nvvm") {
+                    MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true));
+                    return true;
+                  }
+                  return false;
+                });
+          }};
 }

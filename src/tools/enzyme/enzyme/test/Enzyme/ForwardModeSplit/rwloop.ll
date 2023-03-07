@@ -134,7 +134,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
 ; CHECK-NEXT:   %[[i3:.+]] = mul nuw nsw i64 %iv, 10
 ; CHECK-NEXT:   %[[i4:.+]] = getelementptr inbounds i32, i32* %[[i1]], i64 %iv
-; CHECK-NEXT:   %[[i5:.+]] = load i32, i32* %[[i4]], align 4, !invariant.group !13
+; CHECK-NEXT:   %[[i5:.+]] = load i32, i32* %[[i4]], align 4, !invariant.group !
 ; CHECK-NEXT:   %[[i6:.+]] = sext i32 %[[i5]] to i64
 ; CHECK-NEXT:   br label %for.body4
 
@@ -146,9 +146,9 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %"a'", i64 %[[i7]]
 ; CHECK-NEXT:   %[[i12:.+]] = load double, double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   %[[i8:.+]] = getelementptr inbounds double*, double** %[[i2]], i64 %iv
-; CHECK-NEXT:   %[[i9:.+]] = load double*, double** %[[i8]], align 8, !dereferenceable !10, !invariant.group !14
+; CHECK-NEXT:   %[[i9:.+]] = load double*, double** %[[i8]], align 8, !dereferenceable !{{[0-9]+}}, !invariant.group !
 ; CHECK-NEXT:   %[[i10:.+]] = getelementptr inbounds double, double* %[[i9]], i64 %iv1
-; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !invariant.group !15
+; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[i13:.+]] = fmul fast double %[[i12]], %[[i11]]
 ; CHECK-NEXT:   %[[i14:.+]] = fadd fast double %[[i13]], %[[i13]]
 ; CHECK-NEXT:   %[[i15]] = fadd fast double %[[sum134]], %[[i14]]

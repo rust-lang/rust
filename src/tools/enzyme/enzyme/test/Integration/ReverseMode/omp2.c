@@ -1,9 +1,9 @@
-// RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O1 -fno-vectorize -fno-unroll-loops -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out; fi
+// RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 %O0TBAA -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O1 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O2 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O3 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi
 //   note not doing O0 below as to ensure we get tbaa
-// RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O1 -fno-vectorize -fno-unroll-loops -Xclang -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out; fi
+// RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 %O0TBAA -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O1 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O2 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi
 // RUN: if [ %llvmver -ge 9 ]; then %clang -fopenmp -std=c11 -O3 -fno-vectorize -fno-unroll-loops %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out ; fi

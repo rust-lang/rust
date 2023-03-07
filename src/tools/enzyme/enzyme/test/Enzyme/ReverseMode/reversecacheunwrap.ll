@@ -1,4 +1,6 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s -check-prefixes LLVM13,SHARED; fi
+; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s -check-prefixes LLVM14,SHARED; fi
+
 
 ; ModuleID = 'orig.ll'
 source_filename = "../benchmarks/hand/hand.cpp"
@@ -85,70 +87,71 @@ attributes #4 = { "enzyme_inactive" }
 !10 = !{!11, !11, i64 0}
 !11 = !{!"double", !4, i64 0}
 
-; CHECK: define internal void @diffemat_mult(i64* noalias readonly %ncols12, double* noalias %tmp10, double* %"tmp10'", { i64*, double** } %tapeArg)
-; CHECK-NEXT: entry:
-; CHECK-DAG:   %[[i0:.+]] = extractvalue { i64*, double** } %tapeArg, 0
-; CHECK-DAG:   %[[i1:.+]] = extractvalue { i64*, double** } %tapeArg, 1
-; CHECK:   br label %for.cond8.preheader
+; SHARED: define internal void @diffemat_mult(i64* noalias readonly %ncols12, double* noalias %tmp10, double* %"tmp10'", { i64*, double** } %tapeArg)
+; SHARED-NEXT: entry:
+; SHARED-DAG:   %[[i0:.+]] = extractvalue { i64*, double** } %tapeArg, 0
+; SHARED-DAG:   %[[i1:.+]] = extractvalue { i64*, double** } %tapeArg, 1
+; SHARED:   br label %for.cond8.preheader
 
-; CHECK: for.cond8.preheader:                              ; preds = %for.inc30, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.inc30 ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %2 = getelementptr inbounds i64, i64* %[[i0]], i64 %iv
-; CHECK-NEXT:   %wide.trip.count = load i64, i64* %2, align 8
-; CHECK-NEXT:   br label %for.body15
+; SHARED: for.cond8.preheader:                              ; preds = %for.inc30, %entry
+; SHARED-NEXT:   %iv = phi i64 [ %iv.next, %for.inc30 ], [ 0, %entry ]
+; SHARED-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; SHARED-NEXT:   %2 = getelementptr inbounds i64, i64* %[[i0]], i64 %iv
+; SHARED-NEXT:   %wide.trip.count = load i64, i64* %2, align 8
+; SHARED-NEXT:   br label %for.body15
 
-; CHECK: for.body15:                                       ; preds = %for.body15, %for.cond8.preheader
-; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body15 ], [ 0, %for.cond8.preheader ]
-; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next2, %wide.trip.count
-; CHECK-NEXT:   br i1 %exitcond, label %for.inc30, label %for.body15
+; SHARED: for.body15:                                       ; preds = %for.body15, %for.cond8.preheader
+; SHARED-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body15 ], [ 0, %for.cond8.preheader ]
+; SHARED-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
+; SHARED-NEXT:   %exitcond = icmp eq i64 %iv.next2, %wide.trip.count
+; SHARED-NEXT:   br i1 %exitcond, label %for.inc30, label %for.body15
 
-; CHECK: for.inc30:                                        ; preds = %for.body15
-; CHECK-NEXT:   %exitcond70 = icmp eq i64 %iv.next, 13
-; CHECK-NEXT:   br i1 %exitcond70, label %invertfor.inc30, label %for.cond8.preheader
+; SHARED: for.inc30:                                        ; preds = %for.body15
+; SHARED-NEXT:   %exitcond70 = icmp eq i64 %iv.next, 13
+; SHARED-NEXT:   br i1 %exitcond70, label %invertfor.inc30, label %for.cond8.preheader
 
-; CHECK: invertentry:                                      ; preds = %invertfor.cond8.preheader
-; CHECK-DAG:   %[[a3:.+]] = bitcast i64* %[[i0]] to i8*
-; CHECK-DAG:   tail call void @free(i8* nonnull %[[a3]])
-; CHECK-DAG:   %[[a4:.+]] = bitcast double** %[[i1]] to i8*
-; CHECK-DAG:   tail call void @free(i8* nonnull %[[a4]])
-; CHECK-DAG:   ret void
+; SHARED: invertentry:                                      ; preds = %invertfor.cond8.preheader
+; SHARED-DAG:   %[[a3:.+]] = bitcast i64* %[[i0]] to i8*
+; SHARED-DAG:   tail call void @free(i8* nonnull %[[a3]])
+; SHARED-DAG:   %[[a4:.+]] = bitcast double** %[[i1]] to i8*
+; SHARED-DAG:   tail call void @free(i8* nonnull %[[a4]])
+; SHARED-DAG:   ret void
 
-; CHECK: invertfor.cond8.preheader:                        ; preds = %invertfor.body15
-; CHECK-NEXT:   %5 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %[[forfree15:.+]] = load double*, double** %9, align 8
-; CHECK-NEXT:   %6 = bitcast double* %[[forfree15]] to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %6)
-; CHECK-NEXT:   br i1 %5, label %invertentry, label %incinvertfor.cond8.preheader
+; SHARED: invertfor.cond8.preheader:                        ; preds = %invertfor.body15
+; SHARED-NEXT:   %5 = icmp eq i64 %"iv'ac.0", 0
+; LLVM13-NEXT:   %[[forfree15:.+]] = load double*, double** %9, align 8
+; LLVM13-NEXT:   %6 = bitcast double* %[[forfree15]] to i8*
+; LLVM14-NEXT:   %6 = bitcast double* %10 to i8*
+; SHARED-NEXT:   tail call void @free(i8* nonnull %6)
+; SHARED-NEXT:   br i1 %5, label %invertentry, label %incinvertfor.cond8.preheader
 
-; CHECK: incinvertfor.cond8.preheader:                     ; preds = %invertfor.cond8.preheader
-; CHECK-NEXT:   %7 = add nsw i64 %"iv'ac.0", -1
-; CHECK-NEXT:   br label %invertfor.inc30
+; SHARED: incinvertfor.cond8.preheader:                     ; preds = %invertfor.cond8.preheader
+; SHARED-NEXT:   %7 = add nsw i64 %"iv'ac.0", -1
+; SHARED-NEXT:   br label %invertfor.inc30
 
-; CHECK: invertfor.body15:                                 ; preds = %invertfor.inc30, %incinvertfor.body15
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[unwrap18:.+]], %invertfor.inc30 ], [ %15, %incinvertfor.body15 ]
-; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"tmp10'", i64 %"iv1'ac.0"
-; CHECK-NEXT:   %8 = load double, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %9 = getelementptr inbounds double*, double** %[[i1]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %10 = load double*, double** %9, align 8
-; CHECK-NEXT:   %11 = getelementptr inbounds double, double* %10, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %12 = load double, double* %11, align 8
-; CHECK-NEXT:   %m0diffetmp15 = fmul fast double %8, %12
-; CHECK-NEXT:   %13 = fadd fast double %m0diffetmp15, %m0diffetmp15
-; CHECK-NEXT:   store double %13, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %14 = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   br i1 %14, label %invertfor.cond8.preheader, label %incinvertfor.body15
+; SHARED: invertfor.body15:                                 ; preds = %invertfor.inc30, %incinvertfor.body15
+; SHARED-NEXT:   %"iv1'ac.0" = phi i64 [ %[[unwrap18:.+]], %invertfor.inc30 ], [ %15, %incinvertfor.body15 ]
+; SHARED-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"tmp10'", i64 %"iv1'ac.0"
+; SHARED-NEXT:   %8 = load double, double* %"arrayidx'ipg_unwrap", align 8
+; SHARED-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
+; SHARED-NEXT:   %9 = getelementptr inbounds double*, double** %[[i1]], i64 %"iv'ac.0"
+; SHARED-NEXT:   %10 = load double*, double** %9, align 8
+; SHARED-NEXT:   %11 = getelementptr inbounds double, double* %10, i64 %"iv1'ac.0"
+; SHARED-NEXT:   %12 = load double, double* %11, align 8
+; SHARED-NEXT:   %m0diffetmp15 = fmul fast double %8, %12
+; SHARED-NEXT:   %13 = fadd fast double %m0diffetmp15, %m0diffetmp15
+; SHARED-NEXT:   store double %13, double* %"arrayidx'ipg_unwrap", align 8
+; SHARED-NEXT:   %14 = icmp eq i64 %"iv1'ac.0", 0
+; SHARED-NEXT:   br i1 %14, label %invertfor.cond8.preheader, label %incinvertfor.body15
 
-; CHECK: incinvertfor.body15:                              ; preds = %invertfor.body15
-; CHECK-NEXT:   %15 = add nsw i64 %"iv1'ac.0", -1
-; CHECK-NEXT:   br label %invertfor.body15
+; SHARED: incinvertfor.body15:                              ; preds = %invertfor.body15
+; SHARED-NEXT:   %15 = add nsw i64 %"iv1'ac.0", -1
+; SHARED-NEXT:   br label %invertfor.body15
 
-; CHECK: invertfor.inc30:                                  ; preds = %for.inc30, %incinvertfor.cond8.preheader
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %7, %incinvertfor.cond8.preheader ], [ 12, %for.inc30 ]
-; CHECK-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %[[i0]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !tbaa !2, !invariant.group !
-; CHECK-NEXT:   %[[unwrap18]] = add i64 %[[unwrap17]], -1
-; CHECK-NEXT:   br label %invertfor.body15
-; CHECK-NEXT: }
+; SHARED: invertfor.inc30:                                  ; preds = %for.inc30, %incinvertfor.cond8.preheader
+; SHARED-NEXT:   %"iv'ac.0" = phi i64 [ %7, %incinvertfor.cond8.preheader ], [ 12, %for.inc30 ]
+; SHARED-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %[[i0]], i64 %"iv'ac.0"
+; SHARED-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !tbaa !2, !invariant.group !
+; SHARED-NEXT:   %[[unwrap18]] = add i64 %[[unwrap17]], -1
+; SHARED-NEXT:   br label %invertfor.body15
+; SHARED-NEXT: }

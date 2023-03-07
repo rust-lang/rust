@@ -101,7 +101,7 @@ attributes #3 = { nounwind }
 
 ; CHECK: bb381:                                            ; preds = %bb377
 ; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double*, double** %0, i64 %iv
-; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %[[a5]], align 8, !invariant.group !13
+; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %[[a5]], align 8, !invariant.group !
 ; CHECK-NEXT:   br label %bb377
 
 ; CHECK: bb450:                                            ; preds = %bb377
@@ -118,8 +118,8 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[a6]])
 ; CHECK-NEXT:   br i1 %tmp39, label %invertbb, label %invertbb43
 
-; CHECK: invertbb377:                                      ; preds = %mergeinvertbb377_bb450, %invertbb381
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a2]], %mergeinvertbb377_bb450 ], [ %[[a9:.+]], %invertbb381 ]
+; CHECK: invertbb377:    
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a2]], %mergeinvertbb377_bb450 ], [ %[[a9:.+]], %invertbb381_phimerge ]
 ; CHECK-NEXT:   %[[a7:.+]] = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   %[[a8:.+]] = xor i1 %[[a7]], true
 ; CHECK-NEXT:   br i1 %[[a7]], label %invertbexit, label %incinvertbb377
@@ -135,14 +135,23 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %[[a12:.+]] = fadd fast double 0.000000e+00, %[[a11]]
 ; CHECK-NEXT:   %[[tmp37_unwrap6:.+]] = extractvalue { double**, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %tmp39_unwrap = icmp ne i64 %[[tmp37_unwrap6]], 0
+; CHECK-NEXT:   br i1 %tmp39_unwrap, label %invertbb381_phirc, label %invertbb381_phirc1
+
+; CHECK: invertbb381_phirc:                                ; preds = %invertbb381
+; CHECK-NEXT:   br label %invertbb381_phimerge
+
+; CHECK: invertbb381_phirc1:                               ; preds = %invertbb381
 ; CHECK-NEXT:   %[[tmp37_unwrap5:.+]] = extractvalue { double**, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %tmp44_unwrap = udiv i64 %[[tmp37_unwrap5]], 8
-; CHECK-NEXT:   %.020_unwrap = select i1 %tmp39_unwrap, i64 -1, i64 %tmp44_unwrap
-; CHECK:   %[[_unwrap3:.+]] = sub i64 %[[smax_unwrap:.+]], %.020_unwrap
+; CHECK:   br label %invertbb381_phimerge
+
+; CHECK: invertbb381_phimerge:                             ; preds = %invertbb381_phirc1, %invertbb381_phirc
+; CHECK-NEXT:  %[[a13:.+]] = phi i64 [ -1, %invertbb381_phirc ], [ %tmp44_unwrap, %invertbb381_phirc1 ]
+; CHECK:   %[[_unwrap3:.+]] = sub i64 %[[smax_unwrap:.+]], %[[a13]]
 ; CHECK-NEXT:   %[[a13:.+]] = add nuw i64 %[[_unwrap3]], 1
 ; CHECK-NEXT:   %[[a14:.+]] = extractvalue { double**, i64 } %tapeArg, 0
 ; CHECK-NEXT:   %[[a15:.+]] = getelementptr inbounds double*, double** %[[a14]], i64 %[[a9]]
-; CHECK-NEXT:   %[[a16:.+]] = load double*, double** %[[a15]], align 8, !invariant.group !14
+; CHECK-NEXT:   %[[a16:.+]] = load double*, double** %[[a15]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[a17:.+]] = load double, double* %[[a16]], align 8
 ; CHECK-NEXT:   %[[a18:.+]] = fadd fast double %[[a17]], %[[a12]]
 ; CHECK-NEXT:   store double %[[a18]], double* %[[a16]], align 8

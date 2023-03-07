@@ -37,27 +37,388 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 
+#include "llvm-c/Core.h"
+
+#include "LibraryFuncs.h"
+
 using namespace llvm;
 
 extern "C" {
 void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
-                           void *) = nullptr;
+                           const void *) = nullptr;
+LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
+                                /*Count*/ LLVMValueRef,
+                                /*Align*/ LLVMValueRef, uint8_t,
+                                LLVMValueRef *) = nullptr;
+void (*CustomZero)(LLVMBuilderRef, LLVMTypeRef,
+                   /*Ptr*/ LLVMValueRef, uint8_t) = nullptr;
+LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
+void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
+                                   LLVMValueRef) = nullptr;
+LLVMValueRef *(*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
+                                      uint64_t *size) = nullptr;
+LLVMTypeRef (*EnzymeDefaultTapeType)(LLVMContextRef) = nullptr;
 }
 
-EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
+void ZeroMemory(llvm::IRBuilder<> &Builder, llvm::Type *T, llvm::Value *obj,
+                bool isTape) {
+  if (CustomZero) {
+    CustomZero(wrap(&Builder), wrap(T), wrap(obj), isTape);
+  } else {
+    Builder.CreateStore(Constant::getNullValue(T), obj);
+  }
+}
+
+llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
+                                                         llvm::IRBuilder<> &B) {
+  SmallVector<llvm::Instruction *, 2> res;
+  if (EnzymePostCacheStore) {
+    uint64_t size = 0;
+    auto ptr = EnzymePostCacheStore(wrap(SI), wrap(&B), &size);
+    for (size_t i = 0; i < size; i++) {
+      res.push_back(cast<Instruction>(unwrap(ptr[i])));
+    }
+    free(ptr);
+  }
+  return res;
+}
+
+llvm::PointerType *getDefaultAnonymousTapeType(llvm::LLVMContext &C) {
+  if (EnzymeDefaultTapeType)
+    return cast<PointerType>(unwrap(EnzymeDefaultTapeType(wrap(&C))));
+  return Type::getInt8PtrTy(C);
+}
+
+Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
+                                          bool ZeroInit, llvm::Type *RT) {
+  bool custom = true;
+  llvm::PointerType *allocType;
+  {
+    auto i64 = Type::getInt64Ty(newFunc->getContext());
+    BasicBlock *BB = BasicBlock::Create(M.getContext(), "entry", newFunc);
+    IRBuilder<> B(BB);
+    auto P = B.CreatePHI(i64, 1);
+    CallInst *malloccall;
+    Instruction *SubZero = nullptr;
+    CreateAllocation(B, RT, P, "tapemem", &malloccall, &SubZero)->getType();
+    if (auto F = getFunctionFromCall(malloccall)) {
+      custom = F->getName() != "malloc";
+    }
+    allocType = cast<PointerType>(malloccall->getType());
+    BB->eraseFromParent();
+  }
+
+  Type *types[] = {allocType, Type::getInt64Ty(M.getContext()),
+                   Type::getInt64Ty(M.getContext())};
+  std::string name = "__enzyme_exponentialallocation";
+  if (ZeroInit)
+    name += "zero";
+  if (custom)
+    name += ".custom@" + std::to_string((size_t)RT);
+
+  FunctionType *FT = FunctionType::get(allocType, types, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
+#endif
+
+  if (!F->empty())
+    return F;
+
+  F->setLinkage(Function::LinkageTypes::InternalLinkage);
+  F->addFnAttr(Attribute::AlwaysInline);
+  F->addFnAttr(Attribute::NoUnwind);
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+  BasicBlock *grow = BasicBlock::Create(M.getContext(), "grow", F);
+  BasicBlock *ok = BasicBlock::Create(M.getContext(), "ok", F);
+
+  IRBuilder<> B(entry);
+
+  Argument *ptr = F->arg_begin();
+  ptr->setName("ptr");
+  Argument *size = ptr + 1;
+  size->setName("size");
+  Argument *tsize = size + 1;
+  tsize->setName("tsize");
+
+  Value *hasOne = B.CreateICmpNE(
+      B.CreateAnd(size, ConstantInt::get(size->getType(), 1, false)),
+      ConstantInt::get(size->getType(), 0, false));
+  auto popCnt = Intrinsic::getDeclaration(&M, Intrinsic::ctpop, {types[1]});
+
+  B.CreateCondBr(
+      B.CreateAnd(B.CreateICmpULT(B.CreateCall(popCnt, {size}),
+                                  ConstantInt::get(types[1], 3, false)),
+                  hasOne),
+      grow, ok);
+
+  B.SetInsertPoint(grow);
+
+  auto lz =
+      B.CreateCall(Intrinsic::getDeclaration(&M, Intrinsic::ctlz, {types[1]}),
+                   {size, ConstantInt::getTrue(M.getContext())});
+  Value *next =
+      B.CreateShl(tsize, B.CreateSub(ConstantInt::get(types[1], 64, false), lz,
+                                     "", true, true));
+
+  Value *gVal;
+
+  Value *prevSize =
+      B.CreateSelect(B.CreateICmpEQ(size, ConstantInt::get(size->getType(), 1)),
+                     ConstantInt::get(next->getType(), 0),
+                     B.CreateLShr(next, ConstantInt::get(next->getType(), 1)));
+
+  if (!custom) {
+    auto reallocF = M.getOrInsertFunction("realloc", allocType, allocType,
+                                          Type::getInt64Ty(M.getContext()));
+
+    Value *args[] = {B.CreatePointerCast(ptr, allocType), next};
+    gVal = B.CreateCall(reallocF, args);
+  } else {
+    Value *tsize = ConstantInt::get(
+        next->getType(),
+        newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(RT) / 8);
+    auto elSize = B.CreateUDiv(next, tsize, "", /*isExact*/ true);
+    Instruction *SubZero = nullptr;
+    gVal = CreateAllocation(B, RT, elSize, "", nullptr, &SubZero);
+
+    Type *bTy =
+        PointerType::get(Type::getInt8Ty(gVal->getContext()),
+                         cast<PointerType>(gVal->getType())->getAddressSpace());
+    gVal = B.CreatePointerCast(gVal, bTy);
+    auto pVal = B.CreatePointerCast(ptr, gVal->getType());
+
+    Value *margs[] = {gVal, pVal, prevSize,
+                      ConstantInt::getFalse(M.getContext())};
+    Type *tys[] = {margs[0]->getType(), margs[1]->getType(),
+                   margs[2]->getType()};
+    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memcpy, tys);
+    B.CreateCall(memsetF, margs);
+    if (SubZero) {
+      ZeroInit = false;
+      IRBuilder<> BB(SubZero);
+      Value *zeroSize = BB.CreateSub(next, prevSize);
+      Value *tmp = SubZero->getOperand(0);
+      Type *tmpT = tmp->getType();
+      tmp = BB.CreatePointerCast(tmp, bTy);
+
+#if LLVM_VERSION_MAJOR > 7
+      tmp = BB.CreateInBoundsGEP(tmp->getType()->getPointerElementType(), tmp,
+                                 prevSize);
+#else
+      tmp = BB.CreateInBoundsGEP(tmp, prevSize);
+#endif
+      tmp = BB.CreatePointerCast(tmp, tmpT);
+      SubZero->setOperand(0, tmp);
+      SubZero->setOperand(2, zeroSize);
+    }
+  }
+
+  if (ZeroInit) {
+    Value *zeroSize = B.CreateSub(next, prevSize);
+
+    Value *margs[] = {
+#if LLVM_VERSION_MAJOR > 7
+      B.CreateInBoundsGEP(gVal->getType()->getPointerElementType(), gVal,
+                          prevSize),
+#else
+      B.CreateInBoundsGEP(gVal, prevSize),
+#endif
+      ConstantInt::get(Type::getInt8Ty(M.getContext()), 0),
+      zeroSize,
+      ConstantInt::getFalse(M.getContext())
+    };
+    Type *tys[] = {margs[0]->getType(), margs[2]->getType()};
+    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);
+    B.CreateCall(memsetF, margs);
+  }
+  gVal = B.CreatePointerCast(gVal, ptr->getType());
+
+  B.CreateBr(ok);
+  B.SetInsertPoint(ok);
+  auto phi = B.CreatePHI(ptr->getType(), 2);
+  phi->addIncoming(gVal, grow);
+  phi->addIncoming(ptr, entry);
+  B.CreateRet(phi);
+  return F;
+}
+
+llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
+                                llvm::Type *T, llvm::Value *OuterCount,
+                                llvm::Value *InnerCount, llvm::Twine Name,
+                                llvm::CallInst **caller, bool ZeroMem) {
+  auto newFunc = B.GetInsertBlock()->getParent();
+
+  Value *tsize = ConstantInt::get(
+      InnerCount->getType(),
+      newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(T) / 8);
+
+  Value *idxs[] = {
+      /*ptr*/
+      prev,
+      /*incrementing value to increase when it goes past a power of two*/
+      OuterCount,
+      /*buffer size (element x subloops)*/
+      B.CreateMul(tsize, InnerCount, "", /*NUW*/ true,
+                  /*NSW*/ true)};
+
+  auto realloccall =
+      B.CreateCall(getOrInsertExponentialAllocator(*newFunc->getParent(),
+                                                   newFunc, ZeroMem, T),
+                   idxs, Name);
+  if (caller)
+    *caller = realloccall;
+  return realloccall;
+}
+
+Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
+                        Twine Name, CallInst **caller, Instruction **ZeroMem,
+                        bool isDefault) {
+  Value *res;
+  auto &M = *Builder.GetInsertBlock()->getParent()->getParent();
+  auto AlignI = M.getDataLayout().getTypeAllocSizeInBits(T) / 8;
+  auto Align = ConstantInt::get(Count->getType(), AlignI);
+  CallInst *malloccall = nullptr;
+  if (CustomAllocator) {
+    LLVMValueRef wzeromem = nullptr;
+    res = unwrap(CustomAllocator(wrap(&Builder), wrap(T), wrap(Count),
+                                 wrap(Align), isDefault,
+                                 ZeroMem ? &wzeromem : nullptr));
+    if (auto I = dyn_cast<Instruction>(res))
+      I->setName(Name);
+
+    malloccall = dyn_cast<CallInst>(res);
+    if (malloccall == nullptr) {
+      malloccall = cast<CallInst>(cast<Instruction>(res)->getOperand(0));
+    }
+    if (ZeroMem) {
+      *ZeroMem = cast_or_null<Instruction>(unwrap(wzeromem));
+      ZeroMem = nullptr;
+    }
+  } else {
+    if (Builder.GetInsertPoint() == Builder.GetInsertBlock()->end()) {
+      res = CallInst::CreateMalloc(Builder.GetInsertBlock(), Count->getType(),
+                                   T, Align, Count, nullptr, Name);
+      Builder.SetInsertPoint(Builder.GetInsertBlock());
+    } else {
+      res = CallInst::CreateMalloc(&*Builder.GetInsertPoint(), Count->getType(),
+                                   T, Align, Count, nullptr, Name);
+    }
+    if (!cast<Instruction>(res)->getParent())
+      Builder.Insert(cast<Instruction>(res));
+
+    malloccall = dyn_cast<CallInst>(res);
+    if (malloccall == nullptr) {
+      malloccall = cast<CallInst>(cast<Instruction>(res)->getOperand(0));
+    }
+
+    // Assert computation of size of array doesn't wrap
+    if (auto BI = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
+      if (BI->getOpcode() == BinaryOperator::Mul) {
+        if ((BI->getOperand(0) == Align && BI->getOperand(1) == Count) ||
+            (BI->getOperand(1) == Align && BI->getOperand(0) == Count))
+          BI->setHasNoSignedWrap(true);
+        BI->setHasNoUnsignedWrap(true);
+      }
+    }
+
+    if (auto ci = dyn_cast<ConstantInt>(Count)) {
+#if LLVM_VERSION_MAJOR >= 14
+      malloccall->addDereferenceableRetAttr(ci->getLimitedValue() * AlignI);
+#if !defined(FLANG) && !defined(ROCM)
+      AttrBuilder B(ci->getContext());
+#else
+      AttrBuilder B;
+#endif
+      B.addDereferenceableOrNullAttr(ci->getLimitedValue() * AlignI);
+      malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
+          malloccall->getContext(), B));
+#else
+      malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
+                                         ci->getLimitedValue() * AlignI);
+      malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
+                                               ci->getLimitedValue() * AlignI);
+#endif
+      // malloccall->removeAttribute(llvm::AttributeList::ReturnIndex,
+      // Attribute::DereferenceableOrNull);
+    }
+#if LLVM_VERSION_MAJOR >= 14
+    malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                    Attribute::NoAlias);
+    malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                    Attribute::NonNull);
+#else
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+#endif
+  }
+  if (caller) {
+    *caller = malloccall;
+  }
+  if (ZeroMem) {
+    auto PT = cast<PointerType>(malloccall->getType());
+    Value *tozero = malloccall;
+
+    bool needsCast = false;
+#if LLVM_VERSION_MAJOR >= 15
+    if (PT->getContext().supportsTypedPointers()) {
+#endif
+      needsCast = !PT->getPointerElementType()->isIntegerTy(8);
+#if LLVM_VERSION_MAJOR >= 15
+    }
+#endif
+    if (needsCast)
+      tozero = Builder.CreatePointerCast(
+          tozero, PointerType::get(Type::getInt8Ty(PT->getContext()),
+                                   PT->getAddressSpace()));
+    Value *args[] = {
+        tozero, ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+        Builder.CreateMul(Align, Count, "", true, true),
+        ConstantInt::getFalse(malloccall->getContext())};
+    Type *tys[] = {args[0]->getType(), args[2]->getType()};
+
+    *ZeroMem = Builder.CreateCall(
+        Intrinsic::getDeclaration(&M, Intrinsic::memset, tys), args);
+  }
+  return res;
+}
+
+CallInst *CreateDealloc(llvm::IRBuilder<> &Builder, llvm::Value *ToFree) {
+  CallInst *res = nullptr;
+
+  if (CustomDeallocator) {
+    res = dyn_cast_or_null<CallInst>(
+        unwrap(CustomDeallocator(wrap(&Builder), wrap(ToFree))));
+  } else {
+
+    ToFree = Builder.CreatePointerCast(
+        ToFree, Type::getInt8PtrTy(ToFree->getContext()));
+    if (Builder.GetInsertPoint() == Builder.GetInsertBlock()->end()) {
+      res = cast<CallInst>(
+          CallInst::CreateFree(ToFree, Builder.GetInsertBlock()));
+      Builder.SetInsertPoint(Builder.GetInsertBlock());
+    } else {
+      res = cast<CallInst>(
+          CallInst::CreateFree(ToFree, &*Builder.GetInsertPoint()));
+    }
+    if (!cast<Instruction>(res)->getParent())
+      Builder.Insert(cast<Instruction>(res));
+#if LLVM_VERSION_MAJOR >= 14
+    res->addAttributeAtIndex(AttributeList::FirstArgIndex, Attribute::NonNull);
+#else
+    res->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
+  }
+  return res;
+}
+
+EnzymeFailure::EnzymeFailure(llvm::Twine RemarkName,
                              const llvm::DiagnosticLocation &Loc,
                              const llvm::Instruction *CodeRegion)
-    : DiagnosticInfoIROptimization(
-          EnzymeFailure::ID(), DS_Error, "enzyme", RemarkName,
-          *CodeRegion->getParent()->getParent(), Loc, CodeRegion) {}
-
-llvm::DiagnosticKind EnzymeFailure::ID() {
-  static auto id = llvm::getNextAvailablePluginDiagnosticKind();
-  return (llvm::DiagnosticKind)id;
-}
-
-/// \see DiagnosticInfoOptimizationBase::isEnabled.
-bool EnzymeFailure::isEnabled() const { return true; }
+    : DiagnosticInfoUnsupported(*CodeRegion->getParent()->getParent(),
+                                RemarkName, Loc) {}
 
 /// Convert a floating type to a string
 static inline std::string tofltstr(Type *T) {
@@ -77,6 +438,100 @@ static inline std::string tofltstr(Type *T) {
   default:
     llvm_unreachable("Invalid floating type");
   }
+}
+
+Constant *getString(Module &M, StringRef Str) {
+  llvm::Constant *s = llvm::ConstantDataArray::getString(M.getContext(), Str);
+  auto *gv = new llvm::GlobalVariable(
+      M, s->getType(), true, llvm::GlobalValue::PrivateLinkage, s, ".str");
+  gv->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+  Value *Idxs[2] = {ConstantInt::get(Type::getInt32Ty(M.getContext()), 0),
+                    ConstantInt::get(Type::getInt32Ty(M.getContext()), 0)};
+  return ConstantExpr::getInBoundsGetElementPtr(s->getType(), gv, Idxs);
+}
+
+void ErrorIfRuntimeInactive(llvm::IRBuilder<> &B, llvm::Value *primal,
+                            llvm::Value *shadow, const char *Message,
+                            llvm::DebugLoc &&loc, llvm::Instruction *orig) {
+  Module &M = *B.GetInsertBlock()->getParent()->getParent();
+  std::string name = "__enzyme_runtimeinactiveerr";
+  if (CustomRuntimeInactiveError) {
+    static int count = 0;
+    name += std::to_string(count);
+    count++;
+  }
+  FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()),
+                                       {Type::getInt8PtrTy(M.getContext()),
+                                        Type::getInt8PtrTy(M.getContext()),
+                                        Type::getInt8PtrTy(M.getContext())},
+                                       false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
+#endif
+
+  if (F->empty()) {
+    F->setLinkage(Function::LinkageTypes::InternalLinkage);
+    F->addFnAttr(Attribute::AlwaysInline);
+    F->addParamAttr(0, Attribute::NoCapture);
+    F->addParamAttr(1, Attribute::NoCapture);
+
+    BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+    BasicBlock *error = BasicBlock::Create(M.getContext(), "error", F);
+    BasicBlock *end = BasicBlock::Create(M.getContext(), "end", F);
+
+    auto prim = F->arg_begin();
+    prim->setName("primal");
+    auto shadow = prim + 1;
+    shadow->setName("shadow");
+    auto msg = prim + 2;
+    msg->setName("msg");
+
+    IRBuilder<> EB(entry);
+    EB.CreateCondBr(EB.CreateICmpEQ(prim, shadow), error, end);
+
+    EB.SetInsertPoint(error);
+
+    if (CustomRuntimeInactiveError) {
+      CustomRuntimeInactiveError(wrap(&EB), wrap(msg), wrap(orig));
+    } else {
+      FunctionType *FT =
+          FunctionType::get(Type::getInt32Ty(M.getContext()),
+                            {Type::getInt8PtrTy(M.getContext())}, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+      auto PutsF = M.getOrInsertFunction("puts", FT);
+#else
+      auto PutsF = M.getOrInsertFunction("puts", FT);
+#endif
+      EB.CreateCall(PutsF, msg);
+
+      FunctionType *FT2 =
+          FunctionType::get(Type::getVoidTy(M.getContext()),
+                            {Type::getInt32Ty(M.getContext())}, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+      auto ExitF = M.getOrInsertFunction("exit", FT2);
+#else
+      auto ExitF = M.getOrInsertFunction("exit", FT2);
+#endif
+      EB.CreateCall(ExitF,
+                    ConstantInt::get(Type::getInt32Ty(M.getContext()), 1));
+    }
+    EB.CreateUnreachable();
+
+    EB.SetInsertPoint(end);
+    EB.CreateRetVoid();
+  }
+
+  Value *args[] = {
+      B.CreatePointerCast(primal, Type::getInt8PtrTy(M.getContext())),
+      B.CreatePointerCast(shadow, Type::getInt8PtrTy(M.getContext())),
+      getString(M, Message)};
+  auto call = B.CreateCall(F, args);
+  call->setDebugLoc(loc);
 }
 
 /// Create function for type that is equivalent to memcpy but adds to
@@ -139,10 +594,8 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     idx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateInBoundsGEP(dst->getType()->getPointerElementType(),
-                                      dst, idx, "dst.i");
-    LoadInst *dstl =
-        B.CreateLoad(dsti->getType()->getPointerElementType(), dsti, "dst.i.l");
+    Value *dsti = B.CreateInBoundsGEP(elementType, dst, idx, "dst.i");
+    LoadInst *dstl = B.CreateLoad(elementType, dsti, "dst.i.l");
 #else
     Value *dsti = B.CreateInBoundsGEP(dst, idx, "dst.i");
     LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
@@ -159,10 +612,8 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     }
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *srci = B.CreateInBoundsGEP(src->getType()->getPointerElementType(),
-                                      src, idx, "src.i");
-    LoadInst *srcl =
-        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
+    Value *srci = B.CreateInBoundsGEP(elementType, src, idx, "src.i");
+    LoadInst *srcl = B.CreateLoad(elementType, srci, "src.i.l");
 #else
     Value *srci = B.CreateInBoundsGEP(src, idx, "src.i");
     LoadInst *srcl = B.CreateLoad(srci, "src.i.l");
@@ -248,12 +699,9 @@ Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, Type *IT,
     sidx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateInBoundsGEP(dst->getType()->getPointerElementType(),
-                                      dst, idx, "dst.i");
-    Value *srci = B.CreateInBoundsGEP(src->getType()->getPointerElementType(),
-                                      src, sidx, "src.i");
-    LoadInst *srcl =
-        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
+    Value *dsti = B.CreateInBoundsGEP(elementType, dst, idx, "dst.i");
+    Value *srci = B.CreateInBoundsGEP(elementType, src, sidx, "src.i");
+    LoadInst *srcl = B.CreateLoad(elementType, srci, "src.i.l");
 #else
     Value *dsti = B.CreateInBoundsGEP(dst, idx, "dst.i");
     Value *srci = B.CreateInBoundsGEP(src, sidx, "src.i");
@@ -364,7 +812,7 @@ Function *getOrInsertCheckedFree(Module &M, CallInst *call, Type *Ty,
   CI->setDebugLoc(DebugLoc);
 
   if (width > 1) {
-    Value *checkResult = EntryBuilder.getTrue();
+    Value *checkResult = nullptr;
     BasicBlock *free1 = BasicBlock::Create(M.getContext(), "free1", F);
     IRBuilder<> Free1Builder(free1);
 
@@ -375,7 +823,9 @@ Function *getOrInsertCheckedFree(Module &M, CallInst *call, Type *Ty,
       if (i < width - 1) {
         Argument *nextShadow = F->arg_begin() + i + 2;
         Value *isNotEqual = Free0Builder.CreateICmpNE(shadow, nextShadow);
-        checkResult = Free0Builder.CreateAnd(isNotEqual, checkResult);
+        checkResult = checkResult
+                          ? Free0Builder.CreateAnd(isNotEqual, checkResult)
+                          : isNotEqual;
 
         CallInst *CI = Free1Builder.CreateCall(FreeTy, Free, {nextShadow});
         CI->setAttributes(FreeAttributes);
@@ -439,15 +889,7 @@ llvm::Function *getOrInsertDifferentialWaitallSave(llvm::Module &M,
   IRBuilder<> B(entry);
   count = B.CreateZExtOrTrunc(count, Type::getInt64Ty(entry->getContext()));
 
-  Instruction *ret = CallInst::CreateMalloc(
-      entry, count->getType(), reqType,
-      ConstantInt::get(count->getType(),
-                       M.getDataLayout().getTypeAllocSizeInBits(reqType) / 8),
-      count, nullptr, "");
-
-  B.SetInsertPoint(entry);
-  if (!ret->getParent())
-    B.Insert(ret);
+  auto ret = CreateAllocation(B, reqType, count);
 
   BasicBlock *loopBlock = BasicBlock::Create(M.getContext(), "loop", F);
   BasicBlock *endBlock = BasicBlock::Create(M.getContext(), "end", F);
@@ -507,7 +949,7 @@ llvm::Function *getOrInsertDifferentialWaitallSave(llvm::Module &M,
 llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
                                                 ArrayRef<llvm::Type *> T,
                                                 Type *reqType) {
-  std::vector<llvm::Type *> types(T.begin(), T.end());
+  llvm::SmallVector<llvm::Type *, 4> types(T.begin(), T.end());
   types.push_back(reqType);
   std::string name = "__enzyme_differential_mpi_wait";
   FunctionType *FT =
@@ -798,100 +1240,6 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
 #endif
 }
 
-Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
-  Type *BPTy = Type::getInt8PtrTy(M.getContext());
-  Type *types[] = {BPTy, Type::getInt64Ty(M.getContext()),
-                   Type::getInt64Ty(M.getContext())};
-  std::string name = "__enzyme_exponentialallocation";
-  if (ZeroInit)
-    name += "zero";
-  FunctionType *FT =
-      FunctionType::get(Type::getInt8PtrTy(M.getContext()), types, false);
-
-#if LLVM_VERSION_MAJOR >= 9
-  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
-#else
-  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
-#endif
-
-  if (!F->empty())
-    return F;
-
-  F->setLinkage(Function::LinkageTypes::InternalLinkage);
-  F->addFnAttr(Attribute::AlwaysInline);
-  F->addFnAttr(Attribute::NoUnwind);
-  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
-  BasicBlock *grow = BasicBlock::Create(M.getContext(), "grow", F);
-  BasicBlock *ok = BasicBlock::Create(M.getContext(), "ok", F);
-
-  IRBuilder<> B(entry);
-
-  Argument *ptr = F->arg_begin();
-  ptr->setName("ptr");
-  Argument *size = ptr + 1;
-  size->setName("size");
-  Argument *tsize = size + 1;
-  tsize->setName("tsize");
-
-  Value *hasOne = B.CreateICmpNE(
-      B.CreateAnd(size, ConstantInt::get(size->getType(), 1, false)),
-      ConstantInt::get(size->getType(), 0, false));
-  auto popCnt = Intrinsic::getDeclaration(&M, Intrinsic::ctpop, {types[1]});
-
-  B.CreateCondBr(
-      B.CreateAnd(B.CreateICmpULT(B.CreateCall(popCnt, {size}),
-                                  ConstantInt::get(types[1], 3, false)),
-                  hasOne),
-      grow, ok);
-
-  B.SetInsertPoint(grow);
-
-  auto lz =
-      B.CreateCall(Intrinsic::getDeclaration(&M, Intrinsic::ctlz, {types[1]}),
-                   {size, ConstantInt::getTrue(M.getContext())});
-  Value *next =
-      B.CreateShl(tsize, B.CreateSub(ConstantInt::get(types[1], 64, false), lz,
-                                     "", true, true));
-
-  auto reallocF = M.getOrInsertFunction("realloc", BPTy, BPTy,
-                                        Type::getInt64Ty(M.getContext()));
-
-  Value *args[] = {B.CreatePointerCast(ptr, BPTy), next};
-  Value *gVal =
-      B.CreatePointerCast(B.CreateCall(reallocF, args), ptr->getType());
-  if (ZeroInit) {
-    Value *prevSize = B.CreateSelect(
-        B.CreateICmpEQ(size, ConstantInt::get(size->getType(), 1)),
-        ConstantInt::get(next->getType(), 0),
-        B.CreateLShr(next, ConstantInt::get(next->getType(), 1)));
-
-    Value *zeroSize = B.CreateSub(next, prevSize);
-
-    Value *margs[] = {
-#if LLVM_VERSION_MAJOR > 7
-      B.CreateInBoundsGEP(gVal->getType()->getPointerElementType(), gVal,
-                          prevSize),
-#else
-      B.CreateInBoundsGEP(gVal, prevSize),
-#endif
-      ConstantInt::get(Type::getInt8Ty(args[0]->getContext()), 0),
-      zeroSize,
-      ConstantInt::getFalse(args[0]->getContext())
-    };
-    Type *tys[] = {margs[0]->getType(), margs[2]->getType()};
-    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);
-    B.CreateCall(memsetF, margs);
-  }
-
-  B.CreateBr(ok);
-  B.SetInsertPoint(ok);
-  auto phi = B.CreatePHI(ptr->getType(), 2);
-  phi->addIncoming(gVal, grow);
-  phi->addIncoming(ptr, entry);
-  B.CreateRet(phi);
-  return F;
-}
-
 void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,
                      llvm::Instruction *inst,
                      const llvm::SmallPtrSetImpl<Instruction *> &stores,
@@ -904,14 +1252,17 @@ void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,
     if (instBlk == storeBlk) {
       // if store doesn't come before, exit.
 
-      BasicBlock::const_iterator It = storeBlk->begin();
-      for (; &*It != store && &*It != inst; ++It)
-        /*empty*/;
-      // if inst comes first (e.g. before store) in the
-      // block, return true
-      if (&*It == inst) {
-        results.push_back(store);
+      if (store != inst) {
+        BasicBlock::const_iterator It = storeBlk->begin();
+        for (; &*It != store && &*It != inst; ++It)
+          /*empty*/;
+        // if inst comes first (e.g. before store) in the
+        // block, return true
+        if (&*It == inst) {
+          results.push_back(store);
+        }
       }
+      maybeBlocks[storeBlk].push_back(store);
     } else {
       maybeBlocks[storeBlk].push_back(store);
     }
@@ -1141,13 +1492,14 @@ bool overwritesToMemoryReadByLoop(
   return true;
 }
 
-bool overwritesToMemoryReadBy(llvm::AAResults &AA, ScalarEvolution &SE,
-                              llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+bool overwritesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                              ScalarEvolution &SE, llvm::LoopInfo &LI,
+                              llvm::DominatorTree &DT,
                               llvm::Instruction *maybeReader,
                               llvm::Instruction *maybeWriter,
                               llvm::Loop *scope) {
   using namespace llvm;
-  if (!writesToMemoryReadBy(AA, maybeReader, maybeWriter))
+  if (!writesToMemoryReadBy(AA, TLI, maybeReader, maybeWriter))
     return false;
   const SCEV *LoadBegin = SE.getCouldNotCompute();
   const SCEV *LoadEnd = SE.getCouldNotCompute();
@@ -1219,63 +1571,62 @@ bool overwritesToMemoryReadBy(llvm::AAResults &AA, ScalarEvolution &SE,
 }
 
 /// Return whether maybeReader can read from memory written to by maybeWriter
-bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                          llvm::Instruction *maybeReader,
                           llvm::Instruction *maybeWriter) {
   assert(maybeReader->getParent()->getParent() ==
          maybeWriter->getParent()->getParent());
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainPrintMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isCertainPrint(funcName) || isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
-    if (called && called->getName() == "jl_array_copy")
+    if (funcName == "jl_array_copy" || funcName == "ijl_array_copy")
       return false;
 
     // Isend only writes to inaccessible mem only
-    if (called &&
-        (called->getName() == "MPI_Send" || called->getName() == "PMPI_Send")) {
+    if (funcName == "MPI_Send" || funcName == "PMPI_Send") {
       return false;
     }
-    if (called) {
-      // Wait only overwrites memory in the status and request.
-      if (called->getName() == "MPI_Wait" || called->getName() == "PMPI_Wait" ||
-          called->getName() == "MPI_Waitall" ||
-          called->getName() == "PMPI_Waitall") {
+    // Wait only overwrites memory in the status and request.
+    if (funcName == "MPI_Wait" || funcName == "PMPI_Wait" ||
+        funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
 #if LLVM_VERSION_MAJOR > 11
-        auto loc = LocationSize::afterPointer();
+      auto loc = LocationSize::afterPointer();
 #else
-        auto loc = MemoryLocation::UnknownSize;
+      auto loc = MemoryLocation::UnknownSize;
 #endif
-        size_t off = (called->getName() == "MPI_Wait" ||
-                      called->getName() == "PMPI_Wait")
-                         ? 0
-                         : 1;
-        // No alias with status
+      size_t off = (funcName == "MPI_Wait" || funcName == "PMPI_Wait") ? 0 : 1;
+      // No alias with status
+      if (!isRefSet(AA.getModRefInfo(maybeReader, call->getArgOperand(off + 1),
+                                     loc))) {
+        // No alias with request
         if (!isRefSet(AA.getModRefInfo(maybeReader,
-                                       call->getArgOperand(off + 1), loc))) {
-          // No alias with request
-          if (!isRefSet(AA.getModRefInfo(maybeReader,
-                                         call->getArgOperand(off + 0), loc)))
-            return false;
-          auto R = parseTBAA(*maybeReader, maybeReader->getParent()
-                                               ->getParent()
-                                               ->getParent()
-                                               ->getDataLayout())[{-1}];
-          // Could still conflict with the mpi_request unless a non pointer
-          // type.
-          if (R != BaseType::Unknown && R != BaseType::Anything &&
-              R != BaseType::Pointer)
-            return false;
-        }
+                                       call->getArgOperand(off + 0), loc)))
+          return false;
+        auto R = parseTBAA(*maybeReader, maybeReader->getParent()
+                                             ->getParent()
+                                             ->getParent()
+                                             ->getDataLayout())[{-1}];
+        // Could still conflict with the mpi_request unless a non pointer
+        // type.
+        if (R != BaseType::Unknown && R != BaseType::Anything &&
+            R != BaseType::Pointer)
+          return false;
       }
     }
     // Isend only writes to inaccessible mem and request.
-    if (called && (called->getName() == "MPI_Isend" ||
-                   called->getName() == "PMPI_Isend")) {
+    if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
       auto R = parseTBAA(*maybeReader, maybeReader->getParent()
                                            ->getParent()
                                            ->getParent()
@@ -1296,10 +1647,8 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
 #endif
       return false;
     }
-    if (called &&
-        (called->getName() == "MPI_Irecv" ||
-         called->getName() == "PMPI_Irecv" || called->getName() == "MPI_Recv" ||
-         called->getName() == "PMPI_Recv")) {
+    if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv" ||
+        funcName == "MPI_Recv" || funcName == "PMPI_Recv") {
       ConcreteType type(BaseType::Unknown);
       if (Constant *C = dyn_cast<Constant>(call->getArgOperand(2))) {
         while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
@@ -1307,9 +1656,9 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
         }
         if (auto GV = dyn_cast<GlobalVariable>(C)) {
           if (GV->getName() == "ompi_mpi_double") {
-            type = ConcreteType(Type::getDoubleTy(called->getContext()));
+            type = ConcreteType(Type::getDoubleTy(C->getContext()));
           } else if (GV->getName() == "ompi_mpi_float") {
-            type = ConcreteType(Type::getFloatTy(called->getContext()));
+            type = ConcreteType(Type::getFloatTy(C->getContext()));
           }
         }
       }
@@ -1321,8 +1670,7 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
         if (R.isKnown() && type != R) {
           // Could still conflict with the mpi_request, unless either
           // synchronous, or a non pointer type.
-          if (called->getName() == "MPI_Recv" ||
-              called->getName() == "PMPI_Recv" ||
+          if (funcName == "MPI_Recv" || funcName == "PMPI_Recv" ||
               (R != BaseType::Anything && R != BaseType::Pointer))
             return false;
 #if LLVM_VERSION_MAJOR > 11
@@ -1361,13 +1709,20 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
+
     if (auto II = dyn_cast<IntrinsicInst>(call)) {
       if (II->getIntrinsicID() == Intrinsic::stacksave)
         return false;
@@ -1382,14 +1737,20 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
-    if (called && called->getName() == "jl_array_copy")
+    if (funcName == "jl_array_copy" || funcName == "ijl_array_copy")
       return false;
 
 #if LLVM_VERSION_MAJOR >= 11
@@ -1403,11 +1764,17 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
   }
@@ -1451,4 +1818,21 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
   llvm::errs() << " maybeReader: " << *maybeReader
                << " maybeWriter: " << *maybeWriter << "\n";
   llvm_unreachable("unknown inst2");
+}
+
+Function *GetFunctionFromValue(Value *fn) {
+  while (auto ci = dyn_cast<CastInst>(fn)) {
+    fn = ci->getOperand(0);
+  }
+  while (auto ci = dyn_cast<BlockAddress>(fn)) {
+    fn = ci->getFunction();
+  }
+  while (auto ci = dyn_cast<ConstantExpr>(fn)) {
+    fn = ci->getOperand(0);
+  }
+  if (!isa<Function>(fn)) {
+    return nullptr;
+  }
+
+  return cast<Function>(fn);
 }

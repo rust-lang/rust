@@ -93,7 +93,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.inc ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %in, i64 %iv
-; CHECK-NEXT:   %0 = load double, double* %arrayidx, align 8, !tbaa !2, !invariant.group !6
+; CHECK-NEXT:   %0 = load double, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp1 = fcmp fast ogt double %0, 1.000000e+00
 ; CHECK-NEXT:   br i1 %cmp1, label %if.then, label %if.else
 
@@ -131,7 +131,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds double, double* %in, i64 %"iv'ac.0"
-; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx_unwrap, align 8, !tbaa !2, !invariant.group !6
+; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx_unwrap, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp1_unwrap = fcmp fast ogt double %_unwrap, 1.000000e+00
 ; CHECK-NEXT:   %cmp8_unwrap = fcmp fast ogt double %_unwrap, 0.000000e+00
 ; CHECK-NEXT:   %anot1_ = xor i1 %cmp1_unwrap, true

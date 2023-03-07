@@ -70,6 +70,13 @@ struct CTypeTree {
 };
 */
 
+typedef enum {
+  VT_None = 0,
+  VT_Primal = 1,
+  VT_Shadow = 2,
+  VT_Both = VT_Primal | VT_Shadow,
+} CValueType;
+
 struct EnzymeTypeTree;
 typedef struct EnzymeTypeTree *CTypeTreeRef;
 CTypeTreeRef EnzymeNewTypeTree();
@@ -145,7 +152,8 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
 typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,
                                   CTypeTreeRef * /*args*/,
                                   struct IntList * /*knownValues*/,
-                                  size_t /*numArgs*/, LLVMValueRef);
+                                  size_t /*numArgs*/, LLVMValueRef,
+                                  void * /*TA*/);
 EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
                                          char **customRuleNames,
                                          CustomRuleType *customRules,
@@ -164,16 +172,16 @@ LLVMValueRef
 EnzymeExtractFunctionFromAugmentation(EnzymeAugmentedReturnPtr ret);
 LLVMTypeRef EnzymeExtractTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret);
 
+class GradientUtils;
+class DiffeGradientUtils;
+
 typedef LLVMValueRef (*CustomShadowAlloc)(LLVMBuilderRef, LLVMValueRef,
-                                          size_t /*numArgs*/, LLVMValueRef *);
-typedef LLVMValueRef (*CustomShadowFree)(LLVMBuilderRef, LLVMValueRef,
-                                         LLVMValueRef);
+                                          size_t /*numArgs*/, LLVMValueRef *,
+                                          GradientUtils *);
+typedef LLVMValueRef (*CustomShadowFree)(LLVMBuilderRef, LLVMValueRef);
 
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle);
-
-class GradientUtils;
-class DiffeGradientUtils;
 
 typedef void (*CustomFunctionForward)(LLVMBuilderRef, LLVMValueRef,
                                       GradientUtils *, LLVMValueRef *,

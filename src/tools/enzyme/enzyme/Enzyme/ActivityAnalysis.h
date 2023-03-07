@@ -47,6 +47,7 @@
 extern "C" {
 extern llvm::cl::opt<bool> EnzymePrintActivity;
 extern llvm::cl::opt<bool> EnzymeNonmarkedGlobalsInactive;
+extern llvm::cl::opt<bool> EnzymeGlobalActivity;
 }
 
 class PreProcessCache;
@@ -120,11 +121,11 @@ public:
   /// Return whether this instruction is known not to propagate adjoints
   /// Note that instructions could return an active pointer, but
   /// do not propagate adjoints themselves
-  bool isConstantInstruction(TypeResults &TR, llvm::Instruction *inst);
+  bool isConstantInstruction(TypeResults const &TR, llvm::Instruction *inst);
 
   /// Return whether this values is known not to contain derivative
   // information, either directly or as a pointer to
-  bool isConstantValue(TypeResults &TR, llvm::Value *val);
+  bool isConstantValue(TypeResults const &TR, llvm::Value *val);
 
 private:
   llvm::DenseMap<llvm::Instruction *, llvm::SmallPtrSet<llvm::Value *, 4>>
@@ -135,8 +136,8 @@ private:
   llvm::DenseMap<llvm::Value *, llvm::SmallPtrSet<llvm::Instruction *, 4>>
       ReEvaluateInstIfInactiveValue;
 
-  void InsertConstantInstruction(TypeResults &TR, llvm::Instruction *I);
-  void InsertConstantValue(TypeResults &TR, llvm::Value *V);
+  void InsertConstantInstruction(TypeResults const &TR, llvm::Instruction *I);
+  void InsertConstantValue(TypeResults const &TR, llvm::Value *V);
 
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
@@ -154,7 +155,8 @@ private:
   }
 
   /// Import known constants from an existing analyzer
-  void insertConstantsFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis) {
+  void insertConstantsFrom(TypeResults const &TR,
+                           ActivityAnalyzer &Hypothesis) {
     for (auto I : Hypothesis.ConstantInstructions) {
       InsertConstantInstruction(TR, I);
     }
@@ -164,19 +166,45 @@ private:
   }
 
   /// Import known data from an existing analyzer
-  void insertAllFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis,
-                     llvm::Value *Orig) {
+  void insertAllFrom(TypeResults const &TR, ActivityAnalyzer &Hypothesis,
+                     llvm::Value *Orig, llvm::Value *Orig2 = nullptr) {
     insertConstantsFrom(TR, Hypothesis);
     for (auto I : Hypothesis.ActiveInstructions) {
       bool inserted = ActiveInstructions.insert(I).second;
       if (inserted && directions == 3) {
         ReEvaluateInstIfInactiveValue[Orig].insert(I);
+        if (Orig2 && Orig2 != Orig)
+          ReEvaluateInstIfInactiveValue[Orig2].insert(I);
       }
     }
     for (auto V : Hypothesis.ActiveValues) {
       bool inserted = ActiveValues.insert(V).second;
       if (inserted && directions == 3) {
         ReEvaluateValueIfInactiveValue[Orig].insert(V);
+        if (Orig2 && Orig2 != Orig)
+          ReEvaluateValueIfInactiveValue[Orig2].insert(V);
+      }
+    }
+
+    for (auto &pair : Hypothesis.ReEvaluateValueIfInactiveInst) {
+      ReEvaluateValueIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                        pair.second.end());
+      if (ConstantInstructions.count(pair.first)) {
+        InsertConstantInstruction(TR, pair.first);
+      }
+    }
+    for (auto &pair : Hypothesis.ReEvaluateInstIfInactiveValue) {
+      ReEvaluateInstIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                       pair.second.end());
+      if (ConstantValues.count(pair.first)) {
+        InsertConstantValue(TR, pair.first);
+      }
+    }
+    for (auto &pair : Hypothesis.ReEvaluateValueIfInactiveValue) {
+      ReEvaluateValueIfInactiveValue[pair.first].insert(pair.second.begin(),
+                                                        pair.second.end());
+      if (ConstantValues.count(pair.first)) {
+        InsertConstantValue(TR, pair.first);
       }
     }
   }
@@ -184,8 +212,11 @@ private:
   /// Is the use of value val as an argument of call CI known to be inactive
   bool isFunctionArgumentConstant(llvm::CallInst *CI, llvm::Value *val);
 
-  /// Is the instruction guaranteed to be inactive because of its operands
-  bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value *val);
+  /// Is the instruction guaranteed to be inactive because of its operands.
+  /// \p considerValue specifies that we ask whether the returned value, rather
+  /// than the instruction itself is active.
+  bool isInstructionInactiveFromOrigin(TypeResults const &TR, llvm::Value *val,
+                                       bool considerValue);
 
 public:
   enum class UseActivity {
@@ -195,16 +226,22 @@ public:
     // Only consider loads of memory
     OnlyLoads = 1,
 
-    // Ignore potentially active stores
-    OnlyStores = 2
+    // Only consider active stores into
+    OnlyStores = 2,
+
+    // Only consider active stores and pointer-style loads
+    OnlyNonPointerStores = 3,
+
+    // Only consider any (active or not) stores into
+    AllStores = 4
   };
   /// Is the value free of any active uses
-  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val,
+  bool isValueInactiveFromUsers(TypeResults const &TR, llvm::Value *val,
                                 UseActivity UA,
                                 llvm::Instruction **FoundInst = nullptr);
 
   /// Is the value potentially actively returned or stored
-  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,
+  bool isValueActivelyStoredOrReturned(TypeResults const &TR, llvm::Value *val,
                                        bool outside = false);
 
 private:

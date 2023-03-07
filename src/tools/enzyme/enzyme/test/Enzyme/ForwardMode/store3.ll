@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -correlated-propagation -simplifycfg -gvn -dse -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -gvn -dse -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(gvn,dse)" -enzyme-preopt=false -S | FileCheck %s
 
 ; Function Attrs: noinline norecurse nounwind uwtable
 define dso_local double @f(double* noalias nocapture %out, double %x) #0 {

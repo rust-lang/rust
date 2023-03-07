@@ -100,7 +100,7 @@ attributes #5 = { argmemonly nofree nosync nounwind willreturn }
 attributes #6 = { nounwind uwtable willreturn mustprogress "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #7 = { nounwind }
 
-; CHECK: define {{[^@]+}}@fwddiffe3_Z6squared(%"struct.std::array"* noalias nocapture align 8 [[AGG_RESULT:%.*]], [3 x %"struct.std::array"*] %"agg.result'", double [[X:%.*]], [3 x double] %"x'") 
+; CHECK: define {{[^@]+}}@fwddiffe3_Z6squared(%"struct.std::array"* noalias nocapture align 8 "enzyme_sret" [[AGG_RESULT:%.*]], [3 x %"struct.std::array"*] "enzyme_sret_v" %"agg.result'", double [[X:%.*]], [3 x double] %"x'") 
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue [3 x %"struct.std::array"*] %"agg.result'", 0
 ; CHECK-NEXT:    %"arrayinit.begin'ipg" = getelementptr inbounds %"struct.std::array", %"struct.std::array"* [[TMP0]], i64 0, i32 0, i64 0

@@ -34,11 +34,10 @@ entry:
 ; CHECK-NEXT:   %"bc'de.0.vec.insert6" = insertelement <2 x double> %"bc'de.0.vec.insert", double %2, i32 0
 ; CHECK-NEXT:   %3 = bitcast <2 x double> %"bc'de.0.vec.insert6" to <2 x i64>
 ; CHECK-NEXT:   %4 = extractelement <2 x i64> %3, i32 0
-; CHECK-NEXT:   %5 = load i64, i64* %"inp'", align 8
+; CHECK-NEXT:   %5 = bitcast i64* %"inp'" to double*
 ; CHECK-DAG:   %[[b6:.+]] = bitcast i64 %4 to double
-; CHECK-DAG:   %[[b7:.+]] = bitcast i64 %5 to double
+; CHECK-DAG:   %[[b7:.+]] = load double, double* %5, align 8
 ; CHECK-NEXT:   %8 = fadd fast double %[[b7]], %[[b6]]
-; CHECK-NEXT:   %9 = bitcast double %8 to i64
-; CHECK-NEXT:   store i64 %9, i64* %"inp'", align 8
+; CHECK-NEXT:   store double %8, double* %5, align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

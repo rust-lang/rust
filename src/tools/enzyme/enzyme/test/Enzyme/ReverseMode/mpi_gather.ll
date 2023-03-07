@@ -38,7 +38,7 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %6 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to i8*), i32* %1)
 ; CHECK-NEXT:   %7 = load i32, i32* %1
 ; CHECK-NEXT:   %8 = zext i32 %7 to i64
-; CHECK-NEXT:   %9 = tail call i8* @malloc(i64 %8)
+; CHECK-NEXT:   %9 = tail call noalias nonnull i8* @malloc(i64 %8)
 ; CHECK-NEXT:   %10 = call i32 @MPI_Scatter(i8* %"recv_buf'", i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i8* %9, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %11 = icmp eq i32 %5, 0
 ; CHECK-NEXT:   br i1 %11, label %invertentry_root, label %invertentry_post

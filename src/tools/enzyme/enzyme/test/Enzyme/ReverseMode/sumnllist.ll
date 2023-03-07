@@ -1,4 +1,6 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -jump-threading -instsimplify -early-cse -simplifycfg -adce -S | FileCheck %s -check-prefixes LLVM13,SHARED; fi
+; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -jump-threading -instsimplify -early-cse -simplifycfg -adce -S | FileCheck %s -check-prefixes LLVM14,SHARED; fi
+
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
@@ -91,90 +93,95 @@ attributes #4 = { nounwind }
 !10 = !{!4, !4, i64 0}
 
 
-; CHECK: define internal {{(dso_local )?}}void @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times, double %differeturn)
-; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[firstcmp:.+]] = icmp eq %struct.n* %node, null
-; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader
+; SHARED: define internal {{(dso_local )?}}void @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times, double %differeturn)
+; SHARED-NEXT: entry:
+; SHARED-NEXT:   %[[firstcmp:.+]] = icmp eq %struct.n* %node, null
+; SHARED-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader
 
-; CHECK: for.cond1.preheader:
-; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ]
-; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.cond.cleanup4 ], [ 0, %entry ]
-; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
-; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
+; SHARED: for.cond1.preheader:
+; SHARED-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ]
+; SHARED-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.cond.cleanup4 ], [ 0, %entry ]
+; SHARED-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
+; SHARED-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
+; SHARED-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 
 
-; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %[[postidx]], 1
-; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
-; CHECK-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
-; CHECK-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
-; CHECK-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
-; CHECK-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk:.+]]
+; SHARED-NEXT:   %[[nexttrunc0:.+]] = and i64 %[[postidx]], 1
+; SHARED-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
+; SHARED-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
+; SHARED-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
+; SHARED-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
+; SHARED-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk:.+]]
 
-; CHECK: grow.i:
-; CHECK-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %[[postidx]], i1 true)
-; CHECK-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
-; CHECK-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
-; CHECK-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[numbytes]])
-; CHECK-NEXT:   br label %[[mergeblk]]
+; SHARED: grow.i:
+; SHARED-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %[[postidx]], i1 true)
+; SHARED-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
+; SHARED-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
+; SHARED-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[numbytes]])
+; SHARED-NEXT:   br label %[[mergeblk]]
 
-; CHECK: [[mergeblk]]:
-; CHECK-NEXT:   %[[postrealloc]] = phi i8* [ %[[growalloc]], %grow.i ], [ %[[phirealloc]], %for.cond1.preheader ]
+; SHARED: [[mergeblk]]:
+; SHARED-NEXT:   %[[postrealloc]] = phi i8* [ %[[growalloc]], %grow.i ], [ %[[phirealloc]], %for.cond1.preheader ]
 
-; CHECK-NEXT:   %[[tostructp:.+]] = bitcast i8* %[[postrealloc]] to %struct.n**
-; CHECK-NEXT:   %[[cache:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[preidx]]
-; CHECK-NEXT:   store %struct.n* %[[valstruct]], %struct.n** %[[cache]]
-; CHECK-NEXT:   br label %for.body5
+; SHARED-NEXT:   %[[tostructp:.+]] = bitcast i8* %[[postrealloc]] to %struct.n**
+; SHARED-NEXT:   %[[cache:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[preidx]]
+; SHARED-NEXT:   store %struct.n* %[[valstruct]], %struct.n** %[[cache]]
+; SHARED-NEXT:   br label %for.body5
 
-; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
-; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
-; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
-; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %[[nextipg]], align 8
-; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
-; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
-; CHECK-NEXT:   br i1 %[[mycmp]], label %[[invertforcondcleanup:.+]], label %for.cond1.preheader
+; SHARED: for.cond.cleanup4:                                ; preds = %for.body5
+; SHARED-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
+; SHARED-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
+; SHARED-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %[[nextipg]], align 8
+; SHARED-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
+; SHARED-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
+; SHARED-NEXT:   br i1 %[[mycmp]], label %[[invertforcondcleanup:.+]], label %for.cond1.preheader
 
-; CHECK: for.body5:
-; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %[[mergeblk]] ]
-; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
-; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
+; SHARED: for.body5:
+; SHARED-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %[[mergeblk]] ]
+; SHARED-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
+; SHARED-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
+; SHARED-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
 
-; CHECK: invertentry:
-; CHECK-NEXT:   ret void
+; SHARED: invertentry:
+; SHARED-NEXT:   ret void
 
-; CHECK: invertfor.cond1.preheader.preheader:              ; preds = %invertfor.cond1.preheader
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[postrealloc]])
-; CHECK-NEXT:   br label %invertentry
+; SHARED: invertfor.cond1.preheader.preheader:              ; preds = %invertfor.cond1.preheader
+; SHARED-NEXT:   tail call void @free(i8* nonnull %[[postrealloc]])
+; SHARED-NEXT:   br label %invertentry
 
-; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
-; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %[[antivar:.+]], 0
-; CHECK-NEXT:   br i1 %[[icmp]], label %invertfor.cond1.preheader.preheader, label %incinvertfor.cond1.preheader
+; SHARED: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
+; SHARED-NEXT:   %[[icmp:.+]] = icmp eq i64 %[[antivar:.+]], 0
+; SHARED-NEXT:   br i1 %[[icmp]], label %invertfor.cond1.preheader.preheader, label %incinvertfor.cond1.preheader
 
-; CHECK: incinvertfor.cond1.preheader:
-; CHECK-NEXT:   %[[isub:.+]] = add nsw i64 %[[antivar]], -1
-; CHECK-NEXT:   br label %[[invertforcondcleanup]]
+; SHARED: incinvertfor.cond1.preheader:
+; SHARED-NEXT:   %[[isub:.+]] = add nsw i64 %[[antivar]], -1
+; SHARED-NEXT:   br label %[[invertforcondcleanup]]
 
-; CHECK: [[invertforcondcleanup]]:
-; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub]], %incinvertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
-; CHECK-NEXT:   %[[toload:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[antivar]]
-; CHECK-NEXT:   br label %invertfor.body5
+; SHARED: [[invertforcondcleanup]]:
+; LLVM14-NEXT:   %"add'de.0" = phi double [ %23, %incinvertfor.cond1.preheader ], [ %differeturn, %for.cond.cleanup4 ]
+; SHARED-NEXT:   %[[antivar]] = phi i64 [ %[[isub]], %incinvertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
+; SHARED-NEXT:   %[[toload:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[antivar]]
+; SHARED-NEXT:   br label %invertfor.body5
 
-; CHECK: invertfor.body5:
-; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %incinvertfor.body5 ]
+; SHARED: invertfor.body5:
+; LLVM14-NEXT:   %"sum.019'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup4 ], [ %23, %incinvertfor.body5 ]
+; SHARED-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %incinvertfor.body5 ]
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
-; CHECK-NEXT:   %[[lstructiv:.+]] = load %struct.n*, %struct.n** %[[toload]], align 8, !invariant.group
+; SHARED-NEXT:   %[[lstructiv:.+]] = load %struct.n*, %struct.n** %[[toload]], align 8, !invariant.group
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
-; CHECK-NEXT:   %"values'ipg_unwrap" = getelementptr inbounds %struct.n, %struct.n* %[[lstructiv]], i64 0, i32 0
-; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !tbaa !2, !invariant.group
-; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
-; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
-; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn
-; CHECK-NEXT:   store double %[[arraytostore]], double* %[[arrayidxipg]]
-; CHECK-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
-; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %incinvertfor.body5
+; SHARED-NEXT:   %"values'ipg_unwrap" = getelementptr inbounds %struct.n, %struct.n* %[[lstructiv]], i64 0, i32 0
+; SHARED-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !tbaa !2
+; SHARED-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
+; SHARED-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
+; LLVM13-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn
+; LLVM14-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %"add'de.0"
+; SHARED-NEXT:   store double %[[arraytostore]], double* %[[arrayidxipg]]
+; SHARED-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
+; LLVM14-NEXT:   %22 = select {{(fast )?}}i1 %21, double %"add'de.0", double {{\-?}}0.000000e+00
+; LLVM14-NEXT:   %23 = fadd fast double %"sum.019'de.1", %22
+; SHARED-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %incinvertfor.body5
 
-; CHECK: incinvertfor.body5:
-; CHECK-NEXT:   %[[idxsub]] = add nsw i64 %[[mantivar]], -1
-; CHECK-NEXT:   br label %invertfor.body5
-; CHECK-NEXT: }
+; SHARED: incinvertfor.body5:
+; SHARED-NEXT:   %[[idxsub]] = add nsw i64 %[[mantivar]], -1
+; SHARED-NEXT:   br label %invertfor.body5
+; SHARED-NEXT: }

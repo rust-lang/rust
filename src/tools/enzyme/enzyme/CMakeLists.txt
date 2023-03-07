@@ -6,7 +6,7 @@ include(CMakePackageConfigHelpers)
 
 set(ENZYME_MAJOR_VERSION 0)
 set(ENZYME_MINOR_VERSION 0)
-set(ENZYME_PATCH_VERSION 29)
+set(ENZYME_PATCH_VERSION 50)
 set(ENZYME_VERSION
   ${ENZYME_MAJOR_VERSION}.${ENZYME_MINOR_VERSION}.${ENZYME_PATCH_VERSION})
 
@@ -23,8 +23,9 @@ SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g -ggdb -fno-omit-frame-pointer")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
 option(ENZYME_CLANG "Build enzyme clang plugin" ON)
+option(ENZYME_FLANG "Build enzyme flang symlink" OFF)
+option(ENZYME_MLIR "Build enzyme mlir plugin" OFF)
 option(ENZYME_EXTERNAL_SHARED_LIB "Build external shared library" OFF)
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(ENZYME_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -36,21 +37,37 @@ if (APPLE)
 endif()
 message( LLVM_SHLIBEXT = ${LLVM_SHLIBEXT} )
 
+set(LLVM_MAIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 get_filename_component(LLVM_ABSOLUTE_DIR
     "${LLVM_DIR}"
     REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 
 set(LLVM_DIR "${LLVM_ABSOLUTE_DIR}" CACHE FILEPATH "b" FORCE)
 
+if (EXISTS "${LLVM_DIR}/lib/cmake/llvm/LLVMConfig.cmake")
+  set(LLVM_DIR "${LLVM_DIR}/lib/cmake/llvm")
+endif()
+
+message("LLVM ABS DIR " ${LLVM_DIR})
+
+message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
+
+find_package(LLVM REQUIRED CONFIG)
+
 if (NOT DEFINED LLVM_EXTERNAL_LIT)
   if(LLVM_DIR MATCHES ".*/cmake/llvm/?$")
       message("found llvm match ${CMAKE_MATCH_1} dir ${LLVM_DIR}")
     if (EXISTS ${LLVM_DIR}/../../../bin/llvm-lit) 
       set(LLVM_EXTERNAL_LIT ${LLVM_DIR}/../../../bin/llvm-lit) 
+    else()
+      set(LLVM_EXTERNAL_LIT lit)
     endif()
   else()
     if (EXISTS ${LLVM_DIR}/bin/llvm-lit) 
       set(LLVM_EXTERNAL_LIT ${LLVM_DIR}/bin/llvm-lit) 
+    else()
+      set(LLVM_EXTERNAL_LIT lit)
     endif()
   endif()
 endif()
@@ -63,7 +80,7 @@ get_filename_component(LLVM_ABSOLUTE_LIT
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
 list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
-
+message("LLVM dir ${LLVM_DIR}")
 if (ENZYME_CLANG)
 if (DEFINED Clang_DIR)
     get_filename_component(Clang_ABSOLUTE_DIR
@@ -83,6 +100,12 @@ else()
       set(Clang_DIR ${LLVM_DIR}/lib/cmake/clang)
      list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
     endif()
+  elseif(LLVM_DIR MATCHES ".*/llvm-([0-9]+)/cmake/?$")
+      get_filename_component(LLDIR "${LLVM_DIR}" DIRECTORY)
+    if (EXISTS ${LLDIR}/lib/libclangBasic.a)
+      set(Clang_DIR ${LLDIR}/lib/cmake/clang)
+     list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+    endif()
   else()
     if (EXISTS ${LLVM_DIR}/lib/libclangBasic.a)
       set(Clang_DIR ${LLVM_DIR})
@@ -94,14 +117,54 @@ endif()
 else()
 endif()
 
-message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
-
-find_package(LLVM REQUIRED CONFIG)
+if (ENZYME_MLIR)
+    if (DEFINED MLIR_DIR)
+        get_filename_component(MLIR_ABSOLUTE_DIR
+        "${MLIR_DIR}"
+        REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+        set(MLIR_DIR "${MLIR_ABSOLUTE_DIR}" CACHE FILEPATH "b" FORCE)
+        list(INSERT CMAKE_PREFIX_PATH 0 "${MLIR_DIR}")
+        message("MLIR dir defined ${MLIR_DIR}")
+    else()
+      if(LLVM_DIR MATCHES ".*/cmake/llvm/?$")
+        if (EXISTS ${LLVM_DIR}/../mlir/../../libMLIRIR.a)
+            set(MLIR_DIR ${LLVM_DIR}/../mlir)
+            list(INSERT CMAKE_PREFIX_PATH 0 "${MLIR_DIR}")
+        else()
+            message(SEND_ERROR "MLIR requested but not found")
+        endif()
+      elseif(LLVM_DIR MATCHES ".*/llvm-([0-9]+)/?$")
+        if (EXISTS ${LLVM_DIR}/lib/libMLIRIR.a)
+            set(MLIR_DIR ${LLVM_DIR}/lib/cmake/mlir)
+          list(INSERT CMAKE_PREFIX_PATH 0 "${MLIR_DIR}")
+        else()
+            message(SEND_ERROR "MLIR requested but not found")
+        endif()
+      elseif(LLVM_DIR MATCHES ".*/llvm-([0-9]+)/cmake/?$")
+          get_filename_component(LLDIR "${LLVM_DIR}" DIRECTORY)
+        if (EXISTS ${LLDIR}/lib/libMLIRIR.a)
+            set(MLIR_DIR ${LLDIR}/lib/cmake/mlir)
+            list(INSERT CMAKE_PREFIX_PATH 0 "${MLIR_DIR}")
+        else()
+            message(SEND_ERROR "MLIR requested but not found")
+        endif()
+      else()
+        if (EXISTS ${LLVM_DIR}/lib/libMLIRIR.a)
+          set(MLIR_DIR ${LLVM_DIR})
+          list(INSERT CMAKE_PREFIX_PATH 0 "${MLIR_DIR}")
+        else()
+            message(SEND_ERROR "MLIR requested but not found")
+        endif()
+      endif()
+      message("mlir dir from llvm ${MLIR_DIR}")
+    endif()
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 
 message("clang dir ${Clang_DIR}")
+message("mlir dir ${MLIR_DIR}")
 
 if (DEFINED Clang_DIR)
     find_package(Clang REQUIRED CONFIG PATHS ${Clang_DIR} NO_DEFAULT_PATH)
@@ -113,7 +176,23 @@ endif()
 else()
     set(Clang_FOUND 0) 
 endif()
-message("found ${Clang_FOUND}")
+message("found Clang ${Clang_FOUND}")
+
+if (DEFINED MLIR_DIR)
+    find_package(MLIR REQUIRED CONFIG PATHS ${MLIR_DIR} NO_DEFAULT_PATH)
+    if (${MLIR_FOUND})
+        include_directories(${MLIR_INCLUDE_DIRS})
+        message("MLIR inc dir ${MLIR_INCLUDE_DIRS}")
+        add_definitions(${MLIR_DEFINITIONS})
+        add_definitions(-DENZYME_MLIR=1)
+        list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+        include(TableGen)
+        include(AddMLIR)
+    endif()
+else()
+    set(MLIR_FOUND 0) 
+endif()
+message("found MLIR ${MLIR_FOUND}")
 # include(AddClang)
 
 add_definitions(${LLVM_DEFINITIONS})
@@ -123,9 +202,14 @@ message("LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
 
-option(ENZYME_FLANG "Build for non-version compliant FLANG" OFF)
-if (ENZYME_FLANG)
+option(ENZYME_FLANG_VERSION "Build for non-version compliant FLANG" OFF)
+if (ENZYME_FLANG_VERSION)
   add_definitions(-DFLANG=1)
+endif()
+
+option(ENZYME_ROCM_VERSION "Build for non-version compliant ROCM" OFF)
+if (ENZYME_ROCM_VERSION)
+  add_definitions(-DROCM=1)
 endif()
 
 # Offer the user the choice of overriding the installation directories
@@ -170,6 +254,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolutionExpander.h" 
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 
+add_subdirectory(tools)
 add_subdirectory(Enzyme)
 add_subdirectory(BCLoad)
 add_subdirectory(test)
@@ -195,6 +280,14 @@ export(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR}
 if (${Clang_FOUND})
 export(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
     APPEND FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
+endif()
+
+if (${ENZYME_FLANG} AND ${Clang_FOUND})
+	add_custom_target(link_target ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+	  ClangEnzyme-${LLVM_VERSION_MAJOR}${LLVM_SHLIBEXT}
+	  ${PROJECT_BINARY_DIR}/Enzyme/FlangEnzyme-${LLVM_VERSION_MAJOR}${LLVM_SHLIBEXT}
+  )
 endif()
 
 export(TARGETS LLDEnzyme-${LLVM_VERSION_MAJOR}

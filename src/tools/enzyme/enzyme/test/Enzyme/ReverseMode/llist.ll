@@ -86,9 +86,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %[[n8:.+]] = shl i64 %n, 3
 ; CHECK-NEXT:  %mallocsize.i = add i64 %[[n8]], 8
-; CHECK-NEXT:  %[[mallocp:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i) #4
+; CHECK-NEXT:  %[[mallocp:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i)
 ; CHECK-NEXT:  %[[callpcache:.+]] = bitcast i8* %[[mallocp]] to i8**
-; CHECK-NEXT:  %[[malloc1:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i) #4
+; CHECK-NEXT:  %[[malloc1:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i)
 ; CHECK-NEXT:  %call_malloccache.i = bitcast i8* %[[malloc1:.+]] to i8**
 ; CHECK-NEXT:  br label %for.body.i
 
@@ -104,7 +104,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 
 ; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
-; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
+; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false)
 
 ; CHECK-NEXT:  %[[dstructncast]] = bitcast i8* %"call'mi.i" to %struct.n*
 ; CHECK-NEXT:  %[[thisbc]] = bitcast i8* %call.i to %struct.n*

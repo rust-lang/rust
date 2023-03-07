@@ -487,7 +487,7 @@ attributes #9 = { cold }
 
 ; CHECK: define internal { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, <2 x double>* } undef, <2 x double>* %tmp.i, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, <2 x double>* } {{(undef|poison)}}, <2 x double>* %tmp.i, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { <2 x double>*, <2 x double>* } %.fca.0.insert, <2 x double>* %"tmp.i'", 1
 ; CHECK-NEXT:   ret { <2 x double>*, <2 x double>* } %.fca.1.insert
 ; CHECK-NEXT: }
@@ -506,7 +506,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %W12p = bitcast %"class.Eigen::Matrix"* %W to <2 x double>*
 ; CHECK-NEXT:   %W12 = load <2 x double>, <2 x double>* %W12p, align 16
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
-; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
+; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %mul = fmul <2 x double> %W12, %B11
 ; CHECK-NEXT:   %W34p = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0, i32 0, i64 2
@@ -514,14 +514,14 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %W34 = load <2 x double>, <2 x double>* %0, align 16
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
-; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
+; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %mul2 = fmul <2 x double> %W34, %B22
 ; CHECK-NEXT:   %result = fadd <2 x double> %mul2, %mul
 ; CHECK-NEXT:   store <2 x double> %result, <2 x double>* %subcast, align 16
 ; CHECK-NEXT:   %a13 = load <2 x double>, <2 x double>* %tmp.i, align 16
 ; CHECK-NEXT:   store <2 x double> %a13, <2 x double>* %dst, align 16
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } undef, <2 x double>* %"subcast'ac", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } {{(undef|poison)}}, <2 x double>* %"subcast'ac", 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.0.insert, i8* %"malloccall'mi", 1
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.1.insert, i8* %malloccall, 2
 ; CHECK-NEXT:   %.fca.3.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.2.insert, <2 x double> %W12, 3
@@ -548,7 +548,7 @@ attributes #9 = { cold }
 
 
 ; CHECK-NEXT:   %B1 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 4
-; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
+; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 
 ; CHECK-NEXT:   %[[W34p_ipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0, i32 0, i64 2
@@ -559,7 +559,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %[[B2p_ipge:.+]] = getelementptr inbounds double, double* %"B'", i64 1
 
 ; CHECK-NEXT:   %B2 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 6
-; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
+; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 
 ; CHECK-NEXT:   %[[dstload:.+]] = load <2 x double>, <2 x double>* %"dst'", align 16
@@ -574,8 +574,8 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[dsubcast]], align 16
 ; CHECK-NEXT:   %m0diffeW34 = fmul fast <2 x double> %[[loadsc]], %B22
 ; CHECK-NEXT:   %m1diffeB22 = fmul fast <2 x double> %[[loadsc]], %[[W34]]
-; CHECK-NEXT:   %[[b221:.+]] = extractelement <2 x double> %m1diffeB22, i32 1
-; CHECK-NEXT:   %[[b220:.+]] = extractelement <2 x double> %m1diffeB22, i32 0
+; CHECK-DAG:    %[[b221:.+]] = extractelement <2 x double> %m1diffeB22, {{(i32|i64)}} 1
+; CHECK-DAG:    %[[b220:.+]] = extractelement <2 x double> %m1diffeB22, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %[[added:.+]] = fadd fast double %[[b221]], %[[b220]]
 
 ; CHECK-NEXT:   %[[lb2p:.+]] = load double, double* %[[B2p_ipge]], align 8
@@ -589,8 +589,8 @@ attributes #9 = { cold }
 
 ; CHECK-NEXT:   %m0diffeW12 = fmul fast <2 x double> %[[loadsc]], %B11
 ; CHECK-NEXT:   %m1diffeB11 = fmul fast <2 x double> %[[loadsc]], %[[W12]]
-; CHECK-NEXT:   %12 = extractelement <2 x double> %m1diffeB11, i32 1
-; CHECK-NEXT:   %13 = extractelement <2 x double> %m1diffeB11, i32 0
+; CHECK-NEXT:   %12 = extractelement <2 x double> %m1diffeB11, {{(i32|i64)}} 1
+; CHECK-NEXT:   %13 = extractelement <2 x double> %m1diffeB11, {{(i32|i64)}} 0
 ; CHECK-NEXT:   %14 = fadd fast double %12, %13
 ; CHECK-NEXT:   %15 = load double, double* %"B'", align 8
 ; CHECK-NEXT:   %16 = fadd fast double %15, %14

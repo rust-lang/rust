@@ -29,8 +29,7 @@ declare float @__enzyme_autodiff(float (float)*, ...)
 ; is not preserved for the reverse
 ; CHECK: define internal float @augmented_sub(float %this)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca i8, i64 4, align 256
-; CHECK-NEXT:   %alloc = bitcast i8* %0 to float*
+; CHECK-NEXT:   %alloc = alloca float, i64 1, align 256
 ; CHECK-NEXT:   store float %this, float* %alloc, align 8
 ; CHECK-NEXT:   call void @julia.write_barrier(float* %alloc)
 ; CHECK-NEXT:   ret float %this

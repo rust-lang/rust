@@ -51,11 +51,19 @@ define %struct.Gradients @main(double* %A, double* %dA1, double* %dA2, double* %
 
 ; CHECK: define {{[^@]+}}@fwddiffe3alldiv(double* nocapture readonly [[A:%.*]], [3 x double*] %"A'", i64 [[N:%.*]], double [[START:%.*]], [3 x double] %"start'") 
 ; CHECK-NEXT:  entry:
+; CHECK-NEXT:    %0 = extractvalue [3 x double] %"start'", 0
+; CHECK-NEXT:    %1 = extractvalue [3 x double] %"start'", 1
+; CHECK-NEXT:    %2 = extractvalue [3 x double] %"start'", 2
 ; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       loop:
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[BODY:%.*]] ], [ 0, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ %"start'", [[ENTRY]] ], [ [[TMP22:%.*]], [[BODY]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ %0, [[ENTRY]] ], [ [[TMP17:%.*]], [[BODY]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ %1, [[ENTRY]] ], [ [[TMP19:%.*]], [[BODY]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ %2, [[ENTRY]] ], [ [[TMP21:%.*]], [[BODY]] ]
 ; CHECK-NEXT:    [[REDUCE:%.*]] = phi double [ [[START]], [[ENTRY]] ], [ [[DIV:%.*]], [[BODY]] ]
+; CHECK-NEXT:    %[[r6:.+]] = insertvalue [3 x double] undef, double [[TMP0_0]], 0
+; CHECK-NEXT:    %[[r7:.+]] = insertvalue [3 x double] %[[r6]], double [[TMP0_1]], 1
+; CHECK-NEXT:    %[[r8:.+]] = insertvalue [3 x double] %[[r7]], double [[TMP0_2]], 2
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i64 [[IV]], 1
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i64 [[IV]], [[N]]
 ; CHECK-NEXT:    br i1 [[CMP]], label [[BODY]], label [[END:%.*]]
@@ -72,26 +80,20 @@ define %struct.Gradients @main(double* %A, double* %dA1, double* %dA2, double* %
 ; CHECK-NEXT:    %"ld'ipl4" = load double, double* %"gep'ipg2", align 8, !tbaa !2
 ; CHECK-NEXT:    [[LD:%.*]] = load double, double* [[GEP]], align 8, !tbaa !2
 ; CHECK-NEXT:    [[DIV]] = fdiv double [[REDUCE]], [[LD]]
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP5:%.*]] = fmul fast double [[TMP4]], [[LD]]
+; CHECK-NEXT:    [[TMP5:%.*]] = fmul fast double [[TMP0_0]], [[LD]]
 ; CHECK-NEXT:    [[TMP6:%.*]] = fmul fast double [[REDUCE]], %"ld'ipl"
 ; CHECK-NEXT:    [[TMP7:%.*]] = fsub fast double [[TMP5]], [[TMP6]]
-; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP9:%.*]] = fmul fast double [[TMP8]], [[LD]]
+; CHECK-NEXT:    [[TMP9:%.*]] = fmul fast double [[TMP0_1]], [[LD]]
 ; CHECK-NEXT:    [[TMP10:%.*]] = fmul fast double [[REDUCE]], %"ld'ipl3"
 ; CHECK-NEXT:    [[TMP11:%.*]] = fsub fast double [[TMP9]], [[TMP10]]
-; CHECK-NEXT:    [[TMP12:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP13:%.*]] = fmul fast double [[TMP12]], [[LD]]
+; CHECK-NEXT:    [[TMP13:%.*]] = fmul fast double [[TMP0_2]], [[LD]]
 ; CHECK-NEXT:    [[TMP14:%.*]] = fmul fast double [[REDUCE]], %"ld'ipl4"
 ; CHECK-NEXT:    [[TMP15:%.*]] = fsub fast double [[TMP13]], [[TMP14]]
 ; CHECK-NEXT:    [[TMP16:%.*]] = fmul fast double [[LD]], [[LD]]
-; CHECK-NEXT:    [[TMP17:%.*]] = fdiv fast double [[TMP7]], [[TMP16]]
-; CHECK-NEXT:    [[TMP18:%.*]] = insertvalue [3 x double] undef, double [[TMP17]], 0
-; CHECK-NEXT:    [[TMP19:%.*]] = fdiv fast double [[TMP11]], [[TMP16]]
-; CHECK-NEXT:    [[TMP20:%.*]] = insertvalue [3 x double] [[TMP18]], double [[TMP19]], 1
-; CHECK-NEXT:    [[TMP21:%.*]] = fdiv fast double [[TMP15]], [[TMP16]]
-; CHECK-NEXT:    [[TMP22]] = insertvalue [3 x double] [[TMP20]], double [[TMP21]], 2
+; CHECK-NEXT:    [[TMP17]] = fdiv fast double [[TMP7]], [[TMP16]]
+; CHECK-NEXT:    [[TMP19]] = fdiv fast double [[TMP11]], [[TMP16]]
+; CHECK-NEXT:    [[TMP21]] = fdiv fast double [[TMP15]], [[TMP16]]
 ; CHECK-NEXT:    br label [[LOOP]]
 ; CHECK:       end:
-; CHECK-NEXT:    ret [3 x double] [[TMP0]]
+; CHECK-NEXT:    ret [3 x double] %[[r8]]
 ;

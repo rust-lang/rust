@@ -25,11 +25,10 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr2
 ; CHECK-NEXT:   %0 = load i64, i64* %"ptr2'"
 ; CHECK-NEXT:   store i64 0, i64* %"ptr2'"
-; CHECK-NEXT:   %1 = load i64, i64* %"ptr'"
+; CHECK-NEXT:   %1 = bitcast i64* %"ptr'" to double*
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %0 to double
-; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %1 to double
+; CHECK-DAG:    %[[add2:.+]] = load double, double* %1
 ; CHECK-NEXT:   %4 = fadd fast double %[[add2]], %[[add1]]
-; CHECK-NEXT:   %5 = bitcast double %4 to i64
-; CHECK-NEXT:   store i64 %5, i64* %"ptr'"
+; CHECK-NEXT:   store double %4, double* %1
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

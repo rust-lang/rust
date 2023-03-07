@@ -180,7 +180,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:  %arrayidx = getelementptr inbounds i8, i8* %call, i64 24
 ; CHECK-NEXT:  %1 = bitcast i8* %arrayidx to double*
 ; CHECK-NEXT:  store double %x, double* %1, align 8, !tbaa !6
-; CHECK-NEXT:  %[[i2:.+]] = insertvalue { i8*, i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:  %[[i2:.+]] = insertvalue { i8*, i8* } {{(undef|poison)}}, i8* %"call'mi", 0
 ; CHECK-NEXT:  %[[i3:.+]] = insertvalue { i8*, i8* } %[[i2]], i8* %call, 1
 ; CHECK-NEXT:  ret { i8*, i8* } %[[i3]]
 ; CHECK-NEXT:}

@@ -51,11 +51,10 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffesubload(i64* %inp, i64* %"inp'", i64 %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = load i64, i64* %"inp'"
+; CHECK-NEXT:   %0 = bitcast i64* %"inp'" to double*
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %differeturn to double
-; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %0 to double
+; CHECK-DAG:    %[[add2:.+]] = load double, double* %0
 ; CHECK-NEXT:   %3 = fadd fast double %[[add2]], %[[add1]]
-; CHECK-NEXT:   %4 = bitcast double %3 to i64
-; CHECK-NEXT:   store i64 %4, i64* %"inp'"
+; CHECK-NEXT:   store double %3, double* %0
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

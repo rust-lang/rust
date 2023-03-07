@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../../json.hpp"
 #include "../mshared/defs.h"
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +15,7 @@ float tdiff(struct timeval *start, struct timeval *end) {
 }
 
 using namespace std;
+using json = nlohmann::json;
 
 struct BAInput {
     int n = 0, m = 0, p = 0;
@@ -337,8 +340,13 @@ int main(const int argc, const char* argv[]) {
         "ba12_n253_m163691_p899155.txt",   "ba16_n1544_m942409_p4750193.txt",  "ba1_n49_m7776_p31843.txt",           "ba4_n372_m47423_p204472.txt",  "ba8_n88_m64298_p383937.txt",
         "ba13_n245_m198739_p1091386.txt",  "ba17_n1778_m993923_p5001946.txt",  "ba20_n13682_m4456117_p2987644.txt",  "ba5_n257_m65132_p225911.txt",  "ba9_n810_m88814_p393775.txt",
     };
-    for (auto path : paths) {
 
+    std::ofstream jsonfile("results.json", std::ofstream::trunc);
+    json test_results;
+
+    for (auto path : paths) {
+      json test_suite;
+      test_suite["name"] = path;
     {
 
     struct BAInput input;
@@ -377,10 +385,15 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<compute_reproj_error_b, compute_zach_weight_error_b>(input, result);
       gettimeofday(&end, NULL);
       printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
+      json tapenade;
+      tapenade["name"] = "Tapenade combined";
+      tapenade["runtime"] = tdiff(&start, &end);
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
+        tapenade["result"].push_back(result.J.vals[i]);
       }
       printf("\n");
+      test_suite["tools"].push_back(tapenade);
     }
 
     }
@@ -423,10 +436,15 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<adept_compute_reproj_error, adept_compute_zach_weight_error>(input, result);
       gettimeofday(&end, NULL);
       printf("Adept combined %0.6f\n", tdiff(&start, &end));
+      json adept;
+      adept["name"] = "Adept combined";
+      adept["runtime"] = tdiff(&start, &end);
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
+        adept["result"].push_back(result.J.vals[i]);
       }
       printf("\n");
+      test_suite["tools"].push_back(adept);
     }
 
     }
@@ -469,13 +487,22 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<dcompute_reproj_error, dcompute_zach_weight_error>(input, result);
       gettimeofday(&end, NULL);
       printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
+      json enzyme;
+      enzyme["name"] = "Enzyme combined";
+      enzyme["runtime"] = tdiff(&start, &end);
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
+        enzyme["result"].push_back(result.J.vals[i]);
       }
       printf("\n");
+      test_suite["tools"].push_back(enzyme);
     }
 
     }
-
-    }
+    test_suite["llvm-version"] = __clang_version__;
+    test_suite["mode"] = "ReverseMode";
+    test_suite["batch-size"] = 1;
+    test_results.push_back(test_suite);
+   }
+   jsonfile << std::setw(4) << test_results;
 }

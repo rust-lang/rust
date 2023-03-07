@@ -11,10 +11,14 @@ repo = "https://github.com/EnzymeAD/Enzyme.git"
 auto_version = "%ENZYME_VERSION%"
 version = VersionNumber(split(auto_version, "/")[end])
 
-llvm_versions = [v"11.0.1", v"12.0.1", v"13.0.1", v"14.0.2"]
+llvm_versions = [v"11.0.1", v"12.0.1", v"13.0.1", v"14.0.2", v"15.0.7"]
 
 # Collection of sources required to build attr
-sources = [GitSource(repo, "%ENZYME_HASH%")]
+sources = [
+    GitSource(repo, "%ENZYME_HASH%"),
+    ArchiveSource("https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX10.14.sdk.tar.xz",
+                  "0f03869f72df8705b832910517b47dd5b79eb4e160512602f593ed243b28715f"),
+]
 
 # These are the platforms we will build for by default, unless further
 # platforms are passed in on the command line
@@ -23,6 +27,16 @@ platforms = expand_cxxstring_abis(supported_platforms(; experimental=true))
 # Bash recipe for building across all platforms
 script = raw"""
 cd Enzyme
+
+if [[ "${bb_full_target}" == x86_64-apple-darwin*llvm_version+15.asserts* ]]; then
+    # LLVM 15 requires macOS SDK 10.14.
+    pushd $WORKSPACE/srcdir/MacOSX10.*.sdk
+    rm -rf /opt/${target}/${target}/sys-root/System
+    cp -ra usr/* "/opt/${target}/${target}/sys-root/usr/."
+    cp -ra System "/opt/${target}/${target}/sys-root/."
+    export MACOSX_DEPLOYMENT_TARGET=10.14
+    popd
+fi
 
 # 1. Build HOST
 NATIVE_CMAKE_FLAGS=()
@@ -38,13 +52,14 @@ NATIVE_CMAKE_FLAGS+=(-DBC_LOAD_FLAGS="-target ${target} --sysroot=/opt/${target}
 
 cmake -B build-native -S enzyme -GNinja "${NATIVE_CMAKE_FLAGS[@]}"
 
-# Only build blasheaders (and eventually tblgen)
-ninja -C build-native -j ${nproc} blasheaders
+# Only build blasheaders and tblgen
+ninja -C build-native -j ${nproc} blasheaders enzyme-tblgen
 
 # 2. Cross-compile
 CMAKE_FLAGS=()
 CMAKE_FLAGS+=(-DENZYME_EXTERNAL_SHARED_LIB=ON)
 CMAKE_FLAGS+=(-DBC_LOAD_HEADER=`pwd`/build-native/BCLoad/gsl/blas_headers.h)
+CMAKE_FLAGS+=(-DEnzyme_TABLEGEN_EXE=`pwd`/build-native/tools/enzyme-tblgen/enzyme-tblgen)
 CMAKE_FLAGS+=(-DENZYME_CLANG=OFF)
 # RelWithDebInfo for decent performance, with debugability
 CMAKE_FLAGS+=(-DCMAKE_BUILD_TYPE=RelWithDebInfo)
@@ -93,6 +108,11 @@ for llvm_version in llvm_versions, llvm_assertions in (false, true)
         LibraryProduct(["libEnzyme-$(llvm_version.major)", "libEnzyme"], :libEnzyme, dont_dlopen=true),
         LibraryProduct(["libEnzymeBCLoad-$(llvm_version.major)", "libEnzymeBCLoad"], :libEnzymeBCLoad, dont_dlopen=true),
     ]
+
+    if llvm_version >= v"15"
+        # We don't build LLVM 15 for i686-linux-musl.
+        filter!(p -> !(arch(p) == "i686" && libc(p) == "musl"), platforms)
+    end
 
     for platform in platforms
         augmented_platform = deepcopy(platform)

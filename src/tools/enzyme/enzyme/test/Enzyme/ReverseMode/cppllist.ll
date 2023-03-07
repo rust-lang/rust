@@ -217,10 +217,10 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[bcast]]
 ; CHECK-NEXT:   %[[xadd]] = fadd fast double %"x'de.0.i", %[[load]]
 ; this reload really should be eliminated
-; CHECK-NEXT:   call void @_ZdlPv(i8* nonnull %[[metaload]]) #5
+; CHECK-NEXT:   call void @_ZdlPv(i8* nonnull %[[metaload]])
 ; CHECK-NEXT:   %[[heregep:.+]] = getelementptr inbounds i8*, i8** %call_malloccache.i, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[callload2free:.+]] = load i8*, i8** %[[heregep]]
-; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]]) #5
+; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]])
 ; CHECK-NEXT:   %[[cmpinst:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   br i1 %[[cmpinst]], label %diffe_Z12list_creatordm.exit, label %incinvertfor.body.i
 
@@ -229,8 +229,8 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br label %invertfor.body.i
 
 ; CHECK: diffe_Z12list_creatordm.exit:                     ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @free(i8* nonnull %malloccall.i) #5
-; CHECK-NEXT:   call void @free(i8* nonnull %[[call_malloc]]) #5
+; CHECK-NEXT:   call void @free(i8* nonnull %malloccall.i)
+; CHECK-NEXT:   call void @free(i8* nonnull %[[call_malloc]])
 ; CHECK-NEXT:   ret double %[[xadd]]
 ; CHECK-NEXT: }
 

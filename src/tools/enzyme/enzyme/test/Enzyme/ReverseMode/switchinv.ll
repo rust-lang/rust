@@ -1,4 +1,6 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s -check-prefixes LLVM13,SHARED; fi
+; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s -check-prefixes LLVM14,SHARED; fi
+
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/taylorlog.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
@@ -97,43 +99,51 @@ attributes #8 = { noreturn nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn)
-; CHECK-NEXT: entry:
-; CHECK-DAG:    %[[zcmp:.+]] = icmp eq i64 1, %SINCOSN
-; CHECK-DAG:    %[[or1:.+]] = icmp eq i64 0, %SINCOSN
-; CHECK-DAG:    %[[or2:.+]] = icmp eq i64 1, %SINCOSN
+; SHARED: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn)
+; SHARED-NEXT: entry:
+; SHARED-DAG:    %[[zcmp:.+]] = icmp eq i64 1, %SINCOSN
+; SHARED-DAG:    %[[or1:.+]] = icmp eq i64 0, %SINCOSN
+; SHARED-DAG:    %[[or2:.+]] = icmp eq i64 1, %SINCOSN
 ; todo note both * chars should be one of the 1 == SINCOS
-; CHECK-DAG:    %[[orcmp:.+]] = or i1 %[[or1]], %{{.+}}
-; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %[[orcmp]], double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %5 = select{{( fast)?}} i1 %{{.+}}, double %differeturn, double 0.000000e+00
-; CHECK-NEXT:   %switch = icmp ult i64 %SINCOSN, 2
-; CHECK-NEXT:   br i1 %switch, label %invertentry, label %invertfor.cond.cleanup.loopexit
+; SHARED-DAG:    %[[orcmp:.+]] = or i1 %[[or1]], %{{.+}}
+; SHARED-NEXT:   %4 = select{{( fast)?}} i1 %[[orcmp]], double 0.000000e+00, double %differeturn
+; SHARED-NEXT:   %5 = select{{( fast)?}} i1 %{{.+}}, double %differeturn, double 0.000000e+00
+; LLVM13-NEXT:   %switch = icmp ult i64 %SINCOSN, 2
+; LLVM13-NEXT:   br i1 %switch, label %invertentry, label %invertfor.cond.cleanup.loopexit
+; LLVM14-NEXT:   switch i64 %SINCOSN, label %invertfor.cond.cleanup.loopexit [
+; LLVM14-NEXT:     i64 0, label %invertentry
+; LLVM14-NEXT:     i64 1, label %invertentry
+; LLVM14-NEXT:   ]
 
-; CHECK: invertentry:                                      ; preds = %entry, %invertfor.body
-; CHECK-NEXT:   %"x'de.0" = phi double [ %11, %invertfor.body ], [ %5, %entry ]
-; CHECK-NEXT:   %6 = insertvalue { double } undef, double %"x'de.0", 0
-; CHECK-NEXT:   ret { double } %6
+; NOTE: There is one incoming entry in predecessors() for each outgoing target in switch, even if the targets are the same
 
-; CHECK: invertfor.body:                                   ; preds = %invertfor.cond.cleanup.loopexit, %incinvertfor.body
-; CHECK-NEXT:   %"x'de.1" = phi double [ %5, %invertfor.cond.cleanup.loopexit ], [ %11, %incinvertfor.body ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup.loopexit ], [ %14, %incinvertfor.body ]
-; CHECK-NEXT:   %iv.next_unwrap = add nuw nsw i64 %"iv'ac.0", 1
-; CHECK-NEXT:   %conv_unwrap = sitofp i64 %iv.next_unwrap to double
-; CHECK-NEXT:   %d0diffea2 = fdiv fast double %4, %conv_unwrap
-; CHECK-NEXT:   %7 = fsub fast double %conv_unwrap, 1.000000e+00
-; CHECK-NEXT:   %8 = call fast double @llvm.pow.f64(double %x, double %7)
-; CHECK-NEXT:   %9 = fmul fast double %d0diffea2, %8
-; CHECK-NEXT:   %10 = fmul fast double %9, %conv_unwrap
-; CHECK-NEXT:   %11 = fadd fast double %"x'de.1", %10
-; CHECK-NEXT:   %12 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %13 = select{{( fast)?}} i1 %12, double 0.000000e+00, double %4
-; CHECK-NEXT:   br i1 %12, label %invertentry, label %incinvertfor.body
+; LLVM13: invertentry:                                      ; preds = %entry, %invertfor.body
+; LLVM14: invertentry:                                      ; preds = %entry, %invertfor.body, %entry
+; LLVM13-NEXT:   %"x'de.0" = phi double [ %11, %invertfor.body ], [ %5, %entry ]
+; LLVM14-NEXT:   %"x'de.0" = phi double [ %5, %entry ], [ %11, %invertfor.body ], [ %5, %entry ]
+; SHARED-NEXT:   %6 = insertvalue { double } undef, double %"x'de.0", 0
+; SHARED-NEXT:   ret { double } %6
 
-; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %14 = add nsw i64 %"iv'ac.0", -1
-; CHECK-NEXT:   br label %invertfor.body
+; SHARED: invertfor.body:                                   ; preds = %invertfor.cond.cleanup.loopexit, %incinvertfor.body
+; SHARED-NEXT:   %"x'de.1" = phi double [ %5, %invertfor.cond.cleanup.loopexit ], [ %11, %incinvertfor.body ]
+; SHARED-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup.loopexit ], [ %14, %incinvertfor.body ]
+; SHARED-NEXT:   %iv.next_unwrap = add nuw nsw i64 %"iv'ac.0", 1
+; SHARED-NEXT:   %conv_unwrap = sitofp i64 %iv.next_unwrap to double
+; SHARED-NEXT:   %d0diffea2 = fdiv fast double %4, %conv_unwrap
+; SHARED-NEXT:   %7 = fsub fast double %conv_unwrap, 1.000000e+00
+; SHARED-NEXT:   %8 = call fast double @llvm.pow.f64(double %x, double %7)
+; SHARED-NEXT:   %9 = fmul fast double %d0diffea2, %8
+; SHARED-NEXT:   %10 = fmul fast double %9, %conv_unwrap
+; SHARED-NEXT:   %11 = fadd fast double %"x'de.1", %10
+; SHARED-NEXT:   %12 = icmp eq i64 %"iv'ac.0", 0
+; SHARED-NEXT:   %13 = select{{( fast)?}} i1 %12, double 0.000000e+00, double %4
+; SHARED-NEXT:   br i1 %12, label %invertentry, label %incinvertfor.body
 
-; CHECK: invertfor.cond.cleanup.loopexit:                  ; preds = %entry
-; CHECK-NEXT:   %_unwrap = add i64 %SINCOSN, -2
-; CHECK-NEXT:   br label %invertfor.body
-; CHECK-NEXT: }
+; SHARED: incinvertfor.body:                                ; preds = %invertfor.body
+; SHARED-NEXT:   %14 = add nsw i64 %"iv'ac.0", -1
+; SHARED-NEXT:   br label %invertfor.body
+
+; SHARED: invertfor.cond.cleanup.loopexit:                  ; preds = %entry
+; SHARED-NEXT:   %_unwrap = add i64 %SINCOSN, -2
+; SHARED-NEXT:   br label %invertfor.body
+; SHARED-NEXT: }

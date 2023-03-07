@@ -112,8 +112,8 @@ entry:
 
 ; CHECK: define internal { float*, float* } @[[augMod]](i32 %len, float* noalias %m, float* %"m'", i32 %incm, float* noalias %n, float* %"n'", i32 %incn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i32 %len, 4
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
 ; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
 ; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
@@ -131,8 +131,8 @@ entry:
 ; CHECK-NEXT:   br i1 %2, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
 
 ; CHECK: __enzyme_memcpy_float_32_da0sa0stride.exit:       ; preds = %entry, %for.body.i
-; CHECK-NEXT:   %mallocsize1 = mul i32 %len, 4
-; CHECK-NEXT:   %malloccall2 = tail call i8* @malloc(i32 %mallocsize1)
+; CHECK-NEXT:   %mallocsize1 = mul nuw nsw i32 %len, 4
+; CHECK-NEXT:   %malloccall2 = tail call noalias nonnull i8* @malloc(i32 %mallocsize1)
 ; CHECK-NEXT:   %3 = bitcast i8* %malloccall2 to float*
 ; CHECK-NEXT:   %4 = icmp eq i32 %len, 0
 ; CHECK-NEXT:   br i1 %4, label %__enzyme_memcpy_float_32_da0sa0stride.exit9, label %for.body.i8
@@ -177,8 +177,8 @@ entry:
 
 ; CHECK: define internal float* @[[augModFirst]](i32 %len, float* noalias %m, i32 %incm, float* noalias %n, float* %"n'", i32 %incn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i32 %len, 4
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
 ; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
 ; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
@@ -216,8 +216,8 @@ entry:
 
 ; CHECK: define internal float* @[[augModSecond]](i32 %len, float* noalias %m, float* %"m'", i32 %incm, float* noalias %n, i32 %incn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i32 %len, 4
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
 ; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
 ; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i

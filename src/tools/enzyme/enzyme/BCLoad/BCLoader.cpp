@@ -81,6 +81,7 @@ bool provideDefinitions(Module &M) {
         continue;
       toReplace.push_back(F.getName().str());
     }
+    BC->setTargetTriple("");
     Linker L(M);
     L.linkInModule(std::move(BC));
     for (auto name : toReplace) {
@@ -101,7 +102,7 @@ uint8_t EnzymeBitcodeReplacement(LLVMModuleRef M) {
 }
 
 namespace {
-class BCLoader : public ModulePass {
+class BCLoader final : public ModulePass {
 public:
   static char ID;
   BCLoader() : ModulePass(ID) {}

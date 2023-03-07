@@ -71,7 +71,7 @@ declare dso_local double @_Z17__enzyme_autodiffPFddiEz(double (double, i32)*, ..
 ; CHECK-NEXT:   br i1 %i18, label %bb12, label %bb14
 
 ; CHECK: bb12:                                             ; preds = %bb14
-; CHECK-NEXT:   %i13 = load double, double* %i11, align 8, !invariant.group !0
+; CHECK-NEXT:   %i13 = load double, double* %i11, align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %i10)
 ; CHECK-NEXT:   %i21 = fsub double %i13, %i9
 ; CHECK-NEXT:   %i22 = fcmp ogt double %i21, 1.000000e-04

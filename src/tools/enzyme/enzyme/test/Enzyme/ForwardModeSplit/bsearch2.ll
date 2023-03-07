@@ -62,7 +62,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-DAG:    %[[i3:.+]] = getelementptr inbounds i64*, i64** %[[i1]], i64 %iv
 ; CHECK-DAG:    %[[i4:.+]] = getelementptr inbounds double*, double** %[[i2]], i64 %iv
 ; CHECK-NEXT:   %.pre = load i64*, i64** %[[i3]], align 8, !invariant.group !1
-; CHECK-NEXT:   %.pre2 = load double*, double** %[[i4]], align 8, !invariant.group !2
+; CHECK-NEXT:   %[[pre2:.+]] = load double*, double** %[[i4]], align 8, !invariant.group !2
 ; CHECK-NEXT:   br label %body
 
 ; CHECK: body:                                             ; preds = %body, %loop
@@ -70,7 +70,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[i5:.+]] = getelementptr inbounds i64, i64* %.pre, i64 %iv1
 ; CHECK-NEXT:   %idx = load i64, i64* %[[i5]], align 8, !invariant.group !3
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %[[i6:.+]] = getelementptr inbounds double, double* %.pre2, i64 %iv1
+; CHECK-NEXT:   %[[i6:.+]] = getelementptr inbounds double, double* %[[pre2]], i64 %iv1
 ; CHECK-NEXT:   %ld = load double, double* %[[i6]], align 8, !invariant.group !4
 ; CHECK-NEXT:   %cmp = fcmp oeq double %ld, 0x400921FAFC8B007A
 ; CHECK-NEXT:   br i1 %cmp, label %body, label %end

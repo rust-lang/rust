@@ -133,12 +133,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %wide.trip.count, 3
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %"call'mi_malloccache" = bitcast i8* %malloccall to i8**
-; CHECK-NEXT:   %malloccall2 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %call_malloccache = bitcast i8* %malloccall2 to i8**
+; CHECK-NEXT:   %[[malloccall2:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %call_malloccache = bitcast i8* %[[malloccall2]] to i8**
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8**, i8** } undef, i8** %"call'mi_malloccache", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8**, i8** } {{(undef|poison)}}, i8** %"call'mi_malloccache", 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8**, i8** } %.fca.0.insert, i8** %call_malloccache, 1
 ; CHECK-NEXT:   ret { i8**, i8** } %.fca.1.insert
 
@@ -157,7 +157,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
 ; CHECK-NEXT:   %[[gepprimal:.+]] = getelementptr inbounds i8*, i8** %call_malloccache, i64 %iv
-; CHECK-NEXT:   store i8* %call, i8** %[[gepprimal]], align 8, !invariant.group !8
+; CHECK-NEXT:   store i8* %call, i8** %[[gepprimal]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2

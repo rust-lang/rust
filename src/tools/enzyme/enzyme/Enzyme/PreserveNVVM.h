@@ -24,8 +24,28 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/IR/PassManager.h"
+#include "llvm/Passes/PassPlugin.h"
+
 namespace llvm {
 class FunctionPass;
 }
 
 llvm::FunctionPass *createPreserveNVVMPass(bool Begin);
+
+class PreserveNVVMNewPM final
+    : public llvm::AnalysisInfoMixin<PreserveNVVMNewPM> {
+  friend struct llvm::AnalysisInfoMixin<PreserveNVVMNewPM>;
+
+private:
+  bool Begin;
+  static llvm::AnalysisKey Key;
+
+public:
+  using Result = llvm::PreservedAnalyses;
+  PreserveNVVMNewPM(bool Begin) : Begin(Begin) {}
+
+  Result run(llvm::Module &M, llvm::ModuleAnalysisManager &MAM);
+
+  static bool isRequired() { return true; }
+};

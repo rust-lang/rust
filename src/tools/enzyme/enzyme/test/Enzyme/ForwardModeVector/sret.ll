@@ -99,7 +99,7 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 attributes #5 = { argmemonly nounwind }
 attributes #6 = { nounwind }
 
-; CHECK: define internal void @fwddiffe3_Z6squared(%"struct.std::array"* noalias nocapture align 8 %agg.result, [3 x %"struct.std::array"*] %"agg.result'", double %x, [3 x double] %"x'")
+; CHECK: define internal void @fwddiffe3_Z6squared(%"struct.std::array"* noalias nocapture align 8 "enzyme_sret" %agg.result, [3 x %"struct.std::array"*] "enzyme_sret_v" %"agg.result'", double %x, [3 x double] %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue [3 x %"struct.std::array"*] %"agg.result'", 0
 ; CHECK-NEXT:   %"arrayinit.begin'ipg" = getelementptr inbounds %"struct.std::array", %"struct.std::array"* %0, i64 0, i32 0, i64 0

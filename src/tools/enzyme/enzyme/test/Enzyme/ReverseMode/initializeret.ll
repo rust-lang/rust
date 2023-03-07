@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -early-cse -adce -instsimplify -adce -simplifycfg -S -instsimplify -dse | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -early-cse -adce -instsimplify -adce -simplifycfg -S -instsimplify | FileCheck %s
 
 ; #include <math.h>
 ;
@@ -167,16 +167,15 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3
 ; CHECK-NEXT:   %call = tail call i8* @malloc(i64 %mul)
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 %mul)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi", i8 0, i64 %mul, {{(i32 1, )?}}i1 false)
+; CHECK-NEXT:   %[[dcall:.+]] = {{(tail call noalias nonnull i8\* @malloc\(i64 %mul\)( #[0-9]+)?[[:space:]].*call void @llvm.memset.p0i8.i64\(i8\* nonnull (align 1 )?%"call'mi", i8 0, i64 %mul, (i32 1, )?i1 false\)|call i8\* @calloc\(i64 1, i64 %mul\))}}
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayp'" to i8**
 ; CHECK-NEXT:   %0 = bitcast double** %arrayp to i8**
-; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
+; CHECK-NEXT:   store i8* %[[dcall]], i8** %"'ipc", align 8
 ; CHECK-NEXT:   store i8* %call, i8** %0, align 8, !tbaa !2
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds i8, i8* %call, i64 24
 ; CHECK-NEXT:   %1 = bitcast i8* %arrayidx to double*
 ; CHECK-NEXT:   store double %x, double* %1, align 8, !tbaa !6
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } {{(undef|poison)}}, i8* %[[dcall]], 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, i8* } %.fca.0.insert, i8* %call, 1
 ; CHECK-NEXT:   ret { i8*, i8* } %.fca.1.insert
 ; CHECK-NEXT: }
@@ -188,6 +187,8 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[ipc]], align 8
+; TODO DSE SHOULD ELIM
+; CHECK-NEXT:   store double 0.000000e+00, double* %"'ipc"
 ; CHECK-NEXT:   %[[result:.+]] = fadd fast double %differeturn, %[[loaded]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callp]])
 ; CHECK-NEXT:   tail call void @free(i8* %call)

@@ -89,7 +89,7 @@ entry:
 ; CHECK-NEXT:   %[[tiv:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %[[tostore:.+]] = fmul fast double %load.i1, 0xBFF3333333333332
 ; CHECK-NEXT:   %[[storeplace:.+]] = getelementptr inbounds double, double* %[[loadi1_realloccast]], i64 %iv
-; CHECK-NEXT:   store double %[[tostore]], double* %[[storeplace]], align 8, !invariant.group !0
+; CHECK-NEXT:   store double %[[tostore]], double* %[[storeplace]], align 8, !invariant.group ![[g0:[0-9]+]]
 ; CHECK-NEXT:   %reass.mul325.i = fmul fast double %[[tostore]], %div
 ; CHECK-NEXT:   %add10.i.i.i = fadd fast double %reass.mul325.i, %load.i1
 ; CHECK-NEXT:   %inc.i.i.i = add nuw nsw i32 %[[tiv]], 1
@@ -128,7 +128,7 @@ entry:
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %loopexit ], [ %[[a18:.+]], %incinvertwhile.body.i.i.i ]
 ; CHECK-NEXT:   %m0diffe = fmul fast double %"add10.i.i.i'de.0", %div
 ; CHECK-NEXT:   %[[a11:.+]] = getelementptr inbounds double, double* %[[loadi1_realloccast]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a12:.+]] = load double, double* %[[a11]], align 8, !invariant.group !0
+; CHECK-NEXT:   %[[a12:.+]] = load double, double* %[[a11]], align 8, !invariant.group ![[g0]]
 ; CHECK-NEXT:   %m1diffediv = fmul fast double %"add10.i.i.i'de.0", %[[a12]]
 ; CHECK-NEXT:   %[[a13]] = fadd fast double %"div'de.0", %m1diffediv
 ; CHECK-NEXT:   %m0diffeload.i1 = fmul fast double %m0diffe, 0xBFF3333333333332

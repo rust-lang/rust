@@ -48,7 +48,7 @@ entry:
 
 ; CHECK: define internal { double*, double* } @augmented_bad(double* %this, double* %"this'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double* } undef, double* %this, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double* } {{(undef|poison)}}, double* %this, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { double*, double* } %.fca.0.insert, double* %"this'", 1
 ; CHECK-NEXT:   ret { double*, double* } %.fca.1.insert
 ; CHECK-NEXT: }

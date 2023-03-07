@@ -108,7 +108,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[iv4:.+]] = mul nuw nsw i64 %iv, %[[a1]]
 ; CHECK-NEXT:   %[[iv10:.+]] = add nuw nsw i64 %iv1, %[[iv4]]
 ; CHECK-NEXT:   %[[gep:.+]] = getelementptr inbounds double, double* %loaded_malloccache, i64 %[[iv10]]
-; CHECK-NEXT:   store double %loaded, double* %[[gep]], align 8, !tbaa !2, !invariant.group !10
+; CHECK-NEXT:   store double %loaded, double* %[[gep]], align 8, !tbaa !2, !invariant.group !
 ; CHECK-NEXT:   %mul = fmul double %loaded, %loaded
 ; CHECK-NEXT:   %add = fadd double %res, %mul
 ; CHECK-NEXT:   %cond2 = icmp eq i64 %nextj, %rows

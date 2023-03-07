@@ -1,4 +1,5 @@
-; RUN: if [ %llvmver -ge 8 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 8 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 8 ]; then %opt < %s %newLoadEnzyme -passes="enzyme" -enzyme-preopt=false -S | FileCheck %s; fi
 
 source_filename = "examples/solids/problems/finite-strain-neo-hookean-initial-ad.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"

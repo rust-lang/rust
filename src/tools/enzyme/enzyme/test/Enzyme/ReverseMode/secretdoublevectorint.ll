@@ -45,7 +45,6 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 ; CHECK-NEXT:   %5 = bitcast double* %[[data1ipge]] to <2 x double>*
 ; CHECK-NEXT:   %6 = load <2 x double>, <2 x double>* %5, align 8
 ; CHECK-NEXT:   %7 = fadd fast <2 x double> %6, %4
-; CHECK-NEXT:   %8 = bitcast double* %[[data1ipge]] to <2 x double>*
-; CHECK-NEXT:   store <2 x double> %7, <2 x double>* %8, align 8
+; CHECK-NEXT:   store <2 x double> %7, <2 x double>* %5, align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

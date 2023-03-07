@@ -29,14 +29,16 @@
 
 #include "GradientUtils.h"
 
-typedef std::pair<const Value *, ValueType> UsageKey;
+extern "C" {
+extern llvm::cl::opt<bool> EnzymePrintDiffUse;
+}
 
 // Determine if a value is needed directly to compute the adjoint
 // of the given instruction user
 static inline bool is_use_directly_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *val,
-    const Instruction *user,
+    const GradientUtils *gutils, const Value *val, const Instruction *user,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  TypeResults const &TR = gutils->TR;
   if (auto ainst = dyn_cast<Instruction>(val)) {
     assert(ainst->getParent()->getParent() == gutils->oldFunc);
   }
@@ -45,8 +47,21 @@ static inline bool is_use_directly_needed_in_reverse(
   if (oldUnreachable.count(user->getParent()))
     return false;
 
-  if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user) ||
+  if (isa<CastInst>(user) || isa<PHINode>(user) ||
       isa<GetElementPtrInst>(user)) {
+    return false;
+  }
+
+  if (isa<LoadInst>(user)) {
+    if (EnzymeRuntimeActivityCheck &&
+        TR.query(const_cast<llvm::Instruction *>(user))[{-1}].isFloat() &&
+        !gutils->isConstantInstruction(const_cast<llvm::Instruction *>(user))) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from runtime active load " << *user
+                     << "\n";
+      return true;
+    }
     return false;
   }
 
@@ -63,8 +78,12 @@ static inline bool is_use_directly_needed_in_reverse(
                 F->getName() == "__kmpc_for_static_init_8" ||
                 F->getName() == "__kmpc_for_static_init_8u") {
               if (CI->getArgOperand(4) == val || CI->getArgOperand(5) == val ||
-                  CI->getArgOperand(6))
+                  CI->getArgOperand(6)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need direct primal of " << *val
+                               << " in reverse from omp " << *user << "\n";
                 return true;
+              }
             }
           }
         }
@@ -75,6 +94,9 @@ static inline bool is_use_directly_needed_in_reverse(
       if (!TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}].isFloat())
         for (auto pair : gutils->backwardsOnlyShadows)
           if (pair.second.stores.count(SI)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need direct primal of " << *val
+                           << " in reverse from remat store " << *user << "\n";
             return true;
           }
     }
@@ -87,51 +109,161 @@ static inline bool is_use_directly_needed_in_reverse(
     if (MTI->getArgOperand(1) == val || MTI->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
         if (pair.second.stores.count(MTI)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need direct primal of " << *val
+                         << " in reverse from remat memtransfer " << *user
+                         << "\n";
           return true;
         }
     }
     if (MTI->getArgOperand(2) != val)
       return false;
+    bool res = !gutils->isConstantValue(MTI->getArgOperand(0));
+    if (res) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from memtransfer " << *user << "\n";
+    }
+    return res;
   }
 
-  // Preserve the length of memsets of backward creation shadows
+  // Preserve the length of memsets of backward creation shadows,
+  // or if float-like and non constant value.
   if (auto MS = dyn_cast<MemSetInst>(user)) {
     if (MS->getArgOperand(1) == val || MS->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
         if (pair.second.stores.count(MS)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need direct primal of " << *val
+                         << " in reverse from remat memset " << *user << "\n";
           return true;
         }
+      bool res = !gutils->isConstantValue(MS->getArgOperand(0));
+      if (res) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from memset " << *user << "\n";
+      }
+      return res;
     }
   }
 
   if (isa<CmpInst>(user) || isa<BranchInst>(user) || isa<ReturnInst>(user) ||
-      isa<FPExtInst>(user) || isa<FPTruncInst>(user) ||
-      (isa<InsertElementInst>(user) &&
-       cast<InsertElementInst>(user)->getOperand(2) != val) ||
-      (isa<ExtractElementInst>(user) &&
-       cast<ExtractElementInst>(user)->getIndexOperand() != val)
+      isa<FPExtInst>(user) || isa<FPTruncInst>(user)
 #if LLVM_VERSION_MAJOR >= 10
       || isa<FreezeInst>(user)
 #endif
       // isa<ExtractElement>(use) ||
       // isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
       // isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
-      /*|| isa<StoreInst>(use)*/) {
+      // || isa<StoreInst>(use)
+  ) {
     return false;
+  }
+
+  if (auto IEI = dyn_cast<InsertElementInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    if (IEI->getOperand(2) != val) {
+      return false;
+    }
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<InsertElementInst *>(IEI)) ||
+        TR.query(const_cast<InsertElementInst *>(IEI))[{-1}] ==
+            BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer insertelem " << *user << " "
+                   << TR.query(const_cast<InsertElementInst *>(IEI)).str()
+                   << "\n";
+    return true;
+  }
+  if (auto EEI = dyn_cast<ExtractElementInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    if (EEI->getIndexOperand() != val) {
+      return false;
+    }
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<ExtractElementInst *>(EEI)) ||
+        TR.query(const_cast<ExtractElementInst *>(EEI))[{-1}] ==
+            BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer extractelem " << *user
+                   << " "
+                   << TR.query(const_cast<ExtractElementInst *>(EEI)).str()
+                   << "\n";
+    return true;
+  }
+
+  if (auto IVI = dyn_cast<InsertValueInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    bool valueIsIndex = false;
+    for (unsigned i = 2; i < IVI->getNumOperands(); ++i) {
+      if (IVI->getOperand(i) == val) {
+        valueIsIndex = true;
+      }
+    }
+
+    if (!valueIsIndex)
+      return false;
+
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<InsertValueInst *>(IVI)) ||
+        TR.query(const_cast<InsertValueInst *>(IVI))[{-1}] == BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer insertval " << *user << " "
+                   << TR.query(const_cast<InsertValueInst *>(IVI)).str()
+                   << "\n";
+    return true;
+  }
+
+  if (auto EVI = dyn_cast<ExtractValueInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    bool valueIsIndex = false;
+    for (unsigned i = 2; i < EVI->getNumOperands(); ++i) {
+      if (EVI->getOperand(i) == val) {
+        valueIsIndex = true;
+      }
+    }
+
+    if (!valueIsIndex)
+      return false;
+
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<ExtractValueInst *>(EVI)) ||
+        TR.query(const_cast<ExtractValueInst *>(EVI))[{-1}] ==
+            BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer extractval " << *user << " "
+                   << TR.query(const_cast<ExtractValueInst *>(EVI)).str()
+                   << "\n";
+    return true;
   }
 
   Intrinsic::ID ID = Intrinsic::not_intrinsic;
   if (auto II = dyn_cast<IntrinsicInst>(user)) {
     ID = II->getIntrinsicID();
   } else if (auto CI = dyn_cast<CallInst>(user)) {
-    if (auto called = getFunctionFromCall(const_cast<CallInst *>(CI))) {
-      StringRef funcName;
-      if (called->hasFnAttribute("enzyme_math"))
-        funcName = called->getFnAttribute("enzyme_math").getValueAsString();
-      else
-        funcName = called->getName();
-      isMemFreeLibMFunction(funcName, &ID);
-    }
+    StringRef funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
+    isMemFreeLibMFunction(funcName, &ID);
   }
 
   if (ID != Intrinsic::not_intrinsic) {
@@ -147,6 +279,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (user->getOperand(1) == val &&
           !gutils->isConstantValue(user->getOperand(0)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fma " << *user << "\n";
+      }
       return needed;
     }
   }
@@ -163,6 +300,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (op->getOperand(1) == val &&
           !gutils->isConstantValue(op->getOperand(0)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fmul " << *user << "\n";
+      }
       return needed;
     } else if (op->getOpcode() == Instruction::FDiv) {
       bool needed = false;
@@ -175,6 +317,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (op->getOperand(0) == val &&
           !gutils->isConstantValue(op->getOperand(1)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fdiv " << *user << "\n";
+      }
       return needed;
     }
   }
@@ -186,53 +333,107 @@ static inline bool is_use_directly_needed_in_reverse(
     }
 
     // only need the condition if select is active
-    return !gutils->isConstantValue(const_cast<SelectInst *>(si));
+    bool needed = !gutils->isConstantValue(const_cast<SelectInst *>(si));
+    if (needed) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from select " << *user << "\n";
+    }
+    return needed;
   }
 
   if (auto CI = dyn_cast<CallInst>(user)) {
-    if (auto F = getFunctionFromCall(const_cast<CallInst *>(CI))) {
-      auto funcName = F->getName();
-      if (F->hasFnAttribute("enzyme_math"))
-        funcName = F->getFnAttribute("enzyme_math").getValueAsString();
+    auto funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
 
-      // Only need primal (and shadow) request for reverse
-      if (funcName == "MPI_Isend" || funcName == "MPI_Irecv" ||
-          funcName == "PMPI_Isend" || funcName == "PMPI_Irecv") {
-        if (val != CI->getArgOperand(6)) {
-          return false;
+    // Only need primal (and shadow) request for reverse
+    if (funcName == "MPI_Isend" || funcName == "MPI_Irecv" ||
+        funcName == "PMPI_Isend" || funcName == "PMPI_Irecv") {
+      if (val != CI->getArgOperand(6)) {
+        return false;
+      }
+    }
+
+    // Only need the primal request.
+    if (funcName == "MPI_Wait" || funcName == "PMPI_Wait")
+      if (val != CI->getArgOperand(0))
+        return false;
+
+    // Only need element count for reverse of waitall
+    if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall")
+      if (val != CI->getArgOperand(0) || val != CI->getOperand(1))
+        return false;
+    // Since adjoint of barrier is another barrier in reverse
+    // we still need even if instruction is inactive
+    if (funcName == "__kmpc_barrier" || funcName == "MPI_Barrier") {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from barrier " << *user << "\n";
+      return true;
+    }
+
+    // Since adjoint of GC preserve is another preserve in reverse
+    // we still need even if instruction is inactive
+    if (funcName == "llvm.julia.gc_preserve_begin") {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from gc " << *user << "\n";
+      return true;
+    }
+
+    bool writeOnlyNoCapture = true;
+    auto F = getFunctionFromCall(const_cast<CallInst *>(CI));
+#if LLVM_VERSION_MAJOR >= 14
+    for (size_t i = 0; i < CI->arg_size(); i++)
+#else
+    for (size_t i = 0; i < CI->getNumArgOperands(); i++)
+#endif
+    {
+      if (val == CI->getArgOperand(i)) {
+#if LLVM_VERSION_MAJOR >= 8
+        if (!CI->doesNotCapture(i))
+#else
+        if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::NoCapture) ||
+              (F && F->hasParamAttribute(i, Attribute::NoCapture))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+          break;
+        }
+#if LLVM_VERSION_MAJOR >= 14
+        if (!CI->onlyWritesMemory(i))
+#else
+        if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
+              CI->dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
+              (F && (F->hasParamAttribute(i, Attribute::WriteOnly) ||
+                     F->hasParamAttribute(i, Attribute::ReadNone)))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+          break;
         }
       }
-
-      // Only need the primal request.
-      if (funcName == "MPI_Wait" || funcName == "PMPI_Wait")
-        if (val != CI->getArgOperand(0))
-          return false;
-
-      // Only need element count for reverse of waitall
-      if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall")
-        if (val != CI->getArgOperand(0) || val != CI->getOperand(1))
-          return false;
-      // Since adjoint of barrier is another barrier in reverse
-      // we still need even if instruction is inactive
-      if (funcName == "__kmpc_barrier" || funcName == "MPI_Barrier")
-        return true;
-
-      // Since adjoint of GC preserve is another preserve in reverse
-      // we still need even if instruction is inactive
-      if (funcName == "llvm.julia.gc_preserve_begin")
-        return true;
     }
+    // Don't need the primal argument if it is write only and not captured
+    if (writeOnlyNoCapture)
+      return false;
   }
 
-  return !gutils->isConstantInstruction(user) ||
-         !gutils->isConstantValue(const_cast<Instruction *>(user));
+  bool neededFB = !gutils->isConstantInstruction(user) ||
+                  !gutils->isConstantValue(const_cast<Instruction *>(user));
+  if (neededFB) {
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from fallback " << *user << "\n";
+  }
+  return neededFB;
 }
 
 template <ValueType VT, bool OneLevel = false>
 static inline bool is_value_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    DerivativeMode mode, std::map<UsageKey, bool> &seen,
+    const GradientUtils *gutils, const Value *inst, DerivativeMode mode,
+    std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  TypeResults const &TR = gutils->TR;
   static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   auto idx = UsageKey(inst, VT);
   if (seen.find(idx) != seen.end())
@@ -249,11 +450,22 @@ static inline bool is_value_needed_in_reverse(
       if (op->getOpcode() == Instruction::FDiv) {
         if (!gutils->isConstantValue(const_cast<Value *>(inst)) &&
             !gutils->isConstantValue(op->getOperand(1))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as is active div\n";
           return seen[idx] = true;
         }
       }
     }
   }
+
+  if (auto CI = dyn_cast<CallInst>(inst)) {
+    StringRef funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
+    if (funcName == "julia.get_pgcstack" || funcName == "julia.ptls_states")
+      return seen[idx] = true;
+  }
+
+  bool inst_cv = gutils->isConstantValue(const_cast<Value *>(inst));
 
   // Consider all users of this value, do any of them need this in the reverse?
   for (auto use : inst->users()) {
@@ -263,47 +475,90 @@ static inline bool is_value_needed_in_reverse(
     const Instruction *user = dyn_cast<Instruction>(use);
 
     // A shadow value is only needed in reverse if it or one of its descendants
-    // is used in an active instruction
-    if (VT == ValueType::Shadow) {
-      if (!user)
+    // is used in an active instruction.
+    // If inst is a constant value, the primal may be used in its place and
+    // thus required.
+    if (VT == ValueType::Shadow || inst_cv) {
+
+      // Floating point numbers cannot be used as a shadow pointer/etc
+      if (inst_cv || (mode != DerivativeMode::ForwardMode &&
+                      mode != DerivativeMode::ForwardModeSplit))
+        if (TR.query(const_cast<Value *>(inst))[{-1}].isFloat())
+          goto endShadow;
+
+      if (!user) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as unknown user " << *use << "\n";
         return seen[idx] = true;
+      }
 
       if (auto SI = dyn_cast<StoreInst>(user)) {
-        // storing an active pointer into a location
-        // doesn't require the shadow pointer for the
-        // reverse pass
-        if (SI->getValueOperand() == inst &&
-            (mode == DerivativeMode::ReverseModeGradient ||
-             mode == DerivativeMode::ForwardModeSplit)) {
-          // Unless the store is into a backwards store, which would
-          // would then be performed in the reverse if the stored value was
-          // a possible pointer.
+        if (mode == DerivativeMode::ReverseModeGradient ||
+            mode == DerivativeMode::ForwardModeSplit) {
+
           bool rematerialized = false;
           for (auto pair : gutils->backwardsOnlyShadows)
             if (pair.second.stores.count(SI)) {
               rematerialized = true;
               break;
             }
-          if (!rematerialized)
-            continue;
+
+          if (SI->getValueOperand() == inst) {
+            // storing an active pointer into a location
+            // doesn't require the shadow pointer for the
+            // reverse pass
+            // Unless the store is into a backwards store, which would
+            // would then be performed in the reverse if the stored value was
+            // a possible pointer.
+            if (!rematerialized)
+              goto endShadow;
+          } else {
+            // Likewise, if not rematerializing in reverse pass, you
+            // don't need to keep the pointer operand for known pointers
+            if (!rematerialized &&
+                TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}] ==
+                    BaseType::Pointer)
+              goto endShadow;
+          }
         }
 
         if (!gutils->isConstantValue(
-                const_cast<Value *>(SI->getPointerOperand())))
+                const_cast<Value *>(SI->getPointerOperand()))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow store  " << *SI << "\n";
           return seen[idx] = true;
-        else
-          continue;
+        } else
+          goto endShadow;
       }
 
       if (auto MTI = dyn_cast<MemTransferInst>(user)) {
         if (MTI->getArgOperand(0) != inst && MTI->getArgOperand(1) != inst)
-          continue;
+          goto endShadow;
 
         if (!gutils->isConstantValue(
-                const_cast<Value *>(MTI->getArgOperand(0))))
+                const_cast<Value *>(MTI->getArgOperand(0)))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow MTI  " << *MTI << "\n";
           return seen[idx] = true;
-        else
-          continue;
+        } else
+          goto endShadow;
+      }
+
+      if (auto MS = dyn_cast<MemSetInst>(user)) {
+        if (MS->getArgOperand(0) != inst)
+          goto endShadow;
+
+        if (!gutils->isConstantValue(
+                const_cast<Value *>(MS->getArgOperand(0)))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow MS  " << *MS << "\n";
+          return seen[idx] = true;
+        } else
+          goto endShadow;
       }
 
       if (auto CI = dyn_cast<CallInst>(user)) {
@@ -318,91 +573,181 @@ static inline bool is_value_needed_in_reverse(
             }
           }
         }
-        if (auto F = getFunctionFromCall(const_cast<CallInst *>(CI))) {
-          StringRef funcName = F->getName();
-          if (F->hasFnAttribute("enzyme_math"))
-            funcName = F->getFnAttribute("enzyme_math").getValueAsString();
+        StringRef funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
 
-          // Only need shadow request for reverse
-          if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv") {
-            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
-              continue;
-            // Need shadow request
-            if (inst == CI->getArgOperand(6))
-              return seen[idx] = true;
-            // Need shadow buffer in forward pass
-            if (mode != DerivativeMode::ReverseModeGradient)
-              if (inst == CI->getArgOperand(0))
-                return seen[idx] = true;
-            continue;
-          }
-          if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
-            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
-              continue;
-            // Need shadow request
-            if (inst == CI->getArgOperand(6))
-              return seen[idx] = true;
-            // Need shadow buffer in reverse pass or forward mode
-            if (inst == CI->getArgOperand(0))
-              return seen[idx] = true;
-            continue;
-          }
+        // Don't need shadow inputs for alloc function
+        if (isAllocationFunction(funcName, gutils->TLI))
+          goto endShadow;
 
-          // Don't need shadow of anything (all via cache for reverse),
-          // but need shadow of request for primal.
-          if (funcName == "MPI_Wait" || funcName == "PMPI_Wait") {
-            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
-              continue;
-            // Need shadow request in forward pass only
-            if (mode != DerivativeMode::ReverseModeGradient)
-              if (inst == CI->getArgOperand(0))
-                return seen[idx] = true;
-            continue;
-          }
-
-          // Don't need shadow of anything (all via cache for reverse),
-          // but need shadow of request for primal.
-          if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
-            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
-              continue;
-            // Need shadow request in forward pass
-            if (mode != DerivativeMode::ReverseModeGradient)
-              if (inst == CI->getArgOperand(1))
-                return seen[idx] = true;
-            continue;
-          }
-
-          // Use in a write barrier requires the shadow in the forward, even
-          // though the instruction is active.
-          if (mode != DerivativeMode::ReverseModeGradient &&
-              funcName == "julia.write_barrier") {
+        // Only need shadow request for reverse
+        if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv") {
+          if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+            goto endShadow;
+          // Need shadow request
+          if (inst == CI->getArgOperand(6)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
             return seen[idx] = true;
           }
+          // Need shadow buffer in forward pass
+          if (mode != DerivativeMode::ReverseModeGradient)
+            if (inst == CI->getArgOperand(0)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
+              return seen[idx] = true;
+            }
+          goto endShadow;
         }
-#if LLVM_VERSION_MAJOR >= 11
-        const Value *F = CI->getCalledOperand();
+        if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
+          if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+            goto endShadow;
+          // Need shadow request
+          if (inst == CI->getArgOperand(6)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
+            return seen[idx] = true;
+          }
+          // Need shadow buffer in reverse pass or forward mode
+          if (inst == CI->getArgOperand(0)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
+            return seen[idx] = true;
+          }
+          goto endShadow;
+        }
+
+        // Don't need shadow of anything (all via cache for reverse),
+        // but need shadow of request for primal.
+        if (funcName == "MPI_Wait" || funcName == "PMPI_Wait") {
+          if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+            goto endShadow;
+          // Need shadow request in forward pass only
+          if (mode != DerivativeMode::ReverseModeGradient)
+            if (inst == CI->getArgOperand(0)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
+              return seen[idx] = true;
+            }
+          goto endShadow;
+        }
+
+        // Don't need shadow of anything (all via cache for reverse),
+        // but need shadow of request for primal.
+        if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
+          if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+            goto endShadow;
+          // Need shadow request in forward pass
+          if (mode != DerivativeMode::ReverseModeGradient)
+            if (inst == CI->getArgOperand(1)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
+              return seen[idx] = true;
+            }
+          goto endShadow;
+        }
+
+        // Use in a write barrier requires the shadow in the forward, even
+        // though the instruction is active.
+        if (mode != DerivativeMode::ReverseModeGradient &&
+            funcName == "julia.write_barrier") {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow write_barrier " << *CI
+                         << "\n";
+          return seen[idx] = true;
+        }
+
+        bool writeOnlyNoCapture = true;
+        auto F = getFunctionFromCall(const_cast<CallInst *>(CI));
+#if LLVM_VERSION_MAJOR >= 14
+        for (size_t i = 0; i < CI->arg_size(); i++)
 #else
-        const Value *F = CI->getCalledValue();
+        for (size_t i = 0; i < CI->getNumArgOperands(); i++)
 #endif
-        if (F == inst) {
+        {
+          if (inst == CI->getArgOperand(i)) {
+#if LLVM_VERSION_MAJOR >= 8
+            if (!CI->doesNotCapture(i))
+#else
+            if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::NoCapture) ||
+                  (F && F->hasParamAttribute(i, Attribute::NoCapture))))
+#endif
+            {
+              writeOnlyNoCapture = false;
+              break;
+            }
+#if LLVM_VERSION_MAJOR >= 14
+            if (!CI->onlyWritesMemory(i))
+#else
+            if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
+                  CI->dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
+                  (F && (F->hasParamAttribute(i, Attribute::WriteOnly) ||
+                         F->hasParamAttribute(i, Attribute::ReadNone)))))
+#endif
+            {
+              writeOnlyNoCapture = false;
+              break;
+            }
+          }
+        }
+        // Don't need the shadow argument if it is a pointer to pointers, which
+        // is only written since the shadow pointer store will have been
+        // completed in the forward pass.
+        if (writeOnlyNoCapture &&
+            TR.query(const_cast<Value *>(inst))[{-1, -1}] ==
+                BaseType::Pointer &&
+            mode == DerivativeMode::ReverseModeGradient)
+          return false;
+
+#if LLVM_VERSION_MAJOR >= 11
+        const Value *FV = CI->getCalledOperand();
+#else
+        const Value *FV = CI->getCalledValue();
+#endif
+        if (FV == inst) {
           if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)) ||
               !gutils->isConstantValue(const_cast<Value *>((Value *)user))) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow call " << *CI << "\n";
             return seen[idx] = true;
           }
         }
       }
 
       if (isa<ReturnInst>(user)) {
-        if (gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_ARG ||
-            gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_NONEED)
+        if ((gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_ARG ||
+             gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_NONEED) &&
+            ((inst_cv && VT == ValueType::Primal) ||
+             (!inst_cv && VT == ValueType::Shadow))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow return " << *user << "\n";
           return seen[idx] = true;
-        else
-          continue;
+        } else
+          goto endShadow;
       }
 
-      // Assume active instructions require the operand.
-      if (!gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
-        return seen[idx] = true;
+      // With certain exceptions, assume active instructions require the
+      // shadow of the operand.
+      if (mode == DerivativeMode::ForwardMode ||
+          mode == DerivativeMode::ForwardModeSplit ||
+          (!isa<ExtractValueInst>(user) && !isa<ExtractElementInst>(user) &&
+           !isa<InsertValueInst>(user) && !isa<InsertElementInst>(user) &&
+           !isa<CastInst>(user) && !isa<GetElementPtrInst>(user))) {
+        if (!inst_cv &&
+            !gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow inst " << *user << "\n";
+          return seen[idx] = true;
+        }
       }
 
       // Now the remaining instructions are inactive, however note that
@@ -410,29 +755,37 @@ static inline bool is_value_needed_in_reverse(
       // in the forward pass, for example double* x = load double** y
       // is a constant instruction, but needed in the forward
       if (user->getType()->isVoidTy())
-        continue;
+        goto endShadow;
 
-      if (!TR.query(const_cast<Instruction *>(user))
-               .Inner0()
-               .isPossiblePointer())
-        continue;
+      if (!TR.query(const_cast<Instruction *>(user))[{-1}]
+               .isPossiblePointer()) {
+        goto endShadow;
+      }
 
       if (!OneLevel && is_value_needed_in_reverse<ValueType::Shadow>(
-                           TR, gutils, user, mode, seen, oldUnreachable)) {
+                           gutils, user, mode, seen, oldUnreachable)) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as shadow sub-need " << *user << "\n";
         return seen[idx] = true;
       }
-      continue;
+    endShadow:
+      if (VT != ValueType::Primal)
+        continue;
     }
 
     assert(VT == ValueType::Primal);
 
     // If a sub user needs, we need
-    if (!OneLevel && is_value_needed_in_reverse<VT>(TR, gutils, user, mode,
-                                                    seen, oldUnreachable)) {
+    if (!OneLevel && is_value_needed_in_reverse<VT>(gutils, user, mode, seen,
+                                                    oldUnreachable)) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                     << " in reverse as sub-need " << *user << "\n";
       return seen[idx] = true;
     }
 
-    // Anything we may try to rematerialize requires its store opreands for
+    // Anything we may try to rematerialize requires its store operands for
     // the reverse pass.
     if (!OneLevel) {
       if (isa<StoreInst>(user) || isa<MemTransferInst>(user) ||
@@ -443,12 +796,27 @@ static inline bool is_value_needed_in_reverse(
           // we'll set it to unused, then check the gep, then here we'll
           // directly say unused by induction instead of checking the final
           // loads.
-          if (pair.second.stores.count(user))
+          if (pair.second.stores.count(user)) {
             for (LoadInst *L : pair.second.loads)
-              if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
+              if (is_value_needed_in_reverse<VT>(gutils, L, mode, seen,
                                                  oldUnreachable)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                               << " in reverse as rematload " << *L << "\n";
                 return seen[idx] = true;
               }
+            for (auto &pair : pair.second.loadLikeCalls)
+              if (is_use_directly_needed_in_reverse(
+                      gutils, pair.operand, pair.loadCall, oldUnreachable) ||
+                  is_value_needed_in_reverse<VT>(gutils, pair.loadCall, mode,
+                                                 seen, oldUnreachable)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                               << " in reverse as rematloadcall "
+                               << *pair.loadCall << "\n";
+                return seen[idx] = true;
+              }
+          }
         }
       }
     }
@@ -477,6 +845,9 @@ static inline bool is_value_needed_in_reverse(
         }
         if (num <= 1)
           continue;
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as control-flow " << *user << "\n";
         return seen[idx] = true;
       }
 
@@ -486,6 +857,9 @@ static inline bool is_value_needed_in_reverse(
               F->getName() == "__kmpc_for_static_init_4u" ||
               F->getName() == "__kmpc_for_static_init_8" ||
               F->getName() == "__kmpc_for_static_init_8u") {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as omp init " << *user << "\n";
             return seen[idx] = true;
           }
         }
@@ -508,6 +882,30 @@ static inline bool is_value_needed_in_reverse(
       if (!idxUsed)
         primalUsedInShadowPointer = false;
     }
+    if (auto IVI = dyn_cast<InsertValueInst>(user)) {
+      bool valueIsIndex = false;
+      for (unsigned i = 2; i < IVI->getNumOperands(); ++i) {
+        if (IVI->getOperand(i) == inst) {
+          if (inst == IVI->getInsertedValueOperand() &&
+              TR.query(
+                    const_cast<Value *>(IVI->getInsertedValueOperand()))[{-1}]
+                  .isFloat()) {
+            continue;
+          }
+          valueIsIndex = true;
+        }
+      }
+      primalUsedInShadowPointer = valueIsIndex;
+    }
+    if (auto EVI = dyn_cast<ExtractValueInst>(user)) {
+      bool valueIsIndex = false;
+      for (unsigned i = 1; i < EVI->getNumOperands(); ++i) {
+        if (EVI->getOperand(i) == inst) {
+          valueIsIndex = true;
+        }
+      }
+      primalUsedInShadowPointer = valueIsIndex;
+    }
 
     if (primalUsedInShadowPointer)
       if (!user->getType()->isVoidTy() &&
@@ -515,13 +913,17 @@ static inline bool is_value_needed_in_reverse(
               .Inner0()
               .isPossiblePointer()) {
         if (is_value_needed_in_reverse<ValueType::Shadow>(
-                TR, gutils, user, mode, seen, oldUnreachable)) {
+                gutils, user, mode, seen, oldUnreachable)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as used to compute shadow ptr "
+                         << *user << "\n";
           return seen[idx] = true;
         }
       }
 
-    bool direct = is_use_directly_needed_in_reverse(TR, gutils, inst, user,
-                                                    oldUnreachable);
+    bool direct =
+        is_use_directly_needed_in_reverse(gutils, inst, user, oldUnreachable);
     if (!direct)
       continue;
 
@@ -537,11 +939,11 @@ static inline bool is_value_needed_in_reverse(
 
 template <ValueType VT>
 static inline bool is_value_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    DerivativeMode mode, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+    const GradientUtils *gutils, const Value *inst, DerivativeMode mode,
+    const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   std::map<UsageKey, bool> seen;
-  return is_value_needed_in_reverse<VT>(TR, gutils, inst, mode, seen,
+  return is_value_needed_in_reverse<VT>(gutils, inst, mode, seen,
                                         oldUnreachable);
 }
 
@@ -632,12 +1034,15 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
     for (auto U : V->users()) {
       if (auto I = dyn_cast<Instruction>(U)) {
         for (auto pair : rematerializableAllocations) {
-          if (Intermediates.count(pair.first) && pair.second.stores.count(I))
-            G[Node(V, true)].insert(Node(pair.first, false));
+          if (Intermediates.count(pair.first) && pair.second.stores.count(I)) {
+            if (V != pair.first)
+              G[Node(V, true)].insert(Node(pair.first, false));
+          }
         }
       }
       if (Intermediates.count(U)) {
-        G[Node(V, true)].insert(Node(U, false));
+        if (V != U)
+          G[Node(V, true)].insert(Node(U, false));
       }
     }
   }
@@ -645,7 +1050,14 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
     if (Intermediates.count(pair.first)) {
       for (LoadInst *L : pair.second.loads) {
         if (Intermediates.count(L)) {
-          G[Node(pair.first, true)].insert(Node(L, false));
+          if (L != pair.first)
+            G[Node(pair.first, true)].insert(Node(L, false));
+        }
+      }
+      for (auto L : pair.second.loadLikeCalls) {
+        if (Intermediates.count(L.loadCall)) {
+          if (L.loadCall != pair.first)
+            G[Node(pair.first, true)].insert(Node(L.loadCall, false));
         }
       }
     }

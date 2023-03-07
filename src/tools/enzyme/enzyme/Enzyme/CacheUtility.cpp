@@ -69,6 +69,16 @@ void CacheUtility::erase(Instruction *I) {
   SE.eraseValueFromMap(I);
 
   if (!I->use_empty()) {
+    if (CustomErrorHandler) {
+      std::string str;
+      raw_string_ostream ss(str);
+      ss << "Erased value with a use:\n";
+      ss << *newFunc->getParent() << "\n";
+      ss << *newFunc << "\n";
+      ss << *I << "\n";
+      CustomErrorHandler(str.c_str(), wrap(I), ErrorType::InternalError,
+                         nullptr);
+    }
     llvm::errs() << *newFunc->getParent() << "\n";
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << *I << "\n";
@@ -286,7 +296,7 @@ void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
                          BasicBlock *Preheader, PHINode *CanonicalIV,
                          MustExitScalarEvolution &SE, CacheUtility &gutils,
                          Instruction *Increment,
-                         const SmallVectorImpl<BasicBlock *> &&latches) {
+                         ArrayRef<BasicBlock *> latches) {
   // Attempt to explicitly rewrite the latch
   if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
       cast<BranchInst>(latches[0]->getTerminator())->isConditional())
@@ -715,7 +725,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
         break;
       loc = I.getDebugLoc();
     }
-    EmitWarning("NoLimit", loc, newFunc, L->getHeader(),
+    EmitWarning("NoLimit", loc, L->getHeader(),
                 "SE could not compute loop limit of ",
                 L->getHeader()->getName(), " of ",
                 L->getHeader()->getParent()->getName(), "lim: ", *Limit,
@@ -765,16 +775,40 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
   auto sublimits =
       getSubLimits(/*inForwardPass*/ true, nullptr, ctx, extraSize);
 
+  auto i64 = Type::getInt64Ty(T->getContext());
+
   // List of types stored in the cache for each Loop-Chunk
   // This is stored from innner-most chunk to outermost
   // Thus it begins with the underlying type, and adds pointers
   // to the previous type.
-  std::vector<Type *> types = {T};
+  SmallVector<Type *, 4> types = {T};
+  SmallVector<PointerType *, 4> malloctypes;
   bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
   if (EfficientBoolCache && isi1 && sublimits.size() != 0)
     types[0] = Type::getInt8Ty(T->getContext());
   for (size_t i = 0; i < sublimits.size(); ++i) {
-    types.push_back(PointerType::getUnqual(types.back()));
+    Type *allocType;
+    {
+      BasicBlock *BB =
+          BasicBlock::Create(newFunc->getContext(), "entry", newFunc);
+      IRBuilder<> B(BB);
+      auto P = B.CreatePHI(i64, 1);
+
+      CallInst *malloccall;
+      Instruction *Zero;
+      allocType = cast<PointerType>(CreateAllocation(B, types.back(), P,
+                                                     "tmpfortypecalc",
+                                                     &malloccall, &Zero)
+                                        ->getType());
+      malloctypes.push_back(cast<PointerType>(malloccall->getType()));
+      SmallVector<Instruction *, 2> toErase;
+      for (auto &I : *BB)
+        toErase.push_back(&I);
+      for (auto I : llvm::reverse(toErase))
+        I->eraseFromParent();
+      BB->eraseFromParent();
+    }
+    types.push_back(allocType);
   }
 
   // Allocate the outermost type on the stack
@@ -784,10 +818,9 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       entryBuilder.CreateAlloca(types.back(), nullptr, name + "_cache");
   {
     ConstantInt *byteSizeOfType = ConstantInt::get(
-        Type::getInt64Ty(T->getContext()),
-        newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
-            types.back()) /
-            8);
+        i64, newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+                 types.back()) /
+                 8);
     unsigned align =
         getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
@@ -799,8 +832,6 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
   if (EnzymeZeroCache && sublimits.size() == 0)
     scopeInstructions[alloc].push_back(
         entryBuilder.CreateStore(Constant::getNullValue(types.back()), alloc));
-
-  Type *BPTy = Type::getInt8PtrTy(T->getContext());
 
   Value *storeInto = alloc;
 
@@ -852,14 +883,17 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       StoreInst *storealloc = nullptr;
       // Statically allocate memory for all iterations if possible
       if (sublimits[i].second.back().first.maxLimit) {
-        auto firstallocation = CallInst::CreateMalloc(
-            &allocationBuilder.GetInsertBlock()->back(), size->getType(),
-            myType, byteSizeOfType, size, nullptr, name + "_malloccache");
-        CallInst *malloccall = dyn_cast<CallInst>(firstallocation);
-        if (malloccall == nullptr) {
-          malloccall =
-              cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
-        }
+        CallInst *malloccall = nullptr;
+        Instruction *ZeroInst = nullptr;
+        Value *firstallocation = CreateAllocation(
+            allocationBuilder, myType, size, name + "_malloccache", &malloccall,
+            /*ZeroMem*/ EnzymeZeroCache ? &ZeroInst : nullptr);
+
+        scopeInstructions[alloc].push_back(malloccall);
+        if (firstallocation != malloccall)
+          scopeInstructions[alloc].push_back(
+              cast<Instruction>(firstallocation));
+
         for (auto &actx : sublimits[i].second) {
           if (actx.first.offset) {
             malloccall->setMetadata("enzyme_ompfor",
@@ -868,67 +902,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           }
         }
 
-        if (EnzymeZeroCache && i == 0) {
-          Value *args[] = {
-              malloccall,
-              ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
-              malloccall->getArgOperand(0),
-              ConstantInt::getFalse(malloccall->getContext())};
-          Type *tys[] = {args[0]->getType(), args[2]->getType()};
-
-          scopeInstructions[alloc].push_back(allocationBuilder.CreateCall(
-              Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memset,
-                                        tys),
-              args));
+        if (ZeroInst) {
+          if (ZeroInst->getOperand(0) != malloccall) {
+            scopeInstructions[alloc].push_back(
+                cast<Instruction>(ZeroInst->getOperand(0)));
+          }
+          scopeInstructions[alloc].push_back(ZeroInst);
         }
-
-        // Assert computation of size of array doesn't wrap
-        if (auto BI = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
-          if ((BI->getOperand(0) == byteSizeOfType &&
-               BI->getOperand(1) == size) ||
-              (BI->getOperand(1) == byteSizeOfType &&
-               BI->getOperand(0) == size))
-            BI->setHasNoSignedWrap(true);
-          BI->setHasNoUnsignedWrap(true);
-        }
-
-        if (auto ci = dyn_cast<ConstantInt>(size)) {
-#if LLVM_VERSION_MAJOR >= 14
-          malloccall->addDereferenceableRetAttr(
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-#ifndef FLANG
-          AttrBuilder B(ci->getContext());
-#else
-          AttrBuilder B;
-#endif
-          B.addDereferenceableOrNullAttr(ci->getLimitedValue() *
-                                         byteSizeOfType->getLimitedValue());
-          malloccall->setAttributes(
-              malloccall->getAttributes().addRetAttributes(
-                  malloccall->getContext(), B));
-#else
-          malloccall->addDereferenceableAttr(
-              llvm::AttributeList::ReturnIndex,
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-          malloccall->addDereferenceableOrNullAttr(
-              llvm::AttributeList::ReturnIndex,
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-#endif
-          // malloccall->removeAttribute(llvm::AttributeList::ReturnIndex,
-          // Attribute::DereferenceableOrNull);
-        }
-#if LLVM_VERSION_MAJOR >= 14
-        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                        Attribute::NoAlias);
-        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                        Attribute::NonNull);
-#else
-        malloccall->addAttribute(AttributeList::ReturnIndex,
-                                 Attribute::NoAlias);
-        malloccall->addAttribute(AttributeList::ReturnIndex,
-                                 Attribute::NonNull);
-#endif
-
         storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
 
         scopeAllocs[alloc].push_back(malloccall);
@@ -944,50 +924,58 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         storealloc->setMetadata(
             LLVMContext::MD_invariant_group,
             CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
+        scopeInstructions[alloc].push_back(storealloc);
+        for (auto post : PostCacheStore(storealloc, allocationBuilder)) {
+          scopeInstructions[alloc].push_back(post);
+        }
       } else {
+        llvm::PointerType *allocType = cast<PointerType>(types[i + 1]);
+        llvm::PointerType *mallocType = malloctypes[i];
+
         // Reallocate memory dynamically as a fallback
         // TODO change this to a power-of-two allocation strategy
         auto zerostore = allocationBuilder.CreateStore(
-            ConstantPointerNull::get(PointerType::getUnqual(myType)),
-            storeInto);
+            ConstantPointerNull::get(allocType), storeInto);
         scopeInstructions[alloc].push_back(zerostore);
 
         IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
 #if LLVM_VERSION_MAJOR > 7
-        Value *allocation = build.CreateLoad(
-            storeInto->getType()->getPointerElementType(), storeInto);
+        Value *allocation = build.CreateLoad(allocType, storeInto);
 #else
         Value *allocation = build.CreateLoad(storeInto);
 #endif
 
-        Value *tsize = ConstantInt::get(
-            size->getType(),
-            newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
-                myType) /
-                8);
+        if (allocation->getType() != mallocType) {
+          auto I =
+              cast<Instruction>(build.CreateBitCast(allocation, mallocType));
+          scopeInstructions[alloc].push_back(I);
+          allocation = I;
+        }
 
-        Value *idxs[] = {
-            /*ptr*/
-            build.CreatePointerCast(allocation, BPTy),
-            /*incrementing value to increase when it goes past a power of two*/
-            containedloops.back().first.incvar,
-            /*buffer size (element x subloops)*/
-            build.CreateMul(tsize, size, "", /*NUW*/ true,
-                            /*NSW*/ true)};
+        CallInst *realloccall = nullptr;
+        auto reallocation = CreateReAllocation(
+            build, allocation, myType, containedloops.back().first.incvar, size,
+            name + "_realloccache", &realloccall, EnzymeZeroCache && i == 0);
 
-        assert(allocation->getType()->getPointerElementType() == myType);
-        Value *realloccall = nullptr;
+        scopeInstructions[alloc].push_back(cast<Instruction>(reallocation));
 
-        realloccall = build.CreateCall(
-            getOrInsertExponentialAllocator(*newFunc->getParent(),
-                                            EnzymeZeroCache && i == 0),
-            idxs, name + "_realloccache");
-        scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
-        allocation = build.CreateBitCast(realloccall, allocation->getType());
-        storealloc = build.CreateStore(allocation, storeInto);
+        if (reallocation->getType() != allocType) {
+          auto I =
+              cast<Instruction>(build.CreateBitCast(reallocation, allocType));
+          scopeInstructions[alloc].push_back(I);
+          reallocation = I;
+        }
+
+        scopeAllocs[alloc].push_back(realloccall);
+
+        storealloc = build.CreateStore(reallocation, storeInto);
         // Unlike the static case we can not mark the memory as invariant
         // since we are reloading/storing based off the number of loop
         // iterations
+        scopeInstructions[alloc].push_back(storealloc);
+        for (auto post : PostCacheStore(storealloc, build)) {
+          scopeInstructions[alloc].push_back(post);
+        }
       }
 
       // Regardless of how allocated (dynamic vs static), mark it
@@ -997,7 +985,6 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 #else
       storealloc->setAlignment(alignSize);
 #endif
-      scopeInstructions[alloc].push_back(storealloc);
     }
 
     // Free the memory, if requested
@@ -1023,15 +1010,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           /*available*/ ValueToValueMapTy());
 
 #if LLVM_VERSION_MAJOR > 7
-      storeInto = v.CreateLoad(storeInto->getType()->getPointerElementType(),
-                               storeInto);
+      storeInto = v.CreateLoad(types[i + 1], storeInto);
 #if LLVM_VERSION_MAJOR >= 10
       cast<LoadInst>(storeInto)->setAlignment(Align(alignSize));
 #else
       cast<LoadInst>(storeInto)->setAlignment(alignSize);
 #endif
-      storeInto = v.CreateGEP(storeInto->getType()->getPointerElementType(),
-                              storeInto, idx);
+      storeInto = v.CreateGEP(types[i], storeInto, idx);
 #else
       storeInto = v.CreateLoad(storeInto);
       cast<LoadInst>(storeInto)->setAlignment(alignSize);
@@ -1045,7 +1030,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
 Value *CacheUtility::computeIndexOfChunk(
     bool inForwardPass, IRBuilder<> &v,
-    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
+    ArrayRef<std::pair<LoopContext, llvm::Value *>> containedloops,
     const ValueToValueMapTy &available) {
   // List of loop indices in chunk from innermost to outermost
   SmallVector<Value *, 3> indices;
@@ -1118,7 +1103,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
                                                       LimitContext ctx,
                                                       Value *extraSize) {
   // Store the LoopContext's in InnerMost => Outermost order
-  std::vector<LoopContext> contexts;
+  SmallVector<LoopContext, 4> contexts;
 
   // Given a ``SingleIteration'' Limit Context, return a chunking of
   // one loop with size 1, and header/preheader of the BasicBlock
@@ -1155,9 +1140,9 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
   }
 
   // Legal preheaders for loop i (indexed from inner => outer)
-  std::vector<BasicBlock *> allocationPreheaders(contexts.size(), nullptr);
+  SmallVector<BasicBlock *, 4> allocationPreheaders(contexts.size(), nullptr);
   // Limit of loop i (indexed from inner => outer)
-  std::vector<Value *> limits(contexts.size(), nullptr);
+  SmallVector<Value *, 4> limits(contexts.size(), nullptr);
 
   // Iterate from outermost loop to innermost loop
   for (int i = contexts.size() - 1; i >= 0; --i) {
@@ -1217,8 +1202,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
       // loop of triangular iteration domain) Handle this case like a dynamic
       // loop and create a new chunk.
       if (limitMinus1 == nullptr) {
-        EmitWarning("NoOuterLimit", cast<Instruction>(&*limit)->getDebugLoc(),
-                    newFunc, cast<Instruction>(&*limit)->getParent(),
+        EmitWarning("NoOuterLimit", *cast<Instruction>(&*limit),
                     "Could not compute outermost loop limit by moving value ",
                     *limit, " computed at block", contexts[i].header->getName(),
                     " function ", contexts[i].header->getParent()->getName());
@@ -1236,8 +1220,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
                  unwrapM(extraSize, allocationBuilder, prevMap,
                          UnwrapMode::AttemptFullUnwrap) == nullptr) {
         EmitWarning(
-            "NoOuterLimit", cast<Instruction>(extraSize)->getDebugLoc(),
-            newFunc, cast<Instruction>(extraSize)->getParent(),
+            "NoOuterLimit", *cast<Instruction>(extraSize), newFunc,
+            cast<Instruction>(extraSize)->getParent(),
             "Could not compute outermost loop limit by moving extraSize value ",
             *extraSize, " computed at block", contexts[i].header->getName(),
             " function ", contexts[i].header->getParent()->getName());
@@ -1303,7 +1287,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
   // Total number of iterations of current chunk of loops
   Value *size = nullptr;
   // Loops inside current chunk (stored innermost to outermost)
-  std::vector<std::pair<LoopContext, Value *>> lims;
+  SmallVector<std::pair<LoopContext, Value *>, 3> lims;
 
   // Iterate from innermost to outermost loops
   for (unsigned i = 0; i < contexts.size(); ++i) {
@@ -1422,12 +1406,18 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
     }
   }
 
-  if (tostore->getType() != loc->getType()->getPointerElementType()) {
-    llvm::errs() << "val: " << *val << "\n";
-    llvm::errs() << "tostore: " << *tostore << "\n";
-    llvm::errs() << "loc: " << *loc << "\n";
+#if LLVM_VERSION_MAJOR >= 15
+  if (tostore->getContext().supportsTypedPointers()) {
+#endif
+    if (tostore->getType() != loc->getType()->getPointerElementType()) {
+      llvm::errs() << "val: " << *val << "\n";
+      llvm::errs() << "tostore: " << *tostore << "\n";
+      llvm::errs() << "loc: " << *loc << "\n";
+    }
+    assert(tostore->getType() == loc->getType()->getPointerElementType());
+#if LLVM_VERSION_MAJOR >= 15
   }
-  assert(tostore->getType() == loc->getType()->getPointerElementType());
+#endif
   StoreInst *storeinst = v.CreateStore(tostore, loc);
 
   // If the value stored doesnt change (per efficient bool cache),
@@ -1457,6 +1447,9 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
   storeinst->setAlignment(align);
 #endif
   scopeInstructions[cache].push_back(storeinst);
+  for (auto post : PostCacheStore(storeinst, v)) {
+    scopeInstructions[cache].push_back(post);
+  }
 }
 
 /// Given an allocation defined at a particular ctx, store the instruction
@@ -1505,11 +1498,25 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
   // Iterate from outermost loop to innermost loop
   for (int i = sublimits.size() - 1; i >= 0; i--) {
     // Lookup the next allocation pointer
+    {
 #if LLVM_VERSION_MAJOR > 7
-    next = BuilderM.CreateLoad(next->getType()->getPointerElementType(), next);
-#else
-    next = BuilderM.CreateLoad(next);
+      llvm::Type *loadT;
+#if LLVM_VERSION_MAJOR >= 15
+      if (next->getContext().supportsTypedPointers()) {
 #endif
+        loadT = next->getType()->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 15
+      } else {
+        loadT = PointerType::get(
+            next->getContext(),
+            cast<PointerType>(next->getType())->getAddressSpace());
+      }
+#endif
+      next = BuilderM.CreateLoad(loadT, next);
+#else
+      next = BuilderM.CreateLoad(next);
+#endif
+    }
     if (storeInInstructionsMap && isa<AllocaInst>(cache))
       scopeInstructions[cast<AllocaInst>(cache)].push_back(
           cast<Instruction>(next));
@@ -1563,12 +1570,25 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         assert(es);
         idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
       }
+      {
 #if LLVM_VERSION_MAJOR > 7
-      next = BuilderM.CreateGEP(next->getType()->getPointerElementType(), next,
-                                idx);
-#else
-      next = BuilderM.CreateGEP(next, idx);
+        llvm::Type *loadT;
+#if LLVM_VERSION_MAJOR >= 15
+        if (next->getContext().supportsTypedPointers()) {
 #endif
+          loadT = next->getType()->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 15
+        } else {
+          loadT = PointerType::get(
+              next->getContext(),
+              cast<PointerType>(next->getType())->getAddressSpace());
+        }
+#endif
+        next = BuilderM.CreateGEP(loadT, next, idx);
+#else
+        next = BuilderM.CreateGEP(next, idx);
+#endif
+      }
       cast<GetElementPtrInst>(next)->setIsInBounds(true);
       if (storeInInstructionsMap && isa<AllocaInst>(cache))
         scopeInstructions[cast<AllocaInst>(cache)].push_back(
@@ -1581,13 +1601,13 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
 
 /// Perform the final load from the cache, applying requisite invariant
 /// group and alignment
-llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
+llvm::Value *CacheUtility::loadFromCachePointer(Type *T,
+                                                llvm::IRBuilder<> &BuilderM,
                                                 llvm::Value *cptr,
                                                 llvm::Value *cache) {
   // Retrieve the actual result
 #if LLVM_VERSION_MAJOR > 7
-  auto result =
-      BuilderM.CreateLoad(cptr->getType()->getPointerElementType(), cptr);
+  auto result = BuilderM.CreateLoad(T, cptr);
 #else
   auto result = BuilderM.CreateLoad(cptr);
 #endif
@@ -1617,11 +1637,10 @@ llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
 
 /// Given an allocation specified by the LimitContext ctx and cache, lookup the
 /// underlying cached value.
-Value *
-CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &BuilderM,
-                                   LimitContext ctx, Value *cache, bool isi1,
-                                   const ValueToValueMapTy &available,
-                                   Value *extraSize, Value *extraOffset) {
+Value *CacheUtility::lookupValueFromCache(
+    Type *T, bool inForwardPass, IRBuilder<> &BuilderM, LimitContext ctx,
+    Value *cache, bool isi1, const ValueToValueMapTy &available,
+    Value *extraSize, Value *extraOffset) {
   // Get the underlying cache pointer
   auto cptr =
       getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
@@ -1630,15 +1649,14 @@ CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &BuilderM,
   // Optionally apply the additional offset
   if (extraOffset) {
 #if LLVM_VERSION_MAJOR > 7
-    cptr = BuilderM.CreateGEP(cptr->getType()->getPointerElementType(), cptr,
-                              extraOffset);
+    cptr = BuilderM.CreateGEP(T, cptr, extraOffset);
 #else
     cptr = BuilderM.CreateGEP(cptr, extraOffset);
 #endif
     cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
   }
 
-  Value *result = loadFromCachePointer(BuilderM, cptr, cache);
+  Value *result = loadFromCachePointer(T, BuilderM, cptr, cache);
 
   // If using the efficient bool cache, do the corresponding
   // mask and shift to retrieve the actual value
