@@ -17,7 +17,7 @@ use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -178,16 +178,13 @@ where
     fn try_start<'b, Qcx>(
         qcx: &'b Qcx,
         state: &'b QueryState<K, Qcx::DepKind>,
+        mut state_lock: LockGuard<'b, FxHashMap<K, QueryResult<Qcx::DepKind>>>,
         span: Span,
         key: K,
     ) -> TryGetJob<'b, K, D>
     where
         Qcx: QueryContext + HasDepContext<DepKind = D>,
     {
-        #[cfg(parallel_compiler)]
-        let mut state_lock = state.active.get_shard_by_value(&key).lock();
-        #[cfg(not(parallel_compiler))]
-        let mut state_lock = state.active.lock();
         let lock = &mut *state_lock;
         let current_job_id = qcx.current_query_job();
 
@@ -362,7 +359,25 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key) {
+    #[cfg(parallel_compiler)]
+    let state_lock = state.active.get_shard_by_value(&key).lock();
+    #[cfg(not(parallel_compiler))]
+    let state_lock = state.active.lock();
+
+    // For the parallel compiler we need to check both the query cache and query state structures
+    // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
+    // query is not still executing. Without checking the query cache here, we can end up
+    // re-executing the query since `try_start` only checks that the query is not currently
+    // executing, but another thread may have already completed the query and stores it result
+    // in the query cache.
+    if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
+        if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
+            qcx.dep_context().profiler().query_cache_hit(index.into());
+            return (value, Some(index));
+        }
+    }
+
+    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, state_lock, span, key) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(query, qcx, key.clone(), dep_node, job.id);
             let cache = query.query_cache(qcx);
