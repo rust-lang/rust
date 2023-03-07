@@ -14,11 +14,7 @@ use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, Local, LocalDecl, Location, Operand, Place, Rvalue,
-    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
-    UnOp, RETURN_PLACE,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{
@@ -695,6 +691,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
+        self.super_basic_block_data(block, data);
 
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
