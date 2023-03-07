@@ -2050,13 +2050,13 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
 
         if encode_const {
-            tcx.ensure().mir_for_ctfe(def_id);
+            tcx.ensure_with_value().mir_for_ctfe(def_id);
         }
         if encode_opt {
-            tcx.ensure().optimized_mir(def_id);
+            tcx.ensure_with_value().optimized_mir(def_id);
         }
         if encode_opt || encode_const {
-            tcx.ensure().promoted_mir(def_id);
+            tcx.ensure_with_value().promoted_mir(def_id);
         }
     })
 }
