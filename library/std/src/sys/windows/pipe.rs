@@ -11,7 +11,6 @@ use crate::sync::atomic::Ordering::SeqCst;
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::hashmap_random_keys;
 use crate::sys_common::IntoInner;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +211,9 @@ fn random_number() -> usize {
             return N.fetch_add(1, SeqCst);
         }
 
-        N.store(hashmap_random_keys().0 as usize, SeqCst);
+        let mut bytes = [0; mem::size_of::<usize>()];
+        crate::io::entropy().read_exact(&mut bytes).expect("failed to generate random number");
+        N.store(usize::from_ne_bytes(bytes), SeqCst);
     }
 }
 

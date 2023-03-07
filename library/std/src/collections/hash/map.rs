@@ -13,9 +13,9 @@ use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
+use crate::io::{entropy, Read};
 use crate::iter::FusedIterator;
 use crate::ops::Index;
-use crate::sys;
 
 /// A [hash map] implemented with quadratic probing and SIMD lookup.
 ///
@@ -3122,7 +3122,17 @@ impl RandomState {
         // increment one of the seeds on every RandomState creation, giving
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<(u64, u64)> = {
-            Cell::new(sys::hashmap_random_keys())
+            if crate::sys::entropy::INSECURE_HASHMAP {
+                Cell::new((1, 2))
+            } else {
+                let mut v = [0u8; 16];
+                let mut entropy = entropy();
+                entropy.set_insecure(true);
+                entropy.read_exact(&mut v).expect("failed to generate random keys for hashmap");
+                let key1 = v[..8].try_into().unwrap();
+                let key2 = v[8..].try_into().unwrap();
+                Cell::new((u64::from_ne_bytes(key1), u64::from_ne_bytes(key2)))
+            }
         });
 
         KEYS.with(|keys| {

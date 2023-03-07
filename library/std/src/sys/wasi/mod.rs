@@ -15,13 +15,13 @@
 //! guaranteed to be a runtime error!
 
 use crate::io as std_io;
-use crate::mem;
 
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
+pub mod entropy;
 pub mod env;
 pub mod fd;
 pub mod fs;
@@ -88,16 +88,6 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut ret = (0u64, 0u64);
-    unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut u8;
-        let len = mem::size_of_val(&ret);
-        wasi::random_get(base, len).expect("random_get failure");
-    }
-    return ret;
 }
 
 fn err2io(err: wasi::Errno) -> std_io::Error {

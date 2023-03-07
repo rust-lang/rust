@@ -262,6 +262,8 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
+#[unstable(feature = "io_entropy", issue = "none")]
+pub use self::entropy::{entropy, Entropy};
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
 pub(crate) use self::stdio::attempt_print_to_stderr;
@@ -289,6 +291,7 @@ pub(crate) use error::const_io_error;
 mod buffered;
 pub(crate) mod copy;
 mod cursor;
+mod entropy;
 mod error;
 mod impls;
 pub mod prelude;
@@ -349,6 +352,13 @@ where
         g.len = g.buf.len();
         ret
     }
+}
+
+/// Implement the `read` method by forwarding to `read_buf`.
+// FIXME(joboet): remove once #106643 is merged.
+pub(crate) fn default_read<R: Read + ?Sized>(r: &mut R, buf: &mut [u8]) -> Result<usize> {
+    let mut buf = BorrowedBuf::from(buf);
+    r.read_buf(buf.unfilled()).map(|()| buf.len())
 }
 
 // This uses an adaptive system to extend the vector when it fills. We want to
