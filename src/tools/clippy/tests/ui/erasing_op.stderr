@@ -1,5 +1,5 @@
 error: this operation will always return zero. This is likely not the intended outcome
-  --> $DIR/erasing_op.rs:37:5
+  --> $DIR/erasing_op.rs:35:5
    |
 LL |     x * 0;
    |     ^^^^^
@@ -7,25 +7,25 @@ LL |     x * 0;
    = note: `-D clippy::erasing-op` implied by `-D warnings`
 
 error: this operation will always return zero. This is likely not the intended outcome
-  --> $DIR/erasing_op.rs:38:5
+  --> $DIR/erasing_op.rs:36:5
    |
 LL |     0 & x;
    |     ^^^^^
 
 error: this operation will always return zero. This is likely not the intended outcome
-  --> $DIR/erasing_op.rs:39:5
+  --> $DIR/erasing_op.rs:37:5
    |
 LL |     0 / x;
    |     ^^^^^
 
 error: this operation will always return zero. This is likely not the intended outcome
-  --> $DIR/erasing_op.rs:41:5
+  --> $DIR/erasing_op.rs:39:5
    |
 LL |     0 * Vec1 { x: 5 };
    |     ^^^^^^^^^^^^^^^^^
 
 error: this operation will always return zero. This is likely not the intended outcome
-  --> $DIR/erasing_op.rs:42:5
+  --> $DIR/erasing_op.rs:40:5
    |
 LL |     Vec1 { x: 5 } * 0;
    |     ^^^^^^^^^^^^^^^^^
