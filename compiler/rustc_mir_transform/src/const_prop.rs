@@ -891,7 +891,8 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
 
-        // Recurse into statement before applying the assignment.
+        // We want to evaluate operands before any change to the assigned-to value,
+        // so we recurse first.
         self.super_statement(statement, location);
 
         match statement.kind {

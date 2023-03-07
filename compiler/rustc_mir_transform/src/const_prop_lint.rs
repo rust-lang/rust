@@ -556,7 +556,8 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
 
-        // Recurse into statement before applying the assignment.
+        // We want to evaluate operands before any change to the assigned-to value,
+        // so we recurse first.
         self.super_statement(statement, location);
 
         match statement.kind {
