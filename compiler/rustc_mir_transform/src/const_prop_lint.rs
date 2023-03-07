@@ -405,12 +405,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn const_prop(
-        &mut self,
-        rvalue: &Rvalue<'tcx>,
-        source_info: SourceInfo,
-        place: Place<'tcx>,
-    ) -> Option<()> {
+    fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>, source_info: SourceInfo) -> Option<()> {
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -486,7 +481,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, place))
+        Some(())
+    }
+
+    fn ensure_not_propagated(&mut self, local: Local) {
+        if cfg!(debug_assertions) {
+            assert!(
+                self.get_const(local.into()).is_none()
+                    || self
+                        .layout_of(self.local_decls[local].ty)
+                        .map_or(true, |layout| layout.is_zst()),
+                "failed to remove values for `{local:?}`, value={:?}",
+                self.get_const(local.into()),
+            )
+        }
     }
 }
 
@@ -507,35 +515,21 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.eval_constant(constant, self.source_info.unwrap());
     }
 
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        trace!("visit_statement: {:?}", statement);
-        let source_info = statement.source_info;
-        self.source_info = Some(source_info);
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_assign(place, rvalue, location);
 
-        // Recurse into statement before applying the assignment.
-        self.super_statement(statement, location);
+        let source_info = self.source_info.unwrap();
+        let Some(()) = self.check_rvalue(rvalue, source_info) else { return };
 
-        match statement.kind {
-            StatementKind::Assign(box (place, ref rval)) => {
-                let can_const_prop = self.ecx.machine.can_const_prop[place.local];
-                if let Some(()) = self.const_prop(rval, source_info, place) {
-                    match can_const_prop {
-                        ConstPropMode::OnlyInsideOwnBlock => {
-                            trace!(
-                                "found local restricted to its block. \
-                                Will remove it from const-prop after block is finished. Local: {:?}",
-                                place.local
-                            );
-                        }
-                        ConstPropMode::NoPropagation => {
-                            trace!("can't propagate into {:?}", place);
-                            if place.local != RETURN_PLACE {
-                                Self::remove_const(&mut self.ecx, place.local);
-                            }
-                        }
-                        ConstPropMode::FullConstProp => {}
-                    }
-                } else {
+        match self.ecx.machine.can_const_prop[place.local] {
+            // Do nothing if the place is indirect.
+            _ if place.is_indirect() => {}
+            ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
+            ConstPropMode::OnlyInsideOwnBlock | ConstPropMode::FullConstProp => {
+                if self
+                    .use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, *place))
+                    .is_none()
+                {
                     // Const prop failed, so erase the destination, ensuring that whatever happens
                     // from here on, does not know about the previous value.
                     // This is important in case we have
@@ -554,8 +548,23 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     Self::remove_const(&mut self.ecx, place.local);
                 }
             }
+        }
+    }
+
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        trace!("visit_statement: {:?}", statement);
+        let source_info = statement.source_info;
+        self.source_info = Some(source_info);
+
+        // Recurse into statement before applying the assignment.
+        self.super_statement(statement, location);
+
+        match statement.kind {
             StatementKind::SetDiscriminant { ref place, .. } => {
                 match self.ecx.machine.can_const_prop[place.local] {
+                    // Do nothing if the place is indirect.
+                    _ if place.is_indirect() => {}
+                    ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
                     ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
                         if self.use_ecx(source_info, |this| this.ecx.statement(statement)).is_some()
                         {
@@ -563,9 +572,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         } else {
                             Self::remove_const(&mut self.ecx, place.local);
                         }
-                    }
-                    ConstPropMode::NoPropagation => {
-                        Self::remove_const(&mut self.ecx, place.local);
                     }
                 }
             }
@@ -682,19 +688,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(block, data);
 
-        let ensure_not_propagated = |this: &mut Self, local: Local| {
-            if cfg!(debug_assertions) {
-                assert!(
-                    this.get_const(local.into()).is_none()
-                        || this
-                            .layout_of(this.local_decls[local].ty)
-                            .map_or(true, |layout| layout.is_zst()),
-                    "failed to remove values for `{local:?}`, value={:?}",
-                    this.get_const(local.into()),
-                )
-            }
-        };
-
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
         // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
@@ -702,10 +695,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         for (local, &mode) in can_const_prop.iter_enumerated() {
             match mode {
                 ConstPropMode::FullConstProp => {}
-                ConstPropMode::NoPropagation => ensure_not_propagated(self, local),
+                ConstPropMode::NoPropagation => self.ensure_not_propagated(local),
                 ConstPropMode::OnlyInsideOwnBlock => {
                     Self::remove_const(&mut self.ecx, local);
-                    ensure_not_propagated(self, local);
+                    self.ensure_not_propagated(local);
                 }
             }
         }
