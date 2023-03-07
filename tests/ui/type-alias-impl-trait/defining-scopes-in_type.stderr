@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/defining-scopes-in_type.rs:5:12
+   |
+LL | type Foo = impl Send;
+   |            ^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

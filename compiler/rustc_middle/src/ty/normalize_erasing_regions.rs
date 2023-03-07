@@ -223,7 +223,7 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
         TryNormalizeAfterErasingRegionsFolder { tcx, param_env }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn try_normalize_generic_arg_after_erasing_regions(
         &self,
         arg: ty::GenericArg<'tcx>,

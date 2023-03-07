@@ -8,8 +8,13 @@ impl<T: Fn(i32)> SuperExpectation for T {}
 
 type Foo = impl SuperExpectation;
 
-fn main() {
+fn foo()
+where
+    Foo: SuperExpectation,
+{
     let _: Foo = |x| {
         let _ = x.to_string();
     };
 }
+
+fn main() {}

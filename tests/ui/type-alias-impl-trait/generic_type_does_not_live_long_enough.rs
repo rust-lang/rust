@@ -1,6 +1,9 @@
 #![feature(type_alias_impl_trait)]
 
-fn main() {
+fn foo()
+where
+    WrongGeneric<i32>: 'static,
+{
     let y = 42;
     let x = wrong_generic(&y);
     let z: i32 = x;
@@ -13,4 +16,8 @@ type WrongGeneric<T> = impl 'static;
 fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
     t
     //~^ ERROR the parameter type `T` may not live long enough
+}
+
+fn main() {
+    foo();
 }

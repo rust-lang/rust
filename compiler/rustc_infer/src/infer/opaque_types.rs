@@ -372,7 +372,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in its defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
@@ -385,9 +384,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
-            }
+            hir::OpaqueTyOrigin::TyAlias => may_define_opaque_type(self.tcx, parent_def_id, def_id),
         };
         in_definition_scope.then_some(origin)
     }
@@ -634,7 +631,13 @@ impl<'tcx> InferCtxt<'tcx> {
 /// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
+#[instrument(skip(tcx), level = "trace", ret)]
+fn may_define_opaque_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    opaque_def_id: LocalDefId,
+) -> bool {
+    let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id);
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.

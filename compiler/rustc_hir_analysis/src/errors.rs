@@ -176,6 +176,15 @@ pub struct UnconstrainedOpaqueType {
     pub what: &'static str,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_opaque_type_constrained_bug_not_in_sig)]
+pub struct OpaqueTypeConstrainedButNotInSig {
+    #[primary_span]
+    pub span: Span,
+    #[label(hir_analysis_item_label)]
+    pub item_span: Span,
+}
+
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,

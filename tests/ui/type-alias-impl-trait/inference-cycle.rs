@@ -15,8 +15,14 @@ mod m {
         is_send(foo()); // Today: error
     }
 
-    fn baz() {
+    fn baz() -> Foo {
         let f: Foo = 22_u32;
+        f
+    }
+
+    fn bak() {
+        let f: Foo = 22_u32;
+        //~^ ERROR constrained without being represented in the signature
     }
 
     fn is_send<T: Send>(_: T) {}

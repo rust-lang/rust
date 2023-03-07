@@ -1,0 +1,17 @@
+error[E0091]: type parameter `T` is unused
+  --> $DIR/defining-scopes-syntactic.rs:6:15
+   |
+LL | type DropType<T> = ();
+   |               ^ unused type parameter
+
+error: opaque type constrained without being represented in the signature
+  --> $DIR/defining-scopes-syntactic.rs:14:12
+   |
+LL | fn g() -> DropType<Foo> {
+   | ----------------------- this item must mention the opaque type in its signature or where bounds
+LL |     let _: Foo = 42;
+   |            ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0091`.

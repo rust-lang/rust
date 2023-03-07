@@ -4,6 +4,7 @@ use rustc_hir_typeck::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
+use rustc_infer::infer::DefiningAnchor;
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
@@ -33,7 +34,7 @@ pub(super) fn check_cast<'tcx>(
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner.def_id;
 
-    let inherited = Inherited::new(cx.tcx, local_def_id);
+    let inherited = Inherited::new(cx.tcx, local_def_id, DefiningAnchor::Bind);
     let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, local_def_id);
 
     // If we already have errors, we can't be sure we can pointer cast.

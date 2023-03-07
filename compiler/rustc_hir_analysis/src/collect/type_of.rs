@@ -1,3 +1,7 @@
+use std::ops::ControlFlow;
+
+use hir::def::DefKind;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -9,15 +13,15 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
-use crate::errors::UnconstrainedOpaqueType;
+use crate::errors::{OpaqueTypeConstrainedButNotInSig, UnconstrainedOpaqueType};
 
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
@@ -635,6 +639,12 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
+                if !may_define_opaque_type(self.tcx, item_def_id, self.def_id) {
+                    self.tcx.sess.emit_err(OpaqueTypeConstrainedButNotInSig {
+                        span: concrete_type.span,
+                        item_span: self.tcx.def_span(item_def_id),
+                    });
+                }
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
@@ -741,6 +751,117 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     }
 
     hidden.ty
+}
+
+#[instrument(skip(tcx), level = "trace", ret)]
+fn may_define_opaque_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    opaque_def_id: LocalDefId,
+) -> bool {
+    if tcx.is_descendant_of(opaque_def_id.to_def_id(), def_id.to_def_id()) {
+        // If the opaque type is defined in the body of a function, that function
+        // may constrain the opaque type since it can't mention it in bounds.
+        return true;
+    }
+
+    if tcx.is_closure(def_id.to_def_id()) {
+        return may_define_opaque_type(tcx, tcx.local_parent(def_id), opaque_def_id);
+    }
+
+    let param_env = tcx.param_env(def_id);
+
+    trace!(parent = ?tcx.parent(opaque_def_id.to_def_id()));
+    fn has_tait<'tcx>(
+        val: impl TypeVisitable<TyCtxt<'tcx>>,
+        opaque_def_id: LocalDefId,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        struct Visitor<'tcx> {
+            opaque_def_id: DefId,
+            tcx: TyCtxt<'tcx>,
+            seen: FxHashSet<Ty<'tcx>>,
+            param_env: ty::ParamEnv<'tcx>,
+        }
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'tcx> {
+            type BreakTy = ();
+
+            #[instrument(skip(self), level = "trace", ret)]
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                // Erase all lifetimes, they can't affect anything, but recursion
+                // may cause late bound regions to differ, because the type visitor
+                // can't erase them in `visit_binder`.
+                let t = t.fold_with(&mut ty::fold::BottomUpFolder {
+                    tcx: self.tcx,
+                    ct_op: |c| c,
+                    ty_op: |t| t,
+                    lt_op: |_| self.tcx.lifetimes.re_erased,
+                });
+                if !self.seen.insert(t) {
+                    return ControlFlow::Continue(());
+                }
+                match t.kind() {
+                    ty::Alias(ty::Opaque, alias) => {
+                        if alias.def_id == self.opaque_def_id {
+                            return ControlFlow::Break(());
+                        }
+                        for (pred, _span) in self
+                            .tcx
+                            .bound_explicit_item_bounds(alias.def_id)
+                            .subst_iter_copied(self.tcx, alias.substs)
+                        {
+                            pred.visit_with(self)?;
+                        }
+                    }
+                    ty::Alias(ty::Projection, _) => {
+                        if let Ok(proj) = self.tcx.try_normalize_erasing_regions(self.param_env, t)
+                        {
+                            proj.visit_with(self)?;
+                        }
+                    }
+                    // Types that have opaque type fields must get walked manually, they
+                    // would not be seen by the type visitor otherwise.
+                    ty::Adt(adt_def, substs) => {
+                        for variant in adt_def.variants() {
+                            for field in &variant.fields {
+                                field.ty(self.tcx, substs).visit_with(self)?;
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+        val.visit_with(&mut Visitor {
+            opaque_def_id: opaque_def_id.to_def_id(),
+            tcx,
+            seen: Default::default(),
+            param_env,
+        })
+        .is_break()
+    }
+    let tait_in_fn_sig = match tcx.def_kind(def_id) {
+        DefKind::AssocFn | DefKind::Fn => {
+            has_tait(tcx.fn_sig(def_id.to_def_id()).skip_binder(), opaque_def_id, tcx, param_env)
+        }
+        // Opaque types in types of contsts
+        DefKind::Static(_) | DefKind::Const | DefKind::AssocConst => {
+            has_tait(tcx.type_of(def_id.to_def_id()).skip_binder(), opaque_def_id, tcx, param_env)
+        }
+        // Nested opaque types
+        DefKind::OpaqueTy => has_tait(
+            tcx.bound_explicit_item_bounds(def_id.to_def_id()).skip_binder(),
+            opaque_def_id,
+            tcx,
+            param_env,
+        ),
+        _ => false,
+    };
+    trace!(?tait_in_fn_sig);
+    tait_in_fn_sig
+        || has_tait(tcx.predicates_of(def_id.to_def_id()).predicates, opaque_def_id, tcx, param_env)
 }
 
 fn find_opaque_ty_constraints_for_rpit(

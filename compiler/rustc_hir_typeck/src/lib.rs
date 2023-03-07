@@ -47,6 +47,7 @@ mod writeback;
 
 pub use fn_ctxt::FnCtxt;
 pub use inherited::Inherited;
+use rustc_infer::infer::DefiningAnchor;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
@@ -212,11 +213,21 @@ fn typeck_with_fallback<'tcx>(
     } else {
         param_env
     };
-    let inh = Inherited::new(tcx, def_id);
+    let fn_sig_infer = fn_sig.map_or(false, |fn_sig| {
+        rustc_hir_analysis::collect::get_infer_ret_ty(&fn_sig.decl.output).is_some()
+    });
+
+    let mk_defining_use_anchor = |def_id| {
+        // In case we are inferring the return signature (via `_` types), ignore defining use
+        // rules, as we'll error out anyway. This helps improve diagnostics, which otherwise
+        // may just see `ty::Error` instead of `ty::Alias(Opaque, _)` and not produce better errors.
+        if fn_sig_infer { DefiningAnchor::Bubble } else { DefiningAnchor::Bind(def_id) }
+    };
+    let inh = Inherited::new(tcx, def_id, mk_defining_use_anchor);
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
-        let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
+        let fn_sig = if fn_sig_infer {
             fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).subst_identity()

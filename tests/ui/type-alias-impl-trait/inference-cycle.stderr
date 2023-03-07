@@ -17,6 +17,14 @@ note: cycle used when checking item types in module `m`
 LL | mod m {
    | ^^^^^
 
-error: aborting due to previous error
+error: opaque type constrained without being represented in the signature
+  --> $DIR/inference-cycle.rs:24:22
+   |
+LL |     fn bak() {
+   |     -------- this item must mention the opaque type in its signature or where bounds
+LL |         let f: Foo = 22_u32;
+   |                      ^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

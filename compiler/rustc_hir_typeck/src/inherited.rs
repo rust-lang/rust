@@ -73,13 +73,17 @@ impl<'tcx> Deref for Inherited<'tcx> {
 }
 
 impl<'tcx> Inherited<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        mk_defining_use_anchor: impl FnOnce(LocalDefId) -> DefiningAnchor,
+    ) -> Self {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
         let infcx = tcx
             .infer_ctxt()
             .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
+            .with_opaque_type_inference(mk_defining_use_anchor(hir_owner.def_id))
             .build();
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 

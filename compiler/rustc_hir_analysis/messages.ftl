@@ -69,6 +69,9 @@ hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
 
+hir_analysis_opaque_type_constrained_bug_not_in_sig = opaque type constrained without being represented in the signature
+    .item_label = this item must mention the opaque type in its signature or where bounds
+
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
         [one] parameter
