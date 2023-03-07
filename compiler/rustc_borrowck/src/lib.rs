@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-#![allow(rustc::potential_query_instability)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
@@ -18,7 +17,7 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
@@ -404,7 +403,7 @@ fn do_mir_borrowck<'tcx>(
     // Note that this set is expected to be small - only upvars from closures
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
-    let temporary_used_locals: FxHashSet<Local> = mbcx
+    let temporary_used_locals: FxIndexSet<Local> = mbcx
         .used_mut
         .iter()
         .filter(|&local| !mbcx.body.local_decls[*local].is_user_variable())
@@ -491,7 +490,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {
     pub(crate) infcx: &'cx InferCtxt<'tcx>,
-    pub(crate) reg_var_to_origin: RefCell<FxHashMap<ty::RegionVid, RegionCtxt>>,
+    pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }
 
 impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
@@ -588,7 +587,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// borrow errors that is handled by the `reservation_error_reported` field as the inclusion
     /// of the `Span` type (while required to mute some errors) stops the muting of the reservation
     /// errors.
-    access_place_error_reported: FxHashSet<(Place<'tcx>, Span)>,
+    access_place_error_reported: FxIndexSet<(Place<'tcx>, Span)>,
     /// This field keeps track of when borrow conflict errors are reported
     /// for reservations, so that we don't report seemingly duplicate
     /// errors for corresponding activations.
@@ -596,17 +595,17 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     // FIXME: ideally this would be a set of `BorrowIndex`, not `Place`s,
     // but it is currently inconvenient to track down the `BorrowIndex`
     // at the time we detect and report a reservation error.
-    reservation_error_reported: FxHashSet<Place<'tcx>>,
+    reservation_error_reported: FxIndexSet<Place<'tcx>>,
     /// This fields keeps track of the `Span`s that we have
     /// used to report extra information for `FnSelfUse`, to avoid
     /// unnecessarily verbose errors.
-    fn_self_span_reported: FxHashSet<Span>,
+    fn_self_span_reported: FxIndexSet<Span>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    uninitialized_error_reported: FxHashSet<PlaceRef<'tcx>>,
+    uninitialized_error_reported: FxIndexSet<PlaceRef<'tcx>>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
-    used_mut: FxHashSet<Local>,
+    used_mut: FxIndexSet<Local>,
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[Field; 8]>,
@@ -628,7 +627,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Record the region names generated for each region in the given
     /// MIR def so that we can reuse them later in help/error messages.
-    region_names: RefCell<FxHashMap<RegionVid, RegionName>>,
+    region_names: RefCell<FxIndexMap<RegionVid, RegionName>>,
 
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
@@ -2329,7 +2328,7 @@ mod error {
         /// same primary span come out in a consistent order.
         buffered_move_errors:
             BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
-        buffered_mut_errors: FxHashMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
+        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
         /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck

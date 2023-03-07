@@ -19,7 +19,7 @@ use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,
-    /// e.g., `|x: FxHashMap<_, &'static u32>| ...`.
+    /// e.g., `|x: FxIndexMap<_, &'static u32>| ...`.
     #[instrument(skip(self, body), level = "debug")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();

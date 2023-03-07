@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -88,7 +88,7 @@ pub struct RegionInferenceContext<'tcx> {
     member_constraints_applied: Vec<AppliedMemberConstraint>,
 
     /// Map universe indexes to information on why we created it.
-    universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -263,7 +263,7 @@ fn sccs_info<'cx, 'tcx>(
     debug!(debug_str);
 
     let num_components = sccs.scc_data().ranges().len();
-    let mut components = vec![FxHashSet::default(); num_components];
+    let mut components = vec![FxIndexSet::default(); num_components];
 
     for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
         let reg_var = ty::RegionVid::from_usize(reg_var_idx);
@@ -295,9 +295,9 @@ fn sccs_info<'cx, 'tcx>(
 
             (ConstraintSccIndex::from_usize(scc_idx), repr)
         })
-        .collect::<FxHashMap<_, _>>();
+        .collect::<FxIndexMap<_, _>>();
 
-    let mut scc_node_to_edges = FxHashMap::default();
+    let mut scc_node_to_edges = FxIndexMap::default();
     for (scc_idx, repr) in components_representatives.iter() {
         let edges_range = sccs.scc_data().ranges()[*scc_idx].clone();
         let edges = &sccs.scc_data().all_successors()[edges_range];
@@ -325,7 +325,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
-        universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+        universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
@@ -522,6 +522,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// outlives `'a` and hence contains R0 and R1.
     fn init_free_and_bound_regions(&mut self) {
         // Update the names (if any)
+        // This iterator has unstable order but we collect it all into an IndexVec
         for (external_name, variable) in self.universal_regions.named_universal_regions() {
             debug!(
                 "init_universal_regions: region {:?} has external name {:?}",
@@ -918,7 +919,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Sometimes we register equivalent type-tests that would
         // result in basically the exact same error being reported to
         // the user. Avoid that.
-        let mut deduplicate_errors = FxHashSet::default();
+        let mut deduplicate_errors = FxIndexSet::default();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
@@ -1504,6 +1505,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // the outlives suggestions or the debug output from `#[rustc_regions]` would be
         // duplicated. The polonius subset errors are deduplicated here, while keeping the
         // CFG-location ordering.
+        // We can iterate the HashMap here because the result is sorted afterwards.
+        #[allow(rustc::potential_query_instability)]
         let mut subset_errors: Vec<_> = polonius_output
             .subset_errors
             .iter()

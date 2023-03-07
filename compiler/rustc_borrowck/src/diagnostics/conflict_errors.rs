@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_const_eval::util::CallKind;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
@@ -173,7 +173,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             let mut is_loop_move = false;
             let mut in_pattern = false;
-            let mut seen_spans = FxHashSet::default();
+            let mut seen_spans = FxIndexSet::default();
 
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
@@ -2223,8 +2223,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let mut visited = FxHashSet::default();
-        let mut move_locations = FxHashSet::default();
+        let mut visited = FxIndexSet::default();
+        let mut move_locations = FxIndexSet::default();
         let mut reinits = vec![];
         let mut result = vec![];
 
@@ -2351,7 +2351,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let reinits_reachable = reinits
             .into_iter()
             .filter(|reinit| {
-                let mut visited = FxHashSet::default();
+                let mut visited = FxIndexSet::default();
                 let mut stack = vec![*reinit];
                 while let Some(location) = stack.pop() {
                     if !visited.insert(location) {

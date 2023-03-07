@@ -1,6 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
 use rustc_middle::ty::RegionVid;
@@ -124,7 +124,7 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
 
     borrow_set: &'a BorrowSet<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 struct StackEntry {
@@ -138,7 +138,7 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
@@ -148,7 +148,7 @@ impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
             visit_stack: vec![],
             body,
             regioncx,
-            borrows_out_of_scope_at_location: FxHashMap::default(),
+            borrows_out_of_scope_at_location: FxIndexMap::default(),
         }
     }
 }

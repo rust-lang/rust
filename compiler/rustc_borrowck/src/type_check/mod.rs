@@ -9,7 +9,7 @@ use either::Either;
 
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -145,7 +145,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
-        universe_causes: FxHashMap::default(),
+        universe_causes: FxIndexMap::default(),
     };
 
     let CreateResult {
@@ -875,7 +875,7 @@ struct TypeChecker<'a, 'tcx> {
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
-    reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
+    reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
 }
 
@@ -925,7 +925,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 
     pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
-    pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
 }

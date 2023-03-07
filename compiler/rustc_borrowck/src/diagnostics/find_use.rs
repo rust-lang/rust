@@ -9,7 +9,7 @@ use crate::{
     nll::ToRegionVid,
     region_infer::{Cause, RegionInferenceContext},
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
@@ -37,7 +37,7 @@ struct UseFinder<'cx, 'tcx> {
 impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
-        let mut visited = FxHashSet::default();
+        let mut visited = FxIndexSet::default();
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {
