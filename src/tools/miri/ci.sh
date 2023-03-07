@@ -62,8 +62,8 @@ function run_tests {
   if [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
     # These act up on Windows (`which miri` produces a filename that does not exist?!?),
     # so let's do this only on Linux. Also makes sure things work without these set.
-    export RUSTC=$(which rustc)
-    export MIRI=$(which miri)
+    export RUSTC=$(which rustc) # Produces a warning unless we also set MIRI
+    export MIRI=$(rustc +miri --print sysroot)/bin/miri
   fi
   mkdir -p .cargo
   echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
