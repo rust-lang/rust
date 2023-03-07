@@ -9,7 +9,6 @@ use rustc_const_eval::interpret::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -179,17 +178,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
-        for (l, mode) in can_const_prop.iter_enumerated() {
-            if *mode == ConstPropMode::OnlyInsideOwnBlock {
-                only_propagate_inside_block_locals.insert(l);
-            }
-        }
         let mut ecx = InterpCx::new(
             tcx,
             tcx.def_span(def_id),
             param_env,
-            ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
+            ConstPropMachine::new(can_const_prop),
         );
 
         let ret_layout = ecx
@@ -687,26 +680,33 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(block, data);
 
+        let ensure_not_propagated = |this: &mut Self, local: Local| {
+            if cfg!(debug_assertions) {
+                assert!(
+                    this.get_const(local.into()).is_none()
+                        || this
+                            .layout_of(this.local_decls[local].ty)
+                            .map_or(true, |layout| layout.is_zst()),
+                    "failed to remove values for `{local:?}`, value={:?}",
+                    this.get_const(local.into()),
+                )
+            }
+        };
+
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
         // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
-        let mut locals = std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
-        for &local in locals.iter() {
-            Self::remove_const(&mut self.ecx, local);
-        }
-        locals.clear();
-        // Put it back so we reuse the heap of the storage
-        self.ecx.machine.written_only_inside_own_block_locals = locals;
-        if cfg!(debug_assertions) {
-            // Ensure we are correctly erasing locals with the non-debug-assert logic.
-            for local in self.ecx.machine.only_propagate_inside_block_locals.iter() {
-                assert!(
-                    self.get_const(local.into()).is_none()
-                        || self
-                            .layout_of(self.local_decls[local].ty)
-                            .map_or(true, |layout| layout.is_zst())
-                )
+        let can_const_prop = std::mem::take(&mut self.ecx.machine.can_const_prop);
+        for (local, &mode) in can_const_prop.iter_enumerated() {
+            match mode {
+                ConstPropMode::FullConstProp => {}
+                ConstPropMode::NoPropagation => ensure_not_propagated(self, local),
+                ConstPropMode::OnlyInsideOwnBlock => {
+                    Self::remove_const(&mut self.ecx, local);
+                    ensure_not_propagated(self, local);
+                }
             }
         }
+        self.ecx.machine.can_const_prop = can_const_prop;
     }
 }
