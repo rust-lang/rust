@@ -1193,13 +1193,16 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                if self.mode == MonoItemCollectionMode::Eager
-                    && self.tcx.generics_of(id.owner_id).count() == 0
-                {
-                    debug!("RootCollector: ADT drop-glue for `{id:?}`",);
+                if self.tcx.generics_of(id.owner_id).count() == 0 {
+                    let def_id = id.owner_id.to_def_id();
+                    let force_share_drop_glue =
+                        self.tcx.sess.opts.share_generics() && def_id.is_local();
+                    if self.mode == MonoItemCollectionMode::Eager || force_share_drop_glue {
+                        debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
-                    let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
-                    visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                        let ty = self.tcx.type_of(def_id).no_bound_vars().unwrap();
+                        visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                    }
                 }
             }
             DefKind::GlobalAsm => {
