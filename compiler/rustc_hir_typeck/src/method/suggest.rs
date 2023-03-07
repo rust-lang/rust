@@ -348,6 +348,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.downgrade_to_delayed_bug();
         }
 
+        if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
+            err.help(&format!(
+                "method `poll` found on `Pin<&mut {ty_str}>`, \
+                see documentation for `std::pin::Pin`"
+            ));
+            err.help("self type must be pinned to call `Future::poll`, \
+                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+            );
+        }
+
         if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
             self.suggest_await_before_method(
                 &mut err, item_name, rcvr_ty, cal, span, expected.only_has_type(self),

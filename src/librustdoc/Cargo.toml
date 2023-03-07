@@ -8,7 +8,7 @@ path = "lib.rs"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-askama = { version = "0.11", default-features = false, features = ["config"] }
+askama = { version = "0.12", default-features = false, features = ["config"] }
 itertools = "0.10.1"
 minifier = "0.2.2"
 once_cell = "1.10.0"

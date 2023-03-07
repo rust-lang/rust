@@ -1,148 +1,148 @@
-<!DOCTYPE html> {#- -#}
-<html lang="en"> {#- -#}
-<head> {#- -#}
-    <meta charset="utf-8"> {#- -#}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {#- -#}
-    <meta name="generator" content="rustdoc"> {#- -#}
-    <meta name="description" content="{{page.description}}"> {#- -#}
-    <title>{{page.title}}</title> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_regular}}"> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_regular}}"> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_medium}}"> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_regular}}"> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_bold}}"> {#- -#}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_semibold}}"> {#- -#}
-    <link rel="stylesheet" {# -#}
-          href="{{static_root_path|safe}}{{files.normalize_css}}"> {#- -#}
-    <link rel="stylesheet" {# -#}
-          href="{{static_root_path|safe}}{{files.rustdoc_css}}" {# -#}
-          id="mainThemeStyle"> {#- -#}
-    <link rel="stylesheet" id="themeStyle" href="{{static_root_path|safe}}{{files.theme_light_css}}"> {#- -#}
-    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_dark_css}}"> {#- -#}
-    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_ayu_css}}"> {#- -#}
-    {%- for theme in themes -%}
-        <link rel="stylesheet" disabled href="{{page.root_path|safe}}{{theme}}{{page.resource_suffix}}.css"> {#- -#}
-    {%- endfor -%}
-    {%- if !layout.default_settings.is_empty() -%}
-    <script id="default-settings" {# -#}
-      {% for (k, v) in layout.default_settings %}
+<!DOCTYPE html> {# #}
+<html lang="en"> {# #}
+<head> {# #}
+    <meta charset="utf-8"> {# #}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {# #}
+    <meta name="generator" content="rustdoc"> {# #}
+    <meta name="description" content="{{page.description}}"> {# #}
+    <title>{{page.title}}</title> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_regular}}"> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_regular}}"> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_medium}}"> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_regular}}"> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_bold}}"> {# #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_semibold}}"> {# #}
+    <link rel="stylesheet" {#+ #}
+          href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
+    <link rel="stylesheet" {#+ #}
+          href="{{static_root_path|safe}}{{files.rustdoc_css}}" {#+ #}
+          id="mainThemeStyle"> {# #}
+    <link rel="stylesheet" id="themeStyle" href="{{static_root_path|safe}}{{files.theme_light_css}}"> {# #}
+    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_dark_css}}"> {# #}
+    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_ayu_css}}"> {# #}
+    {% for theme in themes %}
+        <link rel="stylesheet" disabled href="{{page.root_path|safe}}{{theme}}{{page.resource_suffix}}.css"> {# #}
+    {% endfor %}
+    {% if !layout.default_settings.is_empty() %}
+    <script id="default-settings" {#+ #}
+      {%~ for (k, v) in layout.default_settings ~%}
         data-{{k}}="{{v}}"
-      {%- endfor -%}
-    ></script> {#- -#}
-    {%- endif -%}
-    <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {#- -#}
-    {%- if page.css_class.contains("crate") -%}
-    <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- else if page.css_class == "source" -%}
-    <script defer src="{{static_root_path|safe}}{{files.source_script_js}}"></script> {#- -#}
-    <script defer src="{{page.root_path|safe}}source-files{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- else if !page.css_class.contains("mod") -%}
-    <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- endif -%}
-    <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script> {#- -#}
-    {%- if layout.scrape_examples_extension -%}
-    <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {#- -#}
-    {%- endif -%}
-    <noscript> {#- -#}
-        <link rel="stylesheet" {# -#}
-           href="{{static_root_path|safe}}{{files.noscript_css}}"> {#- -#}
-    </noscript> {#- -#}
-    {%- if layout.css_file_extension.is_some() -%}
-        <link rel="stylesheet" {# -#}
-            href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {#- -#}
-    {%- endif -%}
-    {%- if !layout.favicon.is_empty() -%}
-        <link rel="icon" href="{{layout.favicon}}"> {#- -#}
-    {%- else -%}
-        <link rel="alternate icon" type="image/png" {# -#}
-            href="{{static_root_path|safe}}{{files.rust_favicon_png_16}}"> {#- -#}
-        <link rel="alternate icon" type="image/png" {# -#}
-            href="{{static_root_path|safe}}{{files.rust_favicon_png_32}}"> {#- -#}
-        <link rel="icon" type="image/svg+xml" {# -#}
-            href="{{static_root_path|safe}}{{files.rust_favicon_svg}}"> {#- -#}
-    {%- endif -%}
-    {{- layout.external_html.in_header|safe -}}
-</head> {#- -#}
-<body class="rustdoc {{page.css_class}}"> {#- -#}
-    <!--[if lte IE 11]> {#- -#}
-    <div class="warning"> {#- -#}
-        This old browser is unsupported and will most likely display funky things. {#- -#}
-    </div> {#- -#}
-    <![endif]--> {#- -#}
-    {{- layout.external_html.before_content|safe -}}
-    {%- if page.css_class != "source" -%}
-    <nav class="mobile-topbar"> {#- -#}
-        <button class="sidebar-menu-toggle">&#9776;</button> {#- -#}
-        <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
-        {%- if !layout.logo.is_empty() -%}
-            <img src="{{layout.logo}}" alt="logo"> {#- -#}
-        {%- else -%}
-            <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {#- -#}
-        {%- endif -%}
-        </a> {#- -#}
-        <h2></h2> {#- -#}
-    </nav> {#- -#}
-    {%- endif -%}
-    <nav class="sidebar"> {#- -#}
-        {%- if page.css_class != "source" -%}
-        <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
-            {%- if !layout.logo.is_empty()  %}
-                <img src="{{layout.logo}}" alt="logo"> {#- -#}
-            {%- else -%}
-                <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {#- -#}
-            {%- endif -%}
-        </a> {#- -#}
-        {%- endif -%}
-        {{- sidebar|safe -}}
-    </nav> {#- -#}
-    <main> {#- -#}
-        {%- if page.css_class != "source" -%}<div class="width-limiter">{%- endif -%}
-            <nav class="sub"> {#- -#}
-                {%- if page.css_class == "source" -%}
-                <a class="sub-logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
-                    {%- if !layout.logo.is_empty()  %}
-                        <img src="{{layout.logo}}" alt="logo"> {#- -#}
-                    {%- else -%}
-                        <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {#- -#}
-                    {%- endif -%}
-                </a> {#- -#}
-                {%- endif -%}
-                <form class="search-form"> {#- -#}
-                    <span></span> {#- This empty span is a hacky fix for Safari - See #93184 -#}
-                    <input {# -#}
-                        class="search-input" {# -#}
-                        name="search" {# -#}
-                        aria-label="Run search in the documentation" {# -#}
-                        autocomplete="off" {# -#}
-                        spellcheck="false" {# -#}
-                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
-                        type="search"> {#- -#}
-                    <div id="help-button" title="help" tabindex="-1"> {#- -#}
-                        <a href="{{page.root_path|safe}}help.html">?</a> {#- -#}
-                    </div> {#- -#}
-                    <div id="settings-menu" tabindex="-1"> {#- -#}
-                        <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
-                            <img width="22" height="22" alt="Change settings" {# -#}
-                            src="{{static_root_path|safe}}{{files.wheel_svg}}"> {#- -#}
-                        </a> {#- -#}
-                    </div> {#- -#}
-                </form> {#- -#}
-            </nav> {#- -#}
-            <section id="main-content" class="content">{{- content|safe -}}</section> {#- -#}
-        {%- if page.css_class != "source" -%}</div>{%- endif -%}
-    </main> {#- -#}
-    {{- layout.external_html.after_content|safe -}}
-    <div id="rustdoc-vars" {# -#}
-         data-root-path="{{page.root_path|safe}}" {# -#}
-         data-static-root-path="{{static_root_path|safe}}" {# -#}
-         data-current-crate="{{layout.krate}}" {# -#}
-         data-themes="{{themes|join(",") }}" {# -#}
-         data-resource-suffix="{{page.resource_suffix}}" {# -#}
-         data-rustdoc-version="{{rustdoc_version}}" {# -#}
-         data-search-js="{{files.search_js}}" {# -#}
-         data-settings-js="{{files.settings_js}}" {# -#}
-         data-settings-css="{{files.settings_css}}" {# -#}
-    > {#- -#}
-    </div> {#- -#}
-</body> {#- -#}
-</html> {#- -#}
+      {% endfor %}
+    ></script> {# #}
+    {% endif %}
+    <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
+    {% if page.css_class.contains("crate") %}
+    <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
+    {% else if page.css_class == "source" %}
+    <script defer src="{{static_root_path|safe}}{{files.source_script_js}}"></script> {# #}
+    <script defer src="{{page.root_path|safe}}source-files{{page.resource_suffix}}.js"></script> {# #}
+    {% else if !page.css_class.contains("mod") %}
+    <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {# #}
+    {% endif %}
+    <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script> {# #}
+    {% if layout.scrape_examples_extension %}
+    <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {# #}
+    {% endif %}
+    <noscript> {# #}
+        <link rel="stylesheet" {#+ #}
+           href="{{static_root_path|safe}}{{files.noscript_css}}"> {# #}
+    </noscript> {# #}
+    {% if layout.css_file_extension.is_some() %}
+        <link rel="stylesheet" {#+ #}
+            href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {# #}
+    {% endif %}
+    {% if !layout.favicon.is_empty() %}
+        <link rel="icon" href="{{layout.favicon}}"> {# #}
+    {% else %}
+        <link rel="alternate icon" type="image/png" {#+ #}
+            href="{{static_root_path|safe}}{{files.rust_favicon_png_16}}"> {# #}
+        <link rel="alternate icon" type="image/png" {#+ #}
+            href="{{static_root_path|safe}}{{files.rust_favicon_png_32}}"> {# #}
+        <link rel="icon" type="image/svg+xml" {#+ #}
+            href="{{static_root_path|safe}}{{files.rust_favicon_svg}}"> {# #}
+    {% endif %}
+    {{ layout.external_html.in_header|safe }}
+</head> {# #}
+<body class="rustdoc {{+page.css_class}}"> {# #}
+    <!--[if lte IE 11]> {# #}
+    <div class="warning"> {# #}
+        This old browser is unsupported and will most likely display funky things. {# #}
+    </div> {# #}
+    <![endif]--> {# #}
+    {{ layout.external_html.before_content|safe }}
+    {% if page.css_class != "source" %}
+    <nav class="mobile-topbar"> {# #}
+        <button class="sidebar-menu-toggle">&#9776;</button> {# #}
+        <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
+        {% if !layout.logo.is_empty() %}
+            <img src="{{layout.logo}}" alt="logo"> {# #}
+        {% else %}
+            <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
+        {% endif %}
+        </a> {# #}
+        <h2></h2> {# #}
+    </nav> {# #}
+    {% endif %}
+    <nav class="sidebar"> {# #}
+        {% if page.css_class != "source" %}
+        <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
+            {% if !layout.logo.is_empty() %}
+                <img src="{{layout.logo}}" alt="logo"> {# #}
+            {% else %}
+                <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
+            {% endif %}
+        </a> {# #}
+        {% endif %}
+        {{ sidebar|safe }}
+    </nav> {# #}
+    <main> {# #}
+        {% if page.css_class != "source" %}<div class="width-limiter">{% endif %}
+            <nav class="sub"> {# #}
+                {% if page.css_class == "source" %}
+                <a class="sub-logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
+                    {% if !layout.logo.is_empty() %}
+                        <img src="{{layout.logo}}" alt="logo"> {# #}
+                    {% else %}
+                        <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
+                    {% endif %}
+                </a> {# #}
+                {% endif %}
+                <form class="search-form"> {# #}
+                    <span></span> {# This empty span is a hacky fix for Safari - See #93184 #}
+                    <input {#+ #}
+                        class="search-input" {#+ #}
+                        name="search" {#+ #}
+                        aria-label="Run search in the documentation" {#+ #}
+                        autocomplete="off" {#+ #}
+                        spellcheck="false" {#+ #}
+                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {#+ #}
+                        type="search"> {# #}
+                    <div id="help-button" title="help" tabindex="-1"> {# #}
+                        <a href="{{page.root_path|safe}}help.html">?</a> {# #}
+                    </div> {# #}
+                    <div id="settings-menu" tabindex="-1"> {# #}
+                        <a href="{{page.root_path|safe}}settings.html" title="settings"> {# #}
+                            <img width="22" height="22" alt="Change settings" {#+ #}
+                            src="{{static_root_path|safe}}{{files.wheel_svg}}"> {# #}
+                        </a> {# #}
+                    </div> {# #}
+                </form> {# #}
+            </nav> {# #}
+            <section id="main-content" class="content">{{ content|safe }}</section> {# #}
+        {% if page.css_class != "source" %}</div>{% endif %}
+    </main> {# #}
+    {{ layout.external_html.after_content|safe }}
+    <div id="rustdoc-vars" {#+ #}
+         data-root-path="{{page.root_path|safe}}" {#+ #}
+         data-static-root-path="{{static_root_path|safe}}" {#+ #}
+         data-current-crate="{{layout.krate}}" {#+ #}
+         data-themes="{{themes|join(",") }}" {#+ #}
+         data-resource-suffix="{{page.resource_suffix}}" {#+ #}
+         data-rustdoc-version="{{rustdoc_version}}" {#+ #}
+         data-search-js="{{files.search_js}}" {#+ #}
+         data-settings-js="{{files.settings_js}}" {#+ #}
+         data-settings-css="{{files.settings_css}}" {#+ #}
+    > {# #}
+    </div> {# #}
+</body> {# #}
+</html> {# #}
