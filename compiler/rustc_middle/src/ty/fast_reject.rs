@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -188,6 +188,15 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
+    pub fn substs_refs_may_unify<'tcx>(
+        self,
+        obligation_substs: SubstsRef<'tcx>,
+        impl_substs: SubstsRef<'tcx>,
+    ) -> bool {
+        iter::zip(obligation_substs, impl_substs)
+            .all(|(obl, imp)| self.generic_args_may_unify(obl, imp))
+    }
+
     pub fn generic_args_may_unify<'tcx>(
         self,
         obligation_arg: ty::GenericArg<'tcx>,
@@ -258,9 +267,7 @@ impl DeepRejectCtxt {
             },
             ty::Adt(obl_def, obl_substs) => match k {
                 &ty::Adt(impl_def, impl_substs) => {
-                    obl_def == impl_def
-                        && iter::zip(obl_substs, impl_substs)
-                            .all(|(obl, imp)| self.generic_args_may_unify(obl, imp))
+                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
                 }
                 _ => false,
             },
