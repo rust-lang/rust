@@ -157,6 +157,7 @@ fn object_safety_violations_for_trait(
                 .in_definition_order()
                 .filter(|item| item.kind == ty::AssocKind::Type)
                 .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
                 .map(|item| {
                     let ident = item.ident(tcx);
                     ObjectSafetyViolation::GAT(ident.name, ident.span)
