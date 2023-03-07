@@ -1,23 +1,27 @@
 //! MIR definitions and implementation
 
-use std::iter;
+use std::{fmt::Display, iter};
 
 use crate::{
     infer::PointerCast, Const, ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty,
 };
 use chalk_ir::Mutability;
 use hir_def::{
-    expr::{Expr, Ordering},
+    expr::{BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, UnionId, VariantId,
 };
-use la_arena::{Arena, Idx, RawIdx};
+use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
 mod eval;
 mod lower;
+mod borrowck;
+mod pretty;
 
+pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError};
 pub use lower::{lower_to_mir, mir_body_query, mir_body_recover, MirLowerError};
 use smallvec::{smallvec, SmallVec};
+use stdx::impl_from;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -30,13 +34,7 @@ fn return_slot() -> LocalId {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Local {
-    pub mutability: Mutability,
-    //pub local_info: Option<Box<LocalInfo>>,
-    //pub internal: bool,
-    //pub is_block_tail: Option<BlockTailInfo>,
     pub ty: Ty,
-    //pub user_ty: Option<Box<UserTypeProjections>>,
-    //pub source_info: SourceInfo,
 }
 
 /// An operand in MIR represents a "value" in Rust, the definition of which is undecided and part of
@@ -84,6 +82,10 @@ impl Operand {
 
     fn from_bytes(data: Vec<u8>, ty: Ty) -> Self {
         Operand::from_concrete_const(data, MemoryMap::default(), ty)
+    }
+
+    fn const_zst(ty: Ty) -> Operand {
+        Self::from_bytes(vec![], ty)
     }
 }
 
@@ -179,6 +181,11 @@ impl SwitchTargets {
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
     pub fn iter(&self) -> impl Iterator<Item = (u128, BasicBlockId)> + '_ {
         iter::zip(&self.values, &self.targets).map(|(x, y)| (*x, *y))
+    }
+
+    /// Returns a slice with all possible jump targets (including the fallback target).
+    pub fn all_targets(&self) -> &[BasicBlockId] {
+        &self.targets
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
@@ -557,6 +564,30 @@ pub enum BinOp {
     Offset,
 }
 
+impl Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+            BinOp::Mul => "*",
+            BinOp::Div => "/",
+            BinOp::Rem => "%",
+            BinOp::BitXor => "^",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::Shl => "<<",
+            BinOp::Shr => ">>",
+            BinOp::Eq => "==",
+            BinOp::Lt => "<",
+            BinOp::Le => "<=",
+            BinOp::Ne => "!=",
+            BinOp::Ge => ">=",
+            BinOp::Gt => ">",
+            BinOp::Offset => "`offset`",
+        })
+    }
+}
+
 impl From<hir_def::expr::ArithOp> for BinOp {
     fn from(value: hir_def::expr::ArithOp) -> Self {
         match value {
@@ -758,7 +789,7 @@ pub enum Rvalue {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Statement {
+pub enum StatementKind {
     Assign(Place, Rvalue),
     //FakeRead(Box<(FakeReadCause, Place)>),
     //SetDiscriminant {
@@ -772,6 +803,17 @@ pub enum Statement {
     //AscribeUserType(Place, UserTypeProjection, Variance),
     //Intrinsic(Box<NonDivergingIntrinsic>),
     Nop,
+}
+impl StatementKind {
+    fn with_span(self, span: MirSpan) -> Statement {
+        Statement { kind: self, span }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Statement {
+    pub kind: StatementKind,
+    pub span: MirSpan,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -803,10 +845,19 @@ pub struct MirBody {
     pub start_block: BasicBlockId,
     pub owner: DefWithBodyId,
     pub arg_count: usize,
+    pub binding_locals: ArenaMap<BindingId, LocalId>,
+    pub param_locals: Vec<LocalId>,
 }
-
-impl MirBody {}
 
 fn const_as_usize(c: &Const) -> usize {
     try_const_usize(c).unwrap() as usize
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum MirSpan {
+    ExprId(ExprId),
+    PatId(PatId),
+    Unknown,
+}
+
+impl_from!(ExprId, PatId for MirSpan);

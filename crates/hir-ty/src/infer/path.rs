@@ -50,7 +50,7 @@ impl<'a> InferenceContext<'a> {
         };
 
         let typable: ValueTyDefId = match value {
-            ValueNs::LocalBinding(pat) => match self.result.type_of_pat.get(pat) {
+            ValueNs::LocalBinding(pat) => match self.result.type_of_binding.get(pat) {
                 Some(ty) => return Some(ty.clone()),
                 None => {
                     never!("uninferred pattern?");

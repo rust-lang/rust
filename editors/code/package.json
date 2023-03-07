@@ -115,6 +115,11 @@
                 "category": "rust-analyzer (debug command)"
             },
             {
+                "command": "rust-analyzer.viewMir",
+                "title": "View Mir",
+                "category": "rust-analyzer (debug command)"
+            },
+            {
                 "command": "rust-analyzer.viewFileText",
                 "title": "View File Text (as seen by the server)",
                 "category": "rust-analyzer (debug command)"

@@ -22,7 +22,7 @@ use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
-    expr::{BindingAnnotation, ExprId, ExprOrPatId, PatId},
+    expr::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
     path::Path,
@@ -291,8 +291,10 @@ pub enum Adjust {
 /// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
+///
+/// Mutability is `None` when we are not sure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OverloadedDeref(pub Mutability);
+pub struct OverloadedDeref(pub Option<Mutability>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AutoBorrow {
@@ -352,7 +354,10 @@ pub struct InferenceResult {
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
+    pub type_of_binding: ArenaMap<BindingId, Ty>,
     pub type_of_rpit: ArenaMap<RpitId, Ty>,
+    /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
+    pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
@@ -411,6 +416,14 @@ impl Index<PatId> for InferenceResult {
 
     fn index(&self, pat: PatId) -> &Ty {
         self.type_of_pat.get(pat).unwrap_or(&self.standard_types.unknown)
+    }
+}
+
+impl Index<BindingId> for InferenceResult {
+    type Output = Ty;
+
+    fn index(&self, b: BindingId) -> &Ty {
+        self.type_of_binding.get(b).unwrap_or(&self.standard_types.unknown)
     }
 }
 
@@ -534,7 +547,13 @@ impl<'a> InferenceContext<'a> {
         for ty in result.type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for ty in result.type_of_rpit.iter_mut().map(|x| x.1) {
+        for ty in result.type_of_binding.values_mut() {
+            *ty = table.resolve_completely(ty.clone());
+        }
+        for ty in result.type_of_rpit.values_mut() {
+            *ty = table.resolve_completely(ty.clone());
+        }
+        for ty in result.type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
         for mismatch in result.type_mismatches.values_mut() {
@@ -702,6 +721,10 @@ impl<'a> InferenceContext<'a> {
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
         self.result.type_of_pat.insert(pat, ty);
+    }
+
+    fn write_binding_ty(&mut self, id: BindingId, ty: Ty) {
+        self.result.type_of_binding.insert(id, ty);
     }
 
     fn push_diagnostic(&mut self, diagnostic: InferenceDiagnostic) {

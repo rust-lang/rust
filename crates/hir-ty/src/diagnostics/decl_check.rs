@@ -235,8 +235,8 @@ impl<'a> DeclValidator<'a> {
         let pats_replacements = body
             .pats
             .iter()
-            .filter_map(|(id, pat)| match pat {
-                Pat::Bind { name, .. } => Some((id, name)),
+            .filter_map(|(pat_id, pat)| match pat {
+                Pat::Bind { id, .. } => Some((pat_id, &body.bindings[*id].name)),
                 _ => None,
             })
             .filter_map(|(id, bind_name)| {

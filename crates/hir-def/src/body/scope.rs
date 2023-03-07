@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     body::Body,
     db::DefDatabase,
-    expr::{Expr, ExprId, LabelId, Pat, PatId, Statement},
+    expr::{Binding, BindingId, Expr, ExprId, LabelId, Pat, PatId, Statement},
     BlockId, DefWithBodyId,
 };
 
@@ -23,7 +23,7 @@ pub struct ExprScopes {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeEntry {
     name: Name,
-    pat: PatId,
+    binding: BindingId,
 }
 
 impl ScopeEntry {
@@ -31,8 +31,8 @@ impl ScopeEntry {
         &self.name
     }
 
-    pub fn pat(&self) -> PatId {
-        self.pat
+    pub fn binding(&self) -> BindingId {
+        self.binding
     }
 }
 
@@ -126,18 +126,23 @@ impl ExprScopes {
         })
     }
 
-    fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
+    fn add_bindings(&mut self, body: &Body, scope: ScopeId, binding: BindingId) {
+        let Binding { name, .. } = &body.bindings[binding];
+        let entry = ScopeEntry { name: name.clone(), binding };
+        self.scopes[scope].entries.push(entry);
+    }
+
+    fn add_pat_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         let pattern = &body[pat];
-        if let Pat::Bind { name, .. } = pattern {
-            let entry = ScopeEntry { name: name.clone(), pat };
-            self.scopes[scope].entries.push(entry);
+        if let Pat::Bind { id, .. } = pattern {
+            self.add_bindings(body, scope, *id);
         }
 
-        pattern.walk_child_pats(|pat| self.add_bindings(body, scope, pat));
+        pattern.walk_child_pats(|pat| self.add_pat_bindings(body, scope, pat));
     }
 
     fn add_params_bindings(&mut self, body: &Body, scope: ScopeId, params: &[PatId]) {
-        params.iter().for_each(|pat| self.add_bindings(body, scope, *pat));
+        params.iter().for_each(|pat| self.add_pat_bindings(body, scope, *pat));
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
@@ -170,7 +175,7 @@ fn compute_block_scopes(
                 }
 
                 *scope = scopes.new_scope(*scope);
-                scopes.add_bindings(body, *scope, *pat);
+                scopes.add_pat_bindings(body, *scope, *pat);
             }
             Statement::Expr { expr, .. } => {
                 compute_expr_scopes(*expr, body, scopes, scope);
@@ -208,7 +213,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         Expr::For { iterable, pat, body: body_expr, label } => {
             compute_expr_scopes(*iterable, body, scopes, scope);
             let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
-            scopes.add_bindings(body, scope, *pat);
+            scopes.add_pat_bindings(body, scope, *pat);
             compute_expr_scopes(*body_expr, body, scopes, &mut scope);
         }
         Expr::While { condition, body: body_expr, label } => {
@@ -229,7 +234,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             compute_expr_scopes(*expr, body, scopes, scope);
             for arm in arms.iter() {
                 let mut scope = scopes.new_scope(*scope);
-                scopes.add_bindings(body, scope, arm.pat);
+                scopes.add_pat_bindings(body, scope, arm.pat);
                 if let Some(guard) = arm.guard {
                     scope = scopes.new_scope(scope);
                     compute_expr_scopes(guard, body, scopes, &mut scope);
@@ -248,7 +253,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         &Expr::Let { pat, expr } => {
             compute_expr_scopes(expr, body, scopes, scope);
             *scope = scopes.new_scope(*scope);
-            scopes.add_bindings(body, *scope, pat);
+            scopes.add_pat_bindings(body, *scope, pat);
         }
         e => e.walk_child_exprs(|e| compute_expr_scopes(e, body, scopes, scope)),
     };
@@ -450,7 +455,7 @@ fn foo() {
         let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
-        let (_body, source_map) = db.body_with_source_map(function.into());
+        let (body, source_map) = db.body_with_source_map(function.into());
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
@@ -460,7 +465,9 @@ fn foo() {
         };
 
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
-        let pat_src = source_map.pat_syntax(resolved.pat()).unwrap();
+        let pat_src = source_map
+            .pat_syntax(*body.bindings[resolved.binding()].definitions.first().unwrap())
+            .unwrap();
 
         let local_name = pat_src.value.either(
             |it| it.syntax_node_ptr().to_node(file.syntax()),

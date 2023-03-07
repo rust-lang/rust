@@ -5,7 +5,7 @@ use std::fmt;
 use either::Either;
 use hir::{
     symbols::FileSymbol, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
-    InFile, ModuleSource, Semantics,
+    InFile, LocalSource, ModuleSource, Semantics,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -387,9 +387,11 @@ impl TryToNav for hir::GenericParam {
     }
 }
 
-impl ToNav for hir::Local {
+impl ToNav for LocalSource {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        let InFile { file_id, value } = self.source(db);
+        let InFile { file_id, value } = &self.source;
+        let file_id = *file_id;
+        let local = self.local;
         let (node, name) = match &value {
             Either::Left(bind_pat) => (bind_pat.syntax(), bind_pat.name()),
             Either::Right(it) => (it.syntax(), it.name()),
@@ -398,10 +400,10 @@ impl ToNav for hir::Local {
         let FileRange { file_id, range: full_range } =
             InFile::new(file_id, node).original_file_range(db);
 
-        let name = self.name(db).to_smol_str();
-        let kind = if self.is_self(db) {
+        let name = local.name(db).to_smol_str();
+        let kind = if local.is_self(db) {
             SymbolKind::SelfParam
-        } else if self.is_param(db) {
+        } else if local.is_param(db) {
             SymbolKind::ValueParam
         } else {
             SymbolKind::Local
@@ -416,6 +418,12 @@ impl ToNav for hir::Local {
             description: None,
             docs: None,
         }
+    }
+}
+
+impl ToNav for hir::Local {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        self.primary_source(db).to_nav(db)
     }
 }
 

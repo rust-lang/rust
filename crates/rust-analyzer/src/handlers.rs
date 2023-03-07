@@ -134,6 +134,16 @@ pub(crate) fn handle_view_hir(
     Ok(res)
 }
 
+pub(crate) fn handle_view_mir(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::TextDocumentPositionParams,
+) -> Result<String> {
+    let _p = profile::span("handle_view_mir");
+    let position = from_proto::file_position(&snap, params)?;
+    let res = snap.analysis.view_mir(position)?;
+    Ok(res)
+}
+
 pub(crate) fn handle_view_file_text(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentIdentifier,

@@ -18,7 +18,7 @@ use crate::{
     chalk_db,
     consteval::ConstEvalError,
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
-    mir::{MirBody, MirLowerError},
+    mir::{BorrowckResult, MirBody, MirLowerError},
     Binders, CallableDefId, Const, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner,
     PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, Substitution, TraitRef, Ty, TyDefId,
     ValueTyDefId,
@@ -37,6 +37,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(crate::mir::mir_body_recover)]
     fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
+
+    #[salsa::invoke(crate::mir::borrowck_query)]
+    fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<BorrowckResult>, MirLowerError>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]

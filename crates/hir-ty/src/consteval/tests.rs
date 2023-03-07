@@ -103,6 +103,22 @@ fn references() {
     "#,
         5,
     );
+    check_number(
+        r#"
+    struct Foo(i32);
+    impl Foo {
+        fn method(&mut self, x: i32) {
+            self.0 = 2 * self.0 + x;
+        }
+    }
+    const GOAL: i32 = {
+        let mut x = Foo(3);
+        x.method(5);
+        x.0
+    };
+    "#,
+        11,
+    );
 }
 
 #[test]
@@ -129,6 +145,60 @@ fn reference_autoderef() {
     };
     "#,
         3,
+    );
+}
+
+#[test]
+fn overloaded_deref() {
+    // FIXME: We should support this.
+    check_fail(
+        r#"
+    //- minicore: deref_mut
+    struct Foo;
+
+    impl core::ops::Deref for Foo {
+        type Target = i32;
+        fn deref(&self) -> &i32 {
+            &5
+        }
+    }
+
+    const GOAL: i32 = {
+        let x = Foo;
+        let y = &*x;
+        *y + *x
+    };
+    "#,
+        ConstEvalError::MirLowerError(MirLowerError::NotSupported(
+            "explicit overloaded deref".into(),
+        )),
+    );
+}
+
+#[test]
+fn overloaded_deref_autoref() {
+    check_number(
+        r#"
+    //- minicore: deref_mut
+    struct Foo;
+    struct Bar;
+
+    impl core::ops::Deref for Foo {
+        type Target = Bar;
+        fn deref(&self) -> &Bar {
+            &Bar
+        }
+    }
+
+    impl Bar {
+        fn method(&self) -> i32 {
+            5
+        }
+    }
+
+    const GOAL: i32 = Foo.method();
+    "#,
+        5,
     );
 }
 
@@ -358,7 +428,7 @@ fn ifs() {
         if a < b { b } else { a }
     }
 
-    const GOAL: u8 = max(max(1, max(10, 3)), 0-122);
+    const GOAL: i32 = max(max(1, max(10, 3)), 0-122);
         "#,
         10,
     );
@@ -366,7 +436,7 @@ fn ifs() {
     check_number(
         r#"
     const fn max(a: &i32, b: &i32) -> &i32 {
-        if a < b { b } else { a }
+        if *a < *b { b } else { a }
     }
 
     const GOAL: i32 = *max(max(&1, max(&10, &3)), &5);
@@ -396,6 +466,43 @@ fn loops() {
     };
         "#,
         4,
+    );
+}
+
+#[test]
+fn for_loops() {
+    check_number(
+        r#"
+    //- minicore: iterator
+
+    struct Range {
+        start: u8,
+        end: u8,
+    }
+
+    impl Iterator for Range {
+        type Item = u8;
+        fn next(&mut self) -> Option<u8> {
+            if self.start >= self.end {
+                None
+            } else {
+                let r = self.start;
+                self.start = self.start + 1;
+                Some(r)
+            }
+        }
+    }
+
+    const GOAL: u8 = {
+        let mut sum = 0;
+        let ar = Range { start: 1, end: 11 };
+        for i in ar {
+            sum = sum + i;
+        }
+        sum
+    };
+        "#,
+        55,
     );
 }
 
@@ -466,6 +573,16 @@ fn tuples() {
     );
     check_number(
         r#"
+    const GOAL: u8 = {
+        let mut a = (10, 20, 3, 15);
+        a.1 = 2;
+        a.0 + a.1 + a.2 + a.3
+    };
+        "#,
+        30,
+    );
+    check_number(
+        r#"
     struct TupleLike(i32, u8, i64, u16);
     const GOAL: u8 = {
         let a = TupleLike(10, 20, 3, 15);
@@ -489,6 +606,33 @@ fn tuples() {
     };
         "#,
         5,
+    );
+}
+
+#[test]
+fn path_pattern_matching() {
+    check_number(
+        r#"
+    enum Season {
+        Spring,
+        Summer,
+        Fall,
+        Winter,
+    }
+
+    use Season::*;
+
+    const fn f(x: Season) -> i32 {
+        match x {
+            Spring => 1,
+            Summer => 2,
+            Fall => 3,
+            Winter => 4,
+        }
+    }
+    const GOAL: i32 = f(Spring) + 10 * f(Summer) + 100 * f(Fall) + 1000 * f(Winter);
+        "#,
+        4321,
     );
 }
 
@@ -539,9 +683,52 @@ fn let_else() {
         let Some(x) = x else { return 10 };
         2 * x
     }
-    const GOAL: u8 = f(Some(1000)) + f(None);
+    const GOAL: i32 = f(Some(1000)) + f(None);
         "#,
         2010,
+    );
+}
+
+#[test]
+fn function_param_patterns() {
+    check_number(
+        r#"
+    const fn f((a, b): &(u8, u8)) -> u8 {
+        *a + *b
+    }
+    const GOAL: u8 = f(&(2, 3));
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    const fn f(c @ (a, b): &(u8, u8)) -> u8 {
+        *a + *b + c.0 + (*c).1
+    }
+    const GOAL: u8 = f(&(2, 3));
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    const fn f(ref a: u8) -> u8 {
+        *a
+    }
+    const GOAL: u8 = f(2);
+        "#,
+        2,
+    );
+    check_number(
+        r#"
+    struct Foo(u8);
+    impl Foo {
+        const fn f(&self, (a, b): &(u8, u8)) -> u8 {
+            self.0 + *a + *b
+        }
+    }
+    const GOAL: u8 = Foo(4).f(&(2, 3));
+        "#,
+        9,
     );
 }
 
@@ -572,7 +759,7 @@ fn options() {
             0
         }
     }
-    const GOAL: u8 = f(Some(Some(10))) + f(Some(None)) + f(None);
+    const GOAL: i32 = f(Some(Some(10))) + f(Some(None)) + f(None);
         "#,
         11,
     );
@@ -595,6 +782,44 @@ fn options() {
     const GOAL: Option<&u8> = None;
         "#,
         0,
+    );
+}
+
+#[test]
+fn or_pattern() {
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let (a | a) = 2;
+        a
+    };
+        "#,
+        2,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const fn f(x: Option<i32>) -> i32 {
+        let (Some(a) | Some(a)) = x else { return 2; };
+        a
+    }
+    const GOAL: i32 = f(Some(10)) + f(None);
+        "#,
+        12,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const fn f(x: Option<i32>, y: Option<i32>) -> i32 {
+        match (x, y) {
+            (Some(x), Some(y)) => x * y,
+            (Some(a), _) | (_, Some(a)) => a,
+            _ => 10,
+        }
+    }
+    const GOAL: i32 = f(Some(10), Some(20)) + f(Some(30), None) + f(None, Some(40)) + f(None, None);
+        "#,
+        280,
     );
 }
 
@@ -665,24 +890,24 @@ fn enums() {
         r#"
     enum E {
         F1 = 1,
-        F2 = 2 * E::F1 as u8,
-        F3 = 3 * E::F2 as u8,
+        F2 = 2 * E::F1 as isize, // Rustc expects an isize here
+        F3 = 3 * E::F2 as isize,
     }
-    const GOAL: i32 = E::F3 as u8;
+    const GOAL: u8 = E::F3 as u8;
     "#,
         6,
     );
     check_number(
         r#"
     enum E { F1 = 1, F2, }
-    const GOAL: i32 = E::F2 as u8;
+    const GOAL: u8 = E::F2 as u8;
     "#,
         2,
     );
     check_number(
         r#"
     enum E { F1, }
-    const GOAL: i32 = E::F1 as u8;
+    const GOAL: u8 = E::F1 as u8;
     "#,
         0,
     );
@@ -813,8 +1038,22 @@ fn exec_limits() {
         }
         sum
     }
-    const GOAL: usize = f(10000);
+    const GOAL: i32 = f(10000);
     "#,
         10000 * 10000,
     );
+}
+
+#[test]
+fn type_error() {
+    let e = eval_goal(
+        r#"
+    const GOAL: u8 = {
+        let x: u16 = 2;
+        let y: (u8, u8) = x;
+        y.0
+    };
+    "#,
+    );
+    assert!(matches!(e, Err(ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_)))));
 }

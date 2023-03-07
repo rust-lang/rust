@@ -320,7 +320,7 @@ impl Definition {
             scope: None,
             include_self_kw_refs: None,
             local_repr: match self {
-                Definition::Local(local) => Some(local.representative(sema.db)),
+                Definition::Local(local) => Some(local),
                 _ => None,
             },
             search_self_mod: false,
@@ -646,7 +646,7 @@ impl<'a> FindUsages<'a> {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def @ Definition::Local(local)))
                 if matches!(
-                    self.local_repr, Some(repr) if repr == local.representative(self.sema.db)
+                    self.local_repr, Some(repr) if repr == local
                 ) =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
@@ -707,7 +707,7 @@ impl<'a> FindUsages<'a> {
                     Definition::Field(_) if field == self.def => {
                         ReferenceCategory::new(&field, name_ref)
                     }
-                    Definition::Local(_) if matches!(self.local_repr, Some(repr) if repr == local.representative(self.sema.db)) => {
+                    Definition::Local(_) if matches!(self.local_repr, Some(repr) if repr == local) => {
                         ReferenceCategory::new(&Definition::Local(local), name_ref)
                     }
                     _ => return false,
@@ -755,7 +755,7 @@ impl<'a> FindUsages<'a> {
             Some(NameClass::Definition(def @ Definition::Local(local))) if def != self.def => {
                 if matches!(
                     self.local_repr,
-                    Some(repr) if local.representative(self.sema.db) == repr
+                    Some(repr) if local == repr
                 ) {
                     let FileRange { file_id, range } = self.sema.original_range(name.syntax());
                     let reference = FileReference {

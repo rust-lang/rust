@@ -17,6 +17,7 @@ use std::fmt;
 use hir_expand::name::Name;
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
+use smallvec::SmallVec;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -28,6 +29,8 @@ use crate::{
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
 pub type ExprId = Idx<Expr>;
+
+pub type BindingId = Idx<Binding>;
 
 /// FIXME: this is a hacky function which should be removed
 pub(crate) fn dummy_expr_id() -> ExprId {
@@ -434,6 +437,13 @@ impl BindingAnnotation {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Binding {
+    pub name: Name,
+    pub mode: BindingAnnotation,
+    pub definitions: SmallVec<[PatId; 1]>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RecordFieldPat {
     pub name: Name,
     pub pat: PatId,
@@ -451,7 +461,7 @@ pub enum Pat {
     Slice { prefix: Box<[PatId]>, slice: Option<PatId>, suffix: Box<[PatId]> },
     Path(Box<Path>),
     Lit(ExprId),
-    Bind { mode: BindingAnnotation, name: Name, subpat: Option<PatId> },
+    Bind { id: BindingId, subpat: Option<PatId> },
     TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },

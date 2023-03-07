@@ -12,7 +12,7 @@ use crate::{
     body::scope::{ExprScopes, ScopeId},
     builtin_type::BuiltinType,
     db::DefDatabase,
-    expr::{ExprId, LabelId, PatId},
+    expr::{BindingId, ExprId, LabelId},
     generics::{GenericParams, TypeOrConstParamData},
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::DefMap,
@@ -105,7 +105,7 @@ pub enum ResolveValueResult {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ValueNs {
     ImplSelf(ImplId),
-    LocalBinding(PatId),
+    LocalBinding(BindingId),
     FunctionId(FunctionId),
     ConstId(ConstId),
     StaticId(StaticId),
@@ -267,7 +267,7 @@ impl Resolver {
 
                         if let Some(e) = entry {
                             return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(
-                                e.pat(),
+                                e.binding(),
                             )));
                         }
                     }
@@ -617,7 +617,7 @@ pub enum ScopeDef {
     ImplSelfType(ImplId),
     AdtSelfType(AdtId),
     GenericParam(GenericParamId),
-    Local(PatId),
+    Local(BindingId),
     Label(LabelId),
 }
 
@@ -669,7 +669,7 @@ impl Scope {
                     acc.add(&name, ScopeDef::Label(label))
                 }
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
-                    acc.add_local(e.name(), e.pat());
+                    acc.add_local(e.name(), e.binding());
                 });
             }
         }
@@ -859,7 +859,7 @@ impl ScopeNames {
             self.add(name, ScopeDef::Unknown)
         }
     }
-    fn add_local(&mut self, name: &Name, pat: PatId) {
+    fn add_local(&mut self, name: &Name, binding: BindingId) {
         let set = self.map.entry(name.clone()).or_default();
         // XXX: hack, account for local (and only local) shadowing.
         //
@@ -870,7 +870,7 @@ impl ScopeNames {
             cov_mark::hit!(shadowing_shows_single_completion);
             return;
         }
-        set.push(ScopeDef::Local(pat))
+        set.push(ScopeDef::Local(binding))
     }
 }
 

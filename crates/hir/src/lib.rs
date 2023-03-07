@@ -41,7 +41,7 @@ use either::Either;
 use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
-    expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
+    expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
@@ -63,7 +63,7 @@ use hir_ty::{
     display::HexifiedConst,
     layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
-    mir::interpret_mir,
+    mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
@@ -77,7 +77,7 @@ use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
-    AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
+    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 
 use crate::db::{DefDatabase, HirDatabase};
@@ -87,10 +87,10 @@ pub use crate::{
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
         InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
+        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
         UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1327,6 +1327,15 @@ impl DefWithBody {
         body.pretty_print(db.upcast(), self.id())
     }
 
+    /// A textual representation of the MIR of this def's body for debugging purposes.
+    pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
+        let body = db.mir_body(self.id());
+        match body {
+            Ok(body) => body.pretty_print(db),
+            Err(e) => format!("error:\n{e:?}"),
+        }
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
@@ -1496,6 +1505,41 @@ impl DefWithBody {
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and eslwhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
+                }
+            }
+        }
+
+        let hir_body = db.body(self.into());
+
+        if let Ok(borrowck_result) = db.borrowck(self.into()) {
+            let mir_body = &borrowck_result.mir_body;
+            let mol = &borrowck_result.mutability_of_locals;
+            for (binding_id, _) in hir_body.bindings.iter() {
+                let need_mut = &mol[mir_body.binding_locals[binding_id]];
+                let local = Local { parent: self.into(), binding_id };
+                match (need_mut, local.is_mut(db)) {
+                    (mir::MutabilityReason::Mut { .. }, true)
+                    | (mir::MutabilityReason::Not, false) => (),
+                    (mir::MutabilityReason::Mut { spans }, false) => {
+                        for span in spans {
+                            let span: InFile<SyntaxNodePtr> = match span {
+                                mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                    Ok(s) => s.map(|x| x.into()),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                    Ok(s) => s.map(|x| match x {
+                                        Either::Left(e) => e.into(),
+                                        Either::Right(e) => e.into(),
+                                    }),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::Unknown => continue,
+                            };
+                            acc.push(NeedMut { local, span }.into());
+                        }
+                    }
+                    (mir::MutabilityReason::Not, true) => acc.push(UnusedMut { local }.into()),
                 }
             }
         }
@@ -1786,8 +1830,8 @@ impl Param {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
         let pat_id = body.params[self.idx];
-        if let Pat::Bind { .. } = &body[pat_id] {
-            Some(Local { parent, pat_id: body.params[self.idx] })
+        if let Pat::Bind { id, .. } = &body[pat_id] {
+            Some(Local { parent, binding_id: *id })
         } else {
             None
         }
@@ -2464,13 +2508,50 @@ impl GenericDef {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBodyId,
-    pub(crate) pat_id: PatId,
+    pub(crate) binding_id: BindingId,
+}
+
+pub struct LocalSource {
+    pub local: Local,
+    pub source: InFile<Either<ast::IdentPat, ast::SelfParam>>,
+}
+
+impl LocalSource {
+    pub fn as_ident_pat(&self) -> Option<&ast::IdentPat> {
+        match &self.source.value {
+            Either::Left(x) => Some(x),
+            Either::Right(_) => None,
+        }
+    }
+
+    pub fn into_ident_pat(self) -> Option<ast::IdentPat> {
+        match self.source.value {
+            Either::Left(x) => Some(x),
+            Either::Right(_) => None,
+        }
+    }
+
+    pub fn original_file(&self, db: &dyn HirDatabase) -> FileId {
+        self.source.file_id.original_file(db.upcast())
+    }
+
+    pub fn name(&self) -> Option<ast::Name> {
+        self.source.value.name()
+    }
+
+    pub fn syntax(&self) -> &SyntaxNode {
+        self.source.value.syntax()
+    }
+
+    pub fn syntax_ptr(self) -> InFile<SyntaxNodePtr> {
+        self.source.map(|x| SyntaxNodePtr::new(x.syntax()))
+    }
 }
 
 impl Local {
     pub fn is_param(self, db: &dyn HirDatabase) -> bool {
-        let src = self.source(db);
-        match src.value {
+        let src = self.primary_source(db);
+        match src.source.value {
             Either::Left(pat) => pat
                 .syntax()
                 .ancestors()
@@ -2490,13 +2571,7 @@ impl Local {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let body = db.body(self.parent);
-        match &body[self.pat_id] {
-            Pat::Bind { name, .. } => name.clone(),
-            _ => {
-                stdx::never!("hir::Local is missing a name!");
-                Name::missing()
-            }
-        }
+        body[self.binding_id].name.clone()
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
@@ -2505,15 +2580,12 @@ impl Local {
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent);
-        matches!(&body[self.pat_id], Pat::Bind { mode: BindingAnnotation::Mutable, .. })
+        body[self.binding_id].mode == BindingAnnotation::Mutable
     }
 
     pub fn is_ref(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent);
-        matches!(
-            &body[self.pat_id],
-            Pat::Bind { mode: BindingAnnotation::Ref | BindingAnnotation::RefMut, .. }
-        )
+        matches!(body[self.binding_id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
@@ -2527,34 +2599,33 @@ impl Local {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let def = self.parent;
         let infer = db.infer(def);
-        let ty = infer[self.pat_id].clone();
+        let ty = infer[self.binding_id].clone();
         Type::new(db, def, ty)
     }
 
-    pub fn associated_locals(self, db: &dyn HirDatabase) -> Box<[Local]> {
-        let body = db.body(self.parent);
-        body.ident_patterns_for(&self.pat_id)
+    /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = x;`
+    pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
+        let (body, source_map) = db.body_with_source_map(self.parent);
+        body[self.binding_id]
+            .definitions
             .iter()
-            .map(|&pat_id| Local { parent: self.parent, pat_id })
+            .map(|&definition| {
+                let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                let root = src.file_syntax(db.upcast());
+                src.map(|ast| match ast {
+                    // Suspicious unwrap
+                    Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
+                    Either::Right(it) => Either::Right(it.to_node(&root)),
+                })
+            })
+            .map(|source| LocalSource { local: self, source })
             .collect()
     }
 
-    /// If this local is part of a multi-local, retrieve the representative local.
-    /// That is the local that references are being resolved to.
-    pub fn representative(self, db: &dyn HirDatabase) -> Local {
-        let body = db.body(self.parent);
-        Local { pat_id: body.pattern_representative(self.pat_id), ..self }
-    }
-
-    pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::IdentPat, ast::SelfParam>> {
-        let (_body, source_map) = db.body_with_source_map(self.parent);
-        let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
-        let root = src.file_syntax(db.upcast());
-        src.map(|ast| match ast {
-            // Suspicious unwrap
-            Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
-            Either::Right(it) => Either::Right(it.to_node(&root)),
-        })
+    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
+    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
+        let all_sources = self.sources(db);
+        all_sources.into_iter().next().unwrap()
     }
 }
 

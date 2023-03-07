@@ -1103,7 +1103,10 @@ impl<'db> SemanticsImpl<'db> {
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
-                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
+                            // FIXME: Should we handle unknown mutability better?
+                            Adjust::Deref(Some(OverloadedDeref(
+                                m.map(mutability).unwrap_or(Mutability::Shared),
+                            )))
                         }
                         hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
@@ -1654,8 +1657,8 @@ impl<'a> SemanticsScope<'a> {
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                     resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                    resolver::ScopeDef::Local(pat_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Local(Local { parent, pat_id }),
+                    resolver::ScopeDef::Local(binding_id) => match self.resolver.body_owner() {
+                        Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
                         None => continue,
                     },
                     resolver::ScopeDef::Label(label_id) => match self.resolver.body_owner() {

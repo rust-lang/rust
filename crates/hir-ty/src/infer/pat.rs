@@ -5,7 +5,10 @@ use std::iter::repeat_with;
 use chalk_ir::Mutability;
 use hir_def::{
     body::Body,
-    expr::{BindingAnnotation, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId, RecordFieldPat},
+    expr::{
+        Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId,
+        RecordFieldPat,
+    },
     path::Path,
 };
 use hir_expand::name::Name;
@@ -248,8 +251,8 @@ impl<'a> InferenceContext<'a> {
                 // FIXME update resolver for the surrounding expression
                 self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty())
             }
-            Pat::Bind { mode, name: _, subpat } => {
-                return self.infer_bind_pat(pat, *mode, default_bm, *subpat, &expected);
+            Pat::Bind { id, subpat } => {
+                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected);
             }
             Pat::Slice { prefix, slice, suffix } => {
                 self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm)
@@ -320,11 +323,12 @@ impl<'a> InferenceContext<'a> {
     fn infer_bind_pat(
         &mut self,
         pat: PatId,
-        mode: BindingAnnotation,
+        binding: BindingId,
         default_bm: BindingMode,
         subpat: Option<PatId>,
         expected: &Ty,
     ) -> Ty {
+        let Binding { mode, .. } = self.body.bindings[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
             default_bm
         } else {
@@ -344,7 +348,8 @@ impl<'a> InferenceContext<'a> {
             }
             BindingMode::Move => inner_ty.clone(),
         };
-        self.write_pat_ty(pat, bound_ty);
+        self.write_pat_ty(pat, bound_ty.clone());
+        self.write_binding_ty(binding, bound_ty);
         return inner_ty;
     }
 
@@ -420,11 +425,14 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         Pat::Lit(expr) => {
             !matches!(body[*expr], Expr::Literal(Literal::String(..) | Literal::ByteString(..)))
         }
-        Pat::Bind {
-            mode: BindingAnnotation::Mutable | BindingAnnotation::Unannotated,
-            subpat: Some(subpat),
-            ..
-        } => is_non_ref_pat(body, *subpat),
+        Pat::Bind { id, subpat: Some(subpat), .. }
+            if matches!(
+                body.bindings[*id].mode,
+                BindingAnnotation::Mutable | BindingAnnotation::Unannotated
+            ) =>
+        {
+            is_non_ref_pat(body, *subpat)
+        }
         Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
     }
 }
@@ -432,7 +440,7 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     walk_pats(body, pat_id, &mut |pat| {
-        res |= matches!(pat, Pat::Bind { mode: BindingAnnotation::Ref, .. })
+        res |= matches!(pat, Pat::Bind { id, .. } if body.bindings[*id].mode == BindingAnnotation::Ref);
     });
     res
 }
