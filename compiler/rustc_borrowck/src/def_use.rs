@@ -72,8 +72,10 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
             Some(DefUse::Drop),
 
+        // This statement exists to help unsafeck. It does not require the place to be live.
+        PlaceContext::NonUse(NonUseContext::PlaceMention) => None,
         // Debug info is neither def nor use.
-        PlaceContext::NonUse(NonUseContext::PlaceMention | NonUseContext::VarDebugInfo) => None,
+        PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
 
         PlaceContext::MutatingUse(MutatingUseContext::Deinit | MutatingUseContext::SetDiscriminant) => {
             bug!("These statements are not allowed in this MIR phase")
