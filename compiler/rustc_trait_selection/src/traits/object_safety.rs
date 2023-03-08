@@ -13,7 +13,6 @@ use super::{elaborate_predicates, elaborate_trait_ref};
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use hir::def::DefKind;
 use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -855,7 +854,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
                     }
                 }
                 ty::Alias(ty::Projection, ref data)
-                    if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
+                    if self.tcx.is_impl_trait_in_trait(data.def_id) =>
                 {
                     // We'll deny these later in their own pass
                     ControlFlow::Continue(())
@@ -922,7 +921,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     ty.skip_binder().walk().find_map(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Alias(ty::Projection, proj) = ty.kind()
-            && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
+            && tcx.is_impl_trait_in_trait(proj.def_id)
         {
             Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.def_id)))
         } else {
