@@ -458,11 +458,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         scalar,
                     )) = *value
                     {
-                        *operand = self.operand_from_scalar(
-                            scalar,
-                            value.layout.ty,
-                            DUMMY_SP,
-                        );
+                        *operand = self.operand_from_scalar(scalar, value.layout.ty);
                     }
                 }
             }
@@ -587,9 +583,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Creates a new `Operand::Constant` from a `Scalar` value
-    fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
+    fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>) -> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
-            span,
+            span: DUMMY_SP,
             user_ty: None,
             literal: ConstantKind::from_scalar(self.tcx, scalar, ty),
         }))
@@ -634,8 +630,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let Some(Right(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(scalar) => {
-                    *rval =
-                        Rvalue::Use(self.operand_from_scalar(scalar, value.layout.ty, DUMMY_SP));
+                    *rval = Rvalue::Use(self.operand_from_scalar(scalar, value.layout.ty));
                 }
                 Immediate::ScalarPair(..) => {
                     // Found a value represented as a pair. For now only do const-prop if the type
@@ -933,11 +928,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     && self.should_const_prop(value)
                 {
                     trace!("assertion on {:?} should be {:?}", value, expected);
-                    *cond = self.operand_from_scalar(
-                        value_const,
-                        self.tcx.types.bool,
-                        DUMMY_SP,
-                    );
+                    *cond = self.operand_from_scalar(value_const, self.tcx.types.bool);
                 }
             }
             TerminatorKind::SwitchInt { ref mut discr, .. } => {
