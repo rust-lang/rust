@@ -2,7 +2,7 @@ use std::{borrow::Cow, io, io::prelude::Write};
 
 use super::OutputFormatter;
 use crate::{
-    console::{ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
     test_result::TestResult,
     time,
     types::TestDesc,
@@ -60,6 +60,56 @@ impl<T: Write> JsonFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
+    fn write_discovery_start(&mut self) -> io::Result<()> {
+        self.writeln_message(&format!(r#"{{ "type": "suite", "event": "discovery" }}"#))
+    }
+
+    fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()> {
+        let TestDesc {
+            name,
+            ignore,
+            ignore_message,
+            #[cfg(not(bootstrap))]
+            source_file,
+            #[cfg(not(bootstrap))]
+            start_line,
+            #[cfg(not(bootstrap))]
+            start_col,
+            #[cfg(not(bootstrap))]
+            end_line,
+            #[cfg(not(bootstrap))]
+            end_col,
+            ..
+        } = desc;
+
+        #[cfg(bootstrap)]
+        let source_file = "";
+        #[cfg(bootstrap)]
+        let start_line = 0;
+        #[cfg(bootstrap)]
+        let start_col = 0;
+        #[cfg(bootstrap)]
+        let end_line = 0;
+        #[cfg(bootstrap)]
+        let end_col = 0;
+
+        self.writeln_message(&format!(
+            r#"{{ "type": "{test_type}", "event": "discovered", "name": "{}", "ignore": {ignore}, "ignore_message": "{}", "source_path": "{}", "start_line": {start_line}, "start_col": {start_col}, "end_line": {end_line}, "end_col": {end_col} }}"#,
+            EscapedString(name.as_slice()),
+            ignore_message.unwrap_or(""),
+            EscapedString(source_file),
+        ))
+    }
+
+    fn write_discovery_finish(&mut self, state: &ConsoleTestDiscoveryState) -> io::Result<()> {
+        let ConsoleTestDiscoveryState { tests, benchmarks, ignored, .. } = state;
+
+        let total = tests + benchmarks;
+        self.writeln_message(&format!(
+            r#"{{ "type": "suite", "event": "completed", "tests": {tests}, "benchmarks": {benchmarks}, "total": {total}, "ignored": {ignored} }}"#
+        ))
+    }
+
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         let shuffle_seed_json = if let Some(shuffle_seed) = shuffle_seed {
             format!(r#", "shuffle_seed": {shuffle_seed}"#)

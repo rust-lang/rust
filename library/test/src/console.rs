@@ -41,6 +41,46 @@ impl<T: Write> Write for OutputLocation<T> {
     }
 }
 
+pub struct ConsoleTestDiscoveryState {
+    pub log_out: Option<File>,
+    pub tests: usize,
+    pub benchmarks: usize,
+    pub ignored: usize,
+    pub options: Options,
+}
+
+impl ConsoleTestDiscoveryState {
+    pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestDiscoveryState> {
+        let log_out = match opts.logfile {
+            Some(ref path) => Some(File::create(path)?),
+            None => None,
+        };
+
+        Ok(ConsoleTestDiscoveryState {
+            log_out,
+            tests: 0,
+            benchmarks: 0,
+            ignored: 0,
+            options: opts.options,
+        })
+    }
+
+    pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>
+    where
+        S: AsRef<str>,
+        F: FnOnce() -> S,
+    {
+        match self.log_out {
+            None => Ok(()),
+            Some(ref mut o) => {
+                let msg = msg();
+                let msg = msg.as_ref();
+                o.write_all(msg.as_bytes())
+            }
+        }
+    }
+}
+
 pub struct ConsoleTestState {
     pub log_out: Option<File>,
     pub total: usize,
@@ -138,53 +178,44 @@ impl ConsoleTestState {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let mut output = match term::stdout() {
+    let output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout().lock()),
         Some(t) => OutputLocation::Pretty(t),
     };
 
-    let quiet = opts.format == OutputFormat::Terse;
-    let mut st = ConsoleTestState::new(opts)?;
+    let mut out: Box<dyn OutputFormatter> = match opts.format {
+        OutputFormat::Pretty | OutputFormat::Junit => {
+            Box::new(PrettyFormatter::new(output, false, 0, false, None))
+        }
+        OutputFormat::Terse => Box::new(TerseFormatter::new(output, false, 0, false)),
+        OutputFormat::Json => Box::new(JsonFormatter::new(output)),
+    };
+    let mut st = ConsoleTestDiscoveryState::new(opts)?;
 
-    let mut ntest = 0;
-    let mut nbench = 0;
-
+    out.write_discovery_start()?;
     for test in filter_tests(opts, tests).into_iter() {
         use crate::TestFn::*;
 
-        let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
+        let TestDescAndFn { desc, testfn } = test;
 
         let fntype = match testfn {
             StaticTestFn(..) | DynTestFn(..) => {
-                ntest += 1;
+                st.tests += 1;
                 "test"
             }
             StaticBenchFn(..) | DynBenchFn(..) => {
-                nbench += 1;
+                st.benchmarks += 1;
                 "benchmark"
             }
         };
 
-        writeln!(output, "{name}: {fntype}")?;
-        st.write_log(|| format!("{fntype} {name}\n"))?;
+        st.ignored += if desc.ignore { 1 } else { 0 };
+
+        out.write_test_discovered(&desc, fntype)?;
+        st.write_log(|| format!("{fntype} {}\n", desc.name))?;
     }
 
-    fn plural(count: u32, s: &str) -> String {
-        match count {
-            1 => format!("1 {s}"),
-            n => format!("{n} {s}s"),
-        }
-    }
-
-    if !quiet {
-        if ntest != 0 || nbench != 0 {
-            writeln!(output)?;
-        }
-
-        writeln!(output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;
-    }
-
-    Ok(())
+    out.write_discovery_finish(&st)
 }
 
 // Updates `ConsoleTestState` depending on result of the test execution.

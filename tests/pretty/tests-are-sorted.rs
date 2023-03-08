@@ -7,6 +7,7 @@
 fn m_test() {}
 
 #[test]
+#[ignore = "not yet implemented"]
 fn z_test() {}
 
 #[test]
