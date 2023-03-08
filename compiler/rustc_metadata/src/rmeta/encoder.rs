@@ -1356,13 +1356,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
-        self.tables.impl_defaultness.set_some(def_id.index, ast_item.defaultness);
+        let defaultness = self.tcx.impl_defaultness(def_id.expect_local());
+        self.tables.impl_defaultness.set_some(def_id.index, defaultness);
         let impl_item = self.tcx.associated_item(def_id);
         self.tables.assoc_container.set_some(def_id.index, impl_item.container);
 
         match impl_item.kind {
             ty::AssocKind::Fn => {
+                let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
                 self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
