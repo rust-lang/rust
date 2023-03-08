@@ -743,15 +743,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
-                self.consume_operand(loc, (new_value, span), flow_state);
-            }
             TerminatorKind::Call {
                 func,
                 args,
@@ -866,7 +857,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }

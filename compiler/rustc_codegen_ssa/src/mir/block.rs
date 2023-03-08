@@ -1305,10 +1305,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mergeable_succ(),
                 ),
 
-            mir::TerminatorKind::DropAndReplace { .. } => {
-                bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
-            }
-
             mir::TerminatorKind::Call {
                 ref func,
                 ref args,
