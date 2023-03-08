@@ -17,6 +17,11 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 declare_tool_lint! {
+    /// The `default_hash_type` lint detects use of [`std::collections::HashMap`]/[`std::collections::HashSet`],
+    /// suggesting the use of `FxHashMap`/`FxHashSet`.
+    ///
+    /// This can help as `FxHasher` can perform better than the default hasher. DOS protection is not
+    /// required as input is assumed to be trusted.
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants",
@@ -67,6 +72,12 @@ fn typeck_results_of_method_fn<'tcx>(
 }
 
 declare_tool_lint! {
+    /// The `potential_query_instability` lint detects use of methods which can lead to
+    /// potential query instability, such as iterating over a `HashMap`.
+    ///
+    /// Due to the [incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html) model,
+    /// queries must return deterministic, stable results. `HashMap` iteration order can change between compilations,
+    /// and will introduce instability if query results expose the order.
     pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
     "require explicit opt-in when using potentially unstable methods or functions",
@@ -92,6 +103,8 @@ impl LateLintPass<'_> for QueryStability {
 }
 
 declare_tool_lint! {
+    /// The `usage_of_ty_tykind` lint detects usages of `ty::TyKind::<kind>`,
+    /// where `ty::<kind>` would suffice.
     pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
     "usage of `ty::TyKind` outside of the `ty::sty` module",
@@ -99,6 +112,8 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
+    /// The `usage_of_qualified_ty` lint detects usages of `ty::TyKind`,
+    /// where `Ty` should be used instead.
     pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
     "using `ty::{Ty,TyCtxt}` instead of importing it",
@@ -254,6 +269,8 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
 }
 
 declare_tool_lint! {
+    /// The `lint_pass_impl_without_macro` detects manual implementations of a lint
+    /// pass, without using [`declare_lint_pass`] or [`impl_lint_pass`].
     pub rustc::LINT_PASS_IMPL_WITHOUT_MACRO,
     Allow,
     "`impl LintPass` without the `declare_lint_pass!` or `impl_lint_pass!` macros"
@@ -285,6 +302,8 @@ impl EarlyLintPass for LintPassImpl {
 }
 
 declare_tool_lint! {
+    /// The `existing_doc_keyword` lint detects use `#[doc()]` keywords
+    /// that don't exist, e.g. `#[doc(keyword = "..")]`.
     pub rustc::EXISTING_DOC_KEYWORD,
     Allow,
     "Check that documented keywords in std and core actually exist",
@@ -325,6 +344,10 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
 }
 
 declare_tool_lint! {
+    /// The `untranslatable_diagnostic` lint detects diagnostics created
+    /// without using translatable Fluent strings.
+    ///
+    /// More details on translatable diagnostics can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html).
     pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
     Allow,
     "prevent creation of diagnostics which cannot be translated",
@@ -332,6 +355,11 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
+    /// The `diagnostic_outside_of_impl` lint detects diagnostics created manually,
+    /// and inside an `IntoDiagnostic`/`AddToDiagnostic` implementation,
+    /// or a `#[derive(Diagnostic)]`/`#[derive(Subdiagnostic)]` expansion.
+    ///
+    /// More details on diagnostics implementations can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Allow,
     "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
@@ -396,6 +424,8 @@ impl LateLintPass<'_> for Diagnostics {
 }
 
 declare_tool_lint! {
+    /// The `bad_opt_access` lint detects accessing options by field instad of
+    /// the wrapper function.
     pub rustc::BAD_OPT_ACCESS,
     Deny,
     "prevent using options by field access when there is a wrapper function",
