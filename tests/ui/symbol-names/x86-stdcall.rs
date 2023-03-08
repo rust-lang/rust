@@ -1,5 +1,6 @@
 // build-pass
-// only-x86-windows
+// only-x86
+// only-windows
 #![crate_type = "cdylib"]
 #![feature(abi_vectorcall)]
 
