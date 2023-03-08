@@ -1,6 +1,5 @@
 // run-pass
 //
-// ignore-pretty issue #37195
 pub mod modrs_mod;
 pub mod foors_mod;
 #[path = "some_crazy_attr_mod_dir/arbitrary_name.rs"]

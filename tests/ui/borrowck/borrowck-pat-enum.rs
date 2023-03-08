@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-// ignore-pretty issue #37199
 
 fn match_ref(v: Option<isize>) -> isize {
     match v {

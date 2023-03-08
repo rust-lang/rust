@@ -1,5 +1,5 @@
 error[E0407]: method `method` is not a member of trait `Tr`
-  --> $DIR/assoc_item_ctxt.rs:35:13
+  --> $DIR/assoc_item_ctxt.rs:33:13
    |
 LL |             fn method() {}
    |             ^^^------^^^^^
@@ -13,7 +13,7 @@ LL |     mac_trait_impl!();
    = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0046]: not all trait items implemented, missing: `method`
-  --> $DIR/assoc_item_ctxt.rs:34:9
+  --> $DIR/assoc_item_ctxt.rs:32:9
    |
 LL |         fn method();
    |         ------------ `method` from trait

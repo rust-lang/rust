@@ -1,7 +1,6 @@
 // Ensure that generic parameters always have modern hygiene.
 
 // check-pass
-// ignore-pretty pretty-printing is unhygienic
 
 #![feature(decl_macro, rustc_attrs)]
 
