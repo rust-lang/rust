@@ -12,21 +12,59 @@ use lazycell::LazyCell;
 use std::collections::HashSet;
 use test::{ColorConfig, OutputFormat};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Mode {
-    RunPassValgrind,
-    Pretty,
-    DebugInfo,
-    Codegen,
-    Rustdoc,
-    RustdocJson,
-    CodegenUnits,
-    Incremental,
-    RunMake,
-    Ui,
-    JsDocTest,
-    MirOpt,
-    Assembly,
+macro_rules! string_enum {
+    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant,)*
+        }
+
+        impl $name {
+            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+
+            $vis fn to_str(&self) -> &'static str {
+                match self {
+                    $(Self::$variant => $repr,)*
+                }
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(self.to_str(), f)
+            }
+        }
+
+        impl FromStr for $name {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, ()> {
+                match s {
+                    $($repr => Ok(Self::$variant),)*
+                    _ => Err(()),
+                }
+            }
+        }
+    }
+}
+
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum Mode {
+        RunPassValgrind => "run-pass-valgrind",
+        Pretty => "pretty",
+        DebugInfo => "debuginfo",
+        Codegen => "codegen",
+        Rustdoc => "rustdoc",
+        RustdocJson => "rustdoc-json",
+        CodegenUnits => "codegen-units",
+        Incremental => "incremental",
+        RunMake => "run-make",
+        Ui => "ui",
+        JsDocTest => "js-doc-test",
+        MirOpt => "mir-opt",
+        Assembly => "assembly",
+    }
 }
 
 impl Mode {
@@ -40,76 +78,12 @@ impl Mode {
     }
 }
 
-impl FromStr for Mode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Mode, ()> {
-        match s {
-            "run-pass-valgrind" => Ok(RunPassValgrind),
-            "pretty" => Ok(Pretty),
-            "debuginfo" => Ok(DebugInfo),
-            "codegen" => Ok(Codegen),
-            "rustdoc" => Ok(Rustdoc),
-            "rustdoc-json" => Ok(RustdocJson),
-            "codegen-units" => Ok(CodegenUnits),
-            "incremental" => Ok(Incremental),
-            "run-make" => Ok(RunMake),
-            "ui" => Ok(Ui),
-            "js-doc-test" => Ok(JsDocTest),
-            "mir-opt" => Ok(MirOpt),
-            "assembly" => Ok(Assembly),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            RunPassValgrind => "run-pass-valgrind",
-            Pretty => "pretty",
-            DebugInfo => "debuginfo",
-            Codegen => "codegen",
-            Rustdoc => "rustdoc",
-            RustdocJson => "rustdoc-json",
-            CodegenUnits => "codegen-units",
-            Incremental => "incremental",
-            RunMake => "run-make",
-            Ui => "ui",
-            JsDocTest => "js-doc-test",
-            MirOpt => "mir-opt",
-            Assembly => "assembly",
-        };
-        fmt::Display::fmt(s, f)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Hash)]
-pub enum PassMode {
-    Check,
-    Build,
-    Run,
-}
-
-impl FromStr for PassMode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
-        match s {
-            "check" => Ok(PassMode::Check),
-            "build" => Ok(PassMode::Build),
-            "run" => Ok(PassMode::Run),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for PassMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            PassMode::Check => "check",
-            PassMode::Build => "build",
-            PassMode::Run => "run",
-        };
-        fmt::Display::fmt(s, f)
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum PassMode {
+        Check => "check",
+        Build => "build",
+        Run => "run",
     }
 }
 
@@ -120,69 +94,23 @@ pub enum FailMode {
     Run,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum CompareMode {
-    Polonius,
-    Chalk,
-    NextSolver,
-    SplitDwarf,
-    SplitDwarfSingle,
-}
-
-impl CompareMode {
-    pub(crate) const VARIANTS: &'static [CompareMode] = &[
-        CompareMode::Polonius,
-        CompareMode::Chalk,
-        CompareMode::NextSolver,
-        CompareMode::SplitDwarf,
-        CompareMode::SplitDwarfSingle,
-    ];
-
-    pub(crate) fn to_str(&self) -> &'static str {
-        match *self {
-            CompareMode::Polonius => "polonius",
-            CompareMode::Chalk => "chalk",
-            CompareMode::NextSolver => "next-solver",
-            CompareMode::SplitDwarf => "split-dwarf",
-            CompareMode::SplitDwarfSingle => "split-dwarf-single",
-        }
-    }
-
-    pub fn parse(s: String) -> CompareMode {
-        match s.as_str() {
-            "polonius" => CompareMode::Polonius,
-            "chalk" => CompareMode::Chalk,
-            "next-solver" => CompareMode::NextSolver,
-            "split-dwarf" => CompareMode::SplitDwarf,
-            "split-dwarf-single" => CompareMode::SplitDwarfSingle,
-            x => panic!("unknown --compare-mode option: {}", x),
-        }
+string_enum! {
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum CompareMode {
+        Polonius => "polonius",
+        Chalk => "chalk",
+        NextSolver => "next-solver",
+        SplitDwarf => "split-dwarf",
+        SplitDwarfSingle => "split-dwarf-single",
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Debugger {
-    Cdb,
-    Gdb,
-    Lldb,
-}
-
-impl Debugger {
-    pub(crate) const VARIANTS: &'static [Debugger] =
-        &[Debugger::Cdb, Debugger::Gdb, Debugger::Lldb];
-
-    pub(crate) fn to_str(&self) -> &'static str {
-        match self {
-            Debugger::Cdb => "cdb",
-            Debugger::Gdb => "gdb",
-            Debugger::Lldb => "lldb",
-        }
-    }
-}
-
-impl fmt::Display for Debugger {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.to_str(), f)
+string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Debugger {
+        Cdb => "cdb",
+        Gdb => "gdb",
+        Lldb => "lldb",
     }
 }
 

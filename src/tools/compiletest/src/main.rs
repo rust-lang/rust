@@ -6,7 +6,7 @@
 extern crate test;
 
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
-use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
+use crate::common::{Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
@@ -293,7 +293,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
+        compare_mode: matches
+            .opt_str("compare-mode")
+            .map(|s| s.parse().expect("invalid --compare-mode provided")),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_tidy,
         channel: matches.opt_str("channel").unwrap(),
