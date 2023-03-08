@@ -257,62 +257,20 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
             ty::Opaque => ty.try_super_fold_with(self)?,
 
-            ty::Projection if !data.has_escaping_bound_vars() => {
-                // This branch is just an optimization: when we don't have escaping bound vars,
-                // we don't need to replace them with placeholders (see branch below).
-
-                let tcx = self.infcx.tcx;
-                let data = data.try_fold_with(self)?;
-
-                let mut orig_values = OriginalQueryValues::default();
-                // HACK(matthewjasper) `'static` is special-cased in selection,
-                // so we cannot canonicalize it.
-                let c_data = self
-                    .infcx
-                    .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
-                debug!("QueryNormalizer: c_data = {:#?}", c_data);
-                debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                let result = tcx.normalize_projection_ty(c_data)?;
-                // We don't expect ambiguity.
-                if result.is_ambiguous() {
-                    // Rustdoc normalizes possibly not well-formed types, so only
-                    // treat this as a bug if we're not in rustdoc.
-                    if !tcx.sess.opts.actually_rustdoc {
-                        tcx.sess.delay_span_bug(
-                            DUMMY_SP,
-                            format!("unexpected ambiguity: {:?} {:?}", c_data, result),
-                        );
-                    }
-                    return Err(NoSolution);
-                }
-                let InferOk { value: result, obligations } =
-                    self.infcx.instantiate_query_response_and_region_obligations(
-                        self.cause,
-                        self.param_env,
-                        &orig_values,
-                        result,
-                    )?;
-                debug!("QueryNormalizer: result = {:#?}", result);
-                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                self.obligations.extend(obligations);
-
-                let res = result.normalized_ty;
-                // `tcx.normalize_projection_ty` may normalize to a type that still has
-                // unevaluated consts, so keep normalizing here if that's the case.
-                if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    res.try_super_fold_with(self)?
-                } else {
-                    res
-                }
-            }
-
             ty::Projection => {
                 // See note in `rustc_trait_selection::traits::project`
 
                 let tcx = self.infcx.tcx;
                 let infcx = self.infcx;
-                let (data, mapped_regions, mapped_types, mapped_consts) =
-                    BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
+                // Just an optimization: When we don't have escaping bound vars,
+                // we don't need to replace them with placeholders.
+                let (data, maps) = if data.has_escaping_bound_vars() {
+                    let (data, mapped_regions, mapped_types, mapped_consts) =
+                        BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
+                    (data, Some((mapped_regions, mapped_types, mapped_consts)))
+                } else {
+                    (data, None)
+                };
                 let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
@@ -346,14 +304,18 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 debug!("QueryNormalizer: result = {:#?}", result);
                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                 self.obligations.extend(obligations);
-                let res = PlaceholderReplacer::replace_placeholders(
-                    infcx,
-                    mapped_regions,
-                    mapped_types,
-                    mapped_consts,
-                    &self.universes,
-                    result.normalized_ty,
-                );
+                let res = if let Some((mapped_regions, mapped_types, mapped_consts)) = maps {
+                    PlaceholderReplacer::replace_placeholders(
+                        infcx,
+                        mapped_regions,
+                        mapped_types,
+                        mapped_consts,
+                        &self.universes,
+                        result.normalized_ty,
+                    )
+                } else {
+                    result.normalized_ty
+                };
                 // `tcx.normalize_projection_ty` may normalize to a type that still has
                 // unevaluated consts, so keep normalizing here if that's the case.
                 if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
