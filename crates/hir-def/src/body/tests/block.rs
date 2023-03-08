@@ -395,3 +395,25 @@ fn foo() {
         "#]],
     )
 }
+
+#[test]
+fn trailing_expr_macro_expands_stmts() {
+    check_at(
+        r#"
+macro_rules! foo {
+    () => { const FOO: u32 = 0;const BAR: u32 = 0; };
+}
+fn f() {$0
+    foo!{}
+};
+        "#,
+        expect![[r#"
+            block scope
+            BAR: v
+            FOO: v
+
+            crate
+            f: v
+        "#]],
+    )
+}

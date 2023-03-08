@@ -90,6 +90,13 @@ impl<'a> Ctx<'a> {
                 _ => None,
             })
             .collect();
+        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
+            if let Some(call) = expr.macro_call() {
+                if let Some(mod_item) = self.lower_mod_item(&call.into()) {
+                    self.tree.top_level.push(mod_item);
+                }
+            }
+        }
 
         self.tree
     }
