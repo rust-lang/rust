@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -429,4 +429,24 @@ pub(crate) struct CastThinPointerToFatPointer<'tcx> {
     pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_union_field, code = "E0740")]
+pub(crate) struct InvalidUnionField {
+    #[primary_span]
+    pub field_span: Span,
+    #[subdiagnostic]
+    pub sugg: InvalidUnionFieldSuggestion,
+    #[note]
+    pub note: (),
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
+pub(crate) struct InvalidUnionFieldSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
 }
