@@ -538,8 +538,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
-        let src = self.wrap_node_infile(attr.clone());
         let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let src = self.wrap_node_infile(attr.clone());
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
         })?;
