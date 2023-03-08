@@ -31,7 +31,7 @@ function isNumeric(s) {
 }
 
 function parseOptions(args) {
-    var opts = {
+    const opts = {
         "doc_folder": "",
         "tests_folder": "",
         "files": [],
@@ -42,7 +42,7 @@ function parseOptions(args) {
         "executable_path": null,
         "no_sandbox": false,
     };
-    var correspondances = {
+    const correspondances = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
         "--debug": "debug",
@@ -52,39 +52,41 @@ function parseOptions(args) {
         "--no-sandbox": "no_sandbox",
     };
 
-    for (var i = 0; i < args.length; ++i) {
-        if (args[i] === "--doc-folder"
-            || args[i] === "--tests-folder"
-            || args[i] === "--file"
-            || args[i] === "--jobs"
-            || args[i] === "--executable-path") {
+    for (let i = 0; i < args.length; ++i) {
+        const arg = args[i];
+        if (arg === "--doc-folder"
+            || arg === "--tests-folder"
+            || arg === "--file"
+            || arg === "--jobs"
+            || arg === "--executable-path") {
             i += 1;
             if (i >= args.length) {
-                console.log("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + arg + "` option.");
                 return null;
             }
-            if (args[i - 1] === "--jobs") {
-                if (!isNumeric(args[i])) {
+            const arg_value = args[i];
+            if (arg === "--jobs") {
+                if (!isNumeric(arg_value)) {
                     console.log(
-                        "`--jobs` option expects a positive number, found `" + args[i] + "`");
+                        "`--jobs` option expects a positive number, found `" + arg_value + "`");
                     return null;
                 }
-                opts["jobs"] = parseInt(args[i]);
-            } else if (args[i - 1] !== "--file") {
-                opts[correspondances[args[i - 1]]] = args[i];
+                opts["jobs"] = parseInt(arg_value);
+            } else if (arg !== "--file") {
+                opts[correspondances[arg]] = arg_value;
             } else {
-                opts["files"].push(args[i]);
+                opts["files"].push(arg_value);
             }
-        } else if (args[i] === "--help") {
+        } else if (arg === "--help") {
             showHelp();
             process.exit(0);
-        } else if (args[i] === "--no-sandbox") {
+        } else if (arg === "--no-sandbox") {
             console.log("`--no-sandbox` is being used. Be very careful!");
-            opts[correspondances[args[i]]] = true;
-        } else if (correspondances[args[i]]) {
-            opts[correspondances[args[i]]] = true;
+            opts[correspondances[arg]] = true;
+        } else if (correspondances[arg]) {
+            opts[correspondances[arg]] = true;
         } else {
-            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
             return null;
         }
@@ -186,7 +188,7 @@ function createEmptyResults() {
 }
 
 async function main(argv) {
-    let opts = parseOptions(argv.slice(2));
+    const opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
