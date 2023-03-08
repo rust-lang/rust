@@ -13,6 +13,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -545,6 +546,23 @@ pub fn collect_debugger_visualizers_transitive(
         .collect::<BTreeSet<_>>()
 }
 
+/// Decide allocator kind to codegen. If `Some(_)` this will be the same as
+/// `tcx.allocator_kind`, but it may be `None` in more cases (e.g. if using
+/// allocator definitions from a dylib dependency).
+pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
+    // If the crate doesn't have an `allocator_kind` set then there's definitely
+    // no shim to generate. Otherwise we also check our dependency graph for all
+    // our output crate types. If anything there looks like its a `Dynamic`
+    // linkage, then it's already got an allocator shim and we'll be using that
+    // one instead. If nothing exists then it's our job to generate the
+    // allocator!
+    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
+        use rustc_middle::middle::dependency_format::Linkage;
+        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+    });
+    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
@@ -615,20 +633,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     );
 
     // Codegen an allocator shim, if necessary.
-    //
-    // If the crate doesn't have an `allocator_kind` set then there's definitely
-    // no shim to generate. Otherwise we also check our dependency graph for all
-    // our output crate types. If anything there looks like its a `Dynamic`
-    // linkage, then it's already got an allocator shim and we'll be using that
-    // one instead. If nothing exists then it's our job to generate the
-    // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
-        use rustc_middle::middle::dependency_format::Linkage;
-        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-    });
-    let allocator_module = if any_dynamic_crate {
-        None
-    } else if let Some(kind) = tcx.allocator_kind(()) {
+    if let Some(kind) = allocator_kind_for_codegen(tcx) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let module_llvm = tcx.sess.time("write_allocator_module", || {
@@ -642,13 +647,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
-    } else {
-        None
-    };
-
-    if let Some(allocator_module) = allocator_module {
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(
+            tcx,
+            ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+        );
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort
