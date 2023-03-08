@@ -100,6 +100,7 @@ pub(crate) fn path_to_const(
             };
             Some(ConstData { ty, value }.intern(Interner))
         }
+        Some(ValueNs::ConstId(c)) => db.const_eval(c).ok(),
         _ => None,
     }
 }
