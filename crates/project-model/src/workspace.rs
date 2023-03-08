@@ -70,7 +70,7 @@ pub enum ProjectWorkspace {
         cargo: CargoWorkspace,
         build_scripts: WorkspaceBuildScripts,
         sysroot: Option<Sysroot>,
-        rustc: Option<CargoWorkspace>,
+        rustc: Option<(CargoWorkspace, WorkspaceBuildScripts)>,
         /// Holds cfg flags for the current target. We get those by running
         /// `rustc --print cfg`.
         ///
@@ -116,7 +116,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("sysroot", &sysroot.is_some())
                 .field(
                     "n_rustc_compiler_crates",
-                    &rustc.as_ref().map_or(0, |rc| rc.packages().len()),
+                    &rustc.as_ref().map_or(0, |(rc, _)| rc.packages().len()),
                 )
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
@@ -243,7 +243,7 @@ impl ProjectWorkspace {
                 let rustc_dir = match &config.rustc_source {
                     Some(RustcSource::Path(path)) => ManifestPath::try_from(path.clone()).ok(),
                     Some(RustcSource::Discover) => {
-                        Sysroot::discover_rustc(&cargo_toml, &config.extra_env)
+                        sysroot.as_ref().and_then(Sysroot::discover_rustc)
                     }
                     None => None,
                 };
@@ -257,7 +257,15 @@ impl ProjectWorkspace {
                             config,
                             progress,
                         ) {
-                            Ok(meta) => Some(CargoWorkspace::new(meta)),
+                            Ok(meta) => {
+                                let workspace = CargoWorkspace::new(meta);
+                                let buildscripts = WorkspaceBuildScripts::rustc_crates(
+                                    &workspace,
+                                    cargo_toml.parent(),
+                                    &config.extra_env,
+                                );
+                                Some((workspace, buildscripts))
+                            }
                             Err(e) => {
                                 tracing::error!(
                                     %e,
@@ -531,7 +539,7 @@ impl ProjectWorkspace {
                         PackageRoot { is_local, include, exclude }
                     })
                     .chain(mk_sysroot(sysroot.as_ref(), Some(cargo.workspace_root())))
-                    .chain(rustc.iter().flat_map(|rustc| {
+                    .chain(rustc.iter().flat_map(|(rustc, _)| {
                         rustc.packages().map(move |krate| PackageRoot {
                             is_local: false,
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
@@ -559,7 +567,7 @@ impl ProjectWorkspace {
                 sysroot_package_len + project.n_crates()
             }
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, .. } => {
-                let rustc_package_len = rustc.as_ref().map_or(0, |it| it.packages().len());
+                let rustc_package_len = rustc.as_ref().map_or(0, |(it, _)| it.packages().len());
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.crates().len());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
@@ -778,7 +786,7 @@ fn project_json_to_crate_graph(
 fn cargo_to_crate_graph(
     load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-    rustc: &Option<CargoWorkspace>,
+    rustc: &Option<(CargoWorkspace, WorkspaceBuildScripts)>,
     cargo: &CargoWorkspace,
     sysroot: Option<&Sysroot>,
     rustc_cfg: Vec<CfgFlag>,
@@ -924,7 +932,7 @@ fn cargo_to_crate_graph(
     if has_private {
         // If the user provided a path to rustc sources, we add all the rustc_private crates
         // and create dependencies on them for the crates which opt-in to that
-        if let Some(rustc_workspace) = rustc {
+        if let Some((rustc_workspace, build_scripts)) = rustc {
             handle_rustc_crates(
                 &mut crate_graph,
                 &mut pkg_to_lib_crate,
