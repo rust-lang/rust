@@ -1,4 +1,4 @@
-error[E0206]: the trait `Copy` may not be implemented for this type
+error[E0206]: the trait `Copy` cannot be implemented for this type
   --> $DIR/E0206.rs:4:15
    |
 LL | impl Copy for &'static mut Bar { }

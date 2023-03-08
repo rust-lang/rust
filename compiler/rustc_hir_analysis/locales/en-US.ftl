@@ -89,14 +89,14 @@ hir_analysis_missing_type_params =
     .note = because of the default `Self` reference, type parameters must be specified on object types
 
 hir_analysis_copy_impl_on_type_with_dtor =
-    the trait `Copy` may not be implemented for this type; the type has a destructor
+    the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
 
 hir_analysis_multiple_relaxed_default_bounds =
     type parameter has more than one relaxed default bound, only one is supported
 
 hir_analysis_copy_impl_on_non_adt =
-    the trait `Copy` may not be implemented for this type
+    the trait `Copy` cannot be implemented for this type
     .label = type is not a structure or enumeration
 
 hir_analysis_const_impl_for_non_const_trait =
