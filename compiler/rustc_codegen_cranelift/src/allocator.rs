@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
 use rustc_span::symbol::sym;
 
@@ -13,24 +14,15 @@ pub(crate) fn codegen(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
 ) -> bool {
-    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
-        use rustc_middle::middle::dependency_format::Linkage;
-        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-    });
-    if any_dynamic_crate {
-        false
-    } else if let Some(kind) = tcx.allocator_kind(()) {
-        codegen_inner(
-            module,
-            unwind_context,
-            kind,
-            tcx.alloc_error_handler_kind(()).unwrap(),
-            tcx.sess.opts.unstable_opts.oom,
-        );
-        true
-    } else {
-        false
-    }
+    let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
+    codegen_inner(
+        module,
+        unwind_context,
+        kind,
+        tcx.alloc_error_handler_kind(()).unwrap(),
+        tcx.sess.opts.unstable_opts.oom,
+    );
+    true
 }
 
 fn codegen_inner(

@@ -722,6 +722,8 @@ impl<'a> Linker for GccLinker<'a> {
                 self.linker_arg(arg);
             }
         }
+
+        self.linker_arg("--no-undefined-version");
     }
 
     fn subsystem(&mut self, subsystem: &str) {
