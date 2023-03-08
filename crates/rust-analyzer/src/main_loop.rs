@@ -409,12 +409,12 @@ impl GlobalState {
         if self.last_reported_status.as_ref() != Some(&status) {
             self.last_reported_status = Some(status.clone());
 
-            if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
-                self.show_message(lsp_types::MessageType::ERROR, message.clone());
-            }
-
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
+            } else {
+                if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
+                    self.show_message(lsp_types::MessageType::ERROR, message.clone());
+                }
             }
         }
 
