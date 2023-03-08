@@ -21,15 +21,15 @@ union U24<T> { // OK
 }
 
 union U3 {
-    a: String, //~ ERROR unions cannot contain fields that may need dropping
+    a: String, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union U32 { // field that does not drop but is not `Copy`, either
-    a: std::cell::RefCell<i32>, //~ ERROR unions cannot contain fields that may need dropping
+    a: std::cell::RefCell<i32>, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union U4<T> {
-    a: T, //~ ERROR unions cannot contain fields that may need dropping
+    a: T, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union U5 { // Having a drop impl is OK
@@ -41,11 +41,11 @@ impl Drop for U5 {
 }
 
 union U5Nested { // a nested union that drops is NOT OK
-    nest: U5, //~ ERROR unions cannot contain fields that may need dropping
+    nest: U5, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union U5Nested2 { // for now we don't special-case empty arrays
-    nest: [U5; 0], //~ ERROR unions cannot contain fields that may need dropping
+    nest: [U5; 0], //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union U6 { // OK
