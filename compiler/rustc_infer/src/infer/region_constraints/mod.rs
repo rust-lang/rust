@@ -420,7 +420,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // `RegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
-            self.unification_table_mut().reset_unifications(|_| UnifiedRegion(None));
+            self.unification_table_mut().reset_unifications(|_| UnifiedRegion::new(None));
         }
 
         data
@@ -447,7 +447,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table_mut().new_key(UnifiedRegion(None));
+        let u_vid = self.unification_table_mut().new_key(UnifiedRegion::new(None));
         assert_eq!(vid, u_vid.vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
@@ -522,7 +522,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 (Region(Interned(ReVar(vid), _)), value)
                 | (value, Region(Interned(ReVar(vid), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table_mut().union_value(*vid, UnifiedRegion(Some(value)));
+                    self.unification_table_mut().union_value(*vid, UnifiedRegion::new(Some(value)));
                     self.any_unifications = true;
                 }
                 (_, _) => {}
@@ -642,7 +642,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> ty::Region<'tcx> {
         let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
         let root_vid = ut.find(vid).vid;
-        let resolved = ut.probe_value(root_vid).0.unwrap_or_else(|| tcx.mk_re_var(root_vid));
+        let resolved = ut
+            .probe_value(root_vid)
+            .get_value_ignoring_universes()
+            .unwrap_or_else(|| tcx.mk_re_var(root_vid));
 
         // Don't resolve a variable to a region that it cannot name.
         if self.var_universe(vid).can_name(self.universe(resolved)) {
