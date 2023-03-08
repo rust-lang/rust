@@ -66,6 +66,8 @@ xflags::xflags! {
             optional --memory-usage
             /// Print the total length of all source and macro files (whitespace is not counted).
             optional --source-stats
+            /// Print the number of bodies that fail to lower to mir, in addition to failed reasons.
+            optional --mir-stats
 
             /// Only analyze items matching this path.
             optional -o, --only path: String
@@ -172,6 +174,7 @@ pub struct AnalysisStats {
     pub parallel: bool,
     pub memory_usage: bool,
     pub source_stats: bool,
+    pub mir_stats: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
