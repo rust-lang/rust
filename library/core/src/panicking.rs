@@ -29,6 +29,9 @@
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
+#[cfg(feature = "panic_immediate_abort")]
+const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C panic=abort");
+
 // First we define the two main entry points that all panics go through.
 // In the end both are just convenience wrappers around `panic_impl`.
 
