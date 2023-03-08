@@ -2,14 +2,7 @@ use smallvec::{Array, SmallVec};
 use std::ptr;
 use thin_vec::ThinVec;
 
-pub trait MapInPlace<T>: Sized {
-    fn map_in_place<F>(&mut self, mut f: F)
-    where
-        F: FnMut(T) -> T,
-    {
-        self.flat_map_in_place(|e| Some(f(e)))
-    }
-
+pub trait FlatMapInPlace<T>: Sized {
     fn flat_map_in_place<F, I>(&mut self, f: F)
     where
         F: FnMut(T) -> I,
@@ -66,14 +59,14 @@ macro_rules! flat_map_in_place {
     };
 }
 
-impl<T> MapInPlace<T> for Vec<T> {
+impl<T> FlatMapInPlace<T> for Vec<T> {
     flat_map_in_place!();
 }
 
-impl<T, A: Array<Item = T>> MapInPlace<T> for SmallVec<A> {
+impl<T, A: Array<Item = T>> FlatMapInPlace<T> for SmallVec<A> {
     flat_map_in_place!();
 }
 
-impl<T> MapInPlace<T> for ThinVec<T> {
+impl<T> FlatMapInPlace<T> for ThinVec<T> {
     flat_map_in_place!();
 }

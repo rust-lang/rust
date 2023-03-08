@@ -50,6 +50,7 @@ pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
 pub mod base_n;
 pub mod binary_search_util;
 pub mod captures;
+pub mod flat_map_in_place;
 pub mod flock;
 pub mod functor;
 pub mod fx;
@@ -57,7 +58,6 @@ pub mod graph;
 pub mod intern;
 pub mod jobserver;
 pub mod macros;
-pub mod map_in_place;
 pub mod obligation_forest;
 pub mod owning_ref;
 pub mod sip128;
