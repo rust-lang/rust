@@ -36,6 +36,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, MappedReadGuard, ReadGuard, WorkerLocal};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
@@ -2486,7 +2487,9 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
+        tcx.arena.alloc(UnordSet::from(
+            tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default(),
+        ))
     };
 
     providers.extern_mod_stmt_cnum =

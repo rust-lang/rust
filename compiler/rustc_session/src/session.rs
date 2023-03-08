@@ -11,7 +11,7 @@ use crate::{filesearch, lint};
 pub use rustc_ast::attr::MarkedAttrs;
 pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
@@ -207,10 +207,10 @@ pub struct Session {
     pub asm_arch: Option<InlineAsmArch>,
 
     /// Set of enabled features for the current target.
-    pub target_features: FxHashSet<Symbol>,
+    pub target_features: FxIndexSet<Symbol>,
 
     /// Set of enabled features for the current target, including unstable ones.
-    pub unstable_target_features: FxHashSet<Symbol>,
+    pub unstable_target_features: FxIndexSet<Symbol>,
 }
 
 pub struct PerfStats {
@@ -1488,8 +1488,8 @@ pub fn build_session(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
-        target_features: FxHashSet::default(),
-        unstable_target_features: FxHashSet::default(),
+        target_features: Default::default(),
+        unstable_target_features: Default::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

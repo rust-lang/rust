@@ -1,5 +1,5 @@
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
@@ -51,7 +51,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         template: &[InlineAsmTemplatePiece],
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
-        target_features: &FxHashSet<Symbol>,
+        target_features: &FxIndexSet<Symbol>,
     ) -> Option<InlineAsmType> {
         let ty = (self.get_operand_ty)(expr);
         if ty.has_non_region_infer() {
@@ -201,7 +201,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // (!). In that case we still need the earlier check to verify that the
         // register class is usable at all.
         if let Some(feature) = feature {
-            if !target_features.contains(&feature) {
+            if !target_features.contains(feature) {
                 let msg = &format!("`{}` target feature is not enabled", feature);
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
                 err.note(&format!(

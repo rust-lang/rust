@@ -764,7 +764,7 @@ rustc_queries! {
     ///
     /// The map returned for `tcx.impl_item_implementor_ids(impl_id)` would be
     ///`{ trait_f: impl_f, trait_g: impl_g }`
-    query impl_item_implementor_ids(impl_id: DefId) -> &'tcx FxHashMap<DefId, DefId> {
+    query impl_item_implementor_ids(impl_id: DefId) -> &'tcx DefIdMap<DefId> {
         arena_cache
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
@@ -906,8 +906,8 @@ rustc_queries! {
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
     /// their respective impl (i.e., part of the derive macro)
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
-        FxHashSet<LocalDefId>,
-        FxHashMap<LocalDefId, Vec<(DefId, DefId)>>
+        LocalDefIdSet,
+        LocalDefIdMap<Vec<(DefId, DefId)>>
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
@@ -1120,7 +1120,7 @@ rustc_queries! {
         desc { "checking for private elements in public interfaces" }
     }
 
-    query reachable_set(_: ()) -> &'tcx FxHashSet<LocalDefId> {
+    query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
         arena_cache
         desc { "reachability" }
     }
@@ -1229,7 +1229,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {
+    query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1845,7 +1845,7 @@ rustc_queries! {
     query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
         desc { "fetching potentially unused trait imports" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
+    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx UnordSet<Symbol> {
         desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 

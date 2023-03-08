@@ -58,7 +58,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(())
-        .iter()
+        .items()
         .filter_map(|&def_id| {
             // We want to ignore some FFI functions that are not exposed from
             // this crate. Reachable FFI functions can be lumped into two
@@ -136,7 +136,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             };
             (def_id.to_def_id(), info)
         })
-        .collect();
+        .into();
 
     if let Some(id) = tcx.proc_macro_decls_static(()) {
         reachable_non_generics.insert(

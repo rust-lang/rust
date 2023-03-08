@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, ConstantKind, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -123,7 +123,7 @@ pub struct UnsafetyCheckResult {
     pub violations: Vec<UnsafetyViolation>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    pub used_unsafe_blocks: FxHashSet<hir::HirId>,
+    pub used_unsafe_blocks: UnordSet<hir::HirId>,
 
     /// This is `Some` iff the item is not a closure.
     pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,

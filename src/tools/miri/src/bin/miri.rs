@@ -109,11 +109,14 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
                 local_providers.exported_symbols = |tcx, cnum| {
                     assert_eq!(cnum, LOCAL_CRATE);
+                    let reachable_set = tcx.with_stable_hashing_context(|hcx| {
+                        tcx.reachable_set(()).to_sorted(&hcx, true)
+                    });
                     tcx.arena.alloc_from_iter(
                         // This is based on:
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
-                        tcx.reachable_set(()).iter().filter_map(|&local_def_id| {
+                        reachable_set.into_iter().filter_map(|&local_def_id| {
                             // Do the same filtering that rustc does:
                             // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
                             // Otherwise it may cause unexpected behaviours and ICEs

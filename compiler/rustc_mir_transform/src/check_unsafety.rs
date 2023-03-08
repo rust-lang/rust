@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::{UnordItems, UnordSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -24,7 +24,7 @@ pub struct UnsafetyChecker<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    used_unsafe_blocks: FxHashSet<HirId>,
+    used_unsafe_blocks: UnordSet<HirId>,
 }
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
@@ -129,7 +129,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id);
-                    self.register_violations(violations, used_unsafe_blocks.iter().copied());
+                    self.register_violations(violations, used_unsafe_blocks.items().copied());
                 }
             },
             _ => {}
@@ -151,7 +151,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                         let local_def_id = def_id.expect_local();
                         let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                             self.tcx.unsafety_check_result(local_def_id);
-                        self.register_violations(violations, used_unsafe_blocks.iter().copied());
+                        self.register_violations(violations, used_unsafe_blocks.items().copied());
                     }
                 }
             }
@@ -268,14 +268,14 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             .lint_root;
         self.register_violations(
             [&UnsafetyViolation { source_info, lint_root, kind, details }],
-            [],
+            UnordItems::empty(),
         );
     }
 
     fn register_violations<'a>(
         &mut self,
         violations: impl IntoIterator<Item = &'a UnsafetyViolation>,
-        new_used_unsafe_blocks: impl IntoIterator<Item = HirId>,
+        new_used_unsafe_blocks: UnordItems<HirId, impl Iterator<Item = HirId>>,
     ) {
         let safety = self.body.source_scopes[self.source_info.scope]
             .local_data
@@ -308,9 +308,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             }),
         };
 
-        new_used_unsafe_blocks.into_iter().for_each(|hir_id| {
-            self.used_unsafe_blocks.insert(hir_id);
-        });
+        self.used_unsafe_blocks.extend_unord(new_used_unsafe_blocks);
     }
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,
@@ -407,7 +405,7 @@ enum Context {
 
 struct UnusedUnsafeVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    used_unsafe_blocks: &'a FxHashSet<HirId>,
+    used_unsafe_blocks: &'a UnordSet<HirId>,
     context: Context,
     unused_unsafes: &'a mut Vec<(HirId, UnusedUnsafe)>,
 }
@@ -458,7 +456,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
 fn check_unused_unsafe(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-    used_unsafe_blocks: &FxHashSet<HirId>,
+    used_unsafe_blocks: &UnordSet<HirId>,
 ) -> Vec<(HirId, UnusedUnsafe)> {
     let body_id = tcx.hir().maybe_body_owned_by(def_id);
 
@@ -505,7 +503,7 @@ fn unsafety_check_result(
     if body.is_custom_mir() {
         return tcx.arena.alloc(UnsafetyCheckResult {
             violations: Vec::new(),
-            used_unsafe_blocks: FxHashSet::default(),
+            used_unsafe_blocks: Default::default(),
             unused_unsafes: Some(Vec::new()),
         });
     }
