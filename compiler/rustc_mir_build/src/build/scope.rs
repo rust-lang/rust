@@ -1072,7 +1072,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
                     | TerminatorKind::Drop { .. }
-                    | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::InlineAsm { .. }
             ),
@@ -1432,8 +1431,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
                     *unwind = Some(to);
                 }
             }
-            TerminatorKind::DropAndReplace { unwind, .. }
-            | TerminatorKind::FalseUnwind { unwind, .. }
+            TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call { cleanup: unwind, .. }
             | TerminatorKind::Assert { cleanup: unwind, .. }
             | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {

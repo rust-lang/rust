@@ -295,7 +295,6 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 TerminatorKind::Call { cleanup: unwind, .. }
                 | TerminatorKind::InlineAsm { cleanup: unwind, .. }
                 | TerminatorKind::Assert { cleanup: unwind, .. }
-                | TerminatorKind::DropAndReplace { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {
                         debug!(

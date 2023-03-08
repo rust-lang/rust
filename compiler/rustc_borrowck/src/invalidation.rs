@@ -118,15 +118,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(location, *drop_place, Deep);
-                self.consume_operand(location, new_value);
-            }
             TerminatorKind::Call {
                 func,
                 args,

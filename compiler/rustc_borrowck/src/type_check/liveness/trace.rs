@@ -435,8 +435,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         //
         // What we *actually* generate is a store to a temporary
         // for the call (`TMP = call()...`) and then a
-        // `DropAndReplace` to swap that with `X`
-        // (`DropAndReplace` has very particular semantics).
+        // `Drop(X)` followed by `X = TMP`  to swap that with `X`.
     }
 }
 
