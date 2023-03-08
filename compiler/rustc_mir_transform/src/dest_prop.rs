@@ -581,10 +581,11 @@ impl WriteInfo {
             | StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::Coverage(_)
-            | StatementKind::PlaceMention(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_) => (),
-            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
+            StatementKind::FakeRead(_)
+            | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(_) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }
         }
