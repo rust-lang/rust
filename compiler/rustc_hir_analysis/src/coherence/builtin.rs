@@ -2,6 +2,7 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -94,7 +95,14 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             let mut errors: BTreeMap<_, Vec<_>> = Default::default();
             let mut bounds = vec![];
 
+            let mut seen_tys = FxHashSet::default();
+
             for (field, ty, reason) in fields {
+                // Only report an error once per type.
+                if !seen_tys.insert(ty) {
+                    continue;
+                }
+
                 let field_span = tcx.def_span(field.did);
                 err.span_label(field_span, "this field does not implement `Copy`");
 
