@@ -822,7 +822,6 @@ pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
         TerminatorKind::Return => "Return",
         TerminatorKind::Unreachable => "Unreachable",
         TerminatorKind::Drop { .. } => "Drop",
-        TerminatorKind::DropAndReplace { .. } => "DropAndReplace",
         TerminatorKind::Call { .. } => "Call",
         TerminatorKind::Assert { .. } => "Assert",
         TerminatorKind::Yield { .. } => "Yield",

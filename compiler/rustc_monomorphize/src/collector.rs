@@ -808,8 +808,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
-            mir::TerminatorKind::Drop { ref place, .. }
-            | mir::TerminatorKind::DropAndReplace { ref place, .. } => {
+            mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.output);

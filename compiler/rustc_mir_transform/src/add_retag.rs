@@ -100,7 +100,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                     }
 
                     // `Drop` is also a call, but it doesn't return anything so we are good.
-                    TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => None,
+                    TerminatorKind::Drop { .. } => None,
                     // Not a block ending in a Call -> ignore.
                     _ => None,
                 }

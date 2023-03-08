@@ -1312,24 +1312,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { place, value, target: _, unwind: _ } => {
-                let place_ty = place.ty(body, tcx).ty;
-                let rv_ty = value.ty(body, tcx);
-
-                let locations = term_location.to_locations();
-                if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, locations, ConstraintCategory::Assignment)
-                {
-                    span_mirbug!(
-                        self,
-                        term,
-                        "bad DropAndReplace ({:?} = {:?}): {:?}",
-                        place_ty,
-                        rv_ty,
-                        terr
-                    );
-                }
-            }
             TerminatorKind::SwitchInt { discr, .. } => {
                 self.check_operand(discr, term_location);
 
@@ -1629,7 +1611,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::DropAndReplace { target, unwind, .. }
             | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {

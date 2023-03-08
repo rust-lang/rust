@@ -222,23 +222,8 @@ where
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
-            let qualif = qualifs::in_operand::<Q, _>(
-                self.ccx,
-                &mut |l| self.state.qualif.contains(l),
-                value,
-            );
-
-            if !place.is_indirect() {
-                self.assign_qualif_direct(place, qualif);
-            }
-        }
-
         // We ignore borrow on drop because custom drop impls are not allowed in consts.
         // FIXME: Reconsider if accounting for borrows in drops is necessary for const drop.
-
-        // We need to assign qualifs to the dropped location before visiting the operand that
-        // replaces it since qualifs can be cleared on move.
         self.super_terminator(terminator, location);
     }
 }
