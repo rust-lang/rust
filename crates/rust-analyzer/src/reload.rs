@@ -202,7 +202,9 @@ impl GlobalState {
         tracing::info!(%cause, "will switch workspaces");
 
         if let Err(error_message) = self.fetch_workspace_error() {
-            self.show_and_log_error(error_message, None);
+            if !self.config.server_status_notification() {
+                self.show_and_log_error(error_message, None);
+            }
             if !self.workspaces.is_empty() {
                 // It only makes sense to switch to a partially broken workspace
                 // if we don't have any workspace at all yet.
