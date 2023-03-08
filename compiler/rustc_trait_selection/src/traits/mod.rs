@@ -155,10 +155,12 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         predicate: pred.to_predicate(infcx.tcx),
     };
 
-    let result = infcx.predicate_must_hold_modulo_regions(&obligation);
+    let result = infcx.evaluate_obligation_no_overflow(&obligation);
     debug!(?result);
 
-    if result && has_non_region_infer {
+    if result.must_apply_modulo_regions() && !has_non_region_infer {
+        true
+    } else if result.may_apply() {
         // Because of inference "guessing", selection can sometimes claim
         // to succeed while the success requires a guess. To ensure
         // this function's result remains infallible, we must confirm
@@ -179,7 +181,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             }
         }
     } else {
-        result
+        false
     }
 }
 
