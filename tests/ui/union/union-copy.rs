@@ -9,6 +9,6 @@ union W {
 }
 
 impl Copy for U {} // OK
-impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for this type
+impl Copy for W {} //~ ERROR the trait `Copy` cannot be implemented for this type
 
 fn main() {}

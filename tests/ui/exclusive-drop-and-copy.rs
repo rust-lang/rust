@@ -1,13 +1,13 @@
 // issue #20126
 
-#[derive(Copy, Clone)] //~ ERROR the trait `Copy` may not be implemented
+#[derive(Copy, Clone)] //~ ERROR the trait `Copy` cannot be implemented
 struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-#[derive(Copy, Clone)] //~ ERROR the trait `Copy` may not be implemented
+#[derive(Copy, Clone)] //~ ERROR the trait `Copy` cannot be implemented
 struct Bar<T>(::std::marker::PhantomData<T>);
 
 impl<T> Drop for Bar<T> {

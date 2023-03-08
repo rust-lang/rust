@@ -14,6 +14,6 @@ impl<T: std::fmt::Display> Clone for OnlyCopyIfDisplay<T> {
 impl<T: std::fmt::Display> Copy for OnlyCopyIfDisplay<T> {}
 
 impl<S> Copy for Wrapper<OnlyCopyIfDisplay<S>> {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR the trait `Copy` cannot be implemented for this type
 
 fn main() {}
