@@ -381,6 +381,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
+                            | InstanceDef::ThreadLocalShim(..)
                             | InstanceDef::CloneShim(..) => None,
                         }
                     }
