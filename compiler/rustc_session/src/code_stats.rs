@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
-use std::cmp::{self, Ordering};
+use std::cmp;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct VariantInfo {
@@ -87,7 +87,7 @@ impl CodeStats {
         // Except for Generators, whose variants are already sorted according to
         // their yield points in `variant_info_for_generator`.
         if kind != DataTypeKind::Generator {
-            variants.sort_by(|info1, info2| info2.size.cmp(&info1.size));
+            variants.sort_by_key(|info| cmp::Reverse(info.size));
         }
         let info = TypeSizeInfo {
             kind,
@@ -107,13 +107,7 @@ impl CodeStats {
 
         // Primary sort: large-to-small.
         // Secondary sort: description (dictionary order)
-        sorted.sort_by(|info1, info2| {
-            // (reversing cmp order to get large-to-small ordering)
-            match info2.overall_size.cmp(&info1.overall_size) {
-                Ordering::Equal => info1.type_description.cmp(&info2.type_description),
-                other => other,
-            }
-        });
+        sorted.sort_by_key(|info| (cmp::Reverse(info.overall_size), &info.type_description));
 
         for info in sorted {
             let TypeSizeInfo { type_description, overall_size, align, kind, variants, .. } = info;
