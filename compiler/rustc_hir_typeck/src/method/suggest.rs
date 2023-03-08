@@ -42,7 +42,7 @@ use rustc_trait_selection::traits::{
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -2527,7 +2527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
-            candidates.sort_by(|a, b| a.cmp(b).reverse());
+            candidates.sort_by_key(|&info| cmp::Reverse(info));
             candidates.dedup();
 
             let param_type = match rcvr_ty.kind() {

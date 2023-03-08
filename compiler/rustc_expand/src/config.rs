@@ -12,8 +12,8 @@ use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
 use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,

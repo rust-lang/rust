@@ -4,14 +4,14 @@ hir_typeck_field_multiply_specified_in_initializer =
     .previous_use_label = first use of `{$ident}`
 
 hir_typeck_copy_impl_on_type_with_dtor =
-    the trait `Copy` may not be implemented for this type; the type has a destructor
+    the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
 
 hir_typeck_multiple_relaxed_default_bounds =
     type parameter has more than one relaxed default bound, only one is supported
 
 hir_typeck_copy_impl_on_non_adt =
-    the trait `Copy` may not be implemented for this type
+    the trait `Copy` cannot be implemented for this type
     .label = type is not a structure or enumeration
 
 hir_typeck_trait_object_declared_with_no_traits =
