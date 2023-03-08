@@ -301,16 +301,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> (ty::InstantiatedPredicates<'tcx>, Vec<Span>) {
+    ) -> ty::InstantiatedPredicates<'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
-        let spans: Vec<Span> = bounds.predicates.iter().map(|(_, span)| *span).collect();
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize(span, result);
-        debug!(
-            "instantiate_bounds(bounds={:?}, substs={:?}) = {:?}, {:?}",
-            bounds, substs, result, spans,
-        );
-        (result, spans)
+        debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}", bounds, substs, result);
+        result
     }
 
     pub(in super::super) fn normalize<T>(&self, span: Span, value: T) -> T
@@ -1389,7 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-        let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
+        let bounds = self.instantiate_bounds(span, def_id, &substs);
 
         for mut obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
