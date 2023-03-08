@@ -1,5 +1,5 @@
 warning: the feature `return_position_impl_trait_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/default-method-binder-shifting.rs:3:12
+  --> $DIR/default-method-binder-shifting.rs:5:12
    |
 LL | #![feature(return_position_impl_trait_in_trait)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
