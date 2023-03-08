@@ -416,7 +416,7 @@ impl WorkspaceBuildScripts {
                         let path = dir_entry.path();
                         tracing::info!("p{:?}", path);
                         let extension = path.extension()?;
-                        if extension == "dll" || extension == "so" {
+                        if extension == std::env::consts::DLL_EXTENSION {
                             let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();
                             let path = AbsPathBuf::try_from(path).ok()?;
                             return Some((name, path));
@@ -426,10 +426,13 @@ impl WorkspaceBuildScripts {
                 })
                 .collect();
             for p in rustc.packages() {
-                if let Some((_, path)) =
-                    proc_macro_dylibs.iter().find(|(name, _)| *name == rustc[p].name)
-                {
-                    bs.outputs[p].proc_macro_dylib_path = Some(path.clone());
+                let package = &rustc[p];
+                if package.targets.iter().any(|&it| rustc[it].is_proc_macro) {
+                    if let Some((_, path)) =
+                        proc_macro_dylibs.iter().find(|(name, _)| *name == package.name)
+                    {
+                        bs.outputs[p].proc_macro_dylib_path = Some(path.clone());
+                    }
                 }
             }
 
