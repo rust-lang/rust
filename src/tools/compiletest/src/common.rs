@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
+use std::collections::HashSet;
 use test::{ColorConfig, OutputFormat};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -129,6 +130,14 @@ pub enum CompareMode {
 }
 
 impl CompareMode {
+    pub(crate) const VARIANTS: &'static [CompareMode] = &[
+        CompareMode::Polonius,
+        CompareMode::Chalk,
+        CompareMode::NextSolver,
+        CompareMode::SplitDwarf,
+        CompareMode::SplitDwarfSingle,
+    ];
+
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
             CompareMode::Polonius => "polonius",
@@ -159,6 +168,9 @@ pub enum Debugger {
 }
 
 impl Debugger {
+    pub(crate) const VARIANTS: &'static [Debugger] =
+        &[Debugger::Cdb, Debugger::Gdb, Debugger::Lldb];
+
     pub(crate) fn to_str(&self) -> &'static str {
         match self {
             Debugger::Cdb => "cdb",
@@ -396,8 +408,12 @@ impl Config {
         })
     }
 
+    pub fn target_cfgs(&self) -> &TargetCfgs {
+        self.target_cfgs.borrow_with(|| TargetCfgs::new(self))
+    }
+
     pub fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg.borrow_with(|| TargetCfg::new(self))
+        &self.target_cfgs().current
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -449,6 +465,63 @@ impl Config {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TargetCfgs {
+    pub current: TargetCfg,
+    pub all_targets: HashSet<String>,
+    pub all_archs: HashSet<String>,
+    pub all_oses: HashSet<String>,
+    pub all_envs: HashSet<String>,
+    pub all_abis: HashSet<String>,
+    pub all_families: HashSet<String>,
+    pub all_pointer_widths: HashSet<String>,
+}
+
+impl TargetCfgs {
+    fn new(config: &Config) -> TargetCfgs {
+        // Gather list of all targets
+        let targets = rustc_output(config, &["--print=target-list"]);
+
+        let mut current = None;
+        let mut all_targets = HashSet::new();
+        let mut all_archs = HashSet::new();
+        let mut all_oses = HashSet::new();
+        let mut all_envs = HashSet::new();
+        let mut all_abis = HashSet::new();
+        let mut all_families = HashSet::new();
+        let mut all_pointer_widths = HashSet::new();
+
+        for target in targets.trim().lines() {
+            let cfg = TargetCfg::new(config, target);
+
+            all_archs.insert(cfg.arch.clone());
+            all_oses.insert(cfg.os.clone());
+            all_envs.insert(cfg.env.clone());
+            all_abis.insert(cfg.abi.clone());
+            for family in &cfg.families {
+                all_families.insert(family.clone());
+            }
+            all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
+
+            if target == config.target {
+                current = Some(cfg);
+            }
+            all_targets.insert(target.into());
+        }
+
+        Self {
+            current: current.expect("current target not found"),
+            all_targets,
+            all_archs,
+            all_oses,
+            all_envs,
+            all_abis,
+            all_families,
+            all_pointer_widths,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TargetCfg {
     pub(crate) arch: String,
@@ -468,28 +541,8 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(config: &Config) -> TargetCfg {
-        let mut command = Command::new(&config.rustc_path);
-        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
-        let output = match command
-            .arg("--print=cfg")
-            .arg("--target")
-            .arg(&config.target)
-            .args(&config.target_rustcflags)
-            .output()
-        {
-            Ok(output) => output,
-            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", config.rustc_path),
-        };
-        if !output.status.success() {
-            panic!(
-                "error: failed to get cfg info from {:?}\n--- stdout\n{}\n--- stderr\n{}",
-                config.rustc_path,
-                String::from_utf8(output.stdout).unwrap(),
-                String::from_utf8(output.stderr).unwrap(),
-            );
-        }
-        let print_cfg = String::from_utf8(output.stdout).unwrap();
+    fn new(config: &Config, target: &str) -> TargetCfg {
+        let print_cfg = rustc_output(config, &["--print=cfg", "--target", target]);
         let mut arch = None;
         let mut os = None;
         let mut env = None;
@@ -537,6 +590,25 @@ impl TargetCfg {
             panic: panic.unwrap(),
         }
     }
+}
+
+fn rustc_output(config: &Config, args: &[&str]) -> String {
+    let mut command = Command::new(&config.rustc_path);
+    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    command.args(&config.target_rustcflags).args(args);
+
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(e) => panic!("error: failed to run {command:?}: {e}"),
+    };
+    if !output.status.success() {
+        panic!(
+            "error: failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+            String::from_utf8(output.stdout).unwrap(),
+            String::from_utf8(output.stderr).unwrap(),
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
 }
 
 #[derive(Debug, Clone)]

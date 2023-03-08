@@ -311,7 +311,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         force_rerun: matches.opt_present("force-rerun"),
 
-        target_cfg: LazyCell::new(),
+        target_cfgs: LazyCell::new(),
 
         nocapture: matches.opt_present("nocapture"),
     }

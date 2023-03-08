@@ -8,6 +8,7 @@ use std::process::Command;
 
 use tracing::*;
 
+use crate::common::CompareMode;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
@@ -36,6 +37,10 @@ enum MatchOutcome {
     NoMatch,
     /// Match.
     Match,
+    /// The directive was invalid.
+    Invalid,
+    /// The directive is handled by other parts of our tooling.
+    External,
 }
 
 /// Properties which must be known very early, before actually running
@@ -692,26 +697,60 @@ impl Config {
         let (name, comment) =
             line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
 
-        let mut is_match = None;
+        let mut outcome = MatchOutcome::Invalid;
+        let mut message = None;
 
         macro_rules! maybe_condition {
-            (name: $name:expr, $(condition: $condition:expr,)? message: $($message:tt)*) => {
-                if let Some(expected) = $name {
-                    if name == expected $(&& $condition)? {
-                        is_match = Some(format!($($message)*));
+            (
+                name: $name:expr,
+                $(allowed_names: $allowed_names:expr,)?
+                $(condition: $condition:expr,)?
+                message: $($message:tt)*
+            ) => {{
+                // This is not inlined to avoid problems with macro repetitions.
+                let format_message = || format!($($message)*);
+
+                if outcome != MatchOutcome::Invalid {
+                    // Ignore all other matches if we already found one
+                } else if $name.as_ref().map(|n| n == &name).unwrap_or(false) {
+                    message = Some(format_message());
+                    if true $(&& $condition)? {
+                        outcome = MatchOutcome::Match;
+                    } else {
+                        outcome = MatchOutcome::NoMatch;
                     }
                 }
-            };
+                $(else if $allowed_names.contains(name) {
+                    message = Some(format_message());
+                    outcome = MatchOutcome::NoMatch;
+                })?
+            }};
         }
         macro_rules! condition {
-            (name: $name:expr, $(condition: $condition:expr,)? message: $($message:tt)*) => {
+            (
+                name: $name:expr,
+                $(allowed_names: $allowed_names:expr,)?
+                $(condition: $condition:expr,)?
+                message: $($message:tt)*
+            ) => {
                 maybe_condition! {
                     name: Some($name),
+                    $(allowed_names: $allowed_names,)*
                     $(condition: $condition,)*
                     message: $($message)*
                 }
             };
         }
+        macro_rules! hashset {
+            ($($value:expr),* $(,)?) => {{
+                let mut set = HashSet::new();
+                $(set.insert($value);)*
+                set
+            }}
+        }
+
+        let target_cfgs = self.target_cfgs();
+        let target_cfg = self.target_cfg();
 
         condition! {
             name: "test",
@@ -719,33 +758,38 @@ impl Config {
         }
         condition! {
             name: &self.target,
+            allowed_names: &target_cfgs.all_targets,
             message: "when the target is {name}"
         }
-
-        let target_cfg = self.target_cfg();
         condition! {
             name: &target_cfg.os,
+            allowed_names: &target_cfgs.all_oses,
             message: "when the operative system is {name}"
         }
         condition! {
             name: &target_cfg.env,
+            allowed_names: &target_cfgs.all_envs,
             message: "when the target environment is {name}"
         }
         condition! {
             name: &target_cfg.abi,
+            allowed_names: &target_cfgs.all_abis,
             message: "when the ABI is {name}"
         }
         condition! {
             name: &target_cfg.arch,
+            allowed_names: &target_cfgs.all_archs,
             message: "when the architecture is {name}"
         }
         condition! {
             name: format!("{}bit", target_cfg.pointer_width),
+            allowed_names: &target_cfgs.all_pointer_widths,
             message: "when the pointer width is {name}"
         }
         for family in &target_cfg.families {
             condition! {
                 name: family,
+                allowed_names: &target_cfgs.all_families,
                 message: "when the target family is {name}"
             }
         }
@@ -768,6 +812,7 @@ impl Config {
 
         condition! {
             name: &self.channel,
+            allowed_names: hashset!["stable", "beta", "nightly"],
             message: "when the release channel is {name}",
         }
         condition! {
@@ -782,6 +827,7 @@ impl Config {
         }
         condition! {
             name: self.stage_id.split('-').next().unwrap(),
+            allowed_names: hashset!["stable", "beta", "nightly"],
             message: "when the bootstrapping stage is {name}",
         }
         condition! {
@@ -796,20 +842,38 @@ impl Config {
         }
         maybe_condition! {
             name: self.debugger.as_ref().map(|d| d.to_str()),
+            allowed_names: Debugger::VARIANTS
+                .iter()
+                .map(|v| v.to_str())
+                .collect::<HashSet<_>>(),
             message: "when the debugger is {name}",
         }
         maybe_condition! {
             name: self.compare_mode
                 .as_ref()
                 .map(|d| format!("compare-mode-{}", d.to_str())),
+            allowed_names: CompareMode::VARIANTS
+                .iter()
+                .map(|cm| format!("compare-mode-{}", cm.to_str()))
+                .collect::<HashSet<_>>(),
             message: "when comparing with {name}",
+        }
+
+        // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
+        if prefix == "ignore" && name.starts_with("tidy-") && outcome == MatchOutcome::Invalid {
+            outcome = MatchOutcome::External;
+        }
+
+        // Don't error out for ignore-pass, as that is handled elsewhere.
+        if prefix == "ignore" && name == "pass" && outcome == MatchOutcome::Invalid {
+            outcome = MatchOutcome::External;
         }
 
         ParsedNameDirective {
             name: Some(name),
             comment: comment.map(|c| c.trim().trim_start_matches('-').trim()),
-            outcome: if is_match.is_some() { MatchOutcome::Match } else { MatchOutcome::NoMatch },
-            pretty_reason: is_match,
+            outcome,
+            pretty_reason: message,
         }
     }
 
@@ -1095,6 +1159,8 @@ pub fn make_test_description<R: Read>(
                     true
                 }
                 MatchOutcome::NoMatch => ignore,
+                MatchOutcome::External => ignore,
+                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
             };
         }
 
@@ -1103,16 +1169,18 @@ pub fn make_test_description<R: Read>(
             ignore = match parsed.outcome {
                 MatchOutcome::Match => ignore,
                 MatchOutcome::NoMatch => {
-                    let name = parsed.name.unwrap();
+                    let reason = parsed.pretty_reason.unwrap();
                     // The ignore reason must be a &'static str, so we have to leak memory to
                     // create it. This is fine, as the header is parsed only at the start of
                     // compiletest so it won't grow indefinitely.
                     ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
-                        Some(comment) => format!("did not match only-{name} ({comment})"),
-                        None => format!("did not match only-{name}"),
+                        Some(comment) => format!("only executed {reason} ({comment})"),
+                        None => format!("only executed {reason}"),
                     })) as &str);
                     true
                 }
+                MatchOutcome::External => ignore,
+                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
             };
         }
 
