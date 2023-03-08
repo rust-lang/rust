@@ -1,6 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, collections::HashMap, iter, sync::Arc};
 
 use base_db::CrateId;
 use chalk_ir::{
@@ -24,7 +24,8 @@ use crate::{
     layout::layout_of_ty,
     mapping::from_chalk,
     method_resolution::lookup_impl_method,
-    CallableDefId, Const, ConstScalar, Interner, MemoryMap, Substitution, Ty, TyBuilder, TyExt,
+    CallableDefId, Const, ConstScalar, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
+    TyBuilder, TyExt,
 };
 
 use super::{
@@ -34,6 +35,7 @@ use super::{
 
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
+    trait_env: Arc<TraitEnvironment>,
     stack: Vec<u8>,
     heap: Vec<u8>,
     crate_id: CrateId,
@@ -217,8 +219,7 @@ pub fn interpret_mir(
     assert_placeholder_ty_is_unused: bool,
 ) -> Result<Const> {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator =
-        Evaluator::new(db, body.owner.module(db.upcast()).krate(), assert_placeholder_ty_is_unused);
+    let mut evaluator = Evaluator::new(db, body, assert_placeholder_ty_is_unused);
     let bytes = evaluator.interpret_mir_with_no_arg(&body)?;
     let memory_map = evaluator.create_memory_map(
         &bytes,
@@ -231,13 +232,16 @@ pub fn interpret_mir(
 impl Evaluator<'_> {
     pub fn new<'a>(
         db: &'a dyn HirDatabase,
-        crate_id: CrateId,
+        body: &MirBody,
         assert_placeholder_ty_is_unused: bool,
     ) -> Evaluator<'a> {
+        let crate_id = body.owner.module(db.upcast()).krate();
+        let trait_env = db.trait_environment_for_body(body.owner);
         Evaluator {
             stack: vec![0],
             heap: vec![0],
             db,
+            trait_env,
             crate_id,
             assert_placeholder_ty_is_unused,
             stack_depth_limit: 100,
@@ -500,15 +504,9 @@ impl Evaluator<'_> {
                                     } else if let Some(x) = self.detect_lang_function(def) {
                                         self.exec_lang_item(x, arg_bytes)?
                                     } else {
-                                        let trait_env = {
-                                            let Some(d) = body.owner.as_generic_def_id() else {
-                                                not_supported!("trait resolving in non generic def id");
-                                            };
-                                            self.db.trait_environment(d)
-                                        };
                                         let (imp, generic_args) = lookup_impl_method(
                                             self.db,
-                                            trait_env,
+                                            self.trait_env.clone(),
                                             def,
                                             generic_args.clone(),
                                         );
@@ -584,7 +582,7 @@ impl Evaluator<'_> {
                         .to_owned());
                 }
                 Terminator::Unreachable => {
-                    return Err(MirEvalError::UndefinedBehavior("unreachable executed"))
+                    return Err(MirEvalError::UndefinedBehavior("unreachable executed"));
                 }
                 _ => not_supported!("unknown terminator"),
             }
@@ -710,8 +708,24 @@ impl Evaluator<'_> {
                 let ty = self.place_ty(p, locals)?;
                 let bytes = self.eval_place(p, locals)?.get(&self)?;
                 let layout = self.layout(&ty)?;
+                let enum_id = 'b: {
+                    match ty.kind(Interner) {
+                        TyKind::Adt(e, _) => match e.0 {
+                            AdtId::EnumId(e) => break 'b e,
+                            _ => (),
+                        },
+                        _ => (),
+                    }
+                    return Ok(Owned(0u128.to_le_bytes().to_vec()));
+                };
                 match layout.variants {
-                    Variants::Single { .. } => Owned(0u128.to_le_bytes().to_vec()),
+                    Variants::Single { index } => {
+                        let r = self.db.const_eval_discriminant(EnumVariantId {
+                            parent: enum_id,
+                            local_id: index.0,
+                        })?;
+                        Owned(r.to_le_bytes().to_vec())
+                    }
                     Variants::Multiple { tag, tag_encoding, .. } => {
                         let Some(target_data_layout) = self.db.target_data_layout(self.crate_id) else {
                             not_supported!("missing target data layout");
@@ -727,13 +741,6 @@ impl Evaluator<'_> {
                                 let tag = &bytes[offset..offset + size];
                                 let candidate_discriminant = i128::from_le_bytes(pad16(tag, false))
                                     .wrapping_sub(niche_start as i128);
-                                let enum_id = match ty.kind(Interner) {
-                                    TyKind::Adt(e, _) => match e.0 {
-                                        AdtId::EnumId(e) => e,
-                                        _ => not_supported!("Non enum with multi variant layout"),
-                                    },
-                                    _ => not_supported!("Non adt with multi variant layout"),
-                                };
                                 let enum_data = self.db.enum_data(enum_id);
                                 let result = 'b: {
                                     for (local_id, _) in enum_data.variants.iter() {
@@ -790,8 +797,8 @@ impl Evaluator<'_> {
                     Owned(result)
                 }
                 AggregateKind::Adt(x, subst) => {
-                    let (size, variant_layout, tag) =
-                        self.layout_of_variant(*x, subst.clone(), locals)?;
+                    let subst = self.subst_filler(subst, locals);
+                    let (size, variant_layout, tag) = self.layout_of_variant(*x, subst, locals)?;
                     Owned(self.make_by_layout(size, &variant_layout, tag, values, locals)?)
                 }
             },
@@ -1124,12 +1131,13 @@ impl Evaluator<'_> {
     }
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
+        use LangItem::*;
         let candidate = lang_attr(self.db.upcast(), def)?;
-        // filter normal lang functions out
-        if [LangItem::IntoIterIntoIter, LangItem::IteratorNext].contains(&candidate) {
-            return None;
+        // We want to execute these functions with special logic
+        if [PanicFmt, BeginPanic, SliceLen].contains(&candidate) {
+            return Some(candidate);
         }
-        Some(candidate)
+        None
     }
 
     fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals<'_>) -> Result<MemoryMap> {

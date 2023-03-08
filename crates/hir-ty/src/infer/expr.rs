@@ -601,21 +601,21 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
-            Expr::Try { expr } => {
-                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                if let Some(trait_) = self.resolve_lang_trait(LangItem::Try) {
-                    if let Some(func) = self.db.trait_data(trait_).method_by_name(&name!(branch)) {
-                        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-                            .push(inner_ty.clone())
-                            .build();
-                        self.write_method_resolution(tgt_expr, func, subst.clone());
-                    }
-                    let try_output = self.resolve_output_on(trait_);
-                    self.resolve_associated_type(inner_ty, try_output)
-                } else {
-                    self.err_ty()
-                }
-            }
+            // Expr::Try { expr } => {
+            //     let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+            //     if let Some(trait_) = self.resolve_lang_trait(LangItem::Try) {
+            //         if let Some(func) = self.db.trait_data(trait_).method_by_name(&name!(branch)) {
+            //             let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+            //                 .push(inner_ty.clone())
+            //                 .build();
+            //             self.write_method_resolution(tgt_expr, func, subst.clone());
+            //         }
+            //         let try_output = self.resolve_output_on(trait_);
+            //         self.resolve_associated_type(inner_ty, try_output)
+            //     } else {
+            //         self.err_ty()
+            //     }
+            // }
             Expr::Cast { expr, type_ref } => {
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME: propagate the "castable to" expectation

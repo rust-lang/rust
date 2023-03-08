@@ -192,9 +192,6 @@ pub enum Expr {
     Await {
         expr: ExprId,
     },
-    Try {
-        expr: ExprId,
-    },
     Cast {
         expr: ExprId,
         type_ref: Interned<TypeRef>,
@@ -383,7 +380,6 @@ impl Expr {
             }
             Expr::Field { expr, .. }
             | Expr::Await { expr }
-            | Expr::Try { expr }
             | Expr::Cast { expr, .. }
             | Expr::Ref { expr, .. }
             | Expr::UnaryOp { expr, .. }

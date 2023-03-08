@@ -13,7 +13,7 @@ use hir_def::{
     layout::LayoutError,
     path::Path,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    DefWithBodyId, EnumVariantId, HasModule,
+    DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, TraitId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -50,6 +50,8 @@ pub enum MirLowerError {
     ConstEvalError(Box<ConstEvalError>),
     LayoutError(LayoutError),
     IncompleteExpr,
+    /// Trying to lower a trait function, instead of an implementation
+    TraitFunctionDefinition(TraitId, Name),
     UnresolvedName(String),
     RecordLiteralWithoutPath,
     UnresolvedMethod,
@@ -200,12 +202,21 @@ impl MirLowerCtx<'_> {
         mut current: BasicBlockId,
     ) -> Result<Option<BasicBlockId>> {
         match &self.body.exprs[expr_id] {
-            Expr::Missing => Err(MirLowerError::IncompleteExpr),
+            Expr::Missing => {
+                if let DefWithBodyId::FunctionId(f) = self.owner {
+                    let assoc = self.db.lookup_intern_function(f);
+                    if let ItemContainerId::TraitId(t) = assoc.container {
+                        let name = &self.db.function_data(f).name;
+                        return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
+                    }
+                }
+                Err(MirLowerError::IncompleteExpr)
+            },
             Expr::Path(p) => {
                 let unresolved_name = || MirLowerError::unresolved_path(self.db, p);
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
                 let pr = resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), p.mod_path())
+                    .resolve_path_in_value_ns(self.db.upcast(), p)
                     .ok_or_else(unresolved_name)?;
                 let pr = match pr {
                     ResolveValueResult::ValueNs(v) => v,
@@ -608,7 +619,6 @@ impl MirLowerCtx<'_> {
                 }
             }
             Expr::Await { .. } => not_supported!("await"),
-            Expr::Try { .. } => not_supported!("? operator"),
             Expr::Yeet { .. } => not_supported!("yeet"),
             Expr::TryBlock { .. } => not_supported!("try block"),
             Expr::Async { .. } => not_supported!("async block"),

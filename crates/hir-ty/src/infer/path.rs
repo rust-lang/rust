@@ -39,7 +39,7 @@ impl<'a> InferenceContext<'a> {
         } else {
             // FIXME: report error, unresolved first path segment
             let value_or_partial =
-                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
+                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path)?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),

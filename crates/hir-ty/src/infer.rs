@@ -25,16 +25,16 @@ use hir_def::{
     expr::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
-    path::Path,
+    path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
-    ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, ItemContainerId, Lookup,
+    TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
 use la_arena::ArenaMap;
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::always;
+use stdx::{always, never};
 
 use crate::{
     db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
@@ -110,10 +110,7 @@ pub(crate) fn normalize(db: &dyn HirDatabase, owner: DefWithBodyId, ty: Ty) -> T
     if !ty.data(Interner).flags.intersects(TypeFlags::HAS_PROJECTION) {
         return ty;
     }
-    let krate = owner.module(db.upcast()).krate();
-    let trait_env = owner
-        .as_generic_def_id()
-        .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
+    let trait_env = db.trait_environment_for_body(owner);
     let mut table = unify::InferenceTable::new(db, trait_env);
 
     let ty_with_vars = table.normalize_associated_types_in(ty);
@@ -506,10 +503,7 @@ impl<'a> InferenceContext<'a> {
         body: &'a Body,
         resolver: Resolver,
     ) -> Self {
-        let krate = owner.module(db.upcast()).krate();
-        let trait_env = owner
-            .as_generic_def_id()
-            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
+        let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env.clone()),
@@ -851,7 +845,7 @@ impl<'a> InferenceContext<'a> {
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         let (resolution, unresolved) = if value_ns {
-            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path) {
                 Some(ResolveValueResult::ValueNs(value)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
@@ -872,10 +866,14 @@ impl<'a> InferenceContext<'a> {
                 None => return (self.err_ty(), None),
             }
         } else {
-            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
                 Some(it) => it,
                 None => return (self.err_ty(), None),
             }
+        };
+        let Some(mod_path) = path.mod_path() else {
+            never!("resolver should always resolve lang item paths");
+            return (self.err_ty(), None);
         };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
@@ -900,7 +898,7 @@ impl<'a> InferenceContext<'a> {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
-                self.resolve_variant_on_alias(ty, unresolved, path)
+                self.resolve_variant_on_alias(ty, unresolved, mod_path)
             }
             TypeNs::TypeAliasId(it) => {
                 let container = it.lookup(self.db.upcast()).container;
@@ -917,7 +915,7 @@ impl<'a> InferenceContext<'a> {
                 let ty = TyBuilder::def_ty(self.db, it.into(), parent_subst)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
-                self.resolve_variant_on_alias(ty, unresolved, path)
+                self.resolve_variant_on_alias(ty, unresolved, mod_path)
             }
             TypeNs::AdtSelfType(_) => {
                 // FIXME this could happen in array size expressions, once we're checking them
@@ -953,9 +951,9 @@ impl<'a> InferenceContext<'a> {
         &mut self,
         ty: Ty,
         unresolved: Option<usize>,
-        path: &Path,
+        path: &ModPath,
     ) -> (Ty, Option<VariantId>) {
-        let remaining = unresolved.map(|x| path.segments().skip(x).len()).filter(|x| x > &0);
+        let remaining = unresolved.map(|x| path.segments()[x..].len()).filter(|x| x > &0);
         match remaining {
             None => {
                 let variant = ty.as_adt().and_then(|(adt_id, _)| match adt_id {
@@ -969,7 +967,7 @@ impl<'a> InferenceContext<'a> {
                 (ty, variant)
             }
             Some(1) => {
-                let segment = path.mod_path().segments().last().unwrap();
+                let segment = path.segments().last().unwrap();
                 // this could be an enum variant or associated type
                 if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
                     let enum_data = self.db.enum_data(enum_id);

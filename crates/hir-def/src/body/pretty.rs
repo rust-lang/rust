@@ -288,10 +288,6 @@ impl<'a> Printer<'a> {
                 self.print_expr(*expr);
                 w!(self, ".await");
             }
-            Expr::Try { expr } => {
-                self.print_expr(*expr);
-                w!(self, "?");
-            }
             Expr::Cast { expr, type_ref } => {
                 self.print_expr(*expr);
                 w!(self, " as ");

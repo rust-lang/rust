@@ -391,7 +391,7 @@ impl Body {
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (mut body, source_map) = Body::new(db, expander, params, body);
+        let (mut body, source_map) = Body::new(db, expander, params, body, module.krate);
         body.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
@@ -420,8 +420,9 @@ impl Body {
         expander: Expander,
         params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
+        krate: CrateId,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, expander, params, body)
+        lower::lower(db, expander, params, body, krate)
     }
 
     fn shrink_to_fit(&mut self) {

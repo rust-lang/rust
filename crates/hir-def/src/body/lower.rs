@@ -3,6 +3,7 @@
 
 use std::{mem, sync::Arc};
 
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap,
@@ -36,6 +37,7 @@ use crate::{
         RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
+    lang_item::LangItem,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockId, BlockLoc, ModuleDefId, UnresolvedMacro,
@@ -80,9 +82,11 @@ pub(super) fn lower(
     expander: Expander,
     params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
+    krate: CrateId,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
         db,
+        krate,
         source_map: BodySourceMap::default(),
         ast_id_map: db.ast_id_map(expander.current_file_id),
         body: Body {
@@ -107,6 +111,7 @@ struct ExprCollector<'a> {
     expander: Expander,
     ast_id_map: Arc<AstIdMap>,
     body: Body,
+    krate: CrateId,
     source_map: BodySourceMap,
     is_lowering_assignee_expr: bool,
     is_lowering_generator: bool,
@@ -176,8 +181,7 @@ impl ExprCollector<'_> {
         self.source_map.expr_map.insert(src, id);
         id
     }
-    // desugared exprs don't have ptr, that's wrong and should be fixed
-    // somehow.
+    // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.body.exprs.alloc(expr)
     }
@@ -198,6 +202,10 @@ impl ExprCollector<'_> {
         let id = self.make_pat(pat, src.clone());
         self.source_map.pat_map.insert(src, id);
         id
+    }
+    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.
+    fn alloc_pat_desugared(&mut self, pat: Pat) -> PatId {
+        self.body.pats.alloc(pat)
     }
     fn missing_pat(&mut self) -> PatId {
         self.body.pats.alloc(Pat::Missing)
@@ -437,10 +445,7 @@ impl ExprCollector<'_> {
                 let expr = self.collect_expr_opt(e.expr());
                 self.alloc_expr(Expr::Await { expr }, syntax_ptr)
             }
-            ast::Expr::TryExpr(e) => {
-                let expr = self.collect_expr_opt(e.expr());
-                self.alloc_expr(Expr::Try { expr }, syntax_ptr)
-            }
+            ast::Expr::TryExpr(e) => self.collect_try_operator(syntax_ptr, e),
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let type_ref = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
@@ -599,6 +604,82 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
         })
+    }
+
+    fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
+        let (try_branch, cf_continue, cf_break, try_from_residual) = 'if_chain: {
+            if let Some(try_branch) = LangItem::TryTraitBranch.path(self.db, self.krate) {
+                if let Some(cf_continue) =
+                    LangItem::ControlFlowContinue.path(self.db, self.krate)
+                {
+                    if let Some(cf_break) =
+                        LangItem::ControlFlowBreak.path(self.db, self.krate)
+                    {
+                        if let Some(try_from_residual) =
+                            LangItem::TryTraitFromResidual.path(self.db, self.krate)
+                        {
+                            break 'if_chain (
+                                try_branch,
+                                cf_continue,
+                                cf_break,
+                                try_from_residual,
+                            );
+                        }
+                    }
+                }
+            }
+            // Some of the needed lang items are missing, so we can't desugar
+            return self.alloc_expr(Expr::Missing, syntax_ptr);
+        };
+        let operand = self.collect_expr_opt(e.expr());
+        let try_branch = self.alloc_expr(Expr::Path(try_branch), syntax_ptr.clone());
+        let expr = self.alloc_expr(
+            Expr::Call {
+                callee: try_branch,
+                args: Box::new([operand]),
+                is_assignee_expr: false,
+            },
+            syntax_ptr.clone(),
+        );
+        let continue_binding =
+            self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
+        let continue_bpat =
+            self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
+        self.add_definition_to_binding(continue_binding, continue_bpat);
+        let continue_arm = MatchArm {
+            pat: self.alloc_pat_desugared(Pat::TupleStruct {
+                path: Some(Box::new(cf_continue)),
+                args: Box::new([continue_bpat]),
+                ellipsis: None,
+            }),
+            guard: None,
+            expr: self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone()),
+        };
+        let break_binding = self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
+        let break_bpat =
+            self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
+        self.add_definition_to_binding(break_binding, break_bpat);
+        let break_arm = MatchArm {
+            pat: self.alloc_pat_desugared(Pat::TupleStruct {
+                path: Some(Box::new(cf_break)),
+                args: Box::new([break_bpat]),
+                ellipsis: None,
+            }),
+            guard: None,
+            expr: {
+                let x =
+                    self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone());
+                let callee =
+                    self.alloc_expr(Expr::Path(try_from_residual), syntax_ptr.clone());
+                let result = self.alloc_expr(
+                    Expr::Call { callee, args: Box::new([x]), is_assignee_expr: false },
+                    syntax_ptr.clone(),
+                );
+                self.alloc_expr(Expr::Return { expr: Some(result) }, syntax_ptr.clone())
+            },
+        };
+        let arms = Box::new([continue_arm, break_arm]);
+        self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
     }
 
     fn collect_macro_call<F, T, U>(

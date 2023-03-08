@@ -181,7 +181,7 @@ pub mod convert {
     }
     // endregion:as_ref
     // region:infallible
-    pub enum Infallibe {}
+    pub enum Infallible {}
     // endregion:infallible
 }
 
@@ -380,11 +380,15 @@ pub mod ops {
     // endregion:fn
     // region:try
     mod try_ {
+        use super::super::convert::Infallible;
+
         pub enum ControlFlow<B, C = ()> {
+            #[lang = "Continue"]
             Continue(C),
+            #[lang = "Break"]
             Break(B),
         }
-        pub trait FromResidual<R = Self::Residual> {
+        pub trait FromResidual<R = <Self as Try>::Residual> {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
@@ -400,14 +404,66 @@ pub mod ops {
 
         impl<B, C> Try for ControlFlow<B, C> {
             type Output = C;
-            type Residual = ControlFlow<B, convert::Infallible>;
+            type Residual = ControlFlow<B, Infallible>;
             fn from_output(output: Self::Output) -> Self {}
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {}
         }
 
         impl<B, C> FromResidual for ControlFlow<B, C> {
-            fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {}
+            fn from_residual(residual: ControlFlow<B, Infallible>) -> Self {}
         }
+        // region:option
+        impl<T> Try for Option<T> {
+            type Output = T;
+            type Residual = Option<Infallible>;
+            fn from_output(output: Self::Output) -> Self {
+                Some(output)
+            }
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+                match self {
+                    Some(x) => ControlFlow::Continue(x),
+                    None => ControlFlow::Break(None),
+                }
+            }
+        }
+
+        impl<T> FromResidual for Option<T> {
+            fn from_residual(x: Option<Infallible>) -> Self {
+                match x {
+                    None => None,
+                }
+            }
+        }
+        // endregion:option
+        // region:result
+        // region:from
+        use super::super::convert::From;
+
+        impl<T, E> Try for Result<T, E> {
+            type Output = T;
+            type Residual = Result<Infallible, E>;
+
+            fn from_output(output: Self::Output) -> Self {
+                Ok(output)
+            }
+
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+                match self {
+                    Ok(v) => ControlFlow::Continue(v),
+                    Err(e) => ControlFlow::Break(Err(e)),
+                }
+            }
+        }
+
+        impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
+            fn from_residual(residual: Result<Infallible, E>) -> Self {
+                match residual {
+                    Err(e) => Err(From::from(e)),
+                }
+            }
+        }
+        // endregion:from
+        // endregion:result
     }
     pub use self::try_::{ControlFlow, FromResidual, Try};
     // endregion:try

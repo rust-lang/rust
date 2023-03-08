@@ -802,6 +802,73 @@ fn options() {
 }
 
 #[test]
+fn from_trait() {
+    check_number(
+        r#"
+    //- minicore: from
+    struct E1(i32);
+    struct E2(i32);
+
+    impl From<E1> for E2 {
+        fn from(E1(x): E1) -> Self {
+            E2(1000 * x)
+        }
+    }
+    const GOAL: i32 = {
+        let x: E2 = E1(2).into();
+        x.0
+    };
+    "#,
+        2000,
+    );
+}
+
+#[test]
+fn try_operator() {
+    check_number(
+        r#"
+    //- minicore: option, try
+    const fn f(x: Option<i32>, y: Option<i32>) -> Option<i32> {
+        Some(x? * y?)
+    }
+    const fn g(x: Option<i32>, y: Option<i32>) -> i32 {
+        match f(x, y) {
+            Some(k) => k,
+            None => 5,
+        }
+    }
+    const GOAL: i32 = g(Some(10), Some(20)) + g(Some(30), None) + g(None, Some(40)) + g(None, None);
+        "#,
+        215,
+    );
+    check_number(
+        r#"
+    //- minicore: result, try, from
+    struct E1(i32);
+    struct E2(i32);
+
+    impl From<E1> for E2 {
+        fn from(E1(x): E1) -> Self {
+            E2(1000 * x)
+        }
+    }
+
+    const fn f(x: Result<i32, E1>) -> Result<i32, E2> {
+        Ok(x? * 10)
+    }
+    const fn g(x: Result<i32, E1>) -> i32 {
+        match f(x) {
+            Ok(k) => 7 * k,
+            Err(E2(k)) => 5 * k,
+        }
+    }
+    const GOAL: i32 = g(Ok(2)) + g(Err(E1(3)));
+        "#,
+        15140,
+    );
+}
+
+#[test]
 fn or_pattern() {
     check_number(
         r#"

@@ -125,7 +125,7 @@ impl MirLowerCtx<'_> {
         match &self.body.exprs[expr_id] {
             Expr::Path(p) => {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
-                let Some(pr) = resolver.resolve_path_in_value_ns(self.db.upcast(), p.mod_path()) else {
+                let Some(pr) = resolver.resolve_path_in_value_ns(self.db.upcast(), p) else {
                     return Err(MirLowerError::unresolved_path(self.db, p));
                 };
                 let pr = match pr {

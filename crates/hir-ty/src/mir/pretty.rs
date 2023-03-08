@@ -77,6 +77,7 @@ impl Display for LocalName {
 
 impl<'a> MirPrettyCtx<'a> {
     fn for_body(&mut self) {
+        wln!(self, "// {:?}", self.body.owner);
         self.with_block(|this| {
             this.locals();
             wln!(this);

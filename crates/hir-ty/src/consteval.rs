@@ -4,7 +4,7 @@ use base_db::CrateId;
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData};
 use hir_def::{
     expr::Expr,
-    path::ModPath,
+    path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::ConstRef,
     ConstId, EnumVariantId,
@@ -72,7 +72,7 @@ impl From<MirEvalError> for ConstEvalError {
 pub(crate) fn path_to_const(
     db: &dyn HirDatabase,
     resolver: &Resolver,
-    path: &ModPath,
+    path: &Path,
     mode: ParamLoweringMode,
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
@@ -89,7 +89,7 @@ pub(crate) fn path_to_const(
                     Some(x) => ConstValue::BoundVar(BoundVar::new(debruijn, x)),
                     None => {
                         never!(
-                            "Generic list doesn't contain this param: {:?}, {}, {:?}",
+                            "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
                             args,
                             path,
                             p
@@ -228,7 +228,7 @@ pub(crate) fn eval_to_const(
     let db = ctx.db;
     if let Expr::Path(p) = &ctx.body.exprs[expr] {
         let resolver = &ctx.resolver;
-        if let Some(c) = path_to_const(db, resolver, p.mod_path(), mode, args, debruijn) {
+        if let Some(c) = path_to_const(db, resolver, p, mode, args, debruijn) {
             return c;
         }
     }

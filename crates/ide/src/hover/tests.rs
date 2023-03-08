@@ -5009,7 +5009,7 @@ fn foo() {
 fn hover_try_expr_res() {
     check_hover_range(
         r#"
-//- minicore:result
+//- minicore: try, from, result
 struct FooError;
 
 fn foo() -> Result<(), FooError> {
@@ -5023,7 +5023,7 @@ fn foo() -> Result<(), FooError> {
     );
     check_hover_range(
         r#"
-//- minicore:result
+//- minicore: try, from, result
 struct FooError;
 struct BarError;
 
@@ -5044,6 +5044,7 @@ fn foo() -> Result<(), FooError> {
 fn hover_try_expr() {
     check_hover_range(
         r#"
+//- minicore: try
 struct NotResult<T, U>(T, U);
 struct Short;
 struct Looooong;
@@ -5061,6 +5062,7 @@ fn foo() -> NotResult<(), Looooong> {
     );
     check_hover_range(
         r#"
+//- minicore: try
 struct NotResult<T, U>(T, U);
 struct Short;
 struct Looooong;
@@ -5092,7 +5094,7 @@ fn foo() -> Option<()> {
 "#,
         expect![[r#"
                 ```rust
-                <Option<i32> as Try>::Output
+                i32
                 ```"#]],
     );
 }
