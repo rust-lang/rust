@@ -63,12 +63,12 @@ impl<'a> Lifetimes<'a> for usize {
     type Y = &'a isize;
 }
 
-// @has 'normalize_assoc_item/fn.g.html' '//pre[@class="rust item-decl"]' "pub fn g() -> &isize"
+// @has 'normalize_assoc_item/fn.g.html' '//pre[@class="rust item-decl"]' "pub fn g() -> &'static isize"
 pub fn g() -> <usize as Lifetimes<'static>>::Y {
     &0
 }
 
-// @has 'normalize_assoc_item/constant.A.html' '//pre[@class="rust item-decl"]' "pub const A: &isize"
+// @has 'normalize_assoc_item/constant.A.html' '//pre[@class="rust item-decl"]' "pub const A: &'static isize"
 pub const A: <usize as Lifetimes<'static>>::Y = &0;
 
 // test cross-crate re-exports
