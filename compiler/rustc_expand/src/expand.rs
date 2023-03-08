@@ -20,7 +20,7 @@ use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::map_in_place::MapInPlace;
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
