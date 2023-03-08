@@ -374,9 +374,18 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, mut t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Infer(ty::TyVar(vid)) => {
+            ty::Infer(ty::TyVar(mut vid)) => {
+                // We need to canonicalize the *root* of our ty var.
+                // This is so that our canonical response correctly reflects
+                // any equated inference vars correctly!
+                let root_vid = self.infcx.root_var(vid);
+                if root_vid != vid {
+                    t = self.infcx.tcx.mk_ty_var(root_vid);
+                    vid = root_vid;
+                }
+
                 debug!("canonical: type var found with vid {:?}", vid);
                 match self.infcx.probe_ty_var(vid) {
                     // `t` could be a float / int variable; canonicalize that instead.
@@ -467,9 +476,18 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+    fn fold_const(&mut self, mut ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(InferConst::Var(mut vid)) => {
+                // We need to canonicalize the *root* of our const var.
+                // This is so that our canonical response correctly reflects
+                // any equated inference vars correctly!
+                let root_vid = self.infcx.root_const_var(vid);
+                if root_vid != vid {
+                    ct = self.infcx.tcx.mk_const(ty::InferConst::Var(root_vid), ct.ty());
+                    vid = root_vid;
+                }
+
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {
                     Ok(c) => {
