@@ -278,16 +278,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                     Err(ui) => CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
                 }
             }
-            ty::Infer(ty::IntVar(_)) => {
-                let nt = self.infcx.shallow_resolve(t);
+            ty::Infer(ty::IntVar(vid)) => {
+                let nt = self.infcx.opportunistic_resolve_int_var(vid);
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
                     CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
                 }
             }
-            ty::Infer(ty::FloatVar(_)) => {
-                let nt = self.infcx.shallow_resolve(t);
+            ty::Infer(ty::FloatVar(vid)) => {
+                let nt = self.infcx.opportunistic_resolve_float_var(vid);
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
