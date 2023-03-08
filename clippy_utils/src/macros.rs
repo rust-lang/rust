@@ -213,6 +213,7 @@ pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
     matches!(name, sym::assert_macro | sym::debug_assert_macro)
 }
 
+#[derive(Debug)]
 pub enum PanicExpn<'a> {
     /// No arguments - `panic!()`
     Empty,
@@ -226,10 +227,7 @@ pub enum PanicExpn<'a> {
 
 impl<'a> PanicExpn<'a> {
     pub fn parse(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Self> {
-        if !macro_backtrace(expr.span).any(|macro_call| is_panic(cx, macro_call.def_id)) {
-            return None;
-        }
-        let ExprKind::Call(callee, [arg]) = &expr.kind else { return None };
+        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else { return None };
         let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else { return None };
         let result = match path.segments.last().unwrap().ident.as_str() {
             "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
@@ -239,6 +237,21 @@ impl<'a> PanicExpn<'a> {
                 Self::Display(e)
             },
             "panic_fmt" => Self::Format(FormatArgsExpn::parse(cx, arg)?),
+            // Since Rust 1.52, `assert_{eq,ne}` macros expand to use:
+            // `core::panicking::assert_failed(.., left_val, right_val, None | Some(format_args!(..)));`
+            "assert_failed" => {
+                // It should have 4 arguments in total (we already matched with the first argument,
+                // so we're just checking for 3)
+                if rest.len() != 3 {
+                    return None;
+                }
+                // `msg_arg` is either `None` (no custom message) or `Some(format_args!(..))` (custom message)
+                let msg_arg = &rest[2];
+                match msg_arg.kind {
+                    ExprKind::Call(_, [fmt_arg]) => Self::Format(FormatArgsExpn::parse(cx, fmt_arg)?),
+                    _ => Self::Empty,
+                }
+            },
             _ => return None,
         };
         Some(result)
@@ -251,7 +264,17 @@ pub fn find_assert_args<'a>(
     expr: &'a Expr<'a>,
     expn: ExpnId,
 ) -> Option<(&'a Expr<'a>, PanicExpn<'a>)> {
-    find_assert_args_inner(cx, expr, expn).map(|([e], p)| (e, p))
+    find_assert_args_inner(cx, expr, expn).map(|([e], mut p)| {
+        // `assert!(..)` expands to `core::panicking::panic("assertion failed: ...")` (which we map to
+        // `PanicExpn::Str(..)`) and `assert!(.., "..")` expands to
+        // `core::panicking::panic_fmt(format_args!(".."))` (which we map to `PanicExpn::Format(..)`).
+        // So even we got `PanicExpn::Str(..)` that means there is no custom message provided
+        if let PanicExpn::Str(_) = p {
+            p = PanicExpn::Empty;
+        }
+
+        (e, p)
+    })
 }
 
 /// Finds the arguments of an `assert_eq!` or `debug_assert_eq!` macro call within the macro
@@ -275,13 +298,12 @@ fn find_assert_args_inner<'a, const N: usize>(
         Some(inner_name) => find_assert_within_debug_assert(cx, expr, expn, Symbol::intern(inner_name))?,
     };
     let mut args = ArrayVec::new();
-    let mut panic_expn = None;
-    let _: Option<!> = for_each_expr(expr, |e| {
+    let panic_expn = for_each_expr(expr, |e| {
         if args.is_full() {
-            if panic_expn.is_none() && e.span.ctxt() != expr.span.ctxt() {
-                panic_expn = PanicExpn::parse(cx, e);
+            match PanicExpn::parse(cx, e) {
+                Some(expn) => ControlFlow::Break(expn),
+                None => ControlFlow::Continue(Descend::Yes),
             }
-            ControlFlow::Continue(Descend::from(panic_expn.is_none()))
         } else if is_assert_arg(cx, e, expn) {
             args.push(e);
             ControlFlow::Continue(Descend::No)

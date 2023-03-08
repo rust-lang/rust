@@ -193,6 +193,7 @@ mod minmax;
 mod misc;
 mod misc_early;
 mod mismatching_type_param_order;
+mod missing_assert_message;
 mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
@@ -926,6 +927,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
+    store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
