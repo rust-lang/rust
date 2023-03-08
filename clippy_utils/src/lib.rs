@@ -77,6 +77,7 @@ use std::sync::OnceLock;
 use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
+use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
@@ -2490,6 +2491,17 @@ pub fn walk_to_expr_usage<'tcx, T>(
     None
 }
 
+/// Tokenizes the input while keeping the text associated with each token.
+pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str)> {
+    let mut pos = 0;
+    tokenize(s).map(move |t| {
+        let end = pos + t.len;
+        let range = pos as usize..end as usize;
+        pos = end;
+        (t.kind, s.get(range).unwrap_or_default())
+    })
+}
+
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
 pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
@@ -2506,23 +2518,11 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    let mut comments_buf: Vec<String> = Vec::new();
-    let mut index: usize = 0;
-
-    for token in tokenize(&snippet) {
-        let token_range = index..(index + token.len as usize);
-        index += token.len as usize;
-        match token.kind {
-            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => {
-                if let Some(comment) = snippet.get(token_range) {
-                    comments_buf.push(comment.to_string());
-                }
-            },
-            _ => (),
-        }
-    }
-
-    comments_buf.join("\n")
+    let res = tokenize_with_text(&snippet)
+        .filter(|(t, _)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
+        .map(|(_, s)| s)
+        .join("\n");
+    res
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {

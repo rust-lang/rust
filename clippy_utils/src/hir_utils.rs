@@ -1,6 +1,7 @@
 use crate::consts::constant_simple;
 use crate::macros::macro_backtrace;
-use crate::source::snippet_opt;
+use crate::source::{get_source_text, snippet_opt, walk_span_to_context, SpanRange};
+use crate::tokenize_with_text;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
@@ -13,8 +14,9 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, BytePos, Symbol, SyntaxContext};
 use std::hash::{Hash, Hasher};
+use std::ops::Range;
 
 /// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
 /// other conditions would make them equal.
@@ -127,51 +129,83 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     /// Checks whether two blocks are the same.
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
-        match (left.stmts, left.expr, right.stmts, right.expr) {
-            ([], None, [], None) => {
-                // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
-                // expanded to nothing, or the cfg attribute was used.
-                let (Some(left), Some(right)) = (
-                    snippet_opt(self.inner.cx, left.span),
-                    snippet_opt(self.inner.cx, right.span),
-                ) else { return true };
-                let mut left_pos = 0;
-                let left = tokenize(&left)
-                    .map(|t| {
-                        let end = left_pos + t.len as usize;
-                        let s = &left[left_pos..end];
-                        left_pos = end;
-                        (t, s)
-                    })
-                    .filter(|(t, _)| {
-                        !matches!(
-                            t.kind,
-                            TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
-                        )
-                    })
-                    .map(|(_, s)| s);
-                let mut right_pos = 0;
-                let right = tokenize(&right)
-                    .map(|t| {
-                        let end = right_pos + t.len as usize;
-                        let s = &right[right_pos..end];
-                        right_pos = end;
-                        (t, s)
-                    })
-                    .filter(|(t, _)| {
-                        !matches!(
-                            t.kind,
-                            TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
-                        )
-                    })
-                    .map(|(_, s)| s);
-                left.eq(right)
-            },
-            _ => {
-                over(left.stmts, right.stmts, |l, r| self.eq_stmt(l, r))
-                    && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
-            },
+        use TokenKind::{BlockComment, LineComment, Semi, Whitespace};
+        if left.stmts.len() != right.stmts.len() {
+            return false;
         }
+        let lspan = left.span.data();
+        let rspan = right.span.data();
+        if lspan.ctxt != SyntaxContext::root() && rspan.ctxt != SyntaxContext::root() {
+            // Don't try to check in between statements inside macros.
+            return over(left.stmts, right.stmts, |left, right| self.eq_stmt(left, right))
+                && both(&left.expr, &right.expr, |left, right| self.eq_expr(left, right));
+        }
+        if lspan.ctxt != rspan.ctxt {
+            return false;
+        }
+
+        let mut lstart = lspan.lo;
+        let mut rstart = rspan.lo;
+
+        for (left, right) in left.stmts.iter().zip(right.stmts) {
+            if !self.eq_stmt(left, right) {
+                return false;
+            }
+            let Some(lstmt_span) = walk_span_to_context(left.span, lspan.ctxt) else {
+                return false;
+            };
+            let Some(rstmt_span) = walk_span_to_context(right.span, rspan.ctxt) else {
+                return false;
+            };
+            let lstmt_span = lstmt_span.data();
+            let rstmt_span = rstmt_span.data();
+
+            if lstmt_span.lo < lstart && rstmt_span.lo < rstart {
+                // Can happen when macros expand to multiple statements, or rearrange statements.
+                // Nothing in between the statements to check in this case.
+                continue;
+            } else if lstmt_span.lo < lstart || rstmt_span.lo < rstart {
+                // Only one of the blocks had a weird macro.
+                return false;
+            }
+            if !eq_span_tokens(self.inner.cx, lstart..lstmt_span.lo, rstart..rstmt_span.lo, |t| {
+                !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi)
+            }) {
+                return false;
+            }
+
+            lstart = lstmt_span.hi;
+            rstart = rstmt_span.hi;
+        }
+
+        let (lend, rend) = match (left.expr, right.expr) {
+            (Some(left), Some(right)) => {
+                if !self.eq_expr(left, right) {
+                    return false;
+                }
+                let Some(lexpr_span) = walk_span_to_context(left.span, lspan.ctxt) else {
+                    return false;
+                };
+                let Some(rexpr_span) = walk_span_to_context(right.span, rspan.ctxt) else {
+                    return false;
+                };
+                (lexpr_span.lo(), rexpr_span.lo())
+            },
+            (None, None) => (lspan.hi, rspan.hi),
+            (Some(_), None) | (None, Some(_)) => return false,
+        };
+
+        if lend < lstart && rend < rstart {
+            // Can happen when macros rearrange the input.
+            // Nothing in between the statements to check in this case.
+            return true;
+        } else if lend < lstart || rend < rstart {
+            // Only one of the blocks had a weird macro
+            return false;
+        }
+        eq_span_tokens(self.inner.cx, lstart..lend, rstart..rend, |t| {
+            !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi)
+        })
     }
 
     fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
@@ -1037,4 +1071,34 @@ pub fn hash_expr(cx: &LateContext<'_>, e: &Expr<'_>) -> u64 {
     let mut h = SpanlessHash::new(cx);
     h.hash_expr(e);
     h.finish()
+}
+
+fn eq_span_tokens(
+    cx: &LateContext<'_>,
+    left: impl SpanRange,
+    right: impl SpanRange,
+    pred: impl Fn(TokenKind) -> bool,
+) -> bool {
+    fn f(cx: &LateContext<'_>, left: Range<BytePos>, right: Range<BytePos>, pred: impl Fn(TokenKind) -> bool) -> bool {
+        if let Some(lsrc) = get_source_text(cx, left)
+            && let Some(lsrc) = lsrc.as_str()
+            && let Some(rsrc) = get_source_text(cx, right)
+            && let Some(rsrc) = rsrc.as_str()
+        {
+            let pred = |t: &(_, _)| pred(t.0);
+            let map = |(_, x)| x;
+
+            let ltok = tokenize_with_text(lsrc)
+                .filter(pred)
+                .map(map);
+            let rtok = tokenize_with_text(rsrc)
+                .filter(pred)
+                .map(map);
+            ltok.eq(rtok)
+        } else {
+            // Unable to access the source. Conservatively assume the blocks aren't equal.
+            false
+        }
+    }
+    f(cx, left.into_range(), right.into_range(), pred)
 }
