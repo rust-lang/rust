@@ -375,7 +375,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// Not legal during a snapshot.
     pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
         assert!(!UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
-        // TODO update universes of var_infos
+        // FIXME update universes of var_infos
         (mem::take(&mut self.storage.var_infos), mem::take(&mut self.storage.data))
     }
 
