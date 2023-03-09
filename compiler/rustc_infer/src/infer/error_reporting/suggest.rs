@@ -463,7 +463,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         None
     }
 
-    // FIXME: Remove once rustc_hir_typeck is migrated to Diagnostics
+    // FIXME: Remove once `rustc_hir_typeck` is migrated to diagnostic structs
     pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
         match self.should_suggest_as_ref_kind(expected, found) {
             Some(SuggestAsRefKind::Option) => Some(
