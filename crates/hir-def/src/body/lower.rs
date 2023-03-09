@@ -94,11 +94,8 @@ pub(super) fn lower(
             body_expr: dummy_expr_id(),
             block_scopes: Vec::new(),
             _c: Count::new(),
-            or_pats: Default::default(),
         },
         expander,
-        name_to_pat_grouping: Default::default(),
-        is_lowering_inside_or_pat: false,
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
     }
@@ -111,9 +108,6 @@ struct ExprCollector<'a> {
     ast_id_map: Arc<AstIdMap>,
     body: Body,
     source_map: BodySourceMap,
-    // a poor-mans union-find?
-    name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
-    is_lowering_inside_or_pat: bool,
     is_lowering_assignee_expr: bool,
     is_lowering_generator: bool,
 }
@@ -824,13 +818,7 @@ impl ExprCollector<'_> {
     }
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
-        let pat_id = self.collect_pat_(pat, &mut BindingList::default());
-        for (_, pats) in self.name_to_pat_grouping.drain() {
-            let pats = Arc::<[_]>::from(pats);
-            self.body.or_pats.extend(pats.iter().map(|&pat| (pat, pats.clone())));
-        }
-        self.is_lowering_inside_or_pat = false;
-        pat_id
+        self.collect_pat_(pat, &mut BindingList::default())
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
@@ -845,13 +833,13 @@ impl ExprCollector<'_> {
             ast::Pat::IdentPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
 
-                let key = self.is_lowering_inside_or_pat.then(|| name.clone());
                 let annotation =
                     BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
                 let subpat = bp.pat().map(|subpat| self.collect_pat_(subpat, binding_list));
-                let (binding, pattern) = if annotation == BindingAnnotation::Unannotated
-                    && subpat.is_none()
-                {
+
+                let is_simple_ident_pat =
+                    annotation == BindingAnnotation::Unannotated && subpat.is_none();
+                let (binding, pattern) = if is_simple_ident_pat {
                     // This could also be a single-segment path pattern. To
                     // decide that, we need to try resolving the name.
                     let (resolved, _) = self.expander.def_map.resolve_path(
@@ -892,9 +880,6 @@ impl ExprCollector<'_> {
                 if let Some(binding_id) = binding {
                     self.add_definition_to_binding(binding_id, pat);
                 }
-                if let Some(key) = key {
-                    self.name_to_pat_grouping.entry(key).or_default().push(pat);
-                }
                 return pat;
             }
             ast::Pat::TupleStructPat(p) => {
@@ -914,7 +899,6 @@ impl ExprCollector<'_> {
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => {
-                self.is_lowering_inside_or_pat = true;
                 let pats = p.pats().map(|p| self.collect_pat_(p, binding_list)).collect();
                 Pat::Or(pats)
             }

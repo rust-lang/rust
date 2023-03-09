@@ -2501,10 +2501,6 @@ impl GenericDef {
 }
 
 /// A single local definition.
-///
-/// If the definition of this is part of a "MultiLocal", that is a local that has multiple declarations due to or-patterns
-/// then this only references a single one of those.
-/// To retrieve the other locals you should use [`Local::associated_locals`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBodyId,
