@@ -369,10 +369,10 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Item(item) => {
                 if let ItemKind::Fn(_, _, body_id) = &item.kind
                 && let output_ty = return_ty(cx, item.owner_id)
-                && Inherited::build(cx.tcx, item.owner_id.def_id).enter(|inherited| {
-                    let fn_ctxt = FnCtxt::new(inherited, cx.param_env, item.owner_id.def_id);
-                    fn_ctxt.can_coerce(ty, output_ty)
-                }) {
+                && let inherited = Inherited::new(cx.tcx, item.owner_id.def_id)
+                && let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.owner_id.def_id)
+                && fn_ctxt.can_coerce(ty, output_ty)
+                {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
                     }
