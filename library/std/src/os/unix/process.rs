@@ -434,6 +434,10 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     }
 }
 
+/// Create a `ChildStdin` from the provided `OwnedFd`.
+///
+/// The provided file descriptor must point to a pipe
+/// with the `CLOEXEC` flag set.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::ChildStdin {
     #[inline]
@@ -460,6 +464,10 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     }
 }
 
+/// Create a `ChildStdout` from the provided `OwnedFd`.
+///
+/// The provided file descriptor must point to a pipe
+/// with the `CLOEXEC` flag set.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::ChildStdout {
     #[inline]
@@ -486,6 +494,10 @@ impl From<crate::process::ChildStderr> for OwnedFd {
     }
 }
 
+/// Create a `ChildStderr` from the provided `OwnedFd`.
+///
+/// The provided file descriptor must point to a pipe
+/// with the `CLOEXEC` flag set.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::ChildStderr {
     #[inline]

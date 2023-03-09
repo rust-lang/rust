@@ -106,6 +106,10 @@ impl IntoRawHandle for process::ChildStderr {
     }
 }
 
+/// Create a `ChildStdin` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::ChildStdin {
     fn from(handle: OwnedHandle) -> process::ChildStdin {
@@ -115,6 +119,10 @@ impl From<OwnedHandle> for process::ChildStdin {
     }
 }
 
+/// Create a `ChildStdout` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::ChildStdout {
     fn from(handle: OwnedHandle) -> process::ChildStdout {
@@ -124,6 +132,10 @@ impl From<OwnedHandle> for process::ChildStdout {
     }
 }
 
+/// Create a `ChildStderr` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::ChildStderr {
     fn from(handle: OwnedHandle) -> process::ChildStderr {
