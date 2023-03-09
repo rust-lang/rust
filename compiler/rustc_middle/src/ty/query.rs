@@ -252,6 +252,36 @@ macro_rules! define_callbacks {
             )*
         }
 
+        $(
+            // Ensure that keys grow no larger than 64 bytes
+            #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+            const _: () = {
+                if mem::size_of::<query_keys::$name<'static>>() > 64 {
+                    panic!("{}", concat!(
+                        "the query `",
+                        stringify!($name),
+                        "` has a key type `",
+                        stringify!($($K)*),
+                        "` that is too large"
+                    ));
+                }
+            };
+
+            // Ensure that values grow no larger than 64 bytes
+            #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+            const _: () = {
+                if mem::size_of::<query_values::$name<'static>>() > 64 {
+                    panic!("{}", concat!(
+                        "the query `",
+                        stringify!($name),
+                        "` has a value type `",
+                        stringify!($V),
+                        "` that is too large"
+                    ));
+                }
+            };
+        )*
+
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
                 (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
