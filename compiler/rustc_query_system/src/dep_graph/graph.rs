@@ -531,7 +531,7 @@ impl<K: DepKind> DepGraph<K> {
             // value to an existing node.
             //
             // For sanity, we still check that the loaded stable hash and the new one match.
-            if let Some(dep_node_index) = self.dep_node_index_of_opt(&node) {
+            if let Some(dep_node_index) = data.dep_node_index_of_opt(&node) {
                 let _current_fingerprint =
                     crate::query::incremental_verify_ich(cx, data, result, &node, hash_result);
 
@@ -589,16 +589,6 @@ impl<K: DepKind> DepGraph<K> {
             self.next_virtual_depnode_index()
         }
     }
-
-    #[inline]
-    pub fn dep_node_index_of(&self, dep_node: &DepNode<K>) -> DepNodeIndex {
-        self.dep_node_index_of_opt(dep_node).unwrap()
-    }
-
-    #[inline]
-    pub fn dep_node_index_of_opt(&self, dep_node: &DepNode<K>) -> Option<DepNodeIndex> {
-        self.data.as_ref().unwrap().dep_node_index_of_opt(dep_node)
-    }
 }
 
 impl<K: DepKind> DepGraphData<K> {
@@ -649,7 +639,7 @@ impl<K: DepKind> DepGraphData<K> {
 impl<K: DepKind> DepGraph<K> {
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode<K>) -> bool {
-        self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
+        self.data.as_ref().and_then(|data| data.dep_node_index_of_opt(dep_node)).is_some()
     }
 
     /// Checks whether a previous work product exists for `v` and, if
