@@ -9,20 +9,22 @@ The tracking issues for this feature are:
 
 This feature allows for use of one of following sanitizers:
 
-* [AddressSanitizer](#addresssanitizer) a fast memory error detector.
-* [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity (CFI) provides
-  forward-edge control flow protection.
-* [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
+* Those intended for testing or fuzzing (but not production use):
+  * [AddressSanitizer](#addresssanitizer) a fast memory error detector.
+  * [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
   AddressSanitizer, but based on partial hardware assistance.
-* [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel Control
-  Flow Integrity (KCFI) provides forward-edge control flow protection for
-  operating systems kernels.
-* [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
-* [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
-* [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
-  Armv8.5-A Memory Tagging Extension.
-* [ShadowCallStack](#shadowcallstack) provides backward-edge control flow protection.
-* [ThreadSanitizer](#threadsanitizer) a fast data race detector.
+  * [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
+  * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
+  * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
+* Those that apart from testing, may be used on production:
+  * [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity (CFI) provides
+    forward-edge control flow protection.
+  * [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel Control
+    Flow Integrity (KCFI) provides forward-edge control flow protection for
+    operating systems kernels.
+  * [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
+    Armv8.5-A Memory Tagging Extension.
+  * [ShadowCallStack](#shadowcallstack) provides backward-edge control flow protection.
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
 `-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
