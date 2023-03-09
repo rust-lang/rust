@@ -497,6 +497,7 @@ compiler-team-contributors = [
     "@TaKO8Ki",
     "@Nilstrieb",
     "@WaffleLapkin",
+    "@b-naber",
 ]
 compiler = [
     "compiler-team",
