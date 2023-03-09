@@ -11,6 +11,7 @@ use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
 use std::collections::HashSet;
 use test::{ColorConfig, OutputFormat};
+use serde::de::{Deserialize, Deserializer, Error as _};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -114,8 +115,10 @@ string_enum! {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum PanicStrategy {
+    #[default]
     Unwind,
     Abort,
 }
@@ -450,72 +453,43 @@ impl TargetCfgs {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct TargetCfg {
     pub(crate) arch: String,
+    #[serde(default)]
     pub(crate) os: String,
+    #[serde(default)]
     pub(crate) env: String,
+    #[serde(default)]
     pub(crate) abi: String,
+    #[serde(rename = "target-family", default)]
     pub(crate) families: Vec<String>,
+    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
     pub(crate) pointer_width: u32,
+    #[serde(rename = "target-endian", default)]
     endian: Endian,
+    #[serde(rename = "panic-strategy", default)]
     panic: PanicStrategy,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Endian {
+    #[default]
     Little,
     Big,
 }
 
 impl TargetCfg {
     fn new(config: &Config, target: &str) -> TargetCfg {
-        let print_cfg = rustc_output(config, &["--print=cfg", "--target", target]);
-        let mut arch = None;
-        let mut os = None;
-        let mut env = None;
-        let mut abi = None;
-        let mut families = Vec::new();
-        let mut pointer_width = None;
-        let mut endian = None;
-        let mut panic = None;
-        for line in print_cfg.lines() {
-            if let Some((name, value)) = line.split_once('=') {
-                let value = value.trim_matches('"');
-                match name {
-                    "target_arch" => arch = Some(value),
-                    "target_os" => os = Some(value),
-                    "target_env" => env = Some(value),
-                    "target_abi" => abi = Some(value),
-                    "target_family" => families.push(value.to_string()),
-                    "target_pointer_width" => pointer_width = Some(value.parse().unwrap()),
-                    "target_endian" => {
-                        endian = Some(match value {
-                            "little" => Endian::Little,
-                            "big" => Endian::Big,
-                            s => panic!("unexpected {s}"),
-                        })
-                    }
-                    "panic" => {
-                        panic = match value {
-                            "abort" => Some(PanicStrategy::Abort),
-                            "unwind" => Some(PanicStrategy::Unwind),
-                            s => panic!("unexpected {s}"),
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        TargetCfg {
-            arch: arch.unwrap().to_string(),
-            os: os.unwrap().to_string(),
-            env: env.unwrap().to_string(),
-            abi: abi.unwrap().to_string(),
-            families,
-            pointer_width: pointer_width.unwrap(),
-            endian: endian.unwrap(),
-            panic: panic.unwrap(),
+        let json = rustc_output(
+            config,
+            &["--print=target-spec-json", "-Zunstable-options", "--target", target],
+        );
+        match serde_json::from_str(&json) {
+            Ok(res) => res,
+            Err(err) => panic!("failed to parse target spec for {target}: {err}"),
         }
     }
 }
@@ -524,6 +498,7 @@ fn rustc_output(config: &Config, args: &[&str]) -> String {
     let mut command = Command::new(&config.rustc_path);
     add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
+    command.env("RUSTC_BOOTSTRAP", "1");
 
     let output = match command.output() {
         Ok(output) => output,
@@ -537,6 +512,11 @@ fn rustc_output(config: &Config, args: &[&str]) -> String {
         );
     }
     String::from_utf8(output.stdout).unwrap()
+}
+
+fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+    let string = String::deserialize(deserializer)?;
+    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]
