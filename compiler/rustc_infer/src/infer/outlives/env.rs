@@ -136,21 +136,14 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
-                OutlivesBound::RegionSubRegion(r_a, r_b) => {
-                    // In principle, we could record (and take
-                    // advantage of) every relationship here, but
-                    // we are also free not to -- it simply means
-                    // strictly less that we can successfully type
-                    // check. Right now we only look for things
-                    // relationships between free regions. (It may
-                    // also be that we should revise our inference
-                    // system to be more general and to make use
-                    // of *every* relationship that arises here,
-                    // but presently we do not.)
-                    if r_a.is_free_or_static() && r_b.is_free() {
-                        self.region_relation.add(r_a, r_b)
-                    }
-                }
+                OutlivesBound::RegionSubRegion(r_a, r_b) => match (*r_a, *r_b) {
+                    (
+                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
+                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
+                    ) => self.region_relation.add(r_a, r_b),
+                    (ty::ReError(_), _) | (_, ty::ReError(_)) => {}
+                    _ => bug!("add_outlives_bounds: unexpected regions"),
+                },
             }
         }
     }
