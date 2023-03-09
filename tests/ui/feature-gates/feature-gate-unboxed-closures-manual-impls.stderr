@@ -64,6 +64,12 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL | impl FnOnce() for Foo1 {
    |      ^^^^^^^^ associated type not allowed here
+   |
+help: parenthesized trait syntax expands to `FnOnce<(), Output=()>`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:16:6
+   |
+LL | impl FnOnce() for Foo1 {
+   |      ^^^^^^^^
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:6
