@@ -3,7 +3,7 @@ use clippy_utils::macros::HirNode;
 use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_applicability};
 use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -24,22 +24,27 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     let bind_names = arms[0].pat.span;
     let match_body = peel_blocks(arms[0].body);
     let mut app = Applicability::MaybeIncorrect;
-    let (snippet_body, from_macro) = snippet_block_with_context(
+    let mut snippet_body = snippet_block_with_context(
         cx,
         match_body.span,
         arms[0].span.ctxt(),
         "..",
         Some(expr.span),
         &mut app,
-    );
-    let mut snippet_body = snippet_body.to_string();
+    )
+    .0
+    .to_string();
 
     // Do we need to add ';' to suggestion ?
-    if matches!(match_body.kind, ExprKind::Block(..)) {
-        // macro + expr_ty(body) == ()
-        if from_macro && cx.typeck_results().expr_ty(match_body).is_unit() {
-            snippet_body.push(';');
+    if let Node::Stmt(stmt) = cx.tcx.hir().get_parent(expr.hir_id)
+        && let StmtKind::Expr(_) = stmt.kind
+        && match match_body.kind {
+            // We don't need to add a ; to blocks, unless that block is from a macro expansion
+            ExprKind::Block(block, _) => block.span.from_expansion(),
+            _ => true,
         }
+    {
+        snippet_body.push(';');
     }
 
     match arms[0].pat.kind {
