@@ -58,17 +58,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ExprKind::StaticRef { def_id, .. } => {
                     assert!(!this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info =
-                        Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: false }));
+                    **local_decl.local_info.as_mut().assert_crate_local() =
+                        LocalInfo::StaticRef { def_id, is_thread_local: false };
                 }
                 ExprKind::ThreadLocalRef(def_id) => {
                     assert!(this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info =
-                        Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
+                    **local_decl.local_info.as_mut().assert_crate_local() =
+                        LocalInfo::StaticRef { def_id, is_thread_local: true };
                 }
                 ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
-                    local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
+                    **local_decl.local_info.as_mut().assert_crate_local() = LocalInfo::ConstRef { def_id };
                 }
                 _ => {}
             }

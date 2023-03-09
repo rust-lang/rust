@@ -1180,10 +1180,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     Some(l)
-                        if matches!(
-                            body.local_decls[l].local_info,
-                            Some(box LocalInfo::AggregateTemp)
-                        ) =>
+                        if matches!(body.local_decls[l].local_info(), LocalInfo::AggregateTemp) =>
                     {
                         ConstraintCategory::Usage
                     }

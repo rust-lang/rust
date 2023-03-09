@@ -572,6 +572,13 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
+    pub fn as_mut(&mut self) -> ClearCrossCrate<&mut T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -760,7 +767,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: Option<Box<LocalInfo<'tcx>>>,
+    pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -890,7 +897,7 @@ pub enum LocalInfo<'tcx> {
     /// The `BindingForm` is solely used for local diagnostics when generating
     /// warnings/errors when compiling the current crate, and therefore it need
     /// not be visible across crates.
-    User(ClearCrossCrate<BindingForm<'tcx>>),
+    User(BindingForm<'tcx>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
     /// A temporary created that references the const with the given `DefId`
@@ -902,9 +909,15 @@ pub enum LocalInfo<'tcx> {
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,
+    /// A local without anything interesting about it.
+    Boring,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
+    pub fn local_info(&self) -> &LocalInfo<'tcx> {
+        &**self.local_info.as_ref().assert_crate_local()
+    }
+
     /// Returns `true` only if local is a binding that can itself be
     /// made mutable via the addition of the `mut` keyword, namely
     /// something like the occurrences of `x` in:
@@ -914,14 +927,14 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn can_be_made_mutable(&self) -> bool {
         matches!(
             self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            ClearCrossCrate::Set(box LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
-            )))
+            ))
         )
     }
 
@@ -931,14 +944,14 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn is_nonref_binding(&self) -> bool {
         matches!(
             self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            ClearCrossCrate::Set(box LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(_),
-            )))
+            ))
         )
     }
 
@@ -946,7 +959,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::User(_)))
+        matches!(self.local_info, ClearCrossCrate::Set(box LocalInfo::User(_)))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
@@ -955,21 +968,23 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn is_ref_for_guard(&self) -> bool {
         matches!(
             self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)))
+            ClearCrossCrate::Set(box LocalInfo::User(BindingForm::RefForGuard))
         )
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static.
     pub fn is_ref_to_static(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
+        matches!(self.local_info, ClearCrossCrate::Set(box LocalInfo::StaticRef { .. }))
     }
 
     /// Returns `Some` if this is a reference to a thread-local static item that is used to
     /// access that static.
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
-            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
+            ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
+                is_thread_local
+            }
             _ => false,
         }
     }
@@ -977,7 +992,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
         match self.local_info {
-            Some(box LocalInfo::DerefTemp) => return true,
+            ClearCrossCrate::Set(box LocalInfo::DerefTemp) => return true,
             _ => (),
         }
         return false;
@@ -1001,7 +1016,7 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
-            local_info: None,
+            local_info: ClearCrossCrate::Set(Box::new(LocalInfo::Boring)),
             internal: false,
             is_block_tail: None,
             ty,

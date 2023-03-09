@@ -2482,15 +2482,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let (place_description, assigned_span) = match local_decl {
             Some(LocalDecl {
                 local_info:
-                    Some(box LocalInfo::User(
-                        ClearCrossCrate::Clear
-                        | ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                    ClearCrossCrate::Set(
+                        box LocalInfo::User(BindingForm::Var(VarBindingForm {
                             opt_match_place: None,
                             ..
-                        })),
-                    ))
-                    | Some(box LocalInfo::StaticRef { .. })
-                    | None,
+                        }))
+                        | box LocalInfo::StaticRef { .. }
+                        | box LocalInfo::Boring,
+                    ),
                 ..
             })
             | None => (self.describe_any_place(place.as_ref()), assigned_span),
