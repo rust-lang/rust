@@ -49,7 +49,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
-use crate::errors::{self, Error0308Subdiags, FailureCodeDiagnostics};
+use crate::errors::{self, ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
@@ -1924,7 +1924,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> Vec<Error0308Subdiags> {
+    ) -> Vec<TypeErrorAdditionalDiags> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
@@ -1946,7 +1946,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         && !code.starts_with("\\u") // forbid all Unicode escapes
                         && code.chars().next().map_or(false, |c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
                     {
-                        suggestions.push(Error0308Subdiags::MeantByteLiteral { span, code: escape_literal(code) })
+                        suggestions.push(TypeErrorAdditionalDiags::MeantByteLiteral { span, code: escape_literal(code) })
                     }
                 }
                 // If a character was expected and the found expression is a string literal
@@ -1957,7 +1957,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                         && code.chars().count() == 1
                     {
-                        suggestions.push(Error0308Subdiags::MeantCharLiteral { span, code: escape_literal(code) })
+                        suggestions.push(TypeErrorAdditionalDiags::MeantCharLiteral { span, code: escape_literal(code) })
                     }
                 }
                 // If a string was expected and the found expression is a character literal,
@@ -1967,7 +1967,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if let Some(code) =
                             code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
                         {
-                            suggestions.push(Error0308Subdiags::MeantStrLiteral { span, code: escape_literal(code) })
+                            suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral { span, code: escape_literal(code) })
                         }
                     }
                 }
@@ -2032,7 +2032,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
                         && let Some(span) = self.tcx.hir().opt_span(*hir_id)
                     {
-                        suggestions.push(Error0308Subdiags::ConsiderSpecifyingLength { span, length: sz.found });
+                        suggestions.push(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found });
                     }
                 }
                 _ => {}
@@ -2043,7 +2043,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let hir::MatchSource::TryDesugar = source
                     && let Some((expected_ty, found_ty, _, _)) = self.values_str(trace.values)
                 {
-                    suggestions.push(Error0308Subdiags::TryCannotConvert { found: found_ty.content(), expected: expected_ty.content() });
+                    suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert { found: found_ty.content(), expected: expected_ty.content() });
                 }
         suggestions
     }
@@ -2071,7 +2071,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
         found: Ty<'tcx>,
         expected_fields: &List<Ty<'tcx>>,
-    ) -> Option<Error0308Subdiags> {
+    ) -> Option<TypeErrorAdditionalDiags> {
         let [expected_tup_elem] = expected_fields[..] else { return None};
 
         if !self.same_type_modulo_infer(expected_tup_elem, found) {
@@ -2083,9 +2083,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);
-            Error0308Subdiags::TupleOnlyComma { span: span.with_hi(before_close).shrink_to_hi() }
+            TypeErrorAdditionalDiags::TupleOnlyComma {
+                span: span.with_hi(before_close).shrink_to_hi(),
+            }
         } else {
-            Error0308Subdiags::TupleAlsoParentheses {
+            TypeErrorAdditionalDiags::TupleAlsoParentheses {
                 span_low: span.shrink_to_lo(),
                 span_high: span.shrink_to_hi(),
             }
@@ -2806,8 +2808,8 @@ pub trait ObligationCauseExt<'tcx> {
         &self,
         terr: TypeError<'tcx>,
         span: Span,
-        subdiags: Vec<Error0308Subdiags>,
-    ) -> FailureCodeDiagnostics;
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    ) -> ObligationCauseFailureCode;
     fn as_requirement_str(&self) -> &'static str;
 }
 
@@ -2840,42 +2842,44 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
         &self,
         terr: TypeError<'tcx>,
         span: Span,
-        subdiags: Vec<Error0308Subdiags>,
-    ) -> FailureCodeDiagnostics {
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    ) -> ObligationCauseFailureCode {
         use crate::traits::ObligationCauseCode::*;
         match self.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
-                FailureCodeDiagnostics::MethodCompat { span, subdiags }
+                ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
             CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => {
-                FailureCodeDiagnostics::TypeCompat { span, subdiags }
+                ObligationCauseFailureCode::TypeCompat { span, subdiags }
             }
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
-                FailureCodeDiagnostics::ConstCompat { span, subdiags }
+                ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
                 hir::MatchSource::TryDesugar => {
-                    FailureCodeDiagnostics::TryCompat { span, subdiags }
+                    ObligationCauseFailureCode::TryCompat { span, subdiags }
                 }
-                _ => FailureCodeDiagnostics::MatchCompat { span, subdiags },
+                _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
             },
-            IfExpression { .. } => FailureCodeDiagnostics::IfElseDifferent { span, subdiags },
-            IfExpressionWithNoElse => FailureCodeDiagnostics::NoElse { span },
-            LetElse => FailureCodeDiagnostics::NoDiverge { span, subdiags },
-            MainFunctionType => FailureCodeDiagnostics::FnMainCorrectType { span },
-            StartFunctionType => FailureCodeDiagnostics::FnStartCorrectType { span, subdiags },
-            IntrinsicType => FailureCodeDiagnostics::IntristicCorrectType { span, subdiags },
-            MethodReceiver => FailureCodeDiagnostics::MethodCorrectType { span, subdiags },
+            IfExpression { .. } => ObligationCauseFailureCode::IfElseDifferent { span, subdiags },
+            IfExpressionWithNoElse => ObligationCauseFailureCode::NoElse { span },
+            LetElse => ObligationCauseFailureCode::NoDiverge { span, subdiags },
+            MainFunctionType => ObligationCauseFailureCode::FnMainCorrectType { span },
+            StartFunctionType => ObligationCauseFailureCode::FnStartCorrectType { span, subdiags },
+            IntrinsicType => ObligationCauseFailureCode::IntristicCorrectType { span, subdiags },
+            MethodReceiver => ObligationCauseFailureCode::MethodCorrectType { span, subdiags },
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
                 TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => {
-                    FailureCodeDiagnostics::ClosureSelfref { span }
+                    ObligationCauseFailureCode::ClosureSelfref { span }
                 }
-                TypeError::IntrinsicCast => FailureCodeDiagnostics::CantCoerce { span, subdiags },
-                _ => FailureCodeDiagnostics::Generic { span, subdiags },
+                TypeError::IntrinsicCast => {
+                    ObligationCauseFailureCode::CantCoerce { span, subdiags }
+                }
+                _ => ObligationCauseFailureCode::Generic { span, subdiags },
             },
         }
     }

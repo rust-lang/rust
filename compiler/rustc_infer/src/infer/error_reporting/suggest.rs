@@ -13,10 +13,10 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
-    ConsiderAddingAwait, DiagArg, Error0308Subdiags, FnConsiderCasting, FnItemsAreDistinct,
-    FnUniqTypes, FunctionPointerSuggestion, SuggestAccessingField, SuggestAsRefWhereAppropriate,
+    ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
+    FunctionPointerSuggestion, SuggestAccessingField, SuggestAsRefWhereAppropriate,
     SuggestBoxingForReturnImplTrait, SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany,
-    SuggestTuplePatternOne,
+    SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
 
 use super::TypeErrCtxt;
@@ -484,7 +484,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         cause: &ObligationCause<'_>,
         span: Span,
-    ) -> Option<Error0308Subdiags> {
+    ) -> Option<TypeErrorAdditionalDiags> {
         let hir = self.tcx.hir();
         if let Some(node) = self.tcx.hir().find_by_def_id(cause.body_id) &&
             let hir::Node::Item(hir::Item {
@@ -531,7 +531,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
         visitor.visit_body(&body);
         if visitor.result {
-                return Some(Error0308Subdiags::AddLetForLetChains{span: span.shrink_to_lo()});
+                return Some(TypeErrorAdditionalDiags::AddLetForLetChains{span: span.shrink_to_lo()});
             }
         }
         None

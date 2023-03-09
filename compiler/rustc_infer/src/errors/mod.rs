@@ -1361,7 +1361,7 @@ impl AddToDiagnostic for SuggestTuplePatternMany {
 }
 
 #[derive(Subdiagnostic)]
-pub enum Error0308Subdiags {
+pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         infer_meant_byte_literal,
         code = "b'{code}'",
@@ -1429,48 +1429,48 @@ pub enum Error0308Subdiags {
 }
 
 #[derive(Diagnostic)]
-pub enum FailureCodeDiagnostics {
+pub enum ObligationCauseFailureCode {
     #[diag(infer_oc_method_compat, code = "E0308")]
     MethodCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_type_compat, code = "E0308")]
     TypeCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_const_compat, code = "E0308")]
     ConstCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_try_compat, code = "E0308")]
     TryCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_match_compat, code = "E0308")]
     MatchCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_if_else_different, code = "E0308")]
     IfElseDifferent {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_no_else, code = "E0317")]
     NoElse {
@@ -1482,7 +1482,7 @@ pub enum FailureCodeDiagnostics {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_fn_main_correct_type, code = "E0580")]
     FnMainCorrectType {
@@ -1494,21 +1494,21 @@ pub enum FailureCodeDiagnostics {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_intristic_correct_type, code = "E0308")]
     IntristicCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_method_correct_type, code = "E0308")]
     MethodCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_closure_selfref, code = "E0644")]
     ClosureSelfref {
@@ -1520,13 +1520,13 @@ pub enum FailureCodeDiagnostics {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
     #[diag(infer_oc_generic, code = "E0308")]
     Generic {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
-        subdiags: Vec<Error0308Subdiags>,
+        subdiags: Vec<TypeErrorAdditionalDiags>,
     },
 }
