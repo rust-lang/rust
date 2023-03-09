@@ -456,42 +456,56 @@ impl CargoActor {
         // simply skip a line if it doesn't parse, which just ignores any
         // erroneous output.
 
-        let mut error = String::new();
-        let mut read_at_least_one_message = false;
+        let mut stdout_errors = String::new();
+        let mut stderr_errors = String::new();
+        let mut read_at_least_one_stdout_message = false;
+        let mut read_at_least_one_stderr_message = false;
+        let process_line = |line: &str, error: &mut String| {
+            // Try to deserialize a message from Cargo or Rustc.
+            let mut deserializer = serde_json::Deserializer::from_str(line);
+            deserializer.disable_recursion_limit();
+            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+                match message {
+                    // Skip certain kinds of messages to only spend time on what's useful
+                    JsonMessage::Cargo(message) => match message {
+                        cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
+                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
+                        }
+                        cargo_metadata::Message::CompilerMessage(msg) => {
+                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
+                        }
+                        _ => (),
+                    },
+                    JsonMessage::Rustc(message) => {
+                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
+                    }
+                }
+                return true;
+            }
+
+            error.push_str(line);
+            error.push('\n');
+            return false;
+        };
         let output = streaming_output(
             self.stdout,
             self.stderr,
             &mut |line| {
-                read_at_least_one_message = true;
-
-                // Try to deserialize a message from Cargo or Rustc.
-                let mut deserializer = serde_json::Deserializer::from_str(line);
-                deserializer.disable_recursion_limit();
-                if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
-                    match message {
-                        // Skip certain kinds of messages to only spend time on what's useful
-                        JsonMessage::Cargo(message) => match message {
-                            cargo_metadata::Message::CompilerArtifact(artifact)
-                                if !artifact.fresh =>
-                            {
-                                self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
-                            }
-                            cargo_metadata::Message::CompilerMessage(msg) => {
-                                self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
-                            }
-                            _ => (),
-                        },
-                        JsonMessage::Rustc(message) => {
-                            self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
-                        }
-                    }
+                if process_line(line, &mut stdout_errors) {
+                    read_at_least_one_stdout_message = true;
                 }
             },
             &mut |line| {
-                error.push_str(line);
-                error.push('\n');
+                if process_line(line, &mut stderr_errors) {
+                    read_at_least_one_stderr_message = true;
+                }
             },
         );
+
+        let read_at_least_one_message =
+            read_at_least_one_stdout_message || read_at_least_one_stderr_message;
+        let mut error = stdout_errors;
+        error.push_str(&stderr_errors);
         match output {
             Ok(_) => Ok((read_at_least_one_message, error)),
             Err(e) => Err(io::Error::new(e.kind(), format!("{e:?}: {error}"))),
