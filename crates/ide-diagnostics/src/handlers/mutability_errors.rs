@@ -575,6 +575,27 @@ fn main() {
     }
 
     #[test]
+    fn or_pattern_no_terminator() {
+        check_diagnostics(
+            r#"
+enum Foo {
+    A, B, C, D
+}
+
+use Foo::*;
+
+fn f(inp: (Foo, Foo, Foo, Foo)) {
+    let ((A, B, _, x) | (B, C | D, x, _)) = inp else {
+        return;
+    };
+    x = B;
+  //^^^^^ 💡 error: cannot mutate immutable variable `x`
+}
+"#,
+        );
+    }
+
+    #[test]
     fn respect_allow_unused_mut() {
         // FIXME: respect
         check_diagnostics(

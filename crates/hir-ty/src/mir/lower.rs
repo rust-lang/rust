@@ -1039,7 +1039,11 @@ impl MirLowerCtx<'_> {
                         }
                     }
                 }
-                (then_target, (!finished).then_some(current))
+                if !finished {
+                    let ce = *current_else.get_or_insert_with(|| self.new_basic_block());
+                    self.set_goto(current, ce);
+                }
+                (then_target, current_else)
             }
             Pat::Record { .. } => not_supported!("record pattern"),
             Pat::Range { .. } => not_supported!("range pattern"),
