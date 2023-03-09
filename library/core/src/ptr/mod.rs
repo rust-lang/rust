@@ -691,7 +691,7 @@ where
 #[inline(always)]
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
-pub fn from_ref<T: ?Sized>(r: &T) -> *const T {
+pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
 }
 
@@ -702,7 +702,7 @@ pub fn from_ref<T: ?Sized>(r: &T) -> *const T {
 #[inline(always)]
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
-pub fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
+pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
 }
 
