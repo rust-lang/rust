@@ -1427,9 +1427,8 @@ pub(crate) fn print_markframe_trace<K: DepKind>(
     let mut i = 0;
     let mut current = frame;
     while let Some(frame) = current {
-            // Do not try to rely on DepNode's Debug implementation, since it may panic.
         let node = data.previous.index_to_node(frame.index);
-        eprintln!("#{i} {:?} ({})", node.kind, node.hash);
+        eprintln!("#{i} {:?}", node);
         current = frame.parent;
         i += 1;
     }
