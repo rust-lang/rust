@@ -115,7 +115,7 @@ where
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
-#[inline(always)]
+#[inline]
 pub fn with_context_opt<F, R>(f: F) -> R
 where
     F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
@@ -134,7 +134,7 @@ where
 
 /// Allows access to the current `ImplicitCtxt`.
 /// Panics if there is no `ImplicitCtxt` available.
-#[inline(always)]
+#[inline]
 pub fn with_context<F, R>(f: F) -> R
 where
     F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
@@ -147,7 +147,7 @@ where
 /// as the `TyCtxt` passed in.
 /// This will panic if you pass it a `TyCtxt` which is different from the current
 /// `ImplicitCtxt`'s `tcx` field.
-#[inline(always)]
+#[inline]
 pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
 where
     F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
