@@ -13,7 +13,7 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
-    ConsiderAddingAwait, DiagArg, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
+    ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestAsRefWhereAppropriate,
     SuggestBoxingForReturnImplTrait, SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany,
     SuggestTuplePatternOne, TypeErrorAdditionalDiags,
@@ -379,14 +379,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         span,
                         fn_name,
                         found_sig: *found_sig,
-                        expected_sig: DiagArg(*expected_sig),
+                        expected_sig: *expected_sig,
                     }
                 } else {
                     FunctionPointerSuggestion::CastBoth {
                         span,
                         fn_name,
                         found_sig: *found_sig,
-                        expected_sig: DiagArg(*expected_sig),
+                        expected_sig: *expected_sig,
                     }
                 };
 

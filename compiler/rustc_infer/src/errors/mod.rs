@@ -1146,14 +1146,6 @@ pub struct OpaqueCapturesLifetime<'tcx> {
     pub opaque_ty: Ty<'tcx>,
 }
 
-pub struct DiagArg<T>(pub T);
-
-impl<T: ToString> IntoDiagnosticArg for DiagArg<T> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        self.0.to_string().into_diagnostic_arg()
-    }
-}
-
 #[derive(Subdiagnostic)]
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
@@ -1221,7 +1213,7 @@ pub enum FunctionPointerSuggestion<'a> {
         fn_name: String,
         #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
-        expected_sig: DiagArg<Binder<'a, FnSig<'a>>>,
+        expected_sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
         infer_fps_cast_both,
@@ -1236,7 +1228,7 @@ pub enum FunctionPointerSuggestion<'a> {
         fn_name: String,
         #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
-        expected_sig: DiagArg<Binder<'a, FnSig<'a>>>,
+        expected_sig: Binder<'a, FnSig<'a>>,
     },
 }
 

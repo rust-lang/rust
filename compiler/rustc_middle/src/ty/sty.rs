@@ -15,6 +15,7 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -26,7 +27,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
@@ -877,12 +878,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
-    }
-}
-
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)
@@ -936,12 +931,6 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
-    }
-}
-
-impl rustc_errors::IntoDiagnosticArg for PolyExistentialTraitRef<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -1156,6 +1145,15 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
         let bound_vars = self.1;
         self.0.into_iter().map(|v| Binder(v, bound_vars))
+    }
+}
+
+impl<'tcx, T> IntoDiagnosticArg for Binder<'tcx, T>
+where
+    Binder<'tcx, T>: Display,
+{
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
