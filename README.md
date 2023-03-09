@@ -13,6 +13,12 @@ If you wish to _contribute_ to the compiler, you should read
 
 ## Quick Start
 
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
 Read ["Installation"] from [The Book].
 
 ["Installation"]: https://doc.rust-lang.org/book/ch01-01-installation.html
