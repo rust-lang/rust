@@ -19,6 +19,9 @@
 #![deny(clippy::missing_inline_in_public_items)]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
+// FIXME(Nilstrieb): Remove this once the compiler in stdarch CI has the internal_features lint.
+#![allow(unknown_lints)]
+#![allow(internal_features)]
 
 #[cfg(test)]
 #[macro_use]
