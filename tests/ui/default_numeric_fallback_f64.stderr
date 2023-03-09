@@ -1,5 +1,5 @@
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:21:17
+  --> $DIR/default_numeric_fallback_f64.rs:22:17
    |
 LL |         let x = 0.12;
    |                 ^^^^ help: consider adding suffix: `0.12_f64`
@@ -7,139 +7,139 @@ LL |         let x = 0.12;
    = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:22:18
+  --> $DIR/default_numeric_fallback_f64.rs:23:18
    |
 LL |         let x = [1., 2., 3.];
    |                  ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:22:22
+  --> $DIR/default_numeric_fallback_f64.rs:23:22
    |
 LL |         let x = [1., 2., 3.];
    |                      ^^ help: consider adding suffix: `2.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:22:26
+  --> $DIR/default_numeric_fallback_f64.rs:23:26
    |
 LL |         let x = [1., 2., 3.];
    |                          ^^ help: consider adding suffix: `3.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:23:28
+  --> $DIR/default_numeric_fallback_f64.rs:24:28
    |
 LL |         let x = if true { (1., 2.) } else { (3., 4.) };
    |                            ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:23:32
+  --> $DIR/default_numeric_fallback_f64.rs:24:32
    |
 LL |         let x = if true { (1., 2.) } else { (3., 4.) };
    |                                ^^ help: consider adding suffix: `2.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:23:46
+  --> $DIR/default_numeric_fallback_f64.rs:24:46
    |
 LL |         let x = if true { (1., 2.) } else { (3., 4.) };
    |                                              ^^ help: consider adding suffix: `3.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:23:50
+  --> $DIR/default_numeric_fallback_f64.rs:24:50
    |
 LL |         let x = if true { (1., 2.) } else { (3., 4.) };
    |                                                  ^^ help: consider adding suffix: `4.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:24:23
+  --> $DIR/default_numeric_fallback_f64.rs:25:23
    |
 LL |         let x = match 1. {
    |                       ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:25:18
+  --> $DIR/default_numeric_fallback_f64.rs:26:18
    |
 LL |             _ => 1.,
    |                  ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:44:21
+  --> $DIR/default_numeric_fallback_f64.rs:45:21
    |
 LL |             let y = 1.;
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:52:21
+  --> $DIR/default_numeric_fallback_f64.rs:53:21
    |
 LL |             let y = 1.;
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:58:21
+  --> $DIR/default_numeric_fallback_f64.rs:59:21
    |
 LL |             let y = 1.;
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:66:21
+  --> $DIR/default_numeric_fallback_f64.rs:67:21
    |
 LL |             let y = 1.;
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:78:9
+  --> $DIR/default_numeric_fallback_f64.rs:79:9
    |
 LL |         1.
    |         ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:84:27
+  --> $DIR/default_numeric_fallback_f64.rs:85:27
    |
 LL |         let f = || -> _ { 1. };
    |                           ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:88:29
+  --> $DIR/default_numeric_fallback_f64.rs:89:29
    |
 LL |         let f = || -> f64 { 1. };
    |                             ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:102:21
+  --> $DIR/default_numeric_fallback_f64.rs:103:21
    |
 LL |         generic_arg(1.);
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:105:32
+  --> $DIR/default_numeric_fallback_f64.rs:106:32
    |
 LL |         let x: _ = generic_arg(1.);
    |                                ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:123:28
+  --> $DIR/default_numeric_fallback_f64.rs:124:28
    |
 LL |         GenericStruct { x: 1. };
    |                            ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:126:36
+  --> $DIR/default_numeric_fallback_f64.rs:127:36
    |
 LL |         let _ = GenericStruct { x: 1. };
    |                                    ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:144:24
+  --> $DIR/default_numeric_fallback_f64.rs:145:24
    |
 LL |         GenericEnum::X(1.);
    |                        ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:164:23
+  --> $DIR/default_numeric_fallback_f64.rs:165:23
    |
 LL |         s.generic_arg(1.);
    |                       ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:171:21
+  --> $DIR/default_numeric_fallback_f64.rs:172:21
    |
 LL |             let x = 22.;
    |                     ^^^ help: consider adding suffix: `22.0_f64`
