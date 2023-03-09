@@ -89,6 +89,28 @@ pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
 
+/// Makes a valid string literal from a string by escaping special characters (" and \),
+/// unless they are already escaped.
+fn escape_literal(s: &str) -> String {
+    let mut escaped = String::with_capacity(s.len());
+    let mut chrs = s.chars().peekable();
+    while let Some(first) = chrs.next() {
+        match (first, chrs.peek()) {
+            ('\\', Some(&delim @ '"') | Some(&delim @ '\'')) => {
+                escaped.push('\\');
+                escaped.push(delim);
+                chrs.next();
+            }
+            ('"' | '\'', _) => {
+                escaped.push('\\');
+                escaped.push(first)
+            }
+            (c, _) => escaped.push(c),
+        };
+    }
+    escaped
+}
+
 /// A helper for building type related errors. The `typeck_results`
 /// field is only populated during an in-progress typeck.
 /// Get an instance by calling `InferCtxt::err` or `FnCtxt::infer_err`.
@@ -1904,25 +1926,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Vec<Error0308Subdiags> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
-        fn escape_literal(s: &str) -> String {
-            let mut escaped = String::with_capacity(s.len());
-            let mut chrs = s.chars().peekable();
-            while let Some(first) = chrs.next() {
-                match (first, chrs.peek()) {
-                    ('\\', Some(&delim @ '"') | Some(&delim @ '\'')) => {
-                        escaped.push('\\');
-                        escaped.push(delim);
-                        chrs.next();
-                    }
-                    ('"' | '\'', _) => {
-                        escaped.push('\\');
-                        escaped.push(first)
-                    }
-                    (c, _) => escaped.push(c),
-                };
-            }
-            escaped
-        }
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
         if let Some((expected, found)) = trace.values.ty() {
