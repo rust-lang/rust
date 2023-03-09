@@ -250,7 +250,7 @@ impl<K: DepKind> DepGraph<K> {
     /// in the query infrastructure, and is not currently needed by the
     /// decoding of any query results. Should the need arise in the future,
     /// we should consider extending the query system with this functionality.
-    pub fn with_query_deserialization<OP, R>(op: OP) -> R
+    pub fn with_query_deserialization<OP, R>(&self, op: OP) -> R
     where
         OP: FnOnce() -> R,
     {
@@ -881,7 +881,7 @@ impl<K: DepKind> DepGraphData<K> {
         );
 
         if !side_effects.is_empty() {
-            DepGraph::<K>::with_query_deserialization(|| {
+            qcx.dep_context().dep_graph().with_query_deserialization(|| {
                 self.emit_side_effects(qcx, dep_node_index, side_effects)
             });
         }

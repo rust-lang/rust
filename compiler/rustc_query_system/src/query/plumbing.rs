@@ -2,9 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{
-    DepContext, DepGraph, DepKind, DepNode, DepNodeIndex, DepNodeParams, TaskDepsRef,
-};
+use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
 use crate::dep_graph::{DepGraphData, HasDepContext};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -430,13 +428,12 @@ where
 
             // Similarly, fingerprint the result to assert that
             // it doesn't have anything not considered hashable.
-            if cfg!(debug_assertions)
-            && let Some(hash_result) = query.hash_result()
-          {
-            qcx.dep_context().with_stable_hashing_context(|mut hcx| {
-                hash_result(&mut hcx, &result);
-            });
-        }
+            if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result()
+            {
+                qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                    hash_result(&mut hcx, &result);
+                });
+            }
 
             return (result, dep_node_index);
         }
@@ -524,9 +521,10 @@ where
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result = DepGraph::<Qcx::DepKind>::with_query_deserialization(|| {
-            try_load_from_disk(qcx, prev_dep_node_index)
-        });
+        let result = qcx
+            .dep_context()
+            .dep_graph()
+            .with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -575,7 +573,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = Qcx::DepKind::with_deps(TaskDepsRef::Ignore, || query.compute(qcx, *key));
+    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
