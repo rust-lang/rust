@@ -9,9 +9,9 @@ use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
-use std::collections::HashSet;
-use test::{ColorConfig, OutputFormat};
 use serde::de::{Deserialize, Deserializer, Error as _};
+use std::collections::{HashMap, HashSet};
+use test::{ColorConfig, OutputFormat};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -410,8 +410,17 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        // Gather list of all targets
-        let targets = rustc_output(config, &["--print=target-list"]);
+        let targets: HashMap<String, TargetCfg> = if config.stage_id.starts_with("stage0-") {
+            // #[cfg(bootstrap)]
+            // Needed only for one cycle, remove during the bootstrap bump.
+            Self::collect_all_slow(config)
+        } else {
+            serde_json::from_str(&rustc_output(
+                config,
+                &["--print=all-target-specs-json", "-Zunstable-options"],
+            ))
+            .unwrap()
+        };
 
         let mut current = None;
         let mut all_targets = HashSet::new();
@@ -422,9 +431,7 @@ impl TargetCfgs {
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
 
-        for target in targets.trim().lines() {
-            let cfg = TargetCfg::new(config, target);
-
+        for (target, cfg) in targets.into_iter() {
             all_archs.insert(cfg.arch.clone());
             all_oses.insert(cfg.os.clone());
             all_envs.insert(cfg.env.clone());
@@ -450,6 +457,25 @@ impl TargetCfgs {
             all_families,
             all_pointer_widths,
         }
+    }
+
+    // #[cfg(bootstrap)]
+    // Needed only for one cycle, remove during the bootstrap bump.
+    fn collect_all_slow(config: &Config) -> HashMap<String, TargetCfg> {
+        let mut result = HashMap::new();
+        for target in rustc_output(config, &["--print=target-list"]).trim().lines() {
+            let json = rustc_output(
+                config,
+                &["--print=target-spec-json", "-Zunstable-options", "--target", target],
+            );
+            match serde_json::from_str(&json) {
+                Ok(res) => {
+                    result.insert(target.into(), res);
+                }
+                Err(err) => panic!("failed to parse target spec for {target}: {err}"),
+            }
+        }
+        result
     }
 }
 
@@ -479,19 +505,6 @@ pub enum Endian {
     #[default]
     Little,
     Big,
-}
-
-impl TargetCfg {
-    fn new(config: &Config, target: &str) -> TargetCfg {
-        let json = rustc_output(
-            config,
-            &["--print=target-spec-json", "-Zunstable-options", "--target", target],
-        );
-        match serde_json::from_str(&json) {
-            Ok(res) => res,
-            Err(err) => panic!("failed to parse target spec for {target}: {err}"),
-        }
-    }
 }
 
 fn rustc_output(config: &Config, args: &[&str]) -> String {
