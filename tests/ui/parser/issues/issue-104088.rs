@@ -4,12 +4,12 @@ fn test() {
 
 fn test_2() {
     let 1x = 123;
-    //~^ ERROR expected identifier, found number literal
+    //~^ ERROR expected identifier, found `1x`
 }
 
 fn test_3() {
     let 2x: i32 = 123;
-    //~^ ERROR expected identifier, found number literal
+    //~^ ERROR expected identifier, found `2x`
 }
 
 fn test_4() {
@@ -20,7 +20,7 @@ fn test_4() {
 
 fn test_5() {
     let 23name = 123;
-    //~^ ERROR expected identifier, found number literal
+    //~^ ERROR expected identifier, found `23name`
 }
 
 fn main() {}

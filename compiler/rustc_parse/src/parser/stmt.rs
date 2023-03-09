@@ -273,7 +273,6 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        self.report_invalid_identifier_error()?;
         let (pat, colon) =
             self.parse_pat_before_ty(None, RecoverComma::Yes, PatternLocation::LetBinding)?;
 
@@ -364,17 +363,6 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
-    }
-
-    /// report error for `let 1x = 123`
-    pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
-        if let token::Literal(lit) = self.token.uninterpolate().kind &&
-            rustc_ast::MetaItemLit::from_token(&self.token).is_none() &&
-            (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
-            self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
-                return Err(self.sess.create_err(errors::InvalidIdentiferStartsWithNumber { span: self.token.span }));
-        }
-        Ok(())
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
