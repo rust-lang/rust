@@ -17,12 +17,6 @@
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.rustdoc_css}}" {#+ #}
           id="mainThemeStyle"> {# #}
-    <link rel="stylesheet" id="themeStyle" href="{{static_root_path|safe}}{{files.theme_light_css}}"> {# #}
-    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_dark_css}}"> {# #}
-    <link rel="stylesheet" disabled href="{{static_root_path|safe}}{{files.theme_ayu_css}}"> {# #}
-    {% for theme in themes %}
-        <link rel="stylesheet" disabled href="{{page.root_path|safe}}{{theme}}{{page.resource_suffix}}.css"> {# #}
-    {% endfor %}
     {% if !layout.default_settings.is_empty() %}
     <script id="default-settings" {#+ #}
       {%~ for (k, v) in layout.default_settings ~%}
@@ -30,6 +24,21 @@
       {% endfor %}
     ></script> {# #}
     {% endif %}
+    <div id="rustdoc-vars" {#+ #}
+         data-root-path="{{page.root_path|safe}}" {#+ #}
+         data-static-root-path="{{static_root_path|safe}}" {#+ #}
+         data-current-crate="{{layout.krate}}" {#+ #}
+         data-themes="{{themes|join(",") }}" {#+ #}
+         data-resource-suffix="{{page.resource_suffix}}" {#+ #}
+         data-rustdoc-version="{{rustdoc_version}}" {#+ #}
+         data-search-js="{{files.search_js}}" {#+ #}
+         data-settings-js="{{files.settings_js}}" {#+ #}
+         data-settings-css="{{files.settings_css}}" {#+ #}
+         data-theme-light-css="{{files.theme_light_css}}" {#+ #}
+         data-theme-dark-css="{{files.theme_dark_css}}" {#+ #}
+         data-theme-ayu-css="{{files.theme_ayu_css}}" {#+ #}
+    > {# #}
+    </div> {# #}
     <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
     {% if page.css_class.contains("crate") %}
     <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
@@ -44,6 +53,12 @@
     <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {# #}
     {% endif %}
     <noscript> {# #}
+        <link rel="stylesheet" {#+ #}
+           media="(prefers-color-scheme:light)" {#+ #}
+           href="{{static_root_path|safe}}{{files.theme_light_css}}"> {# #}
+        <link rel="stylesheet" {#+ #}
+           media="(prefers-color-scheme:dark)" {#+ #}
+           href="{{static_root_path|safe}}{{files.theme_dark_css}}"> {# #}
         <link rel="stylesheet" {#+ #}
            href="{{static_root_path|safe}}{{files.noscript_css}}"> {# #}
     </noscript> {# #}
@@ -132,17 +147,5 @@
         {% if page.css_class != "source" %}</div>{% endif %}
     </main> {# #}
     {{ layout.external_html.after_content|safe }}
-    <div id="rustdoc-vars" {#+ #}
-         data-root-path="{{page.root_path|safe}}" {#+ #}
-         data-static-root-path="{{static_root_path|safe}}" {#+ #}
-         data-current-crate="{{layout.krate}}" {#+ #}
-         data-themes="{{themes|join(",") }}" {#+ #}
-         data-resource-suffix="{{page.resource_suffix}}" {#+ #}
-         data-rustdoc-version="{{rustdoc_version}}" {#+ #}
-         data-search-js="{{files.search_js}}" {#+ #}
-         data-settings-js="{{files.settings_js}}" {#+ #}
-         data-settings-css="{{files.settings_css}}" {#+ #}
-    > {# #}
-    </div> {# #}
 </body> {# #}
 </html> {# #}
