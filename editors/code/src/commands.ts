@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Ctx, Cmd, CtxInit } from "./ctx";
+import { Ctx, Cmd, CtxInit, discoverWorkspace } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -747,6 +747,23 @@ export function expandMacro(ctx: CtxInit): Cmd {
 
 export function reloadWorkspace(ctx: CtxInit): Cmd {
     return async () => ctx.client.sendRequest(ra.reloadWorkspace);
+}
+
+export function addProject(ctx: CtxInit): Cmd {
+    return async () => {
+        const discoverProjectCommand = ctx.config.discoverProjectCommand;
+        if (!discoverProjectCommand) {
+            return;
+        }
+
+        let workspaces: JsonProject[] = await Promise.all(vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+            return discoverWorkspace(vscode.workspace.textDocuments, discoverProjectCommand, { cwd: folder.uri.fsPath });
+        }));
+
+        await ctx.client.sendRequest(ra.addProject, {
+            project: workspaces
+        });
+    }
 }
 
 async function showReferencesImpl(

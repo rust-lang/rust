@@ -214,6 +214,10 @@ export class Config {
         return this.get<boolean>("trace.extension");
     }
 
+    get discoverProjectCommand() {
+        return this.get<string[] | undefined>("discoverProjectCommand")
+    }
+
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
     }

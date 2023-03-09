@@ -9,6 +9,7 @@ use lsp_types::{
     notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
+use project_model::ProjectJsonData;
 use serde::{Deserialize, Serialize};
 
 use crate::line_index::PositionEncoding;
@@ -49,6 +50,20 @@ impl Request for ReloadWorkspace {
     type Params = ();
     type Result = ();
     const METHOD: &'static str = "rust-analyzer/reloadWorkspace";
+}
+
+pub enum AddProject {}
+
+impl Request for AddProject {
+    type Params = AddProjectParams;
+    type Result = ();
+    const METHOD: &'static str = "rust-analyzer/addProject";
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AddProjectParams {
+    pub project: Vec<ProjectJsonData>,
 }
 
 pub enum SyntaxTree {}

@@ -272,7 +272,6 @@ config_data! {
         /// The warnings will be indicated by a blue squiggly underline in code
         /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
-
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
@@ -893,6 +892,15 @@ impl Config {
                 })
                 .collect(),
         }
+    }
+
+    pub fn add_linked_projects(&mut self, linked_projects: Vec<ProjectJsonData>) {
+        let mut linked_projects = linked_projects
+            .into_iter()
+            .map(ManifestOrProjectJson::ProjectJson)
+            .collect::<Vec<ManifestOrProjectJson>>();
+
+        self.data.linkedProjects.append(&mut linked_projects);
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {

@@ -4,10 +4,11 @@ import * as ra from "./lsp_ext";
 
 import { Config, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
-import { isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
+import { executeDiscoverProject, isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
+import { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -16,12 +17,12 @@ import { bootstrap } from "./bootstrap";
 export type Workspace =
     | { kind: "Empty" }
     | {
-          kind: "Workspace Folder";
-      }
+        kind: "Workspace Folder";
+    }
     | {
-          kind: "Detached Files";
-          files: vscode.TextDocument[];
-      };
+        kind: "Detached Files";
+        files: vscode.TextDocument[];
+    };
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -35,10 +36,17 @@ export function fetchWorkspace(): Workspace {
         ? rustDocuments.length === 0
             ? { kind: "Empty" }
             : {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
+                kind: "Detached Files",
+                files: rustDocuments,
+            }
         : { kind: "Workspace Folder" };
+}
+
+export async function discoverWorkspace(files: readonly vscode.TextDocument[], command: string[], options: ExecOptions): Promise<JsonProject> {
+    const paths = files.map((f) => f.uri.fsPath).join(" ");
+    const joinedCommand = command.join(" ");
+    const data = await executeDiscoverProject(`${joinedCommand} -- ${paths}`, options);
+    return JSON.parse(data) as JsonProject;
 }
 
 export type CommandFactory = {
@@ -63,6 +71,7 @@ export class Ctx {
     private state: PersistentState;
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
+    private discoveredWorkspaces: JsonProject[] | undefined;
 
     get client() {
         return this._client;
@@ -71,7 +80,7 @@ export class Ctx {
     constructor(
         readonly extCtx: vscode.ExtensionContext,
         commandFactories: Record<string, CommandFactory>,
-        workspace: Workspace
+        workspace: Workspace,
     ) {
         extCtx.subscriptions.push(this);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -169,7 +178,18 @@ export class Ctx {
                 };
             }
 
-            const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
+            const discoverProjectCommand = this.config.discoverProjectCommand;
+            if (discoverProjectCommand) {
+                let workspaces: JsonProject[] = await Promise.all(vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                    return discoverWorkspace(vscode.workspace.textDocuments, discoverProjectCommand, { cwd: folder.uri.fsPath });
+                }));
+
+                this.discoveredWorkspaces = workspaces;
+            }
+
+            let initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
+            // this appears to be load-bearing, for better or worse.
+            await initializationOptions.update('linkedProjects', this.discoveredWorkspaces)
 
             this._client = await createClient(
                 this.traceOutputChannel,

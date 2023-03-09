@@ -200,6 +200,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.addProject",
+                "title": "Add current file to workspace",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
                 "category": "rust-analyzer"
@@ -446,6 +451,17 @@
                         "Fill missing expressions with the `todo` macro",
                         "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
+                },
+                "rust-analyzer.discoverProjectCommand": {
+                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command is\n only suggested if a build system like Buck or Bazel is used. The command must accept files as arguements and return \n a rust-project.json over stdout.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "array"
+                    ],
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "rust-analyzer.cachePriming.enable": {
                     "markdownDescription": "Warm up caches on project load.",
