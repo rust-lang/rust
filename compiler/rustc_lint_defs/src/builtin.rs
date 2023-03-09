@@ -3925,7 +3925,6 @@ declare_lint! {
     ///
     /// // in crate B
     /// #![feature(non_exhaustive_omitted_patterns_lint)]
-    ///
     /// match Bar::A {
     ///     Bar::A => {},
     ///     #[warn(non_exhaustive_omitted_patterns)]

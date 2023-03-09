@@ -405,9 +405,18 @@ pub struct BuiltinExplicitOutlivesSuggestion {
 pub struct BuiltinIncompleteFeatures {
     pub name: Symbol,
     #[subdiagnostic]
-    pub note: Option<BuiltinIncompleteFeaturesNote>,
+    pub note: Option<BuiltinFeatureIssueNote>,
     #[subdiagnostic]
     pub help: Option<BuiltinIncompleteFeaturesHelp>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_internal_features)]
+#[note]
+pub struct BuiltinInternalFeatures {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub note: Option<BuiltinFeatureIssueNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -416,7 +425,7 @@ pub struct BuiltinIncompleteFeaturesHelp;
 
 #[derive(Subdiagnostic)]
 #[note(lint_note)]
-pub struct BuiltinIncompleteFeaturesNote {
+pub struct BuiltinFeatureIssueNote {
     pub n: NonZeroU32,
 }
 

@@ -4,6 +4,7 @@
 #![feature(type_alias_impl_trait)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate tracing;

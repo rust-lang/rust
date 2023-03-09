@@ -7,6 +7,7 @@
 #![allow(rustc::default_hash_types)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![recursion_limit = "128"]
 
 use synstructure::decl_derive;

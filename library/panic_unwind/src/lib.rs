@@ -26,6 +26,7 @@
 #![feature(c_unwind)]
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 use alloc::boxed::Box;
 use core::any::Any;

@@ -140,6 +140,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         [
             "--emit=metadata",
             "-Aunused",
+            "-Ainternal_features",
             "-Zui-testing",
             "-Dwarnings",
             &format!("-Ldependency={}", deps_path.display()),

@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(error_reporter)]
 #![allow(incomplete_features)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_macros;

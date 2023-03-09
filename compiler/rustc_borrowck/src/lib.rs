@@ -11,6 +11,7 @@
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_middle;
