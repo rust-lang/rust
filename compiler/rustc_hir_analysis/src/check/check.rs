@@ -1,5 +1,5 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
-use crate::errors::LinkageType;
+use crate::errors::{self, LinkageType};
 
 use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
@@ -114,9 +114,11 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     allowed_union_field(*elem, tcx, param_env)
                 }
                 _ => {
-                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
+                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
+                    // also no need to report an error if the type is unresolved.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
                         || ty.is_copy_modulo_regions(tcx, param_env)
+                        || ty.references_error()
                 }
             }
         }
@@ -131,26 +133,14 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     Some(Node::Field(field)) => (field.span, field.ty.span),
                     _ => unreachable!("mir field has to correspond to hir field"),
                 };
-                struct_span_err!(
-                    tcx.sess,
+                tcx.sess.emit_err(errors::InvalidUnionField {
                     field_span,
-                    E0740,
-                    "unions cannot contain fields that may need dropping"
-                )
-                .note(
-                    "a type is guaranteed not to need dropping \
-                    when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type",
-                )
-                .multipart_suggestion_verbose(
-                    "when the type does not implement `Copy`, \
-                    wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped",
-                    vec![
-                        (ty_span.shrink_to_lo(), "std::mem::ManuallyDrop<".into()),
-                        (ty_span.shrink_to_hi(), ">".into()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                    sugg: errors::InvalidUnionFieldSuggestion {
+                        lo: ty_span.shrink_to_lo(),
+                        hi: ty_span.shrink_to_hi(),
+                    },
+                    note: (),
+                });
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {
                 // This should never happen. But we can get here e.g. in case of name resolution errors.

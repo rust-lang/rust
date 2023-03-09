@@ -163,3 +163,10 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .help = cast the value to `{$cast_ty}`
 
 hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+
+hir_analysis_invalid_union_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+    .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_union_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`

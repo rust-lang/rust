@@ -171,11 +171,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Unreachable => throw_ub!(Unreachable),
 
             // These should never occur for MIR we actually run.
-            DropAndReplace { .. }
-            | FalseEdge { .. }
-            | FalseUnwind { .. }
-            | Yield { .. }
-            | GeneratorDrop => span_bug!(
+            FalseEdge { .. } | FalseUnwind { .. } | Yield { .. } | GeneratorDrop => span_bug!(
                 terminator.source_info.span,
                 "{:#?} should have been eliminated by MIR pass",
                 terminator.kind

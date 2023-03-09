@@ -1359,6 +1359,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
 
+    pub fn root_const_var(&self, var: ty::ConstVid<'tcx>) -> ty::ConstVid<'tcx> {
+        self.inner.borrow_mut().const_unification_table().find(var)
+    }
+
     /// Where possible, replaces type/const variables in
     /// `value` with their final value. Note that region variables
     /// are unaffected. If a type/const variable has not been unified, it

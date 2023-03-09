@@ -1721,6 +1721,15 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
+        // Downstream forks of the Rust compiler might want to use a custom libc to add support for
+        // targets that are not yet available upstream. Adding a patch to replace libc with a
+        // custom one would cause compilation errors though, because Cargo would interpret the
+        // custom libc as part of the workspace, and apply the check-cfg lints on it.
+        //
+        // The libc build script emits check-cfg flags only when this environment variable is set,
+        // so this line allows the use of custom libcs.
+        cargo.env("LIBC_CHECK_CFG", "1");
+
         if source_type == SourceType::InTree {
             let mut lint_flags = Vec::new();
             // When extending this list, add the new lints to the RUSTFLAGS of the

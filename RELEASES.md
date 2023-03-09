@@ -3861,6 +3861,8 @@ Version 1.41.1 (2020-02-27)
 * [Always check types of static items][69145]
 * [Always check lifetime bounds of `Copy` impls][69145]
 * [Fix miscompilation in callers of `Layout::repeat`][69225]
+* [Rust 1.41.0 was announced as the last Rust release with tier 1 or tier 2 support for 32-bit Apple targets][apple-32bit-drop].
+  That announcement did not expect a patch release. 1.41.1 also includes release binaries for these targets.
 
 [69225]: https://github.com/rust-lang/rust/issues/69225
 [69145]: https://github.com/rust-lang/rust/pull/69145
@@ -3953,7 +3955,7 @@ Misc
 Compatibility Notes
 -------------------
 
-- [As previously announced 1.41.0 will be the last tier 1 release for 32-bit
+- [As previously announced 1.41 will be the last tier 1 release for 32-bit
   Apple targets.][apple-32bit-drop] This means that the source code is still
   available to build, but the targets are no longer being tested and release
   binaries for those platforms will no longer be distributed by the Rust project.

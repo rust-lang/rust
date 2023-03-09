@@ -148,7 +148,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call { target: None, cleanup: Some(t), .. }
             | Call { target: Some(t), cleanup: None, .. }
             | Yield { resume: t, drop: None, .. }
-            | DropAndReplace { target: t, unwind: None, .. }
             | Drop { target: t, unwind: None, .. }
             | Assert { target: t, cleanup: None, .. }
             | FalseUnwind { real_target: t, unwind: None }
@@ -158,7 +157,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Call { target: Some(t), cleanup: Some(ref u), .. }
             | Yield { resume: t, drop: Some(ref u), .. }
-            | DropAndReplace { target: t, unwind: Some(ref u), .. }
             | Drop { target: t, unwind: Some(ref u), .. }
             | Assert { target: t, cleanup: Some(ref u), .. }
             | FalseUnwind { real_target: t, unwind: Some(ref u) }
@@ -188,7 +186,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call { target: None, cleanup: Some(ref mut t), .. }
             | Call { target: Some(ref mut t), cleanup: None, .. }
             | Yield { resume: ref mut t, drop: None, .. }
-            | DropAndReplace { target: ref mut t, unwind: None, .. }
             | Drop { target: ref mut t, unwind: None, .. }
             | Assert { target: ref mut t, cleanup: None, .. }
             | FalseUnwind { real_target: ref mut t, unwind: None }
@@ -198,7 +195,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Call { target: Some(ref mut t), cleanup: Some(ref mut u), .. }
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-            | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
             | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
             | Assert { target: ref mut t, cleanup: Some(ref mut u), .. }
             | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) }
@@ -225,7 +221,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
-            | TerminatorKind::DropAndReplace { ref unwind, .. }
             | TerminatorKind::Drop { ref unwind, .. }
             | TerminatorKind::FalseUnwind { ref unwind, .. }
             | TerminatorKind::InlineAsm { cleanup: ref unwind, .. } => Some(unwind),
@@ -245,7 +240,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut unwind, .. }
             | TerminatorKind::Drop { ref mut unwind, .. }
             | TerminatorKind::FalseUnwind { ref mut unwind, .. }
             | TerminatorKind::InlineAsm { cleanup: ref mut unwind, .. } => Some(unwind),
@@ -309,9 +303,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({:?})", place),
-            DropAndReplace { place, value, .. } => {
-                write!(fmt, "replace({:?} <- {:?})", place, value)
-            }
             Call { func, args, destination, .. } => {
                 write!(fmt, "{:?} = ", destination)?;
                 write!(fmt, "{:?}(", func)?;
@@ -403,10 +394,10 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { target: None, cleanup: None, .. } => vec![],
             Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
             Yield { drop: None, .. } => vec!["resume".into()],
-            DropAndReplace { unwind: None, .. } | Drop { unwind: None, .. } => {
+            Drop { unwind: None, .. } => {
                 vec!["return".into()]
             }
-            DropAndReplace { unwind: Some(_), .. } | Drop { unwind: Some(_), .. } => {
+            Drop { unwind: Some(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }
             Assert { cleanup: None, .. } => vec!["".into()],
