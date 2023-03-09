@@ -776,7 +776,7 @@ impl<K: DepKind> DepGraphData<K> {
 
         // We failed to mark it green, so we try to force the query.
         debug!("trying to force dependency {dep_dep_node:?}");
-        if !qcx.dep_context().try_force_from_dep_node(*dep_dep_node, data, frame) {
+        if !qcx.dep_context().try_force_from_dep_node(*dep_dep_node, frame) {
             // The DepNode could not be forced.
             debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
@@ -1416,9 +1416,11 @@ impl DepNodeColorMap {
 #[inline(never)]
 #[cold]
 pub(crate) fn print_markframe_trace<K: DepKind>(
-    graph: &DepGraphData<K>,
+    graph: &DepGraph<K>,
     frame: Option<&MarkFrame<'_>>,
 ) {
+    let data = graph.data.as_ref().unwrap();
+
     eprintln!("there was a panic while trying to force a dep node");
     eprintln!("try_mark_green dep node stack:");
 
@@ -1426,7 +1428,7 @@ pub(crate) fn print_markframe_trace<K: DepKind>(
     let mut current = frame;
     while let Some(frame) = current {
             // Do not try to rely on DepNode's Debug implementation, since it may panic.
-        let node = graph.previous.index_to_node(frame.index);
+        let node = data.previous.index_to_node(frame.index);
         eprintln!("#{i} {:?} ({})", node.kind, node.hash);
         current = frame.parent;
         i += 1;

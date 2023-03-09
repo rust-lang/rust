@@ -20,7 +20,7 @@ use rustc_session::Session;
 use std::hash::Hash;
 use std::{fmt, panic};
 
-use self::graph::{print_markframe_trace, DepGraphData, MarkFrame};
+use self::graph::{print_markframe_trace, MarkFrame};
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
@@ -56,11 +56,10 @@ pub trait DepContext: Copy {
 
     /// Try to force a dep node to execute and see if it's green.
     #[inline]
-    #[instrument(skip(self, graph, frame), level = "debug")]
+    #[instrument(skip(self, frame), level = "debug")]
     fn try_force_from_dep_node(
         self,
         dep_node: DepNode<Self::DepKind>,
-        graph: &DepGraphData<Self::DepKind>,
         frame: Option<&MarkFrame<'_>>,
     ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
@@ -69,7 +68,7 @@ pub trait DepContext: Copy {
                 f(self, dep_node);
             })) {
                 if !value.is::<rustc_errors::FatalErrorMarker>() {
-                    print_markframe_trace(graph, frame);
+                    print_markframe_trace(self.dep_graph(), frame);
                 }
                 panic::resume_unwind(value)
             }
