@@ -1,0 +1,56 @@
+- // MIR for `demiraw` before CopyProp
++ // MIR for `demiraw` after CopyProp
+  
+  fn demiraw(_1: u8) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/reborrow.rs:+0:12: +0:17
+      let mut _0: ();                      // return place in scope 0 at $DIR/reborrow.rs:+0:23: +0:23
+      let _2: *mut u8;                     // in scope 0 at $DIR/reborrow.rs:+1:9: +1:10
+      let mut _4: &mut u8;                 // in scope 0 at $DIR/reborrow.rs:+2:22: +2:29
+      let _6: ();                          // in scope 0 at $DIR/reborrow.rs:+4:5: +4:14
+      let mut _7: *mut u8;                 // in scope 0 at $DIR/reborrow.rs:+4:12: +4:13
+      scope 1 {
+          debug a => _2;                   // in scope 1 at $DIR/reborrow.rs:+1:9: +1:10
+          let _3: &mut u8;                 // in scope 1 at $DIR/reborrow.rs:+2:9: +2:10
+          scope 2 {
+              debug b => _3;               // in scope 2 at $DIR/reborrow.rs:+2:9: +2:10
+              let _5: *mut u8;             // in scope 2 at $DIR/reborrow.rs:+3:9: +3:10
+              scope 4 {
+-                 debug c => _5;           // in scope 4 at $DIR/reborrow.rs:+3:9: +3:10
++                 debug c => _2;           // in scope 4 at $DIR/reborrow.rs:+3:9: +3:10
+              }
+          }
+          scope 3 {
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/reborrow.rs:+1:9: +1:10
+          _2 = &raw mut _1;                // scope 0 at $DIR/reborrow.rs:+1:13: +1:23
+          StorageLive(_3);                 // scope 1 at $DIR/reborrow.rs:+2:9: +2:10
+          StorageLive(_4);                 // scope 1 at $DIR/reborrow.rs:+2:22: +2:29
+          _4 = &mut (*_2);                 // scope 3 at $DIR/reborrow.rs:+2:22: +2:29
+          _3 = &mut (*_4);                 // scope 1 at $DIR/reborrow.rs:+2:22: +2:29
+          StorageDead(_4);                 // scope 1 at $DIR/reborrow.rs:+2:31: +2:32
+-         StorageLive(_5);                 // scope 2 at $DIR/reborrow.rs:+3:9: +3:10
+-         _5 = _2;                         // scope 2 at $DIR/reborrow.rs:+3:13: +3:14
+          StorageLive(_6);                 // scope 4 at $DIR/reborrow.rs:+4:5: +4:14
+-         StorageLive(_7);                 // scope 4 at $DIR/reborrow.rs:+4:12: +4:13
+-         _7 = _5;                         // scope 4 at $DIR/reborrow.rs:+4:12: +4:13
+-         _6 = opaque::<*mut u8>(move _7) -> bb1; // scope 4 at $DIR/reborrow.rs:+4:5: +4:14
++         _6 = opaque::<*mut u8>(_2) -> bb1; // scope 4 at $DIR/reborrow.rs:+4:5: +4:14
+                                           // mir::Constant
+                                           // + span: $DIR/reborrow.rs:38:5: 38:11
+                                           // + literal: Const { ty: fn(*mut u8) {opaque::<*mut u8>}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+-         StorageDead(_7);                 // scope 4 at $DIR/reborrow.rs:+4:13: +4:14
+          StorageDead(_6);                 // scope 4 at $DIR/reborrow.rs:+4:14: +4:15
+          _0 = const ();                   // scope 0 at $DIR/reborrow.rs:+0:23: +5:2
+-         StorageDead(_5);                 // scope 2 at $DIR/reborrow.rs:+5:1: +5:2
+          StorageDead(_3);                 // scope 1 at $DIR/reborrow.rs:+5:1: +5:2
+-         StorageDead(_2);                 // scope 0 at $DIR/reborrow.rs:+5:1: +5:2
+          return;                          // scope 0 at $DIR/reborrow.rs:+5:2: +5:2
+      }
+  }
+  
