@@ -174,7 +174,7 @@ fn get_impl_substs(
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors);
         return None;
     }
 

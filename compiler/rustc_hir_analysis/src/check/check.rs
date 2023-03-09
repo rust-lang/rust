@@ -444,7 +444,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
     match origin {
         // Checked when type checking the function containing them.
@@ -1545,6 +1545,6 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
 }

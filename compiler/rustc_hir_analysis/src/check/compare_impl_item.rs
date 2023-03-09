@@ -320,7 +320,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 });
             }
             CheckImpliedWfMode::Skip => {
-                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
                 return Err(reported);
             }
         }
@@ -720,7 +720,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 
@@ -1731,7 +1731,7 @@ pub(super) fn compare_impl_const_raw(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors));
     }
 
     let outlives_environment = OutlivesEnvironment::new(param_env);
@@ -1831,7 +1831,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 
@@ -2044,7 +2044,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 
