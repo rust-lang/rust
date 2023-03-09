@@ -60,9 +60,9 @@ interface Crate {
     /// rust-analyzer assumes that files from one
     /// source can't refer to files in another source.
     source?: {
-        include_dirs: string[],
-        exclude_dirs: string[],
-    },
+        include_dirs: string[];
+        exclude_dirs: string[];
+    };
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];
@@ -73,7 +73,7 @@ interface Crate {
     target?: string;
     /// Environment variables, used for
     /// the `env!` macro
-    env: { [key: string]: string; },
+    env: { [key: string]: string };
 
     /// Whether the crate is a proc-macro crate.
     is_proc_macro: boolean;
@@ -84,8 +84,8 @@ interface Crate {
 
 interface Dep {
     /// Index of a crate in the `crates` array.
-    crate: number,
+    crate: number;
     /// Name as should appear in the (implicit)
     /// `extern crate name` declaration.
-    name: string,
+    name: string;
 }

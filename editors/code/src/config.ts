@@ -215,7 +215,7 @@ export class Config {
     }
 
     get discoverProjectCommand() {
-        return this.get<string[] | undefined>("discoverProjectCommand")
+        return this.get<string[] | undefined>("discoverProjectCommand");
     }
 
     get cargoRunner() {

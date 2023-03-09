@@ -150,7 +150,7 @@ export function memoizeAsync<Ret, TThis, Param extends string>(
 
 /** Awaitable wrapper around `child_process.exec` */
 export function execute(command: string, options: ExecOptions): Promise<string> {
-    log.info(`running command: ${command}`)
+    log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, stderr) => {
             if (err) {
@@ -170,7 +170,7 @@ export function execute(command: string, options: ExecOptions): Promise<string> 
 }
 
 export function executeDiscoverProject(command: string, options: ExecOptions): Promise<string> {
-    log.info(`running command: ${command}`)
+    log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, _) => {
             if (err) {

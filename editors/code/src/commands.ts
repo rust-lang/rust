@@ -756,14 +756,18 @@ export function addProject(ctx: CtxInit): Cmd {
             return;
         }
 
-        let workspaces: JsonProject[] = await Promise.all(vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
-            return discoverWorkspace(vscode.workspace.textDocuments, discoverProjectCommand, { cwd: folder.uri.fsPath });
-        }));
+        const workspaces: JsonProject[] = await Promise.all(
+            vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                return discoverWorkspace(vscode.workspace.textDocuments, discoverProjectCommand, {
+                    cwd: folder.uri.fsPath,
+                });
+            })
+        );
 
         await ctx.client.sendRequest(ra.addProject, {
-            project: workspaces
+            project: workspaces,
         });
-    }
+    };
 }
 
 async function showReferencesImpl(
