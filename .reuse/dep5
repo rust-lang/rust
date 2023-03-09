@@ -47,6 +47,11 @@ Files: library/core/src/unicode/unicode_data.rs
 Copyright: 1991-2022 Unicode, Inc. All rights reserved.
 License: Unicode-DFS-2016
 
+Files: library/std/src/sync/mpmc/*
+Copyright: 2019 The Crossbeam Project Developers
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT OR Apache-2.0
+
 Files: src/librustdoc/html/static/fonts/FiraSans*
 Copyright: 2014, Mozilla Foundation
            2014, Telefonica S.A.
