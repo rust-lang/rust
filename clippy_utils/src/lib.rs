@@ -1547,7 +1547,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
         return true;
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
-    if let Some((Constant::Int(v), _)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
+    if let Some(Constant::Int(v)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
         return value == v;
     }
     false

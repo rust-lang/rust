@@ -74,6 +74,18 @@ fn main() {
 
     let _ = match 0 {
         0 => {
+            m!(foo);
+            0
+        },
+        1 => {
+            m!(bar);
+            0
+        },
+        _ => 1,
+    };
+
+    let _ = match 0 {
+        0 => {
             let mut x = 0;
             #[cfg(not_enabled)]
             {

@@ -3770,13 +3770,13 @@ impl Methods {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
-                    if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                         str_splitn::check(cx, name, expr, recv, pat_arg, count, &self.msrv);
                     }
                 },
                 ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
-                    if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                     }
                 },

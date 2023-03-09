@@ -151,6 +151,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             if !self.eq_stmt(left, right) {
                 return false;
             }
+
+            // Try to detect any `cfg`ed statements or empty macro expansions.
             let Some(lstmt_span) = walk_span_to_context(left.span, lspan.ctxt) else {
                 return false;
             };
