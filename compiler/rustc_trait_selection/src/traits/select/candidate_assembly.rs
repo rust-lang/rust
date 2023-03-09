@@ -11,7 +11,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_middle::ty::fast_reject::TreatProjections;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::traits;
@@ -344,6 +344,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
+        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
+        let obligation_substs = obligation.predicate.skip_binder().trait_ref.substs;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
@@ -352,7 +354,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
                 let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-                if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
+                if !drcx.substs_refs_may_unify(obligation_substs, impl_trait_ref.0.substs) {
                     return;
                 }
                 if self.reject_fn_ptr_impls(
