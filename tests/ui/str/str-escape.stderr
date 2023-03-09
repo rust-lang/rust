@@ -1,5 +1,5 @@
 warning: multiple lines skipped by escaped newline
-  --> $DIR/str-escape.rs:3:14
+  --> $DIR/str-escape.rs:5:14
    |
 LL |       let s = "\
    |  ______________^
@@ -7,15 +7,25 @@ LL | |
 LL | |              ";
    | |_____________^ skipping everything up to and including this point
 
-warning: non-ASCII whitespace symbol '\u{a0}' is not skipped
-  --> $DIR/str-escape.rs:7:17
+warning: whitespace symbol '\u{a0}' is not skipped
+  --> $DIR/str-escape.rs:11:17
    |
 LL |       let s = "foo\
    |  _________________^
 LL | |              bar
-   | |   ^ non-ASCII whitespace symbol '\u{a0}' is not skipped
+   | |   ^ whitespace symbol '\u{a0}' is not skipped
    | |___|
    | 
 
-warning: 2 warnings emitted
+warning: whitespace symbol '\u{c}' is not skipped
+  --> $DIR/str-escape.rs:25:15
+   |
+LL |       let s = "a\
+   |  _______________^
+LL | |     b";
+   | |    ^- whitespace symbol '\u{c}' is not skipped
+   | |____|
+   | 
+
+warning: 3 warnings emitted
 
