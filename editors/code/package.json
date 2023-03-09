@@ -453,7 +453,7 @@
                     ]
                 },
                 "rust-analyzer.discoverProjectCommand": {
-                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command is\n only suggested if a build system like Buck or Bazel is used. The command must accept files as arguements and return \n a rust-project.json over stdout.",
+                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command should only be used\n if a build system like Buck or Bazel is also in use. The command must accept files as arguments and return \n a rust-project.json over stdout.",
                     "default": null,
                     "type": [
                         "null",
