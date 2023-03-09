@@ -1,10 +1,16 @@
 use clap::Parser;
-use std::path::PathBuf;
+use std::{num::NonZeroUsize, path::PathBuf};
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct LintcheckConfig {
-    /// Number of threads to use, 0 automatic choice
-    #[clap(long = "jobs", short = 'j', value_name = "N", default_value_t = 1)]
+    /// Number of threads to use (default: all unless --fix or --recursive)
+    #[clap(
+        long = "jobs",
+        short = 'j',
+        value_name = "N",
+        default_value_t = 0,
+        hide_default_value = true
+    )]
     pub max_jobs: usize,
     /// Set the path for a crates.toml where lintcheck should read the sources from
     #[clap(
@@ -51,8 +57,11 @@ impl LintcheckConfig {
 
         // look at the --threads arg, if 0 is passed, use the threads count
         if config.max_jobs == 0 {
-            // automatic choice
-            config.max_jobs = std::thread::available_parallelism().map_or(1, |n| n.get());
+            config.max_jobs = if config.fix || config.recursive {
+                1
+            } else {
+                std::thread::available_parallelism().map_or(1, NonZeroUsize::get)
+            };
         };
 
         for lint_name in &mut config.lint_filter {
