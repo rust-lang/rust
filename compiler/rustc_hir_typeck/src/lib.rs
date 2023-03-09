@@ -106,10 +106,9 @@ pub struct LocalTy<'tcx> {
 /// (notably closures), `typeck_results(def_id)` would wind up
 /// redirecting to the owning function.
 fn primary_body_of(
-    tcx: TyCtxt<'_>,
-    id: hir::HirId,
+    node: Node<'_>,
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    match tcx.hir().get(id) {
+    match node {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
                 Some((body, Some(ty), None))
@@ -143,8 +142,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 
     if let Some(def_id) = def_id.as_local() {
-        let id = tcx.hir().local_def_id_to_hir_id(def_id);
-        primary_body_of(tcx, id).is_some()
+        primary_body_of(tcx.hir().get_by_def_id(def_id)).is_some()
     } else {
         false
     }
@@ -199,10 +197,11 @@ fn typeck_with_fallback<'tcx>(
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let node = tcx.hir().get(id);
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, body_ty, fn_sig) = primary_body_of(tcx, id).unwrap_or_else(|| {
+    let (body_id, body_ty, fn_sig) = primary_body_of(node).unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
@@ -231,53 +230,49 @@ fn typeck_with_fallback<'tcx>(
 
         check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
     } else {
-        let expected_type = body_ty
-            .and_then(|ty| match ty.kind {
-                hir::TyKind::Infer => Some(fcx.astconv().ast_ty_to_ty(ty)),
-                _ => None,
-            })
-            .unwrap_or_else(|| match tcx.hir().get(id) {
-                Node::AnonConst(_) => match tcx.hir().get(tcx.hir().parent_id(id)) {
-                    Node::Expr(&hir::Expr {
-                        kind: hir::ExprKind::ConstBlock(ref anon_const),
-                        ..
-                    }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
+        let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
+            Some(fcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span,
+            }))
+        } else if let Node::AnonConst(_) = node {
+            match tcx.hir().get(tcx.hir().parent_id(id)) {
+                Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::ConstBlock(ref anon_const), ..
+                }) if anon_const.hir_id == id => Some(fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                })),
+                Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
+                    if anon_const.hir_id == id =>
+                {
+                    Some(fcx.next_ty_var(TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeInference,
                         span,
-                    }),
-                    Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
-                        if anon_const.hir_id == id =>
-                    {
-                        fcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span,
-                        })
-                    }
-                    Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
-                    | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
-                        let operand_ty = asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                            hir::InlineAsmOperand::Const { anon_const }
-                                if anon_const.hir_id == id =>
-                            {
-                                // Inline assembly constants must be integers.
-                                Some(fcx.next_int_var())
-                            }
-                            hir::InlineAsmOperand::SymFn { anon_const }
-                                if anon_const.hir_id == id =>
-                            {
-                                Some(fcx.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
-                                    span,
-                                }))
-                            }
-                            _ => None,
-                        });
-                        operand_ty.unwrap_or_else(fallback)
-                    }
-                    _ => fallback(),
-                },
-                _ => fallback(),
-            });
+                    }))
+                }
+                Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
+                | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
+                    asm.operands.iter().find_map(|(op, _op_sp)| match op {
+                        hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
+                            // Inline assembly constants must be integers.
+                            Some(fcx.next_int_var())
+                        }
+                        hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                            Some(fcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            }))
+                        }
+                        _ => None,
+                    })
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        let expected_type = expected_type.unwrap_or_else(fallback);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
         fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
