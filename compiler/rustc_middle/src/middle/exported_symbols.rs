@@ -43,6 +43,7 @@ pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
     Generic(DefId, SubstsRef<'tcx>),
     DropGlue(Ty<'tcx>),
+    ThreadLocalShim(DefId),
     NoDefId(ty::SymbolName<'tcx>),
 }
 
@@ -58,6 +59,10 @@ impl<'tcx> ExportedSymbol<'tcx> {
             ExportedSymbol::DropGlue(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
             }
+            ExportedSymbol::ThreadLocalShim(def_id) => tcx.symbol_name(ty::Instance {
+                def: ty::InstanceDef::ThreadLocalShim(def_id),
+                substs: ty::InternalSubsts::empty(),
+            }),
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
         }
     }

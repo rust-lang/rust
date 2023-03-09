@@ -8,6 +8,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         linker_flavor: LinkerFlavor::Msvc(Lld::No),
+        dll_tls_export: false,
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args,
