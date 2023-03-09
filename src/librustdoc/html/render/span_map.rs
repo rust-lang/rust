@@ -29,12 +29,12 @@ pub(crate) enum LinkFromSrc {
 
 /// This function will do at most two things:
 ///
-/// 1. Generate a `span` correspondance map which links an item `span` to its definition `span`.
+/// 1. Generate a `span` correspondence map which links an item `span` to its definition `span`.
 /// 2. Collect the source code files.
 ///
-/// It returns the `krate`, the source code files and the `span` correspondance map.
+/// It returns the `krate`, the source code files and the `span` correspondence map.
 ///
-/// Note about the `span` correspondance map: the keys are actually `(lo, hi)` of `span`s. We don't
+/// Note about the `span` correspondence map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keep a whole `Span`, we
 /// only keep the `lo` and `hi`.
 pub(crate) fn collect_spans_and_sources(
