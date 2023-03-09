@@ -56,7 +56,7 @@ export async function discoverWorkspace(
 ): Promise<JsonProject> {
     const paths = files.map((f) => f.uri.fsPath).join(" ");
     const joinedCommand = command.join(" ");
-    const data = await executeDiscoverProject(`${joinedCommand} -- ${paths}`, options);
+    const data = await executeDiscoverProject(`${joinedCommand} ${paths}`, options);
     return JSON.parse(data) as JsonProject;
 }
 
