@@ -42,6 +42,7 @@ pub(crate) struct License {
 impl License {
     fn simplify(&mut self) {
         self.remove_copyright_prefixes();
+        self.remove_trailing_dots();
         self.copyright.sort();
         self.copyright.dedup();
     }
@@ -60,6 +61,14 @@ impl License {
                 }
             }
             *copyright = stripped.into();
+        }
+    }
+
+    fn remove_trailing_dots(&mut self) {
+        for copyright in &mut self.copyright {
+            if copyright.ends_with('.') {
+                *copyright = copyright.trim_end_matches('.').to_string();
+            }
         }
     }
 }
