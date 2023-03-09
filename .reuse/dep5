@@ -43,6 +43,16 @@ Copyright: LLVM APFloat authors
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: NCSA AND (MIT OR Apache-2.0)
 
+Files: compiler/rustc_codegen_cranelift/src/cranelift_native.rs
+Copyright: The Cranelift Project Developers
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)
+
+Files: compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp
+Copyright: LLVM authors
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)
+
 Files: library/core/src/unicode/unicode_data.rs
 Copyright: 1991-2022 Unicode, Inc. All rights reserved.
 License: Unicode-DFS-2016
