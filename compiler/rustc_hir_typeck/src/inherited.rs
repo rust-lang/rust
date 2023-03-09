@@ -58,7 +58,7 @@ pub struct Inherited<'tcx> {
     pub(super) deferred_generator_interiors:
         RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
-    pub(super) body_id: Option<hir::BodyId>,
+    pub(super) body_def_id: LocalDefId,
 
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
@@ -116,7 +116,6 @@ impl<'tcx> Inherited<'tcx> {
         typeck_results: RefCell<ty::TypeckResults<'tcx>>,
     ) -> Self {
         let tcx = infcx.tcx;
-        let body_id = tcx.hir().maybe_body_owned_by(def_id);
 
         Inherited {
             typeck_results,
@@ -130,7 +129,7 @@ impl<'tcx> Inherited<'tcx> {
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
-            body_id,
+            body_def_id: def_id,
             infer_var_info: RefCell::new(Default::default()),
         }
     }
