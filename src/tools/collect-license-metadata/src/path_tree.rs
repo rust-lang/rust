@@ -278,10 +278,10 @@ pub(crate) fn expand_interned_licenses(
 ) -> Node<&License> {
     match node {
         Node::Root { childs } => Node::Root {
-            childs: childs.into_iter().map(|child| strip_interning(child, interner)).collect(),
+            childs: childs.into_iter().map(|child| expand_interned_licenses(child, interner)).collect(),
         },
         Node::Directory { name, childs, license } => Node::Directory {
-            childs: childs.into_iter().map(|child| strip_interning(child, interner)).collect(),
+            childs: childs.into_iter().map(|child| expand_interned_licenses(child, interner)).collect(),
             license: license.map(|license| interner.resolve(license)),
             name,
         },
