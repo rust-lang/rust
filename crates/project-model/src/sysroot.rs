@@ -276,4 +276,7 @@ unwind
 std_detect
 test";
 
-const PROC_MACRO_DEPS: &str = "std";
+// core is required for our builtin derives to work in the proc_macro lib currently
+const PROC_MACRO_DEPS: &str = "
+std
+core";
