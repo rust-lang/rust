@@ -401,8 +401,6 @@ impl<'tcx> Body<'tcx> {
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
-        } else if self.local_decls[local].is_user_variable() {
-            LocalKind::Var
         } else {
             LocalKind::Temp
         }
@@ -668,9 +666,7 @@ impl Atom for Local {
 /// Classifies locals into categories. See `Body::local_kind`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
-    /// User-declared variable binding.
-    Var,
-    /// Compiler-introduced temporary.
+    /// User-declared variable binding or compiler-introduced temporary.
     Temp,
     /// Function argument.
     Arg,
