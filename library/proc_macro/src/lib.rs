@@ -488,7 +488,7 @@ impl Span {
         Span(self.0.source())
     }
 
-    /// Returns the spans byte position range in the source file.
+    /// Returns the span's byte position range in the source file.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn position(&self) -> Range<u32> {
         self.0.position()
