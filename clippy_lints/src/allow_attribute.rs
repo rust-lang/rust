@@ -21,6 +21,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
+    /// # #![feature(lint_reasons)]
     /// #[expect(unused_mut)]
     /// fn foo() -> usize {
     ///     let mut a = Vec::new();
