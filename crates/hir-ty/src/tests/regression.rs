@@ -1744,3 +1744,15 @@ fn foo(b: Bar) {
 "#,
     );
 }
+
+#[test]
+fn regression_14305() {
+    check_no_mismatches(
+        r#"
+//- minicore: add
+trait Tr {}
+impl Tr for [u8; C] {}
+const C: usize = 2 + 2;
+"#,
+    );
+}

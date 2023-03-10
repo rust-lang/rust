@@ -3277,13 +3277,14 @@ fn func() {
 
 #[test]
 fn issue_14275() {
+    // FIXME: evaluate const generic
     check_types(
         r#"
 struct Foo<const T: bool>;
 fn main() {
     const B: bool = false;
     let foo = Foo::<B>;
-      //^^^ Foo<false>
+      //^^^ Foo<_>
 }
 "#,
     );
