@@ -1,0 +1,10 @@
+error: opaque type constrained without being represented in the signature
+  --> $DIR/almost_in_scope.rs:13:22
+   |
+LL |     fn method() {
+   |     ----------- this item must mention the opaque type in its signature or where bounds
+LL |         let x: Foo = 22_u32;
+   |                      ^^^^^^
+
+error: aborting due to previous error
+
