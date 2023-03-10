@@ -329,6 +329,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter

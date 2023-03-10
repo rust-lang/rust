@@ -819,6 +819,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
+        | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),

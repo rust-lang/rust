@@ -23,6 +23,7 @@ fn hey(_1: &[T]) -> () {
     bb1: {
         StorageDead(_4);                 // scope 0 at $DIR/issue_91633.rs:+4:19: +4:20
         _2 = &(*_3);                     // scope 0 at $DIR/issue_91633.rs:+4:14: +4:20
+        PlaceMention(_2);                // scope 0 at $DIR/issue_91633.rs:+4:14: +4:20
         StorageDead(_2);                 // scope 0 at $DIR/issue_91633.rs:+4:20: +4:21
         _0 = const ();                   // scope 0 at $DIR/issue_91633.rs:+3:2: +5:3
         StorageDead(_3);                 // scope 0 at $DIR/issue_91633.rs:+5:2: +5:3

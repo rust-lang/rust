@@ -114,7 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
             // Statements we do not track.
-            AscribeUserType(..) => {}
+            PlaceMention(..) | AscribeUserType(..) => {}
 
             // Currently, Miri discards Coverage statements. Coverage statements are only injected
             // via an optional compile time MIR pass and have no side effects. Since Coverage

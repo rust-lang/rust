@@ -92,6 +92,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
+            | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::Nop => {}
         }
     }

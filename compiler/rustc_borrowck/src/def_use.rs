@@ -72,6 +72,8 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
             Some(DefUse::Drop),
 
+        // This statement exists to help unsafeck. It does not require the place to be live.
+        PlaceContext::NonUse(NonUseContext::PlaceMention) => None,
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
 

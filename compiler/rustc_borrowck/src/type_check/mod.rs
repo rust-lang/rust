@@ -772,7 +772,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         match context {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | PlaceMention | VarDebugInfo) => {
+                ty::Invariant
+            }
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
                 | Projection,
@@ -1282,6 +1284,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(..)
             | StatementKind::Nop => {}
             StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")

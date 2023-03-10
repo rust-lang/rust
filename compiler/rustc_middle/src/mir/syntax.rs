@@ -325,6 +325,15 @@ pub enum StatementKind<'tcx> {
     /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
+    /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
+    /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
+    /// `PlaceMention(PLACE)`.
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
+    PlaceMention(Box<Place<'tcx>>),
+
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
     /// ```ignore (illustrative)

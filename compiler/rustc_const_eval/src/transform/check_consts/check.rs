@@ -690,6 +690,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
+            | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)

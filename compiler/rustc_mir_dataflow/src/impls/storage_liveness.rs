@@ -139,6 +139,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
             | StatementKind::ConstEvalCounter

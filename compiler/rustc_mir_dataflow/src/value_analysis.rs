@@ -86,6 +86,7 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::FakeRead(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..) => (),
         }

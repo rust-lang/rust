@@ -100,13 +100,16 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
-            | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
+            // `AscribeUserType` just exists to help MIR borrowck.
+            // It has no semantics, and everything is already reported by `PlaceMention`.
+            StatementKind::AscribeUserType(..) => return,
         }
         self.super_statement(statement, location);
     }
