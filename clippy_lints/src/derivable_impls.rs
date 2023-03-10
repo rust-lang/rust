@@ -8,7 +8,7 @@ use rustc_hir::{
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Adt, AdtDef, DefIdTree, SubstsRef};
+use rustc_middle::ty::{Adt, AdtDef, SubstsRef};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 

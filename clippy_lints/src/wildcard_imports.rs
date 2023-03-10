@@ -155,14 +155,10 @@ impl LateLintPass<'_> for WildcardImports {
                     )
                 };
 
-                let imports_string = if used_imports.len() == 1 {
-                    used_imports.iter().next().unwrap().to_string()
+                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord(false);
+                let imports_string = if imports.len() == 1 {
+                    imports.pop().unwrap()
                 } else {
-                    let mut imports = used_imports
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>();
-                    imports.sort();
                     if braced_glob {
                         imports.join(", ")
                     } else {

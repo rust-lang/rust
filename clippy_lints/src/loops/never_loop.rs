@@ -232,7 +232,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)
-        | ExprKind::Err => NeverLoopResult::Otherwise,
+        | ExprKind::Err(_) => NeverLoopResult::Otherwise,
     }
 }
 

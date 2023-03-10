@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
 
                         if_chain! {
-                            if Some(def_id) == cx.tcx.lang_items().from_fn();
+                            if cx.tcx.is_diagnostic_item(sym::from_fn, def_id);
                             if same_type_and_consts(a, b);
 
                             then {

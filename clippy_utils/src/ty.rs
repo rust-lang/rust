@@ -16,9 +16,9 @@ use rustc_infer::infer::{
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate,
-    PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
+    Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -237,7 +237,7 @@ pub fn implements_trait_with_env<'tcx>(
         kind: TypeVariableOriginKind::MiscVariable,
         span: DUMMY_SP,
     };
-    let ty_params = tcx.mk_substs(
+    let ty_params = tcx.mk_substs_from_iter(
         ty_params
             .into_iter()
             .map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())),
@@ -1078,7 +1078,7 @@ pub fn make_projection<'tcx>(
         tcx,
         container_id,
         assoc_ty,
-        tcx.mk_substs(substs.into_iter().map(Into::into)),
+        tcx.mk_substs_from_iter(substs.into_iter().map(Into::into)),
     )
 }
 
