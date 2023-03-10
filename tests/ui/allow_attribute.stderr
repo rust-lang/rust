@@ -1,0 +1,10 @@
+error: #[allow] attribute found
+  --> $DIR/allow_attribute.rs:11:1
+   |
+LL | #[allow(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^ help: replace it with: `#[expect(dead_code)]`
+   |
+   = note: `-D clippy::allow-attribute` implied by `-D warnings`
+
+error: aborting due to previous error
+
