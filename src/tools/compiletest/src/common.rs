@@ -490,7 +490,7 @@ impl TargetCfgs {
 #[serde(rename_all = "kebab-case")]
 pub struct TargetCfg {
     pub(crate) arch: String,
-    #[serde(default)]
+    #[serde(default = "default_os")]
     pub(crate) os: String,
     #[serde(default)]
     pub(crate) env: String,
@@ -504,6 +504,10 @@ pub struct TargetCfg {
     endian: Endian,
     #[serde(rename = "panic-strategy", default)]
     panic: PanicStrategy,
+}
+
+fn default_os() -> String {
+    "none".into()
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]

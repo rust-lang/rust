@@ -70,7 +70,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the target is {name}"
     }
     condition! {
-        name: &target_cfg.os,
+        name: &[
+            Some(&*target_cfg.os),
+            // If something is ignored for emscripten, it likely also needs to be
+            // ignored for wasm32-unknown-unknown.
+            (config.target == "wasm32-unknown-unknown").then_some("emscripten"),
+        ],
         allowed_names: &target_cfgs.all_oses,
         message: "when the operative system is {name}"
     }
@@ -100,16 +105,9 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the target family is {name}"
     }
 
-    // If something is ignored for emscripten, it likely also needs to be
-    // ignored for wasm32-unknown-unknown.
     // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
     // (in contrast to `wasm32` which also matches non-bare targets like
     // asmjs-unknown-emscripten).
-    condition! {
-        name: "emscripten",
-        condition: config.target == "wasm32-unknown-unknown",
-        message: "when the target is WASM",
-    }
     condition! {
         name: "wasm32-bare",
         condition: config.target == "wasm32-unknown-unknown",
@@ -144,7 +142,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     condition! {
         name: config.stage_id.split('-').next().unwrap(),
-        allowed_names: &["stable", "beta", "nightly"],
+        allowed_names: &["stage0", "stage1", "stage2"],
         message: "when the bootstrapping stage is {name}",
     }
     condition! {
@@ -282,6 +280,12 @@ impl CustomMatches for String {
 }
 
 impl<T: CustomMatches> CustomMatches for &[T] {
+    fn custom_matches(&self, name: &str) -> bool {
+        self.iter().any(|m| m.custom_matches(name))
+    }
+}
+
+impl<const N: usize, T: CustomMatches> CustomMatches for [T; N] {
     fn custom_matches(&self, name: &str) -> bool {
         self.iter().any(|m| m.custom_matches(name))
     }
