@@ -508,6 +508,11 @@ mod c {
             cfg.define("LONG_BIT", "(8 * sizeof(long))");
         }
 
+        // OpenHarmony also uses emulated TLS.
+        if target_env == "ohos" {
+            sources.extend(&[("__emutls_get_address", "emutls.c")]);
+        }
+
         // When compiling the C code we require the user to tell us where the
         // source code is, and this is largely done so when we're compiling as
         // part of rust-lang/rust we can use the same llvm-project repository as
