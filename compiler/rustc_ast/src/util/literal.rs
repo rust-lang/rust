@@ -8,6 +8,7 @@ use rustc_lexer::unescape::{
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::ops::Range;
 use std::{ascii, fmt, str};
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
@@ -38,6 +39,7 @@ pub enum LitError {
     InvalidFloatSuffix,
     NonDecimalFloat(u32),
     IntTooLarge(u32),
+    NulInCStr(Range<usize>),
 }
 
 impl LitKind {

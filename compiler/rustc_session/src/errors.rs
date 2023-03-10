@@ -6,7 +6,7 @@ use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
 use rustc_macros::Diagnostic;
-use rustc_span::{Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
 #[derive(Diagnostic)]
@@ -307,6 +307,13 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(session_nul_in_c_str)]
+pub(crate) struct NulInCStr {
+    #[primary_span]
+    pub span: Span,
+}
+
 pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
     // Checks if `s` looks like i32 or u1234 etc.
     fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
@@ -384,6 +391,12 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 _ => format!("{max}"),
             };
             sess.emit_err(IntLiteralTooLarge { span, limit });
+        }
+        LitError::NulInCStr(range) => {
+            let lo = BytePos(span.lo().0 + range.start as u32 + 2);
+            let hi = BytePos(span.lo().0 + range.end as u32 + 2);
+            let span = span.with_lo(lo).with_hi(hi);
+            sess.emit_err(NulInCStr { span });
         }
     }
 }
