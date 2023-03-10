@@ -1498,7 +1498,6 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_as_mut_os_str)]
     /// use std::path::{Path, PathBuf};
     ///
     /// let mut path = PathBuf::from("/foo");
@@ -1510,7 +1509,7 @@ impl PathBuf {
     /// path.as_mut_os_string().push("baz");
     /// assert_eq!(path, Path::new("/foo/barbaz"));
     /// ```
-    #[unstable(feature = "path_as_mut_os_str", issue = "105021")]
+    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_string(&mut self) -> &mut OsString {
@@ -2066,7 +2065,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_as_mut_os_str)]
     /// use std::path::{Path, PathBuf};
     ///
     /// let mut path = PathBuf::from("Foo.TXT");
@@ -2076,7 +2074,7 @@ impl Path {
     /// path.as_mut_os_str().make_ascii_lowercase();
     /// assert_eq!(path, Path::new("foo.txt"));
     /// ```
-    #[unstable(feature = "path_as_mut_os_str", issue = "105021")]
+    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_str(&mut self) -> &mut OsStr {
