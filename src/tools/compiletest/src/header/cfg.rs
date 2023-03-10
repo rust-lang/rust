@@ -1,4 +1,4 @@
-use crate::common::{Config, CompareMode, Debugger};
+use crate::common::{CompareMode, Config, Debugger};
 use std::collections::HashSet;
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
@@ -48,7 +48,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
                     outcome = MatchOutcome::NoMatch;
                 }
             }
-            $(else if $allowed_names.contains(name) {
+            $(else if $allowed_names.custom_contains(name) {
                 message = Some(format_message());
                 outcome = MatchOutcome::NoMatch;
             })?
@@ -68,13 +68,6 @@ pub(super) fn parse_cfg_name_directive<'a>(
                 message: $($message)*
             }
         };
-    }
-    macro_rules! hashset {
-        ($($value:expr),* $(,)?) => {{
-            let mut set = HashSet::new();
-            $(set.insert($value);)*
-            set
-        }}
     }
 
     let target_cfgs = config.target_cfgs();
@@ -140,7 +133,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
 
     condition! {
         name: &config.channel,
-        allowed_names: hashset!["stable", "beta", "nightly"],
+        allowed_names: &["stable", "beta", "nightly"],
         message: "when the release channel is {name}",
     }
     condition! {
@@ -155,7 +148,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     condition! {
         name: config.stage_id.split('-').next().unwrap(),
-        allowed_names: hashset!["stable", "beta", "nightly"],
+        allowed_names: &["stable", "beta", "nightly"],
         message: "when the bootstrapping stage is {name}",
     }
     condition! {
@@ -170,20 +163,17 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     maybe_condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),
-        allowed_names: Debugger::VARIANTS
-            .iter()
-            .map(|v| v.to_str())
-            .collect::<HashSet<_>>(),
+        allowed_names: &Debugger::STR_VARIANTS,
         message: "when the debugger is {name}",
     }
     maybe_condition! {
         name: config.compare_mode
             .as_ref()
             .map(|d| format!("compare-mode-{}", d.to_str())),
-        allowed_names: CompareMode::VARIANTS
-            .iter()
-            .map(|cm| format!("compare-mode-{}", cm.to_str()))
-            .collect::<HashSet<_>>(),
+        allowed_names: ContainsPrefixed {
+            prefix: "compare-mode-",
+            inner: CompareMode::STR_VARIANTS,
+        },
         message: "when comparing with {name}",
     }
 
@@ -230,4 +220,40 @@ pub(super) enum MatchOutcome {
     Invalid,
     /// The directive is handled by other parts of our tooling.
     External,
+}
+
+trait CustomContains {
+    fn custom_contains(&self, item: &str) -> bool;
+}
+
+impl CustomContains for HashSet<String> {
+    fn custom_contains(&self, item: &str) -> bool {
+        self.contains(item)
+    }
+}
+
+impl CustomContains for &[&str] {
+    fn custom_contains(&self, item: &str) -> bool {
+        self.contains(&item)
+    }
+}
+
+impl<const N: usize> CustomContains for [&str; N] {
+    fn custom_contains(&self, item: &str) -> bool {
+        self.contains(&item)
+    }
+}
+
+struct ContainsPrefixed<T: CustomContains> {
+    prefix: &'static str,
+    inner: T,
+}
+
+impl<T: CustomContains> CustomContains for ContainsPrefixed<T> {
+    fn custom_contains(&self, item: &str) -> bool {
+        match item.strip_prefix(self.prefix) {
+            Some(stripped) => self.inner.custom_contains(stripped),
+            None => false,
+        }
+    }
 }
