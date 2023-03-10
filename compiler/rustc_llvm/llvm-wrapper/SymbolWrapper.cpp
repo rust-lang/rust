@@ -9,7 +9,6 @@
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/ObjectFile.h"
-#include "llvm/ADT/Optional.h"
 
 using namespace llvm;
 using namespace llvm::sys;
