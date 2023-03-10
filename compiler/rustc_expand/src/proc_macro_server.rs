@@ -18,7 +18,7 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::Bound;
+use std::ops::{Bound, Range};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -632,6 +632,10 @@ impl server::Span for Rustc<'_, '_> {
 
     fn source(&mut self, span: Self::Span) -> Self::Span {
         span.source_callsite()
+    }
+
+    fn position(&mut self, span: Self::Span) -> Range<u32> {
+        Range { start: span.lo().0, end: span.lo().0 }
     }
 
     fn start(&mut self, span: Self::Span) -> LineColumn {

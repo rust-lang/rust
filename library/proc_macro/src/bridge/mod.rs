@@ -14,6 +14,7 @@ use std::hash::Hash;
 use std::marker;
 use std::mem;
 use std::ops::Bound;
+use std::ops::Range;
 use std::panic;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
@@ -93,6 +94,7 @@ macro_rules! with_api {
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
+                fn position($self: $S::Span) -> Range<u32>;
                 fn start($self: $S::Span) -> LineColumn;
                 fn end($self: $S::Span) -> LineColumn;
                 fn before($self: $S::Span) -> $S::Span;
@@ -293,6 +295,7 @@ mark_noop! {
     &'_ str,
     String,
     u8,
+    u32,
     usize,
     Delimiter,
     LitKind,
@@ -518,4 +521,8 @@ pub struct ExpnGlobals<Span> {
 
 compound_traits!(
     struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
+);
+
+compound_traits!(
+    struct Range<T> { start, end }
 );
