@@ -1003,22 +1003,25 @@ impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 
-/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning[^1] a `value: T` _locally_[^2].
+/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
-/// Unlike [`Box::pin`], this does not involve a heap allocation.
+/// Unlike [`Box::pin`], this does not create a new heap allocation. As explained
+/// below, the element might still end up on the heap however.
 ///
-/// [^1]: If the (type `T` of the) given value does not implement [`Unpin`], then this
-/// effectively pins the `value` in memory, where it will be unable to be moved.
-/// Otherwise, <code>[Pin]<[&mut] T></code> behaves like <code>[&mut] T</code>, and operations such
-/// as [`mem::replace()`][crate::mem::replace] will allow extracting that value, and therefore,
-/// moving it.
-/// See [the `Unpin` section of the `pin` module][self#unpin] for more info.
+/// The local pinning performed by this macro is usually dubbed "stack"-pinning.
+/// Outside of `async` contexts locals do indeed get stored on the stack. In
+/// `async` functions or blocks however, any locals crossing an `.await` point
+/// are part of the state captured by the `Future`, and will use the storage of
+/// those. That storage can either be on the heap or on the stack. Therefore,
+/// local pinning is a more accurate term.
 ///
-/// [^2]: This is usually dubbed "stack"-pinning. And whilst local values are almost always located
-/// in the stack (_e.g._, when within the body of a non-`async` function), the truth is that inside
-/// the body of an `async fn` or block —more generally, the body of a generator— any locals crossing
-/// an `.await` point —a `yield` point— end up being part of the state captured by the `Future` —by
-/// the `Generator`—, and thus will be stored wherever that one is.
+/// If the type of the given value does not implement [`Unpin`], then this macro
+/// pins the value in memory in a way that prevents moves. On the other hand,
+/// if the type does implement [`Unpin`], <code>[Pin]<[&mut] T></code> behaves
+/// like <code>[&mut] T</code>, and operations such as
+/// [`mem::replace()`][crate::mem::replace] or [`mem::take()`](crate::mem::take)
+/// will allow moves of the value.
+/// See [the `Unpin` section of the `pin` module][self#unpin] for details.
 ///
 /// ## Examples
 ///
@@ -1158,9 +1161,9 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// If you really need to return a pinned value, consider using [`Box::pin`] instead.
 ///
-/// On the other hand, pinning to the stack[<sup>2</sup>](#fn2) using [`pin!`] is likely to be
-/// cheaper than pinning into a fresh heap allocation using [`Box::pin`]. Moreover, by virtue of not
-/// even needing an allocator, [`pin!`] is the main non-`unsafe` `#![no_std]`-compatible [`Pin`]
+/// On the other hand, local pinning using [`pin!`] is likely to be cheaper than
+/// pinning into a fresh heap allocation using [`Box::pin`]. Moreover, by virtue of not
+/// requiring an allocator, [`pin!`] is the main non-`unsafe` `#![no_std]`-compatible [`Pin`]
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
