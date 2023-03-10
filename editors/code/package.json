@@ -433,6 +433,17 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.discoverProjectCommand": {
+                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command should only be used\n if a build system like Buck or Bazel is also in use. The command must accept files as arguments and return \n a rust-project.json over stdout.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "array"
+                    ],
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
@@ -451,17 +462,6 @@
                         "Fill missing expressions with the `todo` macro",
                         "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
-                },
-                "rust-analyzer.discoverProjectCommand": {
-                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command should only be used\n if a build system like Buck or Bazel is also in use. The command must accept files as arguments and return \n a rust-project.json over stdout.",
-                    "default": null,
-                    "type": [
-                        "null",
-                        "array"
-                    ],
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "rust-analyzer.cachePriming.enable": {
                     "markdownDescription": "Warm up caches on project load.",
