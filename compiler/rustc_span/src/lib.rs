@@ -60,7 +60,7 @@ pub mod fatal_error;
 pub mod profiling;
 
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{Lock, Lrc, RwLock};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
@@ -86,7 +86,7 @@ mod tests;
 pub struct SessionGlobals {
     symbol_interner: symbol::Interner,
     span_interner: Lock<span_encoding::SpanInterner>,
-    hygiene_data: Lock<hygiene::HygieneData>,
+    hygiene_data: RwLock<hygiene::HygieneData>,
 
     /// A reference to the source map in the `Session`. It's an `Option`
     /// because it can't be initialized until `Session` is created, which
@@ -103,7 +103,7 @@ impl SessionGlobals {
         SessionGlobals {
             symbol_interner: symbol::Interner::fresh(),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
-            hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            hygiene_data: RwLock::new(hygiene::HygieneData::new(edition)),
             source_map: Lock::new(None),
         }
     }
@@ -584,7 +584,7 @@ impl Span {
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        self.ctxt() != SyntaxContext::root()
+        self.peel_ctxt().ctxt() != SyntaxContext::root()
     }
 
     /// Returns `true` if `span` originates in a macro's expansion where debuginfo should be
@@ -607,12 +607,24 @@ impl Span {
 
     /// Gate suggestions that would not be appropriate in a context the user didn't write.
     pub fn can_be_used_for_suggestions(self) -> bool {
-        !self.from_expansion()
-        // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
-        // the callsite span and the span will be pointing at different places. It also means that
-        // we can safely provide suggestions on this span.
-            || (matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
-                && self.parent_callsite().map(|p| (p.lo(), p.hi())) != Some((self.lo(), self.hi())))
+        match self.ctxt().outer_expn_data().kind {
+            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Inlined => true,
+            // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
+            // the callsite span and the span will be pointing at different places. It also means that
+            // we can safely provide suggestions on this span.
+            ExpnKind::Macro(MacroKind::Attr, _) | ExpnKind::Macro(MacroKind::Derive, _)
+                if self.parent_callsite().map(|p| (p.lo(), p.hi()))
+                    != Some((self.lo(), self.hi())) =>
+            {
+                true
+            }
+            ExpnKind::Desugaring(DesugaringKind::Resize)
+            | ExpnKind::Macro(MacroKind::Bang, _)
+            | ExpnKind::Desugaring(_) => {
+                self.parent_callsite().unwrap().can_be_used_for_suggestions()
+            }
+            ExpnKind::Macro(..) => false,
+        }
     }
 
     #[inline]
@@ -831,10 +843,10 @@ impl Span {
         // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+        if self.peel_ctxt().ctxt() != end.peel_ctxt().ctxt() {
+            if self.peel_ctxt().ctxt() == SyntaxContext::root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end.peel_ctxt().ctxt() == SyntaxContext::root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -843,7 +855,11 @@ impl Span {
         Span::new(
             cmp::min(span_data.lo, end_data.lo),
             cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if self.peel_ctxt().ctxt() == SyntaxContext::root() {
+                end_data.ctxt
+            } else {
+                span_data.ctxt
+            },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
@@ -856,14 +872,30 @@ impl Span {
     ///         ^^^^^^^^^^^^^
     /// ```
     pub fn between(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
+        let span_data = self.data();
+        let end_data = end.data();
         Span::new(
-            span.hi,
-            end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
-            if span.parent == end.parent { span.parent } else { None },
+            span_data.hi,
+            end_data.lo,
+            if end.peel_ctxt().ctxt() == SyntaxContext::root() {
+                end_data.ctxt
+            } else {
+                span_data.ctxt
+            },
+            if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
+    }
+
+    pub fn peel_ctxt(mut self) -> Span {
+        loop {
+            let data = self.data().ctxt.outer_expn_data();
+            if let ExpnKind::Desugaring(DesugaringKind::Resize) = data.kind {
+                self = data.call_site;
+            } else {
+                break;
+            }
+        }
+        self
     }
 
     /// Returns a `Span` from the beginning of `self` until the beginning of `end`.
@@ -885,9 +917,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+            if self.peel_ctxt().ctxt() == SyntaxContext::root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end.peel_ctxt().ctxt() == SyntaxContext::root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -896,7 +928,11 @@ impl Span {
         Span::new(
             span_data.lo,
             end_data.lo,
-            if end_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if end.peel_ctxt().ctxt() == SyntaxContext::root() {
+                end_data.ctxt
+            } else {
+                span_data.ctxt
+            },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }

@@ -956,7 +956,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .join(", ");
 
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
-            && obligation.cause.span.can_be_used_for_suggestions()
+            && match obligation.cause.span.ctxt().outer_expn_data().kind {
+                ExpnKind::Root
+                | ExpnKind::AstPass(_)
+                | ExpnKind::Desugaring(_)
+                | ExpnKind::Inlined => true,
+                // When a macro is involved, we don't want to provide a structured suggestion.
+                ExpnKind::Macro(..) => false,
+            }
         {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression

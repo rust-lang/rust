@@ -1,13 +1,13 @@
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/alloc-error-handler-bad-signature-3.rs:10:1
    |
-LL |   #[alloc_error_handler]
-   |   ---------------------- in this procedural macro expansion
-LL |   fn oom() -> ! {
-   |  _-^^^^^^^^^^^^
-LL | |     loop {}
-LL | | }
-   | |_- unexpected argument of type `core::alloc::Layout`
+LL | #[alloc_error_handler]
+   | ----------------------
+   | |
+   | unexpected argument of type `core::alloc::Layout`
+   | in this procedural macro expansion
+LL | fn oom() -> ! {
+   | ^^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/alloc-error-handler-bad-signature-3.rs:10:4

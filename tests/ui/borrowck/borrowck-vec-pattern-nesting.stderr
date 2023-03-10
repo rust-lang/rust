@@ -55,7 +55,7 @@ LL |     let a = &vec[0];
    |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:57:11
+  --> $DIR/borrowck-vec-pattern-nesting.rs:58:11
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
@@ -73,7 +73,7 @@ LL +         [
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:67:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:68:13
    |
 LL |     let a = vec[0];
    |             ^^^^^^
@@ -87,7 +87,7 @@ LL |     let a = &vec[0];
    |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:76:11
+  --> $DIR/borrowck-vec-pattern-nesting.rs:78:11
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
@@ -106,7 +106,7 @@ LL +         [_a, _b, _c] => {}
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:87:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:89:13
    |
 LL |     let a = vec[0];
    |             ^^^^^^

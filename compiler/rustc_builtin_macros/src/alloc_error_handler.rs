@@ -11,7 +11,7 @@ use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
-    _span: Span,
+    span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
@@ -37,7 +37,7 @@ pub fn expand(
         };
 
     // Generate a bunch of new items using the AllocFnFactory
-    let span = ecx.with_def_site_ctxt(item.span);
+    let span = ecx.with_def_site_ctxt(span);
 
     // Generate item statements for the allocator methods.
     let stmts = thin_vec![generate_handler(ecx, item.ident, span, sig_span)];

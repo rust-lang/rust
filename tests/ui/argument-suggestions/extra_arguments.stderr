@@ -258,7 +258,6 @@ LL |   foo!(1);
    |   -------
    |   |    |
    |   |    unexpected argument of type `{integer}`
-   |   |    help: remove the extra argument
    |   in this macro invocation
    |
 note: function defined here
@@ -267,6 +266,14 @@ note: function defined here
 LL | fn empty() {}
    |    ^^^^^
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the extra arguments
+   |
+LL ~         empty($x, );
+LL |     }
+ ...
+LL |   );
+LL ~   foo!();
+   |
 
 error: aborting due to 16 previous errors
 

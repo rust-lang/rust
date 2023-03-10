@@ -6,7 +6,7 @@ LL |         proc_macro_rules!();
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `local_use` in this scope
+error[E0425]: cannot find value `local_use` in the expanded code of procedural macro `proc_macro_rules`
   --> $DIR/mixed-site-span.rs:13:9
    |
 LL |         proc_macro_rules!();

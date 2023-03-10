@@ -1,14 +1,10 @@
-error[E0405]: cannot find trait `MyTrait` in the crate root
+error[E0405]: cannot find trait `MyTrait` in the expanded code of procedural macro `issue_100199::struct_with_bound`
   --> $DIR/issue-100199.rs:1:1
    |
 LL | #[issue_100199::struct_with_bound]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in the crate root
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `issue_100199::struct_with_bound`
    |
    = note: this error originates in the attribute macro `issue_100199::struct_with_bound` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this trait
-   |
-LL + use traits::MyTrait;
-   |
 
 error: aborting due to previous error
 

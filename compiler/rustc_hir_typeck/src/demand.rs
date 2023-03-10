@@ -647,7 +647,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     ),
                     match &args[..] {
-                        [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
+                        [] => (
+                            self.tcx.adjust_span(base.span).shrink_to_hi().with_hi(deref.span.hi()),
+                            ")".to_string(),
+                        ),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
                     },
                 ]
@@ -771,8 +774,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "use `?` to coerce and return an appropriate `Err`, and wrap the resulting value \
                  in `Ok` so the expression remains of type `Result`",
                 vec![
-                    (expr.span.shrink_to_lo(), "Ok(".to_string()),
-                    (expr.span.shrink_to_hi(), "?)".to_string()),
+                    (self.tcx.adjust_span(expr.span).shrink_to_lo(), "Ok(".to_string()),
+                    (self.tcx.adjust_span(expr.span).shrink_to_hi(), "?)".to_string()),
                 ],
                 Applicability::MaybeIncorrect,
             );
@@ -843,8 +846,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 return false;
                             };
-                            if let Some(indent) =
-                                self.tcx.sess.source_map().indentation_before(span.shrink_to_lo())
+                            if let Some(indent) = self
+                                .tcx
+                                .sess
+                                .source_map()
+                                .indentation_before(self.tcx.adjust_span(span).shrink_to_lo())
                             {
                                 // Add a semicolon, except after `}`.
                                 let semicolon =
@@ -853,7 +859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => ";",
                                     };
                                 err.span_suggestions(
-                                    span.shrink_to_hi(),
+                                    self.tcx.adjust_span(span).shrink_to_hi(),
                                     "try adding an expression at the end of the block",
                                     return_suggestions
                                         .into_iter()
@@ -931,8 +937,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 vec![
-                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
-                    (expr.span.shrink_to_hi(), close.to_owned()),
+                    (
+                        self.tcx.adjust_span(expr.span).shrink_to_lo(),
+                        format!("{prefix}{variant}{open}"),
+                    ),
+                    (self.tcx.adjust_span(expr.span).shrink_to_hi(), close.to_owned()),
                 ]
             };
 
@@ -1016,8 +1025,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.multipart_suggestion(
             format!("consider calling `{s}::new`"),
             vec![
-                (expr.span.shrink_to_lo(), format!("{path}::new(")),
-                (expr.span.shrink_to_hi(), format!("){unwrap}")),
+                (self.tcx.adjust_span(expr.span).shrink_to_lo(), format!("{path}::new(")),
+                (self.tcx.adjust_span(expr.span).shrink_to_hi(), format!("){unwrap}")),
             ],
             Applicability::MaybeIncorrect,
         );
@@ -1271,7 +1280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && replace_prefix(&src, "\"", "b\"").is_some()
                     {
                                 return Some((
-                                    sp.shrink_to_lo(),
+                                    self.tcx.adjust_span(sp).shrink_to_lo(),
                                     "consider adding a leading `b`".to_string(),
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
@@ -1468,7 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if sp == expr.span => {
                 if let Some(mut steps) = self.deref_steps(checked_ty, expected) {
                     let mut expr = expr.peel_blocks();
-                    let mut prefix_span = expr.span.shrink_to_lo();
+                    let mut prefix_span = self.tcx.adjust_span(expr.span).shrink_to_lo();
                     let mut remove = String::new();
 
                     // Try peeling off any existing `&` and `&mut` to reach our target type
@@ -1539,7 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         } else if let Some(expr) = self.maybe_get_block_expr(expr) {
                             // prefix should be empty here..
-                            (expr.span.shrink_to_lo(), "*".to_string())
+                            (self.tcx.adjust_span(expr.span).shrink_to_lo(), "*".to_string())
                         } else {
                             (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
                         };
@@ -1596,7 +1605,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `expr` is a literal field for a struct, only suggest if appropriate
             if field.is_shorthand {
                 // This is a field literal
-                sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
+                sugg.push((
+                    self.tcx.adjust_span(field.ident.span).shrink_to_lo(),
+                    format!("{}: ", field.ident),
+                ));
             } else {
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
                 return false;
@@ -1652,16 +1664,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let close_paren = if expr.precedence().order() < PREC_POSTFIX {
-            sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
+            sugg.push((self.tcx.adjust_span(expr.span).shrink_to_lo(), "(".to_string()));
             ")"
         } else {
             ""
         };
 
         let mut cast_suggestion = sugg.clone();
-        cast_suggestion.push((expr.span.shrink_to_hi(), format!("{close_paren} as {expected_ty}")));
+        cast_suggestion.push((
+            self.tcx.adjust_span(expr.span).shrink_to_hi(),
+            format!("{close_paren} as {expected_ty}"),
+        ));
         let mut into_suggestion = sugg.clone();
-        into_suggestion.push((expr.span.shrink_to_hi(), format!("{close_paren}.into()")));
+        into_suggestion.push((
+            self.tcx.adjust_span(expr.span).shrink_to_hi(),
+            format!("{close_paren}.into()"),
+        ));
         let mut suffix_suggestion = sugg.clone();
         suffix_suggestion.push((
             if matches!(
@@ -1715,15 +1733,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "you can convert `{lhs_src}` from `{expected_ty}` to `{checked_ty}`, matching the type of `{src}`",
                     );
                     let suggestion = vec![
-                        (lhs_expr.span.shrink_to_lo(), format!("{checked_ty}::from(")),
-                        (lhs_expr.span.shrink_to_hi(), ")".to_string()),
+                        (
+                            self.tcx.adjust_span(lhs_expr.span).shrink_to_lo(),
+                            format!("{checked_ty}::from("),
+                        ),
+                        (self.tcx.adjust_span(lhs_expr.span).shrink_to_hi(), ")".to_string()),
                     ];
                     (msg, suggestion)
                 } else {
                     let msg = format!("{msg} and panic if the converted value doesn't fit");
                     let mut suggestion = sugg.clone();
                     suggestion.push((
-                        expr.span.shrink_to_hi(),
+                        self.tcx.adjust_span(expr.span).shrink_to_hi(),
                         format!("{close_paren}.try_into().unwrap()"),
                     ));
                     (msg, suggestion)

@@ -496,7 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
-                    ident_span.with_hi(args.span_ext.hi())
+                    self.tcx.adjust_span(ident_span).with_hi(args.span_ext.hi())
                 } else {
                     ident_span
                 };
@@ -706,8 +706,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
-                                (lo.shrink_to_lo(), "(".to_string()),
-                                (hi.shrink_to_hi(), ")".to_string()),
+                                (tcx.adjust_span(*lo).shrink_to_lo(), "(".to_string()),
+                                (tcx.adjust_span(*hi).shrink_to_hi(), ")".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
@@ -1233,7 +1233,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let source_map = self.sess().source_map();
             let (mut suggestion, suggestion_span) =
                 if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
-                    ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+                    (
+                        "(".to_string(),
+                        tcx.adjust_span(call_span)
+                            .shrink_to_hi()
+                            .to(tcx.adjust_span(error_span).shrink_to_hi()),
+                    )
                 } else {
                     (
                         format!(

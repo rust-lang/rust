@@ -15,7 +15,7 @@ LL |     s.infer(0i32, /* b */);
    |            ~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
-  --> $DIR/point-at-inference-4.rs:19:24
+  --> $DIR/point-at-inference-4.rs:20:24
    |
 LL |     s.infer(0i32);
    |     -       ---- this argument has type `i32`...

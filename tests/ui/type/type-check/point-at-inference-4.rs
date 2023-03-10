@@ -16,6 +16,7 @@ fn main() {
     //~| NOTE an argument is missing
     //~| HELP provide the argument
     //~| HELP change the type of the numeric literal from `i32` to `u32`
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     let t: S<u32, _> = s;
     //~^ ERROR mismatched types
     //~| NOTE expected `S<u32, _>`, found `S<i32, _>`

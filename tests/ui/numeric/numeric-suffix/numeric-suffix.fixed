@@ -336,14 +336,17 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42_u16.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42_u8.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42_f64);
     //~^ ERROR mismatched types
     //~| NOTE expected
@@ -356,14 +359,17 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42_i16.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42_i8.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f64>(42.0_f64);
     foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
@@ -386,10 +392,12 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f32>(42_u8.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f32>(42_f32);
     //~^ ERROR mismatched types
     //~| NOTE expected
@@ -406,10 +414,12 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f32>(42_i8.into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
     //~| NOTE expected
@@ -420,8 +430,10 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     foo::<i32>((-42_i8).into());
     //~^ ERROR mismatched types
     //~| NOTE expected
     //~| NOTE arguments
+    //~| NOTE in this expansion of desugaring of a resized `Span`
 }

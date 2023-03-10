@@ -13,10 +13,10 @@ error[E0308]: mismatched types
   --> $DIR/issue-70724-add_type_neq_err_label-unwrap.rs:6:5
    |
 LL |     assert_eq!(a, 0);
-   |     ^^^^^^^^^^^^^^^^ expected fn item, found integer
+   |     ^^^^^^^^^^^^^^^^ expected fn item, found `i32`
    |
    = note: expected fn item `fn() -> i32 {a}`
-                 found type `{integer}`
+                 found type `i32`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn() -> i32 {a}` doesn't implement `Debug`

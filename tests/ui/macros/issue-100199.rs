@@ -1,4 +1,4 @@
-#[issue_100199::struct_with_bound] //~ ERROR cannot find trait `MyTrait` in the crate root
+#[issue_100199::struct_with_bound] //~ ERROR cannot find trait `MyTrait` in
 struct Foo {}
 // The above must be on the first line so that it's span points to pos 0.
 // This used to trigger an ICE because the diagnostic emitter would get

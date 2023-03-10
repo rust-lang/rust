@@ -718,7 +718,7 @@ impl UseTree {
         }
         if let Some(new_path) = merge_rest(&self.path, &other.path, prefix, merge_by) {
             self.path = new_path;
-            self.span = self.span.to(other.span);
+            self.span = self.span.with_hi(other.span.hi());
         }
     }
 

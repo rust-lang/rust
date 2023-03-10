@@ -49,6 +49,7 @@ fn c() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| NOTE in this expansion of desugaring of a resized `Span`
 }
 
 fn d() {
@@ -68,6 +69,7 @@ fn d() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| NOTE in this expansion of desugaring of a resized `Span`
 }
 
 fn e() {
@@ -88,6 +90,7 @@ fn e() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| NOTE in this expansion of desugaring of a resized `Span`
 }
 
 fn main() {}

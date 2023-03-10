@@ -125,7 +125,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     matched_end_of_args = args_span.is_some();
                                     matching_span = args_span
                                         .or_else(|| Some(end_of_trait))
-                                        .map(|span| span.shrink_to_hi());
+                                        .map(|span| self.tcx.adjust_span(span).shrink_to_hi());
                                     break;
                                 }
                             }

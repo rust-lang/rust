@@ -181,7 +181,7 @@ impl LocalExpnId {
     }
 
     pub fn fresh_empty() -> LocalExpnId {
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let expn_id = data.local_expn_data.push(None);
             let _eid = data.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
             debug_assert_eq!(expn_id, _eid);
@@ -192,7 +192,7 @@ impl LocalExpnId {
     pub fn fresh(mut expn_data: ExpnData, ctx: impl HashStableContext) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, ctx);
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let expn_id = data.local_expn_data.push(Some(expn_data));
             let _eid = data.local_expn_hashes.push(expn_hash);
             debug_assert_eq!(expn_id, _eid);
@@ -221,7 +221,7 @@ impl LocalExpnId {
     pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, ctx);
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
             *old_expn_data = Some(expn_data);
@@ -383,8 +383,12 @@ impl HygieneData {
         }
     }
 
-    pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
+    pub fn with_mut<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
+    }
+
+    pub fn with<T, F: FnOnce(&HygieneData) -> T>(f: F) -> T {
+        with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow()))
     }
 
     #[inline]
@@ -595,7 +599,7 @@ impl HygieneData {
 }
 
 pub fn clear_syntax_context_map() {
-    HygieneData::with(|data| data.syntax_context_map = FxHashMap::default());
+    HygieneData::with_mut(|data| data.syntax_context_map = FxHashMap::default());
 }
 
 pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
@@ -619,7 +623,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     let range_to_update = len - to_update..len;
     let names: Vec<_> =
         range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
-    HygieneData::with(|data| {
+    HygieneData::with_mut(|data| {
         range_to_update.zip(names).for_each(|(idx, name)| {
             data.syntax_context_data[idx].dollar_crate_name = name;
         })
@@ -683,7 +687,7 @@ impl SyntaxContext {
 
     /// Extend a syntax context with a given expansion and transparency.
     pub(crate) fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
-        HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
+        HygieneData::with_mut(|data| data.apply_mark(self, expn_id, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
@@ -802,7 +806,7 @@ impl SyntaxContext {
         expn_id: ExpnId,
         glob_span: Span,
     ) -> Option<Option<ExpnId>> {
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             if data.adjust(self, expn_id).is_some() {
                 return None;
             }
@@ -878,7 +882,7 @@ impl Span {
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
     pub fn fresh_expansion(self, expn_id: LocalExpnId) -> Span {
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             self.with_ctxt(data.apply_mark(
                 self.ctxt(),
                 expn_id.to_expn_id(),
@@ -1152,6 +1156,10 @@ pub enum DesugaringKind {
     ForLoop,
     WhileLoop,
     Replace,
+    /// Used to proactively mark `Span`s that have been modified from another `Span`. This allows
+    /// the diagnostics machinery to be able to detect spans coming from proc-macros that do not
+    /// point to user code.
+    Resize,
 }
 
 impl DesugaringKind {
@@ -1168,6 +1176,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::Replace => "drop and replace",
+            DesugaringKind::Resize => "a resized `Span`",
         }
     }
 }
@@ -1253,7 +1262,7 @@ pub struct HygieneDecodeContext {
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
 pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
-    HygieneData::with(|hygiene_data| {
+    HygieneData::with_mut(|hygiene_data| {
         let expn_id = hygiene_data.local_expn_data.next_index();
         hygiene_data.local_expn_data.push(Some(data));
         let _eid = hygiene_data.local_expn_hashes.push(hash);
@@ -1276,7 +1285,7 @@ pub fn register_expn_id(
 ) -> ExpnId {
     debug_assert!(data.parent == ExpnId::root() || krate == data.parent.krate);
     let expn_id = ExpnId { krate, local_id };
-    HygieneData::with(|hygiene_data| {
+    HygieneData::with_mut(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
         debug_assert!(_old_data.is_none());
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
@@ -1343,7 +1352,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
     // Allocate and store SyntaxContext id *before* calling the decoder function,
     // as the SyntaxContextData may reference itself.
-    let new_ctxt = HygieneData::with(|hygiene_data| {
+    let new_ctxt = HygieneData::with_mut(|hygiene_data| {
         let new_ctxt = SyntaxContext(hygiene_data.syntax_context_data.len() as u32);
         // Push a dummy SyntaxContextData to ensure that nobody else can get the
         // same ID as us. This will be overwritten after call `decode_Data`
@@ -1374,7 +1383,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     ctxt_data.dollar_crate_name = kw::DollarCrate;
 
     // Overwrite the dummy data with our decoded SyntaxContextData
-    HygieneData::with(|hygiene_data| {
+    HygieneData::with_mut(|hygiene_data| {
         let dummy = std::mem::replace(
             &mut hygiene_data.syntax_context_data[new_ctxt.as_u32() as usize],
             ctxt_data,
@@ -1472,7 +1481,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
     assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut ctx);
 
-    let disambiguator = HygieneData::with(|data| {
+    let disambiguator = HygieneData::with_mut(|data| {
         // If this is the first ExpnData with a given hash, then keep our
         // disambiguator at 0 (the default u32 value)
         let disambig = data.expn_data_disambiguators.entry(expn_hash).or_default();

@@ -4,11 +4,11 @@ error: `derive` cannot be used on items with type macros
 LL |     concat_idents!(Foo, Bar)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0412]: cannot find type `FooBar` in this scope
+error[E0412]: cannot find type `FooBar` in the expanded code of procedural macro `concat_idents`
   --> $DIR/issue-32950.rs:5:5
    |
 LL |     concat_idents!(Foo, Bar)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `concat_idents`
    |
    = note: this error originates in the macro `concat_idents` (in Nightly builds, run with -Z macro-backtrace for more info)
 

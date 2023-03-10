@@ -7,4 +7,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| NOTE expected enum `Option<usize>`
     //~| NOTE expected `Option<usize>`, found integer
+    //~| NOTE in this expansion of desugaring of a resized `Span`
 }

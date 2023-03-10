@@ -13,7 +13,7 @@ LL |         12 => 'b' as i32,
    |                   ++++++
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-type-err-first-arm.rs:18:14
+  --> $DIR/match-type-err-first-arm.rs:19:14
    |
 LL |       let x = match n {
    |  _____________-
@@ -27,7 +27,7 @@ LL | |     };
    | |_____- `match` arms have incompatible types
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-type-err-first-arm.rs:34:14
+  --> $DIR/match-type-err-first-arm.rs:35:14
    |
 LL |       let x = match n {
    |  _____________-
@@ -46,7 +46,7 @@ LL | |     };
    | |_____- `match` arms have incompatible types
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-type-err-first-arm.rs:46:17
+  --> $DIR/match-type-err-first-arm.rs:47:17
    |
 LL | /     match Some(0u32) {
 LL | |         Some(x) => {

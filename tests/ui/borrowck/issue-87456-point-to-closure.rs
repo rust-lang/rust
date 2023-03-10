@@ -10,5 +10,6 @@ fn main() {
         let _foo: String = val;
         //~^ ERROR: cannot move out of `val`, a captured variable in an `FnMut` closure [E0507]
         //~| NOTE: move occurs because
+        //~| NOTE in this expansion of desugaring of a resized `Span`
     })
 }

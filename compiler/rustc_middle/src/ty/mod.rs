@@ -2395,6 +2395,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
+    pub fn adjust_span(self, span: Span) -> Span {
+        self.with_stable_hashing_context(|hcx| {
+            span.mark_with_reason(None, rustc_span::DesugaringKind::Resize, span.edition(), hcx)
+        })
+    }
+
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
         ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope));
         ident
