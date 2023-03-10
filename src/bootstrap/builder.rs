@@ -741,6 +741,7 @@ impl<'a> Builder<'a> {
                 doc::EmbeddedBook,
                 doc::EditionGuide,
                 doc::StyleGuide,
+                doc::Tidy,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
