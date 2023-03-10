@@ -1530,3 +1530,10 @@ pub struct UnusedAllocationDiag;
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation_mut)]
 pub struct UnusedAllocationMutDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_useless_anonymous_reexport)]
+pub struct UselessAnonymousReexportDiag {
+    pub article: &'static str,
+    pub desc: &'static str,
+}
