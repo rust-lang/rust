@@ -1,6 +1,8 @@
 use crate::common::{CompareMode, Config, Debugger};
 use std::collections::HashSet;
 
+const EXTRA_ARCHS: &[&str] = &["asmjs", "spirv"];
+
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `normalize-stderr-32bit`.
 pub(super) fn parse_cfg_name_directive<'a>(
@@ -99,7 +101,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     condition! {
         name: &target_cfg.arch,
-        allowed_names: &target_cfgs.all_archs,
+        allowed_names: ContainsEither { a: &target_cfgs.all_archs, b: &EXTRA_ARCHS },
         message: "when the architecture is {name}"
     }
     condition! {
@@ -255,5 +257,16 @@ impl<T: CustomContains> CustomContains for ContainsPrefixed<T> {
             Some(stripped) => self.inner.custom_contains(stripped),
             None => false,
         }
+    }
+}
+
+struct ContainsEither<'a, A: CustomContains, B: CustomContains> {
+    a: &'a A,
+    b: &'a B,
+}
+
+impl<A: CustomContains, B: CustomContains> CustomContains for ContainsEither<'_, A, B> {
+    fn custom_contains(&self, item: &str) -> bool {
+        self.a.custom_contains(item) || self.b.custom_contains(item)
     }
 }
