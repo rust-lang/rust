@@ -147,15 +147,15 @@ impl ExprValidator {
 
     fn validate_match(
         &mut self,
-        id: ExprId,
         match_expr: ExprId,
+        scrutinee_expr: ExprId,
         arms: &[MatchArm],
         db: &dyn HirDatabase,
     ) {
         let body = db.body(self.owner);
 
-        let match_expr_ty = &self.infer[match_expr];
-        if match_expr_ty.is_unknown() {
+        let scrut_ty = &self.infer[scrutinee_expr];
+        if scrut_ty.is_unknown() {
             return;
         }
 
@@ -167,17 +167,17 @@ impl ExprValidator {
         for arm in arms {
             if let Some(pat_ty) = self.infer.type_of_pat.get(arm.pat) {
                 // We only include patterns whose type matches the type
-                // of the match expression. If we had an InvalidMatchArmPattern
+                // of the scrutinee expression. If we had an InvalidMatchArmPattern
                 // diagnostic or similar we could raise that in an else
                 // block here.
                 //
                 // When comparing the types, we also have to consider that rustc
-                // will automatically de-reference the match expression type if
+                // will automatically de-reference the scrutinee expression type if
                 // necessary.
                 //
                 // FIXME we should use the type checker for this.
-                if (pat_ty == match_expr_ty
-                    || match_expr_ty
+                if (pat_ty == scrut_ty
+                    || scrut_ty
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                         .unwrap_or(false))
@@ -205,7 +205,7 @@ impl ExprValidator {
             return;
         }
 
-        let report = compute_match_usefulness(&cx, &m_arms, match_expr_ty);
+        let report = compute_match_usefulness(&cx, &m_arms, scrut_ty);
 
         // FIXME Report unreacheble arms
         // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
@@ -213,8 +213,8 @@ impl ExprValidator {
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
             self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
-                match_expr: id,
-                uncovered_patterns: missing_match_arms(&cx, match_expr_ty, witnesses, arms),
+                match_expr,
+                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, arms),
             });
         }
     }
