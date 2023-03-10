@@ -5,7 +5,7 @@ LL | pub fn a(_: impl Trait) {}
    |             ^^^^^^^^^^
    |
    = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
-help: add a type paremeter
+help: add a type parameter
    |
 LL | pub fn a<{ /* Generic name */ }: Trait>(_: impl Trait) {}
    |         +++++++++++++++++++++++++++++++
@@ -16,7 +16,7 @@ error: '`impl Trait` used as a function parameter'
 LL | pub fn c<C: Trait>(_: C, _: impl Trait) {}
    |                             ^^^^^^^^^^
    |
-help: add a type paremeter
+help: add a type parameter
    |
 LL | pub fn c<C: Trait, { /* Generic name */ }: Trait>(_: C, _: impl Trait) {}
    |                  +++++++++++++++++++++++++++++++

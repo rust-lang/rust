@@ -116,4 +116,32 @@ fn issue10259() {
     unsafe_macro!();
 }
 
+fn _fn_ptr(x: unsafe fn()) {
+    unsafe {
+        x();
+        x();
+    }
+}
+
+fn _assoc_const() {
+    trait X {
+        const X: unsafe fn();
+    }
+    fn _f<T: X>() {
+        unsafe {
+            T::X();
+            T::X();
+        }
+    }
+}
+
+fn _field_fn_ptr(x: unsafe fn()) {
+    struct X(unsafe fn());
+    let x = X(x);
+    unsafe {
+        x.0();
+        x.0();
+    }
+}
+
 fn main() {}

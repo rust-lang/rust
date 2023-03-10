@@ -1,0 +1,12 @@
+error: empty string literal in `println!`
+  --> $DIR/ice-10148.rs:8:5
+   |
+LL |     println!(with_span!(""something ""));
+   |     ^^^^^^^^^^^^^^^^^^^^-----------^^^^^
+   |                         |
+   |                         help: remove the empty string
+   |
+   = note: `-D clippy::println-empty-string` implied by `-D warnings`
+
+error: aborting due to previous error
+

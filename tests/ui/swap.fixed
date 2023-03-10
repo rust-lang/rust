@@ -65,19 +65,19 @@ fn xor_swap_locals() {
     // This is an xor-based swap of local variables.
     let mut a = 0;
     let mut b = 1;
-    std::mem::swap(&mut a, &mut b)
+    std::mem::swap(&mut a, &mut b);
 }
 
 fn xor_field_swap() {
     // This is an xor-based swap of fields in a struct.
     let mut bar = Bar { a: 0, b: 1 };
-    std::mem::swap(&mut bar.a, &mut bar.b)
+    std::mem::swap(&mut bar.a, &mut bar.b);
 }
 
 fn xor_slice_swap() {
     // This is an xor-based swap of a slice
     let foo = &mut [1, 2];
-    foo.swap(0, 1)
+    foo.swap(0, 1);
 }
 
 fn xor_no_swap() {
