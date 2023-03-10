@@ -93,37 +93,42 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         // Guard against `<T as Trait<?0>>::Assoc = ?0>`.
-        struct ContainsTerm<'tcx> {
+        struct ContainsTerm<'a, 'tcx> {
             term: ty::Term<'tcx>,
+            infcx: &'a InferCtxt<'tcx>,
         }
-        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTerm<'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTerm<'_, 'tcx> {
             type BreakTy = ();
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if t.needs_infer() {
-                    if ty::Term::from(t) == self.term {
-                        ControlFlow::Break(())
-                    } else {
-                        t.super_visit_with(self)
-                    }
+                if let Some(vid) = t.ty_vid()
+                    && let ty::TermKind::Ty(term) = self.term.unpack()
+                    && let Some(term_vid) = term.ty_vid()
+                    && self.infcx.root_var(vid) == self.infcx.root_var(term_vid)
+                {
+                    ControlFlow::Break(())
+                } else if t.has_non_region_infer() {
+                    t.super_visit_with(self)
                 } else {
                     ControlFlow::Continue(())
                 }
             }
 
             fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if c.needs_infer() {
-                    if ty::Term::from(c) == self.term {
-                        ControlFlow::Break(())
-                    } else {
-                        c.super_visit_with(self)
-                    }
+                if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = c.kind()
+                    && let ty::TermKind::Const(term) = self.term.unpack()
+                    && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                    && self.infcx.root_const_var(vid) == self.infcx.root_const_var(term_vid)
+                {
+                    ControlFlow::Break(())
+                } else if c.has_non_region_infer() {
+                    c.super_visit_with(self)
                 } else {
                     ControlFlow::Continue(())
                 }
             }
         }
 
-        let mut visitor = ContainsTerm { term: goal.predicate.term };
+        let mut visitor = ContainsTerm { infcx: self.infcx, term: goal.predicate.term };
 
         term_is_infer
             && goal.predicate.projection_ty.visit_with(&mut visitor).is_continue()

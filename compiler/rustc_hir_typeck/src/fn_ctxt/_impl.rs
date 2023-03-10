@@ -581,7 +581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
-            self.err_ctxt().report_fulfillment_errors(&errors, self.inh.body_id);
+            self.err_ctxt().report_fulfillment_errors(&errors);
         }
     }
 
@@ -594,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
-            self.err_ctxt().report_fulfillment_errors(&result, self.inh.body_id);
+            self.err_ctxt().report_fulfillment_errors(&result);
         }
     }
 
@@ -1411,7 +1411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
-                    .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
+                    .emit_inference_failure_err(self.body_id, sp, ty.into(), E0282, true)
                     .emit()
             });
             let err = self.tcx.ty_error(e);

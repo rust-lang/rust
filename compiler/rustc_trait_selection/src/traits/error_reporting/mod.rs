@@ -24,11 +24,9 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::GenericParam;
-use rustc_hir::Item;
-use rustc_hir::Node;
+use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
@@ -126,11 +124,7 @@ pub trait TypeErrCtxtExt<'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
-    fn report_fulfillment_errors(
-        &self,
-        errors: &[FulfillmentError<'tcx>],
-        body_id: Option<hir::BodyId>,
-    ) -> ErrorGuaranteed;
+    fn report_fulfillment_errors(&self, errors: &[FulfillmentError<'tcx>]) -> ErrorGuaranteed;
 
     fn report_overflow_obligation<T>(
         &self,
@@ -388,11 +382,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 }
 
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
-    fn report_fulfillment_errors(
-        &self,
-        errors: &[FulfillmentError<'tcx>],
-        body_id: Option<hir::BodyId>,
-    ) -> ErrorGuaranteed {
+    fn report_fulfillment_errors(&self, errors: &[FulfillmentError<'tcx>]) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -469,7 +459,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    self.report_fulfillment_error(error, body_id);
+                    self.report_fulfillment_error(error);
                 }
             }
         }
@@ -955,8 +945,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let body_hir_id =
-                            self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
+                        let body_def_id = obligation.cause.body_id;
                         // Try to report a help message
                         if is_fn_trait
                             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
@@ -1037,7 +1026,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
-                                body_hir_id,
+                                body_def_id,
                                 &mut err,
                                 true,
                             ) {
@@ -1073,7 +1062,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
-                                        body_hir_id,
+                                        body_def_id,
                                         &mut err,
                                         true,
                                     );
@@ -1494,11 +1483,7 @@ trait InferCtxtPrivExt<'tcx> {
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
 
-    fn report_fulfillment_error(
-        &self,
-        error: &FulfillmentError<'tcx>,
-        body_id: Option<hir::BodyId>,
-    );
+    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>);
 
     fn report_projection_error(
         &self,
@@ -1531,7 +1516,7 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        body_id: hir::HirId,
+        body_def_id: LocalDefId,
         err: &mut Diagnostic,
         other: bool,
     ) -> bool;
@@ -1561,11 +1546,7 @@ trait InferCtxtPrivExt<'tcx> {
         trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx>;
 
-    fn maybe_report_ambiguity(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        body_id: Option<hir::BodyId>,
-    );
+    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>);
 
     fn predicate_can_apply(
         &self,
@@ -1647,11 +1628,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn report_fulfillment_error(
-        &self,
-        error: &FulfillmentError<'tcx>,
-        body_id: Option<hir::BodyId>,
-    ) {
+    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) {
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref selection_error) => {
                 self.report_selection_error(
@@ -1664,7 +1641,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.report_projection_error(&error.obligation, e);
             }
             FulfillmentErrorCode::CodeAmbiguity => {
-                self.maybe_report_ambiguity(&error.obligation, body_id);
+                self.maybe_report_ambiguity(&error.obligation);
             }
             FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(
@@ -2029,7 +2006,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        body_id: hir::HirId,
+        body_def_id: LocalDefId,
         err: &mut Diagnostic,
         other: bool,
     ) -> bool {
@@ -2120,9 +2097,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME(compiler-errors): This could be generalized, both to
                         // be more granular, and probably look past other `#[fundamental]`
                         // types, too.
-                        self.tcx
-                            .visibility(def.did())
-                            .is_accessible_from(body_id.owner.def_id, self.tcx)
+                        self.tcx.visibility(def.did()).is_accessible_from(body_def_id, self.tcx)
                     } else {
                         true
                     }
@@ -2231,11 +2206,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn maybe_report_ambiguity(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        body_id: Option<hir::BodyId>,
-    ) {
+    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
@@ -2277,7 +2248,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
                     if let None = self.tainted_by_errors() {
                         self.emit_inference_failure_err(
-                            body_id,
+                            obligation.cause.body_id,
                             span,
                             trait_ref.self_ty().skip_binder().into(),
                             ErrorCode::E0282,
@@ -2304,7 +2275,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let subst = data.trait_ref.substs.iter().find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(subst) = subst {
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283, true)
+                    self.emit_inference_failure_err(
+                        obligation.cause.body_id,
+                        span,
+                        subst,
+                        ErrorCode::E0283,
+                        true,
+                    )
                 } else {
                     struct_span_err!(
                         self.tcx.sess,
@@ -2348,12 +2325,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 predicate.to_opt_poly_trait_pred().unwrap(),
                             );
                             if impl_candidates.len() < 10 {
-                                let hir =
-                                    self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
                                 self.report_similar_impl_candidates(
                                     impl_candidates,
                                     trait_ref,
-                                    body_id.map(|id| id.hir_id).unwrap_or(hir),
+                                    obligation.cause.body_id,
                                     &mut err,
                                     false,
                                 );
@@ -2375,9 +2350,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
 
-                if let (Some(body_id), Some(ty::subst::GenericArgKind::Type(_))) =
-                    (body_id, subst.map(|subst| subst.unpack()))
+                if let Some(ty::subst::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
                 {
+                    let body_id = self.tcx.hir().body_owned_by(obligation.cause.body_id);
                     let mut expr_finder = FindExprBySpan::new(span);
                     expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
 
@@ -2473,7 +2448,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282, false)
+                self.emit_inference_failure_err(
+                    obligation.cause.body_id,
+                    span,
+                    arg,
+                    ErrorCode::E0282,
+                    false,
+                )
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -2487,7 +2468,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, true)
+                self.emit_inference_failure_err(
+                    obligation.cause.body_id,
+                    span,
+                    a.into(),
+                    ErrorCode::E0282,
+                    true,
+                )
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
@@ -2501,7 +2488,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
                     let mut err = self.emit_inference_failure_err(
-                        body_id,
+                        obligation.cause.body_id,
                         span,
                         subst,
                         ErrorCode::E0284,
@@ -2530,7 +2517,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let subst = data.walk().find(|g| g.is_non_region_infer());
                 if let Some(subst) = subst {
                     let err = self.emit_inference_failure_err(
-                        body_id,
+                        obligation.cause.body_id,
                         span,
                         subst,
                         ErrorCode::E0284,

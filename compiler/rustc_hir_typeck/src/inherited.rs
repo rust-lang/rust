@@ -58,8 +58,6 @@ pub struct Inherited<'tcx> {
     pub(super) deferred_generator_interiors:
         RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
-    pub(super) body_id: Option<hir::BodyId>,
-
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
@@ -80,7 +78,6 @@ impl<'tcx> Deref for Inherited<'tcx> {
 /// without using `Rc` or something similar.
 pub struct InheritedBuilder<'tcx> {
     infcx: infer::InferCtxtBuilder<'tcx>,
-    def_id: LocalDefId,
     typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 }
 
@@ -93,7 +90,6 @@ impl<'tcx> Inherited<'tcx> {
                 .infer_ctxt()
                 .ignoring_regions()
                 .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)),
-            def_id,
             typeck_results: RefCell::new(ty::TypeckResults::new(hir_owner)),
         }
     }
@@ -104,19 +100,13 @@ impl<'tcx> InheritedBuilder<'tcx> {
     where
         F: FnOnce(&Inherited<'tcx>) -> R,
     {
-        let def_id = self.def_id;
-        f(&Inherited::new(self.infcx.build(), def_id, self.typeck_results))
+        f(&Inherited::new(self.infcx.build(), self.typeck_results))
     }
 }
 
 impl<'tcx> Inherited<'tcx> {
-    fn new(
-        infcx: InferCtxt<'tcx>,
-        def_id: LocalDefId,
-        typeck_results: RefCell<ty::TypeckResults<'tcx>>,
-    ) -> Self {
+    fn new(infcx: InferCtxt<'tcx>, typeck_results: RefCell<ty::TypeckResults<'tcx>>) -> Self {
         let tcx = infcx.tcx;
-        let body_id = tcx.hir().maybe_body_owned_by(def_id);
 
         Inherited {
             typeck_results,
@@ -130,7 +120,6 @@ impl<'tcx> Inherited<'tcx> {
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
-            body_id,
             infer_var_info: RefCell::new(Default::default()),
         }
     }

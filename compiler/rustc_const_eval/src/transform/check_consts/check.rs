@@ -770,7 +770,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                         let errors = ocx.select_all_or_error();
                         if !errors.is_empty() {
-                            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors);
                         }
                     }
 
