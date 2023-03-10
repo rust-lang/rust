@@ -76,6 +76,7 @@ mod passes;
 mod redundant_semicolon;
 mod traits;
 mod types;
+mod r#unsafe;
 mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
@@ -92,6 +93,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use r#unsafe::UnsafeCode;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
@@ -125,6 +127,8 @@ pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
+
+use crate::r#unsafe::{UNSAFE_OBLIGATION_DEFINE, UNSAFE_OBLIGATION_DISCHARGE};
 
 fluent_messages! { "../messages.ftl" }
 
@@ -271,6 +275,8 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
+
+    add_lint_group!("unsafe_code", UNSAFE_OBLIGATION_DEFINE, UNSAFE_OBLIGATION_DISCHARGE);
 
     add_lint_group!(
         "nonstandard_style",

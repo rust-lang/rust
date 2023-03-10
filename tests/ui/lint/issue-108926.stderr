@@ -1,0 +1,29 @@
+error: declaration of an `unsafe` method
+  --> $DIR/issue-108926.rs:4:5
+   |
+LL |     unsafe fn dangerous();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-108926.rs:1:11
+   |
+LL | #![forbid(unsafe_code)]
+   |           ^^^^^^^^^^^
+   = note: `#[forbid(unsafe_obligation_define)]` implied by `#[forbid(unsafe_code)]`
+
+error: implementation of an `unsafe` method
+  --> $DIR/issue-108926.rs:11:5
+   |
+LL |     unsafe fn dangerous() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/issue-108926.rs:17:5
+   |
+LL |     unsafe fn dangerous() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[forbid(unsafe_obligation_discharge)]` implied by `#[forbid(unsafe_code)]`
+
+error: aborting due to 3 previous errors
+

@@ -50,6 +50,7 @@ note: the lint level is defined here
    |
 LL |     #![deny(unsafe_code)]
    |             ^^^^^^^^^^^
+   = note: `#[deny(unsafe_obligation_discharge)]` implied by `#[deny(unsafe_code)]`
 
 error: usage of an `unsafe` block
   --> $DIR/lint-attr-everywhere-early.rs:43:39

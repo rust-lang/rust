@@ -21,6 +21,7 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::fluent_generated as fluent;
+use crate::r#unsafe::{UNSAFE_OBLIGATION_DEFINE, UNSAFE_OBLIGATION_DISCHARGE};
 use crate::{
     errors::BuiltinEllpisisInclusiveRangePatterns,
     lints::{
@@ -36,9 +37,9 @@ use crate::{
         BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
         BuiltinUnexpectedCliConfigName, BuiltinUnexpectedCliConfigValue,
         BuiltinUngatedAsyncFnTrackCaller, BuiltinUnnameableTestItems, BuiltinUnpermittedTypeInit,
-        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
-        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, SuggestChangingAssocTypes,
+        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnstableFeatures,
+        BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
+        SuggestChangingAssocTypes,
     },
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
@@ -46,12 +47,11 @@ use crate::{
 use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, DecorateLint, MultiSpan};
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -283,140 +283,6 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                     }
                 }
             }
-        }
-    }
-}
-
-declare_lint! {
-    /// The `unsafe_code` lint catches usage of `unsafe` code.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(unsafe_code)]
-    /// fn main() {
-    ///     unsafe {
-    ///
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is intended to restrict the usage of `unsafe`, which can be
-    /// difficult to use correctly.
-    UNSAFE_CODE,
-    Allow,
-    "usage of `unsafe` code"
-}
-
-declare_lint_pass!(UnsafeCode => [UNSAFE_CODE]);
-
-impl UnsafeCode {
-    fn report_unsafe(
-        &self,
-        cx: &EarlyContext<'_>,
-        span: Span,
-        decorate: impl for<'a> DecorateLint<'a, ()>,
-    ) {
-        // This comes from a macro that has `#[allow_internal_unsafe]`.
-        if span.allows_unsafe() {
-            return;
-        }
-
-        cx.emit_spanned_lint(UNSAFE_CODE, span, decorate);
-    }
-}
-
-impl EarlyLintPass for UnsafeCode {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if attr.has_name(sym::allow_internal_unsafe) {
-            self.report_unsafe(cx, attr.span, BuiltinUnsafe::AllowInternalUnsafe);
-        }
-    }
-
-    #[inline]
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ast::ExprKind::Block(ref blk, _) = e.kind {
-            // Don't warn about generated blocks; that'll just pollute the output.
-            if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
-                self.report_unsafe(cx, blk.span, BuiltinUnsafe::UnsafeBlock);
-            }
-        }
-    }
-
-    fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
-        match it.kind {
-            ast::ItemKind::Trait(box ast::Trait { unsafety: ast::Unsafe::Yes(_), .. }) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
-            }
-
-            ast::ItemKind::Impl(box ast::Impl { unsafety: ast::Unsafe::Yes(_), .. }) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
-            }
-
-            ast::ItemKind::Fn(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
-                }
-
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
-                }
-
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
-                }
-            }
-
-            ast::ItemKind::Static(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
-                }
-
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
-                }
-
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
-                }
-            }
-
-            _ => {}
-        }
-    }
-
-    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(..) = it.kind {
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
-            }
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
-            }
-        }
-    }
-
-    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, span: Span, _: ast::NodeId) {
-        if let FnKind::Fn(
-            ctxt,
-            _,
-            ast::FnSig { header: ast::FnHeader { unsafety: ast::Unsafe::Yes(_), .. }, .. },
-            _,
-            _,
-            body,
-        ) = fk
-        {
-            let decorator = match ctxt {
-                FnCtxt::Foreign => return,
-                FnCtxt::Free => BuiltinUnsafe::DeclUnsafeFn,
-                FnCtxt::Assoc(_) if body.is_none() => BuiltinUnsafe::DeclUnsafeMethod,
-                FnCtxt::Assoc(_) => BuiltinUnsafe::ImplUnsafeMethod,
-            };
-            self.report_unsafe(cx, span, decorator);
         }
     }
 }
@@ -1633,7 +1499,8 @@ declare_lint_pass!(
         WHILE_TRUE,
         BOX_POINTERS,
         NON_SHORTHAND_FIELD_PATTERNS,
-        UNSAFE_CODE,
+        UNSAFE_OBLIGATION_DEFINE,
+        UNSAFE_OBLIGATION_DISCHARGE,
         MISSING_DOCS,
         MISSING_COPY_IMPLEMENTATIONS,
         MISSING_DEBUG_IMPLEMENTATIONS,

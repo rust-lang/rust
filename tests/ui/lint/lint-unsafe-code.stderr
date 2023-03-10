@@ -10,6 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unsafe_code)]
    |         ^^^^^^^^^^^
+   = note: `#[deny(unsafe_obligation_discharge)]` implied by `#[deny(unsafe_code)]`
 
 error: declaration of a `no_mangle` static
   --> $DIR/lint-unsafe-code.rs:32:1
@@ -94,6 +95,8 @@ error: declaration of an `unsafe` trait
    |
 LL | unsafe trait Foo {}
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(unsafe_obligation_define)]` implied by `#[deny(unsafe_code)]`
 
 error: implementation of an `unsafe` trait
   --> $DIR/lint-unsafe-code.rs:66:1
