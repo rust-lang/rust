@@ -84,7 +84,7 @@ impl ExprValidator {
 
             match expr {
                 Expr::Match { expr, arms } => {
-                    self.validate_match(id, *expr, arms, db, self.infer.clone());
+                    self.validate_match(id, *expr, arms, db);
                 }
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr, &mut filter_map_next_checker);
@@ -151,11 +151,10 @@ impl ExprValidator {
         match_expr: ExprId,
         arms: &[MatchArm],
         db: &dyn HirDatabase,
-        infer: Arc<InferenceResult>,
     ) {
         let body = db.body(self.owner);
 
-        let match_expr_ty = &infer[match_expr];
+        let match_expr_ty = &self.infer[match_expr];
         if match_expr_ty.is_unknown() {
             return;
         }
@@ -166,7 +165,7 @@ impl ExprValidator {
         let mut m_arms = Vec::with_capacity(arms.len());
         let mut has_lowering_errors = false;
         for arm in arms {
-            if let Some(pat_ty) = infer.type_of_pat.get(arm.pat) {
+            if let Some(pat_ty) = self.infer.type_of_pat.get(arm.pat) {
                 // We only include patterns whose type matches the type
                 // of the match expression. If we had an InvalidMatchArmPattern
                 // diagnostic or similar we could raise that in an else
@@ -182,7 +181,7 @@ impl ExprValidator {
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                         .unwrap_or(false))
-                    && types_of_subpatterns_do_match(arm.pat, &body, &infer)
+                    && types_of_subpatterns_do_match(arm.pat, &body, &self.infer)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
