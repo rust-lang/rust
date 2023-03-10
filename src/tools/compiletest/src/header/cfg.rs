@@ -1,7 +1,7 @@
 use crate::common::{CompareMode, Config, Debugger};
 use std::collections::HashSet;
 
-const EXTRA_ARCHS: &[&str] = &["asmjs", "spirv"];
+const EXTRA_ARCHS: &[&str] = &["spirv"];
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `normalize-stderr-32bit`.
@@ -131,6 +131,17 @@ pub(super) fn parse_cfg_name_directive<'a>(
         name: "wasm32-bare",
         condition: config.target == "wasm32-unknown-unknown",
         message: "when the target is WASM"
+    }
+
+    condition! {
+        name: "asmjs",
+        condition: config.target.starts_with("asmjs"),
+        message: "when the architecture is asm.js",
+    }
+    condition! {
+        name: "thumb",
+        condition: config.target.starts_with("thumb"),
+        message: "when the architecture is part of the Thumb family"
     }
 
     condition! {
