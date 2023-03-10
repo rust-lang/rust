@@ -244,7 +244,7 @@ fn associated_item_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
-    let fn_def_id = tcx.impl_trait_in_trait_parent(opaque_ty_def_id.to_def_id());
+    let fn_def_id = tcx.impl_trait_in_trait_parent_fn(opaque_ty_def_id.to_def_id());
     let trait_def_id = tcx.parent(fn_def_id);
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 

@@ -132,7 +132,7 @@ where
                 projection.trait_ref_and_own_substs(tcx)
             } else {
                 // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
-                let def_id = tcx.impl_trait_in_trait_parent(projection.def_id);
+                let def_id = tcx.impl_trait_in_trait_parent_fn(projection.def_id);
                 let trait_generics = tcx.generics_of(def_id);
                 (
                     tcx.mk_trait_ref(def_id, projection.substs.truncate_to(tcx, trait_generics)),
