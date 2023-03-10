@@ -21,59 +21,11 @@ error: missing documentation for a struct field
 LL |     b: isize,
    |     ^^^^^^^^
 
-error: missing documentation for a struct
-  --> $DIR/missing_doc_impl.rs:18:1
-   |
-LL | / pub struct PubFoo {
-LL | |     pub a: isize,
-LL | |     b: isize,
-LL | | }
-   | |_^
-
-error: missing documentation for a struct field
-  --> $DIR/missing_doc_impl.rs:19:5
-   |
-LL |     pub a: isize,
-   |     ^^^^^^^^^^^^
-
 error: missing documentation for a struct field
   --> $DIR/missing_doc_impl.rs:20:5
    |
 LL |     b: isize,
    |     ^^^^^^^^
-
-error: missing documentation for a trait
-  --> $DIR/missing_doc_impl.rs:43:1
-   |
-LL | / pub trait C {
-LL | |     fn foo(&self);
-LL | |     fn foo_with_impl(&self) {}
-LL | | }
-   | |_^
-
-error: missing documentation for a method
-  --> $DIR/missing_doc_impl.rs:44:5
-   |
-LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
-
-error: missing documentation for a method
-  --> $DIR/missing_doc_impl.rs:45:5
-   |
-LL |     fn foo_with_impl(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for an associated type
-  --> $DIR/missing_doc_impl.rs:55:5
-   |
-LL |     type AssociatedType;
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for an associated type
-  --> $DIR/missing_doc_impl.rs:56:5
-   |
-LL |     type AssociatedTypeDef = Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for an associated function
   --> $DIR/missing_doc_impl.rs:67:5
@@ -90,12 +42,6 @@ LL |     fn bar() {}
    |     ^^^^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing_doc_impl.rs:74:5
-   |
-LL |     pub fn foo() {}
-   |     ^^^^^^^^^^^^^^^
-
-error: missing documentation for an associated function
   --> $DIR/missing_doc_impl.rs:78:5
    |
 LL | /     fn foo2() -> u32 {
@@ -103,5 +49,5 @@ LL | |         1
 LL | |     }
    | |_____^
 
-error: aborting due to 15 previous errors
+error: aborting due to 7 previous errors
 

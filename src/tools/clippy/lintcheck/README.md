@@ -25,6 +25,15 @@ the repo root.
 
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.
 
+The `custom.toml` file may be built using <https://crates.io> recently most
+downloaded crates by using the `popular-crates` binary from the `lintcheck`
+directory. For example, to retrieve the 100 recently most downloaded crates:
+
+```
+cargo run --release --bin popular-crates -- -n 100 custom.toml
+```
+
+
 ### Configuring the Crate Sources
 
 The sources to check are saved in a `toml` file. There are three types of

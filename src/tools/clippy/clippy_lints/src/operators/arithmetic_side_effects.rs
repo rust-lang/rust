@@ -143,6 +143,10 @@ impl ArithmeticSideEffects {
             return;
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
+            if let hir::BinOpKind::Shl | hir::BinOpKind::Shr = op.node {
+                // At least for integers, shifts are already handled by the CTFE
+                return;
+            }
             let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
             let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
             match (
@@ -151,10 +155,13 @@ impl ArithmeticSideEffects {
             ) {
                 (None, None) => false,
                 (None, Some(n)) | (Some(n), None) => match (&op.node, n) {
-                    (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
+                    // Division and module are always valid if applied to non-zero integers
+                    (hir::BinOpKind::Div | hir::BinOpKind::Rem, local_n) if local_n != 0 => true,
+                    // Addition or subtracting zeros is always a no-op
                     (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
-                    | (hir::BinOpKind::Div | hir::BinOpKind::Rem, _)
-                    | (hir::BinOpKind::Mul, 0 | 1) => true,
+                    // Multiplication by 1 or 0 will never overflow
+                    | (hir::BinOpKind::Mul, 0 | 1)
+                    => true,
                     _ => false,
                 },
                 (Some(_), Some(_)) => {
