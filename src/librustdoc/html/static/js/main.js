@@ -1,19 +1,8 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
-/* global onEach, onEachLazy, removeClass */
+/* global onEach, onEachLazy, removeClass, getVar */
 
 "use strict";
-
-// Get a value from the rustdoc-vars div, which is used to convey data from
-// Rust to the JS. If there is no such element, return null.
-function getVar(name) {
-    const el = document.getElementById("rustdoc-vars");
-    if (el) {
-        return el.attributes["data-" + name].value;
-    } else {
-        return null;
-    }
-}
 
 // Given a basename (e.g. "storage") and an extension (e.g. ".js"), return a URL
 // for a resource under the root-path, with the resource-suffix.
@@ -187,6 +176,15 @@ function loadCss(cssUrl) {
     document.getElementsByTagName("head")[0].appendChild(link);
 }
 
+function preLoadCss(cssUrl) {
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
+    const link = document.createElement("link");
+    link.href = cssUrl;
+    link.rel = "preload";
+    link.as = "style";
+    document.getElementsByTagName("head")[0].appendChild(link);
+}
+
 (function() {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
@@ -207,6 +205,23 @@ function loadCss(cssUrl) {
         // hopefully be loaded when the JS will generate the settings content.
         loadCss(getVar("static-root-path") + getVar("settings-css"));
         loadScript(getVar("static-root-path") + getVar("settings-js"));
+        preLoadCss(getVar("static-root-path") + getVar("theme-light-css"));
+        preLoadCss(getVar("static-root-path") + getVar("theme-dark-css"));
+        preLoadCss(getVar("static-root-path") + getVar("theme-ayu-css"));
+        // Pre-load all theme CSS files, so that switching feels seamless.
+        //
+        // When loading settings.html as a standalone page, the equivalent HTML is
+        // generated in context.rs.
+        setTimeout(() => {
+            const themes = getVar("themes").split(",");
+            for (const theme of themes) {
+                // if there are no themes, do nothing
+                // "".split(",") == [""]
+                if (theme !== "") {
+                    preLoadCss(getVar("root-path") + theme + ".css");
+                }
+            }
+        }, 0);
     };
 
     window.searchState = {

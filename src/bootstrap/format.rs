@@ -165,8 +165,14 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
+                        if files.len() <= 10 {
+                            for file in &files {
+                                println!("formatting modified file {file}");
+                            }
+                        } else {
+                            println!("formatting {} modified files", files.len());
+                        }
                         for file in files {
-                            println!("formatting modified file {file}");
                             ignore_fmt.add(&format!("/{file}")).expect(&file);
                         }
                     }

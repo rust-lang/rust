@@ -7,7 +7,6 @@
 
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
-window.mainTheme = document.getElementById("mainThemeStyle");
 
 // WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 // If you update this line, then you also need to update the media query with the same
@@ -43,8 +42,6 @@ function getSettingValue(settingName) {
 }
 
 const localStoredTheme = getSettingValue("theme");
-
-const savedHref = [];
 
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
@@ -102,6 +99,7 @@ function onEach(arr, func, reversed) {
  * @param {function(?)}                   func       - The callback
  * @param {boolean}                       [reversed] - Whether to iterate in reverse
  */
+// eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func, reversed) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
@@ -125,30 +123,37 @@ function getCurrentValue(name) {
     }
 }
 
-function switchTheme(styleElem, mainStyleElem, newThemeName, saveTheme) {
+// Get a value from the rustdoc-vars div, which is used to convey data from
+// Rust to the JS. If there is no such element, return null.
+const getVar = (function getVar(name) {
+    const el = document.getElementById("rustdoc-vars");
+    if (el) {
+        return el.attributes["data-" + name].value;
+    } else {
+        return null;
+    }
+});
+
+function switchTheme(newThemeName, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
         updateLocalStorage("theme", newThemeName);
     }
 
-    if (savedHref.length === 0) {
-        onEachLazy(document.getElementsByTagName("link"), el => {
-            savedHref.push(el.href);
-        });
+    let newHref;
+
+    if (newThemeName === "light" || newThemeName === "dark" || newThemeName === "ayu") {
+        newHref = getVar("static-root-path") + getVar("theme-" + newThemeName + "-css");
+    } else {
+        newHref = getVar("root-path") + newThemeName + getVar("resource-suffix") + ".css";
     }
-    const newHref = savedHref.find(url => {
-        const m = url.match(/static\.files\/(.*)-[a-f0-9]{16}\.css$/);
-        if (m && m[1] === newThemeName) {
-            return true;
-        }
-        const m2 = url.match(/\/([^/]*)\.css$/);
-        if (m2 && m2[1].startsWith(newThemeName)) {
-            return true;
-        }
-    });
-    if (newHref && newHref !== styleElem.href) {
-        styleElem.href = newHref;
+
+    if (!window.currentTheme) {
+        document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
+        window.currentTheme = document.getElementById("themeStyle");
+    } else if (newHref !== window.currentTheme.href) {
+        window.currentTheme.href = newHref;
     }
 }
 
@@ -164,7 +169,7 @@ const updateTheme = (function() {
      */
     function updateTheme() {
         const use = (theme, saveTheme) => {
-            switchTheme(window.currentTheme, window.mainTheme, theme, saveTheme);
+            switchTheme(theme, saveTheme);
         };
 
         // maybe the user has disabled the setting in the meantime!
