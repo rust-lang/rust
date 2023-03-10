@@ -1088,7 +1088,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // TODO: rtn comment goes here
         let associated_return_type_bound =
-            binding.gen_args.parenthesized && self.tcx().features().associated_return_type_bounds;
+            binding.gen_args.parenthesized && tcx.features().associated_return_type_bounds;
 
         let candidate = if return_type_notation {
             if self.trait_defines_associated_item_named(
@@ -1156,7 +1156,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             dup_bindings
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    self.tcx().sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
+                    tcx.sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
@@ -1166,14 +1166,53 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .or_insert(binding.span);
         }
 
-        let projection_ty = if associated_return_type_bound {
-            let generics = self.tcx().generics_of(assoc_item.def_id);
-            if !generics.params.is_empty() {
-                todo!();
-            }
-            let output = self.tcx().fn_sig(assoc_item.def_id).skip_binder().output();
-            let fn_bound_vars = output.bound_vars();
+        let projection_ty = if return_type_notation {
+            // If we have an method return type bound, then we need to substitute
+            // the method's early bound params with suitable late-bound params.
+            let mut num_bound_vars = candidate.bound_vars().len();
+            let substs =
+                candidate.skip_binder().substs.extend_to(tcx, assoc_item.def_id, |param, _| {
+                    let subst = match param.kind {
+                        GenericParamDefKind::Lifetime => tcx
+                            .mk_re_late_bound(
+                                ty::INNERMOST,
+                                ty::BoundRegion {
+                                    var: ty::BoundVar::from_usize(num_bound_vars),
+                                    kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                                },
+                            )
+                            .into(),
+                        GenericParamDefKind::Type { .. } => tcx
+                            .mk_bound(
+                                ty::INNERMOST,
+                                ty::BoundTy {
+                                    var: ty::BoundVar::from_usize(num_bound_vars),
+                                    kind: ty::BoundTyKind::Param(param.def_id, param.name),
+                                },
+                            )
+                            .into(),
+                        GenericParamDefKind::Const { .. } => {
+                            let ty = tcx
+                                .type_of(param.def_id)
+                                .no_bound_vars()
+                                .expect("ct params cannot have early bound vars");
+                            tcx.mk_const(
+                                ty::ConstKind::Bound(
+                                    ty::INNERMOST,
+                                    ty::BoundVar::from_usize(num_bound_vars),
+                                ),
+                                ty,
+                            )
+                            .into()
+                        }
+                    };
+                    num_bound_vars += 1;
+                    subst
+                });
 
+            // Next, we need to check that the return-type notation is being used on
+            // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
+            let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
             let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
                 && tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
             {
@@ -1182,13 +1221,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 todo!("found return type of {output:?}");
             };
 
-            let trait_bound_vars = candidate.bound_vars();
-            let shifted_output = tcx.shift_bound_var_indices(trait_bound_vars.len(), output);
-            let subst_output =
-                ty::EarlyBinder(shifted_output).subst(tcx, candidate.skip_binder().substs);
-            let bound_vars =
-                tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(fn_bound_vars));
+            // Finally, move the fn return type's bound vars over to account for the early bound
+            // params (and trait ref's late bound params). This logic is very similar to
+            // `Predicate::subst_supertrait`, and it's no coincidence why.
+            let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
+            let subst_output = ty::EarlyBinder(shifted_output).subst(tcx, substs);
 
+            let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)
         } else {
             // Include substitutions for generic parameters of associated types
@@ -1211,7 +1250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 debug!(?substs_trait_ref_and_assoc_item);
 
-                self.tcx().mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
+                tcx.mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
             })
         };
 
