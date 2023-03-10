@@ -30,7 +30,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     let mut outcome = MatchOutcome::Invalid;
     let mut message = None;
 
-    macro_rules! maybe_condition {
+    macro_rules! condition {
         (
             name: $name:expr,
             $(allowed_names: $allowed_names:expr,)?
@@ -42,7 +42,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
 
             if outcome != MatchOutcome::Invalid {
                 // Ignore all other matches if we already found one
-            } else if $name.as_ref().map(|n| n == &name).unwrap_or(false) {
+            } else if $name.custom_matches(name) {
                 message = Some(format_message());
                 if true $(&& $condition)? {
                     outcome = MatchOutcome::Match;
@@ -55,21 +55,6 @@ pub(super) fn parse_cfg_name_directive<'a>(
                 outcome = MatchOutcome::NoMatch;
             })?
         }};
-    }
-    macro_rules! condition {
-        (
-            name: $name:expr,
-            $(allowed_names: $allowed_names:expr,)?
-            $(condition: $condition:expr,)?
-            message: $($message:tt)*
-        ) => {
-            maybe_condition! {
-                name: Some($name),
-                $(allowed_names: $allowed_names,)*
-                $(condition: $condition,)*
-                message: $($message)*
-            }
-        };
     }
 
     let target_cfgs = config.target_cfgs();
@@ -109,12 +94,10 @@ pub(super) fn parse_cfg_name_directive<'a>(
         allowed_names: &target_cfgs.all_pointer_widths,
         message: "when the pointer width is {name}"
     }
-    for family in &target_cfg.families {
-        condition! {
-            name: family,
-            allowed_names: &target_cfgs.all_families,
-            message: "when the target family is {name}"
-        }
+    condition! {
+        name: &*target_cfg.families,
+        allowed_names: &target_cfgs.all_families,
+        message: "when the target family is {name}"
     }
 
     // If something is ignored for emscripten, it likely also needs to be
@@ -174,12 +157,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         condition: cfg!(debug_assertions),
         message: "when building with debug assertions",
     }
-    maybe_condition! {
+    condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),
         allowed_names: &Debugger::STR_VARIANTS,
         message: "when the debugger is {name}",
     }
-    maybe_condition! {
+    condition! {
         name: config.compare_mode
             .as_ref()
             .map(|d| format!("compare-mode-{}", d.to_str())),
@@ -279,5 +262,36 @@ struct ContainsEither<'a, A: CustomContains, B: CustomContains> {
 impl<A: CustomContains, B: CustomContains> CustomContains for ContainsEither<'_, A, B> {
     fn custom_contains(&self, item: &str) -> bool {
         self.a.custom_contains(item) || self.b.custom_contains(item)
+    }
+}
+
+trait CustomMatches {
+    fn custom_matches(&self, name: &str) -> bool;
+}
+
+impl CustomMatches for &str {
+    fn custom_matches(&self, name: &str) -> bool {
+        name == *self
+    }
+}
+
+impl CustomMatches for String {
+    fn custom_matches(&self, name: &str) -> bool {
+        name == self
+    }
+}
+
+impl<T: CustomMatches> CustomMatches for &[T] {
+    fn custom_matches(&self, name: &str) -> bool {
+        self.iter().any(|m| m.custom_matches(name))
+    }
+}
+
+impl<T: CustomMatches> CustomMatches for Option<T> {
+    fn custom_matches(&self, name: &str) -> bool {
+        match self {
+            Some(inner) => inner.custom_matches(name),
+            None => false,
+        }
     }
 }
