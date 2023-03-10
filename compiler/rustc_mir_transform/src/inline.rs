@@ -270,6 +270,7 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
+            | InstanceDef::ThreadLocalShim(..)
             | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
