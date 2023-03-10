@@ -220,7 +220,7 @@ fn missing_items_err(
     let hi = full_impl_span.hi() - BytePos(1);
     // Point at the place right before the closing brace of the relevant `impl` to suggest
     // adding the associated item at the end of its body.
-    let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+    let sugg_sp = tcx.adjust_span(full_impl_span).with_lo(hi).with_hi(hi);
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());

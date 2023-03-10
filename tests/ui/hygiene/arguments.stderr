@@ -3,6 +3,11 @@ error[E0412]: cannot find type `S` in this scope
    |
 LL |     m!(S, S);
    |        ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL |         pub(super) fn f<S>(_: $t) {}
+   |                        +++
 
 error: aborting due to previous error
 

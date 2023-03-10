@@ -13,6 +13,7 @@ fn main() {
     //~^ ERROR this method takes 2 arguments but 1 argument was supplied
     //~| NOTE an argument is missing
     //~| HELP provide the argument
+    //~| NOTE in this expansion of desugaring of a resized `Span`
     let t: S<u32, _> = s;
     //~^ ERROR mismatched types
     //~| NOTE expected `S<u32, _>`, found `S<i32, _>`

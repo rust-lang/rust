@@ -286,10 +286,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span)
         } else if generic_args.is_empty() {
             // If there are brackets, but not generic arguments, then use the opening bracket
-            generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
+            self.tcx.adjust_span(generic_args.span).with_hi(generic_args.span.lo() + BytePos(1))
         } else {
             // Else use an empty span right after the opening bracket.
-            generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
+            self.tcx
+                .adjust_span(generic_args.span)
+                .with_lo(generic_args.span.lo() + BytePos(1))
+                .shrink_to_lo()
         };
 
         generic_args.args.insert_many(

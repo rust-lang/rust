@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
-                    ident_span.with_hi(args.span_ext.hi())
+                    self.tcx.adjust_span(ident_span).with_hi(args.span_ext.hi())
                 } else {
                     ident_span
                 };
@@ -702,8 +702,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
-                                (lo.shrink_to_lo(), "(".to_string()),
-                                (hi.shrink_to_hi(), ")".to_string()),
+                                (tcx.adjust_span(*lo).shrink_to_lo(), "(".to_string()),
+                                (tcx.adjust_span(*hi).shrink_to_hi(), ")".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
@@ -935,12 +935,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions() {
                         if arg_idx.index() > 0
-                        && let Some((_, prev)) = provided_arg_tys
-                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
-                    ) {
-                        // Include previous comma
-                        span = prev.shrink_to_hi().to(span);
-                    }
+                            && let Some((_, prev)) = provided_arg_tys
+                                .get(ProvidedIdx::from_usize(arg_idx.index() - 1))
+                        {
+                            // Include previous comma
+                            span = self.tcx.adjust_span(*prev).shrink_to_hi().to(self.tcx.adjust_span(span));
+                        }
                         suggestions.push((span, String::new()));
 
                         suggestion_text = match suggestion_text {
@@ -1204,7 +1204,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let source_map = self.sess().source_map();
             let (mut suggestion, suggestion_span) =
                 if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
-                    ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+                    (
+                        "(".to_string(),
+                        tcx.adjust_span(call_span)
+                            .shrink_to_hi()
+                            .to(tcx.adjust_span(error_span).shrink_to_hi()),
+                    )
                 } else {
                     (
                         format!(

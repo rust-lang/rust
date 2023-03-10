@@ -1351,7 +1351,7 @@ fn compare_number_of_method_arguments<'tcx>(
                     if pos == 0 {
                         arg.span
                     } else {
-                        arg.span.with_lo(trait_m_sig.decl.inputs[0].span.lo())
+                        tcx.adjust_span(arg.span).with_lo(trait_m_sig.decl.inputs[0].span.lo())
                     }
                 })
             })
@@ -1367,7 +1367,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 if pos == 0 {
                     arg.span
                 } else {
-                    arg.span.with_lo(impl_m_sig.decl.inputs[0].span.lo())
+                    tcx.adjust_span(arg.span).with_lo(impl_m_sig.decl.inputs[0].span.lo())
                 }
             })
             .unwrap_or_else(|| tcx.def_span(impl_m.def_id));
@@ -1464,7 +1464,8 @@ fn compare_synthetic_generics<'tcx>(
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
-                        let new_generics_span = tcx.def_ident_span(impl_def_id)?.shrink_to_hi();
+                        let new_generics_span =
+                            tcx.adjust_span(tcx.def_ident_span(impl_def_id)?).shrink_to_hi();
                         // in case there are generics, just replace them
                         let generics_span =
                             impl_m.generics.span.substitute_dummy(new_generics_span);

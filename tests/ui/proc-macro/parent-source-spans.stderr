@@ -136,7 +136,7 @@ error: second source: "hop"
 LL |     three!("hip", "hop");
    |                   ^^^^^
 
-error[E0425]: cannot find value `ok` in this scope
+error[E0425]: cannot find value `ok` in the expanded code of procedural macro `parent_source_spans`
   --> $DIR/parent-source-spans.rs:29:5
    |
 LL |     parent_source_spans!($($tokens)*);
@@ -150,7 +150,7 @@ LL |     one!("hello", "world");
    |
    = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `ok` in this scope
+error[E0425]: cannot find value `ok` in the expanded code of procedural macro `parent_source_spans`
   --> $DIR/parent-source-spans.rs:29:5
    |
 LL |     parent_source_spans!($($tokens)*);
@@ -164,7 +164,7 @@ LL |     two!("yay", "rust");
    |
    = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `ok` in this scope
+error[E0425]: cannot find value `ok` in the expanded code of procedural macro `parent_source_spans`
   --> $DIR/parent-source-spans.rs:29:5
    |
 LL |     parent_source_spans!($($tokens)*);
