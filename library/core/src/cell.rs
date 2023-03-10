@@ -209,6 +209,12 @@ pub use once::OnceCell;
 
 /// A mutable memory location.
 ///
+/// # Memory layout
+///
+/// `Cell<T>` has the same [memory layout and caveats as
+/// `UnsafeCell<T>`](UnsafeCell#memory-layout). In particular, this means that
+/// `Cell<T>` has the same in-memory representation as its inner type `T`.
+///
 /// # Examples
 ///
 /// In this example, you can see that `Cell<T>` enables mutation inside an
