@@ -68,13 +68,13 @@ The second part of the motivation is clippy's dependence on unstable
 compiler-internal data structures. Clippy lints are currently written against
 the compiler's AST / HIR which means that even small changes in these data
 structures might break a lot of lints. The second goal of this RFC is to **make
-lints independant of the compiler's AST / HIR data structures**.
+lints independent of the compiler's AST / HIR data structures**.
 
 # Approach
 
 A lot of complexity in writing lints currently seems to come from having to
 manually implement the matching logic (see code samples above). It's an
-imparative style that describes *how* to match a syntax tree node instead of
+imperative style that describes *how* to match a syntax tree node instead of
 specifying *what* should be matched against declaratively. In other areas, it's
 common to use declarative patterns to describe desired information and let the
 implementation do the actual matching. A well-known example of this approach are
@@ -270,7 +270,7 @@ pattern!{
     // matches if expressions that **may or may not** have an else block
     // Attn: `If(_, _, _)` matches only ifs that **have** an else block
     //
-    //              | if with else block | if witout else block
+    //              | if with else block | if without else block
     // If(_, _, _)  |       match        |       no match
     // If(_, _, _?) |       match        |        match
     // If(_, _, ()) |      no match      |        match
@@ -568,7 +568,7 @@ another example, `Array( Lit(_)* )` is a valid pattern because the parameter of
 
 ## The IsMatch Trait
 
-The pattern syntax and the *PatternTree* are independant of specific syntax tree
+The pattern syntax and the *PatternTree* are independent of specific syntax tree
 implementations (rust ast / hir, syn, ...). When looking at the different
 pattern examples in the previous sections, it can be seen that the patterns
 don't contain any information specific to a certain syntax tree implementation.
@@ -717,7 +717,7 @@ if false {
 #### Problems
 
 Extending Rust syntax (which is quite complex by itself) with additional syntax
-needed for specifying patterns (alternations, sequences, repetisions, named
+needed for specifying patterns (alternations, sequences, repetitions, named
 submatches, ...) might become difficult to read and really hard to parse
 properly.
 
@@ -858,7 +858,7 @@ would be evaluated as soon as the `Block(_)#then` was matched.
 Another idea in this area would be to introduce a syntax for backreferences.
 They could be used to require that multiple parts of a pattern should match the
 same value. For example, the `assign_op_pattern` lint that searches for `a = a
-op b` and recommends changing it to `a op= b` requires that both occurrances of
+op b` and recommends changing it to `a op= b` requires that both occurrences of
 `a` are the same. Using `=#...` as syntax for backreferences, the lint could be
 implemented like this:
 
@@ -882,7 +882,7 @@ least two return statements" could be a practical addition.
 For patterns like "a literal that is not a boolean literal" one currently needs
 to list all alternatives except the boolean case. Introducing a negation
 operator that allows to write `Lit(!Bool(_))` might be a good idea. This pattern
-would be eqivalent to `Lit( Char(_) | Int(_) )` (given that currently only three
+would be equivalent to `Lit( Char(_) | Int(_) )` (given that currently only three
 literal types are implemented).
 
 #### Functional composition

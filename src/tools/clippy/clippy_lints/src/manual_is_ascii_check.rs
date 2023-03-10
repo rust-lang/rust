@@ -1,5 +1,5 @@
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::{diagnostics::span_lint_and_sugg, higher, in_constant, macros::root_macro_call, source::snippet};
+use clippy_utils::{diagnostics::span_lint_and_sugg, higher, in_constant, macros::root_macro_call, sugg::Sugg};
 use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
@@ -115,15 +115,8 @@ fn check_is_ascii(cx: &LateContext<'_>, span: Span, recv: &Expr<'_>, range: &Cha
         CharRange::Otherwise => None,
     } {
         let default_snip = "..";
-        // `snippet_with_applicability` may set applicability to `MaybeIncorrect` for
-        // macro span, so we check applicability manually by comparing `recv` is not default.
-        let recv = snippet(cx, recv.span, default_snip);
-
-        let applicability = if recv == default_snip {
-            Applicability::HasPlaceholders
-        } else {
-            Applicability::MachineApplicable
-        };
+        let mut app = Applicability::MachineApplicable;
+        let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_par();
 
         span_lint_and_sugg(
             cx,
@@ -132,7 +125,7 @@ fn check_is_ascii(cx: &LateContext<'_>, span: Span, recv: &Expr<'_>, range: &Cha
             "manual check for common ascii range",
             "try",
             format!("{recv}.{sugg}()"),
-            applicability,
+            app,
         );
     }
 }

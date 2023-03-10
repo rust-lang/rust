@@ -87,7 +87,7 @@ fn main() {
     let kitten = Kitten {};
     let _ = kitten.to_owned();
     let _ = own_same_from_ref(&kitten);
-    // this shouln't lint
+    // this shouldn't lint
     let _ = kitten.to_vec();
 
     // we expect no lints for this

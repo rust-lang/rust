@@ -16,9 +16,9 @@ use rustc_infer::infer::{
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv, Predicate,
-    PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
+    Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;

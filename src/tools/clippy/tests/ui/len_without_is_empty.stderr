@@ -119,5 +119,23 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    |
    = help: use a custom `Error` type instead
 
-error: aborting due to 12 previous errors
+error: struct `AsyncLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
+  --> $DIR/len_without_is_empty.rs:292:5
+   |
+LL |     pub async fn len(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: struct `AsyncOptionLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
+  --> $DIR/len_without_is_empty.rs:304:5
+   |
+LL |     pub async fn len(&self) -> Option<usize> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
+  --> $DIR/len_without_is_empty.rs:325:5
+   |
+LL |     pub async fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

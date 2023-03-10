@@ -97,7 +97,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
 
     let Some(correct_field) = correct_field else {
         // There is no field corresponding to the getter name.
-        // FIXME: This can be a false positive if the correct field is reachable trought deeper autodereferences than used_field is
+        // FIXME: This can be a false positive if the correct field is reachable through deeper autodereferences than used_field is
         return;
     };
 

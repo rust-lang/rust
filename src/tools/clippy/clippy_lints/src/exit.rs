@@ -11,7 +11,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Exit terminates the program at the location it is called. For unrecoverable
-    /// errors `panics` should be used to provide a stacktrace and potentualy other
+    /// errors `panics` should be used to provide a stacktrace and potentially other
     /// information. A normal termination or one with an error code should happen in
     /// the main function.
     ///

@@ -87,6 +87,7 @@ mod casts;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
+mod collection_is_never_read;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
@@ -166,6 +167,7 @@ mod large_stack_arrays;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
+mod let_with_type_underscore;
 mod lifetimes;
 mod literal_representation;
 mod loops;
@@ -192,6 +194,7 @@ mod minmax;
 mod misc;
 mod misc_early;
 mod mismatching_type_param_order;
+mod missing_assert_message;
 mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
@@ -249,6 +252,7 @@ mod question_mark_used;
 mod ranges;
 mod rc_clone_in_vec_init;
 mod read_zero_byte_vec;
+mod redundant_async_block;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -533,6 +537,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
                 .collect(),
         ))
     });
+    store.register_early_pass(|| Box::new(utils::format_args_collector::FormatArgsCollector));
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|_| Box::new(utils::author::Author));
     let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
@@ -924,6 +929,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
+    store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
+    store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
+    store.register_early_pass(|| Box::new(redundant_async_block::RedundantAsyncBlock));
+    store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
