@@ -995,6 +995,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
+    fn get_stripped_cfg_items(self, cnum: CrateNum, tcx: TyCtxt<'tcx>) -> &'tcx [StrippedCfgItem] {
+        let item_names = self
+            .root
+            .stripped_cfg_items
+            .decode((self, tcx))
+            .map(|item| item.map_mod_id(|index| DefId { krate: cnum, index }));
+        tcx.arena.alloc_from_iter(item_names)
+    }
+
     /// Iterates over the diagnostic items in the given crate.
     fn get_diagnostic_items(self) -> DiagnosticItems {
         let mut id_to_name = FxHashMap::default();

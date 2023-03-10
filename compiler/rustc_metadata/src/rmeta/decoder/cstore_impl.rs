@@ -345,6 +345,7 @@ provide! { tcx, def_id, other, cdata,
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
+    stripped_cfg_items => { cdata.get_stripped_cfg_items(cdata.cnum, tcx) }
     is_intrinsic => { cdata.get_is_intrinsic(def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }

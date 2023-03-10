@@ -124,6 +124,7 @@ macro_rules! arena_types {
             [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
+            [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
         ]);
     )
