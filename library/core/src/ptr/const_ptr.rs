@@ -61,14 +61,14 @@ impl<T: ?Sized> *const T {
 
     /// Use the pointer value in a new pointer of another type.
     ///
-    /// In case `val` is a (fat) pointer to an unsized type, this operation
+    /// In case `meta` is a (fat) pointer to an unsized type, this operation
     /// will ignore the pointer part, whereas for (thin) pointers to sized
     /// types, this has the same effect as a simple cast.
     ///
     /// The resulting pointer will have provenance of `self`, i.e., for a fat
     /// pointer, this operation is semantically the same as creating a new
     /// fat pointer with the data pointer value of `self` but the metadata of
-    /// `val`.
+    /// `meta`.
     ///
     /// # Examples
     ///
