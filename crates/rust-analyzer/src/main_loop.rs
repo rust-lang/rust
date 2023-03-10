@@ -444,7 +444,7 @@ impl GlobalState {
                     ProjectWorkspaceProgress::End(workspaces) => {
                         self.fetch_workspaces_queue.op_completed(Some(workspaces));
                         if let Err(e) = self.fetch_workspace_error() {
-                            tracing::error!("FetchWorkspaceError:\n{e}")
+                            tracing::error!("FetchWorkspaceError:\n{e}");
                         }
 
                         let old = Arc::clone(&self.workspaces);
@@ -468,7 +468,7 @@ impl GlobalState {
                     BuildDataProgress::End(build_data_result) => {
                         self.fetch_build_data_queue.op_completed(build_data_result);
                         if let Err(e) = self.fetch_build_data_error() {
-                            tracing::error!("FetchBuildDataError:\n{e}")
+                            tracing::error!("FetchBuildDataError:\n{e}");
                         }
 
                         self.switch_workspaces("fetched build data".to_string());
@@ -495,7 +495,6 @@ impl GlobalState {
                     }
                 }
             }
-            vfs::loader::Message::Progress { n_total: 0, .. } => {}
             vfs::loader::Message::Progress { n_total, n_done, config_version } => {
                 always!(config_version <= self.vfs_config_version);
 
@@ -503,6 +502,7 @@ impl GlobalState {
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
+                // if n_total != 0 {
                 let state = if n_done == 0 {
                     Progress::Begin
                 } else if n_done < n_total {
@@ -517,7 +517,8 @@ impl GlobalState {
                     Some(format!("{n_done}/{n_total}")),
                     Some(Progress::fraction(n_done, n_total)),
                     None,
-                )
+                );
+                // }
             }
         }
     }

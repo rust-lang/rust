@@ -56,7 +56,8 @@ pub(crate) enum BuildDataProgress {
 
 impl GlobalState {
     pub(crate) fn is_quiescent(&self) -> bool {
-        !(self.fetch_workspaces_queue.op_in_progress()
+        !(self.last_reported_status.is_none()
+            || self.fetch_workspaces_queue.op_in_progress()
             || self.fetch_build_data_queue.op_in_progress()
             || self.vfs_progress_config_version < self.vfs_config_version
             || self.vfs_progress_n_done < self.vfs_progress_n_total)
