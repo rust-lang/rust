@@ -188,5 +188,6 @@ function createCommands(): Record<string, CommandFactory> {
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
         triggerParameterHints: { enabled: commands.triggerParameterHints },
+        openLogs: { enabled: commands.openLogs },
     };
 }
