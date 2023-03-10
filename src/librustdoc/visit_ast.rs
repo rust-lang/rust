@@ -197,6 +197,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
             // imported items appear last, then they'll be the ones that get discarded.
             if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                let hir_id = item.hir_id();
+                let attrs = self.cx.tcx.hir().attrs(hir_id);
+                if let Some(attr) = attrs.iter().find(|attr| attr.doc_str().is_some()) {
+                    crate::passes::emit_documented_glob_warning(hir_id, attr.span, self.cx.tcx);
+                }
                 self.visit_item(item);
             }
         }

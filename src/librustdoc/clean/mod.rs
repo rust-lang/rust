@@ -2067,7 +2067,7 @@ fn clean_bare_fn_ty<'tcx>(
 
 /// This visitor is used to go through only the "top level" of a item and not enter any sub
 /// item while looking for a given `Ident` which is stored into `item` if found.
-struct OneLevelVisitor<'hir> {
+pub(crate) struct OneLevelVisitor<'hir> {
     map: rustc_middle::hir::map::Map<'hir>,
     item: Option<&'hir hir::Item<'hir>>,
     looking_for: Ident,

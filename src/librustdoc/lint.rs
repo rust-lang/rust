@@ -174,6 +174,17 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
+declare_rustdoc_lint! {
+    /// The `documented_local_non_inlined_reexport` lint detects when a reexport
+    /// (`pub use`) documentation is unused.
+    /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unused_reexport_documentation
+    UNUSED_REEXPORT_DOCUMENTATION,
+    Warn,
+    "doc comments are ignored on some cases for reexports",
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -185,6 +196,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_HTML_TAGS,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
+        UNUSED_REEXPORT_DOCUMENTATION,
     ]
 });
 

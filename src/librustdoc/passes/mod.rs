@@ -201,3 +201,14 @@ pub(crate) fn source_span_for_markdown_range(
         md_range.end + start_bytes + end_bytes,
     )))
 }
+
+/// Emit the warning for a document `pub use *`.
+pub(crate) fn emit_documented_glob_warning(hir_id: rustc_hir::HirId, span: Span, tcx: TyCtxt<'_>) {
+    tcx.struct_span_lint_hir(
+        crate::lint::UNUSED_REEXPORT_DOCUMENTATION,
+        hir_id,
+        span,
+        "doc comment on glob reexports are always ignored",
+        |lint| lint,
+    );
+}
