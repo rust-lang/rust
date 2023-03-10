@@ -442,7 +442,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
 pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
-        if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
+        if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
             tcx.sess
                 .struct_span_err(
                     attr_span,
