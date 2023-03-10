@@ -110,7 +110,7 @@ impl MirLowerCtx<'_> {
         }
     }
 
-    fn lower_expr_as_place_without_adjust(
+    pub(super) fn lower_expr_as_place_without_adjust(
         &mut self,
         current: BasicBlockId,
         expr_id: ExprId,

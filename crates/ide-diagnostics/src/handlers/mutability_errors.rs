@@ -337,6 +337,18 @@ fn main() {
     }
 
     #[test]
+    fn regression_14310() {
+        check_diagnostics(
+            r#"
+            fn clone(mut i: &!) -> ! {
+                   //^^^^^ 💡 weak: variable does not need to be mutable
+                *i
+            }
+        "#,
+        );
+    }
+
+    #[test]
     fn match_bindings() {
         check_diagnostics(
             r#"

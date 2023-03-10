@@ -637,7 +637,7 @@ impl MirLowerCtx<'_> {
             }
             Expr::Box { .. } => not_supported!("box expression"),
             Expr::Field { .. } | Expr::Index { .. } | Expr::UnaryOp { op: hir_def::expr::UnaryOp::Deref, .. } => {
-                let Some((p, current)) = self.lower_expr_as_place(current, expr_id, true)? else {
+                let Some((p, current)) = self.lower_expr_as_place_without_adjust(current, expr_id, true)? else {
                     return Ok(None);
                 };
                 self.push_assignment(current, place, Operand::Copy(p).into(), expr_id.into());
