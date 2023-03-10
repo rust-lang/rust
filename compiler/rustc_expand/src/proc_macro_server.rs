@@ -635,7 +635,7 @@ impl server::Span for Rustc<'_, '_> {
     }
 
     fn position(&mut self, span: Self::Span) -> Range<u32> {
-        Range { start: span.lo().0, end: span.lo().0 }
+        Range { start: span.lo().0, end: span.hi().0 }
     }
 
     fn start(&mut self, span: Self::Span) -> LineColumn {
