@@ -697,6 +697,12 @@ impl Config {
         let (name, comment) =
             line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
 
+        // Some of the matchers might be "" depending on what the target information is. To avoid
+        // problems we outright reject empty directives.
+        if name == "" {
+            return ParsedNameDirective::invalid();
+        }
+
         let mut outcome = MatchOutcome::Invalid;
         let mut message = None;
 
