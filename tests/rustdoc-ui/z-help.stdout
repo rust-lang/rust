@@ -171,6 +171,8 @@
                   by the linker
     -Z                    src-hash-algorithm=val -- hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)
     -Z                       stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
+    -Z           staticlib-allow-rdylib-deps=val -- allow staticlibs to have rust dylib dependencies
+    -Z              staticlib-prefer-dynamic=val -- prefer dynamic linking to static linking for staticlibs (default: no)
     -Z                    strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
     -Z                                 strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
     -Z               symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
