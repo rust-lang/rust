@@ -63,8 +63,8 @@ pub(crate) fn handle_add_project(
     let config = Arc::make_mut(&mut state.config);
     config.add_linked_projects(params.project);
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_string());
-    state.fetch_build_data_queue.request_op("reload workspace request".to_string());
+    state.fetch_workspaces_queue.request_op("linked projects changed".to_string());
+    state.fetch_build_data_queue.request_op("linked projects changed".to_string());
     Ok(())
 }
 
