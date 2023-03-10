@@ -56,7 +56,8 @@ pub(crate) enum BuildDataProgress {
 
 impl GlobalState {
     pub(crate) fn is_quiescent(&self) -> bool {
-        !(self.fetch_workspaces_queue.op_in_progress()
+        !(self.last_reported_status.is_none()
+            || self.fetch_workspaces_queue.op_in_progress()
             || self.fetch_build_data_queue.op_in_progress()
             || self.vfs_progress_config_version < self.vfs_config_version
             || self.vfs_progress_n_done < self.vfs_progress_n_total)
@@ -108,9 +109,9 @@ impl GlobalState {
             status.message = Some("Workspace reload required".to_string())
         }
 
-        if let Err(error) = self.fetch_workspace_error() {
+        if let Err(_) = self.fetch_workspace_error() {
             status.health = lsp_ext::Health::Error;
-            status.message = Some(error)
+            status.message = Some("Failed to load workspaces".to_string())
         }
 
         if self.config.linked_projects().is_empty()
@@ -118,8 +119,9 @@ impl GlobalState {
             && self.config.notifications().cargo_toml_not_found
         {
             status.health = lsp_ext::Health::Warning;
-            status.message = Some("Workspace reload required".to_string())
+            status.message = Some("Failed to discover workspace".to_string())
         }
+
         status
     }
 
@@ -201,19 +203,12 @@ impl GlobalState {
         let _p = profile::span("GlobalState::switch_workspaces");
         tracing::info!(%cause, "will switch workspaces");
 
-        if let Err(error_message) = self.fetch_workspace_error() {
-            if !self.config.server_status_notification() {
-                self.show_and_log_error(error_message, None);
-            }
+        if let Err(_) = self.fetch_workspace_error() {
             if !self.workspaces.is_empty() {
                 // It only makes sense to switch to a partially broken workspace
                 // if we don't have any workspace at all yet.
                 return;
             }
-        }
-
-        if let Err(error) = self.fetch_build_data_error() {
-            self.show_and_log_error("failed to run build scripts".to_string(), Some(error));
         }
 
         let Some(workspaces) = self.fetch_workspaces_queue.last_op_result() else { return; };
@@ -394,7 +389,7 @@ impl GlobalState {
         tracing::info!("did switch workspaces");
     }
 
-    fn fetch_workspace_error(&self) -> Result<(), String> {
+    pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
         let Some(last_op_result) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
@@ -415,7 +410,7 @@ impl GlobalState {
         Err(buf)
     }
 
-    fn fetch_build_data_error(&self) -> Result<(), String> {
+    pub(super) fn fetch_build_data_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {

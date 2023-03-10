@@ -93,6 +93,14 @@ export function triggerParameterHints(_: CtxInit): Cmd {
     };
 }
 
+export function openLogs(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.client.outputChannel) {
+            ctx.client.outputChannel.show();
+        }
+    };
+}
+
 export function matchingBrace(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
