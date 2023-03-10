@@ -1976,65 +1976,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 (ty::Bool, ty::Tuple(list)) => if list.len() == 0 {
                     suggestions.extend(self.suggest_let_for_letchains(&trace.cause, span));
                 }
-                (ty::Array(_, _), ty::Array(_, _)) => 'block: {
-                    let hir = self.tcx.hir();
-                    let TypeError::FixedArraySize(sz) = terr else {
-                        break 'block;
-                    };
-                    let tykind = match hir.find_by_def_id(trace.cause.body_id) {
-                        Some(hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Fn(_, _, body_id),
-                            ..
-                        })) => {
-                            let body = hir.body(*body_id);
-                            struct LetVisitor<'v> {
-                                span: Span,
-                                result: Option<&'v hir::Ty<'v>>,
-                            }
-                            impl<'v> Visitor<'v> for LetVisitor<'v> {
-                                fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
-                                    if self.result.is_some() {
-                                        return;
-                                    }
-                                    // Find a local statement where the initializer has
-                                    // the same span as the error and the type is specified.
-                                    if let hir::Stmt {
-                                        kind: hir::StmtKind::Local(hir::Local {
-                                            init: Some(hir::Expr {
-                                                span: init_span,
-                                                ..
-                                            }),
-                                            ty: Some(array_ty),
-                                            ..
-                                        }),
-                                        ..
-                                    } = s
-                                    && init_span == &self.span {
-                                        self.result = Some(*array_ty);
-                                    }
-                                }
-                            }
-                            let mut visitor = LetVisitor {span, result: None};
-                            visitor.visit_body(body);
-                            visitor.result.map(|r| &r.peel_refs().kind)
-                        }
-                        Some(hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Const(ty, _),
-                            ..
-                        })) => {
-                            Some(&ty.peel_refs().kind)
-                        }
-                        _ => None
-                    };
-
-                    if let Some(tykind) = tykind
-                        && let hir::TyKind::Array(_, length) = tykind
-                        && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
-                        && let Some(span) = self.tcx.hir().opt_span(*hir_id)
-                    {
-                        suggestions.push(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found });
-                    }
-                }
+                (ty::Array(_, _), ty::Array(_, _)) => suggestions.extend(self.specify_actual_length(terr, trace, span)),
                 _ => {}
             }
         }
@@ -2046,6 +1988,66 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert { found: found_ty.content(), expected: expected_ty.content() });
                 }
         suggestions
+    }
+
+    fn specify_actual_length(
+        &self,
+        terr: TypeError<'_>,
+        trace: &TypeTrace<'_>,
+        span: Span,
+    ) -> Option<TypeErrorAdditionalDiags> {
+        let hir = self.tcx.hir();
+        let TypeError::FixedArraySize(sz) = terr else {
+            return None;
+        };
+        let tykind = match hir.find_by_def_id(trace.cause.body_id) {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
+                let body = hir.body(*body_id);
+                struct LetVisitor<'v> {
+                    span: Span,
+                    result: Option<&'v hir::Ty<'v>>,
+                }
+                impl<'v> Visitor<'v> for LetVisitor<'v> {
+                    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+                        if self.result.is_some() {
+                            return;
+                        }
+                        // Find a local statement where the initializer has
+                        // the same span as the error and the type is specified.
+                        if let hir::Stmt {
+                            kind: hir::StmtKind::Local(hir::Local {
+                                init: Some(hir::Expr {
+                                    span: init_span,
+                                    ..
+                                }),
+                                ty: Some(array_ty),
+                                ..
+                            }),
+                            ..
+                        } = s
+                        && init_span == &self.span {
+                            self.result = Some(*array_ty);
+                        }
+                    }
+                }
+                let mut visitor = LetVisitor { span, result: None };
+                visitor.visit_body(body);
+                visitor.result.map(|r| &r.peel_refs().kind)
+            }
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. })) => {
+                Some(&ty.peel_refs().kind)
+            }
+            _ => None,
+        };
+        if let Some(tykind) = tykind
+            && let hir::TyKind::Array(_, length) = tykind
+            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let Some(span) = self.tcx.hir().opt_span(*hir_id)
+        {
+            Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found })
+        } else {
+            None
+        }
     }
 
     pub fn report_and_explain_type_error(
