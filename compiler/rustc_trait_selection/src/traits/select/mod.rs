@@ -1857,7 +1857,7 @@ enum DropVictim {
 /// type variables and then we also attempt to evaluate recursive
 /// bounds to see if they are satisfied.
 impl<'tcx> SelectionContext<'_, 'tcx> {
-    /// Returns `true` if `victim` should be dropped in favor of
+    /// Returns `DropVictim::Yes` if `victim` should be dropped in favor of
     /// `other`. Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
     ///
