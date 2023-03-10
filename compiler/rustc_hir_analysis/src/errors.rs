@@ -129,6 +129,18 @@ pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+
+    #[subdiagnostic]
+    pub fn_trait_expansion: Option<ParenthesizedFnTraitExpansion>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(hir_analysis_parenthesized_fn_trait_expansion)]
+pub struct ParenthesizedFnTraitExpansion {
+    #[primary_span]
+    pub span: Span,
+
+    pub expanded_type: String,
 }
 
 #[derive(Diagnostic)]
