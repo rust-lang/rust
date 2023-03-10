@@ -81,6 +81,7 @@ rm tests/ui/layout/valid_range_oob.rs # different ICE message
 
 rm tests/ui/consts/issue-miri-1910.rs # different error message
 rm tests/ui/consts/offset_ub.rs # same
+rm tests/ui/consts/const-eval/ub-slice-get-unchecked.rs # same
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/lint/lint-const-item-mutation.rs # same
 rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
