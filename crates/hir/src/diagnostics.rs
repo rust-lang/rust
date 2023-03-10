@@ -199,8 +199,7 @@ pub struct MismatchedArgCount {
 
 #[derive(Debug)]
 pub struct MissingMatchArms {
-    pub file: HirFileId,
-    pub match_expr: AstPtr<ast::Expr>,
+    pub scrutinee_expr: InFile<AstPtr<ast::Expr>>,
     pub uncovered_patterns: String,
 }
 

@@ -1628,11 +1628,13 @@ impl DefWithBody {
                             if let ast::Expr::MatchExpr(match_expr) =
                                 &source_ptr.value.to_node(&root)
                             {
-                                if let Some(match_expr) = match_expr.expr() {
+                                if let Some(scrut_expr) = match_expr.expr() {
                                     acc.push(
                                         MissingMatchArms {
-                                            file: source_ptr.file_id,
-                                            match_expr: AstPtr::new(&match_expr),
+                                            scrutinee_expr: InFile::new(
+                                                source_ptr.file_id,
+                                                AstPtr::new(&scrut_expr),
+                                            ),
                                             uncovered_patterns,
                                         }
                                         .into(),
