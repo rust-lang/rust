@@ -135,6 +135,9 @@ impl<'tcx> Const<'tcx> {
                 _,
                 &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. },
             )) => {
+                // Use the type from the param's definition, since we can resolve it,
+                // not the expected parameter type from WithOptConstParam.
+                let param_ty = tcx.type_of(def_id).subst_identity();
                 match tcx.named_bound_var(expr.hir_id) {
                     Some(rbv::ResolvedArg::EarlyBound(_)) => {
                         // Find the name and index of the const parameter by indexing the generics of
@@ -143,14 +146,14 @@ impl<'tcx> Const<'tcx> {
                         let generics = tcx.generics_of(item_def_id);
                         let index = generics.param_def_id_to_index[&def_id];
                         let name = tcx.item_name(def_id);
-                        Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
+                        Some(tcx.mk_const(ty::ParamConst::new(index, name), param_ty))
                     }
                     Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
                         ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
-                        ty,
+                        param_ty,
                     )),
                     Some(rbv::ResolvedArg::Error(guar)) => {
-                        Some(tcx.const_error_with_guaranteed(ty, guar))
+                        Some(tcx.const_error_with_guaranteed(param_ty, guar))
                     }
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }

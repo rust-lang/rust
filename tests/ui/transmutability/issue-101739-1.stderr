@@ -4,13 +4,15 @@ error[E0412]: cannot find type `Dst` in this scope
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
    |         ^^^ not found in this scope
 
-error[E0308]: mismatched types
-  --> $DIR/issue-101739-1.rs:8:50
+error: the constant `ASSUME_ALIGNMENT` is not of type `Assume`
+  --> $DIR/issue-101739-1.rs:8:14
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
-   |                                                  ^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `BikeshedIntrinsicFrom`
+  --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0308, E0412.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0412`.
