@@ -239,4 +239,10 @@ fn main() {
         3 => core::convert::identity::<u32>(todo!()),
         _ => 5,
     };
+
+    let _ = match 0 {
+        0 => cfg!(not_enable),
+        1 => cfg!(not_enable),
+        _ => false,
+    };
 }

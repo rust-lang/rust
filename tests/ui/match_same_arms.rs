@@ -57,6 +57,16 @@ macro_rules! m {
     (foo) => {};
     (bar) => {};
 }
+macro_rules! foo {
+    () => {
+        1
+    };
+}
+macro_rules! bar {
+    () => {
+        1
+    };
+}
 
 fn main() {
     let x = 0;
@@ -110,5 +120,17 @@ fn main() {
             x
         },
         _ => 0,
+    };
+
+    let _ = match 0 {
+        0 => foo!(),
+        1 => bar!(),
+        _ => 1,
+    };
+
+    let _ = match 0 {
+        0 => cfg!(not_enabled),
+        1 => cfg!(also_not_enabled),
+        _ => false,
     };
 }

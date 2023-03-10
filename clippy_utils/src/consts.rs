@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use crate::source::{span_source_range, walk_span_to_context};
+use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
@@ -516,7 +516,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
                     && let expr_lo = expr_span.lo()
                     && expr_lo >= span.lo
-                    && let Some(src) = span_source_range(self.lcx, span.lo..expr_lo)
+                    && let Some(src) = get_source_text(self.lcx, span.lo..expr_lo)
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{Whitespace, LineComment, BlockComment, Semi, OpenBrace};

@@ -14,7 +14,7 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{sym, BytePos, Symbol, SyntaxContext};
+use rustc_span::{sym, BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 
@@ -67,6 +67,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn inter_expr(&mut self) -> HirEqInterExpr<'_, 'a, 'tcx> {
         HirEqInterExpr {
             inner: self,
+            left_ctxt: SyntaxContext::root(),
+            right_ctxt: SyntaxContext::root(),
             locals: HirIdMap::default(),
         }
     }
@@ -94,6 +96,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
 pub struct HirEqInterExpr<'a, 'b, 'tcx> {
     inner: &'a mut SpanlessEq<'b, 'tcx>,
+    left_ctxt: SyntaxContext,
+    right_ctxt: SyntaxContext,
 
     // When binding are declared, the binding ID in the left expression is mapped to the one on the
     // right. For example, when comparing `{ let x = 1; x + 2 }` and `{ let y = 1; y + 2 }`,
@@ -128,6 +132,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     /// Checks whether two blocks are the same.
+    #[expect(clippy::similar_names)]
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
         use TokenKind::{BlockComment, LineComment, Semi, Whitespace};
         if left.stmts.len() != right.stmts.len() {
@@ -166,7 +171,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // Can happen when macros expand to multiple statements, or rearrange statements.
                 // Nothing in between the statements to check in this case.
                 continue;
-            } else if lstmt_span.lo < lstart || rstmt_span.lo < rstart {
+            }
+            if lstmt_span.lo < lstart || rstmt_span.lo < rstart {
                 // Only one of the blocks had a weird macro.
                 return false;
             }
@@ -243,7 +249,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     #[expect(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if !self.inner.allow_side_effects && left.span.ctxt() != right.span.ctxt() {
+        if !self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
             return false;
         }
 
@@ -475,6 +481,45 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_type_binding(&mut self, left: &TypeBinding<'_>, right: &TypeBinding<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_ty(left.ty(), right.ty())
+    }
+
+    fn check_ctxt(&mut self, left: SyntaxContext, right: SyntaxContext) -> bool {
+        if self.left_ctxt == left && self.right_ctxt == right {
+            return true;
+        } else if self.left_ctxt == left || self.right_ctxt == right {
+            // Only one context has changed. This can only happen if the two nodes are written differently.
+            return false;
+        } else if left != SyntaxContext::root() {
+            let mut left_data = left.outer_expn_data();
+            let mut right_data = right.outer_expn_data();
+            loop {
+                use TokenKind::{BlockComment, LineComment, Whitespace};
+                if left_data.macro_def_id != right_data.macro_def_id
+                    || (matches!(left_data.kind, ExpnKind::Macro(MacroKind::Bang, name) if name == sym::cfg)
+                        && !eq_span_tokens(self.inner.cx, left_data.call_site, right_data.call_site, |t| {
+                            !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. })
+                        }))
+                {
+                    // Either a different chain of macro calls, or different arguments to the `cfg` macro.
+                    return false;
+                }
+                let left_ctxt = left_data.call_site.ctxt();
+                let right_ctxt = right_data.call_site.ctxt();
+                if left_ctxt == SyntaxContext::root() && right_ctxt == SyntaxContext::root() {
+                    break;
+                }
+                if left_ctxt == SyntaxContext::root() || right_ctxt == SyntaxContext::root() {
+                    // Different lengths for the expansion stack. This can only happen if nodes are written differently,
+                    // or shouldn't be compared to start with.
+                    return false;
+                }
+                left_data = left_ctxt.outer_expn_data();
+                right_data = right_ctxt.outer_expn_data();
+            }
+        }
+        self.left_ctxt = left;
+        self.right_ctxt = right;
+        true
     }
 }
 
@@ -1075,6 +1120,7 @@ pub fn hash_expr(cx: &LateContext<'_>, e: &Expr<'_>) -> u64 {
     h.finish()
 }
 
+#[expect(clippy::similar_names)]
 fn eq_span_tokens(
     cx: &LateContext<'_>,
     left: impl SpanRange,
