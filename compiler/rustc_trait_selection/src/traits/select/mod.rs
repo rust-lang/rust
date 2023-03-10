@@ -465,14 +465,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if candidates.len() > 1 {
             let mut i = 0;
             while i < candidates.len() {
-                let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
+                let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
                     self.candidate_should_be_dropped_in_favor_of(
                         &candidates[i],
                         &candidates[j],
                         needs_infer,
-                    )
+                    ) == DropVictim::Yes
                 });
-                if is_dup {
+                if should_drop_i {
                     debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
                     candidates.swap_remove(i);
                 } else {
@@ -1842,16 +1842,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ProjectionMatchesProjection::No
         }
     }
+}
 
-    ///////////////////////////////////////////////////////////////////////////
-    // WINNOW
-    //
-    // Winnowing is the process of attempting to resolve ambiguity by
-    // probing further. During the winnowing process, we unify all
-    // type variables and then we also attempt to evaluate recursive
-    // bounds to see if they are satisfied.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum DropVictim {
+    Yes,
+    No,
+}
 
-    /// Returns `true` if `victim` should be dropped in favor of
+/// ## Winnowing
+///
+/// Winnowing is the process of attempting to resolve ambiguity by
+/// probing further. During the winnowing process, we unify all
+/// type variables and then we also attempt to evaluate recursive
+/// bounds to see if they are satisfied.
+impl<'tcx> SelectionContext<'_, 'tcx> {
+    /// Returns `DropVictim::Yes` if `victim` should be dropped in favor of
     /// `other`. Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
     ///
@@ -1861,9 +1867,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         victim: &EvaluatedCandidate<'tcx>,
         other: &EvaluatedCandidate<'tcx>,
         needs_infer: bool,
-    ) -> bool {
+    ) -> DropVictim {
         if victim.candidate == other.candidate {
-            return true;
+            return DropVictim::Yes;
         }
 
         // Check if a bound would previously have been removed when normalizing
@@ -1887,11 +1893,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // FIXME(@jswrenn): this should probably be more sophisticated
-            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
+            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
 
             // (*)
-            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => true,
-            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => false,
+            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => {
+                DropVictim::Yes
+            }
+            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => {
+                DropVictim::No
+            }
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
@@ -1905,28 +1915,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // or the current one if tied (they should both evaluate to the same answer). This is
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
-                    other.bound_vars().len() <= victim.bound_vars().len()
+                    if other.bound_vars().len() <= victim.bound_vars().len() {
+                        DropVictim::Yes
+                    } else {
+                        DropVictim::No
+                    }
                 } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
                     && victim.skip_binder().constness == ty::BoundConstness::NotConst
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                 {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
-                    true
+                    DropVictim::Yes
                 } else {
-                    false
+                    DropVictim::No
                 }
             }
 
             // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => true,
+            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => DropVictim::Yes,
 
-            // Global bounds from the where clause should be ignored
-            // here (see issue #50825). Otherwise, we have a where
-            // clause so don't go around looking for impls.
-            // Arbitrarily give param candidates priority
-            // over projection and object candidates.
             (
-                ParamCandidate(ref cand),
+                ParamCandidate(ref other_cand),
                 ImplCandidate(..)
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
@@ -1939,11 +1948,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitAliasCandidate
                 | ObjectCandidate(_)
                 | ProjectionCandidate(..),
-            ) => !is_global(cand),
-            (ObjectCandidate(_) | ProjectionCandidate(..), ParamCandidate(ref cand)) => {
+            ) => {
+                if is_global(other_cand) {
+                    DropVictim::No
+                } else {
+                    // We have a where clause so don't go around looking
+                    // for impls. Arbitrarily give param candidates priority
+                    // over projection and object candidates.
+                    //
+                    // Global bounds from the where clause should be ignored
+                    // here (see issue #50825).
+                    DropVictim::Yes
+                }
+            }
+            (ObjectCandidate(_) | ProjectionCandidate(..), ParamCandidate(ref victim_cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(cand)
+                if is_global(victim_cand) { DropVictim::Yes } else { DropVictim::No }
             }
             (
                 ImplCandidate(_)
@@ -1956,18 +1977,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate,
-                ParamCandidate(ref cand),
+                ParamCandidate(ref victim_cand),
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(cand) && other.evaluation.must_apply_modulo_regions()
+                if is_global(victim_cand) && other.evaluation.must_apply_modulo_regions() {
+                    DropVictim::Yes
+                } else {
+                    DropVictim::No
+                }
             }
 
             (ProjectionCandidate(i, _), ProjectionCandidate(j, _))
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                i < j && !needs_infer
+                if i < j && !needs_infer { DropVictim::Yes } else { DropVictim::No }
             }
             (ObjectCandidate(_), ProjectionCandidate(..))
             | (ProjectionCandidate(..), ObjectCandidate(_)) => {
@@ -1987,7 +2012,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate,
-            ) => true,
+            ) => DropVictim::Yes,
 
             (
                 ImplCandidate(..)
@@ -2001,7 +2026,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate,
                 ObjectCandidate(_) | ProjectionCandidate(..),
-            ) => false,
+            ) => DropVictim::No,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
                 // See if we can toss out `victim` based on specialization.
@@ -2014,7 +2039,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let tcx = self.tcx();
                 if other.evaluation.must_apply_modulo_regions() {
                     if tcx.specializes((other_def, victim_def)) {
-                        return true;
+                        return DropVictim::Yes;
                     }
                 }
 
@@ -2060,13 +2085,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // will then correctly report an inference error, since the
                             // existence of multiple marker trait impls tells us nothing
                             // about which one should actually apply.
-                            !needs_infer
+                            if needs_infer { DropVictim::No } else { DropVictim::Yes }
                         }
-                        Some(_) => true,
-                        None => false,
+                        Some(_) => DropVictim::Yes,
+                        None => DropVictim::No,
                     }
                 } else {
-                    false
+                    DropVictim::No
                 }
             }
 
@@ -2092,10 +2117,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate,
-            ) => false,
+            ) => DropVictim::No,
         }
     }
+}
 
+impl<'tcx> SelectionContext<'_, 'tcx> {
     fn sized_conditions(
         &mut self,
         obligation: &TraitObligation<'tcx>,
