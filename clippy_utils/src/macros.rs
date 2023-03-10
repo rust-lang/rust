@@ -6,6 +6,8 @@ use crate::visitors::{for_each_expr, Descend};
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
+use rustc_ast::FormatArgs;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, LangItem, Node, QPath, TyKind};
 use rustc_lexer::unescape::unescape_literal;
@@ -15,8 +17,10 @@ use rustc_parse_format::{self as rpf, Alignment};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
+use std::cell::RefCell;
 use std::iter::{once, zip};
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::assert_eq_macro,
@@ -359,6 +363,77 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
         ControlFlow::Break(is_assert_arg) => is_assert_arg,
         ControlFlow::Continue(()) => true,
     }
+}
+
+thread_local! {
+    /// We preserve the [`FormatArgs`] structs from the early pass for use in the late pass to be
+    /// able to access the many features of a [`LateContext`].
+    ///
+    /// A thread local is used because [`FormatArgs`] is `!Send` and `!Sync`, we are making an
+    /// assumption that the early pass the populates the map and the later late passes will all be
+    /// running on the same thread.
+    static AST_FORMAT_ARGS: RefCell<FxHashMap<Span, FormatArgs>> = {
+        static CALLED: AtomicBool = AtomicBool::new(false);
+        debug_assert!(
+            !CALLED.swap(true, Ordering::SeqCst),
+            "incorrect assumption: `AST_FORMAT_ARGS` should only be accessed by a single thread",
+        );
+
+        RefCell::default()
+    };
+}
+
+/// Record [`rustc_ast::FormatArgs`] for use in late lint passes, this should only be called by
+/// `FormatArgsCollector`
+pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
+    AST_FORMAT_ARGS.with(|ast_format_args| {
+        ast_format_args.borrow_mut().insert(span, format_args.clone());
+    });
+}
+
+/// Calls `callback` with an AST [`FormatArgs`] node if one is found
+pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId, callback: impl FnOnce(&FormatArgs)) {
+    let format_args_expr = for_each_expr(start, |expr| {
+        let ctxt = expr.span.ctxt();
+        if ctxt == start.span.ctxt() {
+            ControlFlow::Continue(Descend::Yes)
+        } else if ctxt.outer_expn().is_descendant_of(expn_id)
+            && macro_backtrace(expr.span)
+                .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
+                .any(|name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))
+        {
+            ControlFlow::Break(expr)
+        } else {
+            ControlFlow::Continue(Descend::No)
+        }
+    });
+
+    if let Some(format_args_expr) = format_args_expr {
+        AST_FORMAT_ARGS.with(|ast_format_args| {
+            ast_format_args.borrow().get(&format_args_expr.span).map(callback);
+        });
+    }
+}
+
+/// Returns the [`Span`] of the value at `index` extended to the previous comma, e.g. for the value
+/// `10`
+///
+/// ```ignore
+/// format("{}.{}", 10, 11)
+/// //            ^^^^
+/// ```
+pub fn format_arg_removal_span(format_args: &FormatArgs, index: usize) -> Option<Span> {
+    let ctxt = format_args.span.ctxt();
+
+    let current = hygiene::walk_chain(format_args.arguments.by_index(index)?.expr.span, ctxt);
+
+    let prev = if index == 0 {
+        format_args.span
+    } else {
+        hygiene::walk_chain(format_args.arguments.by_index(index - 1)?.expr.span, ctxt)
+    };
+
+    Some(current.with_lo(prev.hi()))
 }
 
 /// The format string doesn't exist in the HIR, so we reassemble it from source code
