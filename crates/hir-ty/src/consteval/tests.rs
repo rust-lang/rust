@@ -146,6 +146,22 @@ fn reference_autoderef() {
     "#,
         3,
     );
+    check_number(
+        r#"
+    struct Foo<T> { x: T }
+    impl<T> Foo<T> {
+        fn foo(&mut self) -> T { self.x }
+    }
+    fn f(i: &mut &mut Foo<Foo<i32>>) -> i32 {
+        ((**i).x).foo()
+    }
+    fn g(i: Foo<Foo<i32>>) -> i32 {
+        i.x.foo()
+    }
+    const GOAL: i32 = f(&mut &mut Foo { x: Foo { x: 3 } }) + g(Foo { x: Foo { x: 5 } });
+    "#,
+        8,
+    );
 }
 
 #[test]
