@@ -81,6 +81,11 @@ note: explicit register arguments cannot be used in the asm template
    |
 LL |         asm!("{}", in("x0") foo);
    |                    ^^^^^^^^^^^^
+help: use the register name directly in the assembly code
+  --> $DIR/bad-template.rs:48:20
+   |
+LL |         asm!("{}", in("x0") foo);
+   |                    ^^^^^^^^^^^^
 
 error: asm template modifier must be a single character
   --> $DIR/bad-template.rs:50:17
