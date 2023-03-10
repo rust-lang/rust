@@ -216,7 +216,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
 
 /// Returns true if we're running in CI with modified LLVM (and thus can't download it)
 pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
-    CiEnv::is_ci() && {
+    CiEnv::is_ci() && config.rust_info.is_managed_git_subrepository() && {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
