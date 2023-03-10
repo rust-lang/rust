@@ -152,6 +152,8 @@ Current stable, released 2023-03-09
 
 * `SYSROOT` and `--sysroot` can now be set at the same time
   [#10149](https://github.com/rust-lang/rust-clippy/pull/10149)
+* Fix error when providing an `array-size-threshold` in `clippy.toml`
+  [#10423](https://github.com/rust-lang/rust-clippy/pull/10423)
 
 ## Rust 1.67
 
@@ -186,8 +188,6 @@ Released 2023-01-26
 
 ### Moves and Deprecations
 
-* Moved [`uninlined_format_args`] to `style` (Now warn-by-default)
-  [#9865](https://github.com/rust-lang/rust-clippy/pull/9865)
 * Moved [`needless_collect`] to `nursery` (Now allow-by-default)
   [#9705](https://github.com/rust-lang/rust-clippy/pull/9705)
 * Moved [`or_fun_call`] to `nursery` (Now allow-by-default)
@@ -423,7 +423,7 @@ Released 2022-12-15
   [#9490](https://github.com/rust-lang/rust-clippy/pull/9490)
 * [`almost_complete_letter_range`]: No longer lints in external macros
   [#9467](https://github.com/rust-lang/rust-clippy/pull/9467)
-* [`drop_copy`]: No longer lints on idiomatic cases in match arms 
+* [`drop_copy`]: No longer lints on idiomatic cases in match arms
   [#9491](https://github.com/rust-lang/rust-clippy/pull/9491)
 * [`question_mark`]: No longer lints in const context
   [#9487](https://github.com/rust-lang/rust-clippy/pull/9487)
