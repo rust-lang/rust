@@ -386,7 +386,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
-        body_def_id: Option<LocalDefId>,
+        body_def_id: LocalDefId,
         failure_span: Span,
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
@@ -403,9 +403,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
-        if let Some(body_def_id) = body_def_id
-            && let Some(body_id) = self.tcx.hir().maybe_body_owned_by(body_def_id)
-        {
+        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(
+            self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
+        ) {
             let expr = self.tcx.hir().body(body_id).value;
             local_visitor.visit_expr(expr);
         }

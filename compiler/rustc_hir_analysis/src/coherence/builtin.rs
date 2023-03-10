@@ -345,7 +345,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     }),
                 );
                 if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                    infcx.err_ctxt().report_fulfillment_errors(&errors);
                 }
 
                 // Finally, resolve all regions.
@@ -585,7 +585,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
     let errors = traits::fully_solve_obligation(&infcx, predicate);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
 
     // Finally, resolve all regions.

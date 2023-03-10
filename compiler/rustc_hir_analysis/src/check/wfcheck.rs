@@ -111,7 +111,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
         return;
     }
 
