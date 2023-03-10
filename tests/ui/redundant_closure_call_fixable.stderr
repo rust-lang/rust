@@ -1,5 +1,5 @@
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:16:13
+  --> $DIR/redundant_closure_call_fixable.rs:17:13
    |
 LL |     let a = (|| 42)();
    |             ^^^^^^^^^ help: try doing something like: `42`
@@ -7,7 +7,7 @@ LL |     let a = (|| 42)();
    = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:17:13
+  --> $DIR/redundant_closure_call_fixable.rs:18:13
    |
 LL |       let b = (async || {
    |  _____________^
@@ -27,7 +27,7 @@ LL ~     };
    |
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:22:13
+  --> $DIR/redundant_closure_call_fixable.rs:23:13
    |
 LL |       let c = (|| {
    |  _____________^
@@ -47,13 +47,13 @@ LL ~     };
    |
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:27:13
+  --> $DIR/redundant_closure_call_fixable.rs:28:13
    |
 LL |     let d = (async || something().await)();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `async { something().await }`
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:36:13
+  --> $DIR/redundant_closure_call_fixable.rs:37:13
    |
 LL |             (|| m!())()
    |             ^^^^^^^^^^^ help: try doing something like: `m!()`
@@ -64,7 +64,7 @@ LL |     m2!();
    = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:31:13
+  --> $DIR/redundant_closure_call_fixable.rs:32:13
    |
 LL |             (|| 0)()
    |             ^^^^^^^^ help: try doing something like: `0`

@@ -22,9 +22,9 @@ mod rustc_ok {
 
         #[expect(illegal_floating_point_literal_pattern)]
         match x {
-            5.0 => {}
-            6.0 => {}
-            _ => {}
+            5.0 => {},
+            6.0 => {},
+            _ => {},
         }
     }
 }
@@ -38,9 +38,9 @@ mod rustc_warn {
 
         #[expect(illegal_floating_point_literal_pattern)]
         match x {
-            5 => {}
-            6 => {}
-            _ => {}
+            5 => {},
+            6 => {},
+            _ => {},
         }
     }
 }

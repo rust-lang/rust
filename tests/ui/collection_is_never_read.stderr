@@ -1,0 +1,52 @@
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:21:5
+   |
+LL |     let mut x = HashMap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::collection-is-never-read` implied by `-D warnings`
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:60:5
+   |
+LL |     let mut x = vec![1, 2, 3]; // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:75:5
+   |
+LL |     let mut x = HashMap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:80:5
+   |
+LL |     let mut x = HashMap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:95:5
+   |
+LL |     let mut x = vec![1, 2, 3]; // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:102:5
+   |
+LL |     let mut x = vec![1, 2, 3]; // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:119:5
+   |
+LL |     let mut x = HashSet::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:133:5
+   |
+LL |     let x = vec![1, 2, 3]; // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

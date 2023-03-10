@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
-use clippy_utils::method_chain_args;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::is_res_lang_ctor;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind, QPath};
+use rustc_hir::{Expr, ExprKind, LangItem, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -58,17 +58,18 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
             };
 
         if_chain! {
-            if let ExprKind::MethodCall(ok_path, result_types_0, ..) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
-            if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
-            if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() method use std::marker::Sized;
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(result_types_0), sym::Result);
-            if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";
-
+            if let ExprKind::MethodCall(ok_path, recv, [], ..) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
+            if let PatKind::TupleStruct(ref pat_path, [ok_pat], _)  = let_pat.kind; //get operation
+            if ok_path.ident.as_str() == "ok";
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
+            if is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome);
+            let ctxt = expr.span.ctxt();
+            if let_expr.span.ctxt() == ctxt;
+            if let_pat.span.ctxt() == ctxt;
             then {
-
                 let mut applicability = Applicability::MachineApplicable;
-                let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
-                let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_path.ident.span), "", &mut applicability);
+                let some_expr_string = snippet_with_context(cx, ok_pat.span, ctxt, "", &mut applicability).0;
+                let trimmed_ok = snippet_with_context(cx, recv.span, ctxt, "", &mut applicability).0;
                 let sugg = format!(
                     "{ifwhile} let Ok({some_expr_string}) = {}",
                     trimmed_ok.trim().trim_end_matches('.'),

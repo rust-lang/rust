@@ -125,5 +125,65 @@ note: raw pointer dereference occurs here
 LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
    |                                       ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:120:5
+   |
+LL | /     unsafe {
+LL | |         x();
+LL | |         x();
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:121:9
+   |
+LL |         x();
+   |         ^^^
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:122:9
+   |
+LL |         x();
+   |         ^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:131:9
+   |
+LL | /         unsafe {
+LL | |             T::X();
+LL | |             T::X();
+LL | |         }
+   | |_________^
+   |
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:132:13
+   |
+LL |             T::X();
+   |             ^^^^^^
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:133:13
+   |
+LL |             T::X();
+   |             ^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:141:5
+   |
+LL | /     unsafe {
+LL | |         x.0();
+LL | |         x.0();
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:142:9
+   |
+LL |         x.0();
+   |         ^^^^^
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:143:9
+   |
+LL |         x.0();
+   |         ^^^^^
+
+error: aborting due to 8 previous errors
 
