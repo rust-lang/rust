@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.68
 
-Current beta, released 2023-03-09
+Current stable, released 2023-03-09
 
 [d822110d...7f27e2e7](https://github.com/rust-lang/rust-clippy/compare/d822110d...7f27e2e7)
 
@@ -155,7 +155,7 @@ Current beta, released 2023-03-09
 
 ## Rust 1.67
 
-Current stable, released 2023-01-26
+Released 2023-01-26
 
 [4f142aa1...d822110d](https://github.com/rust-lang/rust-clippy/compare/4f142aa1...d822110d)
 
