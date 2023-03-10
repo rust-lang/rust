@@ -709,7 +709,7 @@ parse_zero_chars = empty character literal
 parse_lone_slash = invalid trailing slash in literal
     .label = {parse_lone_slash}
 
-parse_unskipped_whitespace = non-ASCII whitespace symbol '{$ch}' is not skipped
+parse_unskipped_whitespace = whitespace symbol '{$ch}' is not skipped
     .label = {parse_unskipped_whitespace}
 
 parse_multiple_skipped_lines = multiple lines skipped by escaped newline
