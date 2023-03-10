@@ -144,8 +144,7 @@ $ RUSTC_LOG=debug rustc +stage1 my-file.rs 2>all-log
 # compilers.
 $ RUSTC_LOG=rustc_codegen_ssa=info rustc +stage1 my-file.rs
 
-# This will show the all tracing calls under `rustc_codegen_ssa` and
-# `rustc_resolve`.
+# This will show all logs in `rustc_codegen_ssa` and `rustc_resolve`.
 $ RUSTC_LOG=rustc_codegen_ssa,rustc_resolve rustc +stage1 my-file.rs
 
 # This will show the output of all `info!` calls made by rustdoc
