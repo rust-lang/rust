@@ -1,4 +1,11 @@
 cfg_if::cfg_if! {
+    if #[cfg(not(target_os = "windows"))] {
+        mod cstr_native;
+        pub use cstr_native::NativePath;
+    }
+}
+
+cfg_if::cfg_if! {
     if #[cfg(target_os = "windows")] {
         mod windows;
         pub use windows::*;

@@ -38,5 +38,24 @@
 
 mod os_str;
 
+use crate::ffi::CStr;
+use crate::path::NativePath;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStrExt, OsStringExt};
+
+#[unstable(feature = "fs_native_path", issue = "108979")]
+pub trait NativePathExt: crate::sealed::Sealed {
+    fn from_cstr(cstr: &CStr) -> &NativePath;
+    fn into_cstr(&self) -> &CStr;
+}
+
+#[unstable(feature = "fs_native_path", issue = "108979")]
+impl NativePathExt for NativePath {
+    fn from_cstr(cstr: &CStr) -> &NativePath {
+        unsafe { &*(cstr as *const CStr as *const NativePath) }
+    }
+    fn into_cstr(&self) -> &CStr {
+        unsafe { &*(self as *const Self as *const CStr) }
+    }
+}

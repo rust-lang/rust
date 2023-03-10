@@ -481,7 +481,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let fd = File::open_c(DEV_NULL, &opts)?;
+                let fd = File::open_native(DEV_NULL, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 
