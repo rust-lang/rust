@@ -242,8 +242,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
 
         // FIXME(eddyb) maybe name the return place as `_0` or `return`?
-        if local == mir::RETURN_PLACE && !self.mir.local_decls[mir::RETURN_PLACE].is_user_variable()
-        {
+        if local == mir::RETURN_PLACE {
             return;
         }
 

@@ -919,15 +919,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         matches!(
-            self.local_info,
-            ClearCrossCrate::Set(box LocalInfo::User(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
-            ))
+            )
         )
     }
 
@@ -936,15 +936,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         matches!(
-            self.local_info,
-            ClearCrossCrate::Set(box LocalInfo::User(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(_),
-            ))
+            )
         )
     }
 
@@ -952,40 +952,35 @@ impl<'tcx> LocalDecl<'tcx> {
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        matches!(self.local_info, ClearCrossCrate::Set(box LocalInfo::User(_)))
+        matches!(self.local_info(), LocalInfo::User(_))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(
-            self.local_info,
-            ClearCrossCrate::Set(box LocalInfo::User(BindingForm::RefForGuard))
-        )
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static.
     pub fn is_ref_to_static(&self) -> bool {
-        matches!(self.local_info, ClearCrossCrate::Set(box LocalInfo::StaticRef { .. }))
+        matches!(self.local_info(), LocalInfo::StaticRef { .. })
     }
 
     /// Returns `Some` if this is a reference to a thread-local static item that is used to
     /// access that static.
     pub fn is_ref_to_thread_local(&self) -> bool {
-        match self.local_info {
-            ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
-                is_thread_local
-            }
+        match self.local_info() {
+            LocalInfo::StaticRef { is_thread_local, .. } => *is_thread_local,
             _ => false,
         }
     }
 
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
-        match self.local_info {
-            ClearCrossCrate::Set(box LocalInfo::DerefTemp) => return true,
+        match self.local_info() {
+            LocalInfo::DerefTemp => return true,
             _ => (),
         }
         return false;
