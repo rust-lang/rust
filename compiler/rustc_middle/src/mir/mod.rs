@@ -785,13 +785,6 @@ pub struct LocalDecl<'tcx> {
     /// generator.
     pub internal: bool,
 
-    /// If this local is a temporary and `is_block_tail` is `Some`,
-    /// then it is a temporary created for evaluation of some
-    /// subexpression of some block's tail expression (with no
-    /// intervening statement context).
-    // FIXME(matthewjasper) Don't store in this in `Body`
-    pub is_block_tail: Option<BlockTailInfo>,
-
     /// The type of this local.
     pub ty: Ty<'tcx>,
 
@@ -905,6 +898,10 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during the creation of an aggregate
     /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
     AggregateTemp,
+    /// A temporary created for evaluation of some subexpression of some block's tail expression
+    /// (with no intervening statement context).
+    // FIXME(matthewjasper) Don't store in this in `Body`
+    BlockTailTemp(BlockTailInfo),
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
     /// A temporary created for borrow checking.
@@ -1018,7 +1015,6 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability: Mutability::Mut,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::Boring)),
             internal: false,
-            is_block_tail: None,
             ty,
             user_ty: None,
             source_info,
@@ -1036,14 +1032,6 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn immutable(mut self) -> Self {
         self.mutability = Mutability::Not;
-        self
-    }
-
-    /// Converts `self` into same `LocalDecl` except tagged as internal temporary.
-    #[inline]
-    pub fn block_tail(mut self, info: BlockTailInfo) -> Self {
-        assert!(self.is_block_tail.is_none());
-        self.is_block_tail = Some(info);
         self
     }
 }
@@ -3106,7 +3094,7 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 144);
-    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 112);
