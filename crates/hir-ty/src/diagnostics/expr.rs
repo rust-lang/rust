@@ -379,7 +379,7 @@ fn missing_match_arms<'p>(
     arms: &[MatchArm],
 ) -> String {
     struct DisplayWitness<'a, 'p>(&'a DeconstructedPat<'p>, &'a MatchCheckCtx<'a, 'p>);
-    impl<'a, 'p> fmt::Display for DisplayWitness<'a, 'p> {
+    impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let DisplayWitness(witness, cx) = *self;
             let pat = witness.to_pat(cx);
