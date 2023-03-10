@@ -1,6 +1,6 @@
 use clippy_utils::consts::{self, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::has_enclosing_paren;
 use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
@@ -60,8 +60,8 @@ fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
 
         then {
             let mut applicability = Applicability::MachineApplicable;
-            let snip = snippet_with_applicability(cx, exp.span, "..", &mut applicability);
-            let suggestion = if exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
+            let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
+            let suggestion = if !from_macro && exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
                 format!("-({snip})")
             } else {
                 format!("-{snip}")

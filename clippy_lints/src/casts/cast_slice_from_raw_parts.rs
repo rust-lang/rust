@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -34,6 +34,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         if let ExprKind::Path(ref qpath) = fun.kind;
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         if let Some(rpk) = raw_parts_kind(cx, fun_def_id);
+        let ctxt = expr.span.ctxt();
+        if cast_expr.span.ctxt() == ctxt;
         then {
             let func = match rpk {
                 RawPartsKind::Immutable => "from_raw_parts",
@@ -41,8 +43,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             };
             let span = expr.span;
             let mut applicability = Applicability::MachineApplicable;
-            let ptr = snippet_with_applicability(cx, ptr_arg.span, "ptr", &mut applicability);
-            let len = snippet_with_applicability(cx, len_arg.span, "len", &mut applicability);
+            let ptr = snippet_with_context(cx, ptr_arg.span, ctxt, "ptr", &mut applicability).0;
+            let len = snippet_with_context(cx, len_arg.span, ctxt, "len", &mut applicability).0;
             span_lint_and_sugg(
                 cx,
                 CAST_SLICE_FROM_RAW_PARTS,

@@ -6,6 +6,8 @@ use crate::visitors::{for_each_expr, Descend};
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
+use rustc_ast::FormatArgs;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, LangItem, Node, QPath, TyKind};
 use rustc_lexer::unescape::unescape_literal;
@@ -15,8 +17,10 @@ use rustc_parse_format::{self as rpf, Alignment};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
+use std::cell::RefCell;
 use std::iter::{once, zip};
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::assert_eq_macro,
@@ -213,6 +217,7 @@ pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
     matches!(name, sym::assert_macro | sym::debug_assert_macro)
 }
 
+#[derive(Debug)]
 pub enum PanicExpn<'a> {
     /// No arguments - `panic!()`
     Empty,
@@ -226,10 +231,7 @@ pub enum PanicExpn<'a> {
 
 impl<'a> PanicExpn<'a> {
     pub fn parse(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Self> {
-        if !macro_backtrace(expr.span).any(|macro_call| is_panic(cx, macro_call.def_id)) {
-            return None;
-        }
-        let ExprKind::Call(callee, [arg]) = &expr.kind else { return None };
+        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else { return None };
         let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else { return None };
         let result = match path.segments.last().unwrap().ident.as_str() {
             "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
@@ -239,6 +241,21 @@ impl<'a> PanicExpn<'a> {
                 Self::Display(e)
             },
             "panic_fmt" => Self::Format(FormatArgsExpn::parse(cx, arg)?),
+            // Since Rust 1.52, `assert_{eq,ne}` macros expand to use:
+            // `core::panicking::assert_failed(.., left_val, right_val, None | Some(format_args!(..)));`
+            "assert_failed" => {
+                // It should have 4 arguments in total (we already matched with the first argument,
+                // so we're just checking for 3)
+                if rest.len() != 3 {
+                    return None;
+                }
+                // `msg_arg` is either `None` (no custom message) or `Some(format_args!(..))` (custom message)
+                let msg_arg = &rest[2];
+                match msg_arg.kind {
+                    ExprKind::Call(_, [fmt_arg]) => Self::Format(FormatArgsExpn::parse(cx, fmt_arg)?),
+                    _ => Self::Empty,
+                }
+            },
             _ => return None,
         };
         Some(result)
@@ -251,7 +268,17 @@ pub fn find_assert_args<'a>(
     expr: &'a Expr<'a>,
     expn: ExpnId,
 ) -> Option<(&'a Expr<'a>, PanicExpn<'a>)> {
-    find_assert_args_inner(cx, expr, expn).map(|([e], p)| (e, p))
+    find_assert_args_inner(cx, expr, expn).map(|([e], mut p)| {
+        // `assert!(..)` expands to `core::panicking::panic("assertion failed: ...")` (which we map to
+        // `PanicExpn::Str(..)`) and `assert!(.., "..")` expands to
+        // `core::panicking::panic_fmt(format_args!(".."))` (which we map to `PanicExpn::Format(..)`).
+        // So even we got `PanicExpn::Str(..)` that means there is no custom message provided
+        if let PanicExpn::Str(_) = p {
+            p = PanicExpn::Empty;
+        }
+
+        (e, p)
+    })
 }
 
 /// Finds the arguments of an `assert_eq!` or `debug_assert_eq!` macro call within the macro
@@ -275,13 +302,12 @@ fn find_assert_args_inner<'a, const N: usize>(
         Some(inner_name) => find_assert_within_debug_assert(cx, expr, expn, Symbol::intern(inner_name))?,
     };
     let mut args = ArrayVec::new();
-    let mut panic_expn = None;
-    let _: Option<!> = for_each_expr(expr, |e| {
+    let panic_expn = for_each_expr(expr, |e| {
         if args.is_full() {
-            if panic_expn.is_none() && e.span.ctxt() != expr.span.ctxt() {
-                panic_expn = PanicExpn::parse(cx, e);
+            match PanicExpn::parse(cx, e) {
+                Some(expn) => ControlFlow::Break(expn),
+                None => ControlFlow::Continue(Descend::Yes),
             }
-            ControlFlow::Continue(Descend::from(panic_expn.is_none()))
         } else if is_assert_arg(cx, e, expn) {
             args.push(e);
             ControlFlow::Continue(Descend::No)
@@ -337,6 +363,77 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
         ControlFlow::Break(is_assert_arg) => is_assert_arg,
         ControlFlow::Continue(()) => true,
     }
+}
+
+thread_local! {
+    /// We preserve the [`FormatArgs`] structs from the early pass for use in the late pass to be
+    /// able to access the many features of a [`LateContext`].
+    ///
+    /// A thread local is used because [`FormatArgs`] is `!Send` and `!Sync`, we are making an
+    /// assumption that the early pass the populates the map and the later late passes will all be
+    /// running on the same thread.
+    static AST_FORMAT_ARGS: RefCell<FxHashMap<Span, FormatArgs>> = {
+        static CALLED: AtomicBool = AtomicBool::new(false);
+        debug_assert!(
+            !CALLED.swap(true, Ordering::SeqCst),
+            "incorrect assumption: `AST_FORMAT_ARGS` should only be accessed by a single thread",
+        );
+
+        RefCell::default()
+    };
+}
+
+/// Record [`rustc_ast::FormatArgs`] for use in late lint passes, this should only be called by
+/// `FormatArgsCollector`
+pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
+    AST_FORMAT_ARGS.with(|ast_format_args| {
+        ast_format_args.borrow_mut().insert(span, format_args.clone());
+    });
+}
+
+/// Calls `callback` with an AST [`FormatArgs`] node if one is found
+pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId, callback: impl FnOnce(&FormatArgs)) {
+    let format_args_expr = for_each_expr(start, |expr| {
+        let ctxt = expr.span.ctxt();
+        if ctxt == start.span.ctxt() {
+            ControlFlow::Continue(Descend::Yes)
+        } else if ctxt.outer_expn().is_descendant_of(expn_id)
+            && macro_backtrace(expr.span)
+                .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
+                .any(|name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))
+        {
+            ControlFlow::Break(expr)
+        } else {
+            ControlFlow::Continue(Descend::No)
+        }
+    });
+
+    if let Some(format_args_expr) = format_args_expr {
+        AST_FORMAT_ARGS.with(|ast_format_args| {
+            ast_format_args.borrow().get(&format_args_expr.span).map(callback);
+        });
+    }
+}
+
+/// Returns the [`Span`] of the value at `index` extended to the previous comma, e.g. for the value
+/// `10`
+///
+/// ```ignore
+/// format("{}.{}", 10, 11)
+/// //            ^^^^
+/// ```
+pub fn format_arg_removal_span(format_args: &FormatArgs, index: usize) -> Option<Span> {
+    let ctxt = format_args.span.ctxt();
+
+    let current = hygiene::walk_chain(format_args.arguments.by_index(index)?.expr.span, ctxt);
+
+    let prev = if index == 0 {
+        format_args.span
+    } else {
+        hygiene::walk_chain(format_args.arguments.by_index(index - 1)?.expr.span, ctxt)
+    };
+
+    Some(current.with_lo(prev.hi()))
 }
 
 /// The format string doesn't exist in the HIR, so we reassemble it from source code

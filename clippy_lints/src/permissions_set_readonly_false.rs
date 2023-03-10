@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// let mut permissions = metadata.permissions();
     /// permissions.set_readonly(false);
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.68.0"]
     pub PERMISSIONS_SET_READONLY_FALSE,
     suspicious,
     "Checks for calls to `std::fs::Permissions.set_readonly` with argument `false`"
