@@ -8,12 +8,10 @@
 //!
 //! FIXME(@lcnr): Write that section, feel free to ping me if you need help here
 //! before then or if I still haven't done that before January 2023.
-use super::overflow::OverflowData;
 use super::StackDepth;
-use crate::solve::{CanonicalGoal, QueryResult};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::traits::solve::{CanonicalGoal, QueryResult};
 
 rustc_index::newtype_index! {
     pub struct EntryIndex {}
@@ -96,28 +94,5 @@ impl<'tcx> ProvisionalCache<'tcx> {
 
     pub(super) fn provisional_result(&self, entry_index: EntryIndex) -> QueryResult<'tcx> {
         self.entries[entry_index].response
-    }
-}
-
-pub(super) fn try_move_finished_goal_to_global_cache<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    overflow_data: &mut OverflowData,
-    stack: &IndexVec<super::StackDepth, super::StackElem<'tcx>>,
-    goal: CanonicalGoal<'tcx>,
-    response: QueryResult<'tcx>,
-) {
-    // We move goals to the global cache if we either did not hit an overflow or if it's
-    // the root goal as that will now always hit the same overflow limit.
-    //
-    // NOTE: We cannot move any non-root goals to the global cache even if their final result
-    // isn't impacted by the overflow as that goal still has unstable query dependencies
-    // because it didn't go its full depth.
-    //
-    // FIXME(@lcnr): We could still cache subtrees which are not impacted by overflow though.
-    // Tracking that info correctly isn't trivial, so I haven't implemented it for now.
-    let should_cache_globally = !overflow_data.did_overflow() || stack.is_empty();
-    if should_cache_globally {
-        // FIXME: move the provisional entry to the global cache.
-        let _ = (tcx, goal, response);
     }
 }

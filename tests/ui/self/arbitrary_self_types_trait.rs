@@ -1,4 +1,5 @@
 // run-pass
+#![allow(unused_allocation)]
 
 use std::rc::Rc;
 
@@ -13,7 +14,7 @@ impl Trait for Vec<i32> {
 }
 
 fn main() {
-    let v = vec![1,2,3];
+    let v = vec![1, 2, 3];
 
-    assert_eq!(&[1,2,3], Box::new(Rc::new(v)).trait_method());
+    assert_eq!(&[1, 2, 3], Box::new(Rc::new(v)).trait_method());
 }

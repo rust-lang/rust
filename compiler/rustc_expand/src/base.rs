@@ -12,13 +12,13 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
 };
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
@@ -947,14 +947,14 @@ pub trait ResolverExpand {
     fn declare_proc_macro(&mut self, id: NodeId);
 
     /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
-    fn registered_tools(&self) -> &FxHashSet<Ident>;
+    fn registered_tools(&self) -> &RegisteredTools;
 }
 
 pub trait LintStoreExpand {
     fn pre_expansion_lint(
         &self,
         sess: &Session,
-        registered_tools: &FxHashSet<Ident>,
+        registered_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[P<Item>],
