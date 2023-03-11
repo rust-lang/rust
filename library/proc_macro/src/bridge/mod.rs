@@ -94,7 +94,7 @@ macro_rules! with_api {
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
-                fn position($self: $S::Span) -> Range<u32>;
+                fn byte_range($self: $S::Span) -> Range<usize>;
                 fn start($self: $S::Span) -> LineColumn;
                 fn end($self: $S::Span) -> LineColumn;
                 fn before($self: $S::Span) -> $S::Span;
@@ -295,7 +295,6 @@ mark_noop! {
     &'_ str,
     String,
     u8,
-    u32,
     usize,
     Delimiter,
     LitKind,

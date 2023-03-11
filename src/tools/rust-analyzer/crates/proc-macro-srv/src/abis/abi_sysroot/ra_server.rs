@@ -298,7 +298,7 @@ impl server::Span for RustAnalyzer {
         // FIXME handle span
         span
     }
-    fn position(&mut self, _span: Self::Span) -> Range<u32> {
+    fn byte_range(&mut self, _span: Self::Span) -> Range<usize> {
         // FIXME handle span
         Range { start: 0, end: 0 }
     }

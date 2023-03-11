@@ -634,8 +634,8 @@ impl server::Span for Rustc<'_, '_> {
         span.source_callsite()
     }
 
-    fn position(&mut self, span: Self::Span) -> Range<u32> {
-        Range { start: span.lo().0, end: span.hi().0 }
+    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
+        Range { start: span.lo().0 as usize, end: span.hi().0 as usize }
     }
 
     fn start(&mut self, span: Self::Span) -> LineColumn {

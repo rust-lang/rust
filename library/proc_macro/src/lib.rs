@@ -490,8 +490,8 @@ impl Span {
 
     /// Returns the span's byte position range in the source file.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn position(&self) -> Range<u32> {
-        self.0.position()
+    pub fn byte_range(&self) -> Range<usize> {
+        self.0.byte_range()
     }
 
     /// Gets the starting line/column in the source file for this span.
