@@ -1,0 +1,10 @@
+error: expected identifier, found `1main`
+  --> $DIR/integer-literal-start-ident.rs:1:4
+   |
+LL | fn 1main() {}
+   |    ^^^^^ expected identifier
+   |
+   = help: identifiers cannot start with a number
+
+error: aborting due to previous error
+

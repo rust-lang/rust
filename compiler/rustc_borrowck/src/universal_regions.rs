@@ -312,6 +312,9 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Gets an iterator over all the early-bound regions that have names.
+    /// Iteration order may be unstable, so this should only be used when
+    /// iteration order doesn't affect anything
+    #[allow(rustc::potential_query_instability)]
     pub fn named_universal_regions<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {

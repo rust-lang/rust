@@ -1,9 +1,10 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Struct, Type};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
+    BaseTypeMethods,
     MiscMethods,
 };
 use rustc_data_structures::base_n;
@@ -11,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::span_bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
+use rustc_middle::ty::layout::{FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
 use rustc_span::{Span, source_map::respan};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
@@ -33,6 +34,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     // TODO(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
+    pub function_address_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
     pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
@@ -78,12 +80,10 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     pub struct_types: RefCell<FxHashMap<Vec<Type<'gcc>>, Type<'gcc>>>,
 
-    pub types_with_fields_to_set: RefCell<FxHashMap<Type<'gcc>, (Struct<'gcc>, TyAndLayout<'tcx>)>>,
-
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
-    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, RValue<'gcc>>>,
+    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
@@ -110,6 +110,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
+    pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
@@ -119,6 +120,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
+
+    pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -194,6 +197,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             context,
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
+            function_address_names: Default::default(),
             functions: RefCell::new(functions),
             intrinsics: RefCell::new(FxHashMap::default()),
 
@@ -243,11 +247,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             types: Default::default(),
             tcx,
             struct_types: Default::default(),
-            types_with_fields_to_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
+            rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
+            cleanup_blocks: Default::default(),
         }
     }
 
@@ -327,8 +332,9 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
         let func = get_fn(self, instance);
-        *self.current_func.borrow_mut() = Some(self.rvalue_as_function(func));
-        func
+        *self.current_func.borrow_mut() = Some(func);
+        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
+        unsafe { std::mem::transmute(func) }
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
@@ -339,8 +345,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.intrinsics.borrow()[func_name].clone()
             }
             else {
-                let func = get_fn(self, instance);
-                self.rvalue_as_function(func)
+                get_fn(self, instance)
             };
         let ptr = func.get_address(None);
 
@@ -348,6 +353,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // FIXME(antoyo): the rustc API seems to call get_fn_addr() when not needed (e.g. for FFI).
 
         self.normal_function_addresses.borrow_mut().insert(ptr);
+        self.function_address_names.borrow_mut().insert(ptr, func_name.to_string());
 
         ptr
     }
@@ -377,31 +383,40 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             return llpersonality;
         }
         let tcx = self.tcx;
-        let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    ty::List::empty(),
-                )
-                .unwrap().unwrap(),
-            ),
-            _ => {
-                let _name = if wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
-                //let func = self.declare_func(name, self.type_i32(), &[], true);
-                // FIXME(antoyo): this hack should not be needed. That will probably be removed when
-                // unwinding support is added.
-                self.context.new_rvalue_from_int(self.int_type, 0)
-            }
-        };
+        let func =
+            match tcx.lang_items().eh_personality() {
+                Some(def_id) if !wants_msvc_seh(self.sess()) => {
+                    let instance =
+                        ty::Instance::resolve(
+                            tcx,
+                            ty::ParamEnv::reveal_all(),
+                            def_id,
+                            ty::List::empty(),
+                        )
+                        .unwrap().unwrap();
+
+                    let symbol_name = tcx.symbol_name(instance).name;
+                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+                    self.linkage.set(FunctionType::Extern);
+                    let func = self.declare_fn(symbol_name, &fn_abi);
+                    let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
+                    func
+                },
+                _ => {
+                    let name =
+                        if wants_msvc_seh(self.sess()) {
+                            "__CxxFrameHandler3"
+                        }
+                        else {
+                            "rust_eh_personality"
+                        };
+                    let func = self.declare_func(name, self.type_i32(), &[], true);
+                    unsafe { std::mem::transmute(func) }
+                }
+            };
         // TODO(antoyo): apply target cpu attributes.
-        self.eh_personality.set(Some(llfn));
-        llfn
+        self.eh_personality.set(Some(func));
+        func
     }
 
     fn sess(&self) -> &Session {

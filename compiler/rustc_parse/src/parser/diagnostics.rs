@@ -8,14 +8,14 @@ use crate::errors::{
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentOnParamType,
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg, InInTypo,
-    IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, ParenthesesInForHead,
-    ParenthesesInForHeadSugg, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
-    SuggEscapeToUseAsIdentifier, SuggRemoveComma, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
+    IncorrectUseOfAwait, ParenthesesInForHead, ParenthesesInForHeadSugg,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
+    StructLiteralNeedingParensSugg, SuggEscapeToUseAsIdentifier, SuggRemoveComma,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
 };
 
 use crate::fluent_generated as fluent;
@@ -280,6 +280,7 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
+
         let suggest_raw = match self.token.ident() {
             Some((ident, false))
                 if ident.is_raw_guess()
@@ -295,18 +296,19 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let suggest_remove_comma =
-            if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                Some(SuggRemoveComma { span: self.token.span })
-            } else {
-                None
-            };
+        let suggest_remove_comma = (self.token == token::Comma
+            && self.look_ahead(1, |t| t.is_ident()))
+        .then_some(SuggRemoveComma { span: self.token.span });
+
+        let help_cannot_start_number =
+            self.is_lit_bad_ident().then_some(HelpIdentifierStartsWithNumber);
 
         let err = ExpectedIdentifier {
             span: self.token.span,
             token: self.token.clone(),
             suggest_raw,
             suggest_remove_comma,
+            help_cannot_start_number,
         };
         let mut err = err.into_diagnostic(&self.sess.span_diagnostic);
 
@@ -363,6 +365,17 @@ impl<'a> Parser<'a> {
         }
 
         err
+    }
+
+    /// Checks if the current token is a integer or float literal and looks like
+    /// it could be a invalid identifier with digits at the start.
+    pub(super) fn is_lit_bad_ident(&mut self) -> bool {
+        matches!(self.token.uninterpolate().kind, token::Literal(Lit { kind: token::LitKind::Integer | token::LitKind::Float, .. })
+            // ensure that the integer literal is followed by a *invalid*
+            // suffix: this is how we know that it is a identifier with an
+            // invalid beginning.
+            if rustc_ast::MetaItemLit::from_token(&self.token).is_none()
+        )
     }
 
     pub(super) fn expected_one_of_not_found(

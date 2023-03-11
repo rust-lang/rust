@@ -20,6 +20,7 @@ mod ops;
 mod pattern;
 mod slice;
 mod str;
+mod tuple;
 
 /// Returns a `rand::Rng` seeded with a consistent seed.
 ///

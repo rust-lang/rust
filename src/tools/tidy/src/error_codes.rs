@@ -46,8 +46,10 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
 
     // Stage 1: create list
     let error_codes = extract_error_codes(root_path, &mut errors);
-    println!("Found {} error codes", error_codes.len());
-    println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
+    if verbose {
+        println!("Found {} error codes", error_codes.len());
+        println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
+    }
 
     // Stage 2: check list has docs
     let no_longer_emitted = check_error_codes_docs(root_path, &error_codes, &mut errors, verbose);
@@ -127,7 +129,7 @@ fn check_error_codes_docs(
 
     let mut no_longer_emitted_codes = Vec::new();
 
-    walk(&docs_path, &mut |_| false, &mut |entry, contents| {
+    walk(&docs_path, |_| false, &mut |entry, contents| {
         let path = entry.path();
 
         // Error if the file isn't markdown.
@@ -319,7 +321,7 @@ fn check_error_codes_used(
 
     let mut found_codes = Vec::new();
 
-    walk_many(search_paths, &mut filter_dirs, &mut |entry, contents| {
+    walk_many(search_paths, filter_dirs, &mut |entry, contents| {
         let path = entry.path();
 
         // Return early if we aren't looking at a source file.

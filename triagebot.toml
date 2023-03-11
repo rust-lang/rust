@@ -451,6 +451,10 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
+[mentions."compiler/rustc_smir"]
+message = "This PR changes Stable MIR"
+cc = ["@oli-obk", "@celinval"]
+
 [mentions."compiler/rustc_target/src/spec"]
 message = """
 These commits modify **compiler targets**.
@@ -470,6 +474,11 @@ If this was intentional then you can ignore this comment.
 
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
+
+[mentions."src/bootstrap/defaults/config.compiler.toml"]
+message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
+[mentions."src/bootstrap/defaults/config.codegen.toml"]
+message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
 
 [assign]
 warn_non_default_branch = true

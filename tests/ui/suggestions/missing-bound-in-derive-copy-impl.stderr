@@ -1,4 +1,4 @@
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/missing-bound-in-derive-copy-impl.rs:9:17
    |
 LL | #[derive(Debug, Copy, Clone)]
@@ -6,16 +6,12 @@ LL | #[derive(Debug, Copy, Clone)]
 LL | pub struct AABB<K>{
 LL |     pub loc: Vector2<K>,
    |     ------------------- this field does not implement `Copy`
-LL |     pub size: Vector2<K>
-   |     -------------------- this field does not implement `Copy`
    |
 note: the `Copy` impl for `Vector2<K>` requires that `K: Debug`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:11:14
    |
 LL |     pub loc: Vector2<K>,
    |              ^^^^^^^^^^
-LL |     pub size: Vector2<K>
-   |               ^^^^^^^^^^
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K`
    |

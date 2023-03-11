@@ -8,7 +8,7 @@ union U {
 }
 
 union W {
-    a: String, //~ ERROR unions cannot contain fields that may need dropping
+    a: String, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     b: String, // OK, only one field is reported
 }
 
@@ -16,12 +16,12 @@ struct S(String);
 
 // `S` doesn't implement `Drop` trait, but still has non-trivial destructor
 union Y {
-    a: S, //~ ERROR unions cannot contain fields that may need dropping
+    a: S, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 // We don't know if `T` is trivially-destructable or not until trans
 union J<T> {
-    a: T, //~ ERROR unions cannot contain fields that may need dropping
+    a: T, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
 }
 
 union H<T: Copy> {

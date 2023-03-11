@@ -79,6 +79,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
+            // Only relevant for unsafeck
+            | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
             // Does not actually affect borrowck
@@ -117,15 +119,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
-            }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(location, *drop_place, Deep);
-                self.consume_operand(location, new_value);
             }
             TerminatorKind::Call {
                 func,

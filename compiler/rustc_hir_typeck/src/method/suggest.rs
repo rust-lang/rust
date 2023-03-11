@@ -42,7 +42,7 @@ use rustc_trait_selection::traits::{
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -346,6 +346,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
+        }
+
+        if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
+            err.help(&format!(
+                "method `poll` found on `Pin<&mut {ty_str}>`, \
+                see documentation for `std::pin::Pin`"
+            ));
+            err.help("self type must be pinned to call `Future::poll`, \
+                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+            );
         }
 
         if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
@@ -2517,7 +2527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
-            candidates.sort_by(|a, b| a.cmp(b).reverse());
+            candidates.sort_by_key(|&info| cmp::Reverse(info));
             candidates.dedup();
 
             let param_type = match rcvr_ty.kind() {

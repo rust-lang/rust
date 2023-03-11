@@ -133,7 +133,6 @@ pub enum AnalysisPhase {
 pub enum RuntimePhase {
     /// In addition to the semantic changes, beginning with this phase, the following variants are
     /// disallowed:
-    /// * [`TerminatorKind::DropAndReplace`]
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::GeneratorDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
@@ -325,6 +324,15 @@ pub enum StatementKind<'tcx> {
     ///
     /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
+
+    /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
+    /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
+    /// `PlaceMention(PLACE)`.
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
+    PlaceMention(Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -595,43 +603,6 @@ pub enum TerminatorKind<'tcx> {
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
     Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
-
-    /// Drops the place and assigns a new value to it.
-    ///
-    /// This first performs the exact same operation as the pre drop-elaboration `Drop` terminator;
-    /// it then additionally assigns the `value` to the `place` as if by an assignment statement.
-    /// This assignment occurs both in the unwind and the regular code paths. The semantics are best
-    /// explained by the elaboration:
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
-    /// }
-    /// ```
-    ///
-    /// becomes
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   Drop(P, goto BB1, unwind BB2)
-    /// }
-    /// BB1 {
-    ///   // P is now uninitialized
-    ///   P <- V
-    /// }
-    /// BB2 {
-    ///   // P is now uninitialized -- its dtor panicked
-    ///   P <- V
-    /// }
-    /// ```
-    ///
-    /// Disallowed after drop elaboration.
-    DropAndReplace {
-        place: Place<'tcx>,
-        value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.

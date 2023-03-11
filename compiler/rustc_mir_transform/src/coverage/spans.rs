@@ -832,6 +832,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
         | StatementKind::Retag(_, _)
+        | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)
         }
@@ -850,7 +851,6 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
         TerminatorKind::Unreachable // Unreachable blocks are not connected to the MIR CFG
         | TerminatorKind::Assert { .. }
         | TerminatorKind::Drop { .. }
-        | TerminatorKind::DropAndReplace { .. }
         | TerminatorKind::SwitchInt { .. }
         // For `FalseEdge`, only the `real` branch is taken, so it is similar to a `Goto`.
         | TerminatorKind::FalseEdge { .. }

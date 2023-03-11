@@ -1736,7 +1736,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
         let name = path[path.len() - 1].ident.name;
         // Make sure error reporting is deterministic.
-        names.sort_by(|a, b| a.candidate.as_str().partial_cmp(b.candidate.as_str()).unwrap());
+        names.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
 
         match find_best_match_for_name(
             &names.iter().map(|suggestion| suggestion.candidate).collect::<Vec<Symbol>>(),

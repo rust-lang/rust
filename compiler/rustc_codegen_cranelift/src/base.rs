@@ -499,7 +499,6 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::GeneratorDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
@@ -820,6 +819,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
+        | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),

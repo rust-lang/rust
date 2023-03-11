@@ -41,7 +41,7 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -50,7 +50,9 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, DocLinkResMap};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::def_id::{
+    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet,
+};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};

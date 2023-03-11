@@ -1,4 +1,4 @@
-error[E0204]: the trait `Copy` may not be implemented for this type
+error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/range_traits-2.rs:3:10
    |
 LL | #[derive(Copy, Clone)]

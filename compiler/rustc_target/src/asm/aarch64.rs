@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -80,7 +80,7 @@ pub fn target_reserves_x18(target: &Target) -> bool {
 fn reserved_x18(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {

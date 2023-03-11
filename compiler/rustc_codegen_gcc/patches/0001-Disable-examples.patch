@@ -1,0 +1,25 @@
+From a2d53a324a02c04b76c0e9d39dc15cd443a3b8b2 Mon Sep 17 00:00:00 2001
+From: Antoni Boucher <bouanto@zoho.com>
+Date: Fri, 25 Nov 2022 11:18:11 -0500
+Subject: [PATCH] Disable examples
+
+---
+ library/stdarch/Cargo.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/library/stdarch/Cargo.toml b/library/stdarch/Cargo.toml
+index fbe0a95..748d72d 100644
+--- a/library/stdarch/Cargo.toml
++++ b/library/stdarch/Cargo.toml
+@@ -3,7 +3,7 @@ members = [
+   "crates/core_arch",
+   "crates/std_detect",
+   "crates/stdarch-gen",
+-  "examples/"
++  #"examples/"
+ ]
+ exclude = [
+   "crates/wasm-assert-instr-tests"
+-- 
+2.26.2.7.g19db9cfb68.dirty
+

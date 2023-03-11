@@ -1,3 +1,5 @@
+#[cfg(feature="master")]
+use gccjit::FnAttribute;
 use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
@@ -50,7 +52,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         let func = context.new_function(None, FunctionType::Exported, output.unwrap_or(void), &args, name, false);
 
         if tcx.sess.target.options.default_hidden_visibility {
-            // TODO(antoyo): set visibility.
+            #[cfg(feature="master")]
+            func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
         }
         if tcx.sess.must_emit_unwind_tables() {
             // TODO(antoyo): emit unwind tables.
@@ -61,7 +64,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
             .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
             .collect();
         let callee = context.new_function(None, FunctionType::Extern, output.unwrap_or(void), &args, callee, false);
-        // TODO(antoyo): set visibility.
+        #[cfg(feature="master")]
+        callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
 
         let block = func.new_block("entry");
 
@@ -90,12 +94,18 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         .collect();
     let func = context.new_function(None, FunctionType::Exported, void, &args, name, false);
 
+    if tcx.sess.target.default_hidden_visibility {
+        #[cfg(feature="master")]
+        func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+    }
+
     let callee = alloc_error_handler_kind.fn_name(sym::oom);
     let args: Vec<_> = types.iter().enumerate()
         .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
         .collect();
     let callee = context.new_function(None, FunctionType::Extern, void, &args, callee, false);
-    //llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+    #[cfg(feature="master")]
+    callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
 
     let block = func.new_block("entry");
 

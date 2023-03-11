@@ -1695,7 +1695,13 @@ impl<T> [T] {
         let ptr = self.as_ptr();
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
+        unsafe {
+            assert_unsafe_precondition!(
+                "slice::split_at_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
+            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid))
+        }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.

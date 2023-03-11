@@ -91,7 +91,6 @@ fn main() {
 
         // Checks that need to be done for both the compiler and std libraries.
         check!(unit_tests, &src_path);
-        check!(unit_tests, &tests_path);
         check!(unit_tests, &compiler_path);
         check!(unit_tests, &library_path);
 
@@ -107,7 +106,6 @@ fn main() {
         check!(edition, &src_path);
         check!(edition, &compiler_path);
         check!(edition, &library_path);
-        check!(edition, &tests_path);
 
         check!(alphabetical, &src_path);
         check!(alphabetical, &tests_path);

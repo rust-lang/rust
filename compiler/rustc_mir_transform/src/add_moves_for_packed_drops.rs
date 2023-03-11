@@ -64,9 +64,6 @@ fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) 
             {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
             }
-            TerminatorKind::DropAndReplace { .. } => {
-                span_bug!(terminator.source_info.span, "replace in AddMovesForPackedDrops");
-            }
             _ => {}
         }
     }

@@ -101,7 +101,7 @@ pub fn check(
             &tests_path.join("rustdoc-ui"),
             &tests_path.join("rustdoc"),
         ],
-        &mut filter_dirs,
+        filter_dirs,
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
@@ -219,8 +219,6 @@ pub fn check(
         for line in lines {
             println!("* {line}");
         }
-    } else {
-        println!("* {} features", features.len());
     }
 
     CollectedFeatures { lib: lib_features, lang: features }
@@ -477,11 +475,11 @@ fn get_and_check_lib_features(
 
 fn map_lib_features(
     base_src_path: &Path,
-    mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize),
+    mf: &mut (dyn Send + Sync + FnMut(Result<(&str, Feature), &str>, &Path, usize)),
 ) {
     walk(
         base_src_path,
-        &mut |path| filter_dirs(path) || path.ends_with("tests"),
+        |path| filter_dirs(path) || path.ends_with("tests"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();

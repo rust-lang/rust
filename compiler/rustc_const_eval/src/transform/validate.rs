@@ -72,6 +72,17 @@ impl<'tcx> MirPass<'tcx> for Validator {
         };
         checker.visit_body(body);
         checker.check_cleanup_control_flow();
+
+        if let MirPhase::Runtime(_) = body.phase {
+            if let ty::InstanceDef::Item(_) = body.source.instance {
+                if body.has_free_regions() {
+                    checker.fail(
+                        Location::START,
+                        format!("Free regions in optimized {} MIR", body.phase.name()),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -668,6 +679,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
+            StatementKind::PlaceMention(..) => {
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`PlaceMention` should have been removed after drop lowering phase",
+                    );
+                }
+            }
             StatementKind::AscribeUserType(..) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -830,18 +849,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
-                self.check_edge(location, *target, EdgeKind::Normal);
-                if let Some(unwind) = unwind {
-                    self.check_edge(location, *unwind, EdgeKind::Unwind);
-                }
-            }
-            TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`DropAndReplace` should have been removed during drop elaboration",
-                    );
-                }
                 self.check_edge(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);

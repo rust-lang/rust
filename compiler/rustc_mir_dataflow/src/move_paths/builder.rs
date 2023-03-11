@@ -329,6 +329,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
@@ -390,11 +391,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
                 self.gather_operand(value);
                 self.create_move_path(place);
-                self.gather_init(place.as_ref(), InitKind::Deep);
-            }
-            TerminatorKind::DropAndReplace { place, ref value, .. } => {
-                self.create_move_path(place);
-                self.gather_operand(value);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {

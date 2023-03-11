@@ -209,6 +209,7 @@ fn test_ceil() {
 
 #[test]
 fn test_round() {
+    assert_approx_eq!(2.5f32.round(), 3.0f32);
     assert_approx_eq!(1.0f32.round(), 1.0f32);
     assert_approx_eq!(1.3f32.round(), 1.0f32);
     assert_approx_eq!(1.5f32.round(), 2.0f32);
@@ -219,6 +220,21 @@ fn test_round() {
     assert_approx_eq!((-1.3f32).round(), -1.0f32);
     assert_approx_eq!((-1.5f32).round(), -2.0f32);
     assert_approx_eq!((-1.7f32).round(), -2.0f32);
+}
+
+#[test]
+fn test_round_ties_even() {
+    assert_approx_eq!(2.5f32.round_ties_even(), 2.0f32);
+    assert_approx_eq!(1.0f32.round_ties_even(), 1.0f32);
+    assert_approx_eq!(1.3f32.round_ties_even(), 1.0f32);
+    assert_approx_eq!(1.5f32.round_ties_even(), 2.0f32);
+    assert_approx_eq!(1.7f32.round_ties_even(), 2.0f32);
+    assert_approx_eq!(0.0f32.round_ties_even(), 0.0f32);
+    assert_approx_eq!((-0.0f32).round_ties_even(), -0.0f32);
+    assert_approx_eq!((-1.0f32).round_ties_even(), -1.0f32);
+    assert_approx_eq!((-1.3f32).round_ties_even(), -1.0f32);
+    assert_approx_eq!((-1.5f32).round_ties_even(), -2.0f32);
+    assert_approx_eq!((-1.7f32).round_ties_even(), -2.0f32);
 }
 
 #[test]

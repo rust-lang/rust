@@ -26,7 +26,6 @@ Therefore, you can build Rust with support for the target by adding it to the ta
 ```toml
 [llvm]
 download-ci-llvm = false
-skip-rebuild = true
 optimize = true
 ninja = true
 targets = "ARM;X86"

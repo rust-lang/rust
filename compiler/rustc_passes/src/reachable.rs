@@ -5,7 +5,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc_data_structures::fx::FxHashSet;
+use hir::def_id::LocalDefIdSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -63,7 +63,7 @@ struct ReachableContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: FxHashSet<LocalDefId>,
+    reachable_symbols: LocalDefIdSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     // FIXME(eddyb) benchmark if this would be faster as a `VecDeque`.
@@ -175,7 +175,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&mut self) {
-        let mut scanned = FxHashSet::default();
+        let mut scanned = LocalDefIdSet::default();
         while let Some(search_item) = self.worklist.pop() {
             if !scanned.insert(search_item) {
                 continue;
@@ -361,7 +361,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
 }
 
-fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
+fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
     let any_library =

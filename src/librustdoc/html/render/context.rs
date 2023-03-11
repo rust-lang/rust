@@ -600,9 +600,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
-        if shared.cache.crate_version.is_some() {
-            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
-        };
+        write!(sidebar, "<h2 class=\"location\"><a href=\"#\">Crate {}</a></h2>", crate_name);
 
         let mut items = Buffer::html();
         sidebar_module_like(&mut items, all.item_sections());
@@ -649,11 +647,35 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </noscript>\
                      <link rel=\"stylesheet\" \
                          href=\"{static_root_path}{settings_css}\">\
-                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_light_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_dark_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_ayu_css}\" \
+                         as=\"style\">",
                     static_root_path = page.get_static_root_path(),
                     settings_css = static_files::STATIC_FILES.settings_css,
                     settings_js = static_files::STATIC_FILES.settings_js,
-                )
+                    theme_light_css = static_files::STATIC_FILES.theme_light_css,
+                    theme_dark_css = static_files::STATIC_FILES.theme_dark_css,
+                    theme_ayu_css = static_files::STATIC_FILES.theme_ayu_css,
+                );
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in &shared.style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        );
+                    }
+                }
             },
             &shared.style_files,
         );

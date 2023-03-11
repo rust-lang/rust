@@ -1007,7 +1007,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }

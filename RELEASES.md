@@ -1,3 +1,99 @@
+Version 1.68.0 (2023-03-09)
+==========================
+
+<a id="1.68.0-Language"></a>
+
+Language
+--------
+
+- [Stabilize default_alloc_error_handler](https://github.com/rust-lang/rust/pull/102318/)
+  This allows usage of `alloc` on stable without requiring the 
+  definition of a handler for allocation failure. Defining custom handlers is still unstable.
+- [Stabilize `efiapi` calling convention.](https://github.com/rust-lang/rust/pull/105795/)
+- [Remove implicit promotion for types with drop glue](https://github.com/rust-lang/rust/pull/105085/)
+
+<a id="1.68.0-Compiler"></a>
+
+Compiler
+--------
+
+- [Change `bindings_with_variant_name` to deny-by-default](https://github.com/rust-lang/rust/pull/104154/)
+- [Allow .. to be parsed as let initializer](https://github.com/rust-lang/rust/pull/105701/)
+- [Add `armv7-sony-vita-newlibeabihf` as a tier 3 target](https://github.com/rust-lang/rust/pull/105712/)
+- [Always check alignment during compile-time const evaluation](https://github.com/rust-lang/rust/pull/104616/)
+- [Disable "split dwarf inlining" by default.](https://github.com/rust-lang/rust/pull/106709/)
+- [Add vendor to Fuchsia's target triple](https://github.com/rust-lang/rust/pull/106429/)
+- [Enable sanitizers for s390x-linux](https://github.com/rust-lang/rust/pull/107127/)
+
+<a id="1.68.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Loosen the bound on the Debug implementation of Weak.](https://github.com/rust-lang/rust/pull/90291/)
+- [Make `std::task::Context` !Send and !Sync](https://github.com/rust-lang/rust/pull/95985/)
+- [PhantomData layout guarantees](https://github.com/rust-lang/rust/pull/104081/)
+- [Don't derive Debug for `OnceWith` & `RepeatWith`](https://github.com/rust-lang/rust/pull/104163/)
+- [Implement DerefMut for PathBuf](https://github.com/rust-lang/rust/pull/105018/)
+- [Add O(1) `Vec -> VecDeque` conversion guarantee](https://github.com/rust-lang/rust/pull/105128/)
+- [Leak amplification for peek_mut() to ensure BinaryHeap's invariant is always met](https://github.com/rust-lang/rust/pull/105851/)
+
+<a id="1.68.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`{core,std}::pin::pin!`](https://doc.rust-lang.org/stable/std/pin/macro.pin.html)
+- [`impl From<bool> for {f32,f64}`](https://doc.rust-lang.org/stable/std/primitive.f32.html#impl-From%3Cbool%3E-for-f32)
+- [`std::path::MAIN_SEPARATOR_STR`](https://doc.rust-lang.org/stable/std/path/constant.MAIN_SEPARATOR_STR.html)
+- [`impl DerefMut for PathBuf`](https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#impl-DerefMut-for-PathBuf)
+
+These APIs are now stable in const contexts:
+
+- [`VecDeque::new`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.new)
+
+<a id="1.68.0-Cargo"></a>
+
+Cargo
+-----
+
+- [Stabilize sparse registry support for crates.io](https://github.com/rust-lang/cargo/pull/11224/)
+- [`cargo build --verbose` tells you more about why it recompiles.](https://github.com/rust-lang/cargo/pull/11407/)
+- [Show progress of crates.io index update even `net.git-fetch-with-cli` option enabled](https://github.com/rust-lang/cargo/pull/11579/)
+
+<a id="1.68.0-Misc"></a>
+
+Misc
+----
+
+<a id="1.68.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+
+- [Add `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` to future-incompat report](https://github.com/rust-lang/rust/pull/103418/)
+- [Only specify `--target` by default for `-Zgcc-ld=lld` on wasm](https://github.com/rust-lang/rust/pull/101792/)
+- [Bump `IMPLIED_BOUNDS_ENTAILMENT` to Deny + ReportNow](https://github.com/rust-lang/rust/pull/106465/)
+- [`std::task::Context` no longer implements Send and Sync](https://github.com/rust-lang/rust/pull/95985)
+
+<a id="1.68.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Encode spans relative to the enclosing item](https://github.com/rust-lang/rust/pull/84762/)
+- [Don't normalize in AstConv](https://github.com/rust-lang/rust/pull/101947/)
+- [Find the right lower bound region in the scenario of partial order relations](https://github.com/rust-lang/rust/pull/104765/)
+- [Fix impl block in const expr](https://github.com/rust-lang/rust/pull/104889/)
+- [Check ADT fields for copy implementations considering regions](https://github.com/rust-lang/rust/pull/105102/)
+- [rustdoc: simplify JS search routine by not messing with lev distance](https://github.com/rust-lang/rust/pull/105796/)
+- [Enable ThinLTO for rustc on `x86_64-pc-windows-msvc`](https://github.com/rust-lang/rust/pull/103591/)
+- [Enable ThinLTO for rustc on `x86_64-apple-darwin`](https://github.com/rust-lang/rust/pull/103647/)
+
 Version 1.67.1 (2023-02-09)
 ===========================
 
@@ -3765,6 +3861,8 @@ Version 1.41.1 (2020-02-27)
 * [Always check types of static items][69145]
 * [Always check lifetime bounds of `Copy` impls][69145]
 * [Fix miscompilation in callers of `Layout::repeat`][69225]
+* [Rust 1.41.0 was announced as the last Rust release with tier 1 or tier 2 support for 32-bit Apple targets][apple-32bit-drop].
+  That announcement did not expect a patch release. 1.41.1 also includes release binaries for these targets.
 
 [69225]: https://github.com/rust-lang/rust/issues/69225
 [69145]: https://github.com/rust-lang/rust/pull/69145
@@ -3857,7 +3955,7 @@ Misc
 Compatibility Notes
 -------------------
 
-- [As previously announced 1.41.0 will be the last tier 1 release for 32-bit
+- [As previously announced 1.41 will be the last tier 1 release for 32-bit
   Apple targets.][apple-32bit-drop] This means that the source code is still
   available to build, but the targets are no longer being tested and release
   binaries for those platforms will no longer be distributed by the Rust project.

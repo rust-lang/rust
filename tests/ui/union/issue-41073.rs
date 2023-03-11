@@ -1,5 +1,5 @@
 union Test {
-    a: A, //~ ERROR unions cannot contain fields that may need dropping
+    a: A, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     b: B
 }
 

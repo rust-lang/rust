@@ -1,7 +1,6 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, TyCtxt};
@@ -97,7 +96,7 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems {
     }
 }
 
-fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId, DefId> {
+fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId> {
     tcx.associated_items(impl_id)
         .in_definition_order()
         .filter_map(|item| item.trait_item_def_id.map(|trait_item| (trait_item, item.def_id)))

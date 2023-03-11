@@ -983,7 +983,12 @@ impl<'test> TestCx<'test> {
                 &["-quiet".as_ref(), "-batch".as_ref(), "-nx".as_ref(), &debugger_script];
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-            gdb.args(debugger_opts).env("PYTHONPATH", rust_pp_module_abs_path);
+            let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
+                format!("{pp}:{rust_pp_module_abs_path}")
+            } else {
+                rust_pp_module_abs_path
+            };
+            gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
                 self.compose_and_run(gdb, self.config.run_lib_path.to_str().unwrap(), None, None);
@@ -1149,13 +1154,18 @@ impl<'test> TestCx<'test> {
     ) -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
+        let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
+            format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
+        } else {
+            self.config.lldb_python_dir.as_ref().unwrap().to_string()
+        };
         self.cmd2procres(
             Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
                 .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
-                .env("PYTHONPATH", self.config.lldb_python_dir.as_ref().unwrap()),
+                .env("PYTHONPATH", pythonpath),
         )
     }
 

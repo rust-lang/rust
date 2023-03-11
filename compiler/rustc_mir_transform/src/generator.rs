@@ -1199,7 +1199,6 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
             // These may unwind.
             TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
@@ -1648,6 +1647,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
@@ -1691,7 +1691,6 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
@@ -1872,12 +1871,14 @@ fn check_must_not_suspend_def(
     data: SuspendCheckData<'_>,
 ) -> bool {
     if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let msg = format!(
-            "{}`{}`{} held across a suspend point, but should not be",
-            data.descr_pre,
-            tcx.def_path_str(def_id),
-            data.descr_post,
-        );
+        let msg = rustc_errors::DelayDm(|| {
+            format!(
+                "{}`{}`{} held across a suspend point, but should not be",
+                data.descr_pre,
+                tcx.def_path_str(def_id),
+                data.descr_post,
+            )
+        });
         tcx.struct_span_lint_hir(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,

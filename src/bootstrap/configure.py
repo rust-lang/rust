@@ -44,7 +44,6 @@ o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current
 o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM")
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
-o("llvm-version-check", "llvm.version-check", "check if the LLVM version is supported, build anyway")
 o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
 o("option-checking", None, "complain about unrecognized options in this configure script")
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")

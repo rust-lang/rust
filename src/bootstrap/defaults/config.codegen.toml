@@ -17,3 +17,5 @@ debug-logging = true
 incremental = true
 # Print backtrace on internal compiler errors during bootstrap
 backtrace-on-ice = true
+# Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
+lto = "off"
