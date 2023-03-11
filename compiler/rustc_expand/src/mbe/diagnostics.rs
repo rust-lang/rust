@@ -1,12 +1,10 @@
-use std::borrow::Cow;
-
 use crate::base::{DummyResult, ExtCtxt, MacResult};
 use crate::expand::{parse_ast_fragment, AstFragmentKind};
 use crate::mbe::{
     macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
     macro_rules::{try_match_macro, Tracker},
 };
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage};
@@ -14,6 +12,7 @@ use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use std::borrow::Cow;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
 
@@ -61,6 +60,13 @@ pub(super) fn failed_to_match_macro<'cx>(
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
     } else {
         err.note(format!("while trying to match {remaining_matcher}"));
+    }
+
+    if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
+        && (matches!(expected_token.kind, TokenKind::Interpolated(_))
+            || matches!(token.kind, TokenKind::Interpolated(_)))
+    {
+        err.note("captured metavariables except for `$tt`, `$ident` and `$lifetime` cannot be compared to other tokens");
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`

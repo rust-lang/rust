@@ -1,8 +1,8 @@
 // ignore-wasm32
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
-// normalize-stderr-test: "__FastLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
-// normalize-stderr-test: "__OsLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
+// normalize-stderr-test: "__LocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
+// normalize-stderr-test: "__LocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
 #![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
@@ -12,10 +12,10 @@ type Foo = std::cell::RefCell<String>;
 
 #[cfg(target_thread_local)]
 #[thread_local]
-static __KEY: std::thread::__FastLocalKeyInner<Foo> = std::thread::__FastLocalKeyInner::new();
+static __KEY: std::thread::__LocalKeyInner<Foo> = std::thread::__LocalKeyInner::new();
 
 #[cfg(not(target_thread_local))]
-static __KEY: std::thread::__OsLocalKeyInner<Foo> = std::thread::__OsLocalKeyInner::new();
+static __KEY: std::thread::__LocalKeyInner<Foo> = std::thread::__LocalKeyInner::new();
 
 fn __getit(_: Option<&mut Option<RefCell<String>>>) -> std::option::Option<&'static Foo> {
     __KEY.get(Default::default)

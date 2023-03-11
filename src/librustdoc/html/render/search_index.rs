@@ -40,6 +40,7 @@ pub(crate) fn build_index<'tcx>(
                 parent_idx: None,
                 search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
+                deprecation: item.deprecation(tcx),
             });
         }
     }
@@ -251,7 +252,17 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "q",
-                &self.items.iter().map(|item| &item.path).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of item indices and full paths
+                    .filter_map(
+                        |(index, item)| {
+                            if item.path.is_empty() { None } else { Some((index, &item.path)) }
+                        },
+                    )
+                    .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "d",
@@ -302,6 +313,16 @@ pub(crate) fn build_index<'tcx>(
                             None => FunctionOption::None,
                         }
                     })
+                    .collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "c",
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of deprecated item indices
+                    .filter_map(|(index, item)| item.deprecation.map(|_| index))
                     .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(

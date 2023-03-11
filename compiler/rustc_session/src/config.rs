@@ -1137,7 +1137,7 @@ impl CrateCheckConfig {
     }
 
     /// Fills a `CrateCheckConfig` with well-known configuration values.
-    fn fill_well_known_values(&mut self) {
+    fn fill_well_known_values(&mut self, current_target: &Target) {
         if !self.well_known_values {
             return;
         }
@@ -1229,6 +1229,7 @@ impl CrateCheckConfig {
             for target in TARGETS
                 .iter()
                 .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+                .chain(iter::once(current_target.clone()))
             {
                 values_target_os.insert(Symbol::intern(&target.options.os));
                 values_target_family
@@ -1243,9 +1244,9 @@ impl CrateCheckConfig {
         }
     }
 
-    pub fn fill_well_known(&mut self) {
+    pub fn fill_well_known(&mut self, current_target: &Target) {
         self.fill_well_known_names();
-        self.fill_well_known_values();
+        self.fill_well_known_values(current_target);
     }
 }
 
