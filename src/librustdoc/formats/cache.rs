@@ -346,6 +346,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                     self.cache,
                                 ),
                                 aliases: item.attrs.get_doc_aliases(),
+                                deprecation: item.deprecation(self.tcx),
                             });
                         }
                     }
