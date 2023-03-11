@@ -311,8 +311,11 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
-        debug_assert!(self.tcx.is_some(), "missing TyCtxt in DecodeContext");
-        self.tcx.unwrap()
+        let Some(tcx) = self.tcx else {
+            bug!("No TyCtxt found for decoding. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
+        tcx
     }
 
     #[inline]
@@ -454,7 +457,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
         let cdata = decoder.cdata();
-        let sess = decoder.sess.unwrap();
+
+        let Some(sess) = decoder.sess else {
+            bug!("Cannot decode SyntaxContext without Session.\
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
+
         let cname = cdata.root.name;
         rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
@@ -471,7 +479,11 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> ExpnId {
         let local_cdata = decoder.cdata();
-        let sess = decoder.sess.unwrap();
+
+        let Some(sess) = decoder.sess else {
+            bug!("Cannot decode ExpnId without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
 
         let cnum = CrateNum::decode(decoder);
         let index = u32::decode(decoder);
@@ -520,7 +532,8 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
-            bug!("Cannot decode Span without Session.")
+            bug!("Cannot decode Span without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.")
         };
 
         // Index of the file in the corresponding crate's list of encoded files.
