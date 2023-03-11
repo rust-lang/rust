@@ -331,6 +331,7 @@ fn run_compiler(
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
+                        tcx.ensure().early_lint_checks(());
                         pretty::print_after_hir_lowering(tcx, *ppm);
                         Ok(())
                     })?;

@@ -128,7 +128,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.resolutions(()).registered_tools,
+        registered_tools: &tcx.registered_tools(()),
     };
 
     builder.add_command_line();
@@ -156,7 +156,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.resolutions(()).registered_tools,
+        registered_tools: &tcx.registered_tools(()),
     };
 
     if owner == hir::CRATE_OWNER_ID {
