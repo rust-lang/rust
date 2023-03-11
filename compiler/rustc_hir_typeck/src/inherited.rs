@@ -4,7 +4,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
-use rustc_infer::infer;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -73,40 +72,16 @@ impl<'tcx> Deref for Inherited<'tcx> {
     }
 }
 
-/// A temporary returned by `Inherited::build(...)`. This is necessary
-/// for multiple `InferCtxt` to share the same `typeck_results`
-/// without using `Rc` or something similar.
-pub struct InheritedBuilder<'tcx> {
-    infcx: infer::InferCtxtBuilder<'tcx>,
-    typeck_results: RefCell<ty::TypeckResults<'tcx>>,
-}
-
 impl<'tcx> Inherited<'tcx> {
-    pub fn build(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> InheritedBuilder<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
-        InheritedBuilder {
-            infcx: tcx
-                .infer_ctxt()
-                .ignoring_regions()
-                .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)),
-            typeck_results: RefCell::new(ty::TypeckResults::new(hir_owner)),
-        }
-    }
-}
-
-impl<'tcx> InheritedBuilder<'tcx> {
-    pub fn enter<F, R>(mut self, f: F) -> R
-    where
-        F: FnOnce(&Inherited<'tcx>) -> R,
-    {
-        f(&Inherited::new(self.infcx.build(), self.typeck_results))
-    }
-}
-
-impl<'tcx> Inherited<'tcx> {
-    fn new(infcx: InferCtxt<'tcx>, typeck_results: RefCell<ty::TypeckResults<'tcx>>) -> Self {
-        let tcx = infcx.tcx;
+        let infcx = tcx
+            .infer_ctxt()
+            .ignoring_regions()
+            .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
+            .build();
+        let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         Inherited {
             typeck_results,
