@@ -21,7 +21,7 @@ impl<T> Key<T> {
 }
 
 #[cfg(target_thread_local)]
-use std::thread::__FastLocalKeyInner as Key;
+use std::thread::__LocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
 //~^ ERROR `UnsafeCell<Option<()>>` cannot be shared between threads
