@@ -2,9 +2,7 @@
 // error-pattern:so long
 // ignore-emscripten no processes
 
-#![allow(unused_allocation)]
 #![allow(unreachable_code)]
-#![allow(unused_variables)]
 
 fn main() {
     let mut x = Vec::new();
