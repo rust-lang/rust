@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
-use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
+use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_applicability};
 use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind};
@@ -24,21 +23,25 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = peel_blocks(arms[0].body);
-    let mut snippet_body = if match_body.span.from_expansion() {
-        Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
-    } else {
-        snippet_block(cx, match_body.span, "..", Some(expr.span)).to_string()
-    };
+    let mut app = Applicability::MaybeIncorrect;
+    let (snippet_body, from_macro) = snippet_block_with_context(
+        cx,
+        match_body.span,
+        arms[0].span.ctxt(),
+        "..",
+        Some(expr.span),
+        &mut app,
+    );
+    let mut snippet_body = snippet_body.to_string();
 
     // Do we need to add ';' to suggestion ?
-    if let ExprKind::Block(block, _) = match_body.kind {
+    if matches!(match_body.kind, ExprKind::Block(..)) {
         // macro + expr_ty(body) == ()
-        if block.span.from_expansion() && cx.typeck_results().expr_ty(match_body).is_unit() {
+        if from_macro && cx.typeck_results().expr_ty(match_body).is_unit() {
             snippet_body.push(';');
         }
     }
 
-    let mut applicability = Applicability::MaybeIncorrect;
     match arms[0].pat.kind {
         PatKind::Binding(..) | PatKind::Tuple(_, _) | PatKind::Struct(..) => {
             let (target_span, sugg) = match opt_parent_assign_span(cx, ex) {
@@ -48,7 +51,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         (ex, expr),
                         (bind_names, matched_vars),
                         &snippet_body,
-                        &mut applicability,
+                        &mut app,
                         Some(span),
                         true,
                     );
@@ -60,7 +63,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         "this assignment could be simplified",
                         "consider removing the `match` expression",
                         sugg,
-                        applicability,
+                        app,
                     );
 
                     return;
@@ -69,10 +72,10 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     span,
                     format!(
                         "let {} = {};\n{}let {} = {snippet_body};",
-                        snippet_with_applicability(cx, bind_names, "..", &mut applicability),
-                        snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
+                        snippet_with_applicability(cx, bind_names, "..", &mut app),
+                        snippet_with_applicability(cx, matched_vars, "..", &mut app),
                         " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_with_applicability(cx, pat_span, "..", &mut applicability)
+                        snippet_with_applicability(cx, pat_span, "..", &mut app)
                     ),
                 ),
                 None => {
@@ -81,7 +84,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         (ex, expr),
                         (bind_names, matched_vars),
                         &snippet_body,
-                        &mut applicability,
+                        &mut app,
                         None,
                         true,
                     );
@@ -96,7 +99,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                 "this match could be written as a `let` statement",
                 "consider using a `let` statement",
                 sugg,
-                applicability,
+                app,
             );
         },
         PatKind::Wild => {
@@ -106,7 +109,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     (ex, expr),
                     (bind_names, matched_vars),
                     &snippet_body,
-                    &mut applicability,
+                    &mut app,
                     None,
                     false,
                 );
@@ -118,7 +121,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     "this match could be replaced by its scrutinee and body",
                     "consider using the scrutinee and body instead",
                     sugg,
-                    applicability,
+                    app,
                 );
             } else {
                 span_lint_and_sugg(

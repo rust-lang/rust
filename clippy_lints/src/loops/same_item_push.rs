@@ -1,15 +1,17 @@
 use super::SAME_ITEM_PUSH;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::path_to_local;
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
+use rustc_span::SyntaxContext;
 use std::iter::Iterator;
 
 /// Detects for loop pushing the same item into a Vec
@@ -20,9 +22,10 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'_>,
     _: &'tcx Expr<'_>,
 ) {
-    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>) {
-        let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
-        let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>, ctxt: SyntaxContext) {
+        let mut app = Applicability::Unspecified;
+        let vec_str = snippet_with_context(cx, vec.span, ctxt, "", &mut app).0;
+        let item_str = snippet_with_context(cx, pushed_item.span, ctxt, "", &mut app).0;
 
         span_lint_and_help(
             cx,
@@ -43,7 +46,7 @@ pub(super) fn check<'tcx>(
     walk_expr(&mut same_item_push_visitor, body);
     if_chain! {
         if same_item_push_visitor.should_lint();
-        if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push;
+        if let Some((vec, pushed_item, ctxt)) = same_item_push_visitor.vec_push;
         let vec_ty = cx.typeck_results().expr_ty(vec);
         let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
         if cx
@@ -69,11 +72,11 @@ pub(super) fn check<'tcx>(
                                 then {
                                     match init.kind {
                                         // immutable bindings that are initialized with literal
-                                        ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
+                                        ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
                                         // immutable bindings that are initialized with constant
                                         ExprKind::Path(ref path) => {
                                             if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
-                                                emit_lint(cx, vec, pushed_item);
+                                                emit_lint(cx, vec, pushed_item, ctxt);
                                             }
                                         }
                                         _ => {},
@@ -82,11 +85,11 @@ pub(super) fn check<'tcx>(
                             }
                         },
                         // constant
-                        Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item),
+                        Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt),
                         _ => {},
                     }
                 },
-                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
+                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
                 _ => {},
             }
         }
@@ -98,7 +101,7 @@ struct SameItemPushVisitor<'a, 'tcx> {
     non_deterministic_expr: bool,
     multiple_pushes: bool,
     // this field holds the last vec push operation visited, which should be the only push seen
-    vec_push: Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>,
+    vec_push: Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, SyntaxContext)>,
     cx: &'a LateContext<'tcx>,
     used_locals: FxHashSet<HirId>,
 }
@@ -118,7 +121,7 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
         if_chain! {
             if !self.non_deterministic_expr;
             if !self.multiple_pushes;
-            if let Some((vec, _)) = self.vec_push;
+            if let Some((vec, _, _)) = self.vec_push;
             if let Some(hir_id) = path_to_local(vec);
             then {
                 !self.used_locals.contains(&hir_id)
@@ -173,7 +176,10 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
 
 // Given some statement, determine if that statement is a push on a Vec. If it is, return
 // the Vec being pushed into and the item being pushed
-fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+fn get_vec_push<'tcx>(
+    cx: &LateContext<'tcx>,
+    stmt: &'tcx Stmt<'_>,
+) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, SyntaxContext)> {
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
@@ -184,7 +190,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
             if path.ident.name.as_str() == "push";
             then {
-                return Some((self_expr, pushed_item))
+                return Some((self_expr, pushed_item, semi_stmt.span.ctxt()))
             }
     }
     None
