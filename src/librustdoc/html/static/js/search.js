@@ -881,6 +881,13 @@ function initSearch(rawSearchIndex) {
                     return a - b;
                 }
 
+                // sort deprecated items later
+                a = aaa.item.deprecated;
+                b = bbb.item.deprecated;
+                if (a !== b) {
+                    return a - b;
+                }
+
                 // sort by crate (current crate comes first)
                 a = (aaa.item.crate !== preferredCrate);
                 b = (bbb.item.crate !== preferredCrate);
@@ -1244,6 +1251,7 @@ function initSearch(rawSearchIndex) {
                 parent: item.parent,
                 type: item.type,
                 is_alias: true,
+                deprecated: item.deprecated,
             };
         }
 
@@ -2064,10 +2072,11 @@ function initSearch(rawSearchIndex) {
              *   n: Array<string>,
              *   t: String,
              *   d: Array<string>,
-             *   q: Array<string>,
+             *   q: Array<[Number, string]>,
              *   i: Array<Number>,
              *   f: Array<RawFunctionSearchType>,
              *   p: Array<Object>,
+             *   c: Array<Number>
              * }}
              */
             const crateCorpus = rawSearchIndex[crate];
@@ -2086,6 +2095,7 @@ function initSearch(rawSearchIndex) {
                 type: null,
                 id: id,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
+                deprecated: null,
             };
             id += 1;
             searchIndex.push(crateRow);
@@ -2095,14 +2105,20 @@ function initSearch(rawSearchIndex) {
             const itemTypes = crateCorpus.t;
             // an array of (String) item names
             const itemNames = crateCorpus.n;
-            // an array of (String) full paths (or empty string for previous path)
-            const itemPaths = crateCorpus.q;
+            // an array of [(Number) item index,
+            //              (String) full path]
+            // an item whose index is not present will fall back to the previous present path
+            // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
+            // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
+            const itemPaths = new Map(crateCorpus.q);
             // an array of (String) descriptions
             const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
             // an array of (Object | null) the type of the function, if any
             const itemFunctionSearchTypes = crateCorpus.f;
+            // an array of (Number) indices for the deprecated items
+            const deprecatedItems = new Set(crateCorpus.c);
             // an array of [(Number) item type,
             //              (String) name]
             const paths = crateCorpus.p;
@@ -2142,12 +2158,13 @@ function initSearch(rawSearchIndex) {
                     crate: crate,
                     ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
-                    path: itemPaths[i] ? itemPaths[i] : lastPath,
+                    path: itemPaths.has(i) ? itemPaths.get(i) : lastPath,
                     desc: itemDescs[i],
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: buildFunctionSearchType(itemFunctionSearchTypes[i], lowercasePaths),
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
+                    deprecated: deprecatedItems.has(i),
                 };
                 id += 1;
                 searchIndex.push(row);
