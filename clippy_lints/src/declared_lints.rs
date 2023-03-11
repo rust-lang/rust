@@ -618,6 +618,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::unnamed_address::VTABLE_ADDRESS_COMPARISONS_INFO,
     crate::unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS_INFO,
     crate::unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS_INFO,
+    crate::unnecessary_struct_initialization::UNNECESSARY_STRUCT_INITIALIZATION_INFO,
     crate::unnecessary_wraps::UNNECESSARY_WRAPS_INFO,
     crate::unnested_or_patterns::UNNESTED_OR_PATTERNS_INFO,
     crate::unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME_INFO,
