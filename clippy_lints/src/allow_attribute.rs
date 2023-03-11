@@ -55,7 +55,8 @@ impl LateLintPass<'_> for AllowAttribute {
             .name == sym!(feature);
             if let ast::AttrKind::Normal(normal) = &attr.kind;
             if let Some(MetaItemKind::List(list)) = normal.item.meta_kind();
-            if list[0].ident().unwrap().name == sym!(lint_reasons);
+            if let Some(symbol) = list.get(0);
+            if symbol.ident().unwrap().name == sym!(lint_reasons);
             then {
                 self.lint_reasons_active = true;
             }
