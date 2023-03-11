@@ -42,6 +42,9 @@ hir_analysis_assoc_type_binding_not_allowed =
     associated type bindings are not allowed here
     .label = associated type not allowed here
 
+hir_analysis_parenthesized_fn_trait_expansion =
+    parenthesized trait syntax expands to `{$expanded_type}`
+
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
     .suggestion = consider replacing `typeof(...)` with an actual type

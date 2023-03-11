@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Copy` for type `S<_>`
+  --> $DIR/bad-const-wf-doesnt-specialize.rs:9:1
+   |
+LL | impl<const N: i32> Copy for S<N> {}
+   | -------------------------------- first implementation here
+LL | impl<const M: usize> Copy for S<M> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `S<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

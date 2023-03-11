@@ -601,10 +601,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
         let tcx = self.tcx();
-        let self_ty = self
+
+        let Some(self_ty) = self
             .infcx
-            .shallow_resolve(obligation.self_ty().no_bound_vars())
-            .expect("fn pointer should not capture bound vars from predicate");
+            .shallow_resolve(obligation.self_ty().no_bound_vars()) else
+        {
+            // FIXME: Ideally we'd support `for<'a> fn(&'a ()): Fn(&'a ())`,
+            // but we do not currently. Luckily, such a bound is not
+            // particularly useful, so we don't expect users to write
+            // them often.
+            return Err(SelectionError::Unimplemented);
+        };
+
         let sig = self_ty.fn_sig(tcx);
         let trait_ref = closure_trait_ref_and_return_type(
             tcx,

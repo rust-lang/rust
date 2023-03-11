@@ -995,7 +995,7 @@ impl<'tcx> Term<'tcx> {
 
     pub fn is_infer(&self) -> bool {
         match self.unpack() {
-            TermKind::Ty(ty) => ty.is_ty_or_numeric_infer(),
+            TermKind::Ty(ty) => ty.is_ty_var(),
             TermKind::Const(ct) => ct.is_ct_infer(),
         }
     }

@@ -1,10 +1,14 @@
 use crate::astconv::AstConv;
-use crate::errors::{ManualImplementation, MissingTypeParams};
+use crate::errors::{
+    AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
+    ParenthesizedFnTraitExpansion,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -78,43 +82,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Do not suggest the other syntax if we are in trait impl:
             // the desugaring would contain an associated type constraint.
             if !is_impl {
-                let args = trait_segment
-                    .args
-                    .as_ref()
-                    .and_then(|args| args.args.get(0))
-                    .and_then(|arg| match arg {
-                        hir::GenericArg::Type(ty) => match ty.kind {
-                            hir::TyKind::Tup(t) => t
-                                .iter()
-                                .map(|e| sess.source_map().span_to_snippet(e.span))
-                                .collect::<Result<Vec<_>, _>>()
-                                .map(|a| a.join(", ")),
-                            _ => sess.source_map().span_to_snippet(ty.span),
-                        }
-                        .map(|s| format!("({})", s))
-                        .ok(),
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| "()".to_string());
-                let ret = trait_segment
-                    .args()
-                    .bindings
-                    .iter()
-                    .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-                        (true, hir::TypeBindingKind::Equality { term }) => {
-                            let span = match term {
-                                hir::Term::Ty(ty) => ty.span,
-                                hir::Term::Const(c) => self.tcx().hir().span(c.hir_id),
-                            };
-                            sess.source_map().span_to_snippet(span).ok()
-                        }
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| "()".to_string());
                 err.span_suggestion(
                     span,
                     "use parenthetical notation instead",
-                    format!("{}{} -> {}", trait_segment.ident, args, ret),
+                    fn_trait_to_string(self.tcx(), trait_segment, true),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -627,5 +598,71 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
         err.emit();
+    }
+}
+
+/// Emits an error regarding forbidden type binding associations
+pub fn prohibit_assoc_ty_binding(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    segment: Option<(&hir::PathSegment<'_>, Span)>,
+) {
+    tcx.sess.emit_err(AssocTypeBindingNotAllowed { span, fn_trait_expansion: if let Some((segment, span)) = segment && segment.args().parenthesized {
+        Some(ParenthesizedFnTraitExpansion { span, expanded_type: fn_trait_to_string(tcx, segment, false) })
+    } else {
+        None
+    }});
+}
+
+pub(crate) fn fn_trait_to_string(
+    tcx: TyCtxt<'_>,
+    trait_segment: &hir::PathSegment<'_>,
+    parenthesized: bool,
+) -> String {
+    let args = trait_segment
+        .args
+        .as_ref()
+        .and_then(|args| args.args.get(0))
+        .and_then(|arg| match arg {
+            hir::GenericArg::Type(ty) => match ty.kind {
+                hir::TyKind::Tup(t) => t
+                    .iter()
+                    .map(|e| tcx.sess.source_map().span_to_snippet(e.span))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map(|a| a.join(", ")),
+                _ => tcx.sess.source_map().span_to_snippet(ty.span),
+            }
+            .map(|s| {
+                // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
+                if parenthesized || s.is_empty() { format!("({})", s) } else { format!("({},)", s) }
+            })
+            .ok(),
+            _ => None,
+        })
+        .unwrap_or_else(|| "()".to_string());
+
+    let ret = trait_segment
+        .args()
+        .bindings
+        .iter()
+        .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
+            (true, hir::TypeBindingKind::Equality { term }) => {
+                let span = match term {
+                    hir::Term::Ty(ty) => ty.span,
+                    hir::Term::Const(c) => tcx.hir().span(c.hir_id),
+                };
+
+                (span != tcx.hir().span(trait_segment.hir_id))
+                    .then_some(tcx.sess.source_map().span_to_snippet(span).ok())
+                    .flatten()
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| "()".to_string());
+
+    if parenthesized {
+        format!("{}{} -> {}", trait_segment.ident, args, ret)
+    } else {
+        format!("{}<{}, Output={}>", trait_segment.ident, args, ret)
     }
 }
