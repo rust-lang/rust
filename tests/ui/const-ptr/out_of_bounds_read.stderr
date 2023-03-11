@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: dereferencing pointer failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -14,7 +14,7 @@ LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: dereferencing pointer failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -29,7 +29,7 @@ LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: dereferencing pointer failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

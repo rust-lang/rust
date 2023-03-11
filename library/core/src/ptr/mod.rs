@@ -1137,25 +1137,33 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 pub const unsafe fn read<T>(src: *const T) -> T {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
+    #[cfg(bootstrap)]
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
     // the stack as a separate allocated object.
-    //
-    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
-    // to be properly initialized.
     unsafe {
         assert_unsafe_precondition!(
             "ptr::read requires that the pointer argument is aligned and non-null",
             [T](src: *const T) => is_aligned_and_not_null(src)
         );
-        copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-        tmp.assume_init()
+
+        #[cfg(bootstrap)]
+        {
+            let mut tmp = MaybeUninit::<T>::uninit();
+            copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+            tmp.assume_init()
+        }
+        #[cfg(not(bootstrap))]
+        {
+            // This uses a dedicated intrinsic, not `copy_nonoverlapping`,
+            // so that it gets a *typed* copy, not an *untyped* one.
+            crate::intrinsics::read_via_copy(src)
+        }
     }
 }
 

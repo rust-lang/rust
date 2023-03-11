@@ -12,13 +12,44 @@ pub fn replace_byte(dst: &mut u8, src: u8) -> u8 {
     std::mem::replace(dst, src)
 }
 
+#[repr(C, align(8))]
+pub struct Big([u64; 7]);
+pub fn replace_big(dst: &mut Big, src: Big) -> Big {
+    // Before the `read_via_copy` intrinsic, this emitted six `memcpy`s.
+    std::mem::replace(dst, src)
+}
+
 // NOTE(eddyb) the `CHECK-NOT`s ensure that the only calls of `@llvm.memcpy` in
-// the entire output, are the two direct calls we want, from `ptr::replace`.
+// the entire output, are the direct calls we want, from `ptr::replace`.
 
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: ; core::mem::replace
+
+// For a large type, we expect exactly three `memcpy`s
+// CHECK-LABEL: define internal void @{{.+}}mem{{.+}}replace{{.+}}sret(%Big)
+    // CHECK-NOT: alloca
+    // CHECK: alloca %Big
+    // CHECK-NOT: alloca
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
+    // CHECK-NOT: call void @llvm.memcpy
+
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
-// CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
+
+// For a small type, we expect one each of `load`/`store`/`memcpy` instead
+// CHECK-LABEL: define internal noundef i8 @{{.+}}mem{{.+}}replace
+    // CHECK-NOT: alloca
+    // CHECK: alloca i8
+    // CHECK-NOT: alloca
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: load i8
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: store i8
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
+    // CHECK-NOT: call void @llvm.memcpy
+
 // CHECK-NOT: call void @llvm.memcpy

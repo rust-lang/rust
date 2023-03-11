@@ -1153,6 +1153,7 @@ symbols! {
         read_enum_variant_arg,
         read_struct,
         read_struct_field,
+        read_via_copy,
         readonly,
         realloc,
         reason,
