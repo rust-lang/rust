@@ -7,42 +7,34 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
         debug self => _1;
         scope 2 (inlined <std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next) {
             debug self => _1;
-            let mut _2: &u32;
-            let mut _3: &u32;
-            let mut _6: bool;
-            let _7: u32;
-            let mut _8: u32;
+            let mut _4: bool;
+            let _5: u32;
+            let mut _6: u32;
             scope 3 {
-                debug old => _7;
+                debug old => _5;
                 scope 4 {
                 }
             }
             scope 5 (inlined cmp::impls::<impl PartialOrd for u32>::lt) {
-                debug self => _2;
-                debug other => _3;
-                let mut _4: u32;
-                let mut _5: u32;
+                debug self => &((*_1).0: u32);
+                debug other => &((*_1).1: u32);
+                let mut _2: u32;
+                let mut _3: u32;
             }
         }
     }
 
     bb0: {
-        StorageLive(_7);
-        StorageLive(_6);
-        StorageLive(_2);
-        _2 = &((*_1).0: u32);
-        StorageLive(_3);
-        _3 = &((*_1).1: u32);
-        StorageLive(_4);
-        _4 = (*_2);
         StorageLive(_5);
-        _5 = (*_3);
-        _6 = Lt(move _4, move _5);
-        StorageDead(_5);
-        StorageDead(_4);
+        StorageLive(_4);
+        StorageLive(_2);
+        _2 = ((*_1).0: u32);
+        StorageLive(_3);
+        _3 = ((*_1).1: u32);
+        _4 = Lt(move _2, move _3);
         StorageDead(_3);
         StorageDead(_2);
-        switchInt(move _6) -> [0: bb1, otherwise: bb2];
+        switchInt(move _4) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
@@ -51,21 +43,21 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     }
 
     bb2: {
-        _7 = ((*_1).0: u32);
-        StorageLive(_8);
-        _8 = <u32 as Step>::forward_unchecked(_7, const 1_usize) -> [return: bb3, unwind unreachable];
+        _5 = ((*_1).0: u32);
+        StorageLive(_6);
+        _6 = <u32 as Step>::forward_unchecked(_5, const 1_usize) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        ((*_1).0: u32) = move _8;
-        StorageDead(_8);
-        _0 = Option::<u32>::Some(_7);
+        ((*_1).0: u32) = move _6;
+        StorageDead(_6);
+        _0 = Option::<u32>::Some(_5);
         goto -> bb4;
     }
 
     bb4: {
-        StorageDead(_6);
-        StorageDead(_7);
+        StorageDead(_4);
+        StorageDead(_5);
         return;
     }
 }
