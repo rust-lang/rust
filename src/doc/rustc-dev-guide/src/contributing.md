@@ -325,7 +325,7 @@ there's no need to block on tools changes going upstream.
 Here are those same steps in detail:
 
 1. (optional) First, if it doesn't exist already, create a `config.toml` by copying
-   `config.toml.example` in the root directory of the Rust repository.
+   `config.example.toml` in the root directory of the Rust repository.
    Set `submodules = false` in the `[build]` section. This will prevent `x.py`
    from resetting to the original branch after you make your changes. If you
    need to [update any submodules to their latest versions](#updating-submodules),

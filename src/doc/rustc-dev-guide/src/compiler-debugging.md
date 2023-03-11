@@ -42,7 +42,7 @@ otherwise you need to disable new symbol-mangling-version in `config.toml`.
 new-symbol-mangling = false
 ```
 
-> See the comments in `config.toml.example` for more info.
+> See the comments in `config.example.toml` for more info.
 
 You will need to rebuild the compiler after changing any configuration option.
 

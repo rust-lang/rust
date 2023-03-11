@@ -259,8 +259,8 @@ If you're using nix, you can use the following nix-shell to work on Rust:
 
 # This file contains a development shell for working on rustc.
 let
-  # Build configuration for rust-lang/rust. Based on `config.toml.example` from
-  # `1bd30ce2aac40c7698aa4a1b9520aa649ff2d1c5`.
+  # Build configuration for rust-lang/rust. Based on `config.example.toml` (then called
+  # `config.toml.example`) from `1bd30ce2aac40c7698aa4a1b9520aa649ff2d1c5`
   config = pkgs.writeText "rustc-config" ''
     profile = "compiler" # you may want to choose a different profile, like `library` or `tools`
     changelog-seen = 2
@@ -289,7 +289,7 @@ let
       # Files that are ignored by ripgrep when searching.
       ignoreFile = pkgs.writeText "rustc-rgignore" ''
         configure
-        config.toml.example
+        config.example.toml
         x.py
         LICENSE-MIT
         LICENSE-APACHE

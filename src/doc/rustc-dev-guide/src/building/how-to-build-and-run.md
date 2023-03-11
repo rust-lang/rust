@@ -45,7 +45,7 @@ You can install it with `cargo install --path src/tools/x`.
 To start, run `./x.py setup`. This will do some initialization and create a
 `config.toml` for you with reasonable defaults.
 
-Alternatively, you can write `config.toml` by hand. See `config.toml.example` for all the available
+Alternatively, you can write `config.toml` by hand. See `config.example.toml` for all the available
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
@@ -188,7 +188,7 @@ Note that building for some targets requires having external dependencies instal
 (e.g. building musl targets requires a local copy of musl).
 Any target-specific configuration (e.g. the path to a local copy of musl)
 will need to be provided by your `config.toml`.
-Please see `config.toml.example` for information on target-specific configuration keys.
+Please see `config.example.toml` for information on target-specific configuration keys.
 
 For examples of the complete configuration necessary to build a target, please visit
 [the rustc book](https://doc.rust-lang.org/rustc/platform-support.html),
