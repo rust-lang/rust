@@ -14,7 +14,7 @@ all:
 	$(RUSTDOC) src/lib.rs --crate-name foobar --crate-type lib --out-dir $(OUTPUT_DIR)
 
 	# Check if everything exactly same
-	$(DIFF) -r -q $(OUTPUT_DIR) $(TMP_OUTPUT_DIR)
+	$(DIFF) -r $(OUTPUT_DIR) $(TMP_OUTPUT_DIR)
 
 	# Generate json doc on the same output
 	$(RUSTDOC) src/lib.rs --crate-name foobar --crate-type lib --out-dir $(OUTPUT_DIR) -Z unstable-options --output-format json
@@ -29,4 +29,4 @@ all:
 	$(RUSTDOC) src/lib.rs --crate-name foobar --crate-type lib --out-dir $(OUTPUT_DIR) -Z unstable-options --output-format json
 
 	# Check if all docs(including both json and html formats) are still the same after multiple compilations
-	$(DIFF) -r -q $(OUTPUT_DIR) $(TMP_OUTPUT_DIR)
+	$(DIFF) -r $(OUTPUT_DIR) $(TMP_OUTPUT_DIR)
