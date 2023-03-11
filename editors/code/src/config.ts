@@ -34,6 +34,7 @@ export class Config {
 
     constructor(ctx: vscode.ExtensionContext) {
         this.globalStorageUri = ctx.globalStorageUri;
+        this.discoveredWorkspaces = [];
         vscode.workspace.onDidChangeConfiguration(
             this.onDidChangeConfiguration,
             this,
@@ -54,6 +55,8 @@ export class Config {
         const cfg = Object.entries(this.cfg).filter(([_, val]) => !(val instanceof Function));
         log.info("Using configuration", Object.fromEntries(cfg));
     }
+
+    public discoveredWorkspaces: JsonProject[];
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
         this.refreshLogging();
@@ -191,7 +194,7 @@ export class Config {
      * So this getter handles this quirk by not requiring the caller to use postfix `!`
      */
     private get<T>(path: string): T | undefined {
-        return substituteVSCodeVariables(this.cfg.get<T>(path));
+        return prepareVSCodeConfig(this.cfg.get<T>(path));
     }
 
     get serverPath() {
@@ -284,18 +287,24 @@ export class Config {
     }
 }
 
-export function substituteVSCodeVariables<T>(resp: T): T {
+export function prepareVSCodeConfig<T>(
+    resp: T,
+    cb?: (key: Extract<keyof T, string>, res: { [key: string]: any }) => void
+): T {
     if (Is.string(resp)) {
         return substituteVSCodeVariableInString(resp) as T;
     } else if (resp && Is.array<any>(resp)) {
         return resp.map((val) => {
-            return substituteVSCodeVariables(val);
+            return prepareVSCodeConfig(val);
         }) as T;
     } else if (resp && typeof resp === "object") {
         const res: { [key: string]: any } = {};
         for (const key in resp) {
             const val = resp[key];
-            res[key] = substituteVSCodeVariables(val);
+            res[key] = prepareVSCodeConfig(val);
+            if (cb) {
+                cb(key, res);
+            }
         }
         return res as T;
     }

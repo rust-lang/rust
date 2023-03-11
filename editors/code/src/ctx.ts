@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config, substituteVSCodeVariables } from "./config";
+import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
 import {
     executeDiscoverProject,
@@ -54,7 +54,7 @@ export async function discoverWorkspace(
     command: string[],
     options: ExecOptions
 ): Promise<JsonProject> {
-    const paths = files.map((f) => f.uri.fsPath).join(" ");
+    const paths = files.map((f) => `"${f.uri.fsPath}"`).join(" ");
     const joinedCommand = command.join(" ");
     const data = await executeDiscoverProject(`${joinedCommand} ${paths}`, options);
     return JSON.parse(data) as JsonProject;
@@ -71,7 +71,7 @@ export type CtxInit = Ctx & {
 
 export class Ctx {
     readonly statusBar: vscode.StatusBarItem;
-    readonly config: Config;
+    config: Config;
     readonly workspace: Workspace;
 
     private _client: lc.LanguageClient | undefined;
@@ -82,7 +82,6 @@ export class Ctx {
     private state: PersistentState;
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
-    private discoveredWorkspaces: JsonProject[] | undefined;
 
     get client() {
         return this._client;
@@ -193,20 +192,24 @@ export class Ctx {
             if (discoverProjectCommand) {
                 const workspaces: JsonProject[] = await Promise.all(
                     vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
-                        return discoverWorkspace(
-                            vscode.workspace.textDocuments,
-                            discoverProjectCommand,
-                            { cwd: folder.uri.fsPath }
-                        );
+                        const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                        return discoverWorkspace(rustDocuments, discoverProjectCommand, {
+                            cwd: folder.uri.fsPath,
+                        });
                     })
                 );
 
-                this.discoveredWorkspaces = workspaces;
+                this.addToDiscoveredWorkspaces(workspaces);
             }
 
-            const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
-            // this appears to be load-bearing, for better or worse.
-            await initializationOptions.update("linkedProjects", this.discoveredWorkspaces);
+            const initializationOptions = prepareVSCodeConfig(
+                rawInitializationOptions,
+                (key, obj) => {
+                    if (key === "linkedProjects") {
+                        obj["linkedProjects"] = this.config.discoveredWorkspaces;
+                    }
+                }
+            );
 
             this._client = await createClient(
                 this.traceOutputChannel,
@@ -286,6 +289,17 @@ export class Ctx {
 
     get serverPath(): string | undefined {
         return this._serverPath;
+    }
+
+    addToDiscoveredWorkspaces(workspaces: JsonProject[]) {
+        for (const workspace of workspaces) {
+            const index = this.config.discoveredWorkspaces.indexOf(workspace);
+            if (~index) {
+                this.config.discoveredWorkspaces[index] = workspace;
+            } else {
+                this.config.discoveredWorkspaces.push(workspace);
+            }
+        }
     }
 
     private updateCommands(forceDisable?: "disable") {

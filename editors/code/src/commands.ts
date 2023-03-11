@@ -758,14 +758,20 @@ export function addProject(ctx: CtxInit): Cmd {
 
         const workspaces: JsonProject[] = await Promise.all(
             vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
-                return discoverWorkspace(vscode.workspace.textDocuments, discoverProjectCommand, {
+                const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                return discoverWorkspace(rustDocuments, discoverProjectCommand, {
                     cwd: folder.uri.fsPath,
                 });
             })
         );
 
-        await ctx.client.sendRequest(ra.addProject, {
-            project: workspaces,
+        ctx.addToDiscoveredWorkspaces(workspaces);
+
+        // this is a workaround to avoid needing writing the `rust-project.json` into
+        // a workspace-level VS Code-specific settings folder. We'd like to keep the
+        // `rust-project.json` entirely in-memory.
+        await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: "",
         });
     };
 }
