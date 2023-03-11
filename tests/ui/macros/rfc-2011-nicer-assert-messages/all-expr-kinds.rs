@@ -164,7 +164,7 @@ fn main() {
     // mac call
 
     // match
-    [ match elem { _ => elem } == 3 ] => "Assertion failed: match elem { _ => elem, } == 3"
+    [ match elem { _ => elem } == 3 ] => "Assertion failed: (match elem { _ => elem, }) == 3"
 
     // ret
     [ (|| { return elem; })() == 3 ] => "Assertion failed: (|| { return elem; })() == 3"

@@ -244,6 +244,10 @@ impl<'a> State<'a> {
             (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
                 parser::PREC_FORCE_PAREN
             }
+            // For a binary expression like `(match () { _ => a }) OP b`, the parens are required
+            // otherwise the parser would interpret `match () { _ => a }` as a statement,
+            // with the remaining `OP b` not making sense. So we force parens.
+            (&ast::ExprKind::Match(..), _) => parser::PREC_FORCE_PAREN,
             _ => left_prec,
         };
 
