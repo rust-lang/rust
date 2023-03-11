@@ -159,7 +159,7 @@ where
     ///
     /// Panics if the slice's length is less than the vector's `Simd::LANES`.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # #![feature(portable_simd)]
@@ -174,10 +174,41 @@ where
             slice.len() >= LANES,
             "slice length must be at least the number of lanes"
         );
+        assert!(core::mem::size_of::<Self>() == LANES * core::mem::size_of::<T>());
         // Safety:
         // - We've checked the length is sufficient.
         // - `T` and `Simd<T, N>` are Copy types.
         unsafe { slice.as_ptr().cast::<Self>().read_unaligned() }
+    }
+
+    /// Writes a SIMD vector to the first `LANES` elements of a slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the slice's length is less than the vector's `Simd::LANES`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
+    /// let mut dest = vec![0; 6];
+    /// let v = u32x4::from_array([1, 2, 3, 4]);
+    /// v.copy_to_slice(&mut dest);
+    /// assert_eq!(&dest, &[1, 2, 3, 4, 0, 0]);
+    /// ```
+    pub fn copy_to_slice(self, slice: &mut [T]) {
+        assert!(
+            slice.len() >= LANES,
+            "slice length must be at least the number of lanes"
+        );
+        assert!(core::mem::size_of::<Self>() == LANES * core::mem::size_of::<T>());
+        // Safety:
+        // - We've checked the length is sufficient
+        // - `T` and `Simd<T, N>` are Copy types.
+        unsafe { slice.as_mut_ptr().cast::<Self>().write_unaligned(self) }
     }
 
     /// Performs lanewise conversion of a SIMD vector's elements to another SIMD-valid type.
