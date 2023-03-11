@@ -149,3 +149,17 @@ assert-property: (".sidebar", {"clientWidth": "200"})
 click: "#toggle-all-docs"
 assert-text: ("#toggle-all-docs", "[−]")
 assert-property: (".sidebar", {"clientWidth": "200"})
+
+// Checks that all.html and index.html have their sidebar link in the same place.
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+store-property: (index_sidebar_width, ".sidebar .location a", "clientWidth")
+store-property: (index_sidebar_height, ".sidebar .location a", "clientHeight")
+store-property: (index_sidebar_x, ".sidebar .location a", "offsetTop")
+store-property: (index_sidebar_y, ".sidebar .location a", "offsetLeft")
+goto: "file://" + |DOC_PATH| + "/test_docs/all.html"
+assert-property: (".sidebar .location a", {
+    "clientWidth": |index_sidebar_width|,
+    "clientHeight": |index_sidebar_height|,
+    "offsetTop": |index_sidebar_x|,
+    "offsetLeft": |index_sidebar_y|,
+})

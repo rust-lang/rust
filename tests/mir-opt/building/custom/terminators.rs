@@ -48,10 +48,11 @@ impl<'a> Drop for WriteOnDrop<'a> {
 fn drop_first<'a>(a: WriteOnDrop<'a>, b: WriteOnDrop<'a>) {
     mir!(
         {
-            DropAndReplace(a, Move(b), retblock)
+            Drop(a, retblock)
         }
 
         retblock = {
+            a = Move(b);
             Return()
         }
     )

@@ -420,7 +420,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // `RegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
-            self.unification_table().reset_unifications(|_| UnifiedRegion(None));
+            self.unification_table_mut().reset_unifications(|_| UnifiedRegion::new(None));
         }
 
         data
@@ -447,7 +447,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table().new_key(UnifiedRegion(None));
+        let u_vid = self.unification_table_mut().new_key(UnifiedRegion::new(None));
         assert_eq!(vid, u_vid.vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
@@ -516,13 +516,13 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             match (sub, sup) {
                 (Region(Interned(ReVar(sub), _)), Region(Interned(ReVar(sup), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
-                    self.unification_table().union(*sub, *sup);
+                    self.unification_table_mut().union(*sub, *sup);
                     self.any_unifications = true;
                 }
                 (Region(Interned(ReVar(vid), _)), value)
                 | (value, Region(Interned(ReVar(vid), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table().union_value(*vid, UnifiedRegion(Some(value)));
+                    self.unification_table_mut().union_value(*vid, UnifiedRegion::new(Some(value)));
                     self.any_unifications = true;
                 }
                 (_, _) => {}
@@ -633,28 +633,25 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    /// Resolves the passed RegionVid to the root RegionVid in the unification table
-    pub(super) fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
-        self.unification_table().find(rid).vid
-    }
-
-    /// If the Region is a `ReVar`, then resolves it either to the root value in
-    /// the unification table, if it exists, or to the root `ReVar` in the table.
-    /// If the Region is not a `ReVar`, just returns the Region itself.
-    pub fn opportunistic_resolve_region(
+    /// Resolves a region var to its value in the unification table, if it exists.
+    /// Otherwise, it is resolved to the root `ReVar` in the table.
+    pub fn opportunistic_resolve_var(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        region: ty::Region<'tcx>,
+        vid: ty::RegionVid,
     ) -> ty::Region<'tcx> {
-        match *region {
-            ty::ReVar(rid) => {
-                let unified_region = self.unification_table().probe_value(rid);
-                unified_region.0.unwrap_or_else(|| {
-                    let root = self.unification_table().find(rid).vid;
-                    tcx.mk_re_var(root)
-                })
-            }
-            _ => region,
+        let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
+        let root_vid = ut.find(vid).vid;
+        let resolved = ut
+            .probe_value(root_vid)
+            .get_value_ignoring_universes()
+            .unwrap_or_else(|| tcx.mk_re_var(root_vid));
+
+        // Don't resolve a variable to a region that it cannot name.
+        if self.var_universe(vid).can_name(self.universe(resolved)) {
+            resolved
+        } else {
+            tcx.mk_re_var(vid)
         }
     }
 
@@ -733,7 +730,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[inline]
-    fn unification_table(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
+    fn unification_table_mut(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
         ut::UnificationTable::with_log(&mut self.storage.unification_table, self.undo_log)
     }
 }

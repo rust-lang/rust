@@ -12,7 +12,7 @@ use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
 
-use rustc_data_structures::map_in_place::MapInPlace;
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;

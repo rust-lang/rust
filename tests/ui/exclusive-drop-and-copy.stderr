@@ -1,4 +1,4 @@
-error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
+error[E0184]: the trait `Copy` cannot be implemented for this type; the type has a destructor
   --> $DIR/exclusive-drop-and-copy.rs:3:10
    |
 LL | #[derive(Copy, Clone)]
@@ -6,7 +6,7 @@ LL | #[derive(Copy, Clone)]
    |
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
+error[E0184]: the trait `Copy` cannot be implemented for this type; the type has a destructor
   --> $DIR/exclusive-drop-and-copy.rs:10:10
    |
 LL | #[derive(Copy, Clone)]

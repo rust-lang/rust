@@ -1,4 +1,4 @@
-error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
+error[E0184]: the trait `Copy` cannot be implemented for this type; the type has a destructor
   --> $DIR/E0184.rs:1:10
    |
 LL | #[derive(Copy)]

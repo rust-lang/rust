@@ -556,6 +556,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             _ => {
                 let place_builder = unpack!(block = self.as_place_builder(block, initializer));
+
+                if let Some(place) = place_builder.try_to_place(self) {
+                    let source_info = self.source_info(initializer.span);
+                    self.cfg.push_place_mention(block, source_info, place);
+                }
+
                 self.place_into_pattern(block, &irrefutable_pat, place_builder, true)
             }
         }
@@ -576,6 +582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             false,
             &mut [&mut candidate],
         );
+
         // For matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
         // let PATTERN = ... might not even exist until we do the assignment.

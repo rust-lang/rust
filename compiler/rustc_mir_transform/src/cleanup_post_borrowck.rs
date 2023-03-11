@@ -24,6 +24,7 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
             for statement in basic_block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
+                    | StatementKind::PlaceMention(..)
                     | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),

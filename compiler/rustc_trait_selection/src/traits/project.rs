@@ -870,12 +870,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
 
     fn fold_region(&mut self, r0: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let r1 = match *r0 {
-            ty::ReVar(_) => self
+            ty::ReVar(vid) => self
                 .infcx
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_region(self.infcx.tcx, r0),
+                .opportunistic_resolve_var(self.infcx.tcx, vid),
             _ => r0,
         };
 
@@ -2199,7 +2199,8 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         Err(guar) => return Progress::error(tcx, guar),
     };
     // We don't support specialization for RPITITs anyways... yet.
-    if !leaf_def.is_final() {
+    // Also don't try to project to an RPITIT that has no value
+    if !leaf_def.is_final() || !leaf_def.item.defaultness(tcx).has_value() {
         return Progress { term: tcx.ty_error_misc().into(), obligations };
     }
 

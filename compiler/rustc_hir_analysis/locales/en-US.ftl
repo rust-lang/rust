@@ -89,14 +89,14 @@ hir_analysis_missing_type_params =
     .note = because of the default `Self` reference, type parameters must be specified on object types
 
 hir_analysis_copy_impl_on_type_with_dtor =
-    the trait `Copy` may not be implemented for this type; the type has a destructor
+    the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
 
 hir_analysis_multiple_relaxed_default_bounds =
     type parameter has more than one relaxed default bound, only one is supported
 
 hir_analysis_copy_impl_on_non_adt =
-    the trait `Copy` may not be implemented for this type
+    the trait `Copy` cannot be implemented for this type
     .label = type is not a structure or enumeration
 
 hir_analysis_const_impl_for_non_const_trait =
@@ -155,3 +155,18 @@ hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
 hir_analysis_cannot_capture_late_bound_const_in_anon_const =
     cannot capture late-bound const parameter in a constant
     .label = parameter defined here
+
+hir_analysis_variances_of = {$variances_of}
+
+hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
+    .suggestion = cast the value to `{$cast_ty}`
+    .help = cast the value to `{$cast_ty}`
+
+hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+
+hir_analysis_invalid_union_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+    .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_union_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`

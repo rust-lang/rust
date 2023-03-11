@@ -2695,3 +2695,58 @@ impl Step for LintDocs {
         });
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustInstaller;
+
+impl Step for RustInstaller {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    /// Ensure the version placeholder replacement tool builds
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("test rust-installer");
+
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/rust-installer",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+
+        // We currently don't support running the test.sh script outside linux(?) environments.
+        // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
+        // set of scripts, which will likely allow dropping this if.
+        if bootstrap_host != "x86_64-unknown-linux-gnu" {
+            return;
+        }
+
+        let mut cmd =
+            std::process::Command::new(builder.src.join("src/tools/rust-installer/test.sh"));
+        let tmpdir = testdir(builder, compiler.host).join("rust-installer");
+        let _ = std::fs::remove_dir_all(&tmpdir);
+        let _ = std::fs::create_dir_all(&tmpdir);
+        cmd.current_dir(&tmpdir);
+        cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
+        cmd.env("CARGO", &builder.initial_cargo);
+        cmd.env("RUSTC", &builder.initial_rustc);
+        cmd.env("TMP_DIR", &tmpdir);
+        try_run(builder, &mut cmd);
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-installer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
+    }
+}

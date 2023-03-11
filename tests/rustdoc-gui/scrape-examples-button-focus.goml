@@ -8,24 +8,24 @@ focus: ".scraped-example-list > .scraped-example .next"
 press-key: "Enter"
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
     "scrollTop": |initialScrollTop|
-})
+}, NEAR)
 focus: ".scraped-example-list > .scraped-example .prev"
 press-key: "Enter"
 assert-property: (".scraped-example-list > .scraped-example pre", {
     "scrollTop": |initialScrollTop|
-})
+}, NEAR)
 
 // The expand button increases the scrollHeight of the minimized code viewport
 store-property: (smallOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
     "scrollHeight": |smallOffsetHeight|
-})
+}, NEAR)
 focus: ".scraped-example-list > .scraped-example .expand"
 press-key: "Enter"
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
     "offsetHeight": |smallOffsetHeight|
-})
+}, NEAR)
 store-property: (fullOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
 assert-property: (".scraped-example-list > .scraped-example pre", {
     "scrollHeight": |fullOffsetHeight|
-})
+}, NEAR)

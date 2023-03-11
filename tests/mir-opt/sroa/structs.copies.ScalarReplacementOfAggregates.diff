@@ -1,0 +1,91 @@
+- // MIR for `copies` before ScalarReplacementOfAggregates
++ // MIR for `copies` after ScalarReplacementOfAggregates
+  
+  fn copies(_1: Foo) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/structs.rs:+0:11: +0:12
+      let mut _0: ();                      // return place in scope 0 at $DIR/structs.rs:+0:19: +0:19
+      let _2: Foo;                         // in scope 0 at $DIR/structs.rs:+1:9: +1:10
++     let _11: u8;                         // in scope 0 at $DIR/structs.rs:+1:9: +1:10
++     let _12: ();                         // in scope 0 at $DIR/structs.rs:+1:9: +1:10
++     let _13: &str;                       // in scope 0 at $DIR/structs.rs:+1:9: +1:10
++     let _14: std::option::Option<isize>; // in scope 0 at $DIR/structs.rs:+1:9: +1:10
+      scope 1 {
+-         debug y => _2;                   // in scope 1 at $DIR/structs.rs:+1:9: +1:10
++         debug y => Foo{ .0 => _11, .1 => _12, .2 => _13, .3 => _14, }; // in scope 1 at $DIR/structs.rs:+1:9: +1:10
+          let _3: u8;                      // in scope 1 at $DIR/structs.rs:+2:9: +2:10
+          scope 2 {
+              debug t => _3;               // in scope 2 at $DIR/structs.rs:+2:9: +2:10
+              let _4: &str;                // in scope 2 at $DIR/structs.rs:+3:9: +3:10
+              scope 3 {
+                  debug u => _4;           // in scope 3 at $DIR/structs.rs:+3:9: +3:10
+                  let _5: Foo;             // in scope 3 at $DIR/structs.rs:+4:9: +4:10
++                 let _7: u8;              // in scope 3 at $DIR/structs.rs:+4:9: +4:10
++                 let _8: ();              // in scope 3 at $DIR/structs.rs:+4:9: +4:10
++                 let _9: &str;            // in scope 3 at $DIR/structs.rs:+4:9: +4:10
++                 let _10: std::option::Option<isize>; // in scope 3 at $DIR/structs.rs:+4:9: +4:10
+                  scope 4 {
+-                     debug z => _5;       // in scope 4 at $DIR/structs.rs:+4:9: +4:10
++                     debug z => Foo{ .0 => _7, .1 => _8, .2 => _9, .3 => _10, }; // in scope 4 at $DIR/structs.rs:+4:9: +4:10
+                      let _6: ();          // in scope 4 at $DIR/structs.rs:+5:9: +5:10
+                      scope 5 {
+                          debug a => _6;   // in scope 5 at $DIR/structs.rs:+5:9: +5:10
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/structs.rs:+1:9: +1:10
+-         _2 = _1;                         // scope 0 at $DIR/structs.rs:+1:13: +1:14
++         StorageLive(_11);                // scope 0 at $DIR/structs.rs:+1:9: +1:10
++         StorageLive(_12);                // scope 0 at $DIR/structs.rs:+1:9: +1:10
++         StorageLive(_13);                // scope 0 at $DIR/structs.rs:+1:9: +1:10
++         StorageLive(_14);                // scope 0 at $DIR/structs.rs:+1:9: +1:10
++         nop;                             // scope 0 at $DIR/structs.rs:+1:9: +1:10
++         _11 = (_1.0: u8);                // scope 0 at $DIR/structs.rs:+1:13: +1:14
++         _12 = (_1.1: ());                // scope 0 at $DIR/structs.rs:+1:13: +1:14
++         _13 = (_1.2: &str);              // scope 0 at $DIR/structs.rs:+1:13: +1:14
++         _14 = (_1.3: std::option::Option<isize>); // scope 0 at $DIR/structs.rs:+1:13: +1:14
++         nop;                             // scope 0 at $DIR/structs.rs:+1:13: +1:14
+          StorageLive(_3);                 // scope 1 at $DIR/structs.rs:+2:9: +2:10
+-         _3 = (_2.0: u8);                 // scope 1 at $DIR/structs.rs:+2:13: +2:16
++         _3 = _11;                        // scope 1 at $DIR/structs.rs:+2:13: +2:16
+          StorageLive(_4);                 // scope 2 at $DIR/structs.rs:+3:9: +3:10
+-         _4 = (_2.2: &str);               // scope 2 at $DIR/structs.rs:+3:13: +3:16
+-         StorageLive(_5);                 // scope 3 at $DIR/structs.rs:+4:9: +4:10
+-         _5 = _2;                         // scope 3 at $DIR/structs.rs:+4:13: +4:14
++         _4 = _13;                        // scope 2 at $DIR/structs.rs:+3:13: +3:16
++         StorageLive(_7);                 // scope 3 at $DIR/structs.rs:+4:9: +4:10
++         StorageLive(_8);                 // scope 3 at $DIR/structs.rs:+4:9: +4:10
++         StorageLive(_9);                 // scope 3 at $DIR/structs.rs:+4:9: +4:10
++         StorageLive(_10);                // scope 3 at $DIR/structs.rs:+4:9: +4:10
++         nop;                             // scope 3 at $DIR/structs.rs:+4:9: +4:10
++         _7 = _11;                        // scope 3 at $DIR/structs.rs:+4:13: +4:14
++         _8 = _12;                        // scope 3 at $DIR/structs.rs:+4:13: +4:14
++         _9 = _13;                        // scope 3 at $DIR/structs.rs:+4:13: +4:14
++         _10 = _14;                       // scope 3 at $DIR/structs.rs:+4:13: +4:14
++         nop;                             // scope 3 at $DIR/structs.rs:+4:13: +4:14
+          StorageLive(_6);                 // scope 4 at $DIR/structs.rs:+5:9: +5:10
+-         _6 = (_5.1: ());                 // scope 4 at $DIR/structs.rs:+5:13: +5:16
++         _6 = _8;                         // scope 4 at $DIR/structs.rs:+5:13: +5:16
+          _0 = const ();                   // scope 0 at $DIR/structs.rs:+0:19: +6:2
+          StorageDead(_6);                 // scope 4 at $DIR/structs.rs:+6:1: +6:2
+-         StorageDead(_5);                 // scope 3 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_7);                 // scope 3 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_8);                 // scope 3 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_9);                 // scope 3 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_10);                // scope 3 at $DIR/structs.rs:+6:1: +6:2
++         nop;                             // scope 3 at $DIR/structs.rs:+6:1: +6:2
+          StorageDead(_4);                 // scope 2 at $DIR/structs.rs:+6:1: +6:2
+          StorageDead(_3);                 // scope 1 at $DIR/structs.rs:+6:1: +6:2
+-         StorageDead(_2);                 // scope 0 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_11);                // scope 0 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_12);                // scope 0 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_13);                // scope 0 at $DIR/structs.rs:+6:1: +6:2
++         StorageDead(_14);                // scope 0 at $DIR/structs.rs:+6:1: +6:2
++         nop;                             // scope 0 at $DIR/structs.rs:+6:1: +6:2
+          return;                          // scope 0 at $DIR/structs.rs:+6:2: +6:2
+      }
+  }
+  

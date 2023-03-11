@@ -158,7 +158,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.infcx
             .at(cause, param_env)
             .define_opaque_types(true)
-            .sup(expected, actual)
+            .sub(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 

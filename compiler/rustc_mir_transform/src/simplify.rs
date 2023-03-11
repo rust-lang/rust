@@ -525,6 +525,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..) => {
                 self.super_statement(statement, location);
             }

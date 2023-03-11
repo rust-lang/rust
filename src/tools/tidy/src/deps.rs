@@ -42,13 +42,16 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),    // cargo via pasetors
     ("subtle", "BSD-3-Clause"),                              // cargo via pasetors
+    ("dunce", "CC0-1.0 OR MIT-0"),                           // cargo via gix (and dev dependency)
+    ("imara-diff", "Apache-2.0"),                            // cargo via gix
+    ("sha1_smol", "BSD-3-Clause"),                           // cargo via gix
+    ("unicode-bom", "Apache-2.0"),                           // cargo via gix
     ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
     ("snap", "BSD-3-Clause"),    // rustc
     ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
     ("self_cell", "Apache-2.0"), // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
-    ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
     ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)

@@ -10,7 +10,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-        used_trait_imports.extend(imports.items().copied());
+        used_trait_imports.extend_unord(imports.items().copied());
     }
 
     for &id in tcx.maybe_unused_trait_imports(()) {

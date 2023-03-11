@@ -480,7 +480,6 @@ impl Direction for Forward {
 
             Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
             | Drop { target, unwind, place: _ }
-            | DropAndReplace { target, unwind, value: _, place: _ }
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     propagate(unwind, exit_state);

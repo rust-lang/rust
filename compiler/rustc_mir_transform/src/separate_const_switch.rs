@@ -108,7 +108,6 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                         // The following terminators are not allowed
                         TerminatorKind::Resume
                         | TerminatorKind::Drop { .. }
-                        | TerminatorKind::DropAndReplace { .. }
                         | TerminatorKind::Call { .. }
                         | TerminatorKind::Assert { .. }
                         | TerminatorKind::FalseUnwind { .. }
@@ -170,7 +169,6 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Call { .. }
@@ -247,6 +245,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             | StatementKind::StorageLive(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
@@ -317,6 +316,7 @@ fn find_determining_place<'tcx>(
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter

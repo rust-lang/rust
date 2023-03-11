@@ -27,6 +27,8 @@ gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
 
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+
 [dev-dependencies]
 lang_tester = "0.3.9"
 tempfile = "3.1.0"

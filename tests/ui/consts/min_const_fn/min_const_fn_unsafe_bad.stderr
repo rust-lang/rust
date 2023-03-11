@@ -25,6 +25,15 @@ LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static u
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
+  --> $DIR/min_const_fn_unsafe_bad.rs:10:80
+   |
+LL | const unsafe fn bad_const_unsafe_deref_raw_underscore(x: *mut usize) { let _ = *x; }
+   |                                                                                ^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

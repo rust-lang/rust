@@ -348,6 +348,10 @@ impl<'a> Parser<'a> {
             lo = self.token.span;
         }
 
+        if self.is_lit_bad_ident() {
+            return Err(self.expected_ident_found());
+        }
+
         let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
             self.parse_pat_deref(expected)?
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
