@@ -823,8 +823,22 @@ pub trait Read {
 
     /// Read the exact number of bytes required to fill `cursor`.
     ///
-    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to
-    /// allow use with uninitialized buffers.
+    /// This is similar to the [`read_exact`](Read::read_exact) method, except
+    /// that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
+    /// with uninitialized buffers.
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind [`ErrorKind::Interrupted`]
+    /// then the error is ignored and the operation will continue.
+    ///
+    /// If this function encounters an "end of file" before completely filling
+    /// the buffer, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns.
+    ///
+    /// If this function returns an error, all bytes read will be appended to `cursor`.
     #[unstable(feature = "read_buf", issue = "78485")]
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> Result<()> {
         while cursor.capacity() > 0 {
