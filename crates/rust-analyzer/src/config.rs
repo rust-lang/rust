@@ -1157,6 +1157,7 @@ impl Config {
                 InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
             },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
+            extra_args: self.data.check_extraArgs.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
