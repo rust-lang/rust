@@ -527,7 +527,7 @@ impl ProjectFolders {
             // maps include paths to indices of the corresponding root
             let mut include_to_idx = FxHashMap::default();
             // Find and note down the indices of overlapping roots
-            for (idx, root) in roots.iter().filter(|it| !it.include.is_empty()).enumerate() {
+            for (idx, root) in roots.iter().enumerate().filter(|(_, it)| !it.include.is_empty()) {
                 for include in &root.include {
                     match include_to_idx.entry(include) {
                         Entry::Occupied(e) => {
