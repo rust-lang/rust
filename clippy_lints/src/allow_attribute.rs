@@ -12,7 +12,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Using `#[allow]` isn't bad, but `#[expect]` may be preferred as it lints if the code **doesn't** produce a warning.
     /// ### Example
-    /// ```rust
+    /// ```rust,ignore
     /// #[allow(unused_mut)]
     /// fn foo() -> usize {
     ///    let mut a = Vec::new();
@@ -20,7 +20,7 @@ declare_clippy_lint! {
     ///}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,ignore
     /// # #![feature(lint_reasons)]
     /// #[expect(unused_mut)]
     /// fn foo() -> usize {
