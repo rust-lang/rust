@@ -31,7 +31,7 @@
 //
 // NOTE: if you are reading this comment because you want to replace jemalloc with another allocator
 // to compare their performance, see
-// https://github.com/fee1-dead-contrib/rust/commit/b90cfc887c31c3e7a9e6d462e2464db1fe506175#diff-43914724af6e464c1da2171e4a9b6c7e607d5bc1203fa95c0ab85be4122605ef
+// https://github.com/rust-lang/rust/commit/b90cfc887c31c3e7a9e6d462e2464db1fe506175#diff-43914724af6e464c1da2171e4a9b6c7e607d5bc1203fa95c0ab85be4122605ef
 // for an example of how to do so.
 
 #[unix_sigpipe = "sig_dfl"]
