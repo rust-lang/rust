@@ -1935,7 +1935,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // parentheses around it, perhaps the user meant to write `(expr,)` to
                 // build a tuple (issue #86100)
                 (ty::Tuple(fields), _) => {
-                    suggestions.extend(self.tuple_wrap_err_subdiag( span, found, fields))
+                    suggestions.extend(self.suggest_wrap_to_build_a_tuple( span, found, fields))
                 }
                 // If a byte was expected and the found expression is a char literal
                 // containing a single ASCII character, perhaps the user meant to write `b'c'` to
@@ -1976,7 +1976,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 (ty::Bool, ty::Tuple(list)) => if list.len() == 0 {
                     suggestions.extend(self.suggest_let_for_letchains(&trace.cause, span));
                 }
-                (ty::Array(_, _), ty::Array(_, _)) => suggestions.extend(self.specify_actual_length(terr, trace, span)),
+                (ty::Array(_, _), ty::Array(_, _)) => suggestions.extend(self.suggest_specify_actual_length(terr, trace, span)),
                 _ => {}
             }
         }
@@ -1990,7 +1990,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         suggestions
     }
 
-    fn specify_actual_length(
+    fn suggest_specify_actual_length(
         &self,
         terr: TypeError<'_>,
         trace: &TypeTrace<'_>,
@@ -2068,7 +2068,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         diag
     }
 
-    fn tuple_wrap_err_subdiag(
+    fn suggest_wrap_to_build_a_tuple(
         &self,
         span: Span,
         found: Ty<'tcx>,
