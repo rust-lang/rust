@@ -18,6 +18,7 @@ LL |     macro n(a $nt_item b) {
 ...
 LL | complex_nonterminal!(enum E {});
    | ------------------------------- in this macro invocation
+   = note: captured metavariables except for `$tt`, `$ident` and `$lifetime` cannot be compared to other tokens
    = note: this error originates in the macro `complex_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
