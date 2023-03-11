@@ -1,9 +1,10 @@
+use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
 use rustc_middle::ty;
 use rustc_session::config::TraitSolver;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::solve::{Certainty, Goal, InferCtxtEvalExt, MaybeCause};
+use crate::solve::InferCtxtEvalExt;
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {

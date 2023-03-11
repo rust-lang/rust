@@ -53,6 +53,12 @@ pub struct Obligation<'tcx, T> {
     pub recursion_depth: usize,
 }
 
+impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
+    fn from(value: Obligation<'tcx, P>) -> Self {
+        solve::Goal { param_env: value.param_env, predicate: value.predicate }
+    }
+}
+
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
