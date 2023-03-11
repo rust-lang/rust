@@ -1,16 +1,27 @@
-use ast::{AttrStyle, MetaItemKind};
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
+use ast::AttrStyle;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::Ident, BytePos};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// ### What it does
-    /// Detects uses of the `#[allow]` attribute and suggests to replace it with the new `#[expect]` attribute implemented by `#![feature(lint_reasons)]` ([RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+        /// Detects uses of the `#[allow]` attribute and suggests replacing it with
+    /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+    ///
+    /// The expect attribute is still unstable and requires the `lint_reasons`
+    /// on nightly. It can be enabled by adding `#![feature(lint_reasons)]` to
+    /// the crate root.
+    ///
+    /// This lint only warns outer attributes (`#[allow]`), as inner attributes
+    /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
+    ///
     /// ### Why is this bad?
-    /// Using `#[allow]` isn't bad, but `#[expect]` may be preferred as it lints if the code **doesn't** produce a warning.
+    ///
+    /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
+    /// the expectation is unfulfilled. This can be useful to be notified when the
+    /// lint is no longer triggered.
+    ///
     /// ### Example
     /// ```rust,ignore
     /// #[allow(unused_mut)]
@@ -34,59 +45,34 @@ declare_clippy_lint! {
     "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
 }
 
-pub struct AllowAttribute {
-    pub lint_reasons_active: bool,
-}
-
-impl_lint_pass!(AllowAttribute => [ALLOW_ATTRIBUTE]);
+declare_lint_pass!(AllowAttribute => [ALLOW_ATTRIBUTE]);
 
 impl LateLintPass<'_> for AllowAttribute {
     // Separate each crate's features.
-    fn check_crate_post(&mut self, _: &LateContext<'_>) {
-        self.lint_reasons_active = false;
-    }
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        // Check inner attributes
-
         if_chain! {
-            if let AttrStyle::Inner = attr.style;
-            if attr.ident()
-            .unwrap_or(Ident::with_dummy_span(sym!(empty))) // Will not trigger if doesn't have an ident.
-            .name == sym!(feature);
-            if let ast::AttrKind::Normal(normal) = &attr.kind;
-            if let Some(MetaItemKind::List(list)) = normal.item.meta_kind();
-            if let Some(symbol) = list.get(0);
-            if symbol.ident().unwrap().name == sym!(lint_reasons);
-            then {
-                self.lint_reasons_active = true;
-            }
-        }
-
-        // Check outer attributes
-
-        if_chain! {
+            if cx.tcx.features().lint_reasons;
             if let AttrStyle::Outer = attr.style;
-            if attr.ident()
-            .unwrap_or(Ident::with_dummy_span(sym!(empty))) // Will not trigger if doesn't have an ident.
-            .name == sym!(allow);
-            if self.lint_reasons_active;
+            if let Some(ident) = attr.ident();
+            if ident.name == rustc_span::symbol::sym::allow;
             then {
                 span_lint_and_sugg(
                     cx,
                     ALLOW_ATTRIBUTE,
-                    attr.span,
+                    ident.span,
                     "#[allow] attribute found",
-                    "replace it with",
-                    format!("#[expect{})]", snippet(
-                        cx,
-                        attr.ident().unwrap().span
-                        .with_lo(
-                            attr.ident().unwrap().span.hi() + BytePos(2) // Cut [(
-                        )
-                        .with_hi(
-                            attr.meta().unwrap().span.hi() - BytePos(2) // Cut )]
-                        )
-                        , "...")), Applicability::MachineApplicable);
+                    "replace it with", "expect".into()
+                    // format!("expect{}", snippet(
+                    //     cx,
+                    //     ident.span
+                    //     .with_lo(
+                    //         ident.span.hi() + BytePos(2) // Cut *(
+                    //     )
+                    //     .with_hi(
+                    //         attr.meta().unwrap().span.hi() - BytePos(1) // Cut )
+                    //     )
+                    //     , "..."))
+                    , Applicability::MachineApplicable);
             }
         }
     }

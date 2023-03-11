@@ -1,10 +1,16 @@
 error: #[allow] attribute found
-  --> $DIR/allow_attribute.rs:11:1
+  --> $DIR/allow_attribute.rs:11:3
    |
 LL | #[allow(dead_code)]
-   | ^^^^^^^^^^^^^^^^^^^ help: replace it with: `#[expect(dead_code)]`
+   |   ^^^^^ help: replace it with: `expect`
    |
    = note: `-D clippy::allow-attribute` implied by `-D warnings`
 
-error: aborting due to previous error
+error: #[allow] attribute found
+  --> $DIR/allow_attribute.rs:20:30
+   |
+LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
+   |                              ^^^^^ help: replace it with: `expect`
+
+error: aborting due to 2 previous errors
 
