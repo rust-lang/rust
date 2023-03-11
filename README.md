@@ -99,7 +99,7 @@ See [the rustc-dev-guide for more info][sysllvm].
    The Rust build system uses a file named `config.toml` in the root of the
    source tree to determine various configuration settings for the build.
    Set up the defaults intended for distros to get started. You can see a full
-   list of options in `config.toml.example`.
+   list of options in `config.example.toml`.
 
    ```sh
    printf 'profile = "user" \nchangelog-seen = 2 \n' > config.toml

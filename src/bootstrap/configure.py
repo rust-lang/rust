@@ -194,7 +194,7 @@ if '--help' in sys.argv or '-h' in sys.argv:
     print('')
     print('This configure script is a thin configuration shim over the true')
     print('configuration system, `config.toml`. You can explore the comments')
-    print('in `config.toml.example` next to this configure script to see')
+    print('in `config.example.toml` next to this configure script to see')
     print('more information about what each option is. Additionally you can')
     print('pass `--set` as an argument to set arbitrary key/value pairs')
     print('in the TOML configuration if desired')
@@ -367,7 +367,7 @@ for key in known_args:
 
 set('build.configure-args', sys.argv[1:])
 
-# "Parse" the `config.toml.example` file into the various sections, and we'll
+# "Parse" the `config.example.toml` file into the various sections, and we'll
 # use this as a template of a `config.toml` to write out which preserves
 # all the various comments and whatnot.
 #
@@ -380,7 +380,7 @@ section_order = [None]
 targets = {}
 top_level_keys = []
 
-for line in open(rust_dir + '/config.toml.example').read().split("\n"):
+for line in open(rust_dir + '/config.example.toml').read().split("\n"):
     if cur_section == None:
         if line.count('=') == 1:
             top_level_key = line.split('=')[0]
