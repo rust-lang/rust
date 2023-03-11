@@ -9,12 +9,21 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = foo();
+   |     +++++++
 
 error: unused return value of `bar` that must be used
   --> $DIR/must_use-unit.rs:15:5
    |
 LL |     bar();
    |     ^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = bar();
+   |     +++++++
 
 error: aborting due to 2 previous errors
 
