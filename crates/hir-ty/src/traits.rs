@@ -11,6 +11,7 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     TraitId,
 };
+use hir_expand::name::{name, Name};
 use stdx::panic_context;
 
 use crate::{
@@ -184,6 +185,14 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+        }
+    }
+
+    pub fn method_name(&self) -> Name {
+        match self {
+            FnTrait::FnOnce => name!(call_once),
+            FnTrait::FnMut => name!(call_mut),
+            FnTrait::Fn => name!(call),
         }
     }
 

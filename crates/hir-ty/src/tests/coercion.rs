@@ -397,9 +397,39 @@ fn test() {
 }
 
 #[test]
+fn coerce_fn_item_to_fn_ptr_in_array() {
+    check_no_mismatches(
+        r"
+fn foo(x: u32) -> isize { 1 }
+fn bar(x: u32) -> isize { 1 }
+fn test() {
+    let f = [foo, bar];
+          // ^^^ adjustments: Pointer(ReifyFnPointer)
+}",
+    );
+}
+
+#[test]
 fn coerce_fn_items_in_match_arms() {
     cov_mark::check!(coerce_fn_reification);
 
+    check_no_mismatches(
+        r"
+fn foo1(x: u32) -> isize { 1 }
+fn foo2(x: u32) -> isize { 2 }
+fn foo3(x: u32) -> isize { 3 }
+fn test() {
+    let x = match 1 {
+        1 => foo1,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        2 => foo2,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        _ => foo3,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+    };
+    x;
+}",
+    );
     check_types(
         r"
 fn foo1(x: u32) -> isize { 1 }

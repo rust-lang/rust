@@ -298,7 +298,7 @@ impl MirLowerCtx<'_> {
                         );
                         Ok(Some(current))
                     }
-                    ValueNs::StructId(_) => {
+                    ValueNs::FunctionId(_) | ValueNs::StructId(_) => {
                         // It's probably a unit struct or a zero sized function, so no action is needed.
                         Ok(Some(current))
                     }
@@ -445,36 +445,36 @@ impl MirLowerCtx<'_> {
                 })
             },
             Expr::Call { callee, args, .. } => {
+                if let Some((func_id, generic_args)) =
+                    self.infer.method_resolution(expr_id) {
+                    let ty = chalk_ir::TyKind::FnDef(
+                        CallableDefId::FunctionId(func_id).to_chalk(self.db),
+                        generic_args,
+                    )
+                    .intern(Interner);
+                    let func = Operand::from_bytes(vec![], ty);
+                    return self.lower_call_and_args(
+                        func,
+                        iter::once(*callee).chain(args.iter().copied()),
+                        place,
+                        current,
+                        self.is_uninhabited(expr_id),
+                    );
+                }
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
                 match &callee_ty.data(Interner).kind {
                     chalk_ir::TyKind::FnDef(..) => {
                         let func = Operand::from_bytes(vec![], callee_ty.clone());
                         self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
                     }
-                    TyKind::Scalar(_)
-                    | TyKind::Tuple(_, _)
-                    | TyKind::Array(_, _)
-                    | TyKind::Adt(_, _)
-                    | TyKind::Str
-                    | TyKind::Foreign(_)
-                    | TyKind::Slice(_) => {
-                        return Err(MirLowerError::TypeError("function call on data type"))
+                    chalk_ir::TyKind::Function(_) => {
+                        let Some((func, current)) = self.lower_expr_to_some_operand(*callee, current)? else {
+                            return Ok(None);
+                        };
+                        self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
                     }
                     TyKind::Error => return Err(MirLowerError::MissingFunctionDefinition),
-                    TyKind::AssociatedType(_, _)
-                    | TyKind::Raw(_, _)
-                    | TyKind::Ref(_, _, _)
-                    | TyKind::OpaqueType(_, _)
-                    | TyKind::Never
-                    | TyKind::Closure(_, _)
-                    | TyKind::Generator(_, _)
-                    | TyKind::GeneratorWitness(_, _)
-                    | TyKind::Placeholder(_)
-                    | TyKind::Dyn(_)
-                    | TyKind::Alias(_)
-                    | TyKind::Function(_)
-                    | TyKind::BoundVar(_)
-                    | TyKind::InferenceVar(_, _) => not_supported!("dynamic function call"),
+                    _ => return Err(MirLowerError::TypeError("function call on bad type")),
                 }
             }
             Expr::MethodCall { receiver, args, .. } => {

@@ -38,9 +38,9 @@ use stdx::{always, never};
 
 use crate::{
     db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
-    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
-    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    lower::ImplTraitLoweringMode, static_lifetime, to_assoc_type_id, AliasEq, AliasTy, Const,
+    DomainGoal, GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId,
+    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -271,6 +271,13 @@ impl Default for InternedStandardTypes {
 pub struct Adjustment {
     pub kind: Adjust,
     pub target: Ty,
+}
+
+impl Adjustment {
+    pub fn borrow(m: Mutability, ty: Ty) -> Self {
+        let ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
+        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

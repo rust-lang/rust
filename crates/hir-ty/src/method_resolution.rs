@@ -20,7 +20,7 @@ use crate::{
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     from_chalk_trait_id, from_foreign_def_id,
-    infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
+    infer::{unify::InferenceTable, Adjust, Adjustment, OverloadedDeref, PointerCast},
     primitive::{FloatTy, IntTy, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
@@ -600,9 +600,9 @@ impl ReceiverAdjustments {
             }
         }
         if let Some(m) = self.autoref {
-            ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
-            adjust
-                .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty.clone() });
+            let a = Adjustment::borrow(m, ty);
+            ty = a.target.clone();
+            adjust.push(a);
         }
         if self.unsize_array {
             ty = 'x: {

@@ -343,6 +343,8 @@ pub mod known {
         feature,
         // known methods of lang items
         call_once,
+        call_mut,
+        call,
         eq,
         ne,
         ge,

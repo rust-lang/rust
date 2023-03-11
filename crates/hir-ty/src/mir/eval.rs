@@ -11,7 +11,7 @@ use hir_def::{
     builtin_type::BuiltinType,
     lang_item::{lang_attr, LangItem},
     layout::{Layout, LayoutError, RustcEnumVariantIdx, TagEncoding, Variants},
-    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, Lookup, VariantId,
+    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, VariantId,
 };
 use intern::Interned;
 use la_arena::ArenaMap;
@@ -24,8 +24,9 @@ use crate::{
     layout::layout_of_ty,
     mapping::from_chalk,
     method_resolution::lookup_impl_method,
-    CallableDefId, Const, ConstScalar, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
-    TyBuilder, TyExt,
+    traits::FnTrait,
+    CallableDefId, Const, ConstScalar, FnDefId, Interner, MemoryMap, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::{
@@ -33,11 +34,37 @@ use super::{
     Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, UnOp,
 };
 
+#[derive(Debug, Default)]
+struct VTableMap {
+    ty_to_id: HashMap<Ty, usize>,
+    id_to_ty: Vec<Ty>,
+}
+
+impl VTableMap {
+    fn id(&mut self, ty: Ty) -> usize {
+        if let Some(x) = self.ty_to_id.get(&ty) {
+            return *x;
+        }
+        let id = self.id_to_ty.len();
+        self.id_to_ty.push(ty.clone());
+        self.ty_to_id.insert(ty, id);
+        id
+    }
+
+    fn ty(&self, id: usize) -> Result<&Ty> {
+        self.id_to_ty.get(id).ok_or(MirEvalError::InvalidVTableId(id))
+    }
+}
+
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
     trait_env: Arc<TraitEnvironment>,
     stack: Vec<u8>,
     heap: Vec<u8>,
+    /// We don't really have function pointers, i.e. pointers to some assembly instructions that we can run. Instead, we
+    /// store the type as an interned id in place of function and vtable pointers, and we recover back the type at the
+    /// time of use.
+    vtable_map: VTableMap,
     crate_id: CrateId,
     // FIXME: This is a workaround, see the comment on `interpret_mir`
     assert_placeholder_ty_is_unused: bool,
@@ -147,6 +174,7 @@ pub enum MirEvalError {
     ExecutionLimitExceeded,
     StackOverflow,
     TargetDataLayoutNotAvailable,
+    InvalidVTableId(usize),
 }
 
 impl std::fmt::Debug for MirEvalError {
@@ -168,6 +196,7 @@ impl std::fmt::Debug for MirEvalError {
             Self::MirLowerError(arg0, arg1) => {
                 f.debug_tuple("MirLowerError").field(arg0).field(arg1).finish()
             }
+            Self::InvalidVTableId(arg0) => f.debug_tuple("InvalidVTableId").field(arg0).finish(),
             Self::NotSupported(arg0) => f.debug_tuple("NotSupported").field(arg0).finish(),
             Self::InvalidConst(arg0) => {
                 let data = &arg0.data(Interner);
@@ -240,6 +269,7 @@ impl Evaluator<'_> {
         Evaluator {
             stack: vec![0],
             heap: vec![0],
+            vtable_map: VTableMap::default(),
             db,
             trait_env,
             crate_id,
@@ -461,108 +491,16 @@ impl Evaluator<'_> {
                 } => {
                     let fn_ty = self.operand_ty(func, &locals)?;
                     match &fn_ty.data(Interner).kind {
-                        TyKind::FnDef(def, generic_args) => {
-                            let def: CallableDefId = from_chalk(self.db, *def);
-                            let generic_args = self.subst_filler(generic_args, &locals);
-                            match def {
-                                CallableDefId::FunctionId(def) => {
-                                    let arg_bytes = args
-                                        .iter()
-                                        .map(|x| {
-                                            Ok(self
-                                                .eval_operand(x, &locals)?
-                                                .get(&self)?
-                                                .to_owned())
-                                        })
-                                        .collect::<Result<Vec<_>>>()?
-                                        .into_iter();
-                                    let function_data = self.db.function_data(def);
-                                    let is_intrinsic = match &function_data.abi {
-                                        Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
-                                        None => match def.lookup(self.db.upcast()).container {
-                                            hir_def::ItemContainerId::ExternBlockId(block) => {
-                                                let id = block.lookup(self.db.upcast()).id;
-                                                id.item_tree(self.db.upcast())[id.value]
-                                                    .abi
-                                                    .as_deref()
-                                                    == Some("rust-intrinsic")
-                                            }
-                                            _ => false,
-                                        },
-                                    };
-                                    let result = if is_intrinsic {
-                                        self.exec_intrinsic(
-                                            function_data
-                                                .name
-                                                .as_text()
-                                                .unwrap_or_default()
-                                                .as_str(),
-                                            arg_bytes,
-                                            generic_args,
-                                            &locals,
-                                        )?
-                                    } else if let Some(x) = self.detect_lang_function(def) {
-                                        self.exec_lang_item(x, arg_bytes)?
-                                    } else {
-                                        let (imp, generic_args) = lookup_impl_method(
-                                            self.db,
-                                            self.trait_env.clone(),
-                                            def,
-                                            generic_args.clone(),
-                                        );
-                                        let generic_args =
-                                            self.subst_filler(&generic_args, &locals);
-                                        let def = imp.into();
-                                        let mir_body = self
-                                            .db
-                                            .mir_body(def)
-                                            .map_err(|e| MirEvalError::MirLowerError(imp, e))?;
-                                        self.interpret_mir(&mir_body, arg_bytes, generic_args)
-                                            .map_err(|e| {
-                                                MirEvalError::InFunction(imp, Box::new(e))
-                                            })?
-                                    };
-                                    let dest_addr = self.place_addr(destination, &locals)?;
-                                    self.write_memory(dest_addr, &result)?;
-                                }
-                                CallableDefId::StructId(id) => {
-                                    let (size, variant_layout, tag) = self.layout_of_variant(
-                                        id.into(),
-                                        generic_args.clone(),
-                                        &locals,
-                                    )?;
-                                    let result = self.make_by_layout(
-                                        size,
-                                        &variant_layout,
-                                        tag,
-                                        args,
-                                        &locals,
-                                    )?;
-                                    let dest_addr = self.place_addr(destination, &locals)?;
-                                    self.write_memory(dest_addr, &result)?;
-                                }
-                                CallableDefId::EnumVariantId(id) => {
-                                    let (size, variant_layout, tag) = self.layout_of_variant(
-                                        id.into(),
-                                        generic_args.clone(),
-                                        &locals,
-                                    )?;
-                                    let result = self.make_by_layout(
-                                        size,
-                                        &variant_layout,
-                                        tag,
-                                        args,
-                                        &locals,
-                                    )?;
-                                    let dest_addr = self.place_addr(destination, &locals)?;
-                                    self.write_memory(dest_addr, &result)?;
-                                }
-                            }
-                            current_block_idx =
-                                target.expect("broken mir, function without target");
+                        TyKind::Function(_) => {
+                            let bytes = self.eval_operand(func, &locals)?;
+                            self.exec_fn_pointer(bytes, destination, args, &locals)?;
                         }
-                        _ => not_supported!("unknown function type"),
+                        TyKind::FnDef(def, generic_args) => {
+                            self.exec_fn_def(*def, generic_args, destination, args, &locals)?;
+                        }
+                        x => not_supported!("unknown function type {x:?}"),
                     }
+                    current_block_idx = target.expect("broken mir, function without target");
                 }
                 Terminator::SwitchInt { discr, targets } => {
                     let val = u128::from_le_bytes(pad16(
@@ -808,6 +746,16 @@ impl Evaluator<'_> {
                     not_supported!("creating pointer from exposed address")
                 }
                 CastKind::Pointer(cast) => match cast {
+                    PointerCast::ReifyFnPointer => {
+                        let current_ty = self.operand_ty(operand, locals)?;
+                        if let TyKind::FnDef(_, _) = &current_ty.data(Interner).kind {
+                            let id = self.vtable_map.id(current_ty);
+                            let ptr_size = self.ptr_size();
+                            Owned(id.to_le_bytes()[0..ptr_size].to_vec())
+                        } else {
+                            not_supported!("ReifyFnPointer cast of a non FnDef type");
+                        }
+                    }
                     PointerCast::Unsize => {
                         let current_ty = self.operand_ty(operand, locals)?;
                         match &target_ty.data(Interner).kind {
@@ -920,7 +868,7 @@ impl Evaluator<'_> {
         size: usize, // Not neccessarily equal to variant_layout.size
         variant_layout: &Layout,
         tag: Option<(usize, usize, i128)>,
-        values: &Vec<Operand>,
+        values: &[Operand],
         locals: &Locals<'_>,
     ) -> Result<Vec<u8>> {
         let mut result = vec![0; size];
@@ -1140,6 +1088,20 @@ impl Evaluator<'_> {
         None
     }
 
+    fn detect_fn_trait(&self, def: FunctionId) -> Option<FnTrait> {
+        use LangItem::*;
+        let ItemContainerId::TraitId(parent) = self.db.lookup_intern_function(def).container else {
+            return None;
+        };
+        let l = lang_attr(self.db.upcast(), parent)?;
+        match l {
+            FnOnce => Some(FnTrait::FnOnce),
+            FnMut => Some(FnTrait::FnMut),
+            Fn => Some(FnTrait::Fn),
+            _ => None,
+        }
+    }
+
     fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals<'_>) -> Result<MemoryMap> {
         // FIXME: support indirect references
         let mut mm = MemoryMap::default();
@@ -1228,7 +1190,134 @@ impl Evaluator<'_> {
         }
     }
 
-    pub(crate) fn exec_lang_item(
+    fn exec_fn_pointer(
+        &mut self,
+        bytes: Interval,
+        destination: &Place,
+        args: &[Operand],
+        locals: &Locals<'_>,
+    ) -> Result<()> {
+        let id = from_bytes!(usize, bytes.get(self)?);
+        let next_ty = self.vtable_map.ty(id)?.clone();
+        if let TyKind::FnDef(def, generic_args) = &next_ty.data(Interner).kind {
+            self.exec_fn_def(*def, generic_args, destination, args, &locals)?;
+        } else {
+            return Err(MirEvalError::TypeError("function pointer to non function"));
+        }
+        Ok(())
+    }
+
+    fn exec_fn_def(
+        &mut self,
+        def: FnDefId,
+        generic_args: &Substitution,
+        destination: &Place,
+        args: &[Operand],
+        locals: &Locals<'_>,
+    ) -> Result<()> {
+        let def: CallableDefId = from_chalk(self.db, def);
+        let generic_args = self.subst_filler(generic_args, &locals);
+        match def {
+            CallableDefId::FunctionId(def) => {
+                let dest_addr = self.place_addr(destination, &locals)?;
+                if let Some(x) = self.detect_fn_trait(def) {
+                    self.exec_fn_trait(x, &args, destination, locals)?;
+                    return Ok(());
+                }
+                let arg_bytes = args
+                    .iter()
+                    .map(|x| Ok(self.eval_operand(x, &locals)?.get(&self)?.to_owned()))
+                    .collect::<Result<Vec<_>>>()?
+                    .into_iter();
+                let function_data = self.db.function_data(def);
+                let is_intrinsic = match &function_data.abi {
+                    Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
+                    None => match def.lookup(self.db.upcast()).container {
+                        hir_def::ItemContainerId::ExternBlockId(block) => {
+                            let id = block.lookup(self.db.upcast()).id;
+                            id.item_tree(self.db.upcast())[id.value].abi.as_deref()
+                                == Some("rust-intrinsic")
+                        }
+                        _ => false,
+                    },
+                };
+                let result = if is_intrinsic {
+                    self.exec_intrinsic(
+                        function_data.name.as_text().unwrap_or_default().as_str(),
+                        arg_bytes,
+                        generic_args,
+                        &locals,
+                    )?
+                } else if let Some(x) = self.detect_lang_function(def) {
+                    self.exec_lang_item(x, arg_bytes)?
+                } else {
+                    let (imp, generic_args) = lookup_impl_method(
+                        self.db,
+                        self.trait_env.clone(),
+                        def,
+                        generic_args.clone(),
+                    );
+                    let generic_args = self.subst_filler(&generic_args, &locals);
+                    let def = imp.into();
+                    let mir_body =
+                        self.db.mir_body(def).map_err(|e| MirEvalError::MirLowerError(imp, e))?;
+                    self.interpret_mir(&mir_body, arg_bytes, generic_args)
+                        .map_err(|e| MirEvalError::InFunction(imp, Box::new(e)))?
+                };
+                self.write_memory(dest_addr, &result)?;
+            }
+            CallableDefId::StructId(id) => {
+                let (size, variant_layout, tag) =
+                    self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
+                let result = self.make_by_layout(size, &variant_layout, tag, args, &locals)?;
+                let dest_addr = self.place_addr(destination, &locals)?;
+                self.write_memory(dest_addr, &result)?;
+            }
+            CallableDefId::EnumVariantId(id) => {
+                let (size, variant_layout, tag) =
+                    self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
+                let result = self.make_by_layout(size, &variant_layout, tag, args, &locals)?;
+                let dest_addr = self.place_addr(destination, &locals)?;
+                self.write_memory(dest_addr, &result)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn exec_fn_trait(
+        &mut self,
+        ft: FnTrait,
+        args: &[Operand],
+        destination: &Place,
+        locals: &Locals<'_>,
+    ) -> Result<()> {
+        let func = args.get(0).ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
+        let ref_func_ty = self.operand_ty(func, locals)?;
+        let func_ty = match ft {
+            FnTrait::FnOnce => ref_func_ty,
+            FnTrait::FnMut | FnTrait::Fn => match ref_func_ty.as_reference() {
+                Some(x) => x.0.clone(),
+                None => return Err(MirEvalError::TypeError("fn trait with non-reference arg")),
+            },
+        };
+        match &func_ty.data(Interner).kind {
+            TyKind::FnDef(def, subst) => {
+                self.exec_fn_def(*def, subst, destination, &args[1..], locals)?;
+            }
+            TyKind::Function(_) => {
+                let mut func_data = self.eval_operand(func, locals)?;
+                if let FnTrait::FnMut | FnTrait::Fn = ft {
+                    let addr = Address::from_bytes(func_data.get(self)?)?;
+                    func_data = Interval { addr, size: self.ptr_size() };
+                }
+                self.exec_fn_pointer(func_data, destination, &args[1..], locals)?;
+            }
+            x => not_supported!("Call {ft:?} trait methods with type {x:?}"),
+        }
+        Ok(())
+    }
+
+    fn exec_lang_item(
         &self,
         x: LangItem,
         mut args: std::vec::IntoIter<Vec<u8>>,

@@ -301,9 +301,9 @@ impl<'a> MirPrettyCtx<'a> {
                 w!(self, ")");
             }
             Rvalue::Cast(ck, op, ty) => {
-                w!(self, "Discriminant({ck:?}");
+                w!(self, "Cast({ck:?}, ");
                 self.operand(op);
-                w!(self, "{})", ty.display(self.db));
+                w!(self, ", {})", ty.display(self.db));
             }
             Rvalue::CheckedBinaryOp(b, o1, o2) => {
                 self.operand(o1);

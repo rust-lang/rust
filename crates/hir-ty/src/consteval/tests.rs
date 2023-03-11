@@ -907,6 +907,108 @@ fn or_pattern() {
 }
 
 #[test]
+fn function_pointer() {
+    check_number(
+        r#"
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = {
+        let plus2 = add2;
+        plus2(3)
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = {
+        let plus2: fn(u8) -> u8 = add2;
+        plus2(3)
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn mult3(x: u8) -> u8 {
+        x * 3
+    }
+    const GOAL: u8 = {
+        let x = [add2, mult3];
+        x[0](1) + x[1](5)
+    };
+        "#,
+        18,
+    );
+}
+
+#[test]
+fn function_traits() {
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(mut f: impl FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_once(f: impl FnOnce(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(add2, 3) + call_mut(add2, 3) + call_once(add2, 3);
+        "#,
+        15,
+    );
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(mut f: impl FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_once(f: impl FnOnce(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = {
+        let add2: fn(u8) -> u8 = add2;
+        call(add2, 3) + call_mut(add2, 3) + call_once(add2, 3)
+    };
+        "#,
+        15,
+    );
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: &&&&&impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(&&&&&add2, 3);
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn array_and_index() {
     check_number(
         r#"

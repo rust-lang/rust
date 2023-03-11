@@ -8,16 +8,15 @@ use chalk_ir::{
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
-use hir_def::{FunctionId, TraitId};
 use hir_expand::name;
 use stdx::never;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    db::HirDatabase, fold_tys, static_lifetime, traits::FnTrait, AliasEq, AliasTy, BoundVar,
-    Canonical, Const, DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance, InEnvironment,
-    InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    db::HirDatabase, fold_tys, static_lifetime, to_chalk_trait_id, traits::FnTrait, AliasEq,
+    AliasTy, BoundVar, Canonical, Const, DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance,
+    InEnvironment, InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt,
+    Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -631,7 +630,7 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         ty: &Ty,
         num_args: usize,
-    ) -> Option<(Option<(TraitId, FunctionId)>, Vec<Ty>, Ty)> {
+    ) -> Option<(Option<FnTrait>, Vec<Ty>, Ty)> {
         match ty.callable_sig(self.db) {
             Some(sig) => Some((None, sig.params().to_vec(), sig.ret().clone())),
             None => self.callable_sig_from_fn_trait(ty, num_args),
@@ -642,7 +641,7 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         ty: &Ty,
         num_args: usize,
-    ) -> Option<(Option<(TraitId, FunctionId)>, Vec<Ty>, Ty)> {
+    ) -> Option<(Option<FnTrait>, Vec<Ty>, Ty)> {
         let krate = self.trait_env.krate;
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let trait_data = self.db.trait_data(fn_once_trait);
@@ -676,19 +675,28 @@ impl<'a> InferenceTable<'a> {
         };
 
         let trait_env = self.trait_env.env.clone();
+        let mut trait_ref = projection.trait_ref(self.db);
         let obligation = InEnvironment {
-            goal: projection.trait_ref(self.db).cast(Interner),
-            environment: trait_env,
+            goal: trait_ref.clone().cast(Interner),
+            environment: trait_env.clone(),
         };
         let canonical = self.canonicalize(obligation.clone());
         if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
             self.register_obligation(obligation.goal);
             let return_ty = self.normalize_projection_ty(projection);
-            Some((
-                Some(fn_once_trait).zip(trait_data.method_by_name(&name!(call_once))),
-                arg_tys,
-                return_ty,
-            ))
+            for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
+                let fn_x_trait = fn_x.get_id(self.db, krate)?;
+                trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
+                let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
+                    goal: trait_ref.clone().cast(Interner),
+                    environment: trait_env.clone(),
+                };
+                let canonical = self.canonicalize(obligation.clone());
+                if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
+                    return Some((Some(fn_x), arg_tys, return_ty));
+                }
+            }
+            unreachable!("It should at least implement FnOnce at this point");
         } else {
             None
         }

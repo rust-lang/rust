@@ -632,6 +632,31 @@ fn f(inp: (Foo, Foo, Foo, Foo)) {
     }
 
     #[test]
+    fn fn_traits() {
+        check_diagnostics(
+            r#"
+//- minicore: fn
+fn fn_ref(mut x: impl Fn(u8) -> u8) -> u8 {
+        //^^^^^ 💡 weak: variable does not need to be mutable
+    x(2)
+}
+fn fn_mut(x: impl FnMut(u8) -> u8) -> u8 {
+    x(2)
+  //^ 💡 error: cannot mutate immutable variable `x`
+}
+fn fn_borrow_mut(mut x: &mut impl FnMut(u8) -> u8) -> u8 {
+               //^^^^^ 💡 weak: variable does not need to be mutable
+    x(2)
+}
+fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
+         //^^^^^ 💡 weak: variable does not need to be mutable
+    x(2)
+}
+"#,
+        );
+    }
+
+    #[test]
     fn respect_allow_unused_mut() {
         // FIXME: respect
         check_diagnostics(

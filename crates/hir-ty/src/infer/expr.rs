@@ -34,6 +34,7 @@ use crate::{
     method_resolution::{self, lang_items_for_bin_op, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
+    traits::FnTrait,
     utils::{generics, Generics},
     Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
     Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt,
@@ -385,16 +386,32 @@ impl<'a> InferenceContext<'a> {
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
-                        let adjustments = auto_deref_adjust_steps(&derefs);
-                        // FIXME: Handle call adjustments for Fn/FnMut
-                        self.write_expr_adj(*callee, adjustments);
-                        if let Some((trait_, func)) = func {
-                            let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-                                .push(callee_ty.clone())
-                                .push(TyBuilder::tuple_with(params.iter().cloned()))
-                                .build();
-                            self.write_method_resolution(tgt_expr, func, subst.clone());
+                        let mut adjustments = auto_deref_adjust_steps(&derefs);
+                        if let Some(fn_x) = func {
+                            match fn_x {
+                                FnTrait::FnOnce => (),
+                                FnTrait::FnMut => adjustments.push(Adjustment::borrow(
+                                    Mutability::Mut,
+                                    derefed_callee.clone(),
+                                )),
+                                FnTrait::Fn => adjustments.push(Adjustment::borrow(
+                                    Mutability::Not,
+                                    derefed_callee.clone(),
+                                )),
+                            }
+                            let trait_ = fn_x
+                                .get_id(self.db, self.trait_env.krate)
+                                .expect("We just used it");
+                            let trait_data = self.db.trait_data(trait_);
+                            if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
+                                let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+                                    .push(callee_ty.clone())
+                                    .push(TyBuilder::tuple_with(params.iter().cloned()))
+                                    .build();
+                                self.write_method_resolution(tgt_expr, func, subst.clone());
+                            }
                         }
+                        self.write_expr_adj(*callee, adjustments);
                         (params, ret_ty)
                     }
                     None => {
