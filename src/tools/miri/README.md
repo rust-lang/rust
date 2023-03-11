@@ -225,6 +225,26 @@ degree documented below):
   reduced feature set. We might ship Miri with a nightly even when some features
   on these targets regress.
 
+### Running tests in parallel
+
+Though it implements Rust threading, Miri itself is a single-threaded interpreter.
+This means that when running `cargo miri test`, you will probably see a dramatic
+increase in the amount of time it takes to run your whole test suite due to the
+inherent interpreter slowdown and a loss of parallelism.
+
+You can get your test suite's parallelism back by running `cargo miri nextest run -jN`
+(note that you will need [`cargo-nextest`](https://nexte.st) installed).
+This works because `cargo-nextest` collects a list of all tests then launches a
+separate `cargo miri run` for each test. You will need to specify a `-j` or `--test-threads`,
+by default `cargo miri nextest run` runs one test at a time. You can find the `cargo-nextest`
+documentation for its Miri support here: https://nexte.st/book/miri.html
+
+Note: This one-test-per-process model means that `cargo miri test` is able to detect data
+races where two tests race on a shared resource, but `cargo miri nextest run` will not detect
+such races.
+
+Note: `cargo-nextest` does not support doctests, see https://github.com/nextest-rs/nextest/issues/16
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
