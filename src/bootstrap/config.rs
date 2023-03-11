@@ -1153,6 +1153,11 @@ impl Config {
             config.rust_profile_generate = flags.rust_profile_generate;
         }
 
+        // rust_info must be set before is_ci_llvm_available() is called.
+        let default = config.channel == "dev";
+        config.ignore_git = ignore_git.unwrap_or(default);
+        config.rust_info = GitInfo::new(config.ignore_git, &config.src);
+
         if let Some(llvm) = toml.llvm {
             match llvm.ccache {
                 Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
@@ -1345,10 +1350,6 @@ impl Config {
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(0);
-
-        let default = config.channel == "dev";
-        config.ignore_git = ignore_git.unwrap_or(default);
-        config.rust_info = GitInfo::new(config.ignore_git, &config.src);
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
