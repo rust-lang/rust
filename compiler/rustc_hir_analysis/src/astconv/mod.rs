@@ -1086,9 +1086,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let tcx = self.tcx();
 
-        // TODO: rtn comment goes here
-        let associated_return_type_bound =
-            binding.gen_args.parenthesized && tcx.features().associated_return_type_bounds;
+        let return_type_notation =
+            binding.gen_args.parenthesized && tcx.features().return_type_notation;
 
         let candidate = if return_type_notation {
             if self.trait_defines_associated_item_named(
@@ -1098,8 +1097,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) {
                 trait_ref
             } else {
-                // TODO: error
-                todo!()
+                return Err(tcx.sess.emit_err(crate::errors::ReturnTypeNotationMissingMethod {
+                    span: binding.span,
+                    trait_name: tcx.item_name(trait_ref.def_id()),
+                    assoc_name: binding.item_name.name,
+                }));
             }
         } else if self.trait_defines_associated_item_named(
             trait_ref.def_id(),
@@ -1218,7 +1220,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             {
                 alias_ty
             } else {
-                todo!("found return type of {output:?}");
+                return Err(self.tcx().sess.emit_err(
+                    crate::errors::ReturnTypeNotationOnNonRpitit {
+                        span: binding.span,
+                        ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
+                        fn_span: tcx.hir().span_if_local(assoc_item.def_id),
+                        note: (),
+                    },
+                ));
             };
 
             // Finally, move the fn return type's bound vars over to account for the early bound
@@ -1292,9 +1301,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         match binding.kind {
-            ConvertedBindingKind::Equality(..) if associated_return_type_bound => {
-                // TODO: error
-                todo!()
+            ConvertedBindingKind::Equality(..) if return_type_notation => {
+                return Err(self.tcx().sess.emit_err(
+                    crate::errors::ReturnTypeNotationEqualityBound { span: binding.span },
+                ));
             }
             ConvertedBindingKind::Equality(mut term) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to

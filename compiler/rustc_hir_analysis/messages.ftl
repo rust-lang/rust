@@ -178,3 +178,14 @@ hir_analysis_invalid_union_field =
 
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
+
+hir_analysis_return_type_notation_on_non_rpitit =
+    return type notation used on function that is not `async` and does not return `impl Trait`
+    .note = function returns `{$ty}`, which is not compatible with associated type return bounds
+    .label = this function must be `async` or return `impl Trait`
+
+hir_analysis_return_type_notation_equality_bound =
+    return type notation is not allowed to use type equality
+
+hir_analysis_return_type_notation_missing_method =
+    cannot find associated function `{$assoc_name}` in trait `{$trait_name}`

@@ -987,10 +987,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
-                GenericArgs::Parenthesized(data)
-                    if self.tcx.features().return_type_notation =>
-                {
-                    // TODO: Check the parens + no return type
+                GenericArgs::Parenthesized(data) if self.tcx.features().return_type_notation => {
+                    if !data.inputs.is_empty() {
+                        self.tcx.sess.emit_err(errors::BadReturnTypeNotation::Inputs {
+                            span: data.inputs_span,
+                        });
+                    } else if let FnRetTy::Ty(ty) = &data.output {
+                        self.tcx.sess.emit_err(errors::BadReturnTypeNotation::Output {
+                            span: data.inputs_span.shrink_to_hi().to(ty.span),
+                        });
+                    }
                     GenericArgsCtor {
                         args: Default::default(),
                         bindings: &[],
@@ -1000,7 +1006,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArgs::Parenthesized(data) => {
                     self.emit_bad_parenthesized_trait_in_assoc_ty(data);
-                    // TODO: Add a RTN feature error if the parens are shaped correctly
+                    // FIXME(return_type_notation): we could issue a feature error
+                    // if the parens are empty and there's no return type.
                     self.lower_angle_bracketed_parameter_data(
                         &data.as_angle_bracketed_args(),
                         ParamMode::Explicit,
