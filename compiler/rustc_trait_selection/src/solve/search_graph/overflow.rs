@@ -1,10 +1,11 @@
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::traits::query::NoSolution;
+use rustc_middle::traits::solve::{Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
 use super::SearchGraph;
-use crate::solve::{response_no_constraints, Certainty, EvalCtxt, MaybeCause, QueryResult};
+use crate::solve::{response_no_constraints, EvalCtxt};
 
 /// When detecting a solver overflow, we return ambiguity. Overflow can be
 /// *hidden* by either a fatal error in an **AND** or a trivial success in an **OR**.

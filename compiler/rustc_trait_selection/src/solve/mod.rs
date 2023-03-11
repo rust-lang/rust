@@ -21,11 +21,13 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::Obligation;
-use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use rustc_middle::traits::solve::{
+    CanonicalGoal, CanonicalResponse, Certainty, ExternalConstraints, ExternalConstraintsData,
+    Goal, MaybeCause, QueryResult, Response,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{
-    CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TypeOutlivesPredicate,
+    CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
 use rustc_span::DUMMY_SP;
 
@@ -43,45 +45,6 @@ mod trait_goals;
 pub use eval_ctxt::EvalCtxt;
 pub use fulfill::FulfillmentCtxt;
 
-/// A goal is a statement, i.e. `predicate`, we want to prove
-/// given some assumptions, i.e. `param_env`.
-///
-/// Most of the time the `param_env` contains the `where`-bounds of the function
-/// we're currently typechecking while the `predicate` is some trait bound.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
-pub struct Goal<'tcx, P> {
-    param_env: ty::ParamEnv<'tcx>,
-    predicate: P,
-}
-
-impl<'tcx, P> Goal<'tcx, P> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        predicate: impl ToPredicate<'tcx, P>,
-    ) -> Goal<'tcx, P> {
-        Goal { param_env, predicate: predicate.to_predicate(tcx) }
-    }
-
-    /// Updates the goal to one with a different `predicate` but the same `param_env`.
-    fn with<Q>(self, tcx: TyCtxt<'tcx>, predicate: impl ToPredicate<'tcx, Q>) -> Goal<'tcx, Q> {
-        Goal { param_env: self.param_env, predicate: predicate.to_predicate(tcx) }
-    }
-}
-
-impl<'tcx, P> From<Obligation<'tcx, P>> for Goal<'tcx, P> {
-    fn from(obligation: Obligation<'tcx, P>) -> Goal<'tcx, P> {
-        Goal { param_env: obligation.param_env, predicate: obligation.predicate }
-    }
-}
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
-pub struct Response<'tcx> {
-    pub var_values: CanonicalVarValues<'tcx>,
-    /// Additional constraints returned by this query.
-    pub external_constraints: ExternalConstraints<'tcx>,
-    pub certainty: Certainty,
-}
-
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
 }
@@ -93,56 +56,6 @@ impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
             && self.value.external_constraints.opaque_types.is_empty()
     }
 }
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
-pub enum Certainty {
-    Yes,
-    Maybe(MaybeCause),
-}
-
-impl Certainty {
-    pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
-
-    /// When proving multiple goals using **AND**, e.g. nested obligations for an impl,
-    /// use this function to unify the certainty of these goals
-    pub fn unify_and(self, other: Certainty) -> Certainty {
-        match (self, other) {
-            (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
-            (Certainty::Yes, Certainty::Maybe(_)) => other,
-            (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
-                Certainty::Maybe(MaybeCause::Overflow)
-            }
-            // If at least one of the goals is ambiguous, hide the overflow as the ambiguous goal
-            // may still result in failure.
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(_))
-            | (Certainty::Maybe(_), Certainty::Maybe(MaybeCause::Ambiguity)) => {
-                Certainty::Maybe(MaybeCause::Ambiguity)
-            }
-        }
-    }
-}
-
-/// Why we failed to evaluate a goal.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
-pub enum MaybeCause {
-    /// We failed due to ambiguity. This ambiguity can either
-    /// be a true ambiguity, i.e. there are multiple different answers,
-    /// or we hit a case where we just don't bother, e.g. `?x: Trait` goals.
-    Ambiguity,
-    /// We gave up due to an overflow, most often by hitting the recursion limit.
-    Overflow,
-}
-
-type CanonicalGoal<'tcx, T = ty::Predicate<'tcx>> = Canonical<'tcx, Goal<'tcx, T>>;
-type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
-/// The result of evaluating a canonical query.
-///
-/// FIXME: We use a different type than the existing canonical queries. This is because
-/// we need to add a `Certainty` for `overflow` and may want to restructure this code without
-/// having to worry about changes to currently used code. Once we've made progress on this
-/// solver, merge the two responses again.
-pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
 pub trait InferCtxtEvalExt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
