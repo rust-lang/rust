@@ -213,7 +213,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example
 
-```text
+```rust
 #![feature(naked_functions)]
 
 use std::arch::asm;
