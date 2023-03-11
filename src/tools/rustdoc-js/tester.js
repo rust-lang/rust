@@ -361,22 +361,24 @@ function parseOptions(args) {
     };
 
     for (let i = 0; i < args.length; ++i) {
-        if (Object.prototype.hasOwnProperty.call(correspondences, args[i])) {
+        const arg = args[i];
+        if (Object.prototype.hasOwnProperty.call(correspondences, arg)) {
             i += 1;
             if (i >= args.length) {
-                console.log("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + arg + "` option.");
                 return null;
             }
-            if (args[i - 1] !== "--test-file") {
-                opts[correspondences[args[i - 1]]] = args[i];
+            const arg_value = args[i];
+            if (arg !== "--test-file") {
+                opts[correspondences[arg]] = arg_value;
             } else {
-                opts[correspondences[args[i - 1]]].push(args[i]);
+                opts[correspondences[arg]].push(arg_value);
             }
-        } else if (args[i] === "--help") {
+        } else if (arg === "--help") {
             showHelp();
             process.exit(0);
         } else {
-            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
             return null;
         }
