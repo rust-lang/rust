@@ -1554,8 +1554,11 @@ impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if this is accepted inside `VarDebugInfoContents::Place`.
     pub fn can_use_in_debuginfo(&self) -> bool {
         match self {
-            Self::Deref | Self::Downcast(_, _) | Self::Field(_, _) => true,
-            Self::ConstantIndex { .. }
+            Self::ConstantIndex { from_end: false, .. }
+            | Self::Deref
+            | Self::Downcast(_, _)
+            | Self::Field(_, _) => true,
+            Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,

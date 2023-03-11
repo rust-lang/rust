@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx};
+use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -83,6 +83,7 @@ trait DebugInfoOffsetLocation<'tcx, Bx> {
     fn deref(&self, bx: &mut Bx) -> Self;
     fn layout(&self) -> TyAndLayout<'tcx>;
     fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self;
+    fn project_constant_index(&self, bx: &mut Bx, offset: u64) -> Self;
     fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self;
 }
 
@@ -99,6 +100,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
 
     fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         PlaceRef::project_field(*self, bx, field.index())
+    }
+
+    fn project_constant_index(&self, bx: &mut Bx, offset: u64) -> Self {
+        let lloffset = bx.cx().const_usize(offset);
+        self.project_index(bx, lloffset)
     }
 
     fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
@@ -121,6 +127,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
 
     fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         self.field(bx.cx(), field.index())
+    }
+
+    fn project_constant_index(&self, bx: &mut Bx, index: u64) -> Self {
+        self.field(bx.cx(), index as usize)
     }
 
     fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
@@ -167,6 +177,18 @@ fn calculate_debuginfo_offset<
             }
             mir::ProjectionElem::Downcast(_, variant) => {
                 place = place.downcast(bx, variant);
+            }
+            mir::ProjectionElem::ConstantIndex {
+                offset: index,
+                min_length: _,
+                from_end: false,
+            } => {
+                let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
+                let FieldsShape::Array { stride, count: _ } = place.layout().fields else {
+                    span_bug!(var.source_info.span, "ConstantIndex on non-array type {:?}", place.layout())
+                };
+                *offset += stride * index;
+                place = place.project_constant_index(bx, index);
             }
             _ => {
                 // Sanity check for `can_use_in_debuginfo`.

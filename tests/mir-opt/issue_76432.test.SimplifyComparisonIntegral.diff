@@ -21,9 +21,9 @@
           let _13: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
           let _14: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
           scope 2 {
-              debug v1 => _12;             // in scope 2 at $DIR/issue_76432.rs:+3:10: +3:16
-              debug v2 => _13;             // in scope 2 at $DIR/issue_76432.rs:+3:18: +3:24
-              debug v3 => _14;             // in scope 2 at $DIR/issue_76432.rs:+3:26: +3:32
+              debug v1 => &(*_2)[0 of 3];  // in scope 2 at $DIR/issue_76432.rs:+3:10: +3:16
+              debug v2 => &(*_2)[1 of 3];  // in scope 2 at $DIR/issue_76432.rs:+3:18: +3:24
+              debug v3 => &(*_2)[2 of 3];  // in scope 2 at $DIR/issue_76432.rs:+3:26: +3:32
           }
       }
   
@@ -52,15 +52,6 @@
       }
   
       bb2: {
-          StorageLive(_12);                // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
-          _12 = &(*_2)[0 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
-          StorageLive(_13);                // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
-          _13 = &(*_2)[1 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
-          StorageLive(_14);                // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
-          _14 = &(*_2)[2 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
-          StorageDead(_14);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_13);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_12);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_5);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2
           StorageDead(_2);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2
           return;                          // scope 0 at $DIR/issue_76432.rs:+6:2: +6:2
