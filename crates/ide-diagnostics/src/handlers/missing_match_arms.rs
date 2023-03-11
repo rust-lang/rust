@@ -1,5 +1,3 @@
-use hir::InFile;
-
 use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-match-arm
@@ -12,7 +10,7 @@ pub(crate) fn missing_match_arms(
     Diagnostic::new(
         "missing-match-arm",
         format!("missing match arm: {}", d.uncovered_patterns),
-        ctx.sema.diagnostics_display_range(InFile::new(d.file, d.match_expr.clone().into())).range,
+        ctx.sema.diagnostics_display_range(d.scrutinee_expr.clone().map(Into::into)).range,
     )
 }
 
