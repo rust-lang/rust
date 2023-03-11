@@ -259,7 +259,6 @@ declare_features! (
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
-    (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, powerpc_target_feature, "1.27.0", Some(44839), None),
     (active, riscv_target_feature, "1.45.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
