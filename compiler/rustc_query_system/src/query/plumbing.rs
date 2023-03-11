@@ -2,8 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::HasDepContext;
 use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepGraphData, HasDepContext};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
@@ -411,32 +411,34 @@ where
     Qcx: QueryContext,
 {
     let dep_graph = qcx.dep_context().dep_graph();
+    let dep_graph_data = match dep_graph.data() {
+        // Fast path for when incr. comp. is off.
+        None => {
+            // Fingerprint the key, just to assert that it doesn't
+            // have anything we don't consider hashable
+            if cfg!(debug_assertions) {
+                let _ = key.to_fingerprint(*qcx.dep_context());
+            }
 
-    // Fast path for when incr. comp. is off.
-    if !dep_graph.is_fully_enabled() {
-        // Fingerprint the key, just to assert that it doesn't
-        // have anything we don't consider hashable
-        if cfg!(debug_assertions) {
-            let _ = key.to_fingerprint(*qcx.dep_context());
+            let prof_timer = qcx.dep_context().profiler().query_provider();
+            let result =
+                qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+            let dep_node_index = dep_graph.next_virtual_depnode_index();
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            // Similarly, fingerprint the result to assert that
+            // it doesn't have anything not considered hashable.
+            if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result()
+            {
+                qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                    hash_result(&mut hcx, &result);
+                });
+            }
+
+            return (result, dep_node_index);
         }
-
-        let prof_timer = qcx.dep_context().profiler().query_provider();
-        let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
-        let dep_node_index = dep_graph.next_virtual_depnode_index();
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        // Similarly, fingerprint the result to assert that
-        // it doesn't have anything not considered hashable.
-        if cfg!(debug_assertions)
-            && let Some(hash_result) = query.hash_result()
-        {
-            qcx.dep_context().with_stable_hashing_context(|mut hcx| {
-                hash_result(&mut hcx, &result);
-            });
-        }
-
-        return (result, dep_node_index);
-    }
+        Some(data) => data,
+    };
 
     if !query.anon() && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
@@ -446,7 +448,7 @@ where
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory(query, qcx, &key, &dep_node)
+            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, &dep_node)
         }) {
             return ret;
         }
@@ -458,7 +460,7 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
-                return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
+                return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
                     query.compute(qcx, key)
                 });
             }
@@ -467,7 +469,7 @@ where
             let dep_node =
                 dep_node_opt.unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
-            dep_graph.with_task(
+            dep_graph_data.with_task(
                 dep_node,
                 (qcx, query),
                 key,
@@ -495,6 +497,7 @@ where
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     query: Q,
+    dep_graph_data: &DepGraphData<Qcx::DepKind>,
     qcx: Qcx,
     key: &Q::Key,
     dep_node: &DepNode<Qcx::DepKind>,
@@ -506,10 +509,9 @@ where
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let dep_graph = qcx.dep_context().dep_graph();
-    let (prev_dep_node_index, dep_node_index) = dep_graph.try_mark_green(qcx, &dep_node)?;
+    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, &dep_node)?;
 
-    debug_assert!(dep_graph.is_green(dep_node));
+    debug_assert!(dep_graph_data.is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
@@ -519,8 +521,10 @@ where
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result =
-            dep_graph.with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
+        let result = qcx
+            .dep_context()
+            .dep_graph()
+            .with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -528,14 +532,11 @@ where
             if std::intrinsics::unlikely(
                 qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
-                dep_graph.mark_debug_loaded_from_disk(*dep_node)
+                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
             }
 
-            let prev_fingerprint = qcx
-                .dep_context()
-                .dep_graph()
-                .prev_fingerprint_of(dep_node)
-                .unwrap_or(Fingerprint::ZERO);
+            let prev_fingerprint =
+                dep_graph_data.prev_fingerprint_of(dep_node).unwrap_or(Fingerprint::ZERO);
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
             //
@@ -547,7 +548,13 @@ where
             if std::intrinsics::unlikely(
                 try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
-                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
+                incremental_verify_ich(
+                    *qcx.dep_context(),
+                    dep_graph_data,
+                    &result,
+                    dep_node,
+                    query.hash_result(),
+                );
             }
 
             return Some((result, dep_node_index));
@@ -566,7 +573,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| query.compute(qcx, *key));
+    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -579,15 +586,22 @@ where
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
+    incremental_verify_ich(
+        *qcx.dep_context(),
+        dep_graph_data,
+        &result,
+        dep_node,
+        query.hash_result(),
+    );
 
     Some((result, dep_node_index))
 }
 
 #[inline]
-#[instrument(skip(tcx, result, hash_result), level = "debug")]
+#[instrument(skip(tcx, dep_graph_data, result, hash_result), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     tcx: Tcx,
+    dep_graph_data: &DepGraphData<Tcx::DepKind>,
     result: &V,
     dep_node: &DepNode<Tcx::DepKind>,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
@@ -596,7 +610,7 @@ where
     Tcx: DepContext,
 {
     assert!(
-        tcx.dep_graph().is_green(dep_node),
+        dep_graph_data.is_green(dep_node),
         "fingerprint for green query instance not loaded from cache: {dep_node:?}",
     );
 
@@ -604,7 +618,7 @@ where
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
 
-    let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
+    let old_hash = dep_graph_data.prev_fingerprint_of(dep_node);
 
     if Some(new_hash) != old_hash {
         incremental_verify_ich_failed(
