@@ -248,7 +248,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
     /// self type to the list of candidates in case that succeeds. Note that we can't just eagerly return in
-    /// this case as projections as self types add `
+    /// this case as projections as self types add
+    // FIXME complete the unfinished sentence above
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,

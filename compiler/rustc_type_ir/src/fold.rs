@@ -18,7 +18,7 @@
 //!     It defines a "skeleton" of how they should be folded.
 //! - `TypeSuperFoldable`. This is implemented only for each type of interest,
 //!   and defines the folding "skeleton" for these types.
-//! - `TypeFolder`/`FallibleTypeFolder. One of these is implemented for each
+//! - `TypeFolder`/`FallibleTypeFolder`. One of these is implemented for each
 //!   folder. This defines how types of interest are folded.
 //!
 //! This means each fold is a mixture of (a) generic folding operations, and (b)

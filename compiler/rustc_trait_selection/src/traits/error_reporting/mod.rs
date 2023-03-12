@@ -1024,7 +1024,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
                             if !self.report_similar_impl_candidates(
-                                impl_candidates,
+                                &impl_candidates,
                                 trait_ref,
                                 body_def_id,
                                 &mut err,
@@ -1060,7 +1060,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     let impl_candidates =
                                         self.find_similar_impl_candidates(trait_pred);
                                     self.report_similar_impl_candidates(
-                                        impl_candidates,
+                                        &impl_candidates,
                                         trait_ref,
                                         body_def_id,
                                         &mut err,
@@ -1068,6 +1068,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     );
                                 }
                             }
+
+                            self.maybe_suggest_convert_to_slice(
+                                &mut err,
+                                trait_ref,
+                                impl_candidates.as_slice(),
+                                span,
+                            );
                         }
 
                         // Changing mutability doesn't make a difference to whether we have
@@ -1514,7 +1521,7 @@ trait InferCtxtPrivExt<'tcx> {
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ImplCandidate<'tcx>>,
+        impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_def_id: LocalDefId,
         err: &mut Diagnostic,
@@ -2004,7 +2011,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ImplCandidate<'tcx>>,
+        impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_def_id: LocalDefId,
         err: &mut Diagnostic,
@@ -2113,7 +2120,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Prefer more similar candidates first, then sort lexicographically
         // by their normalized string representation.
         let mut normalized_impl_candidates_and_similarities = impl_candidates
-            .into_iter()
+            .iter()
+            .copied()
             .map(|ImplCandidate { trait_ref, similarity }| {
                 // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
                 let normalized = self
@@ -2326,7 +2334,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                             if impl_candidates.len() < 10 {
                                 self.report_similar_impl_candidates(
-                                    impl_candidates,
+                                    impl_candidates.as_slice(),
                                     trait_ref,
                                     obligation.cause.body_id,
                                     &mut err,
