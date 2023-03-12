@@ -12,5 +12,10 @@ pub use self::my_mod::Foo as _;
 pub use self::my_mod::TyFoo as _;
 pub use self::my_mod::Bar as _; //~ ERROR
 pub use self::my_mod::TyBar as _; //~ ERROR
+pub use self::my_mod::{Bar as _}; //~ ERROR
+pub use self::my_mod::{Bar as _, Foo as _}; //~ ERROR
+pub use self::my_mod::{Bar as _, TyBar as _};
+//~^ ERROR
+//~| ERROR
 #[allow(unused_imports)]
 use self::my_mod::TyBar as _;
