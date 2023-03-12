@@ -745,6 +745,9 @@ impl<T> Option<T> {
     /// It's guaranteed to be a multiple of alignment (so will always give a
     /// correctly-aligned location) and to be within the allocated object, so
     /// is valid to use with `offset` and to use for a zero-sized read.
+    ///
+    /// FIXME: This is a horrible hack, but allows a nice optimization.  It should
+    /// be replaced with `offset_of!` once that works on enum variants.
     const SOME_BYTE_OFFSET_GUESS: isize = {
         let some_uninit = Some(mem::MaybeUninit::<T>::uninit());
         let payload_ref = some_uninit.as_ref().unwrap();
@@ -762,7 +765,8 @@ impl<T> Option<T> {
 
         let max_offset = mem::size_of::<Self>() - mem::size_of::<T>();
         if offset as usize <= max_offset {
-            // The offset is at least inside the object, so let's try it.
+            // There's enough space after this offset for a `T` to exist without
+            // overflowing the bounds of the object, so let's try it.
             offset
         } else {
             // The offset guess is definitely wrong, so use the address
