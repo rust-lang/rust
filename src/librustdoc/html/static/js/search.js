@@ -90,91 +90,97 @@ function printTab(nb) {
  * algorithm should not matter to the caller of the methods, which is why it is not noted in the
  * documentation.
  */
-let editDistanceCurrent = [];
-let editDistancePrev = [];
-let editDistancePrevPrev = [];
-function editDistance(a, b, limit) {
-    // Ensure that `b` is the shorter string, minimizing memory use.
-    if (a.length < b.length) {
-        const aTmp = a;
-        a = b;
-        b = aTmp;
-    }
-
-    const minDist = a.length - b.length;
-    // If we know the limit will be exceeded, we can return early.
-    if (minDist > limit) {
-        return limit + 1;
-    }
-
-    // Strip common prefix.
-    // We know that `b` is the shorter string, so we don't need to check
-    // `a.length`.
-    while (b.length > 0 && b[0] === a[0]) {
-        a = a.substring(1);
-        b = b.substring(1);
-    }
-    // Strip common suffix.
-    while (b.length > 0 && b[b.length - 1] === a[a.length - 1]) {
-        a = a.substring(0, a.length - 1);
-        b = b.substring(0, b.length - 1);
-    }
-
-    // If either string is empty, the distance is the length of the other.
-    // We know that `b` is the shorter string, so we don't need to check `a`.
-    if (b.length === 0) {
-        return minDist;
-    }
-
-    const aLength = a.length;
-    const bLength = b.length;
-
-    for (let i = 0; i <= bLength; ++i) {
-        editDistanceCurrent[i] = 0;
-        editDistancePrev[i] = i;
-        editDistancePrevPrev[i] = Number.MAX_VALUE;
-    }
-
-    // row by row
-    for (let i = 1; i <= aLength; ++i) {
-        editDistanceCurrent[0] = i;
-        const aIdx = i - 1;
-
-        // column by column
-        for (let j = 1; j <= bLength; ++j) {
-            const bIdx = j - 1;
-
-            // There is no cost to substitute a character with itself.
-            const substitutionCost = a[aIdx] === b[bIdx] ? 0 : 1;
-
-            editDistanceCurrent[j] = Math.min(
-                // deletion
-                editDistancePrev[j] + 1,
-                // insertion
-                editDistanceCurrent[j - 1] + 1,
-                // substitution
-                editDistancePrev[j - 1] + substitutionCost
-            );
-
-            if ((i > 1) && (j > 1) && (a[aIdx] === b[bIdx - 1]) && (a[aIdx - 1] === b[bIdx])) {
-                // transposition
-                editDistanceCurrent[j] = Math.min(
-                    editDistanceCurrent[j],
-                    editDistancePrevPrev[j - 2] + 1
-                );
-            }
+const editDistanceState = {
+    current: [],
+    prev: [],
+    prevPrev: [],
+    calculate: function calculate(a, b, limit) {
+        // Ensure that `b` is the shorter string, minimizing memory use.
+        if (a.length < b.length) {
+            const aTmp = a;
+            a = b;
+            b = aTmp;
         }
 
-        // Rotate the buffers, reusing the memory
-        const prevPrevTmp = editDistancePrevPrev;
-        editDistancePrevPrev = editDistancePrev;
-        editDistancePrev = editDistanceCurrent;
-        editDistanceCurrent = prevPrevTmp;
-    }
+        const minDist = a.length - b.length;
+        // If we know the limit will be exceeded, we can return early.
+        if (minDist > limit) {
+            return limit + 1;
+        }
 
-    // `prev` because we already rotated the buffers.
-    const distance = editDistancePrev[bLength];
-    return distance <= limit ? distance : (limit + 1);
+        // Strip common prefix.
+        // We know that `b` is the shorter string, so we don't need to check
+        // `a.length`.
+        while (b.length > 0 && b[0] === a[0]) {
+            a = a.substring(1);
+            b = b.substring(1);
+        }
+        // Strip common suffix.
+        while (b.length > 0 && b[b.length - 1] === a[a.length - 1]) {
+            a = a.substring(0, a.length - 1);
+            b = b.substring(0, b.length - 1);
+        }
+
+        // If either string is empty, the distance is the length of the other.
+        // We know that `b` is the shorter string, so we don't need to check `a`.
+        if (b.length === 0) {
+            return minDist;
+        }
+
+        const aLength = a.length;
+        const bLength = b.length;
+
+        for (let i = 0; i <= bLength; ++i) {
+            this.current[i] = 0;
+            this.prev[i] = i;
+            this.prevPrev[i] = Number.MAX_VALUE;
+        }
+
+        // row by row
+        for (let i = 1; i <= aLength; ++i) {
+            this.current[0] = i;
+            const aIdx = i - 1;
+
+            // column by column
+            for (let j = 1; j <= bLength; ++j) {
+                const bIdx = j - 1;
+
+                // There is no cost to substitute a character with itself.
+                const substitutionCost = a[aIdx] === b[bIdx] ? 0 : 1;
+
+                this.current[j] = Math.min(
+                    // deletion
+                    this.prev[j] + 1,
+                    // insertion
+                    this.current[j - 1] + 1,
+                    // substitution
+                    this.prev[j - 1] + substitutionCost
+                );
+
+                if ((i > 1) && (j > 1) && (a[aIdx] === b[bIdx - 1]) && (a[aIdx - 1] === b[bIdx])) {
+                    // transposition
+                    this.current[j] = Math.min(
+                        this.current[j],
+                        this.prevPrev[j - 2] + 1
+                    );
+                }
+            }
+
+            // Rotate the buffers, reusing the memory
+            const prevPrevTmp = this.prevPrev;
+            this.prevPrev = this.prev;
+            this.prev = this.current;
+            this.current = prevPrevTmp;
+        }
+
+        // `prev` because we already rotated the buffers.
+        const distance = this.prev[bLength];
+        return distance <= limit ? distance : (limit + 1);
+    },
+};
+
+function editDistance(a, b, limit) {
+    return editDistanceState.calculate(a, b, limit);
 }
 
 function initSearch(rawSearchIndex) {
