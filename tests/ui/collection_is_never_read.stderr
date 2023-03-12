@@ -37,34 +37,40 @@ LL |     let mut x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:101:5
+  --> $DIR/collection_is_never_read.rs:100:5
    |
 LL |     let mut x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:118:5
+  --> $DIR/collection_is_never_read.rs:107:5
+   |
+LL |     let mut x = vec![1, 2, 3]; // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:124:5
    |
 LL |     let mut x = HashSet::new(); // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:132:5
+  --> $DIR/collection_is_never_read.rs:138:5
    |
 LL |     let x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:168:5
+  --> $DIR/collection_is_never_read.rs:174:5
    |
 LL |     let mut s = String::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:181:5
+  --> $DIR/collection_is_never_read.rs:187:5
    |
 LL |     let mut s = String::from("Hello, World!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
