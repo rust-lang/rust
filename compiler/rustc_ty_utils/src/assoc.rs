@@ -22,7 +22,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     let item = tcx.hir().expect_item(def_id.expect_local());
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty {
+            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type and create a
                 // corresponding associated item using associated_items_for_impl_trait_in_trait
                 // query.
@@ -53,7 +53,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             }
         }
         hir::ItemKind::Impl(ref impl_) => {
-            if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty {
+            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type, on the impl side too and
                 // create a corresponding associated item using
                 // associated_items_for_impl_trait_in_trait query.
@@ -301,9 +301,6 @@ fn associated_item_for_impl_trait_in_trait(
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
 
-    // FIXME implement this.
-    trait_assoc_ty.explicit_item_bounds(&[]);
-
     local_def_id
 }
 
@@ -315,11 +312,12 @@ fn impl_associated_item_for_impl_trait_in_trait(
     trait_assoc_def_id: LocalDefId,
     impl_fn_def_id: LocalDefId,
 ) -> LocalDefId {
-    let impl_def_id = tcx.local_parent(impl_fn_def_id);
+    let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
+    let impl_def_id = impl_local_def_id.to_def_id();
 
     // FIXME fix the span, we probably want the def_id of the return type of the function
     let span = tcx.def_span(impl_fn_def_id);
-    let impl_assoc_ty = tcx.at(span).create_def(impl_def_id, DefPathData::ImplTraitAssocTy);
+    let impl_assoc_ty = tcx.at(span).create_def(impl_local_def_id, DefPathData::ImplTraitAssocTy);
 
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
@@ -344,13 +342,53 @@ fn impl_associated_item_for_impl_trait_in_trait(
         fn_has_self_parameter: false,
     });
 
+    // Copy param_env of the containing function. The synthesized associated type doesn't have
+    // extra predicates to assume.
+    impl_assoc_ty.param_env(tcx.param_env(impl_fn_def_id));
+
     // Copy impl_defaultness of the containing function.
     impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
 
-    // Copy generics_of the trait's associated item.
-    // FIXME: This is not correct, in particular the parent is going to be wrong. So we would need
-    // to copy from trait_assoc_def_id and adjust things.
-    impl_assoc_ty.generics_of(tcx.generics_of(trait_assoc_def_id).clone());
+    // Copy generics_of the trait's associated item but the impl as the parent.
+    impl_assoc_ty.generics_of({
+        let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
+        let trait_assoc_parent_count = trait_assoc_generics.parent_count;
+        let mut params = trait_assoc_generics.params.clone();
+
+        let parent_generics = tcx.generics_of(impl_def_id);
+        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+
+        let mut impl_fn_params = tcx.generics_of(impl_fn_def_id).params.clone();
+
+        for param in &mut params {
+            param.index = param.index + parent_count as u32 + impl_fn_params.len() as u32
+                - trait_assoc_parent_count as u32;
+        }
+
+        impl_fn_params.extend(params);
+        params = impl_fn_params;
+
+        let param_def_id_to_index =
+            params.iter().map(|param| (param.def_id, param.index)).collect();
+
+        ty::Generics {
+            parent: Some(impl_def_id),
+            parent_count,
+            params,
+            param_def_id_to_index,
+            has_self: false,
+            has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
+        }
+    });
+
+    // There are no predicates for the synthesized associated type.
+    impl_assoc_ty.explicit_predicates_of(ty::GenericPredicates {
+        parent: Some(impl_def_id),
+        predicates: &[],
+    });
+
+    // There are no inferred outlives for the synthesized associated type.
+    impl_assoc_ty.inferred_outlives_of(&[]);
 
     local_def_id
 }
