@@ -1797,7 +1797,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_array_ref<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+    pub const fn split_array_ref<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
         if N > self.len() {
             None
         } else {
@@ -1835,7 +1835,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_array_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
+    pub const fn split_array_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
         if N > self.len() {
             None
         } else {
@@ -1885,7 +1885,7 @@ impl<T> [T] {
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[must_use]
-    pub fn rsplit_array_ref<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
+    pub const fn rsplit_array_ref<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
         if N > self.len() {
             None
         } else {
@@ -1923,7 +1923,7 @@ impl<T> [T] {
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[must_use]
-    pub fn rsplit_array_mut<const N: usize>(&mut self) -> Option<(&mut [T], &mut [T; N])> {
+    pub const fn rsplit_array_mut<const N: usize>(&mut self) -> Option<(&mut [T], &mut [T; N])> {
         if N > self.len() {
             None
         } else {

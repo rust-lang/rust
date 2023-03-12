@@ -662,10 +662,10 @@ impl<T, const N: usize> [T; N] {
         issue = "90091"
     )]
     #[inline]
-    pub fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T]) {
+    pub const fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T]) {
         // FIXME: remove once constraint is encoded in return type
         const { assert!(M <= N) }
-        (&self[..]).split_array_ref::<M>().unwrap()
+        self.as_slice().split_array_ref::<M>().unwrap()
     }
 
     /// Divides one mutable array reference into two at an index.
@@ -693,10 +693,10 @@ impl<T, const N: usize> [T; N] {
         issue = "90091"
     )]
     #[inline]
-    pub fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
+    pub const fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
         // FIXME: remove once constraint is encoded in return type
         const { assert!(M <= N) }
-        (&mut self[..]).split_array_mut::<M>().unwrap()
+        (self as &mut [T]).split_array_mut::<M>().unwrap()
     }
 
     /// Divides one array reference into two at an index from the end.
@@ -736,10 +736,10 @@ impl<T, const N: usize> [T; N] {
         issue = "90091"
     )]
     #[inline]
-    pub fn rsplit_array_ref<const M: usize>(&self) -> (&[T], &[T; M]) {
+    pub const fn rsplit_array_ref<const M: usize>(&self) -> (&[T], &[T; M]) {
         // FIXME: remove once constraint is encoded in return type
         const { assert!(M <= N) }
-        (&self[..]).rsplit_array_ref::<M>().unwrap()
+        self.as_slice().rsplit_array_ref::<M>().unwrap()
     }
 
     /// Divides one mutable array reference into two at an index from the end.
@@ -767,10 +767,10 @@ impl<T, const N: usize> [T; N] {
         issue = "90091"
     )]
     #[inline]
-    pub fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
+    pub const fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
         // FIXME: remove once constraint is encoded in return type
         const { assert!(M <= N) }
-        (&mut self[..]).rsplit_array_mut::<M>().unwrap()
+        (self as &mut [T]).rsplit_array_mut::<M>().unwrap()
     }
 }
 
