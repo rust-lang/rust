@@ -127,7 +127,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.for_each_relevant_impl_treating_projections(
             trait_def_id,
             self_ty,
-            TreatProjections::DefaultLookup,
+            TreatProjections::ForLookup,
             f,
         )
     }
@@ -156,8 +156,8 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(simp) = fast_reject::simplify_type(
             self,
             self_ty,
-            TreatParams::AsInfer,
-            TreatProjections::DefaultCandidate,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
         ) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
@@ -196,7 +196,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
         if let Some(simp) =
-            fast_reject::simplify_type(self, self_ty, TreatParams::AsPlaceholder, treat_projections)
+            fast_reject::simplify_type(self, self_ty, TreatParams::ForLookup, treat_projections)
         {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
@@ -261,8 +261,8 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         if let Some(simplified_self_ty) = fast_reject::simplify_type(
             tcx,
             impl_self_ty,
-            TreatParams::AsInfer,
-            TreatProjections::DefaultCandidate,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
         ) {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {

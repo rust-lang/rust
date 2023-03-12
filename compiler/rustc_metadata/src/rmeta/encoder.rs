@@ -1858,8 +1858,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     let simplified_self_ty = fast_reject::simplify_type(
                         self.tcx,
                         trait_ref.self_ty(),
-                        TreatParams::AsInfer,
-                        TreatProjections::DefaultCandidate,
+                        TreatParams::AsCandidateKey,
+                        TreatProjections::AsCandidateKey,
                     );
 
                     fx_hash_map

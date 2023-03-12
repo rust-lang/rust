@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
-                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer }
+                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey }
                         .types_may_unify(*rcvr_ty, impl_ty)
                 })
                 .map_or(impl_ty, |(ty, _)| ty)
@@ -1517,7 +1517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
         let found_assoc = |ty: Ty<'tcx>| {
-            simplify_type(tcx, ty, TreatParams::AsInfer, TreatProjections::DefaultCandidate)
+            simplify_type(tcx, ty, TreatParams::AsCandidateKey, TreatProjections::AsCandidateKey)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
                         .iter()
@@ -2649,8 +2649,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(simp_rcvr_ty) = simplify_type(
                 self.tcx,
                 rcvr_ty,
-                TreatParams::AsPlaceholder,
-                TreatProjections::DefaultLookup,
+                TreatParams::ForLookup,
+                TreatProjections::ForLookup,
             ) {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
@@ -2667,8 +2667,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let imp_simp = simplify_type(
                                 self.tcx,
                                 imp.self_ty(),
-                                TreatParams::AsPlaceholder,
-                                TreatProjections::DefaultLookup,
+                                TreatParams::ForLookup,
+                                TreatProjections::ForLookup,
                             );
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })

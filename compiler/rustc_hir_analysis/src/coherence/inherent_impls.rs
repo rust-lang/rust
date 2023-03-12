@@ -102,8 +102,8 @@ impl<'tcx> InherentCollect<'tcx> {
             if let Some(simp) = simplify_type(
                 self.tcx,
                 self_ty,
-                TreatParams::AsInfer,
-                TreatProjections::DefaultCandidate,
+                TreatParams::AsCandidateKey,
+                TreatProjections::AsCandidateKey,
             ) {
                 self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
             } else {
@@ -164,9 +164,12 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         }
 
-        if let Some(simp) =
-            simplify_type(self.tcx, ty, TreatParams::AsInfer, TreatProjections::DefaultCandidate)
-        {
+        if let Some(simp) = simplify_type(
+            self.tcx,
+            ty,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
+        ) {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);

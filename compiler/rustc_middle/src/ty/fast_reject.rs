@@ -51,9 +51,12 @@ pub enum SimplifiedType {
 /// generic parameters as if they were inference variables in that case.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatParams {
-    /// Treat parameters as placeholders in the given environment.
-    AsPlaceholder,
-    AsInfer,
+    /// Treat parameters as infer vars. This is the correct mode for caching
+    /// an impl's type for lookup.
+    AsCandidateKey,
+    /// Treat parameters as placeholders in the given environment. This is the
+    /// correct mode for *lookup*, as during candidate selection.
+    ForLookup,
 }
 
 /// During fast-rejection, we have the choice of treating projection types
@@ -67,13 +70,13 @@ pub enum TreatProjections {
     /// We must assume that the `impl<T> Trait<T> for <T as Id>::This`
     /// can apply to all self types so we don't return a simplified type
     /// for `<T as Id>::This`.
-    DefaultCandidate,
+    AsCandidateKey,
     /// In the old solver we don't try to normalize projections
     /// when looking up impls and only access them by using the
     /// current self type. This means that if the self type is
     /// a projection which could later be normalized, we must not
     /// treat it as rigid.
-    DefaultLookup,
+    ForLookup,
     /// We can treat projections in the self type as opaque as
     /// we separately look up impls for the normalized self type.
     NextSolverLookup,
@@ -133,13 +136,13 @@ pub fn simplify_type<'tcx>(
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::Placeholder(..) => Some(PlaceholderSimplifiedType),
         ty::Param(_) => match treat_params {
-            TreatParams::AsPlaceholder => Some(PlaceholderSimplifiedType),
-            TreatParams::AsInfer => None,
+            TreatParams::ForLookup => Some(PlaceholderSimplifiedType),
+            TreatParams::AsCandidateKey => None,
         },
         ty::Alias(..) => match treat_projections {
-            TreatProjections::DefaultLookup if !ty.needs_infer() => Some(PlaceholderSimplifiedType),
+            TreatProjections::ForLookup if !ty.needs_infer() => Some(PlaceholderSimplifiedType),
             TreatProjections::NextSolverLookup => Some(PlaceholderSimplifiedType),
-            TreatProjections::DefaultCandidate | TreatProjections::DefaultLookup => None,
+            TreatProjections::AsCandidateKey | TreatProjections::ForLookup => None,
         },
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
@@ -307,8 +310,8 @@ impl DeepRejectCtxt {
             // Depending on the value of `treat_obligation_params`, we either
             // treat generic parameters like placeholders or like inference variables.
             ty::Param(_) => match self.treat_obligation_params {
-                TreatParams::AsPlaceholder => false,
-                TreatParams::AsInfer => true,
+                TreatParams::ForLookup => false,
+                TreatParams::AsCandidateKey => true,
             },
 
             ty::Infer(_) => true,
@@ -345,8 +348,8 @@ impl DeepRejectCtxt {
         let k = impl_ct.kind();
         match obligation_ct.kind() {
             ty::ConstKind::Param(_) => match self.treat_obligation_params {
-                TreatParams::AsPlaceholder => false,
-                TreatParams::AsInfer => true,
+                TreatParams::ForLookup => false,
+                TreatParams::AsCandidateKey => true,
             },
 
             // As we don't necessarily eagerly evaluate constants,

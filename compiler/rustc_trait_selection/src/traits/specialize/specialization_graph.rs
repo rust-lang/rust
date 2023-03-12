@@ -52,8 +52,8 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         if let Some(st) = fast_reject::simplify_type(
             tcx,
             trait_ref.self_ty(),
-            TreatParams::AsInfer,
-            fast_reject::TreatProjections::DefaultCandidate,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
         ) {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
@@ -72,8 +72,8 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         if let Some(st) = fast_reject::simplify_type(
             tcx,
             trait_ref.self_ty(),
-            TreatParams::AsInfer,
-            TreatProjections::DefaultCandidate,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
         ) {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
@@ -313,8 +313,8 @@ impl<'tcx> GraphExt<'tcx> for Graph {
         let simplified = fast_reject::simplify_type(
             tcx,
             trait_ref.self_ty(),
-            TreatParams::AsInfer,
-            TreatProjections::DefaultCandidate,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
         );
 
         // Descend the specialization tree, where `parent` is the current parent node.

@@ -784,7 +784,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let relevant_impl = self.tcx().find_map_relevant_impl(
                     self.tcx().require_lang_item(LangItem::Drop, None),
                     obligation.predicate.skip_binder().trait_ref.self_ty(),
-                    TreatProjections::DefaultLookup,
+                    TreatProjections::ForLookup,
                     Some,
                 );
 

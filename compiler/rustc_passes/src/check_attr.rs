@@ -2215,7 +2215,7 @@ impl CheckAttrVisitor<'_> {
             // `fn(TokenStream) -> TokenStream` after some substitution of generic arguments.
             //
             // Properly checking this means pulling in additional `rustc` crates, so we don't.
-            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
+            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey };
 
             if sig.abi != Abi::Rust {
                 tcx.sess.emit_err(errors::ProcMacroInvalidAbi {

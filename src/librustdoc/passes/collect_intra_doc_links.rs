@@ -735,7 +735,7 @@ fn trait_impls_for<'a>(
         trace!("considering explicit impl for trait {:?}", trait_);
 
         // Look at each trait implementation to see if it's an impl for `did`
-        tcx.find_map_relevant_impl(trait_, ty, TreatProjections::DefaultLookup, |impl_| {
+        tcx.find_map_relevant_impl(trait_, ty, TreatProjections::ForLookup, |impl_| {
             let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();

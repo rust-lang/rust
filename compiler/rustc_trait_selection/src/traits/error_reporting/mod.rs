@@ -1803,7 +1803,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.find_map_relevant_impl(
                             id,
                             proj.projection_ty.self_ty(),
-                            TreatProjections::DefaultLookup,
+                            TreatProjections::ForLookup,
                             |did| {
                                 self.tcx
                                     .associated_items(did)
@@ -2185,7 +2185,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             self.tcx.find_map_relevant_impl(
                 trait_def_id,
                 trait_ref.skip_binder().self_ty(),
-                TreatProjections::DefaultLookup,
+                TreatProjections::ForLookup,
                 Some,
             )
         };
