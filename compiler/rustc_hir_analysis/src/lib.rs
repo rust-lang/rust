@@ -283,6 +283,15 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
+    if !tcx.codegen_fn_attrs(main_def_id).target_features.is_empty()
+        // Calling functions with `#[target_feature]` is not unsafe on WASM, see #84988
+        && !tcx.sess.target.is_like_wasm
+        && !tcx.sess.opts.actually_rustdoc
+    {
+        tcx.sess.emit_err(errors::TargetFeatureOnMain { main: main_span });
+        error = true;
+    }
+
     if error {
         return;
     }
@@ -368,6 +377,18 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     for attr in attrs {
                         if attr.has_name(sym::track_caller) {
                             tcx.sess.emit_err(errors::StartTrackCaller {
+                                span: attr.span,
+                                start: start_span,
+                            });
+                            error = true;
+                        }
+                        if attr.has_name(sym::target_feature)
+                            // Calling functions with `#[target_feature]` is
+                            // not unsafe on WASM, see #84988
+                            && !tcx.sess.target.is_like_wasm
+                            && !tcx.sess.opts.actually_rustdoc
+                        {
+                            tcx.sess.emit_err(errors::StartTargetFeature {
                                 span: attr.span,
                                 start: start_span,
                             });

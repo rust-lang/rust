@@ -328,8 +328,25 @@ pub(crate) struct TrackCallerOnMain {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_target_feature_on_main)]
+pub(crate) struct TargetFeatureOnMain {
+    #[primary_span]
+    #[label(hir_analysis_target_feature_on_main)]
+    pub main: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_start_not_track_caller)]
 pub(crate) struct StartTrackCaller {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_not_target_feature)]
+pub(crate) struct StartTargetFeature {
     #[primary_span]
     pub span: Span,
     #[label]
