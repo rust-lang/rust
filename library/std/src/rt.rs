@@ -127,12 +127,30 @@ fn lang_start_internal(
     argc: isize,
     argv: *const *const u8,
     sigpipe: u8,
-) -> Result<isize, !> {
-    use crate::{mem, panic};
-    let rt_abort = move |e| {
-        mem::forget(e);
-        rtabort!("initialization or cleanup bug");
-    };
+) -> isize {
+    enum AbortReason {
+        Init,
+        PayloadDrop,
+        Cleanup,
+    }
+
+    struct PanicGuard {
+        reason: AbortReason,
+    }
+
+    impl Drop for PanicGuard {
+        fn drop(&mut self) {
+            rtprintpanic!(
+                "{}",
+                match self.reason {
+                    AbortReason::Init => "rt::init should not unwind",
+                    AbortReason::PayloadDrop => "drop of the panic payload panicked",
+                    AbortReason::Cleanup => "rt::cleanup should not unwind",
+                }
+            );
+        }
+    }
+
     // Guard against the code called by this function from unwinding outside of the Rust-controlled
     // code, which is UB. This is a requirement imposed by a combination of how the
     // `#[lang="start"]` attribute is implemented as well as by the implementation of the panicking
@@ -143,14 +161,21 @@ fn lang_start_internal(
     // panic is a std implementation bug. A quite likely one too, as there isn't any way to
     // prevent std from accidentally introducing a panic to these functions. Another is from
     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
+    let mut guard = PanicGuard { reason: AbortReason::Init };
+
     // SAFETY: Only called once during runtime initialization.
-    panic::catch_unwind(move || unsafe { init(argc, argv, sigpipe) }).map_err(rt_abort)?;
-    let ret_code = panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize)
-        .map_err(move |e| {
-            mem::forget(e);
-            rtabort!("drop of the panic payload panicked");
-        });
-    panic::catch_unwind(cleanup).map_err(rt_abort)?;
+    unsafe {
+        init(argc, argv, sigpipe);
+    }
+
+    guard.reason = AbortReason::PayloadDrop;
+    let ret_code = crate::panic::catch_unwind(main).unwrap_or(101) as isize;
+
+    guard.reason = AbortReason::Cleanup;
+    cleanup();
+
+    // No panic occurred, so do not abort.
+    crate::mem::forget(guard);
     ret_code
 }
 
@@ -162,11 +187,10 @@ fn lang_start<T: crate::process::Termination + 'static>(
     argv: *const *const u8,
     sigpipe: u8,
 ) -> isize {
-    let Ok(v) = lang_start_internal(
+    lang_start_internal(
         &move || crate::sys_common::backtrace::__rust_begin_short_backtrace(main).report().to_i32(),
         argc,
         argv,
         sigpipe,
-    );
-    v
+    )
 }
