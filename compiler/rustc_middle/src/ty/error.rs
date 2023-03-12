@@ -151,12 +151,8 @@ impl<'tcx> TypeError<'tcx> {
             .into(),
             RegionsPlaceholderMismatch => "one type is more general than the other".into(),
             ArgumentSorts(values, _) | Sorts(values) => {
-                let mut expected = values.expected.sort_string(tcx);
-                let mut found = values.found.sort_string(tcx);
-                if expected == found {
-                    expected = values.expected.sort_string(tcx);
-                    found = values.found.sort_string(tcx);
-                }
+                let expected = values.expected.sort_string(tcx);
+                let found = values.found.sort_string(tcx);
                 report_maybe_different(&expected, &found).into()
             }
             Traits(values) => {
