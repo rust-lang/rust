@@ -87,7 +87,7 @@ use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 

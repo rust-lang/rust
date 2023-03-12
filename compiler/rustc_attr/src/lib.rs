@@ -26,4 +26,4 @@ pub use rustc_ast::attr::*;
 
 pub(crate) use rustc_ast::HashStableContext;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

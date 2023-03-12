@@ -81,7 +81,7 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 enum Weak {
     Yes,

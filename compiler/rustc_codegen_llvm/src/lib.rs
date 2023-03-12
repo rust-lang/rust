@@ -84,7 +84,7 @@ mod type_of;
 mod va_arg;
 mod value;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());

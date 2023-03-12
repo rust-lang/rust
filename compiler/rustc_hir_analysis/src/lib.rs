@@ -120,7 +120,7 @@ use std::ops::Not;
 use astconv::AstConv;
 use bounds::Bounds;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";

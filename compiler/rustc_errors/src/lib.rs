@@ -76,7 +76,7 @@ pub use snippet::Style;
 pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)

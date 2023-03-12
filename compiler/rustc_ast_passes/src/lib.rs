@@ -21,4 +21,4 @@ pub mod feature_gate;
 pub mod node_count;
 pub mod show_span;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

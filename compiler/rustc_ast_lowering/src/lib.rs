@@ -92,7 +92,7 @@ mod lifetime_collector;
 mod pat;
 mod path;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
