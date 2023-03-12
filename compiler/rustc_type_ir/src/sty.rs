@@ -167,7 +167,7 @@ pub enum TyKind<I: Interner> {
     /// lifetimes bound by the witness itself.
     ///
     /// This variant is only using when `drop_tracking_mir` is set.
-    /// This contains the `DefId` and the `SubstRef` of the generator.
+    /// This contains the `DefId` and the `SubstsRef` of the generator.
     /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
     ///
     /// Looking at the following example, the witness for this generator
