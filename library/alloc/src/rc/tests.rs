@@ -166,7 +166,6 @@ fn into_inner() {
     assert_eq!(Rc::into_inner(x), Some(5));
 }
 
-
 #[test]
 fn into_from_raw() {
     let x = Rc::new(Box::new("hello"));
