@@ -126,7 +126,7 @@ You may have a couple of followup questions…
 
 **`subst`** How do we actually do the substitutions? There is a function for that too! You use
 [`subst`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/struct.EarlyBinder.html#method.subst) to
-replace a `SubstRef` with another list of types.
+replace a `SubstsRef` with another list of types.
 
 [Here is an example of actually using `subst` in the compiler][substex].  The exact details are not
 too important, but in this piece of code, we happen to be converting from the `rustc_hir::Ty` to
