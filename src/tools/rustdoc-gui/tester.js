@@ -6,8 +6,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require('os');
-const {Options, runTest} = require('browser-ui-test');
+const os = require("os");
+const {Options, runTest} = require("browser-ui-test");
 
 // If a test fails or errors, we will retry it two more times in case it was a flaky failure.
 const NB_RETRY = 3;
@@ -200,7 +200,7 @@ async function main(argv) {
     const framework_options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        let args = [
+        const args = [
             "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
             "--allow-file-access-from-files",
         ];
@@ -234,7 +234,7 @@ async function main(argv) {
     } else {
         files = opts["files"];
     }
-    files = files.filter(file => path.extname(file) == ".goml");
+    files = files.filter(file => path.extname(file) === ".goml");
     if (files.length === 0) {
         console.error("rustdoc-gui: No test selected");
         process.exit(2);
@@ -259,7 +259,7 @@ async function main(argv) {
 
     // We catch this "event" to display a nicer message in case of unexpected exit (because of a
     // missing `--no-sandbox`).
-    const exitHandling = (code) => {
+    const exitHandling = () => {
         if (!opts["no_sandbox"]) {
             console.log("");
             console.log(
@@ -268,10 +268,10 @@ async function main(argv) {
             console.log("");
         }
     };
-    process.on('exit', exitHandling);
+    process.on("exit", exitHandling);
 
     const originalFilesLen = files.length;
-    let results = createEmptyResults();
+    const results = createEmptyResults();
     const status_bar = char_printer(files.length);
 
     let new_results;
@@ -281,7 +281,7 @@ async function main(argv) {
         Array.prototype.push.apply(results.successful, new_results.successful);
         // We generate the new list of files with the previously failing tests.
         files = Array.prototype.concat(new_results.failed, new_results.errored).map(
-            f => f['file_name']);
+            f => f["file_name"]);
         if (files.length > originalFilesLen / 2) {
             // If we have too many failing tests, it's very likely not flaky failures anymore so
             // no need to retry.
