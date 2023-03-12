@@ -253,20 +253,24 @@ impl ProvenanceExtra {
 
 /// Extra per-allocation data
 #[derive(Debug, Clone)]
-pub struct AllocExtra {
+pub struct AllocExtra<'tcx> {
     /// Global state of the borrow tracker, if enabled.
     pub borrow_tracker: Option<borrow_tracker::AllocState>,
-    /// Data race detection via the use of a vector-clock,
-    ///  this is only added if it is enabled.
+    /// Data race detection via the use of a vector-clock.
+    /// This is only added if it is enabled.
     pub data_race: Option<data_race::AllocState>,
-    /// Weak memory emulation via the use of store buffers,
-    ///  this is only added if it is enabled.
+    /// Weak memory emulation via the use of store buffers.
+    /// This is only added if it is enabled.
     pub weak_memory: Option<weak_memory::AllocState>,
+    /// A backtrace to where this allocation was allocated.
+    /// As this is recorded for leak reports, it only exists
+    /// if this allocation is leakable.
+    pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
 }
 
-impl VisitTags for AllocExtra {
+impl VisitTags for AllocExtra<'_> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        let AllocExtra { borrow_tracker, data_race, weak_memory } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
 
         borrow_tracker.visit_tags(visit);
         data_race.visit_tags(visit);
@@ -773,7 +777,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type ExtraFnVal = Dlsym;
 
     type FrameExtra = FrameExtra<'tcx>;
-    type AllocExtra = AllocExtra;
+    type AllocExtra = AllocExtra<'tcx>;
 
     type Provenance = Provenance;
     type ProvenanceExtra = ProvenanceExtra;
@@ -967,9 +971,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             )
         });
         let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
+
+        // If an allocation is leaked, we want to report a backtrace to indicate where it was
+        // allocated. We don't need to record a backtrace for allocations which are allowed to
+        // leak.
+        let backtrace = if kind.may_leak() { None } else { Some(ecx.generate_stacktrace()) };
+
         let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
             &ecx.tcx,
-            AllocExtra { borrow_tracker, data_race: race_alloc, weak_memory: buffer_alloc },
+            AllocExtra {
+                borrow_tracker,
+                data_race: race_alloc,
+                weak_memory: buffer_alloc,
+                backtrace,
+            },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
         Ok(Cow::Owned(alloc))
@@ -1049,7 +1064,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn before_memory_read(
         _tcx: TyCtxt<'tcx>,
         machine: &Self,
-        alloc_extra: &AllocExtra,
+        alloc_extra: &AllocExtra<'tcx>,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1069,7 +1084,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn before_memory_write(
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
-        alloc_extra: &mut AllocExtra,
+        alloc_extra: &mut AllocExtra<'tcx>,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1089,7 +1104,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn before_memory_deallocation(
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
-        alloc_extra: &mut AllocExtra,
+        alloc_extra: &mut AllocExtra<'tcx>,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {

@@ -10,6 +10,7 @@ use std::thread;
 use log::info;
 
 use crate::borrow_tracker::RetagFields;
+use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -457,10 +458,12 @@ pub fn eval_entry<'tcx>(
         }
         // Check for memory leaks.
         info!("Additonal static roots: {:?}", ecx.machine.static_roots);
-        let leaks = ecx.leak_report(&ecx.machine.static_roots);
-        if leaks != 0 {
-            tcx.sess.err("the evaluated program leaked memory");
-            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+        let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
+        if !leaks.is_empty() {
+            report_leaks(&ecx, leaks);
+            tcx.sess.note_without_error(
+                "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check",
+            );
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

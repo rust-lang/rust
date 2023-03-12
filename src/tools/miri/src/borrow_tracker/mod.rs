@@ -352,7 +352,7 @@ pub enum AllocState {
     TreeBorrows(Box<RefCell<tree_borrows::AllocState>>),
 }
 
-impl machine::AllocExtra {
+impl machine::AllocExtra<'_> {
     #[track_caller]
     pub fn borrow_tracker_sb(&self) -> &RefCell<stacked_borrows::AllocState> {
         match self.borrow_tracker {
