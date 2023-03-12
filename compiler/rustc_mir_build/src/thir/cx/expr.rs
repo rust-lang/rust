@@ -667,7 +667,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::OffsetOf(_, _) => {
                 let data = self.typeck_results.offset_of_data();
                 let &(container, ref indices) = data.get(expr.hir_id).unwrap();
-                let fields = indices.iter().copied().collect();
+                let fields = tcx.mk_fields_from_iter(indices.iter().copied());
 
                 ExprKind::OffsetOf { container, fields }
             }

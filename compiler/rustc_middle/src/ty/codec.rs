@@ -19,6 +19,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use std::hash::Hash;
 use std::intrinsics;
@@ -401,6 +402,15 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<FieldIdx> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder
+            .interner()
+            .mk_fields_from_iter((0..len).map::<FieldIdx, _>(|_| Decodable::decode(decoder)))
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
@@ -412,6 +422,7 @@ impl_decodable_via_ref! {
     &'tcx mir::coverage::CodeRegion,
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::List<ty::Predicate<'tcx>>,
+    &'tcx ty::List<FieldIdx>,
 }
 
 #[macro_export]

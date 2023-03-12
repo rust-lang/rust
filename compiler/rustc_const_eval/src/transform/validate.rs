@@ -719,7 +719,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 let mut current_ty = *container;
 
-                for &field in fields {
+                for field in fields.iter() {
                     match current_ty.kind() {
                         ty::Tuple(fields) => {
                             let Some(&f_ty) = fields.get(field.as_usize()) else {
