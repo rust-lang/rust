@@ -71,6 +71,11 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.extraArgs]]rust-analyzer.cargo.extraArgs (default: `[]`)::
++
+--
+Extra arguments that are passed to every cargo invocation.
+--
 [[rust-analyzer.cargo.extraEnv]]rust-analyzer.cargo.extraEnv (default: `{}`)::
 +
 --

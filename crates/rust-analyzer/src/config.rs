@@ -101,6 +101,8 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// Extra arguments that are passed to every cargo invocation.
+        cargo_extraArgs: Vec<String> = "[]",
         /// Extra environment variables that will be set when running cargo, rustc
         /// or other commands within the workspace. Useful for setting RUSTFLAGS.
         cargo_extraEnv: FxHashMap<String, String> = "{}",
@@ -1055,8 +1057,18 @@ impl Config {
         }
     }
 
+    pub fn extra_args(&self) -> &Vec<String> {
+        &self.data.cargo_extraArgs
+    }
+
     pub fn extra_env(&self) -> &FxHashMap<String, String> {
         &self.data.cargo_extraEnv
+    }
+
+    pub fn check_extra_args(&self) -> Vec<String> {
+        let mut extra_args = self.extra_args().clone();
+        extra_args.extend_from_slice(&self.data.check_extraArgs);
+        extra_args
     }
 
     pub fn check_extra_env(&self) -> FxHashMap<String, String> {
@@ -1157,7 +1169,7 @@ impl Config {
                 InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
             },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
-            extra_args: self.data.check_extraArgs.clone(),
+            extra_args: self.data.cargo_extraArgs.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
@@ -1228,7 +1240,7 @@ impl Config {
                     CargoFeaturesDef::All => vec![],
                     CargoFeaturesDef::Selected(it) => it,
                 },
-                extra_args: self.data.check_extraArgs.clone(),
+                extra_args: self.check_extra_args(),
                 extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
             },
