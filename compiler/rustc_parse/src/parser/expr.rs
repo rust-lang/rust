@@ -2105,7 +2105,7 @@ impl<'a> Parser<'a> {
             ClosureBinder::NotPresent
         };
 
-        let constness = self.parse_closure_constness(Case::Sensitive);
+        let constness = self.parse_closure_constness();
 
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
