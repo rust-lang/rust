@@ -1165,7 +1165,6 @@ rustc_queries! {
     /// is defined and the opaque def id if any.
     query opt_rpitit_info(def_id: DefId) -> Option<ty::ImplTraitInTraitData> {
         desc { |tcx| "opt_rpitit_info `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
         feedable
     }
 
