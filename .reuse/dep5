@@ -16,7 +16,7 @@ Files: compiler/*
        Cargo.lock
        Cargo.toml
        CODE_OF_CONDUCT.md
-       config.toml.example
+       config.example.toml
        configure
        CONTRIBUTING.md
        COPYRIGHT
