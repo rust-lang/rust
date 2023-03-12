@@ -120,6 +120,15 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
             if let Some(Node::Stmt(..)) = get_parent_node(cx.tcx, parent.hir_id) {
                 return ControlFlow::Continue(());
             }
+
+            // The method call is not a statement, so its return value is used somehow but its type is the
+            // unit type, so this is not a real read access. Examples:
+            //
+            // let y = x.clear();
+            // println!("{:?}", x.clear());
+            if cx.typeck_results().expr_ty(parent).is_unit() {
+                return ControlFlow::Continue(());
+            }
         }
 
         // Any other access to `id` is a read access. Stop searching.
