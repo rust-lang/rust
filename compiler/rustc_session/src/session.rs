@@ -224,6 +224,13 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum MetadataKind {
+    None,
+    Uncompressed,
+    Compressed,
+}
+
 impl Session {
     pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
         self.miri_unleashed_features.lock().push((span, feature_gate));
@@ -285,6 +292,38 @@ impl Session {
 
     pub fn crate_types(&self) -> &[CrateType] {
         self.crate_types.get().unwrap().as_slice()
+    }
+
+    pub fn needs_crate_hash(&self) -> bool {
+        // Why is the crate hash needed for these configurations?
+        // - debug_assertions: for the "fingerprint the result" check in
+        //   `rustc_query_system::query::plumbing::execute_job`.
+        // - incremental: for query lookups.
+        // - needs_metadata: for putting into crate metadata.
+        // - instrument_coverage: for putting into coverage data (see
+        //   `hash_mir_source`).
+        cfg!(debug_assertions)
+            || self.opts.incremental.is_some()
+            || self.needs_metadata()
+            || self.instrument_coverage()
+    }
+
+    pub fn metadata_kind(&self) -> MetadataKind {
+        self.crate_types()
+            .iter()
+            .map(|ty| match *ty {
+                CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => {
+                    MetadataKind::None
+                }
+                CrateType::Rlib => MetadataKind::Uncompressed,
+                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+            })
+            .max()
+            .unwrap_or(MetadataKind::None)
+    }
+
+    pub fn needs_metadata(&self) -> bool {
+        self.metadata_kind() != MetadataKind::None
     }
 
     pub fn init_crate_types(&self, crate_types: Vec<CrateType>) {
