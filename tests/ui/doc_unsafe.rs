@@ -1,9 +1,9 @@
-// aux-build:doc_unsafe_macros.rs
+// aux-build:proc_macros.rs
 
 #![allow(clippy::let_unit_value)]
 
-#[macro_use]
-extern crate doc_unsafe_macros;
+extern crate proc_macros;
+use proc_macros::external;
 
 /// This is not sufficiently documented
 pub unsafe fn destroy_the_planet() {
@@ -105,7 +105,11 @@ macro_rules! very_unsafe {
 very_unsafe!();
 
 // we don't lint code from external macros
-undocd_unsafe!();
+external! {
+    pub unsafe fn oy_vey() {
+        unimplemented!();
+    }
+}
 
 fn main() {
     unsafe {

@@ -29,53 +29,47 @@ LL |                 Err(err)?;
    |                 ^^^^^^^^^ help: try this: `return Err(err.into())`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:87:23
+  --> $DIR/try_err.rs:88:23
    |
 LL |             Err(_) => Err(1)?,
    |                       ^^^^^^^ help: try this: `return Err(1)`
-...
-LL |     try_validation!(Ok::<_, i32>(5));
-   |     -------------------------------- in this macro invocation
    |
-   = note: this error originates in the macro `try_validation` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_calling_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:102:23
+  --> $DIR/try_err.rs:95:23
    |
-LL |             Err(_) => Err(ret_one!())?,
-   |                       ^^^^^^^^^^^^^^^^ help: try this: `return Err(ret_one!())`
-...
-LL |     try_validation_in_macro!(Ok::<_, i32>(5));
-   |     ----------------------------------------- in this macro invocation
+LL |             Err(_) => Err(inline!(1))?,
+   |                       ^^^^^^^^^^^^^^^^ help: try this: `return Err(inline!(1))`
    |
-   = note: this error originates in the macro `try_validation_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_calling_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:141:9
+  --> $DIR/try_err.rs:122:9
    |
-LL |         Err(foo!())?;
-   |         ^^^^^^^^^^^^ help: try this: `return Err(foo!())`
+LL |         Err(inline!(inline!(String::from("aasdfasdfasdfa"))))?;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Err(inline!(inline!(String::from("aasdfasdfasdfa"))))`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:148:9
+  --> $DIR/try_err.rs:129:9
    |
 LL |         Err(io::ErrorKind::WriteZero)?
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Err(io::ErrorKind::WriteZero.into()))`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:150:9
+  --> $DIR/try_err.rs:131:9
    |
 LL |         Err(io::Error::new(io::ErrorKind::InvalidInput, "error"))?
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Err(io::Error::new(io::ErrorKind::InvalidInput, "error")))`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:158:9
+  --> $DIR/try_err.rs:139:9
    |
 LL |         Err(io::ErrorKind::NotFound)?
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:167:16
+  --> $DIR/try_err.rs:148:16
    |
 LL |         return Err(42)?;
    |                ^^^^^^^^ help: try this: `Err(42)`
