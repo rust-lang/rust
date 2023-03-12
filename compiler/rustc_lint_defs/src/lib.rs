@@ -663,15 +663,14 @@ pub type RegisteredTools = FxIndexSet<Ident>;
 /// commands to avoid rebuilding the compiler.
 #[macro_export]
 macro_rules! declare_lint {
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
-        $crate::declare_lint!(
-            $(#[$attr])* $vis $NAME, $Level, $desc,
-        );
-    );
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@feature_gate = $gate:expr;)?
-     $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
-     $($v:ident),*) => (
+    (
+        $(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr
+        $(,
+            $(@feature_gate = $gate:expr;)?
+            $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+            $($v:ident),* $(,)?
+        )?
+    ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
@@ -679,12 +678,14 @@ macro_rules! declare_lint {
             desc: $desc,
             edition_lint_opts: None,
             is_plugin: false,
-            $($v: true,)*
-            $(feature_gate: Some($gate),)*
-            $(future_incompatible: Some($crate::FutureIncompatibleInfo {
-                $($field: $val,)*
-                ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
-            }),)*
+            $(
+                $($v: true,)*
+                $(feature_gate: Some($gate),)?
+                $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                    $($field: $val,)*
+                    ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
+                }),)?
+            )?
             ..$crate::Lint::default_fields_for_macro()
         };
     );
