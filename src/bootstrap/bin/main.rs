@@ -44,8 +44,8 @@ fn main() {
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(
-            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
-            `cp config.toml.example config.toml`"
+            "help: consider running `./x.py setup` or copying `config.example.toml` by running \
+            `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
@@ -57,8 +57,8 @@ fn main() {
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(
-            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
-            `cp config.toml.example config.toml`"
+            "help: consider running `./x.py setup` or copying `config.example.toml` by running \
+            `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);

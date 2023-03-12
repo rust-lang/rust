@@ -337,9 +337,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
             }
-            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
-                gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)
@@ -424,14 +421,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::Closure(box ast::Closure { constness: ast::Const::Yes(_), .. }) => {
-                gate_feature_post!(
-                    &self,
-                    const_closures,
-                    e.span,
-                    "const closures are experimental"
-                );
             }
             _ => {}
         }
@@ -594,6 +583,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
+    gate_all!(dyn_star, "`dyn*` trait objects are experimental");
+    gate_all!(const_closures, "const closures are experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

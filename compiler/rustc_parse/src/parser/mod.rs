@@ -1196,9 +1196,13 @@ impl<'a> Parser<'a> {
         self.parse_constness_(case, false)
     }
 
-    /// Parses constness for closures
-    fn parse_closure_constness(&mut self, case: Case) -> Const {
-        self.parse_constness_(case, true)
+    /// Parses constness for closures (case sensitive, feature-gated)
+    fn parse_closure_constness(&mut self) -> Const {
+        let constness = self.parse_constness_(Case::Sensitive, true);
+        if let Const::Yes(span) = constness {
+            self.sess.gated_spans.gate(sym::const_closures, span);
+        }
+        constness
     }
 
     fn parse_constness_(&mut self, case: Case, is_closure: bool) -> Const {

@@ -286,7 +286,7 @@ impl Step for Llvm {
             (true, true) => "RelWithDebInfo",
         };
 
-        // NOTE: remember to also update `config.toml.example` when changing the
+        // NOTE: remember to also update `config.example.toml` when changing the
         // defaults!
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,

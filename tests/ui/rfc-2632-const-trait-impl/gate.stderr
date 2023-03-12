@@ -1,12 +1,21 @@
 error[E0658]: const closures are experimental
-  --> $DIR/gate.rs:3:6
+  --> $DIR/gate.rs:4:6
    |
 LL |     (const || {})();
-   |      ^^^^^^^^^^^
+   |      ^^^^^
    |
    = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: const closures are experimental
+  --> $DIR/gate.rs:12:5
+   |
+LL | e!((const || {}));
+   |     ^^^^^
+   |
+   = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
+   = help: add `#![feature(const_closures)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

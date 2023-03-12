@@ -242,6 +242,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     // Note that this is also allowed if `actually_rustdoc` so
                     // if a target is documenting some wasm-specific code then
                     // it's not spuriously denied.
+                    //
+                    // This exception needs to be kept in sync with allowing
+                    // `#[target_feature]` on `main` and `start`.
                 } else if !tcx.features().target_feature_11 {
                     let mut err = feature_err(
                         &tcx.sess.parse_sess,
