@@ -99,6 +99,15 @@ impl UnstableFeatures {
         }
     }
 
+    /// This only takes the build environment into account.
+    pub const fn is_nightly_build_environment() -> bool {
+        match option_env!("CFG_DISABLE_UNSTABLE_FEATURES") {
+            Some(x) if matches!(x.as_bytes(), b"0") => true,
+            None => true,
+            Some(_) => false,
+        }
+    }
+
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,

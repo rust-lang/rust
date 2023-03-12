@@ -707,30 +707,39 @@ macro_rules! declare_lint {
 #[macro_export]
 macro_rules! declare_tool_lint {
     (
-        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr
+        $(, report_in_external_macro: $rep:expr)?
         $(, @feature_gate = $gate:expr;)?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
-    );
-    (
-        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
-        report_in_external_macro: $rep:expr
-        $(, @feature_gate = $gate:expr;)?
-    ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
+        $crate::declare_tool_lint!{
+            $(#[$attr])* $vis $tool::$NAME, $crate::$Level, $desc
+            $(, report_in_external_macro: $rep)?
+            $(, @feature_gate = $gate;)?
+        }
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
         $(, @feature_gate = $gate:expr;)?
     ) => (
+        $crate::declare_tool_lint!{
+            $(#[$attr])* $vis $tool::$NAME, $crate::$Level, $desc
+            $(, report_in_external_macro: $external)?
+            $(, @feature_gate = $gate;)?
+        }
+    );
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:expr, $desc:expr
+        $(, report_in_external_macro: $external:expr)?
+        $(, @feature_gate = $gate:expr;)?
+    ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
-            default_level: $crate::$Level,
+            default_level: $Level,
             desc: $desc,
             edition_lint_opts: None,
-            report_in_external_macro: $external,
+            $(report_in_external_macro: $external,)?
             future_incompatible: None,
             is_plugin: true,
             $(feature_gate: Some($gate),)?
