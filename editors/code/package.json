@@ -511,6 +511,14 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.extraArgs": {
+                    "markdownDescription": "Extra arguments that are passed to every cargo invocation.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "rust-analyzer.cargo.extraEnv": {
                     "markdownDescription": "Extra environment variables that will be set when running cargo, rustc\nor other commands within the workspace. Useful for setting RUSTFLAGS.",
                     "default": {},

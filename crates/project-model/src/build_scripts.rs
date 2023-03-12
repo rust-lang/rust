@@ -67,6 +67,7 @@ impl WorkspaceBuildScripts {
                 let mut cmd = Command::new(toolchain::cargo());
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
+                cmd.args(&config.extra_args);
 
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
