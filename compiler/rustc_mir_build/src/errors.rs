@@ -941,6 +941,9 @@ pub enum RustcBoxAttrReason {
     NotBoxNew,
     #[note(mir_build_missing_box)]
     MissingBox,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_non_exhaustive_pattern, code = "E0004")]
 pub(crate) struct NonExhaustivePatterns<'tcx> {
     #[primary_span]
