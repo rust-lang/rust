@@ -173,6 +173,136 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
+// In order to process more than on byte simultaneously when executing strlen,
+// two things must be considered:
+// * An n byte read with an n-byte aligned address will never cross
+//   a page boundary and will always succeed. Any smaller alignment
+//   may result in a read that will cross a page boundary, which may
+//   trigger an access violation.
+// * Surface Rust considers any kind of out-of-bounds read as undefined
+//   behaviour. To dodge this, memory access operations are written
+//   using inline assembly.
+
+#[cfg(target_feature = "sse2")]
+#[inline(always)]
+pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
+    use core::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_movemask_epi8, _mm_set1_epi8};
+
+    let mut n = 0;
+
+    // The use of _mm_movemask_epi8 and company allow for speedups,
+    // but they aren't cheap by themselves. Thus, possibly small strings
+    // are handled in simple loops.
+
+    for _ in 0..4 {
+        if *s == 0 {
+            return n;
+        }
+
+        n += 1;
+        s = s.add(1);
+    }
+
+    // Shave of the least significand bits to align the address to a 16
+    // byte boundary. The shaved of bits are used to correct the first iteration.
+
+    let align = s as usize & 15;
+    let mut s = ((s as usize) - align) as *const __m128i;
+    let zero = _mm_set1_epi8(0);
+
+    let x = {
+        let r;
+        asm!(
+            "movdqa ({addr}), {dest}",
+            addr = in(reg) s,
+            dest = out(xmm_reg) r,
+            options(att_syntax, nostack),
+        );
+        r
+    };
+    let cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(x, zero)) >> align;
+
+    if cmp != 0 {
+        return n + cmp.trailing_zeros() as usize;
+    }
+
+    n += 16 - align;
+    s = s.add(1);
+
+    loop {
+        let x = {
+            let r;
+            asm!(
+                "movdqa ({addr}), {dest}",
+                addr = in(reg) s,
+                dest = out(xmm_reg) r,
+                options(att_syntax, nostack),
+            );
+            r
+        };
+        let cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(x, zero)) as u32;
+        if cmp == 0 {
+            n += 16;
+            s = s.add(1);
+        } else {
+            return n + cmp.trailing_zeros() as usize;
+        }
+    }
+}
+
+// Provided for scenarios like kernel development, where SSE might not
+// be available.
+#[cfg(not(target_feature = "sse2"))]
+#[inline(always)]
+pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
+    let mut n = 0;
+
+    // Check bytes in steps of one until
+    // either a zero byte is discovered or
+    // pointer is aligned to an eight byte boundary.
+
+    while s as usize & 7 != 0 {
+        if *s == 0 {
+            return n;
+        }
+        n += 1;
+        s = s.add(1);
+    }
+
+    // Check bytes in steps of eight until a zero
+    // byte is discovered.
+
+    let mut s = s as *const u64;
+
+    loop {
+        let mut cs = {
+            let r: u64;
+            asm!(
+                "mov ({addr}), {dest}",
+                addr = in(reg) s,
+                dest = out(reg) r,
+                options(att_syntax, nostack),
+            );
+            r
+        };
+        // Detect if a word has a zero byte, taken from
+        // https://graphics.stanford.edu/~seander/bithacks.html
+        if (cs.wrapping_sub(0x0101010101010101) & !cs & 0x8080808080808080) != 0 {
+            loop {
+                if cs & 255 == 0 {
+                    return n;
+                } else {
+                    cs >>= 8;
+                    n += 1;
+                }
+            }
+        } else {
+            n += 8;
+            s = s.add(1);
+        }
+    }
+}
+
 /// Determine optimal parameters for a `rep` instruction.
 fn rep_param(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
     // Unaligned writes are still slow on modern processors, so align the destination address.

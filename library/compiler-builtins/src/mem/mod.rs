@@ -63,13 +63,7 @@ intrinsics! {
     #[mem_builtin]
     #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
     pub unsafe extern "C" fn strlen(s: *const core::ffi::c_char) -> usize {
-        let mut n = 0;
-        let mut s = s;
-        while *s != 0 {
-            n += 1;
-            s = s.offset(1);
-        }
-        n
+        impls::c_string_length(s)
     }
 }
 
