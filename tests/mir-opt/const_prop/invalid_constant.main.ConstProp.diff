@@ -44,11 +44,11 @@
 -         _3 = [move _4];                  // scope 1 at $DIR/invalid_constant.rs:+13:24: +13:60
 +         _4 = const Scalar(0x00000004): E; // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:57
 +                                          // mir::Constant
-+                                          // + span: $DIR/invalid_constant.rs:28:34: 28:57
++                                          // + span: no-location
 +                                          // + literal: Const { ty: E, val: Value(Scalar(0x00000004)) }
 +         _3 = [const Scalar(0x00000004): E]; // scope 1 at $DIR/invalid_constant.rs:+13:24: +13:60
 +                                          // mir::Constant
-+                                          // + span: $DIR/invalid_constant.rs:28:24: 28:60
++                                          // + span: no-location
 +                                          // + literal: Const { ty: E, val: Value(Scalar(0x00000004)) }
           StorageDead(_4);                 // scope 1 at $DIR/invalid_constant.rs:+13:59: +13:60
           StorageDead(_5);                 // scope 1 at $DIR/invalid_constant.rs:+13:60: +13:61
