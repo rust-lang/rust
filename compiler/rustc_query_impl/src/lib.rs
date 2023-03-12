@@ -31,6 +31,7 @@ use rustc_span::Span;
 #[macro_use]
 mod plumbing;
 pub use plumbing::QueryCtxt;
+use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::query::*;
 #[cfg(parallel_compiler)]
 pub use rustc_query_system::query::{deadlock, QueryContext};

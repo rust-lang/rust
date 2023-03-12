@@ -278,14 +278,14 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
     // Unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         if let Some(param_did) = def.const_param_did {
-            tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
+            tcx.ensure_with_value().unsafety_check_result_for_const_arg((def.did, param_did));
         } else {
-            tcx.ensure().unsafety_check_result(def.did);
+            tcx.ensure_with_value().unsafety_check_result(def.did);
         }
     }
 
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure().has_ffi_unwind_calls(def.did);
+    tcx.ensure_with_value().has_ffi_unwind_calls(def.did);
 
     let mut body = tcx.mir_built(def).steal();
 
@@ -433,7 +433,7 @@ fn mir_drops_elaborated_and_const_checked(
     if tcx.sess.opts.unstable_opts.drop_tracking_mir
         && let DefKind::Generator = tcx.def_kind(def.did)
     {
-        tcx.ensure().mir_generator_witnesses(def.did);
+        tcx.ensure_with_value().mir_generator_witnesses(def.did);
     }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
@@ -444,7 +444,7 @@ fn mir_drops_elaborated_and_const_checked(
 
         // Do not compute the mir call graph without said call graph actually being used.
         if inline::Inline.is_enabled(&tcx.sess) {
-            let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def));
         }
     }
 
@@ -613,7 +613,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
         // computes and caches its result.
-        Some(hir::ConstContext::ConstFn) => tcx.ensure().mir_for_ctfe(did),
+        Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }

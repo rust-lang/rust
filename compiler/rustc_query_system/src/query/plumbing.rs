@@ -564,9 +564,16 @@ where
         // can be forced from `DepNode`.
         debug_assert!(
             !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for {dep_node:?}"
+            "missing on-disk cache entry for reconstructible {dep_node:?}"
         );
     }
+
+    // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
+    // we should actually be able to load it.
+    debug_assert!(
+        !query.loadable_from_disk(qcx, &key, prev_dep_node_index),
+        "missing on-disk cache entry for loadable {dep_node:?}"
+    );
 
     // We could not load a result from the on-disk cache, so
     // recompute.
@@ -718,6 +725,7 @@ fn ensure_must_run<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     key: &Q::Key,
+    check_cache: bool,
 ) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
     Q: QueryConfig<Qcx>,
@@ -733,7 +741,7 @@ where
     let dep_node = query.construct_dep_node(*qcx.dep_context(), key);
 
     let dep_graph = qcx.dep_context().dep_graph();
-    match dep_graph.try_mark_green(qcx, &dep_node) {
+    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -741,20 +749,28 @@ where
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            (true, Some(dep_node))
+            return (true, Some(dep_node));
         }
-        Some((_, dep_node_index)) => {
+        Some((serialized_dep_node_index, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
             qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
-            (false, None)
+            serialized_dep_node_index
         }
+    };
+
+    // We do not need the value at all, so do not check the cache.
+    if !check_cache {
+        return (false, None);
     }
+
+    let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
+    (!loadable, Some(dep_node))
 }
 
 #[derive(Debug)]
 pub enum QueryMode {
     Get,
-    Ensure,
+    Ensure { check_cache: bool },
 }
 
 #[inline(always)]
@@ -769,8 +785,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run(query, qcx, &key);
+    let dep_node = if let QueryMode::Ensure { check_cache } = mode {
+        let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
         if !must_run {
             return None;
         }

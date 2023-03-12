@@ -99,12 +99,26 @@ pub struct TyCtxtEnsure<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+#[derive(Copy, Clone)]
+pub struct TyCtxtEnsureWithValue<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
     /// are executed instead of just returning their results.
     #[inline(always)]
     pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
         TyCtxtEnsure { tcx: self }
+    }
+
+    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
+    /// are executed instead of just returning their results.
+    ///
+    /// This version verifies that the computed result exists in the cache before returning.
+    #[inline(always)]
+    pub fn ensure_with_value(self) -> TyCtxtEnsureWithValue<'tcx> {
+        TyCtxtEnsureWithValue { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt` which uses
@@ -314,7 +328,31 @@ macro_rules! define_callbacks {
 
                 match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
-                    None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
+                    None => self.tcx.queries.$name(
+                        self.tcx,
+                        DUMMY_SP,
+                        key,
+                        QueryMode::Ensure { check_cache: false },
+                    ),
+                };
+            })*
+        }
+
+        impl<'tcx> TyCtxtEnsureWithValue<'tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                let key = key.into_query_param();
+                opt_remap_env_constness!([$($modifiers)*][key]);
+
+                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                    Some(_) => return,
+                    None => self.tcx.queries.$name(
+                        self.tcx,
+                        DUMMY_SP,
+                        key,
+                        QueryMode::Ensure { check_cache: true },
+                    ),
                 };
             })*
         }
