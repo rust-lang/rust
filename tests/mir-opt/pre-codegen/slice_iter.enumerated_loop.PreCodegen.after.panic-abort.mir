@@ -152,11 +152,13 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb4: {
         StorageLive(_17);
+        StorageLive(_16);
         _16 = &mut _15;
-        _17 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(_16) -> [return: bb5, unwind unreachable];
+        _17 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _16) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
+        StorageDead(_16);
         _18 = discriminant(_17);
         switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb10];
     }

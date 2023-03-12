@@ -140,11 +140,13 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb4: {
         StorageLive(_16);
+        StorageLive(_15);
         _15 = &mut _14;
-        _16 = <std::slice::Iter<'_, T> as Iterator>::next(_15) -> [return: bb5, unwind unreachable];
+        _16 = <std::slice::Iter<'_, T> as Iterator>::next(move _15) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
+        StorageDead(_15);
         _17 = discriminant(_16);
         switchInt(move _17) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
