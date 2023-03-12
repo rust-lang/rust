@@ -738,6 +738,7 @@ impl<'tcx> InferCtxt<'tcx> {
             param_env,
             obligations: PredicateObligations::new(),
             define_opaque_types,
+            relate_projections_via_substs: false,
         }
     }
 

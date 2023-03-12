@@ -144,6 +144,13 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 }
             }
 
+            // Inside the generalizer, we want to related projections by substs eagerly.
+            (&ty::Alias(ty::Projection, a_data), &ty::Alias(ty::Projection, b_data))
+                if self.fields.relate_projections_via_substs =>
+            {
+                self.relate(a_data, b_data)?;
+            }
+
             _ => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
             }

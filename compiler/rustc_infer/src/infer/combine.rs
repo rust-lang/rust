@@ -58,6 +58,10 @@ pub struct CombineFields<'infcx, 'tcx> {
     /// matching from matching anything against opaque
     /// types.
     pub define_opaque_types: bool,
+    /// Used in [`CombineFields::instantiate`] to ensure that when we relate
+    /// a type and its generalized type, we never emit an alias-eq goal, but
+    /// instead relate via substs.
+    pub relate_projections_via_substs: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -420,16 +424,16 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
-        match dir {
-            EqTo => self.equate(a_is_expected).relate(a_ty, b_ty),
-            SubtypeOf => self.sub(a_is_expected).relate(a_ty, b_ty),
-            SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+        self.eager_relate_projections_via_substs(|this| match dir {
+            EqTo => this.equate(a_is_expected).relate(a_ty, b_ty),
+            SubtypeOf => this.sub(a_is_expected).relate(a_ty, b_ty),
+            SupertypeOf => this.sub(a_is_expected).relate_with_variance(
                 ty::Contravariant,
                 ty::VarianceDiagInfo::default(),
                 a_ty,
                 b_ty,
             ),
-        }?;
+        })?;
 
         Ok(())
     }
@@ -490,6 +494,14 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         let ty = generalize.relate(ty, ty)?;
         let needs_wf = generalize.needs_wf;
         Ok(Generalization { ty, needs_wf })
+    }
+
+    // Relate projections via their substs eagerly, and never via an `AliasEq` goal
+    pub fn eager_relate_projections_via_substs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = std::mem::replace(&mut self.relate_projections_via_substs, true);
+        let v = f(self);
+        self.relate_projections_via_substs = old;
+        v
     }
 
     pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
