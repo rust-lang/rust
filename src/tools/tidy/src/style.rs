@@ -171,9 +171,9 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
 }
 
 macro_rules! suppressible_tidy_err {
-    ($err:ident, $skip:ident, $msg:expr) => {
+    ($err:ident, $skip:ident, $msg:literal) => {
         if let Directive::Deny = $skip {
-            $err($msg);
+            $err(&format!($msg));
         } else {
             $skip = Directive::Ignore(true);
         }
@@ -300,10 +300,13 @@ pub fn check(path: &Path, bad: &mut bool) {
             contains_ignore_directive(can_contain, &contents, "leading-newlines");
         let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
         let mut skip_dbg = contains_ignore_directive(can_contain, &contents, "dbg");
+        let mut skip_odd_backticks =
+            contains_ignore_directive(can_contain, &contents, "odd-backticks");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
         let mut last_safety_comment = false;
+        let mut comment_block: Option<(usize, usize)> = None;
         let is_test = file.components().any(|c| c.as_os_str() == "tests");
         // scanning the whole file for multiple needles at once is more efficient than
         // executing lines times needles separate searches.
@@ -351,7 +354,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
-                    &format!("line longer than {max_columns} chars")
+                    "line longer than {max_columns} chars"
                 );
             }
             if !is_style_file && line.contains('\t') {
@@ -415,15 +418,55 @@ pub fn check(path: &Path, bad: &mut bool) {
 
             // For now only enforce in compiler
             let is_compiler = || file.components().any(|c| c.as_os_str() == "compiler");
-            if is_compiler()
-                && line.contains("//")
-                && line
-                    .chars()
-                    .collect::<Vec<_>>()
-                    .windows(4)
-                    .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
-            {
-                err(DOUBLE_SPACE_AFTER_DOT)
+
+            if is_compiler() {
+                if line.contains("//")
+                    && line
+                        .chars()
+                        .collect::<Vec<_>>()
+                        .windows(4)
+                        .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
+                {
+                    err(DOUBLE_SPACE_AFTER_DOT)
+                }
+
+                if filename.ends_with(".ftl") {
+                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
+                    if line_backticks % 2 == 1 {
+                        suppressible_tidy_err!(err, skip_odd_backticks, "odd number of backticks");
+                    }
+                } else if trimmed.contains("//") {
+                    let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
+                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
+                    let comment_text = trimmed.split("//").nth(1).unwrap();
+                    // This check ensures that we don't lint for code that has `//` in a string literal
+                    if line_backticks % 2 == 1 {
+                        backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
+                    }
+                    comment_block = Some((start_line, backtick_count));
+                } else {
+                    if let Some((start_line, backtick_count)) = comment_block.take() {
+                        if backtick_count % 2 == 1 {
+                            let mut err = |msg: &str| {
+                                tidy_error!(bad, "{}:{start_line}: {msg}", file.display());
+                            };
+                            let block_len = (i + 1) - start_line;
+                            if block_len == 1 {
+                                suppressible_tidy_err!(
+                                    err,
+                                    skip_odd_backticks,
+                                    "comment with odd number of backticks"
+                                );
+                            } else {
+                                suppressible_tidy_err!(
+                                    err,
+                                    skip_odd_backticks,
+                                    "{block_len}-line comment block with odd number of backticks"
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
         if leading_new_lines {
@@ -441,7 +484,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             n => suppressible_tidy_err!(
                 err,
                 skip_trailing_newlines,
-                &format!("too many trailing newlines ({n})")
+                "too many trailing newlines ({n})"
             ),
         };
         if lines > LINES {

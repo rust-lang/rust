@@ -123,6 +123,7 @@ fn dump_matched_mir_node<'tcx, F>(
         // see notes on #41697 above
         let def_path =
             ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
+        // ignore-tidy-odd-backticks the literal below is fine
         write!(file, "// MIR for `{}", def_path)?;
         match body.source.promoted {
             None => write!(file, "`")?,

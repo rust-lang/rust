@@ -1052,6 +1052,7 @@ impl<'a> MethodDef<'a> {
     ///         ::core::hash::Hash::hash(&{ self.y }, state)
     ///     }
     /// }
+    /// ```
     fn expand_struct_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
