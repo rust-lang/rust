@@ -598,8 +598,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferResult<'tcx, ()> {
         self.commit_if_ok(|_| {
             let mut obligations = vec![];
-            for (index, value1) in variables1.var_values.iter().enumerate() {
+            for (index, &value1) in variables1.var_values.iter().enumerate() {
                 let value2 = variables2(BoundVar::new(index));
+                if value1 == value2 {
+                    continue;
+                }
 
                 match (value1.unpack(), value2.unpack()) {
                     (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
