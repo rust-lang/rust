@@ -153,6 +153,7 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         trait_item_def_id: Some(owner_id.to_def_id()),
         container: ty::TraitContainer,
         fn_has_self_parameter: has_self,
+        opt_rpitit_info: None,
     }
 }
 
@@ -171,6 +172,7 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::ImplContainer,
         fn_has_self_parameter: has_self,
+        opt_rpitit_info: None,
     }
 }
 
@@ -262,12 +264,6 @@ fn associated_item_for_impl_trait_in_trait(
     // Copy span of the opaque.
     trait_assoc_ty.def_ident_span(Some(span));
 
-    // Add the def_id of the function and opaque that generated this synthesized associated type.
-    trait_assoc_ty.opt_rpitit_info(Some(ImplTraitInTraitData::Trait {
-        fn_def_id,
-        opaque_def_id: opaque_ty_def_id.to_def_id(),
-    }));
-
     trait_assoc_ty.associated_item(ty::AssocItem {
         name: kw::Empty,
         kind: ty::AssocKind::Type,
@@ -275,6 +271,10 @@ fn associated_item_for_impl_trait_in_trait(
         trait_item_def_id: None,
         container: ty::TraitContainer,
         fn_has_self_parameter: false,
+        opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
+            fn_def_id,
+            opaque_def_id: opaque_ty_def_id.to_def_id(),
+        }),
     });
 
     // Copy visility of the containing function.
@@ -328,11 +328,6 @@ fn impl_associated_item_for_impl_trait_in_trait(
     // `opt_local_def_id_to_hir_id` with `None`.
     impl_assoc_ty.opt_local_def_id_to_hir_id(None);
 
-    // Add the def_id of the function that generated this synthesized associated type.
-    impl_assoc_ty.opt_rpitit_info(Some(ImplTraitInTraitData::Impl {
-        fn_def_id: impl_fn_def_id.to_def_id(),
-    }));
-
     impl_assoc_ty.associated_item(ty::AssocItem {
         name: kw::Empty,
         kind: ty::AssocKind::Type,
@@ -340,6 +335,7 @@ fn impl_associated_item_for_impl_trait_in_trait(
         trait_item_def_id: Some(trait_assoc_def_id.to_def_id()),
         container: ty::ImplContainer,
         fn_has_self_parameter: false,
+        opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });
 
     // Copy param_env of the containing function. The synthesized associated type doesn't have
