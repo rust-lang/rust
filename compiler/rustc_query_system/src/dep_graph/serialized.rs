@@ -85,15 +85,13 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     pub fn node_count(&self) -> usize {
-        self.index.len()
+        self.nodes.len()
     }
 }
 
-impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
-    for SerializedDepGraph<K>
-{
+impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> SerializedDepGraph<K> {
     #[instrument(level = "debug", skip(d))]
-    fn decode(d: &mut MemDecoder<'a>) -> SerializedDepGraph<K> {
+    pub fn decode(d: &mut MemDecoder<'a>) -> SerializedDepGraph<K> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
         let (node_count, edge_count) =
@@ -133,8 +131,30 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
             debug_assert_eq!(_i.index(), _index);
         }
 
-        let index: FxHashMap<_, _> =
-            nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
+        let mut duplicates = Vec::new();
+        let mut index: FxHashMap<DepNode<K>, SerializedDepNodeIndex> = Default::default();
+        index.reserve(nodes.len());
+        for (idx, &dep_node) in nodes.iter_enumerated() {
+            if index.insert(dep_node, idx).is_some() {
+                duplicates.push(dep_node);
+            }
+        }
+
+        // Creating the index detected a duplicated DepNode.
+        //
+        // If the new session presents us with a DepNode among those, we have no
+        // way to know which SerializedDepNodeIndex it corresponds to. To avoid
+        // making the wrong connection between a DepNodeIndex and a SerializedDepNodeIndex,
+        // we remove all the duplicates from the index.
+        //
+        // This way, when the new session presents us with a DepNode among the duplicates,
+        // we just create a new node with no counterpart in the previous graph.
+        //
+        // Red/green marking still works for those nodes, as that algorithm does not
+        // need to know about DepNode at all.
+        for dep_node in duplicates {
+            index.remove(&dep_node);
+        }
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
     }
