@@ -1464,6 +1464,7 @@ impl<T> Option<T> {
     /// let item_2_0 = arr_2d.get(2).and_then(|row| row.get(0));
     /// assert_eq!(item_2_0, None);
     /// ```
+    #[doc(alias = "flatmap")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
