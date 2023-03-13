@@ -194,16 +194,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
             sym::cmse_nonsecure_entry => {
                 if let Some(fn_sig) = fn_sig()
-                && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
-            {
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0776,
-                    "`#[cmse_nonsecure_entry]` requires C ABI"
-                )
-                .emit();
-            }
+                    && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
+                {
+                    struct_span_err!(
+                        tcx.sess,
+                        attr.span,
+                        E0776,
+                        "`#[cmse_nonsecure_entry]` requires C ABI"
+                    )
+                    .emit();
+                }
                 if !tcx.sess.target.llvm_target.contains("thumbv8m") {
                     struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
                     .emit();
@@ -215,12 +215,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
             sym::track_caller => {
                 if !tcx.is_closure(did.to_def_id())
-                && let Some(fn_sig) = fn_sig()
-                && fn_sig.skip_binder().abi() != abi::Abi::Rust
-            {
-                struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
-                    .emit();
-            }
+                    && let Some(fn_sig) = fn_sig()
+                    && fn_sig.skip_binder().abi() != abi::Abi::Rust
+                {
+                    struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
+                        .emit();
+                }
                 if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
                     feature_err(
                         &tcx.sess.parse_sess,
@@ -331,28 +331,38 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 no_sanitize_span = Some(attr.span);
                 if let Some(list) = attr.meta_item_list() {
                     for item in list.iter() {
-                        if item.has_name(sym::address) {
-                            codegen_fn_attrs.no_sanitize |=
-                                SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
-                        } else if item.has_name(sym::cfi) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
-                        } else if item.has_name(sym::kcfi) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI;
-                        } else if item.has_name(sym::memory) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
-                        } else if item.has_name(sym::memtag) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
-                        } else if item.has_name(sym::shadow_call_stack) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
-                        } else if item.has_name(sym::thread) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
-                        } else if item.has_name(sym::hwaddress) {
-                            codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
-                        } else {
-                            tcx.sess
+                        match item.ident().map(|ident| ident.name) {
+                            Some(sym::address) => {
+                                codegen_fn_attrs.no_sanitize |=
+                                    SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
+                            }
+                            Some(sym::cfi) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
+                            }
+                            Some(sym::kcfi) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI;
+                            }
+                            Some(sym::memory) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
+                            }
+                            Some(sym::memtag) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
+                            }
+                            Some(sym::shadow_call_stack) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
+                            }
+                            Some(sym::thread) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
+                            }
+                            Some(sym::hwaddress) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
+                            }
+                            _ => {
+                                tcx.sess
                                 .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
                                 .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
                                 .emit();
+                            }
                         }
                     }
                 }
@@ -417,34 +427,23 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     })
             }
             sym::repr => {
-                codegen_fn_attrs.alignment = match attr.meta_item_list() {
-                    Some(items) => match items.as_slice() {
-                        [item] => match item.name_value_literal() {
-                            Some((sym::align, literal)) => {
-                                let alignment = rustc_attr::parse_alignment(&literal.kind);
-
-                                match alignment {
-                                    Ok(align) => Some(align),
-                                    Err(msg) => {
-                                        struct_span_err!(
-                                            tcx.sess.diagnostic(),
-                                            attr.span,
-                                            E0589,
-                                            "invalid `repr(align)` attribute: {}",
-                                            msg
-                                        )
-                                        .emit();
-
-                                        None
-                                    }
-                                }
-                            }
-                            _ => None,
-                        },
-                        [] => None,
-                        _ => None,
-                    },
-                    None => None,
+                codegen_fn_attrs.alignment = if let Some(items) = attr.meta_item_list()
+                    && let [item] = items.as_slice()
+                    && let Some((sym::align, literal)) = item.name_value_literal()
+                {
+                    rustc_attr::parse_alignment(&literal.kind).map_err(|msg| {
+                        struct_span_err!(
+                            tcx.sess.diagnostic(),
+                            attr.span,
+                            E0589,
+                            "invalid `repr(align)` attribute: {}",
+                            msg
+                        )
+                        .emit();
+                    })
+                    .ok()
+                } else {
+                    None
                 };
             }
             _ => {}
