@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add `--keep-stage-std`, which behaves like `keep-stage` but allows the stage
   0 compiler artifacts (i.e., stage1/bin/rustc) to be rebuilt if changed
   [#77120](https://github.com/rust-lang/rust/pull/77120).
+- File locking is now used to avoid collisions between multiple running instances of `x.py` (e.g. when using `rust-analyzer` and `x.py` at the same time). Note that Solaris and possibly other non Unix and non Windows systems don't support it [#108607](https://github.com/rust-lang/rust/pull/108607). This might possibly lead to build data corruption.
 
 
 ## [Version 1] - 2020-09-11
