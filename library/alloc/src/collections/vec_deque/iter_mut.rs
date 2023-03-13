@@ -1,4 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use core::num::NonZeroUsize;
 use core::ops::Try;
 use core::{fmt, mem, slice};
 
@@ -47,13 +48,14 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         }
     }
 
-    fn advance_by(&mut self, n: usize) -> usize {
-        let remaining = self.i1.advance_by(n);
-        if remaining == 0 {
-            return 0;
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        match self.i1.advance_by(n) {
+            Ok(()) => return Ok(()),
+            Err(remaining) => {
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i1.advance_by(remaining.get())
+            }
         }
-        mem::swap(&mut self.i1, &mut self.i2);
-        self.i1.advance_by(remaining)
     }
 
     #[inline]
@@ -117,13 +119,14 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         }
     }
 
-    fn advance_back_by(&mut self, n: usize) -> usize {
-        let remaining = self.i2.advance_back_by(n);
-        if remaining == 0 {
-            return 0;
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        match self.i2.advance_back_by(n) {
+            Ok(()) => return Ok(()),
+            Err(remaining) => {
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i2.advance_back_by(remaining.get())
+            }
         }
-        mem::swap(&mut self.i1, &mut self.i2);
-        self.i2.advance_back_by(remaining)
     }
 
     fn rfold<Acc, F>(self, accum: Acc, mut f: F) -> Acc

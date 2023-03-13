@@ -1,5 +1,6 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use crate::num::NonZeroUsize;
 use crate::{
     fmt,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
@@ -284,7 +285,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         self.next_back()
     }
 
-    fn advance_by(&mut self, n: usize) -> usize {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         // This also moves the start, which marks them as conceptually "dropped",
         // so if anything goes bad then our drop impl won't double-free them.
         let range_to_drop = self.alive.take_prefix(n);
@@ -296,7 +297,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        remaining
+        NonZeroUsize::new(remaining).map_or(Ok(()), Err)
     }
 }
 
@@ -333,7 +334,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
         })
     }
 
-    fn advance_back_by(&mut self, n: usize) -> usize {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         // This also moves the end, which marks them as conceptually "dropped",
         // so if anything goes bad then our drop impl won't double-free them.
         let range_to_drop = self.alive.take_suffix(n);
@@ -345,7 +346,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        remaining
+        NonZeroUsize::new(remaining).map_or(Ok(()), Err)
     }
 }
 

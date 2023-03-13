@@ -1,4 +1,5 @@
 use core::iter::*;
+use core::num::NonZeroUsize;
 
 #[test]
 fn test_iterator_enumerate() {
@@ -53,6 +54,20 @@ fn test_iterator_enumerate_nth_back() {
 fn test_iterator_enumerate_count() {
     let xs = [0, 1, 2, 3, 4, 5];
     assert_eq!(xs.iter().enumerate().count(), 6);
+}
+
+#[test]
+fn test_iterator_enumerate_advance_by() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().enumerate();
+    assert_eq!(it.advance_by(0), Ok(()));
+    assert_eq!(it.next(), Some((0, &0)));
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.next(), Some((2, &2)));
+    assert_eq!(it.advance_by(2), Ok(()));
+    assert_eq!(it.next(), Some((5, &5)));
+    assert_eq!(it.advance_by(1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!(it.next(), None);
 }
 
 #[test]

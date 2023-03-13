@@ -1,6 +1,7 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::marker::Destruct;
+use crate::num::NonZeroUsize;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -327,26 +328,28 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_advance_by)]
     ///
+    /// use std::num::NonZeroUsize;
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.advance_by(2), 0);
+    /// assert_eq!(iter.advance_by(2), Ok(()));
     /// assert_eq!(iter.next(), Some(&3));
-    /// assert_eq!(iter.advance_by(0), 0);
-    /// assert_eq!(iter.advance_by(100), 99); // only `&4` was skipped
+    /// assert_eq!(iter.advance_by(0), Ok(()));
+    /// assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(99).unwrap())); // only `&4` was skipped
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    fn advance_by(&mut self, n: usize) -> usize
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize>
     where
         Self::Item: ~const Destruct,
     {
         for i in 0..n {
             if self.next().is_none() {
-                return n - i;
+                // SAFETY: `i` is always less than `n`.
+                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
             }
         }
-        0
+        Ok(())
     }
 
     /// Returns the `n`th element of the iterator.
@@ -394,9 +397,7 @@ pub trait Iterator {
     where
         Self::Item: ~const Destruct,
     {
-        if self.advance_by(n) > 0 {
-            return None;
-        }
+        self.advance_by(n).ok()?;
         self.next()
     }
 
@@ -4017,7 +4018,7 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
-    fn advance_by(&mut self, n: usize) -> usize {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {

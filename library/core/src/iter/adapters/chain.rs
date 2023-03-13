@@ -1,4 +1,5 @@
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
@@ -95,32 +96,32 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, mut n: usize) -> usize {
+    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
         if let Some(ref mut a) = self.a {
-            n = a.advance_by(n);
-            if n == 0 {
-                return n;
-            }
+            n = match a.advance_by(n) {
+                Ok(()) => return Ok(()),
+                Err(k) => k.get(),
+            };
             self.a = None;
         }
 
         if let Some(ref mut b) = self.b {
-            n = b.advance_by(n);
+            return b.advance_by(n);
             // we don't fuse the second iterator
         }
 
-        n
+        NonZeroUsize::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         if let Some(ref mut a) = self.a {
             n = match a.advance_by(n) {
-                0 => match a.next() {
+                Ok(()) => match a.next() {
                     None => 0,
                     x => return x,
                 },
-                k => k,
+                Err(k) => k.get(),
             };
 
             self.a = None;
@@ -181,32 +182,32 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, mut n: usize) -> usize {
+    fn advance_back_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
         if let Some(ref mut b) = self.b {
-            n = b.advance_back_by(n);
-            if n == 0 {
-                return n;
-            }
+            n = match b.advance_back_by(n) {
+                Ok(()) => return Ok(()),
+                Err(k) => k.get(),
+            };
             self.b = None;
         }
 
         if let Some(ref mut a) = self.a {
-            n = a.advance_back_by(n);
+            return a.advance_back_by(n);
             // we don't fuse the second iterator
         }
 
-        n
+        NonZeroUsize::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]
     fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
         if let Some(ref mut b) = self.b {
             n = match b.advance_back_by(n) {
-                0 => match b.next_back() {
+                Ok(()) => match b.next_back() {
                     None => 0,
                     x => return x,
                 },
-                k => k,
+                Err(k) => k.get(),
             };
 
             self.b = None;

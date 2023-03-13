@@ -1,3 +1,4 @@
+use crate::num::NonZeroUsize;
 use crate::{iter::FusedIterator, ops::Try};
 
 /// An iterator that repeats endlessly.
@@ -81,22 +82,22 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> usize {
-        let mut n = self.iter.advance_by(n);
-        if n == 0 {
-            return n;
-        }
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        let mut n = match self.iter.advance_by(n) {
+            Ok(()) => return Ok(()),
+            Err(rem) => rem.get(),
+        };
 
         while n > 0 {
             self.iter = self.orig.clone();
-            let rem = self.iter.advance_by(n);
-            if rem == n {
-                return n;
-            }
-            n = rem;
+            n = match self.iter.advance_by(n) {
+                Ok(()) => return Ok(()),
+                e @ Err(rem) if rem.get() == n => return e,
+                Err(rem) => rem.get(),
+            };
         }
 
-        0
+        NonZeroUsize::new(n).map_or(Ok(()), Err)
     }
 
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
