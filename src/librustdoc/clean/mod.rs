@@ -2459,8 +2459,8 @@ fn clean_extern_crate<'tcx>(
     orig_name: Option<Symbol>,
     cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
-    // this is the ID of the `extern crate` statement
-    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap(LOCAL_CRATE);
+    // this is the ID of the `extern crate` statement -- should always return CrateNum struct from currently-compiled crate
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap(LOCAL_CRATE.CrateNum);
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
