@@ -2773,7 +2773,6 @@ dependencies = [
 name = "rls"
 version = "2.0.0"
 dependencies = [
- "rustc-workspace-hack",
  "serde",
  "serde_json",
 ]
@@ -2885,11 +2884,8 @@ dependencies = [
 [[package]]
 name = "rustc-workspace-hack"
 version = "1.0.0"
-dependencies = [
- "libc",
- "regex",
- "serde_json",
-]
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc71d2faa173b74b232dedc235e3ee1696581bb132fc116fa3626d6151a1a8fb"
 
 [[package]]
 name = "rustc_abi"
