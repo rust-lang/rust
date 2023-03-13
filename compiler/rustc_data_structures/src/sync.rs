@@ -181,7 +181,7 @@ cfg_if! {
 
         #[macro_export]
         macro_rules! parallel {
-            ($($blocks:block),*) => {{
+            ($($blocks:block),*) => {
                 // We catch panics here ensuring that all the blocks execute.
                 // This makes behavior consistent with the parallel compiler.
                 let mut panic = None;
@@ -197,7 +197,7 @@ cfg_if! {
                 if let Some(panic) = panic {
                     ::std::panic::resume_unwind(panic);
                 }
-            }}
+            }
         }
 
         pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
@@ -368,6 +368,7 @@ cfg_if! {
             }
         }
 
+        // This function only works when `mode::active()`.
         pub fn scope<'scope, OP, R>(op: OP) -> R
         where
             OP: FnOnce(&rayon::Scope<'scope>) -> R + DynSend,
@@ -381,24 +382,22 @@ cfg_if! {
         /// the current thread. Use that for the longest running block.
         #[macro_export]
         macro_rules! parallel {
-            ($fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
-                parallel!($fblock [$block, $($c,)*] [$($rest),*])
+            (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
+                parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
-            ($fblock:block [$($blocks:expr,)*] []) => {
-                {
-                    ::rustc_data_structures::sync::scope(|s| {
-                        $(let block = rustc_data_structures::sync::FromDyn::from(|| $blocks);
-                        s.spawn(move |_| block.into_inner()());)*
-                        (|| $fblock)();
-                    });
-                }
+            (impl $fblock:block [$($blocks:expr,)*] []) => {
+                ::rustc_data_structures::sync::scope(|s| {
+                    $(let block = rustc_data_structures::sync::FromDyn::from(|| $blocks);
+                    s.spawn(move |_| block.into_inner()());)*
+                    (|| $fblock)();
+                });
             };
             ($fblock:block, $($blocks:block),*) => {
                 if rustc_data_structures::sync::active() {
                     // Reverse the order of the later blocks since Rayon executes them in reverse order
                     // when using a single thread. This ensures the execution order matches that
                     // of a single threaded rustc
-                    parallel!($fblock [] [$($blocks),*]);
+                    parallel!(impl $fblock [] [$($blocks),*]);
                 } else {
                     // We catch panics here ensuring that all the blocks execute.
                     // This makes behavior consistent with the parallel compiler.
