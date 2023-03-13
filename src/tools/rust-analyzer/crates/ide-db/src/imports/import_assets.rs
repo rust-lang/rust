@@ -528,7 +528,7 @@ fn trait_applicable_items(
             },
         )
     } else {
-        trait_candidate.receiver_ty.iterate_method_candidates(
+        trait_candidate.receiver_ty.iterate_method_candidates_with_traits(
             db,
             scope,
             &trait_candidates,

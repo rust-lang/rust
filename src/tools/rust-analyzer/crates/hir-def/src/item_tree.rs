@@ -204,6 +204,7 @@ impl ItemTree {
                 consts,
                 statics,
                 traits,
+                trait_aliases,
                 impls,
                 type_aliases,
                 mods,
@@ -226,6 +227,7 @@ impl ItemTree {
             consts.shrink_to_fit();
             statics.shrink_to_fit();
             traits.shrink_to_fit();
+            trait_aliases.shrink_to_fit();
             impls.shrink_to_fit();
             type_aliases.shrink_to_fit();
             mods.shrink_to_fit();
@@ -276,6 +278,7 @@ struct ItemTreeData {
     consts: Arena<Const>,
     statics: Arena<Static>,
     traits: Arena<Trait>,
+    trait_aliases: Arena<TraitAlias>,
     impls: Arena<Impl>,
     type_aliases: Arena<TypeAlias>,
     mods: Arena<Mod>,
@@ -496,6 +499,7 @@ mod_items! {
     Const in consts -> ast::Const,
     Static in statics -> ast::Static,
     Trait in traits -> ast::Trait,
+    TraitAlias in trait_aliases -> ast::TraitAlias,
     Impl in impls -> ast::Impl,
     TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
@@ -672,9 +676,16 @@ pub struct Trait {
     pub generic_params: Interned<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
-    /// This is [`None`] if this Trait is a trait alias.
-    pub items: Option<Box<[AssocItem]>>,
+    pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TraitAlias {
+    pub name: Name,
+    pub visibility: RawVisibilityId,
+    pub generic_params: Interned<GenericParams>,
+    pub ast_id: FileAstId<ast::TraitAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -872,6 +883,7 @@ impl ModItem {
             | ModItem::Enum(_)
             | ModItem::Static(_)
             | ModItem::Trait(_)
+            | ModItem::TraitAlias(_)
             | ModItem::Impl(_)
             | ModItem::Mod(_)
             | ModItem::MacroRules(_)
@@ -899,6 +911,7 @@ impl ModItem {
             ModItem::Const(it) => tree[it.index].ast_id().upcast(),
             ModItem::Static(it) => tree[it.index].ast_id().upcast(),
             ModItem::Trait(it) => tree[it.index].ast_id().upcast(),
+            ModItem::TraitAlias(it) => tree[it.index].ast_id().upcast(),
             ModItem::Impl(it) => tree[it.index].ast_id().upcast(),
             ModItem::TypeAlias(it) => tree[it.index].ast_id().upcast(),
             ModItem::Mod(it) => tree[it.index].ast_id().upcast(),

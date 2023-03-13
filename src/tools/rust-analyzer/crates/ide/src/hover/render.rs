@@ -3,7 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
+    db::DefDatabase, Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay,
+    MirEvalError, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -402,7 +403,20 @@ pub(super) fn definition(
             ))
         }),
         Definition::Module(it) => label_and_docs(db, it),
-        Definition::Function(it) => label_and_docs(db, it),
+        Definition::Function(it) => label_and_layout_info_and_docs(db, it, |_| {
+            if !config.interpret_tests {
+                return None;
+            }
+            match it.eval(db) {
+                Ok(()) => Some("pass".into()),
+                Err(MirEvalError::Panic) => Some("fail".into()),
+                Err(MirEvalError::MirLowerError(f, e)) => {
+                    let name = &db.function_data(f).name;
+                    Some(format!("error: fail to lower {name} due {e:?}"))
+                }
+                Err(e) => Some(format!("error: {e:?}")),
+            }
+        }),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, |&it| {
             let layout = it.layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
@@ -410,7 +424,7 @@ pub(super) fn definition(
         Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
-                    Ok(x) => Some(format!("{x}")),
+                    Ok(x) => Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") }),
                     Err(_) => it.value(db).map(|x| format!("{x:?}")),
                 }
             } else {
@@ -418,9 +432,9 @@ pub(super) fn definition(
             }
         }),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
-            let body = it.eval(db);
+            let body = it.render_eval(db);
             match body {
-                Ok(x) => Some(format!("{x}")),
+                Ok(x) => Some(x),
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
@@ -440,6 +454,7 @@ pub(super) fn definition(
             Some(body.to_string())
         }),
         Definition::Trait(it) => label_and_docs(db, it),
+        Definition::TraitAlias(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_docs(db, it),
         Definition::BuiltinType(it) => {
             return famous_defs
@@ -620,8 +635,8 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
     let ty = it.ty(db);
     let ty = ty.display_truncated(db, None);
     let is_mut = if it.is_mut(db) { "mut " } else { "" };
-    let desc = match it.source(db).value {
-        Either::Left(ident) => {
+    let desc = match it.primary_source(db).into_ident_pat() {
+        Some(ident) => {
             let name = it.name(db);
             let let_kw = if ident
                 .syntax()
@@ -634,7 +649,7 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
             };
             format!("{let_kw}{is_mut}{name}: {ty}")
         }
-        Either::Right(_) => format!("{is_mut}self: {ty}"),
+        None => format!("{is_mut}self: {ty}"),
     };
     markup(None, desc, None)
 }

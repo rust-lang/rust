@@ -86,6 +86,7 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
         "STATIC",
         "CONST",
         "TRAIT",
+        "TRAIT_ALIAS",
         "IMPL",
         "TYPE_ALIAS",
         "MACRO_CALL",

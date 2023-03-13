@@ -24,7 +24,7 @@ use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    expr::{dummy_expr_id, Expr, ExprId, Label, LabelId, Pat, PatId},
+    expr::{dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
     nameres::DefMap,
@@ -270,7 +270,7 @@ pub struct Mark {
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
-    pub or_pats: FxHashMap<PatId, Arc<[PatId]>>,
+    pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
@@ -409,18 +409,6 @@ impl Body {
             .map(move |&block| (block, db.block_def_map(block).expect("block ID without DefMap")))
     }
 
-    pub fn pattern_representative(&self, pat: PatId) -> PatId {
-        self.or_pats.get(&pat).and_then(|pats| pats.first().copied()).unwrap_or(pat)
-    }
-
-    /// Retrieves all ident patterns this pattern shares the ident with.
-    pub fn ident_patterns_for<'slf>(&'slf self, pat: &'slf PatId) -> &'slf [PatId] {
-        match self.or_pats.get(pat) {
-            Some(pats) => pats,
-            None => std::slice::from_ref(pat),
-        }
-    }
-
     pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {
         pretty::print_body_hir(db, self, owner)
     }
@@ -435,13 +423,14 @@ impl Body {
     }
 
     fn shrink_to_fit(&mut self) {
-        let Self { _c: _, body_expr: _, block_scopes, or_pats, exprs, labels, params, pats } = self;
+        let Self { _c: _, body_expr: _, block_scopes, exprs, labels, params, pats, bindings } =
+            self;
         block_scopes.shrink_to_fit();
-        or_pats.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
         params.shrink_to_fit();
         pats.shrink_to_fit();
+        bindings.shrink_to_fit();
     }
 }
 
@@ -451,7 +440,7 @@ impl Default for Body {
             body_expr: dummy_expr_id(),
             exprs: Default::default(),
             pats: Default::default(),
-            or_pats: Default::default(),
+            bindings: Default::default(),
             labels: Default::default(),
             params: Default::default(),
             block_scopes: Default::default(),
@@ -481,6 +470,14 @@ impl Index<LabelId> for Body {
 
     fn index(&self, label: LabelId) -> &Label {
         &self.labels[label]
+    }
+}
+
+impl Index<BindingId> for Body {
+    type Output = Binding;
+
+    fn index(&self, b: BindingId) -> &Binding {
+        &self.bindings[b]
     }
 }
 

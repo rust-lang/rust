@@ -102,9 +102,11 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
 
+    let let_ = if pat_seen { " let" } else { "" };
+
     acc.add(
         AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
-        "Replace if let with match",
+        format!("Replace if{let_} with match"),
         available_range,
         move |edit| {
             let match_expr = {
@@ -210,8 +212,17 @@ fn make_else_arm(
 // ```
 pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let match_expr: ast::MatchExpr = ctx.find_node_at_offset()?;
+    let match_arm_list = match_expr.match_arm_list()?;
+    let available_range = TextRange::new(
+        match_expr.syntax().text_range().start(),
+        match_arm_list.syntax().text_range().start(),
+    );
+    let cursor_in_range = available_range.contains_range(ctx.selection_trimmed());
+    if !cursor_in_range {
+        return None;
+    }
 
-    let mut arms = match_expr.match_arm_list()?.arms();
+    let mut arms = match_arm_list.arms();
     let (first_arm, second_arm) = (arms.next()?, arms.next()?);
     if arms.next().is_some() || first_arm.guard().is_some() || second_arm.guard().is_some() {
         return None;
@@ -226,10 +237,20 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
     )?;
     let scrutinee = match_expr.expr()?;
 
+    let let_ = match &if_let_pat {
+        ast::Pat::LiteralPat(p)
+            if p.literal()
+                .map(|it| it.token().kind())
+                .map_or(false, |it| it == T![true] || it == T![false]) =>
+        {
+            ""
+        }
+        _ => " let",
+    };
     let target = match_expr.syntax().text_range();
     acc.add(
         AssistId("replace_match_with_if_let", AssistKind::RefactorRewrite),
-        "Replace match with if let",
+        format!("Replace match with if{let_}"),
         target,
         move |edit| {
             fn make_block_expr(expr: ast::Expr) -> ast::BlockExpr {

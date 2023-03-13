@@ -20,7 +20,7 @@ pub(super) fn trait_(p: &mut Parser<'_>, m: Marker) {
         // trait Z<U> = where Self: T<U>;
         generic_params::opt_where_clause(p);
         p.expect(T![;]);
-        m.complete(p, TRAIT);
+        m.complete(p, TRAIT_ALIAS);
         return;
     }
 

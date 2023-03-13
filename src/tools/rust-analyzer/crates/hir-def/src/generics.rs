@@ -187,6 +187,7 @@ impl GenericParams {
             GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
             GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
             GenericDefId::TraitId(id) => id_to_generics!(id),
+            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
             GenericDefId::TypeAliasId(id) => id_to_generics!(id),
             GenericDefId::ImplId(id) => id_to_generics!(id),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
@@ -207,12 +208,10 @@ impl GenericParams {
     pub(crate) fn fill_bounds(
         &mut self,
         lower_ctx: &LowerCtx<'_>,
-        node: &dyn ast::HasTypeBounds,
+        type_bounds: Option<ast::TypeBoundList>,
         target: Either<TypeRef, LifetimeRef>,
     ) {
-        for bound in
-            node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
-        {
+        for bound in type_bounds.iter().flat_map(|type_bound_list| type_bound_list.bounds()) {
             self.add_where_predicate_from_bound(lower_ctx, bound, None, target.clone());
         }
     }
@@ -233,7 +232,11 @@ impl GenericParams {
                     };
                     self.type_or_consts.alloc(param.into());
                     let type_ref = TypeRef::Path(name.into());
-                    self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
+                    self.fill_bounds(
+                        lower_ctx,
+                        type_param.type_bound_list(),
+                        Either::Left(type_ref),
+                    );
                 }
                 ast::TypeOrConstParam::Const(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -255,7 +258,11 @@ impl GenericParams {
             let param = LifetimeParamData { name: name.clone() };
             self.lifetimes.alloc(param);
             let lifetime_ref = LifetimeRef::new_name(name);
-            self.fill_bounds(lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
+            self.fill_bounds(
+                lower_ctx,
+                lifetime_param.type_bound_list(),
+                Either::Right(lifetime_ref),
+            );
         }
     }
 
@@ -421,6 +428,10 @@ fn file_id_and_params_of(
             let src = it.lookup(db).source(db);
             (src.file_id, src.value.generic_param_list())
         }
+        GenericDefId::TraitAliasId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
         GenericDefId::TypeAliasId(it) => {
             let src = it.lookup(db).source(db);
             (src.file_id, src.value.generic_param_list())
@@ -435,7 +446,7 @@ fn file_id_and_params_of(
 }
 
 impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
-    type Value = Either<ast::TypeOrConstParam, ast::Trait>;
+    type Value = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
     fn child_source(
         &self,
         db: &dyn DefDatabase,
@@ -447,11 +458,20 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
 
         let mut params = ArenaMap::default();
 
-        // For traits the first type index is `Self`, we need to add it before the other params.
-        if let GenericDefId::TraitId(id) = *self {
-            let trait_ref = id.lookup(db).source(db).value;
-            let idx = idx_iter.next().unwrap();
-            params.insert(idx, Either::Right(trait_ref));
+        // For traits and trait aliases the first type index is `Self`, we need to add it before
+        // the other params.
+        match *self {
+            GenericDefId::TraitId(id) => {
+                let trait_ref = id.lookup(db).source(db).value;
+                let idx = idx_iter.next().unwrap();
+                params.insert(idx, Either::Right(ast::TraitOrAlias::Trait(trait_ref)));
+            }
+            GenericDefId::TraitAliasId(id) => {
+                let alias = id.lookup(db).source(db).value;
+                let idx = idx_iter.next().unwrap();
+                params.insert(idx, Either::Right(ast::TraitOrAlias::TraitAlias(alias)));
+            }
+            _ => {}
         }
 
         if let Some(generic_params_list) = generic_params_list {

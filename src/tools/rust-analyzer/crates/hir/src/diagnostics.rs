@@ -10,7 +10,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-use crate::{AssocItem, Field, MacroKind, Type};
+use crate::{AssocItem, Field, Local, MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -31,6 +31,7 @@ macro_rules! diagnostics {
 
 diagnostics![
     BreakOutsideOfLoop,
+    ExpectedFunction,
     InactiveCode,
     IncorrectCase,
     InvalidDeriveTarget,
@@ -40,6 +41,7 @@ diagnostics![
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
+    NeedMut,
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
@@ -47,10 +49,13 @@ diagnostics![
     TypeMismatch,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
+    UnresolvedField,
     UnresolvedImport,
     UnresolvedMacroCall,
+    UnresolvedMethodCall,
     UnresolvedModule,
     UnresolvedProcMacro,
+    UnusedMut,
 ];
 
 #[derive(Debug)]
@@ -131,6 +136,28 @@ pub struct PrivateAssocItem {
 }
 
 #[derive(Debug)]
+pub struct ExpectedFunction {
+    pub call: InFile<AstPtr<ast::Expr>>,
+    pub found: Type,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedField {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub method_with_same_name_exists: bool,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedMethodCall {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub receiver: Type,
+    pub name: Name,
+    pub field_with_same_name: Option<Type>,
+}
+
+#[derive(Debug)]
 pub struct PrivateField {
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub field: Field,
@@ -140,6 +167,7 @@ pub struct PrivateField {
 pub struct BreakOutsideOfLoop {
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub is_break: bool,
+    pub bad_value_break: bool,
 }
 
 #[derive(Debug)]
@@ -171,17 +199,26 @@ pub struct MismatchedArgCount {
 
 #[derive(Debug)]
 pub struct MissingMatchArms {
-    pub file: HirFileId,
-    pub match_expr: AstPtr<ast::Expr>,
+    pub scrutinee_expr: InFile<AstPtr<ast::Expr>>,
     pub uncovered_patterns: String,
 }
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    // FIXME: add mismatches in patterns as well
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr_or_pat: Either<InFile<AstPtr<ast::Expr>>, InFile<AstPtr<ast::Pat>>>,
     pub expected: Type,
     pub actual: Type,
+}
+
+#[derive(Debug)]
+pub struct NeedMut {
+    pub local: Local,
+    pub span: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug)]
+pub struct UnusedMut {
+    pub local: Local,
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;

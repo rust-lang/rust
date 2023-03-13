@@ -5,7 +5,7 @@ use std::fmt;
 use either::Either;
 use hir::{
     symbols::FileSymbol, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
-    InFile, ModuleSource, Semantics,
+    InFile, LocalSource, ModuleSource, Semantics,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -192,6 +192,7 @@ impl TryToNav for Definition {
             Definition::Const(it) => it.try_to_nav(db),
             Definition::Static(it) => it.try_to_nav(db),
             Definition::Trait(it) => it.try_to_nav(db),
+            Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::BuiltinType(_) => None,
             Definition::ToolModule(_) => None,
@@ -212,6 +213,7 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Const(it) => it.try_to_nav(db),
             hir::ModuleDef::Static(it) => it.try_to_nav(db),
             hir::ModuleDef::Trait(it) => it.try_to_nav(db),
+            hir::ModuleDef::TraitAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::Macro(it) => it.try_to_nav(db),
             hir::ModuleDef::BuiltinType(_) => None,
@@ -248,6 +250,9 @@ impl ToNavFromAst for hir::TypeAlias {
 }
 impl ToNavFromAst for hir::Trait {
     const KIND: SymbolKind = SymbolKind::Trait;
+}
+impl ToNavFromAst for hir::TraitAlias {
+    const KIND: SymbolKind = SymbolKind::TraitAlias;
 }
 
 impl<D> TryToNav for D
@@ -382,9 +387,11 @@ impl TryToNav for hir::GenericParam {
     }
 }
 
-impl ToNav for hir::Local {
+impl ToNav for LocalSource {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        let InFile { file_id, value } = self.source(db);
+        let InFile { file_id, value } = &self.source;
+        let file_id = *file_id;
+        let local = self.local;
         let (node, name) = match &value {
             Either::Left(bind_pat) => (bind_pat.syntax(), bind_pat.name()),
             Either::Right(it) => (it.syntax(), it.name()),
@@ -393,10 +400,10 @@ impl ToNav for hir::Local {
         let FileRange { file_id, range: full_range } =
             InFile::new(file_id, node).original_file_range(db);
 
-        let name = self.name(db).to_smol_str();
-        let kind = if self.is_self(db) {
+        let name = local.name(db).to_smol_str();
+        let kind = if local.is_self(db) {
             SymbolKind::SelfParam
-        } else if self.is_param(db) {
+        } else if local.is_param(db) {
             SymbolKind::ValueParam
         } else {
             SymbolKind::Local
@@ -411,6 +418,12 @@ impl ToNav for hir::Local {
             description: None,
             docs: None,
         }
+    }
+}
+
+impl ToNav for hir::Local {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        self.primary_source(db).to_nav(db)
     }
 }
 
@@ -544,6 +557,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             ast::Struct(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Enum(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Trait(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::TraitAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Module(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::TypeAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Const(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),

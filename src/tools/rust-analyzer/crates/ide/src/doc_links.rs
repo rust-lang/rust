@@ -107,7 +107,18 @@ pub(crate) fn remove_links(markdown: &str) -> String {
     out
 }
 
-/// Retrieve a link to documentation for the given symbol.
+// Feature: Open Docs
+//
+// Retrieve a link to documentation for the given symbol.
+//
+// The simplest way to use this feature is via the context menu. Right-click on
+// the selected item. The context menu opens. Select **Open Docs**.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **rust-analyzer: Open Docs**
+// |===
 pub(crate) fn external_docs(
     db: &RootDatabase,
     position: &FilePosition,
@@ -181,6 +192,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::Const(it) => it.resolve_doc_path(db, link, ns),
         Definition::Static(it) => it.resolve_doc_path(db, link, ns),
         Definition::Trait(it) => it.resolve_doc_path(db, link, ns),
+        Definition::TraitAlias(it) => it.resolve_doc_path(db, link, ns),
         Definition::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
@@ -493,6 +505,7 @@ fn filename_and_frag_for_def(
             None => String::from("index.html"),
         },
         Definition::Trait(t) => format!("trait.{}.html", t.name(db)),
+        Definition::TraitAlias(t) => format!("traitalias.{}.html", t.name(db)),
         Definition::TypeAlias(t) => format!("type.{}.html", t.name(db)),
         Definition::BuiltinType(t) => format!("primitive.{}.html", t.name()),
         Definition::Function(f) => format!("fn.{}.html", f.name(db)),

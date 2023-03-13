@@ -827,6 +827,7 @@ macro_rules! rgb_color {
 /* parse error: expected type */
 /* parse error: expected R_PAREN */
 /* parse error: expected R_ANGLE */
+/* parse error: expected `::` */
 /* parse error: expected COMMA */
 /* parse error: expected R_ANGLE */
 /* parse error: expected SEMICOLON */
