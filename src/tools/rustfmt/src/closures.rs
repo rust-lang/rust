@@ -195,7 +195,6 @@ fn rewrite_closure_expr(
             | ast::ExprKind::Struct(..) => true,
 
             ast::ExprKind::AddrOf(_, _, ref expr)
-            | ast::ExprKind::Box(ref expr)
             | ast::ExprKind::Try(ref expr)
             | ast::ExprKind::Unary(_, ref expr)
             | ast::ExprKind::Cast(ref expr, _) => allow_multi_line(expr),
@@ -441,7 +440,6 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
         ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop(..) => true,
         ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr, version),

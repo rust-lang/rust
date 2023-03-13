@@ -772,7 +772,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
 
     match &expression.kind {
-        ExprKind::Box(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }

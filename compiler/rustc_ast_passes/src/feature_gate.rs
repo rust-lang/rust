@@ -392,14 +392,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Box(_) => {
-                gate_feature_post!(
-                    &self,
-                    box_syntax,
-                    e.span,
-                    "box expression syntax is experimental; you can call `Box::new` instead"
-                );
-            }
             ast::ExprKind::Type(..) => {
                 if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
                     // To avoid noise about type ascription in common syntax errors,
@@ -604,7 +596,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
     gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);

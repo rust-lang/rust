@@ -1,31 +1,26 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/box.rs:9:11
+  --> $DIR/box.rs:8:11
    |
-LL |     &mut *(box 0)
-   |           ^^^^^^^ calling non-const function `alloc::alloc::exchange_malloc`
+LL |     &mut *(Box::new(0))
+   |           ^^^^^^^^^^^^^ calling non-const function `Box::<i32>::new`
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/box.rs:9:11
+  --> $DIR/box.rs:8:11
    |
-LL |     &mut *(box 0)
-   |           ^^^^^^^
+LL |     &mut *(Box::new(0))
+   |           ^^^^^^^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/box.rs:9:16
+  --> $DIR/box.rs:8:5
    |
-LL |     &mut *(box 0)
-   |                ^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/box.rs:9:5
-   |
-LL |     &mut *(box 0)
-   |     ^^^^^^^^^^^^^
+LL |     &mut *(Box::new(0))
+   |     ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/box.rs:9:5
+  --> $DIR/box.rs:8:5
    |
-LL |     &mut *(box 0)
-   |     ^^^^^^^^^^^^^
+LL |     &mut *(Box::new(0))
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

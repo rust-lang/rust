@@ -200,8 +200,6 @@ declare_features! (
     (active, auto_traits, "1.50.0", Some(13231), None),
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
-    /// Allows using the `box $expr` syntax.
-    (active, box_syntax, "1.0.0", Some(49733), None),
     /// Allows `#[doc(notable_trait)]`.
     /// Renamed from `doc_spotlight`.
     (active, doc_notable_trait, "1.52.0", Some(45040), None),
