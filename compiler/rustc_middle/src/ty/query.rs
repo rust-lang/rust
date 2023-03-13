@@ -17,7 +17,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
-use crate::query::Key;
+use crate::query::{AsLocalKey, Key};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -233,7 +233,7 @@ macro_rules! define_callbacks {
         pub mod query_keys_local {
             use super::*;
 
-            $(pub type $name<'tcx> = <$($K)* as Key>::LocalKey;)*
+            $(pub type $name<'tcx> = <$($K)* as AsLocalKey>::LocalKey;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
@@ -416,17 +416,14 @@ macro_rules! define_callbacks {
 
         impl Default for Providers {
             fn default() -> Self {
-                use crate::query::Key;
-
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for {} crate;\n\
+                        "`tcx.{}({:?})` is not supported for this key;\n\
                         hint: Queries can be either made to the local crate, or the external crate. \
                         This error means you tried to use it for one that's not supported.\n\
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
-                        if key.as_local_key().is_some() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }

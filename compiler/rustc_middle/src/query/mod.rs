@@ -8,7 +8,7 @@ use crate::ty::{self, print::describe_as_module, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 
 mod keys;
-pub use keys::Key;
+pub use keys::{AsLocalKey, Key};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -796,7 +796,6 @@ rustc_queries! {
     query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
         desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
         cache_on_disk_if { true }
-        separate_provide_extern
     }
 
     /// Given an `impl_id`, return the trait it implements.
