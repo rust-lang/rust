@@ -2558,7 +2558,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // We can avoid creating type variables and doing the full
         // substitution if we find that any of the input types, when
         // simplified, do not match.
-        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
+        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         iter::zip(obligation.predicate.skip_binder().trait_ref.substs, impl_trait_ref.substs)
             .any(|(obl, imp)| !drcx.generic_args_may_unify(obl, imp))
     }

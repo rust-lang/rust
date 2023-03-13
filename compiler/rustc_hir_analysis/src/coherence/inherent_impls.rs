@@ -11,7 +11,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
+use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
@@ -99,7 +99,12 @@ impl<'tcx> InherentCollect<'tcx> {
                 }
             }
 
-            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) {
+            if let Some(simp) = simplify_type(
+                self.tcx,
+                self_ty,
+                TreatParams::AsCandidateKey,
+                TreatProjections::AsCandidateKey,
+            ) {
                 self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
             } else {
                 bug!("unexpected self type: {:?}", self_ty);
@@ -159,7 +164,12 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         }
 
-        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsInfer) {
+        if let Some(simp) = simplify_type(
+            self.tcx,
+            ty,
+            TreatParams::AsCandidateKey,
+            TreatProjections::AsCandidateKey,
+        ) {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);
