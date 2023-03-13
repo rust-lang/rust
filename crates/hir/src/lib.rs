@@ -3224,7 +3224,7 @@ impl Type {
         }
     }
 
-    pub fn remove_slice(&self) -> Option<Type> {
+    pub fn as_slice(&self) -> Option<Type> {
         match &self.ty.kind(Interner) {
             TyKind::Slice(ty) => Some(self.derived(ty.clone())),
             _ => None,
