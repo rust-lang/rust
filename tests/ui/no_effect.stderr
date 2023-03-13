@@ -81,83 +81,77 @@ LL |     (5, 6, 7);
 error: statement with no effect
   --> $DIR/no_effect.rs:105:5
    |
-LL |     box 42;
-   |     ^^^^^^^
-
-error: statement with no effect
-  --> $DIR/no_effect.rs:106:5
-   |
 LL |     ..;
    |     ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:107:5
+  --> $DIR/no_effect.rs:106:5
    |
 LL |     5..;
    |     ^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:108:5
+  --> $DIR/no_effect.rs:107:5
    |
 LL |     ..5;
    |     ^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:109:5
+  --> $DIR/no_effect.rs:108:5
    |
 LL |     5..6;
    |     ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:110:5
+  --> $DIR/no_effect.rs:109:5
    |
 LL |     5..=6;
    |     ^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:111:5
+  --> $DIR/no_effect.rs:110:5
    |
 LL |     [42, 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:112:5
+  --> $DIR/no_effect.rs:111:5
    |
 LL |     [42, 55][1];
    |     ^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:113:5
+  --> $DIR/no_effect.rs:112:5
    |
 LL |     (42, 55).1;
    |     ^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:114:5
+  --> $DIR/no_effect.rs:113:5
    |
 LL |     [42; 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:115:5
+  --> $DIR/no_effect.rs:114:5
    |
 LL |     [42; 55][13];
    |     ^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:117:5
+  --> $DIR/no_effect.rs:116:5
    |
 LL |     || x += 5;
    |     ^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:119:5
+  --> $DIR/no_effect.rs:118:5
    |
 LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:120:5
+  --> $DIR/no_effect.rs:119:5
    |
 LL |     let _unused = 1;
    |     ^^^^^^^^^^^^^^^^
@@ -165,22 +159,22 @@ LL |     let _unused = 1;
    = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:121:5
+  --> $DIR/no_effect.rs:120:5
    |
 LL |     let _penguin = || println!("Some helpful closure");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:122:5
+  --> $DIR/no_effect.rs:121:5
    |
 LL |     let _duck = Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:123:5
+  --> $DIR/no_effect.rs:122:5
    |
 LL |     let _cat = [2, 4, 6, 8][2];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 30 previous errors
+error: aborting due to 29 previous errors
 
