@@ -704,14 +704,13 @@ impl<'a> fmt::Debug for InferenceTable<'a> {
 mod resolve {
     use super::InferenceTable;
     use crate::{
-        ConcreteConst, Const, ConstData, ConstValue, DebruijnIndex, GenericArg, InferenceVar,
-        Interner, Lifetime, Ty, TyVariableKind, VariableKind,
+        ConcreteConst, Const, ConstData, ConstScalar, ConstValue, DebruijnIndex, GenericArg,
+        InferenceVar, Interner, Lifetime, Ty, TyVariableKind, VariableKind,
     };
     use chalk_ir::{
         cast::Cast,
         fold::{TypeFoldable, TypeFolder},
     };
-    use hir_def::type_ref::ConstScalar;
 
     #[derive(chalk_derive::FallibleTypeFolder)]
     #[has_interner(Interner)]

@@ -167,7 +167,11 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
 
         let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
             let per_ns = per_ns.filter_visibility(|vis| vis == Visibility::Public);
-            if per_ns.is_none() { None } else { Some((name, per_ns)) }
+            if per_ns.is_none() {
+                None
+            } else {
+                Some((name, per_ns))
+            }
         });
 
         for (name, per_ns) in visible_items {
@@ -264,6 +268,7 @@ pub enum ImportKind {
     Const,
     Static,
     Trait,
+    TraitAlias,
     TypeAlias,
     BuiltinType,
     AssociatedItem,
@@ -459,6 +464,7 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
         ModuleDefId::ConstId(_) => ImportKind::Const,
         ModuleDefId::StaticId(_) => ImportKind::Static,
         ModuleDefId::TraitId(_) => ImportKind::Trait,
+        ModuleDefId::TraitAliasId(_) => ImportKind::TraitAlias,
         ModuleDefId::TypeAliasId(_) => ImportKind::TypeAlias,
         ModuleDefId::BuiltinType(_) => ImportKind::BuiltinType,
         ModuleDefId::MacroId(_) => ImportKind::Macro,

@@ -17,15 +17,23 @@ use hir_ty::{
 };
 
 use crate::{
-    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
-    LifetimeParam, Macro, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias,
-    TypeOrConstParam, TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Enum, Field, Function, GenericParam,
+    HasCrate, HasVisibility, LifetimeParam, Macro, Module, Static, Struct, Trait, TraitAlias,
+    TyBuilder, Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        let data = f.db.function_data(self.id);
-        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let db = f.db;
+        let data = db.function_data(self.id);
+        let container = self.as_assoc_item(db).map(|it| it.container(db));
+        let mut module = self.module(db);
+        if let Some(AssocItemContainer::Impl(_)) = container {
+            // Block-local impls are "hoisted" to the nearest (non-block) module.
+            module = module.nearest_non_block_module(db);
+        }
+        let module_id = module.id;
+        write_visibility(module_id, self.visibility(db), f)?;
         if data.has_default_kw() {
             f.write_str("default ")?;
         }
@@ -35,7 +43,7 @@ impl HirDisplay for Function {
         if data.has_async_kw() {
             f.write_str("async ")?;
         }
-        if self.is_unsafe_to_call(f.db) {
+        if self.is_unsafe_to_call(db) {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {
@@ -50,7 +58,7 @@ impl HirDisplay for Function {
 
         let write_self_param = |ty: &TypeRef, f: &mut HirFormatter<'_>| match ty {
             TypeRef::Path(p) if p.is_self_type() => f.write_str("self"),
-            TypeRef::Reference(inner, lifetime, mut_) if matches!(&**inner,TypeRef::Path(p) if p.is_self_type()) =>
+            TypeRef::Reference(inner, lifetime, mut_) if matches!(&**inner, TypeRef::Path(p) if p.is_self_type()) =>
             {
                 f.write_char('&')?;
                 if let Some(lifetime) = lifetime {
@@ -442,8 +450,15 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(),
 
 impl HirDisplay for Const {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        let data = f.db.const_data(self.id);
+        let db = f.db;
+        let container = self.as_assoc_item(db).map(|it| it.container(db));
+        let mut module = self.module(db);
+        if let Some(AssocItemContainer::Impl(_)) = container {
+            // Block-local impls are "hoisted" to the nearest (non-block) module.
+            module = module.nearest_non_block_module(db);
+        }
+        write_visibility(module.id, self.visibility(db), f)?;
+        let data = db.const_data(self.id);
         f.write_str("const ")?;
         match &data.name {
             Some(name) => write!(f, "{name}: ")?,
@@ -481,6 +496,22 @@ impl HirDisplay for Trait {
         write!(f, "trait {}", data.name)?;
         let def_id = GenericDefId::TraitId(self.id);
         write_generic_params(def_id, f)?;
+        write_where_clause(def_id, f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for TraitAlias {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let data = f.db.trait_alias_data(self.id);
+        write!(f, "trait {}", data.name)?;
+        let def_id = GenericDefId::TraitAliasId(self.id);
+        write_generic_params(def_id, f)?;
+        f.write_str(" = ")?;
+        // FIXME: Currently we lower every bounds in a trait alias as a trait bound on `Self` i.e.
+        // `trait Foo = Bar` is stored and displayed as `trait Foo = where Self: Bar`, which might
+        // be less readable.
         write_where_clause(def_id, f)?;
         Ok(())
     }

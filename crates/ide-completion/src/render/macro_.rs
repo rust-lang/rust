@@ -267,4 +267,63 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn complete_missing_macro_arg() {
+        // Regression test for https://github.com/rust-lang/rust-analyzer/issues/14246
+        check_edit(
+            "BAR",
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR, $0)
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR, BAR)
+}
+"#,
+        );
+        check_edit(
+            "BAR",
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!($0)
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($val:ident,  $val2: ident) => {
+        $val $val2
+    };
+}
+
+const BAR: u32 = 9;
+fn main() {
+    foo!(BAR)
+}
+"#,
+        );
+    }
 }

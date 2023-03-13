@@ -192,6 +192,10 @@ fn target_data_for_def(
             target_name = Some(t.name(db));
             offset_target_and_file_id(db, t)?
         }
+        hir::ModuleDef::TraitAlias(t) => {
+            target_name = Some(t.name(db));
+            offset_target_and_file_id(db, t)?
+        }
         hir::ModuleDef::TypeAlias(t) => {
             target_name = Some(t.name(db));
             offset_target_and_file_id(db, t)?

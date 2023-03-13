@@ -88,23 +88,17 @@ impl Sysroot {
     }
 
     pub fn discover_with_src_override(
-        dir: &AbsPath,
+        current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         src: AbsPathBuf,
     ) -> Result<Sysroot> {
-        tracing::debug!("discovering sysroot for {}", dir.display());
-        let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
+        tracing::debug!("discovering sysroot for {}", current_dir.display());
+        let sysroot_dir = discover_sysroot_dir(current_dir, extra_env)?;
         Ok(Sysroot::load(sysroot_dir, src))
     }
 
-    pub fn discover_rustc(
-        cargo_toml: &ManifestPath,
-        extra_env: &FxHashMap<String, String>,
-    ) -> Option<ManifestPath> {
-        tracing::debug!("discovering rustc source for {}", cargo_toml.display());
-        let current_dir = cargo_toml.parent();
-        let sysroot_dir = discover_sysroot_dir(current_dir, extra_env).ok()?;
-        get_rustc_src(&sysroot_dir)
+    pub fn discover_rustc(&self) -> Option<ManifestPath> {
+        get_rustc_src(&self.root)
     }
 
     pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
@@ -282,4 +276,7 @@ unwind
 std_detect
 test";
 
-const PROC_MACRO_DEPS: &str = "std";
+// core is required for our builtin derives to work in the proc_macro lib currently
+const PROC_MACRO_DEPS: &str = "
+std
+core";

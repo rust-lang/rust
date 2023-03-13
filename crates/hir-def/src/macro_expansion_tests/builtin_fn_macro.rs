@@ -143,7 +143,7 @@ macro_rules! assert {
 
 fn main() {
      {
-        if !true {
+        if !(true ) {
             $crate::panic!("{} {:?}", arg1(a, b, c), arg2);
         }
     };

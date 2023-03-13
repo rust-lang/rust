@@ -105,6 +105,8 @@ pub struct CargoConfig {
     pub wrap_rustc_in_build_scripts: bool,
     /// The command to run instead of `cargo check` for building build scripts.
     pub run_build_script_command: Option<Vec<String>>,
+    /// Extra args to pass to the cargo command.
+    pub extra_args: Vec<String>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,

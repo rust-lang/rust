@@ -149,6 +149,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Enum(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Enum)),
             ast::Variant(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Variant)),
             ast::Trait(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Trait)),
+            ast::TraitAlias(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::TraitAlias)),
             ast::Module(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Module)),
             ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::TypeAlias)),
             ast::RecordField(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Field)),
@@ -262,6 +263,8 @@ enum E { X, Y(i32) }
 type T = ();
 static S: i32 = 92;
 const C: i32 = 92;
+trait Tr {}
+trait Alias = Tr;
 
 impl E {}
 
@@ -459,9 +462,31 @@ fn g() {}
                     },
                     StructureNode {
                         parent: None,
+                        label: "Tr",
+                        navigation_range: 239..241,
+                        node_range: 233..244,
+                        kind: SymbolKind(
+                            Trait,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "Alias",
+                        navigation_range: 251..256,
+                        node_range: 245..262,
+                        kind: SymbolKind(
+                            TraitAlias,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
                         label: "impl E",
-                        navigation_range: 239..240,
-                        node_range: 234..243,
+                        navigation_range: 269..270,
+                        node_range: 264..273,
                         kind: SymbolKind(
                             Impl,
                         ),
@@ -471,8 +496,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "impl fmt::Debug for E",
-                        navigation_range: 265..266,
-                        node_range: 245..269,
+                        navigation_range: 295..296,
+                        node_range: 275..299,
                         kind: SymbolKind(
                             Impl,
                         ),
@@ -482,8 +507,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "mc",
-                        navigation_range: 284..286,
-                        node_range: 271..303,
+                        navigation_range: 314..316,
+                        node_range: 301..333,
                         kind: SymbolKind(
                             Macro,
                         ),
@@ -493,8 +518,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "mcexp",
-                        navigation_range: 334..339,
-                        node_range: 305..356,
+                        navigation_range: 364..369,
+                        node_range: 335..386,
                         kind: SymbolKind(
                             Macro,
                         ),
@@ -504,8 +529,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "mcexp",
-                        navigation_range: 387..392,
-                        node_range: 358..409,
+                        navigation_range: 417..422,
+                        node_range: 388..439,
                         kind: SymbolKind(
                             Macro,
                         ),
@@ -515,8 +540,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "obsolete",
-                        navigation_range: 428..436,
-                        node_range: 411..441,
+                        navigation_range: 458..466,
+                        node_range: 441..471,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -528,8 +553,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "very_obsolete",
-                        navigation_range: 481..494,
-                        node_range: 443..499,
+                        navigation_range: 511..524,
+                        node_range: 473..529,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -541,8 +566,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "Some region name",
-                        navigation_range: 501..528,
-                        node_range: 501..528,
+                        navigation_range: 531..558,
+                        node_range: 531..558,
                         kind: Region,
                         detail: None,
                         deprecated: false,
@@ -550,8 +575,8 @@ fn g() {}
                     StructureNode {
                         parent: None,
                         label: "m",
-                        navigation_range: 568..569,
-                        node_range: 543..606,
+                        navigation_range: 598..599,
+                        node_range: 573..636,
                         kind: SymbolKind(
                             Module,
                         ),
@@ -560,22 +585,22 @@ fn g() {}
                     },
                     StructureNode {
                         parent: Some(
-                            20,
+                            22,
                         ),
                         label: "dontpanic",
-                        navigation_range: 543..563,
-                        node_range: 543..563,
+                        navigation_range: 573..593,
+                        node_range: 573..593,
                         kind: Region,
                         detail: None,
                         deprecated: false,
                     },
                     StructureNode {
                         parent: Some(
-                            20,
+                            22,
                         ),
                         label: "f",
-                        navigation_range: 575..576,
-                        node_range: 572..581,
+                        navigation_range: 605..606,
+                        node_range: 602..611,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -586,11 +611,11 @@ fn g() {}
                     },
                     StructureNode {
                         parent: Some(
-                            20,
+                            22,
                         ),
                         label: "g",
-                        navigation_range: 598..599,
-                        node_range: 582..604,
+                        navigation_range: 628..629,
+                        node_range: 612..634,
                         kind: SymbolKind(
                             Function,
                         ),

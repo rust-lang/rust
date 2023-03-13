@@ -73,68 +73,96 @@ impl RootDatabase {
 
             // AstDatabase
             hir::db::AstIdMapQuery
+            hir::db::ParseMacroExpansionQuery
+            hir::db::InternMacroCallQuery
             hir::db::MacroArgTextQuery
             hir::db::MacroDefQuery
-            hir::db::ParseMacroExpansionQuery
             hir::db::MacroExpandQuery
+            hir::db::ExpandProcMacroQuery
+            hir::db::MacroExpandErrorQuery
             hir::db::HygieneFrameQuery
-            hir::db::InternMacroCallQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery
-            hir::db::BlockDefMapQuery
             hir::db::CrateDefMapQueryQuery
-            hir::db::FieldsAttrsQuery
-            hir::db::VariantsAttrsQuery
-            hir::db::FieldsAttrsSourceMapQuery
-            hir::db::VariantsAttrsSourceMapQuery
+            hir::db::BlockDefMapQuery
             hir::db::StructDataQuery
+            hir::db::StructDataWithDiagnosticsQuery
             hir::db::UnionDataQuery
+            hir::db::UnionDataWithDiagnosticsQuery
             hir::db::EnumDataQuery
+            hir::db::EnumDataWithDiagnosticsQuery
             hir::db::ImplDataQuery
+            hir::db::ImplDataWithDiagnosticsQuery
             hir::db::TraitDataQuery
+            hir::db::TraitDataWithDiagnosticsQuery
+            hir::db::TraitAliasDataQuery
             hir::db::TypeAliasDataQuery
             hir::db::FunctionDataQuery
             hir::db::ConstDataQuery
             hir::db::StaticDataQuery
+            hir::db::Macro2DataQuery
+            hir::db::MacroRulesDataQuery
+            hir::db::ProcMacroDataQuery
             hir::db::BodyWithSourceMapQuery
             hir::db::BodyQuery
             hir::db::ExprScopesQuery
             hir::db::GenericParamsQuery
+            hir::db::VariantsAttrsQuery
+            hir::db::FieldsAttrsQuery
+            hir::db::VariantsAttrsSourceMapQuery
+            hir::db::FieldsAttrsSourceMapQuery
             hir::db::AttrsQuery
             hir::db::CrateLangItemsQuery
             hir::db::LangItemQuery
             hir::db::ImportMapQuery
+            hir::db::FieldVisibilitiesQuery
+            hir::db::FunctionVisibilityQuery
+            hir::db::ConstVisibilityQuery
+            hir::db::CrateSupportsNoStdQuery
 
             // HirDatabase
             hir::db::InferQueryQuery
+            hir::db::MirBodyQuery
+            hir::db::BorrowckQuery
             hir::db::TyQuery
             hir::db::ValueTyQuery
             hir::db::ImplSelfTyQuery
+            hir::db::ConstParamTyQuery
+            hir::db::ConstEvalQuery
+            hir::db::ConstEvalDiscriminantQuery
             hir::db::ImplTraitQuery
             hir::db::FieldTypesQuery
+            hir::db::LayoutOfAdtQuery
+            hir::db::TargetDataLayoutQuery
             hir::db::CallableItemSignatureQuery
+            hir::db::ReturnTypeImplTraitsQuery
             hir::db::GenericPredicatesForParamQuery
             hir::db::GenericPredicatesQuery
+            hir::db::TraitEnvironmentQuery
             hir::db::GenericDefaultsQuery
             hir::db::InherentImplsInCrateQuery
-            hir::db::TraitEnvironmentQuery
+            hir::db::InherentImplsInBlockQuery
+            hir::db::IncoherentInherentImplCratesQuery
             hir::db::TraitImplsInCrateQuery
+            hir::db::TraitImplsInBlockQuery
             hir::db::TraitImplsInDepsQuery
-            hir::db::AssociatedTyDataQuery
+            hir::db::InternCallableDefQuery
+            hir::db::InternLifetimeParamIdQuery
+            hir::db::InternImplTraitIdQuery
+            hir::db::InternTypeOrConstParamIdQuery
+            hir::db::InternClosureQuery
+            hir::db::InternGeneratorQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
             hir::db::FnDefDatumQuery
-            hir::db::ReturnTypeImplTraitsQuery
-            hir::db::InternCallableDefQuery
-            hir::db::InternTypeOrConstParamIdQuery
-            hir::db::InternImplTraitIdQuery
-            hir::db::InternClosureQuery
+            hir::db::FnDefVarianceQuery
+            hir::db::AdtVarianceQuery
             hir::db::AssociatedTyValueQuery
             hir::db::TraitSolveQueryQuery
-            hir::db::InternTypeOrConstParamIdQuery
+            hir::db::ProgramClausesForChalkEnvQuery
 
             // SymbolsDatabase
             crate::symbol_index::ModuleSymbolsQuery
@@ -153,8 +181,14 @@ impl RootDatabase {
             hir::db::InternConstQuery
             hir::db::InternStaticQuery
             hir::db::InternTraitQuery
+            hir::db::InternTraitAliasQuery
             hir::db::InternTypeAliasQuery
             hir::db::InternImplQuery
+            hir::db::InternExternBlockQuery
+            hir::db::InternBlockQuery
+            hir::db::InternMacro2Query
+            hir::db::InternProcMacroQuery
+            hir::db::InternMacroRulesQuery
         ];
 
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));

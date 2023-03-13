@@ -2006,12 +2006,12 @@ fn doctest_remove_dbg() {
         "remove_dbg",
         r#####"
 fn main() {
-    $0dbg!(92);
+    let x = $0dbg!(42 * dbg!(4 + 2));$0
 }
 "#####,
         r#####"
 fn main() {
-    92;
+    let x = 42 * (4 + 2);
 }
 "#####,
     )
@@ -2314,46 +2314,6 @@ fn handle(action: Action) {
 }
 
 #[test]
-fn doctest_replace_or_else_with_or() {
-    check_doc_test(
-        "replace_or_else_with_or",
-        r#####"
-//- minicore:option
-fn foo() {
-    let a = Some(1);
-    a.unwra$0p_or_else(|| 2);
-}
-"#####,
-        r#####"
-fn foo() {
-    let a = Some(1);
-    a.unwrap_or(2);
-}
-"#####,
-    )
-}
-
-#[test]
-fn doctest_replace_or_with_or_else() {
-    check_doc_test(
-        "replace_or_with_or_else",
-        r#####"
-//- minicore:option
-fn foo() {
-    let a = Some(1);
-    a.unwra$0p_or(2);
-}
-"#####,
-        r#####"
-fn foo() {
-    let a = Some(1);
-    a.unwrap_or_else(|| 2);
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
@@ -2422,6 +2382,46 @@ fn main() {
 fn make<T>() -> T { ) }
 fn main() {
     let a: i32 = make();
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_with_eager_method() {
+    check_doc_test(
+        "replace_with_eager_method",
+        r#####"
+//- minicore:option, fn
+fn foo() {
+    let a = Some(1);
+    a.unwra$0p_or_else(|| 2);
+}
+"#####,
+        r#####"
+fn foo() {
+    let a = Some(1);
+    a.unwrap_or(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_with_lazy_method() {
+    check_doc_test(
+        "replace_with_lazy_method",
+        r#####"
+//- minicore:option, fn
+fn foo() {
+    let a = Some(1);
+    a.unwra$0p_or(2);
+}
+"#####,
+        r#####"
+fn foo() {
+    let a = Some(1);
+    a.unwrap_or_else(|| 2);
 }
 "#####,
     )

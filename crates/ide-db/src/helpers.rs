@@ -2,8 +2,8 @@
 
 use std::collections::VecDeque;
 
-use base_db::FileId;
-use hir::{ItemInNs, ModuleDef, Name, Semantics};
+use base_db::{FileId, SourceDatabaseExt};
+use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
 use syntax::{
     ast::{self, make},
     AstToken, SyntaxKind, SyntaxToken, TokenAtOffset,
@@ -102,4 +102,10 @@ pub fn lint_eq_or_in_group(lint: &str, lint_is: &str) -> bool {
     } else {
         false
     }
+}
+
+pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
+    let root_file = krate.root_file(db);
+    let source_root_id = db.file_source_root(root_file);
+    !db.source_root(source_root_id).is_library
 }

@@ -172,7 +172,7 @@ fn signature_help_for_call(
 
     res.signature.push('(');
     {
-        if let Some(self_param) = callable.receiver_param(db) {
+        if let Some((self_param, _)) = callable.receiver_param(db) {
             format_to!(res.signature, "{}", self_param)
         }
         let mut buf = String::new();
@@ -249,6 +249,10 @@ fn signature_help_for_generics(
             format_to!(res.signature, "union {}", it.name(db));
         }
         hir::GenericDef::Trait(it) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "trait {}", it.name(db));
+        }
+        hir::GenericDef::TraitAlias(it) => {
             res.doc = it.docs(db).map(|it| it.into());
             format_to!(res.signature, "trait {}", it.name(db));
         }

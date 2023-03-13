@@ -34,7 +34,7 @@ fn attributes() {
 // This is another normal comment
 /// This is another doc comment
 // This is another normal comment
-#[derive(Copy)]
+#[derive(Copy, Unresolved)]
 // The reason for these being here is to test AttrIds
 struct Foo;
 "#,
