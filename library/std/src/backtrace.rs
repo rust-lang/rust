@@ -89,12 +89,11 @@ mod tests;
 // a backtrace or actually symbolizing it.
 
 use crate::backtrace_rs::{self, BytesOrWideString};
-use crate::cell::UnsafeCell;
 use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use crate::sync::Once;
+use crate::sync::LazyLock;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
 
@@ -133,18 +132,12 @@ pub enum BacktraceStatus {
 enum Inner {
     Unsupported,
     Disabled,
-    Captured(LazilyResolvedCapture),
+    Captured(LazyLock<Capture, LazyResolve>),
 }
 
 struct Capture {
     actual_start: usize,
-    resolved: bool,
     frames: Vec<BacktraceFrame>,
-}
-
-fn _assert_send_sync() {
-    fn _assert<T: Send + Sync>() {}
-    _assert::<Backtrace>();
 }
 
 /// A single frame of a backtrace.
@@ -179,7 +172,7 @@ impl fmt::Debug for Backtrace {
         let capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("<unsupported>"),
             Inner::Disabled => return fmt.write_str("<disabled>"),
-            Inner::Captured(c) => c.force(),
+            Inner::Captured(c) => &**c,
         };
 
         let frames = &capture.frames[capture.actual_start..];
@@ -347,11 +340,10 @@ impl Backtrace {
         let inner = if frames.is_empty() {
             Inner::Unsupported
         } else {
-            Inner::Captured(LazilyResolvedCapture::new(Capture {
+            Inner::Captured(LazyLock::new(lazy_resolve(Capture {
                 actual_start: actual_start.unwrap_or(0),
                 frames,
-                resolved: false,
-            }))
+            })))
         };
 
         Backtrace { inner }
@@ -376,7 +368,7 @@ impl<'a> Backtrace {
     #[must_use]
     #[unstable(feature = "backtrace_frames", issue = "79676")]
     pub fn frames(&'a self) -> &'a [BacktraceFrame] {
-        if let Inner::Captured(c) = &self.inner { &c.force().frames } else { &[] }
+        if let Inner::Captured(c) = &self.inner { &c.frames } else { &[] }
     }
 }
 
@@ -386,7 +378,7 @@ impl fmt::Display for Backtrace {
         let capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
             Inner::Disabled => return fmt.write_str("disabled backtrace"),
-            Inner::Captured(c) => c.force(),
+            Inner::Captured(c) => &**c,
         };
 
         let full = fmt.alternate();
@@ -430,46 +422,15 @@ impl fmt::Display for Backtrace {
     }
 }
 
-struct LazilyResolvedCapture {
-    sync: Once,
-    capture: UnsafeCell<Capture>,
-}
+type LazyResolve = impl FnOnce() -> Capture;
 
-impl LazilyResolvedCapture {
-    fn new(capture: Capture) -> Self {
-        LazilyResolvedCapture { sync: Once::new(), capture: UnsafeCell::new(capture) }
-    }
-
-    fn force(&self) -> &Capture {
-        self.sync.call_once(|| {
-            // SAFETY: This exclusive reference can't overlap with any others
-            // `Once` guarantees callers will block until this closure returns
-            // `Once` also guarantees only a single caller will enter this closure
-            unsafe { &mut *self.capture.get() }.resolve();
-        });
-
-        // SAFETY: This shared reference can't overlap with the exclusive reference above
-        unsafe { &*self.capture.get() }
-    }
-}
-
-// SAFETY: Access to the inner value is synchronized using a thread-safe `Once`
-// So long as `Capture` is `Sync`, `LazilyResolvedCapture` is too
-unsafe impl Sync for LazilyResolvedCapture where Capture: Sync {}
-
-impl Capture {
-    fn resolve(&mut self) {
-        // If we're already resolved, nothing to do!
-        if self.resolved {
-            return;
-        }
-        self.resolved = true;
-
+fn lazy_resolve(mut capture: Capture) -> LazyResolve {
+    move || {
         // Use the global backtrace lock to synchronize this as it's a
         // requirement of the `backtrace` crate, and then actually resolve
         // everything.
         let _lock = lock();
-        for frame in self.frames.iter_mut() {
+        for frame in capture.frames.iter_mut() {
             let symbols = &mut frame.symbols;
             let frame = match &frame.frame {
                 RawFrame::Actual(frame) => frame,
@@ -490,6 +451,8 @@ impl Capture {
                 });
             }
         }
+
+        capture
     }
 }
 
