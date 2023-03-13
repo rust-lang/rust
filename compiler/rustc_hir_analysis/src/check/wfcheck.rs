@@ -1794,7 +1794,7 @@ fn check_variances_for_type_defn<'tcx>(
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
-        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.to_def_id());
+        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.def_id);
         hir_generics
             .predicates
             .iter()

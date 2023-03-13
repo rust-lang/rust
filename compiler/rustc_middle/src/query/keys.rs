@@ -316,12 +316,12 @@ impl Key for (DefId, Option<Ident>) {
     }
 }
 
-impl Key for (DefId, LocalDefId, Ident) {
+impl Key for (LocalDefId, LocalDefId, Ident) {
     type CacheSelector = DefaultCacheSelector<Self>;
-    type LocalKey = (LocalDefId, LocalDefId, Ident);
+    type LocalKey = Self;
 
     fn as_local_key(&self) -> Option<Self::LocalKey> {
-        Some((self.0.as_local()?, self.1, self.2))
+        Some(*self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {

@@ -63,7 +63,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
                 .unwrap()
                 .0
-                .to_def_id();
+                .def_id;
             let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
@@ -269,7 +269,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let icx = ItemCtxt::new(tcx, def_id);
 
     let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {

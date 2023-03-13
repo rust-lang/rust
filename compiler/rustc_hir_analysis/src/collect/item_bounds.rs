@@ -16,13 +16,13 @@ use rustc_span::Span;
 /// `hr-associated-type-bound-1.rs`.
 fn associated_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    assoc_item_def_id: DefId,
+    assoc_item_def_id: LocalDefId,
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
     let item_ty = tcx.mk_projection(
-        assoc_item_def_id,
-        InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
+        assoc_item_def_id.to_def_id(),
+        InternalSubsts::identity_for_item(tcx, assoc_item_def_id.to_def_id()),
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
@@ -30,8 +30,8 @@ fn associated_type_bounds<'tcx>(
     // Associated types are implicitly sized unless a `?Sized` bound is found
     icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
 
-    let trait_def_id = tcx.parent(assoc_item_def_id);
-    let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id.expect_local());
+    let trait_def_id = tcx.local_parent(assoc_item_def_id);
+    let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
 
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
@@ -45,7 +45,11 @@ fn associated_type_bounds<'tcx>(
     });
 
     let all_bounds = tcx.arena.alloc_from_iter(bounds.predicates().chain(bounds_from_parent));
-    debug!("associated_type_bounds({}) = {:?}", tcx.def_path_str(assoc_item_def_id), all_bounds);
+    debug!(
+        "associated_type_bounds({}) = {:?}",
+        tcx.def_path_str(assoc_item_def_id.to_def_id()),
+        all_bounds
+    );
     all_bounds
 }
 
@@ -56,7 +60,7 @@ fn associated_type_bounds<'tcx>(
 #[instrument(level = "trace", skip(tcx), ret)]
 fn opaque_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    opaque_def_id: DefId,
+    opaque_def_id: LocalDefId,
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     item_ty: Ty<'tcx>,
     span: Span,
@@ -84,7 +88,7 @@ pub(super) fn explicit_item_bounds(
             let opaque_ty = item.expect_opaque_ty();
             return opaque_type_bounds(
                 tcx,
-                opaque_def_id,
+                opaque_def_id.expect_local(),
                 opaque_ty.bounds,
                 tcx.mk_projection(
                     def_id.to_def_id(),
@@ -104,7 +108,7 @@ pub(super) fn explicit_item_bounds(
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
             ..
-        }) => associated_type_bounds(tcx, def_id.to_def_id(), bounds, *span),
+        }) => associated_type_bounds(tcx, def_id, bounds, *span),
         hir::Node::Item(hir::Item {
             kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait, .. }),
             span,
@@ -116,7 +120,7 @@ pub(super) fn explicit_item_bounds(
             } else {
                 tcx.mk_opaque(def_id.to_def_id(), substs)
             };
-            opaque_type_bounds(tcx, def_id.to_def_id(), bounds, item_ty, *span)
+            opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }
         _ => bug!("item_bounds called on {:?}", def_id),
     }
