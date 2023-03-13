@@ -43,7 +43,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     }
 }
 
-fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
+fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if cfg!(debug_assertions) {
         let def_kind = tcx.def_kind(did);
         assert!(
@@ -52,7 +52,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         );
     }
 
-    let did = did.expect_local();
     let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {

@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 /// For associated types we include both bounds written on the type
@@ -74,9 +74,9 @@ fn opaque_type_bounds<'tcx>(
 
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> &'_ [(ty::Predicate<'_>, Span)] {
-    match tcx.opt_rpitit_info(def_id) {
+    match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
@@ -86,7 +86,10 @@ pub(super) fn explicit_item_bounds(
                 tcx,
                 opaque_def_id,
                 opaque_ty.bounds,
-                tcx.mk_projection(def_id, ty::InternalSubsts::identity_for_item(tcx, def_id)),
+                tcx.mk_projection(
+                    def_id.to_def_id(),
+                    ty::InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+                ),
                 item.span,
             );
         }
@@ -95,25 +98,25 @@ pub(super) fn explicit_item_bounds(
         None => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     match tcx.hir().get(hir_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
             ..
-        }) => associated_type_bounds(tcx, def_id, bounds, *span),
+        }) => associated_type_bounds(tcx, def_id.to_def_id(), bounds, *span),
         hir::Node::Item(hir::Item {
             kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait, .. }),
             span,
             ..
         }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
             let item_ty = if *in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                tcx.mk_projection(def_id, substs)
+                tcx.mk_projection(def_id.to_def_id(), substs)
             } else {
-                tcx.mk_opaque(def_id, substs)
+                tcx.mk_opaque(def_id.to_def_id(), substs)
             };
-            opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
+            opaque_type_bounds(tcx, def_id.to_def_id(), bounds, item_ty, *span)
         }
         _ => bug!("item_bounds called on {:?}", def_id),
     }

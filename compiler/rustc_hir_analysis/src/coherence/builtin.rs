@@ -368,11 +368,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
-
-    // this provider should only get invoked for local def-ids
-    let impl_did = impl_did.expect_local();
     let span = tcx.def_span(impl_did);
 
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));

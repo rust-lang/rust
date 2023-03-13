@@ -1051,9 +1051,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 }
 
-fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: DefId) -> ObjectLifetimeDefault {
+fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
     debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
-    let param_def_id = param_def_id.expect_local();
     let hir::Node::GenericParam(param) = tcx.hir().get_by_def_id(param_def_id) else {
         bug!("expected GenericParam for object_lifetime_default");
     };

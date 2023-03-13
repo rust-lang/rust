@@ -41,9 +41,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
     }
 }
 
-fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportInfo> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn reachable_non_generics_provider(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<SymbolExportInfo> {
     if !tcx.sess.opts.output_types.should_codegen() {
         return Default::default();
     }
@@ -154,10 +152,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
     reachable_non_generics
 }
 
-fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let export_threshold = threshold(tcx);
 
-    if let Some(&info) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+    if let Some(&info) = tcx.reachable_non_generics(LOCAL_CRATE).get(&def_id.to_def_id()) {
         info.level.is_below_threshold(export_threshold)
     } else {
         false
@@ -170,10 +168,8 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 
 fn exported_symbols_provider_local(
     tcx: TyCtxt<'_>,
-    cnum: CrateNum,
+    (): (),
 ) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
-    assert_eq!(cnum, LOCAL_CRATE);
-
     if !tcx.sess.opts.output_types.should_codegen() {
         return &[];
     }

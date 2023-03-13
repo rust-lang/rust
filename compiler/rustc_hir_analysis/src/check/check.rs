@@ -1161,7 +1161,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        if let Some(attr) = tcx.get_attrs(def_id.to_def_id(), sym::repr).next() {
+        if let Some(attr) = tcx.get_attrs(def_id, sym::repr).next() {
             struct_span_err!(
                 tcx.sess,
                 attr.span,

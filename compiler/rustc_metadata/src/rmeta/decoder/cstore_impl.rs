@@ -367,10 +367,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
-        is_private_dep: |_tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            false
-        },
+        is_private_dep: |_tcx, ()| false,
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
@@ -386,12 +383,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .contains(&id)
                 })
         },
-        native_libraries: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            native_libs::collect(tcx)
-        },
-        foreign_modules: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
+        native_libraries: |tcx, ()| native_libs::collect(tcx),
+        foreign_modules: |tcx, ()| {
             foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect()
         },
 
@@ -489,14 +482,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
 
         dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
-        has_global_allocator: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            CStore::from_tcx(tcx).has_global_allocator()
-        },
-        has_alloc_error_handler: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            CStore::from_tcx(tcx).has_alloc_error_handler()
-        },
+        has_global_allocator: |tcx, ()| CStore::from_tcx(tcx).has_global_allocator(),
+        has_alloc_error_handler: |tcx, ()| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))

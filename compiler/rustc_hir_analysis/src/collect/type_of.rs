@@ -244,11 +244,13 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty<'_>> {
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
     // associated type in the impl.
-    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) =
+        tcx.opt_rpitit_info(def_id.to_def_id())
+    {
         match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
             Ok(map) => {
                 let assoc_item = tcx.associated_item(def_id);
@@ -263,7 +265,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
         }
     }
 
-    let def_id = def_id.expect_local();
     use rustc_hir::*;
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

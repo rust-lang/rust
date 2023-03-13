@@ -839,17 +839,15 @@ fn convert_variant(
         adt_kind,
         parent_did.to_def_id(),
         recovered,
-        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did.to_def_id(), sym::non_exhaustive)
-            || variant_did.map_or(false, |variant_did| {
-                tcx.has_attr(variant_did.to_def_id(), sym::non_exhaustive)
-            }),
+        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
+            || variant_did
+                .map_or(false, |variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
     )
 }
 
-fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
+fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
-    let def_id = def_id.expect_local();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let Node::Item(item) = tcx.hir().get(hir_id) else {
         bug!();
@@ -908,8 +906,8 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
     tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
-fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
-    let item = tcx.hir().expect_item(def_id.expect_local());
+fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
+    let item = tcx.hir().expect_item(def_id);
 
     let (is_auto, unsafety, items) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, .., items) => {
@@ -1036,7 +1034,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         });
 
     ty::TraitDef {
-        def_id,
+        def_id: def_id.to_def_id(),
         unsafety,
         paren_sugar,
         has_auto_impl: is_auto,
@@ -1091,11 +1089,10 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
+fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
-    let def_id = def_id.expect_local();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
@@ -1338,9 +1335,12 @@ fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
-    let icx = ItemCtxt::new(tcx, def_id);
-    let impl_ = tcx.hir().expect_item(def_id.expect_local()).expect_impl();
+fn impl_trait_ref(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
+    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let impl_ = tcx.hir().expect_item(def_id).expect_impl();
     impl_
         .of_trait
         .as_ref()
@@ -1380,9 +1380,9 @@ fn check_impl_constness(
     }
 }
 
-fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
+fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    let item = tcx.hir().expect_item(def_id.expect_local());
+    let item = tcx.hir().expect_item(def_id);
     match &item.kind {
         hir::ItemKind::Impl(hir::Impl {
             polarity: hir::ImplPolarity::Negative(span),
@@ -1515,31 +1515,28 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     fty
 }
 
-fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    match tcx.hir().get_if_local(def_id) {
-        Some(Node::ForeignItem(..)) => true,
-        Some(_) => false,
-        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
+fn is_foreign_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    match tcx.hir().get_by_def_id(def_id) {
+        Node::ForeignItem(..) => true,
+        _ => false,
     }
 }
 
-fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
-    match tcx.hir().get_if_local(def_id) {
-        Some(Node::Expr(&rustc_hir::Expr {
+fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {
+    match tcx.hir().get_by_def_id(def_id) {
+        Node::Expr(&rustc_hir::Expr {
             kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
             ..
-        })) => tcx.hir().body(body).generator_kind(),
-        Some(_) => None,
-        _ => bug!("generator_kind applied to non-local def-id {:?}", def_id),
+        }) => tcx.hir().body(body).generator_kind(),
+        _ => None,
     }
 }
 
-fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    match tcx.hir().get_if_local(def_id) {
-        Some(Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. })) => {
+fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    match tcx.hir().get_by_def_id(def_id) {
+        Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. }) => {
             matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
         }
-        Some(_) => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
-        _ => bug!("tried getting opaque_ty_origin for non-local def-id {:?}", def_id),
+        _ => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
     }
 }

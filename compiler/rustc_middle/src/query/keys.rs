@@ -26,9 +26,11 @@ pub trait Key: Sized {
     //      r-a issue: <https://github.com/rust-lang/rust-analyzer/issues/13693>
     type CacheSelector;
 
+    type LocalKey;
+
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
-    fn query_crate_is_local(&self) -> bool;
+    fn as_local_key(&self) -> Option<Self::LocalKey>;
 
     /// In the event that a cycle occurs, if no explicit span has been
     /// given for a query with key `self`, what span should we use?
@@ -47,10 +49,11 @@ pub trait Key: Sized {
 
 impl Key for () {
     type CacheSelector = SingleCacheSelector;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -60,10 +63,11 @@ impl Key for () {
 
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.def_id().is_local()
+    fn as_local_key(&self) -> Option<Self> {
+        self.def_id().is_local().then(|| *self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -73,10 +77,11 @@ impl<'tcx> Key for ty::InstanceDef<'tcx> {
 
 impl<'tcx> Key for ty::Instance<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.def_id().is_local()
+    fn as_local_key(&self) -> Option<Self> {
+        self.def_id().is_local().then(|| *self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -86,10 +91,11 @@ impl<'tcx> Key for ty::Instance<'tcx> {
 
 impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -99,10 +105,11 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
 
 impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -112,10 +119,11 @@ impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
 
 impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -125,11 +133,13 @@ impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
 
 impl Key for CrateNum {
     type CacheSelector = VecCacheSelector<Self>;
+    type LocalKey = ();
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        *self == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        (*self == LOCAL_CRATE).then_some(())
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -137,14 +147,17 @@ impl Key for CrateNum {
 
 impl Key for OwnerId {
     type CacheSelector = VecCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
     }
+
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(self.to_def_id())
     }
@@ -152,14 +165,17 @@ impl Key for OwnerId {
 
 impl Key for LocalDefId {
     type CacheSelector = VecCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
     }
+
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(self.to_def_id())
     }
@@ -167,14 +183,17 @@ impl Key for LocalDefId {
 
 impl Key for DefId {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = LocalDefId;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.as_local()
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(*self)
     }
+
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(*self)
@@ -183,11 +202,13 @@ impl Key for DefId {
 
 impl Key for ty::WithOptConstParam<LocalDefId> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.did.default_span(tcx)
     }
@@ -195,11 +216,13 @@ impl Key for ty::WithOptConstParam<LocalDefId> {
 
 impl Key for SimplifiedType {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -207,11 +230,13 @@ impl Key for SimplifiedType {
 
 impl Key for (DefId, DefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, DefId);
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
     }
@@ -219,11 +244,13 @@ impl Key for (DefId, DefId) {
 
 impl<'tcx> Key for (ty::Instance<'tcx>, LocalDefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -231,11 +258,13 @@ impl<'tcx> Key for (ty::Instance<'tcx>, LocalDefId) {
 
 impl Key for (DefId, LocalDefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, LocalDefId);
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
     }
@@ -243,11 +272,13 @@ impl Key for (DefId, LocalDefId) {
 
 impl Key for (LocalDefId, DefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -255,11 +286,13 @@ impl Key for (LocalDefId, DefId) {
 
 impl Key for (LocalDefId, LocalDefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -267,14 +300,16 @@ impl Key for (LocalDefId, LocalDefId) {
 
 impl Key for (DefId, Option<Ident>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, Option<Ident>);
 
-    #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.0)
     }
+
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(self.0)
@@ -283,11 +318,12 @@ impl Key for (DefId, Option<Ident>) {
 
 impl Key for (DefId, LocalDefId, Ident) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, LocalDefId, Ident);
 
-    #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1, self.2))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
     }
@@ -295,11 +331,13 @@ impl Key for (DefId, LocalDefId, Ident) {
 
 impl Key for (CrateNum, DefId) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = DefId;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0 == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        (self.0 == LOCAL_CRATE).then_some(self.1)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
     }
@@ -307,11 +345,13 @@ impl Key for (CrateNum, DefId) {
 
 impl Key for (CrateNum, SimplifiedType) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = SimplifiedType;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0 == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        (self.0 == LOCAL_CRATE).then_some(self.1)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -319,11 +359,13 @@ impl Key for (CrateNum, SimplifiedType) {
 
 impl Key for (DefId, SimplifiedType) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, SimplifiedType);
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -331,11 +373,13 @@ impl Key for (DefId, SimplifiedType) {
 
 impl<'tcx> Key for SubstsRef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -343,11 +387,13 @@ impl<'tcx> Key for SubstsRef<'tcx> {
 
 impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = (LocalDefId, SubstsRef<'tcx>);
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        Some((self.0.as_local()?, self.1))
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -355,11 +401,13 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
 
 impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        (self.0).def.did.krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.0.def.is_local().then_some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         (self.0).def.did.default_span(tcx)
     }
@@ -367,11 +415,13 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
 
 impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -379,11 +429,13 @@ impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
 
 impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.1.def_id().krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.1.def_id().is_local().then_some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.1.def_id())
     }
@@ -391,11 +443,13 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
 
 impl<'tcx> Key for (ty::Const<'tcx>, mir::Field) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -403,11 +457,13 @@ impl<'tcx> Key for (ty::Const<'tcx>, mir::Field) {
 
 impl<'tcx> Key for mir::interpret::ConstAlloc<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -415,11 +471,13 @@ impl<'tcx> Key for mir::interpret::ConstAlloc<'tcx> {
 
 impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.def_id().krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.def_id().is_local().then_some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.def_id())
     }
@@ -427,11 +485,13 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
 
 impl<'tcx> Key for ty::PolyExistentialTraitRef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.def_id().krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.def_id().is_local().then_some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.def_id())
     }
@@ -439,11 +499,13 @@ impl<'tcx> Key for ty::PolyExistentialTraitRef<'tcx> {
 
 impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.0.def_id().krate == LOCAL_CRATE
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.0.def_id().is_local().then_some(*self)
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.0.def_id())
     }
@@ -451,11 +513,13 @@ impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
 
 impl<'tcx> Key for GenericArg<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -463,11 +527,13 @@ impl<'tcx> Key for GenericArg<'tcx> {
 
 impl<'tcx> Key for mir::ConstantKind<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -475,11 +541,13 @@ impl<'tcx> Key for mir::ConstantKind<'tcx> {
 
 impl<'tcx> Key for ty::Const<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -487,14 +555,17 @@ impl<'tcx> Key for ty::Const<'tcx> {
 
 impl<'tcx> Key for Ty<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
+
     fn ty_adt_id(&self) -> Option<DefId> {
         match self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
@@ -505,11 +576,13 @@ impl<'tcx> Key for Ty<'tcx> {
 
 impl<'tcx> Key for TyAndLayout<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -517,11 +590,13 @@ impl<'tcx> Key for TyAndLayout<'tcx> {
 
 impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -529,11 +604,13 @@ impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
 
 impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -541,11 +618,13 @@ impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
 
 impl<'tcx> Key for ty::ParamEnv<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -553,11 +632,12 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
 
 impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = ty::ParamEnvAnd<'tcx, T::LocalKey>;
 
-    #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        self.value.query_crate_is_local()
+    fn as_local_key(&self) -> Option<Self::LocalKey> {
+        self.value.as_local_key().map(|value| ty::ParamEnvAnd { param_env: self.param_env, value })
     }
+
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)
     }
@@ -565,11 +645,13 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
 
 impl Key for Symbol {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -577,11 +659,13 @@ impl Key for Symbol {
 
 impl Key for Option<Symbol> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
+
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
@@ -589,12 +673,13 @@ impl Key for Option<Symbol> {
 
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
-impl<'tcx, T> Key for Canonical<'tcx, T> {
+impl<'tcx, T: Clone> Key for Canonical<'tcx, T> {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(self.clone())
     }
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -604,10 +689,11 @@ impl<'tcx, T> Key for Canonical<'tcx, T> {
 
 impl Key for (Symbol, u32, u32) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -617,10 +703,11 @@ impl Key for (Symbol, u32, u32) {
 
 impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -630,10 +717,11 @@ impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
 
 impl<'tcx> Key for (ty::Predicate<'tcx>, traits::WellFormedLoc) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -643,10 +731,11 @@ impl<'tcx> Key for (ty::Predicate<'tcx>, traits::WellFormedLoc) {
 
 impl<'tcx> Key for (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -656,10 +745,11 @@ impl<'tcx> Key for (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
 
 impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -669,10 +759,11 @@ impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
 
 impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -682,10 +773,11 @@ impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
 
 impl Key for HirId {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -700,11 +792,12 @@ impl Key for HirId {
 
 impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
+    type LocalKey = Self;
 
     // Just forward to `Ty<'tcx>`
     #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
+    fn as_local_key(&self) -> Option<Self> {
+        Some(*self)
     }
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

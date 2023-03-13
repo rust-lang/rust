@@ -62,16 +62,17 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
 #[instrument(level = "trace", skip(tcx), ret)]
-fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
 
-    let icx = ItemCtxt::new(tcx, def_id);
+    // FIXME: Should ItemCtxt take a LocalDefId?
+    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
     const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
 
@@ -99,7 +100,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             | ItemKind::Union(_, generics) => generics,
 
             ItemKind::Trait(_, _, generics, ..) | ItemKind::TraitAlias(generics, _) => {
-                is_trait = Some(ty::TraitRef::identity(tcx, def_id));
+                is_trait = Some(ty::TraitRef::identity(tcx, def_id.to_def_id()));
                 generics
             }
             ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
@@ -253,7 +254,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     }
 
     if tcx.features().generic_const_exprs {
-        predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
+        predicates.extend(const_evaluatable_predicates_of(tcx, def_id));
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -392,19 +393,19 @@ pub(super) fn trait_explicit_predicates_and_bounds(
     def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
     assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
-    gather_explicit_predicates_of(tcx, def_id.to_def_id())
+    gather_explicit_predicates_of(tcx, def_id)
 }
 
 pub(super) fn explicit_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> ty::GenericPredicates<'tcx> {
     let def_kind = tcx.def_kind(def_id);
     if let DefKind::Trait = def_kind {
         // Remove bounds on associated types from the predicates, they will be
         // returned by `explicit_item_bounds`.
-        let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id.expect_local());
-        let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
+        let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id);
+        let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
 
         let is_assoc_item_ty = |ty: Ty<'tcx>| {
             // For a predicate from a where clause to become a bound on an
@@ -418,7 +419,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
             //   supertrait).
             if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 projection.substs == trait_identity_substs
-                    && tcx.associated_item(projection.def_id).container_id(tcx) == def_id
+                    && tcx.associated_item(projection.def_id).container_id(tcx)
+                        == def_id.to_def_id()
             } else {
                 false
             }
@@ -449,7 +451,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         }
     } else {
         if matches!(def_kind, DefKind::AnonConst) && tcx.lazy_normalization() {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
             if let Some(defaulted_param_def_id) =
@@ -537,9 +539,9 @@ pub(super) fn explicit_predicates_of<'tcx>(
 /// the transitive super-predicates are converted.
 pub(super) fn super_predicates_of(
     tcx: TyCtxt<'_>,
-    trait_def_id: DefId,
+    trait_def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
-    tcx.super_predicates_that_define_assoc_type((trait_def_id, None))
+    tcx.super_predicates_that_define_assoc_type((trait_def_id.to_def_id(), None))
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`

@@ -151,6 +151,24 @@ macro_rules! query_if_arena {
     };
 }
 
+macro_rules! separate_provide_local_decl {
+    ([][$name:ident]) => {
+        for<'tcx> fn(
+            TyCtxt<'tcx>,
+            query_keys::$name<'tcx>,
+        ) -> query_provided::$name<'tcx>
+    };
+    ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
+        for<'tcx> fn(
+            TyCtxt<'tcx>,
+            query_keys_local::$name<'tcx>,
+        ) -> query_provided::$name<'tcx>
+    };
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
+        separate_provide_local_decl!([$($modifiers)*][$($args)*])
+    };
+}
+
 macro_rules! separate_provide_extern_decl {
     ([][$name:ident]) => {
         ()
@@ -210,6 +228,12 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(pub type $name<'tcx> = $($K)*;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_keys_local {
+            use super::*;
+
+            $(pub type $name<'tcx> = <$($K)* as Key>::LocalKey;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
@@ -383,10 +407,7 @@ macro_rules! define_callbacks {
         }
 
         pub struct Providers {
-            $(pub $name: for<'tcx> fn(
-                TyCtxt<'tcx>,
-                query_keys::$name<'tcx>,
-            ) -> query_provided::$name<'tcx>,)*
+            $(pub $name: separate_provide_local_decl!([$($modifiers)*][$name]),)*
         }
 
         pub struct ExternProviders {
@@ -405,7 +426,7 @@ macro_rules! define_callbacks {
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
-                        if key.query_crate_is_local() { "local" } else { "external" },
+                        if key.as_local_key().is_some() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }
