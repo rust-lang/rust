@@ -61,22 +61,27 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
     Some(tracing::subscriber::set_default(subscriber))
 }
 
+#[track_caller]
 fn check_types(ra_fixture: &str) {
     check_impl(ra_fixture, false, true, false)
 }
 
+#[track_caller]
 fn check_types_source_code(ra_fixture: &str) {
     check_impl(ra_fixture, false, true, true)
 }
 
+#[track_caller]
 fn check_no_mismatches(ra_fixture: &str) {
     check_impl(ra_fixture, true, false, false)
 }
 
+#[track_caller]
 fn check(ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
 }
 
+#[track_caller]
 fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
@@ -158,7 +163,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 } else {
                     ty.display_test(&db).to_string()
                 };
-                assert_eq!(actual, expected);
+                assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
         }
 
@@ -174,7 +179,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 } else {
                     ty.display_test(&db).to_string()
                 };
-                assert_eq!(actual, expected);
+                assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
             if let Some(expected) = adjustments.remove(&range) {
                 let adjustments = inference_result
@@ -191,30 +196,11 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             }
         }
 
-        for (pat, mismatch) in inference_result.pat_type_mismatches() {
-            let node = match pat_node(&body_source_map, pat, &db) {
-                Some(value) => value,
-                None => continue,
-            };
-            let range = node.as_ref().original_file_range(&db);
-            let actual = format!(
-                "expected {}, got {}",
-                mismatch.expected.display_test(&db),
-                mismatch.actual.display_test(&db)
-            );
-            match mismatches.remove(&range) {
-                Some(annotation) => assert_eq!(actual, annotation),
-                None => format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual),
-            }
-        }
-        for (expr, mismatch) in inference_result.expr_type_mismatches() {
-            let node = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
-                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
-                }
-                Err(SyntheticSyntax) => continue,
-            };
+        for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
+            let Some(node) = (match expr_or_pat {
+                hir_def::expr::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
+                hir_def::expr::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
+            }) else { continue; };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
                 "expected {}, got {}",

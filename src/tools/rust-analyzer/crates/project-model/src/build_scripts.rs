@@ -15,13 +15,13 @@ use std::{
 
 use cargo_metadata::{camino::Utf8Path, Message};
 use la_arena::ArenaMap;
-use paths::AbsPathBuf;
+use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use semver::Version;
 use serde::Deserialize;
 
 use crate::{
-    cfg_flag::CfgFlag, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
+    cfg_flag::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
     InvocationStrategy, Package,
 };
 
@@ -67,6 +67,7 @@ impl WorkspaceBuildScripts {
                 let mut cmd = Command::new(toolchain::cargo());
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
+                cmd.args(&config.extra_args);
 
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
@@ -250,7 +251,7 @@ impl WorkspaceBuildScripts {
 
         if tracing::enabled!(tracing::Level::INFO) {
             for package in workspace.packages() {
-                let package_build_data = &mut outputs[package];
+                let package_build_data = &outputs[package];
                 if !package_build_data.is_unchanged() {
                     tracing::info!(
                         "{}: {:?}",
@@ -377,6 +378,83 @@ impl WorkspaceBuildScripts {
 
     pub(crate) fn get_output(&self, idx: Package) -> Option<&BuildScriptOutput> {
         self.outputs.get(idx)
+    }
+
+    pub(crate) fn rustc_crates(
+        rustc: &CargoWorkspace,
+        current_dir: &AbsPath,
+        extra_env: &FxHashMap<String, String>,
+    ) -> Self {
+        let mut bs = WorkspaceBuildScripts::default();
+        for p in rustc.packages() {
+            bs.outputs.insert(p, BuildScriptOutput::default());
+        }
+        let res = (|| {
+            let target_libdir = (|| {
+                let mut cargo_config = Command::new(toolchain::cargo());
+                cargo_config.envs(extra_env);
+                cargo_config
+                    .current_dir(current_dir)
+                    .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
+                    .env("RUSTC_BOOTSTRAP", "1");
+                if let Ok(it) = utf8_stdout(cargo_config) {
+                    return Ok(it);
+                }
+                let mut cmd = Command::new(toolchain::rustc());
+                cmd.envs(extra_env);
+                cmd.args(["--print", "target-libdir"]);
+                utf8_stdout(cmd)
+            })()?;
+
+            let target_libdir = AbsPathBuf::try_from(PathBuf::from(target_libdir))
+                .map_err(|_| anyhow::format_err!("target-libdir was not an absolute path"))?;
+            tracing::info!("Loading rustc proc-macro paths from {}", target_libdir.display());
+
+            let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
+                .filter_map(|entry| {
+                    let dir_entry = entry.ok()?;
+                    if dir_entry.file_type().ok()?.is_file() {
+                        let path = dir_entry.path();
+                        tracing::info!("p{:?}", path);
+                        let extension = path.extension()?;
+                        if extension == std::env::consts::DLL_EXTENSION {
+                            let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();
+                            let path = AbsPathBuf::try_from(path).ok()?;
+                            return Some((name, path));
+                        }
+                    }
+                    None
+                })
+                .collect();
+            for p in rustc.packages() {
+                let package = &rustc[p];
+                if package.targets.iter().any(|&it| rustc[it].is_proc_macro) {
+                    if let Some((_, path)) =
+                        proc_macro_dylibs.iter().find(|(name, _)| *name == package.name)
+                    {
+                        bs.outputs[p].proc_macro_dylib_path = Some(path.clone());
+                    }
+                }
+            }
+
+            if tracing::enabled!(tracing::Level::INFO) {
+                for package in rustc.packages() {
+                    let package_build_data = &bs.outputs[package];
+                    if !package_build_data.is_unchanged() {
+                        tracing::info!(
+                            "{}: {:?}",
+                            rustc[package].manifest.parent().display(),
+                            package_build_data,
+                        );
+                    }
+                }
+            }
+            Ok(())
+        })();
+        if let Err::<_, anyhow::Error>(e) = res {
+            bs.error = Some(e.to_string());
+        }
+        bs
     }
 }
 

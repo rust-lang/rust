@@ -78,6 +78,7 @@ impl DefMap {
         // pub(path)
         //     ^^^^ this
         visibility: &RawVisibility,
+        within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
             RawVisibility::Module(path) => {
@@ -102,7 +103,8 @@ impl DefMap {
         // `super` to its parent (etc.). However, visibilities must only refer to a module in the
         // DefMap they're written in, so we restrict them when that happens.
         if let Visibility::Module(m) = vis {
-            if self.block_id() != m.block {
+            // ...unless we're resolving visibility for an associated item in an impl.
+            if self.block_id() != m.block && !within_impl {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
                 vis = Visibility::Module(self.module_id(self.root()));
                 tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);

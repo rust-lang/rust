@@ -572,6 +572,7 @@ dependencies = [
  "chalk-recursive",
  "chalk-solve",
  "cov-mark",
+ "either",
  "ena",
  "expect-test",
  "hir-def",
@@ -1714,6 +1715,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
+ "either",
  "expect-test",
  "indexmap",
  "itertools",

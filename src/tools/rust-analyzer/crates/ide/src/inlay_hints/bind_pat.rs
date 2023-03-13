@@ -176,15 +176,12 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
 mod tests {
     // This module also contains tests for super::closure_ret
 
-    use expect_test::expect;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
-    use crate::inlay_hints::tests::{
-        check, check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
-    };
+    use crate::inlay_hints::tests::{check, check_with_config, DISABLED_CONFIG, TEST_CONFIG};
     use crate::ClosureReturnTypeHints;
 
     #[track_caller]
@@ -278,8 +275,7 @@ fn main() {
     #[test]
     fn iterator_hint_regression_issue_12674() {
         // Ensure we don't crash while solving the projection type of iterators.
-        check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+        let (analysis, file_id) = fixture::file(
             r#"
 //- minicore: iterators
 struct S<T>(T);
@@ -302,107 +298,18 @@ impl<'a, T> Iterator for SliceIter<'a, T> {
 
 fn main(a: SliceIter<'_, Container>) {
     a
-    .filter_map(|c| Some(c.elements.iter().filter_map(|v| Some(v))))
-    .map(|e| e);
+        .filter_map(|c| Some(c.elements.iter().filter_map(|v| Some(v))))
+        .map(|e| e);
 }
-            "#,
-            expect![[r#"
-                [
-                    InlayHint {
-                        range: 484..554,
-                        kind: Chaining,
-                        label: [
-                            "impl ",
-                            InlayHintLabelPart {
-                                text: "Iterator",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            1,
-                                        ),
-                                        range: 2611..2619,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            "<",
-                            InlayHintLabelPart {
-                                text: "Item",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            1,
-                                        ),
-                                        range: 2643..2647,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            " = impl ",
-                            InlayHintLabelPart {
-                                text: "Iterator",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            1,
-                                        ),
-                                        range: 2611..2619,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            "<",
-                            InlayHintLabelPart {
-                                text: "Item",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            1,
-                                        ),
-                                        range: 2643..2647,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            " = &&str>>",
-                        ],
-                    },
-                    InlayHint {
-                        range: 484..485,
-                        kind: Chaining,
-                        label: [
-                            "",
-                            InlayHintLabelPart {
-                                text: "SliceIter",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            0,
-                                        ),
-                                        range: 289..298,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            "<",
-                            InlayHintLabelPart {
-                                text: "Container",
-                                linked_location: Some(
-                                    FileRange {
-                                        file_id: FileId(
-                                            0,
-                                        ),
-                                        range: 238..247,
-                                    },
-                                ),
-                                tooltip: "",
-                            },
-                            ">",
-                        ],
-                    },
-                ]
-            "#]],
+"#,
         );
+        analysis
+            .inlay_hints(
+                &InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+                file_id,
+                None,
+            )
+            .unwrap();
     }
 
     #[test]

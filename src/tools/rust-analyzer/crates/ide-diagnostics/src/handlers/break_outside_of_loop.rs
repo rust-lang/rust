@@ -7,10 +7,15 @@ pub(crate) fn break_outside_of_loop(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::BreakOutsideOfLoop,
 ) -> Diagnostic {
-    let construct = if d.is_break { "break" } else { "continue" };
+    let message = if d.bad_value_break {
+        "can't break with a value in this position".to_owned()
+    } else {
+        let construct = if d.is_break { "break" } else { "continue" };
+        format!("{construct} outside of loop")
+    };
     Diagnostic::new(
         "break-outside-of-loop",
-        format!("{construct} outside of loop"),
+        message,
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
     )
 }
@@ -130,6 +135,20 @@ fn foo() {
       //^^^^^^^^ error: continue outside of loop
         continue 'a;
       //^^^^^^^^^^^ error: continue outside of loop
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn value_break_in_for_loop() {
+        check_diagnostics(
+            r#"
+fn test() {
+    for _ in [()] {
+        break 3;
+     // ^^^^^^^ error: can't break with a value in this position
     }
 }
 "#,

@@ -12,7 +12,7 @@ use hir_def::{
     macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
     db::AstDatabase,
@@ -68,7 +68,8 @@ impl PathResolution {
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
                 | ModuleDef::Static(_)
-                | ModuleDef::Trait(_),
+                | ModuleDef::Trait(_)
+                | ModuleDef::TraitAlias(_),
             ) => None,
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
@@ -365,6 +366,16 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_method_call(call).map(Function::from)
     }
 
+    /// Attempts to resolve this call expression as a method call falling back to resolving it as a field.
+    pub fn resolve_method_call_field_fallback(
+        &self,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Either<Function, Field>> {
+        self.imp
+            .resolve_method_call_fallback(call)
+            .map(|it| it.map_left(Function::from).map_right(Field::from))
+    }
+
     pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
         self.imp.resolve_await_to_poll(await_expr).map(Function::from)
     }
@@ -527,8 +538,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
-        let src = self.wrap_node_infile(attr.clone());
         let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let src = self.wrap_node_infile(attr.clone());
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
         })?;
@@ -1092,7 +1103,10 @@ impl<'db> SemanticsImpl<'db> {
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
-                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
+                            // FIXME: Should we handle unknown mutability better?
+                            Adjust::Deref(Some(OverloadedDeref(
+                                m.map(mutability).unwrap_or(Mutability::Shared),
+                            )))
                         }
                         hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
@@ -1143,6 +1157,13 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call)
+    }
+
+    fn resolve_method_call_fallback(
+        &self,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Either<FunctionId, FieldId>> {
+        self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
     fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<FunctionId> {
@@ -1330,6 +1351,7 @@ impl<'db> SemanticsImpl<'db> {
                 })
             }
             ChildContainer::TraitId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::TraitAliasId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ImplId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ModuleId(it) => it.resolver(self.db.upcast()),
             ChildContainer::EnumId(it) => it.resolver(self.db.upcast()),
@@ -1556,6 +1578,7 @@ to_def_impls![
     (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
     (crate::Trait, ast::Trait, trait_to_def),
+    (crate::TraitAlias, ast::TraitAlias, trait_alias_to_def),
     (crate::Impl, ast::Impl, impl_to_def),
     (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
     (crate::Const, ast::Const, const_to_def),
@@ -1634,8 +1657,8 @@ impl<'a> SemanticsScope<'a> {
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                     resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                    resolver::ScopeDef::Local(pat_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Local(Local { parent, pat_id }),
+                    resolver::ScopeDef::Local(binding_id) => match self.resolver.body_owner() {
+                        Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
                         None => continue,
                     },
                     resolver::ScopeDef::Label(label_id) => match self.resolver.body_owner() {
@@ -1673,6 +1696,7 @@ impl<'a> SemanticsScope<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct VisibleTraits(pub FxHashSet<TraitId>);
 
 impl ops::Deref for VisibleTraits {

@@ -13,7 +13,7 @@ pub mod prec;
 
 use std::marker::PhantomData;
 
-use itertools::Either;
+use either::Either;
 
 use crate::{
     syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
@@ -25,7 +25,8 @@ pub use self::{
     generated::{nodes::*, tokens::*},
     node_ext::{
         AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind,
-        SlicePatComponents, StructKind, TypeBoundKind, TypeOrConstParam, VisibilityKind,
+        SlicePatComponents, StructKind, TraitOrAlias, TypeBoundKind, TypeOrConstParam,
+        VisibilityKind,
     },
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
     token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
@@ -126,6 +127,13 @@ where
     fn syntax(&self) -> &SyntaxNode {
         self.as_ref().either(L::syntax, R::syntax)
     }
+}
+
+impl<L, R> HasAttrs for Either<L, R>
+where
+    L: HasAttrs,
+    R: HasAttrs,
+{
 }
 
 mod support {

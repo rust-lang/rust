@@ -135,6 +135,7 @@ pub enum SyntaxKind {
     STATIC,
     CONST,
     TRAIT,
+    TRAIT_ALIAS,
     IMPL,
     TYPE_ALIAS,
     MACRO_CALL,

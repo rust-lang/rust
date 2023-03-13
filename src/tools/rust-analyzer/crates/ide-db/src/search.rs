@@ -244,14 +244,14 @@ impl Definition {
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range(db)),
+                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
                 None => SearchScope::single_file(file_id),
             };
         }
 
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range(db)),
+                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
                 None => SearchScope::single_file(file_id),
             };
         }
@@ -261,13 +261,14 @@ impl Definition {
                 hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                hir::GenericDef::TraitAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Variant(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range(db)),
+                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
                 None => SearchScope::single_file(file_id),
             };
         }
@@ -318,10 +319,6 @@ impl Definition {
             sema,
             scope: None,
             include_self_kw_refs: None,
-            local_repr: match self {
-                Definition::Local(local) => Some(local.representative(sema.db)),
-                _ => None,
-            },
             search_self_mod: false,
         }
     }
@@ -336,9 +333,6 @@ pub struct FindUsages<'a> {
     assoc_item_container: Option<hir::AssocItemContainer>,
     /// whether to search for the `Self` type of the definition
     include_self_kw_refs: Option<hir::Type>,
-    /// the local representative for the local definition we are searching for
-    /// (this is required for finding all local declarations in a or-pattern)
-    local_repr: Option<hir::Local>,
     /// whether to search for the `self` module
     search_self_mod: bool,
 }
@@ -643,19 +637,6 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
-            Some(NameRefClass::Definition(def @ Definition::Local(local)))
-                if matches!(
-                    self.local_repr, Some(repr) if repr == local.representative(self.sema.db)
-                ) =>
-            {
-                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                let reference = FileReference {
-                    range,
-                    name: ast::NameLike::NameRef(name_ref.clone()),
-                    category: ReferenceCategory::new(&def, name_ref),
-                };
-                sink(file_id, reference)
-            }
             Some(NameRefClass::Definition(def))
                 if self.def == def
                     // is our def a trait assoc item? then we want to find all assoc items from trait impls of our trait
@@ -700,14 +681,16 @@ impl<'a> FindUsages<'a> {
                 }
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
-                let field = Definition::Field(field);
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+
+                let field = Definition::Field(field);
+                let local = Definition::Local(local);
                 let access = match self.def {
                     Definition::Field(_) if field == self.def => {
                         ReferenceCategory::new(&field, name_ref)
                     }
-                    Definition::Local(_) if matches!(self.local_repr, Some(repr) if repr == local.representative(self.sema.db)) => {
-                        ReferenceCategory::new(&Definition::Local(local), name_ref)
+                    Definition::Local(_) if local == self.def => {
+                        ReferenceCategory::new(&local, name_ref)
                     }
                     _ => return false,
                 };
@@ -750,21 +733,6 @@ impl<'a> FindUsages<'a> {
                     category: None,
                 };
                 sink(file_id, reference)
-            }
-            Some(NameClass::Definition(def @ Definition::Local(local))) if def != self.def => {
-                if matches!(
-                    self.local_repr,
-                    Some(repr) if local.representative(self.sema.db) == repr
-                ) {
-                    let FileRange { file_id, range } = self.sema.original_range(name.syntax());
-                    let reference = FileReference {
-                        range,
-                        name: ast::NameLike::Name(name.clone()),
-                        category: None,
-                    };
-                    return sink(file_id, reference);
-                }
-                false
             }
             Some(NameClass::Definition(def)) if def != self.def => {
                 match (&self.assoc_item_container, self.def) {

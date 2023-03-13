@@ -352,14 +352,12 @@ unsafe fn baz(u: MyUnion) {
             71..89 'MyUnio...o: 0 }': MyUnion
             86..87 '0': u32
             95..113 'unsafe...(u); }': ()
-            95..113 'unsafe...(u); }': ()
             104..107 'baz': fn baz(MyUnion)
             104..110 'baz(u)': ()
             108..109 'u': MyUnion
             122..123 'u': MyUnion
             126..146 'MyUnio... 0.0 }': MyUnion
             141..144 '0.0': f32
-            152..170 'unsafe...(u); }': ()
             152..170 'unsafe...(u); }': ()
             161..164 'baz': fn baz(MyUnion)
             161..167 'baz(u)': ()
@@ -2077,21 +2075,16 @@ async fn main() {
             16..193 '{     ...2 }; }': ()
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
-            30..43 'unsafe { 92 }': i32
             39..41 '92': i32
             53..54 'y': impl Future<Output = ()>
-            57..85 'async ...wait }': ()
             57..85 'async ...wait }': impl Future<Output = ()>
-            65..77 'async { () }': ()
             65..77 'async { () }': impl Future<Output = ()>
             65..83 'async ....await': ()
             73..75 '()': ()
             95..96 'z': ControlFlow<(), ()>
-            130..140 'try { () }': ()
             130..140 'try { () }': ControlFlow<(), ()>
             136..138 '()': ()
             150..151 'w': i32
-            154..166 'const { 92 }': i32
             154..166 'const { 92 }': i32
             162..164 '92': i32
             176..177 't': i32
@@ -2122,7 +2115,6 @@ fn main() {
             83..84 'f': F
             89..91 '{}': ()
             103..231 '{     ... }); }': ()
-            109..161 'async ...     }': Result<(), ()>
             109..161 'async ...     }': impl Future<Output = Result<(), ()>>
             125..139 'return Err(())': !
             132..135 'Err': Err<(), ()>(()) -> Result<(), ()>
@@ -2134,7 +2126,6 @@ fn main() {
             167..171 'test': fn test<(), (), || -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(|| -> impl Future<Output = Result<(), ()>>)
             167..228 'test(|...    })': ()
             172..227 '|| asy...     }': || -> impl Future<Output = Result<(), ()>>
-            175..227 'async ...     }': Result<(), ()>
             175..227 'async ...     }': impl Future<Output = Result<(), ()>>
             191..205 'return Err(())': !
             198..201 'Err': Err<(), ()>(()) -> Result<(), ()>
@@ -3281,5 +3272,20 @@ fn func() {
             24..41 '&0u32 ...onst _': *const {unknown}
             25..29 '0u32': u32
         "#]],
+    );
+}
+
+#[test]
+fn issue_14275() {
+    // FIXME: evaluate const generic
+    check_types(
+        r#"
+struct Foo<const T: bool>;
+fn main() {
+    const B: bool = false;
+    let foo = Foo::<B>;
+      //^^^ Foo<_>
+}
+"#,
     );
 }

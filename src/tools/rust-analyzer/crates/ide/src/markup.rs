@@ -32,7 +32,7 @@ impl Markup {
     pub fn as_str(&self) -> &str {
         self.text.as_str()
     }
-    pub fn fenced_block(contents: &impl fmt::Display) -> Markup {
+    pub fn fenced_block(contents: impl fmt::Display) -> Markup {
         format!("```rust\n{contents}\n```").into()
     }
 }
