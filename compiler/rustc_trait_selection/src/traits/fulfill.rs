@@ -2,7 +2,7 @@ use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_infer::traits::ProjectionCacheKey;
+use rustc_infer::traits::{ObligationCauseCode, ProjectionCacheKey};
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -35,6 +35,18 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 
     fn as_cache_key(&self) -> Self::CacheKey {
         self.obligation.param_env.and(self.obligation.predicate)
+    }
+
+    fn update_in_favor(&mut self, other: Self) {
+        if matches!(
+            self.obligation.cause.code().peel_derives(),
+            ObligationCauseCode::MiscObligation
+        ) && !matches!(
+            other.obligation.cause.code().peel_derives(),
+            ObligationCauseCode::MiscObligation
+        ) {
+            self.obligation.cause = other.obligation.cause;
+        }
     }
 }
 

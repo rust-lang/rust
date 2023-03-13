@@ -90,6 +90,8 @@ pub trait ForestObligation: Clone + Debug {
     /// then it must be sound to use the result of processing one obligation
     /// (e.g. success for error) for the other obligation
     fn as_cache_key(&self) -> Self::CacheKey;
+
+    fn update_in_favor(&mut self, other: Self);
 }
 
 pub trait ObligationProcessor {
@@ -344,6 +346,10 @@ impl<O: ForestObligation> ObligationForest<O> {
                         node.dependents.push(parent_index);
                     }
                 }
+
+                // Update the cause code if a better one is registered.
+                node.obligation.update_in_favor(obligation);
+
                 if let NodeState::Error = node.state.get() { Err(()) } else { Ok(()) }
             }
             Entry::Vacant(v) => {
