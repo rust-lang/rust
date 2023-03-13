@@ -8,7 +8,7 @@ use rustc_middle::traits::{
     StatementAsExpression,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
@@ -535,6 +535,62 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         None
+    }
+
+    /// For "one type is more general than the other" errors on closures, suggest changing the lifetime
+    /// of the parameters to accept all lifetimes.
+    pub(super) fn suggest_for_all_lifetime_closure(
+        &self,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        // 1. Get the substs of the closure.
+        // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
+        let expected = exp_found.expected.map_bound(|x| x.substs.get(1).cloned()).transpose();
+        let found = exp_found.found.map_bound(|x| x.substs.get(1).cloned()).transpose();
+
+        // 3. Extract the tuple type from Fn trait and suggest the change.
+        if let (Some(expected), Some(found)) = (expected, found) {
+            let expected = expected.skip_binder().unpack();
+            let found = found.skip_binder().unpack();
+            if let (GenericArgKind::Type(expected), GenericArgKind::Type(found)) = (expected, found)
+             && let (ty::Tuple(expected), ty::Tuple(found)) = (expected.kind(), found.kind())
+                    && expected.len() == found.len() {
+                    let mut suggestion = "|".to_string();
+                    let mut is_first = true;
+                    let mut has_suggestion = false;
+
+                    for (expected, found) in expected.iter().zip(found.iter()) {
+                        if is_first {
+                            is_first = true;
+                        } else {
+                            suggestion += ", ";
+                        }
+
+                        if let (ty::Ref(expected_region, _, _), ty::Ref(found_region, _, _)) = (expected.kind(), found.kind())
+                            && expected_region.is_late_bound() && !found_region.is_late_bound() {
+                            // If the expected region is late bound, and the found region is not, we can suggest adding `: &_`.
+                            // FIXME: use the actual type + variable name provided by user instead of `_`.
+                            suggestion += "_: &_";
+                            has_suggestion = true;
+                        } else {
+                            // Otherwise, keep it as-is.
+                            suggestion += "_";
+                        }
+                    }
+                    suggestion += "|";
+
+                    if has_suggestion {
+                        diag.span_suggestion_verbose(
+                            span,
+                            "consider changing the type of the closure parameters",
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+        }
     }
 }
 
