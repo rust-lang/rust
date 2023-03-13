@@ -1385,7 +1385,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
         debug!(?id_substs);
 
         // This zip may have several times the same lifetime in `substs` paired with a different

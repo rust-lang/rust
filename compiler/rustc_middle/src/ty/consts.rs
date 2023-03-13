@@ -83,7 +83,7 @@ impl<'tcx> Const<'tcx> {
             None => tcx.mk_const(
                 ty::UnevaluatedConst {
                     def: def.to_global(),
-                    substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                    substs: InternalSubsts::identity_for_item(tcx, def.did),
                 },
                 ty,
             ),

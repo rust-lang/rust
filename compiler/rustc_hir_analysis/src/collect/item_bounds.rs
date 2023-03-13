@@ -22,7 +22,7 @@ fn associated_type_bounds<'tcx>(
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
     let item_ty = tcx.mk_projection(
         assoc_item_def_id.to_def_id(),
-        InternalSubsts::identity_for_item(tcx, assoc_item_def_id.to_def_id()),
+        InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
@@ -92,7 +92,7 @@ pub(super) fn explicit_item_bounds(
                 opaque_ty.bounds,
                 tcx.mk_projection(
                     def_id.to_def_id(),
-                    ty::InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+                    ty::InternalSubsts::identity_for_item(tcx, def_id),
                 ),
                 item.span,
             );
@@ -114,7 +114,7 @@ pub(super) fn explicit_item_bounds(
             span,
             ..
         }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+            let substs = InternalSubsts::identity_for_item(tcx, def_id);
             let item_ty = if *in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 tcx.mk_projection(def_id.to_def_id(), substs)
             } else {

@@ -296,7 +296,7 @@ fn associated_type_for_impl_trait_in_trait(
     // Copy type_of of the opaque.
     trait_assoc_ty.type_of(ty::EarlyBinder(tcx.mk_opaque(
         opaque_ty_def_id.to_def_id(),
-        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id.to_def_id()),
+        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
     )));
 
     trait_assoc_ty.is_type_alias_impl_trait(false);

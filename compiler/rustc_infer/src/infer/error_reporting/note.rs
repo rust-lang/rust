@@ -306,9 +306,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
             .substs;
-        let trait_item_substs =
-            ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id.to_def_id())
-                .rebase_onto(self.tcx, impl_def_id, trait_substs);
+        let trait_item_substs = ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id)
+            .rebase_onto(self.tcx, impl_def_id, trait_substs);
 
         let Ok(trait_predicates) = self
             .tcx

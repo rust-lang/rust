@@ -405,7 +405,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         // Remove bounds on associated types from the predicates, they will be
         // returned by `explicit_item_bounds`.
         let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id);
-        let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
 
         let is_assoc_item_ty = |ty: Ty<'tcx>| {
             // For a predicate from a where clause to become a bound on an
