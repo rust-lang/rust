@@ -210,7 +210,7 @@ pub fn expand_speculative(
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
             tt.delimiter = tt::Delimiter::unspecified();
-            expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
+            expander.expand(db, loc.def.krate, loc.krate, &tt, attr_arg.as_ref())
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
             pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?)
@@ -256,9 +256,9 @@ fn parse_macro_expansion(
     macro_file: MacroFile,
 ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
     let _p = profile::span("parse_macro_expansion");
-    let result = db.macro_expand(macro_file.macro_call_id);
+    let mbe::ValueResult { value, err } = db.macro_expand(macro_file.macro_call_id);
 
-    if let Some(err) = &result.err {
+    if let Some(err) = &err {
         // Note:
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
@@ -279,9 +279,9 @@ fn parse_macro_expansion(
             parents
         );
     }
-    let tt = match result.value {
+    let tt = match value {
         Some(tt) => tt,
-        None => return ExpandResult { value: None, err: result.err },
+        None => return ExpandResult { value: None, err },
     };
 
     let expand_to = macro_expand_to(db, macro_file.macro_call_id);
@@ -291,7 +291,7 @@ fn parse_macro_expansion(
 
     let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
 
-    ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: result.err }
+    ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err }
 }
 
 fn macro_arg(
@@ -504,7 +504,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<t
         _ => None,
     };
 
-    expander.expand(db, loc.krate, &macro_arg.0, attr_arg.as_ref())
+    expander.expand(db, loc.def.krate, loc.krate, &macro_arg.0, attr_arg.as_ref())
 }
 
 fn hygiene_frame(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
