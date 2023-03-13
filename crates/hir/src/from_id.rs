@@ -4,7 +4,7 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::{LabelId, PatId},
+    expr::{BindingId, LabelId},
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
     ModuleDefId, VariantId,
 };
@@ -37,6 +37,7 @@ from_id![
     (hir_def::EnumId, crate::Enum),
     (hir_def::TypeAliasId, crate::TypeAlias),
     (hir_def::TraitId, crate::Trait),
+    (hir_def::TraitAliasId, crate::TraitAlias),
     (hir_def::StaticId, crate::Static),
     (hir_def::ConstId, crate::Const),
     (hir_def::FunctionId, crate::Function),
@@ -110,6 +111,7 @@ impl From<ModuleDefId> for ModuleDef {
             ModuleDefId::ConstId(it) => ModuleDef::Const(it.into()),
             ModuleDefId::StaticId(it) => ModuleDef::Static(it.into()),
             ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
+            ModuleDefId::TraitAliasId(it) => ModuleDef::TraitAlias(it.into()),
             ModuleDefId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
             ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it.into()),
             ModuleDefId::MacroId(it) => ModuleDef::Macro(it.into()),
@@ -127,6 +129,7 @@ impl From<ModuleDef> for ModuleDefId {
             ModuleDef::Const(it) => ModuleDefId::ConstId(it.into()),
             ModuleDef::Static(it) => ModuleDefId::StaticId(it.into()),
             ModuleDef::Trait(it) => ModuleDefId::TraitId(it.into()),
+            ModuleDef::TraitAlias(it) => ModuleDefId::TraitAliasId(it.into()),
             ModuleDef::TypeAlias(it) => ModuleDefId::TypeAliasId(it.into()),
             ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it.into()),
             ModuleDef::Macro(it) => ModuleDefId::MacroId(it.into()),
@@ -172,6 +175,7 @@ impl From<GenericDef> for GenericDefId {
             GenericDef::Function(it) => GenericDefId::FunctionId(it.id),
             GenericDef::Adt(it) => GenericDefId::AdtId(it.into()),
             GenericDef::Trait(it) => GenericDefId::TraitId(it.id),
+            GenericDef::TraitAlias(it) => GenericDefId::TraitAliasId(it.id),
             GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
             GenericDef::Impl(it) => GenericDefId::ImplId(it.id),
             GenericDef::Variant(it) => GenericDefId::EnumVariantId(it.into()),
@@ -186,6 +190,7 @@ impl From<GenericDefId> for GenericDef {
             GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
             GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
             GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
+            GenericDefId::TraitAliasId(it) => GenericDef::TraitAlias(it.into()),
             GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
             GenericDefId::ImplId(it) => GenericDef::Impl(it.into()),
             GenericDefId::EnumVariantId(it) => GenericDef::Variant(it.into()),
@@ -246,9 +251,9 @@ impl From<AssocItem> for GenericDefId {
     }
 }
 
-impl From<(DefWithBodyId, PatId)> for Local {
-    fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
-        Local { parent, pat_id }
+impl From<(DefWithBodyId, BindingId)> for Local {
+    fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
+        Local { parent, binding_id }
     }
 }
 

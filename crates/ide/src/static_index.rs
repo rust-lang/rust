@@ -139,6 +139,7 @@ impl StaticIndex<'_> {
             documentation: true,
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
+            interpret_tests: false,
         };
         let tokens = tokens.filter(|token| {
             matches!(

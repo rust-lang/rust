@@ -101,6 +101,8 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// Extra arguments that are passed to every cargo invocation.
+        cargo_extraArgs: Vec<String> = "[]",
         /// Extra environment variables that will be set when running cargo, rustc
         /// or other commands within the workspace. Useful for setting RUSTFLAGS.
         cargo_extraEnv: FxHashMap<String, String> = "{}",
@@ -366,6 +368,8 @@ config_data! {
         inlayHints_typeHints_hideClosureInitialization: bool       = "false",
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = "false",
+        /// Enables the experimental support for interpreting tests.
+        interpret_tests: bool                                      = "false",
 
         /// Join lines merges consecutive declaration and initialization of an assignment.
         joinLines_joinAssignments: bool = "true",
@@ -456,7 +460,10 @@ config_data! {
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
         /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting.
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
         /// Enables the use of rustfmt's unstable range formatting command for the
         /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
@@ -849,27 +856,27 @@ impl Config {
     }
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
-            [] => match self.discovered_projects.as_ref() {
-                Some(discovered_projects) => {
-                    let exclude_dirs: Vec<_> = self
-                        .data
-                        .files_excludeDirs
+            [] => {
+                match self.discovered_projects.as_ref() {
+                    Some(discovered_projects) => {
+                        let exclude_dirs: Vec<_> = self
+                            .data
+                            .files_excludeDirs
+                            .iter()
+                            .map(|p| self.root_path.join(p))
+                            .collect();
+                        discovered_projects
                         .iter()
-                        .map(|p| self.root_path.join(p))
-                        .collect();
-                    discovered_projects
-                        .iter()
-                        .filter(|p| {
-                            let (ProjectManifest::ProjectJson(path)
-                            | ProjectManifest::CargoToml(path)) = p;
+                        .filter(|(ProjectManifest::ProjectJson(path) | ProjectManifest::CargoToml(path))| {
                             !exclude_dirs.iter().any(|p| path.starts_with(p))
                         })
                         .cloned()
                         .map(LinkedProject::from)
                         .collect()
+                    }
+                    None => Vec::new(),
                 }
-                None => Vec::new(),
-            },
+            }
             linked_projects => linked_projects
                 .iter()
                 .filter_map(|linked_project| match linked_project {
@@ -1050,8 +1057,18 @@ impl Config {
         }
     }
 
+    pub fn extra_args(&self) -> &Vec<String> {
+        &self.data.cargo_extraArgs
+    }
+
     pub fn extra_env(&self) -> &FxHashMap<String, String> {
         &self.data.cargo_extraEnv
+    }
+
+    pub fn check_extra_args(&self) -> Vec<String> {
+        let mut extra_args = self.extra_args().clone();
+        extra_args.extend_from_slice(&self.data.check_extraArgs);
+        extra_args
     }
 
     pub fn check_extra_env(&self) -> FxHashMap<String, String> {
@@ -1152,6 +1169,7 @@ impl Config {
                 InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
             },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
+            extra_args: self.data.cargo_extraArgs.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
@@ -1222,7 +1240,7 @@ impl Config {
                     CargoFeaturesDef::All => vec![],
                     CargoFeaturesDef::Selected(it) => it,
                 },
-                extra_args: self.data.check_extraArgs.clone(),
+                extra_args: self.check_extra_args(),
                 extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
             },
@@ -1441,6 +1459,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
+            interpret_tests: self.data.interpret_tests,
         }
     }
 

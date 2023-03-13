@@ -258,6 +258,7 @@ fn test() {
 
 #[test]
 fn coerce_autoderef_block() {
+    // FIXME: We should know mutability in overloaded deref
     check_no_mismatches(
         r#"
 //- minicore: deref
@@ -267,7 +268,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Not))), Borrow(Ref(Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(None))), Borrow(Ref(Not))
 }
 "#,
     );

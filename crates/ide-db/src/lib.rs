@@ -22,7 +22,7 @@ pub mod source_change;
 pub mod symbol_index;
 pub mod traits;
 pub mod ty_filter;
-pub mod use_trivial_contructor;
+pub mod use_trivial_constructor;
 
 pub mod imports {
     pub mod import_assets;
@@ -191,6 +191,7 @@ pub enum SymbolKind {
     Struct,
     ToolModule,
     Trait,
+    TraitAlias,
     TypeAlias,
     TypeParam,
     Union,
@@ -221,6 +222,7 @@ impl From<FileSymbolKind> for SymbolKind {
             FileSymbolKind::Static => SymbolKind::Static,
             FileSymbolKind::Struct => SymbolKind::Struct,
             FileSymbolKind::Trait => SymbolKind::Trait,
+            FileSymbolKind::TraitAlias => SymbolKind::TraitAlias,
             FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
             FileSymbolKind::Union => SymbolKind::Union,
         }

@@ -116,7 +116,7 @@ pub enum TypeRef {
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
     // FIXME: for full const generics, the latter element (length) here is going to have to be an
     // expression that is further lowered later in hir_ty.
-    Array(Box<TypeRef>, ConstScalarOrPath),
+    Array(Box<TypeRef>, ConstRefOrPath),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/, bool /*is_unsafe*/),
@@ -188,7 +188,7 @@ impl TypeRef {
                 // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
                 // `hir_ty` level, which would allow knowing the type of:
                 // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = ConstScalarOrPath::from_expr_opt(inner.expr());
+                let len = ConstRefOrPath::from_expr_opt(inner.expr());
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
@@ -378,25 +378,25 @@ impl TypeBound {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConstScalarOrPath {
-    Scalar(ConstScalar),
+pub enum ConstRefOrPath {
+    Scalar(ConstRef),
     Path(Name),
 }
 
-impl std::fmt::Display for ConstScalarOrPath {
+impl std::fmt::Display for ConstRefOrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConstScalarOrPath::Scalar(s) => s.fmt(f),
-            ConstScalarOrPath::Path(n) => n.fmt(f),
+            ConstRefOrPath::Scalar(s) => s.fmt(f),
+            ConstRefOrPath::Path(n) => n.fmt(f),
         }
     }
 }
 
-impl ConstScalarOrPath {
+impl ConstRefOrPath {
     pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
         match expr {
             Some(x) => Self::from_expr(x),
-            None => Self::Scalar(ConstScalar::Unknown),
+            None => Self::Scalar(ConstRef::Unknown),
         }
     }
 
@@ -407,7 +407,7 @@ impl ConstScalarOrPath {
             ast::Expr::PathExpr(p) => {
                 match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
                     Some(x) => Self::Path(x.as_name()),
-                    None => Self::Scalar(ConstScalar::Unknown),
+                    None => Self::Scalar(ConstRef::Unknown),
                 }
             }
             ast::Expr::PrefixExpr(prefix_expr) => match prefix_expr.op_kind() {
@@ -415,8 +415,8 @@ impl ConstScalarOrPath {
                     let unsigned = Self::from_expr_opt(prefix_expr.expr());
                     // Add sign
                     match unsigned {
-                        Self::Scalar(ConstScalar::UInt(num)) => {
-                            Self::Scalar(ConstScalar::Int(-(num as i128)))
+                        Self::Scalar(ConstRef::UInt(num)) => {
+                            Self::Scalar(ConstRef::Int(-(num as i128)))
                         }
                         other => other,
                     }
@@ -425,22 +425,22 @@ impl ConstScalarOrPath {
             },
             ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
                 ast::LiteralKind::IntNumber(num) => {
-                    num.value().map(ConstScalar::UInt).unwrap_or(ConstScalar::Unknown)
+                    num.value().map(ConstRef::UInt).unwrap_or(ConstRef::Unknown)
                 }
                 ast::LiteralKind::Char(c) => {
-                    c.value().map(ConstScalar::Char).unwrap_or(ConstScalar::Unknown)
+                    c.value().map(ConstRef::Char).unwrap_or(ConstRef::Unknown)
                 }
-                ast::LiteralKind::Bool(f) => ConstScalar::Bool(f),
-                _ => ConstScalar::Unknown,
+                ast::LiteralKind::Bool(f) => ConstRef::Bool(f),
+                _ => ConstRef::Unknown,
             }),
-            _ => Self::Scalar(ConstScalar::Unknown),
+            _ => Self::Scalar(ConstRef::Unknown),
         }
     }
 }
 
 /// A concrete constant value
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ConstScalar {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ConstRef {
     Int(i128),
     UInt(u128),
     Bool(bool),
@@ -454,18 +454,18 @@ pub enum ConstScalar {
     Unknown,
 }
 
-impl ConstScalar {
+impl ConstRef {
     pub fn builtin_type(&self) -> BuiltinType {
         match self {
-            ConstScalar::UInt(_) | ConstScalar::Unknown => BuiltinType::Uint(BuiltinUint::U128),
-            ConstScalar::Int(_) => BuiltinType::Int(BuiltinInt::I128),
-            ConstScalar::Char(_) => BuiltinType::Char,
-            ConstScalar::Bool(_) => BuiltinType::Bool,
+            ConstRef::UInt(_) | ConstRef::Unknown => BuiltinType::Uint(BuiltinUint::U128),
+            ConstRef::Int(_) => BuiltinType::Int(BuiltinInt::I128),
+            ConstRef::Char(_) => BuiltinType::Char,
+            ConstRef::Bool(_) => BuiltinType::Bool,
         }
     }
 }
 
-impl From<Literal> for ConstScalar {
+impl From<Literal> for ConstRef {
     fn from(literal: Literal) -> Self {
         match literal {
             Literal::Char(c) => Self::Char(c),
@@ -477,14 +477,14 @@ impl From<Literal> for ConstScalar {
     }
 }
 
-impl std::fmt::Display for ConstScalar {
+impl std::fmt::Display for ConstRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            ConstScalar::Int(num) => num.fmt(f),
-            ConstScalar::UInt(num) => num.fmt(f),
-            ConstScalar::Bool(flag) => flag.fmt(f),
-            ConstScalar::Char(c) => write!(f, "'{c}'"),
-            ConstScalar::Unknown => f.write_char('_'),
+            ConstRef::Int(num) => num.fmt(f),
+            ConstRef::UInt(num) => num.fmt(f),
+            ConstRef::Bool(flag) => flag.fmt(f),
+            ConstRef::Char(c) => write!(f, "'{c}'"),
+            ConstRef::Unknown => f.write_char('_'),
         }
     }
 }

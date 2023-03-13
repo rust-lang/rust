@@ -51,7 +51,8 @@ use crate::{
     AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionId,
     FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc,
     MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId,
-    ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
+    ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    UnresolvedMacro,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -666,8 +667,10 @@ impl DefCollector<'_> {
         macro_: Macro2Id,
         vis: &RawVisibility,
     ) {
-        let vis =
-            self.def_map.resolve_visibility(self.db, module_id, vis).unwrap_or(Visibility::Public);
+        let vis = self
+            .def_map
+            .resolve_visibility(self.db, module_id, vis, false)
+            .unwrap_or(Visibility::Public);
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
@@ -831,7 +834,7 @@ impl DefCollector<'_> {
         let mut def = directive.status.namespaces();
         let vis = self
             .def_map
-            .resolve_visibility(self.db, module_id, &directive.import.visibility)
+            .resolve_visibility(self.db, module_id, &directive.import.visibility, false)
             .unwrap_or(Visibility::Public);
 
         match import.kind {
@@ -1547,7 +1550,7 @@ impl ModCollector<'_, '_> {
                 };
             let resolve_vis = |def_map: &DefMap, visibility| {
                 def_map
-                    .resolve_visibility(db, self.module_id, visibility)
+                    .resolve_visibility(db, self.module_id, visibility, false)
                     .unwrap_or(Visibility::Public)
             };
 
@@ -1707,6 +1710,20 @@ impl ModCollector<'_, '_> {
                         false,
                     );
                 }
+                ModItem::TraitAlias(id) => {
+                    let it = &self.item_tree[id];
+
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        TraitAliasLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
+                            .into(),
+                        &it.name,
+                        vis,
+                        false,
+                    );
+                }
                 ModItem::TypeAlias(id) => {
                     let it = &self.item_tree[id];
 
@@ -1823,7 +1840,7 @@ impl ModCollector<'_, '_> {
     ) -> LocalModuleId {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
-            .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+            .resolve_visibility(self.def_collector.db, self.module_id, visibility, false)
             .unwrap_or(Visibility::Public);
         let modules = &mut def_map.modules;
         let origin = match definition {

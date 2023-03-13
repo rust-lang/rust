@@ -13,6 +13,7 @@ mod builder;
 mod chalk_db;
 mod chalk_ext;
 pub mod consteval;
+pub mod mir;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -34,7 +35,7 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::sync::Arc;
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
@@ -42,10 +43,11 @@ use chalk_ir::{
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution, TyData,
 };
+use either::Either;
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
-use itertools::Either;
 use la_arena::{Arena, Idx};
+use mir::MirEvalError;
 use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
@@ -144,6 +146,49 @@ pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
+
+/// A constant can have reference to other things. Memory map job is holding
+/// the neccessary bits of memory of the const eval session to keep the constant
+/// meaningful.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct MemoryMap(pub HashMap<usize, Vec<u8>>);
+
+impl MemoryMap {
+    fn insert(&mut self, addr: usize, x: Vec<u8>) {
+        self.0.insert(addr, x);
+    }
+
+    /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
+    /// to them. It is useful when you want to load a constant with a memory map in a new memory. You can pass an
+    /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
+    fn transform_addresses(
+        &self,
+        mut f: impl FnMut(&[u8]) -> Result<usize, MirEvalError>,
+    ) -> Result<HashMap<usize, usize>, MirEvalError> {
+        self.0.iter().map(|x| Ok((*x.0, f(x.1)?))).collect()
+    }
+}
+
+/// A concrete constant value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstScalar {
+    Bytes(Vec<u8>, MemoryMap),
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl Hash for ConstScalar {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        if let ConstScalar::Bytes(b, _) = self {
+            b.hash(state)
+        }
+    }
+}
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {

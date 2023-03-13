@@ -163,10 +163,8 @@ pub(super) fn atom_expr(
             return None;
         }
     };
-    let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
-        _ => BlockLike::NotBlock,
-    };
+    let blocklike =
+        if BlockLike::is_blocklike(done.kind()) { BlockLike::Block } else { BlockLike::NotBlock };
     Some((done, blocklike))
 }
 
@@ -188,7 +186,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
         // test tuple_attrs
         // const A: (i64, i64) = (1, #[cfg(test)] 2);
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 
@@ -221,7 +219,7 @@ fn array_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
         // test array_attrs
         // const A: &[i64] = &[1, #[cfg(test)] 2];
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 

@@ -65,25 +65,17 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
         })
         .unwrap();
     let hir_body = db.body(adt_id.into());
-    let pat = hir_body
-        .pats
-        .iter()
-        .find(|x| match x.1 {
-            hir_def::expr::Pat::Bind { name, .. } => name.to_smol_str() == "goal",
-            _ => false,
-        })
-        .unwrap()
-        .0;
+    let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
     let infer = db.infer(adt_id.into());
-    let goal_ty = infer.type_of_pat[pat].clone();
+    let goal_ty = infer.type_of_binding[b].clone();
     layout_of_ty(&db, &goal_ty, module_id.krate())
 }
 
 #[track_caller]
 fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
-    assert_eq!(l.size.bytes(), size);
-    assert_eq!(l.align.abi.bytes(), align);
+    assert_eq!(l.size.bytes(), size, "size mismatch");
+    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -298,6 +290,11 @@ fn enums_with_discriminants() {
             A = 254,
             B,
             C, // implicitly becomes 256, so we need two bytes
+        }
+    }
+    size_and_align! {
+        enum Goal {
+            A = 1, // This one is (perhaps surprisingly) zero sized.
         }
     }
 }

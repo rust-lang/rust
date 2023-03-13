@@ -11,7 +11,7 @@ use hir_def::{
 };
 use stdx::never;
 
-use crate::{db::HirDatabase, Interner, Substitution, Ty};
+use crate::{consteval::try_const_usize, db::HirDatabase, Interner, Substitution, Ty};
 
 use self::adt::struct_variant_idx;
 pub use self::{
@@ -122,17 +122,9 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = match count.data(Interner).value {
-                chalk_ir::ConstValue::Concrete(c) => match c.interned {
-                    hir_def::type_ref::ConstScalar::Int(x) => x as u64,
-                    hir_def::type_ref::ConstScalar::UInt(x) => x as u64,
-                    hir_def::type_ref::ConstScalar::Unknown => {
-                        user_error!("unknown const generic parameter")
-                    }
-                    _ => user_error!("mismatched type of const generic parameter"),
-                },
-                _ => return Err(LayoutError::HasPlaceholder),
-            };
+            let count = try_const_usize(&count).ok_or(LayoutError::UserError(
+                "mismatched type of const generic parameter".to_string(),
+            ))? as u64;
             let element = layout_of_ty(db, element, krate)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 

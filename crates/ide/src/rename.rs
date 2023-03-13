@@ -353,6 +353,11 @@ mod tests {
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
+        if !ra_fixture_after.starts_with("error: ") {
+            if let Err(err) = analysis.prepare_rename(position).unwrap() {
+                panic!("Prepare rename to '{new_name}' was failed: {err}")
+            }
+        }
         let rename_result = analysis
             .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
@@ -1704,6 +1709,23 @@ struct Foo { bar: i32 }
 
 fn foo(bar: i32) -> Foo {
     Foo { bar }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_local_simple() {
+        check(
+            "i",
+            r#"
+fn foo(bar$0: i32) -> i32 {
+    bar
+}
+"#,
+            r#"
+fn foo(i: i32) -> i32 {
+    i
 }
 "#,
         );

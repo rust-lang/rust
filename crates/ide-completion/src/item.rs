@@ -288,7 +288,7 @@ impl_from!(SymbolKind for CompletionItemKind);
 
 impl CompletionItemKind {
     #[cfg(test)]
-    pub(crate) fn tag(&self) -> &'static str {
+    pub(crate) fn tag(self) -> &'static str {
         match self {
             CompletionItemKind::SymbolKind(kind) => match kind {
                 SymbolKind::Attribute => "at",
@@ -312,6 +312,7 @@ impl CompletionItemKind {
                 SymbolKind::Struct => "st",
                 SymbolKind::ToolModule => "tm",
                 SymbolKind::Trait => "tt",
+                SymbolKind::TraitAlias => "tr",
                 SymbolKind::TypeAlias => "ta",
                 SymbolKind::TypeParam => "tp",
                 SymbolKind::Union => "un",
