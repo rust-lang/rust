@@ -201,7 +201,7 @@
             },
             {
                 "command": "rust-analyzer.addProject",
-                "title": "Add current file to workspace",
+                "title": "Add current file's crate to workspace",
                 "category": "rust-analyzer"
             },
             {
