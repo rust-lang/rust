@@ -30,7 +30,7 @@ pub(crate) fn collect(
 
 fn obtain_spdx_document(reuse_exe: &Path) -> Result<String, Error> {
     let output = Command::new(reuse_exe)
-        .args(&["spdx", "--add-license-concluded", "--creator-person=bors"])
+        .args(&["--include-submodules", "spdx", "--add-license-concluded", "--creator-person=bors"])
         .stdout(Stdio::piped())
         .spawn()?
         .wait_with_output()?;
