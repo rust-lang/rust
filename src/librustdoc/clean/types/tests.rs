@@ -77,6 +77,6 @@ fn is_same_generic() {
     let cache = Cache::new(false);
     let generic = Type::Generic(rustc_span::symbol::sym::Any);
     let unit = Type::Primitive(PrimitiveType::Unit);
-    assert!(!generic.is_same(&unit, &cache));
-    assert!(unit.is_same(&generic, &cache));
+    assert!(!generic.is_doc_subtype_of(&unit, &cache));
+    assert!(unit.is_doc_subtype_of(&generic, &cache));
 }

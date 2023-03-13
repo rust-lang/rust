@@ -1495,7 +1495,7 @@ impl Type {
     ///
     /// An owned type is also the same as its borrowed variants (this is commutative),
     /// but `&T` is not the same as `&mut T`.
-    pub(crate) fn is_same(&self, other: &Self, cache: &Cache) -> bool {
+    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
         let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
             (self.without_borrowed_ref(), other.without_borrowed_ref())
         } else {
@@ -1504,17 +1504,17 @@ impl Type {
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(b, cache))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_doc_subtype_of(b, cache))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_same(b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_same(b_type_, cache)
+                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_same(b_type_, cache),
+            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache),
             // Placeholders are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             // Generics match everything on the right, but not on the left.
@@ -1526,7 +1526,7 @@ impl Type {
                     && a.generics()
                         .zip(b.generics())
                         .map(|(ag, bg)| {
-                            ag.iter().zip(bg.iter()).all(|(at, bt)| at.is_same(bt, cache))
+                            ag.iter().zip(bg.iter()).all(|(at, bt)| at.is_doc_subtype_of(bt, cache))
                         })
                         .unwrap_or(true)
             }
