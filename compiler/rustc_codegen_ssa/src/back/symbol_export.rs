@@ -10,6 +10,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
@@ -41,7 +42,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
     }
 }
 
-fn reachable_non_generics_provider(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<SymbolExportInfo> {
+fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<SymbolExportInfo> {
     if !tcx.sess.opts.output_types.should_codegen() {
         return Default::default();
     }
@@ -168,7 +169,7 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 
 fn exported_symbols_provider_local(
     tcx: TyCtxt<'_>,
-    (): (),
+    _: LocalCrate,
 ) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
     if !tcx.sess.opts.output_types.should_codegen() {
         return &[];

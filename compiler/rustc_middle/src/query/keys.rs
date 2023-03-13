@@ -13,6 +13,10 @@ use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCa
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+/// Placeholder for `CrateNum`'s "local" counterpart
+#[derive(Copy, Clone, Debug)]
+pub struct LocalCrate;
+
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
 pub trait Key: Sized {
@@ -115,11 +119,11 @@ impl Key for CrateNum {
 }
 
 impl AsLocalKey for CrateNum {
-    type LocalKey = ();
+    type LocalKey = LocalCrate;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalKey> {
-        (*self == LOCAL_CRATE).then_some(())
+        (*self == LOCAL_CRATE).then_some(LocalCrate)
     }
 }
 

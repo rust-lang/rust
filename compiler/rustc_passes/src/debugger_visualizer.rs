@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::resolve_path;
 use rustc_hir as hir;
 use rustc_hir::HirId;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::{query::LocalCrate, ty::query::Providers};
 use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
 
 use std::sync::Arc;
@@ -67,7 +67,7 @@ fn check_for_debugger_visualizer(
 }
 
 /// Traverses and collects the debugger visualizers for a specific crate.
-fn debugger_visualizers(tcx: TyCtxt<'_>, (): ()) -> Vec<DebuggerVisualizerFile> {
+fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualizerFile> {
     // Initialize the collector.
     let mut debugger_visualizers = FxHashSet::default();
 

@@ -12,6 +12,7 @@
 use rustc_ast as ast;
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::OwnerId;
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -62,7 +63,7 @@ fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
+fn diagnostic_items(tcx: TyCtxt<'_>, _: LocalCrate) -> DiagnosticItems {
     // Initialize the collector.
     let mut diagnostic_items = DiagnosticItems::default();
 

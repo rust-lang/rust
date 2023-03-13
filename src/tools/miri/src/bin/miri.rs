@@ -29,6 +29,7 @@ use rustc_middle::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
     ty::{query::ExternProviders, TyCtxt},
+    query::LocalCrate,
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
@@ -107,7 +108,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
-                local_providers.exported_symbols = |tcx, ()| {
+                local_providers.exported_symbols = |tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
                     });

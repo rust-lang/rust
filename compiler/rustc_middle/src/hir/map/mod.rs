@@ -1,4 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
+use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -1131,7 +1132,7 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn crate_hash(tcx: TyCtxt<'_>, (): ()) -> Svh {
+pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     let krate = tcx.hir_crate(());
     let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
 
