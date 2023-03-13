@@ -480,7 +480,19 @@ fn make_format_args(
         report_invalid_references(ecx, &invalid_refs, &template, fmt_span, &args, parser);
     }
 
+    // Vec that contains all redundant arg, will be printed for suggestion
     let mut redundant_expl_args = Vec::new();
+
+    // `placeholder` contains pieces that may be linked to one of redundant explicit argument
+    let _placeholders: Vec<&parse::Piece<'_>> = pieces
+        .iter()
+        .filter(|p| {
+            if let NextArgument(arg) = *p && let ArgumentNamed(_) =  arg.position {
+            return true;
+        }
+            false
+        })
+        .collect();
 
     let unused = used
         .iter()
@@ -490,24 +502,21 @@ fn make_format_args(
             let msg = if let FormatArgumentKind::Named(_) = args.explicit_args()[i].kind {
                 "named argument never used"
             } else {
-                if let Some(expr) = args.explicit_args()[i].expr.to_ty() {
-                    if let Some(symbol) = expr.kind.is_simple_path() {
-                        for piece in &pieces {
-                            if let NextArgument(arg) = piece {
-                                if let ArgumentNamed(specifier) = arg.position {
-                                    if specifier == symbol.to_string() {
-                                        redundant_expl_args.push({
-                                            RedundantArgDiagBuilder {
-                                                arg_span: expr.span,
-                                                fmt_span: InnerSpan {
-                                                    start: arg.position_span.start,
-                                                    end: arg.position_span.end,
-                                                },
-                                                fmt_str: specifier,
-                                            }
-                                        });
-                                    }
-                                }
+                if let Some(expr) = args.explicit_args()[i].expr.to_ty()
+                && let Some(symbol) = expr.kind.is_simple_path() {
+                    for piece in &pieces {
+                        if let NextArgument(arg) = piece
+                        && let ArgumentNamed(specifier) = arg.position {
+                            if specifier == symbol.to_string() {
+                                redundant_expl_args.push(
+                                    RedundantArgDiagBuilder {
+                                        arg_span: expr.span,
+                                        fmt_span: InnerSpan {
+                                            start: arg.position_span.start,
+                                            end: arg.position_span.end,
+                                        },
+                                        fmt_str: specifier,
+                                });
                             }
                         }
                     }
@@ -517,6 +526,14 @@ fn make_format_args(
             (args.explicit_args()[i].expr.span, msg)
         })
         .collect::<Vec<_>>();
+
+    // Get symbol names
+    // let mut unused_symbol = Vec::with_capacity(unused.len());
+    // unused.iter().for_each(|(unused_span, _)| {
+    //     // Logic to extract symbol(string) from `Span` type
+    // });
+
+    // Some logic to check if the symbol has redundant argument associated with it.
 
     if !unused.is_empty() {
         // If there's a lot of unused arguments,
@@ -718,6 +735,8 @@ fn report_missing_placeholders(
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
     }
+
+    // Diag message buileder
     if !redundant_expl_args.is_empty() {
         let mut fmt_spans = Vec::new();
         let mut arg_spans = Vec::new();

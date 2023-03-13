@@ -84,5 +84,24 @@ LL |     println!("{} {} {y} {} {}", y, y, y, y, y);
    |                      |
    |                      this formatting argument captures `y` directly
 
-error: aborting due to 5 previous errors
+error: multiple unused formatting arguments
+  --> new.rs:14:37
+   |
+14 |     println!("{x} {x} {y} {x} {x}", x, y, x, y, y);
+   |              ---------------------  ^  ^  ^  ^  ^ argument never used
+   |              |                      |  |  |  |
+   |              |                      |  |  |  argument never used
+   |              |                      |  |  argument never used
+   |              |                      |  argument never used
+   |              |                      argument never used
+   |              multiple missing formatting specifiers
+   |
+help: the formatting string captures that binding directly, it doesn't need to be included in the argument list
+  --> new.rs:14:16
+   |
+LL |     println!("{x} {x} {y} {x} {x}", x, y, x, y, y);
+   |                ^                    - this can be removed
+   |                |
+   |                this formatting argument captures `y` directly
+error: aborting due to 6 previous errors
 
