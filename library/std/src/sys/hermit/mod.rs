@@ -15,7 +15,6 @@
 
 #![allow(missing_docs, nonstandard_style, unsafe_op_in_unsafe_fn)]
 
-use crate::intrinsics;
 use crate::os::raw::c_char;
 
 pub mod alloc;
