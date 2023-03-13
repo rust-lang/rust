@@ -44,7 +44,7 @@ pub enum TokenExpander {
 impl TokenExpander {
     fn expand(
         &self,
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         id: MacroCallId,
         tt: &tt::Subtree,
     ) -> ExpandResult<tt::Subtree> {
@@ -83,9 +83,8 @@ impl TokenExpander {
     }
 }
 
-// FIXME: rename to ExpandDatabase
-#[salsa::query_group(AstDatabaseStorage)]
-pub trait AstDatabase: SourceDatabase {
+#[salsa::query_group(ExpandDatabaseStorage)]
+pub trait ExpandDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real
@@ -138,7 +137,7 @@ pub trait AstDatabase: SourceDatabase {
 /// token. The `token_to_map` mapped down into the expansion, with the mapped
 /// token returned.
 pub fn expand_speculative(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     actual_macro_call: MacroCallId,
     speculative_args: &SyntaxNode,
     token_to_map: SyntaxToken,
@@ -236,12 +235,12 @@ pub fn expand_speculative(
     Some((node.syntax_node(), token))
 }
 
-fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
+fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
     let map = db.parse_or_expand(file_id).map(|it| AstIdMap::from_source(&it)).unwrap_or_default();
     Arc::new(map)
 }
 
-fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
+fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
     match file_id.repr() {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
@@ -253,7 +252,7 @@ fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNod
 }
 
 fn parse_macro_expansion(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     macro_file: MacroFile,
 ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
     let _p = profile::span("parse_macro_expansion");
@@ -296,7 +295,7 @@ fn parse_macro_expansion(
 }
 
 fn macro_arg(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>> {
     let arg = db.macro_arg_text(id)?;
@@ -357,7 +356,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
     .unwrap_or_default()
 }
 
-fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
+fn macro_arg_text(db: &dyn ExpandDatabase, id: MacroCallId) -> Option<GreenNode> {
     let loc = db.lookup_intern_macro_call(id);
     let arg = loc.kind.arg(db)?;
     if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
@@ -380,7 +379,10 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     Some(arg.green().into())
 }
 
-fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Result<Arc<TokenExpander>, mbe::ParseError> {
+fn macro_def(
+    db: &dyn ExpandDatabase,
+    id: MacroDefId,
+) -> Result<Arc<TokenExpander>, mbe::ParseError> {
     match id.kind {
         MacroDefKind::Declarative(ast_id) => {
             let (mac, def_site_token_map) = match ast_id.to_node(db) {
@@ -419,7 +421,10 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Result<Arc<TokenExpander>,
     }
 }
 
-fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
+fn macro_expand(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let _p = profile::span("macro_expand");
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     if let Some(eager) = &loc.eager {
@@ -469,11 +474,11 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
     ExpandResult { value: Some(Arc::new(tt)), err }
 }
 
-fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
+fn macro_expand_error(db: &dyn ExpandDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
     db.macro_expand(macro_call).err
 }
 
-fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
+fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
@@ -502,11 +507,11 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
     expander.expand(db, loc.krate, &macro_arg.0, attr_arg.as_ref())
 }
 
-fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
+fn hygiene_frame(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
     Arc::new(HygieneFrame::new(db, file_id))
 }
 
-fn macro_expand_to(db: &dyn AstDatabase, id: MacroCallId) -> ExpandTo {
+fn macro_expand_to(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandTo {
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     loc.kind.expand_to()
 }

@@ -10,7 +10,7 @@ use syntax::{
 };
 
 use crate::{
-    db::AstDatabase, name, quote, tt, ExpandError, ExpandResult, MacroCallId, MacroCallLoc,
+    db::ExpandDatabase, name, quote, tt, ExpandError, ExpandResult, MacroCallId, MacroCallLoc,
 };
 
 macro_rules! register_builtin {
@@ -28,7 +28,7 @@ macro_rules! register_builtin {
         impl BuiltinFnLikeExpander {
             pub fn expand(
                 &self,
-                db: &dyn AstDatabase,
+                db: &dyn ExpandDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> ExpandResult<tt::Subtree> {
@@ -42,7 +42,7 @@ macro_rules! register_builtin {
         impl EagerExpander {
             pub fn expand(
                 &self,
-                db: &dyn AstDatabase,
+                db: &dyn ExpandDatabase,
                 arg_id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> ExpandResult<ExpandedEager> {
@@ -121,7 +121,7 @@ const DOLLAR_CRATE: tt::Ident =
     tt::Ident { text: SmolStr::new_inline("$crate"), span: tt::TokenId::unspecified() };
 
 fn module_path_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -130,7 +130,7 @@ fn module_path_expand(
 }
 
 fn line_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -144,7 +144,7 @@ fn line_expand(
 }
 
 fn log_syntax_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -152,7 +152,7 @@ fn log_syntax_expand(
 }
 
 fn trace_macros_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -160,7 +160,7 @@ fn trace_macros_expand(
 }
 
 fn stringify_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -174,7 +174,7 @@ fn stringify_expand(
 }
 
 fn column_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -188,7 +188,7 @@ fn column_expand(
 }
 
 fn assert_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -218,7 +218,7 @@ fn assert_expand(
 }
 
 fn file_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -234,7 +234,7 @@ fn file_expand(
 }
 
 fn format_args_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -276,7 +276,7 @@ fn format_args_expand(
 }
 
 fn asm_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -304,7 +304,7 @@ fn asm_expand(
 }
 
 fn global_asm_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -313,7 +313,7 @@ fn global_asm_expand(
 }
 
 fn cfg_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -325,7 +325,7 @@ fn cfg_expand(
 }
 
 fn panic_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -343,7 +343,7 @@ fn panic_expand(
 }
 
 fn unreachable_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -379,7 +379,7 @@ fn unquote_byte_string(lit: &tt::Literal) -> Option<Vec<u8>> {
 }
 
 fn compile_error_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -395,7 +395,7 @@ fn compile_error_expand(
 }
 
 fn concat_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -441,7 +441,7 @@ fn concat_expand(
 }
 
 fn concat_bytes_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -507,7 +507,7 @@ fn concat_bytes_expand_subtree(
 }
 
 fn concat_idents_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -529,7 +529,7 @@ fn concat_idents_expand(
 }
 
 fn relative_file(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     call_id: MacroCallId,
     path_str: &str,
     allow_recursion: bool,
@@ -558,7 +558,7 @@ fn parse_string(tt: &tt::Subtree) -> Result<String, ExpandError> {
 }
 
 fn include_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -583,7 +583,7 @@ fn include_expand(
 }
 
 fn include_bytes_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -606,7 +606,7 @@ fn include_bytes_expand(
 }
 
 fn include_str_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -637,13 +637,13 @@ fn include_str_expand(
     ExpandResult::ok(ExpandedEager::new(quote!(#text)))
 }
 
-fn get_env_inner(db: &dyn AstDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
+fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
     let krate = db.lookup_intern_macro_call(arg_id).krate;
     db.crate_graph()[krate].env.get(key)
 }
 
 fn env_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
@@ -679,7 +679,7 @@ fn env_expand(
 }
 
 fn option_env_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {

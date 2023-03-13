@@ -3,7 +3,7 @@
 use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
 use stdx::never;
 
-use crate::{db::AstDatabase, tt, ExpandError, ExpandResult};
+use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
@@ -27,7 +27,7 @@ impl ProcMacroExpander {
 
     pub fn expand(
         self,
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         calling_crate: CrateId,
         tt: &tt::Subtree,
         attr_arg: Option<&tt::Subtree>,

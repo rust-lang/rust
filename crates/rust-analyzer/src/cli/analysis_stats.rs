@@ -7,7 +7,7 @@ use std::{
 };
 
 use hir::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
     AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::{
