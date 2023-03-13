@@ -32,7 +32,6 @@ test = false
 [dependencies]
 build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
-fd-lock = "3.0.8"
 filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"
@@ -55,6 +54,10 @@ walkdir = "2"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.26.0", optional = true }
+
+# Solaris doesn't support flock() and thus fd-lock is not option now
+[target.'cfg(not(target_os = "solaris"))'.dependencies]
+fd-lock = "3.0.8"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
