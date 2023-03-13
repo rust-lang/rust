@@ -289,6 +289,7 @@ export class Ctx {
                 statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
+                statusBar.command = "rust-analyzer.stopServer";
                 break;
             case "warning":
                 if (status.message) {
@@ -298,6 +299,7 @@ export class Ctx {
                 statusBar.backgroundColor = new vscode.ThemeColor(
                     "statusBarItem.warningBackground"
                 );
+                statusBar.command = "rust-analyzer.openLogs";
                 icon = "$(warning) ";
                 break;
             case "error":
@@ -306,6 +308,7 @@ export class Ctx {
                 }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.errorForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+                statusBar.command = "rust-analyzer.openLogs";
                 icon = "$(error) ";
                 break;
             case "stopped":
@@ -315,18 +318,19 @@ export class Ctx {
                 );
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
+                statusBar.command = "rust-analyzer.startServer";
                 statusBar.text = `$(stop-circle) rust-analyzer`;
                 return;
         }
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendText("\n\n");
         }
-        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
         statusBar.tooltip.appendMarkdown(
             "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)"
         );
-        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
+        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
+        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
