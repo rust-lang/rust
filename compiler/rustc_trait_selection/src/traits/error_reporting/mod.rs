@@ -32,6 +32,7 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
@@ -1799,12 +1800,17 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     })
                     .and_then(|(trait_assoc_item, id)| {
                         let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-                        self.tcx.find_map_relevant_impl(id, proj.projection_ty.self_ty(), |did| {
-                            self.tcx
-                                .associated_items(did)
-                                .in_definition_order()
-                                .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
-                        })
+                        self.tcx.find_map_relevant_impl(
+                            id,
+                            proj.projection_ty.self_ty(),
+                            TreatProjections::ForLookup,
+                            |did| {
+                                self.tcx
+                                    .associated_items(did)
+                                    .in_definition_order()
+                                    .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
+                            },
+                        )
                     })
                     .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
                         Some(
@@ -2176,7 +2182,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> bool {
         let get_trait_impl = |trait_def_id| {
-            self.tcx.find_map_relevant_impl(trait_def_id, trait_ref.skip_binder().self_ty(), Some)
+            self.tcx.find_map_relevant_impl(
+                trait_def_id,
+                trait_ref.skip_binder().self_ty(),
+                TreatProjections::ForLookup,
+                Some,
+            )
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let traits_with_same_path: std::collections::BTreeSet<_> = self
