@@ -1,5 +1,5 @@
 use super::{Config, TomlConfig};
-use std::path::Path;
+use std::{env, path::Path};
 
 fn toml(config: &str) -> impl '_ + Fn(&Path) -> TomlConfig {
     |&_| toml::from_str(config).unwrap()
@@ -33,4 +33,35 @@ fn download_ci_llvm() {
     ));
 }
 
-// FIXME: add test for detecting `src` and `out`
+#[test]
+fn detect_src_and_out() {
+    let cfg = parse("");
+
+    // This will bring absolute form of `src/bootstrap` path
+    let current_dir = std::env::current_dir().unwrap();
+
+    // get `src` by moving into project root path
+    let expected_src = current_dir.ancestors().nth(2).unwrap();
+
+    assert_eq!(&cfg.src, expected_src);
+
+    // This should bring output path of bootstrap in absolute form
+    let cargo_target_dir = env::var_os("CARGO_TARGET_DIR")
+        .expect("CARGO_TARGET_DIR must been provided for the test environment from bootstrap");
+
+    // Move to `build` from `build/bootstrap`
+    let expected_out = Path::new(&cargo_target_dir).parent().unwrap();
+    assert_eq!(&cfg.out, expected_out);
+
+    let args: Vec<String> = env::args().collect();
+
+    // Another test for `out` as a sanity check
+    //
+    // This will bring something similar to:
+    //     `{config_toml_place}/build/bootstrap/debug/deps/bootstrap-c7ee91d5661e2804`
+    // `{config_toml_place}` can be anywhere, not just in the rust project directory.
+    let dep = Path::new(args.first().unwrap());
+    let expected_out = dep.ancestors().nth(4).unwrap();
+
+    assert_eq!(&cfg.out, expected_out);
+}
