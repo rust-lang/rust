@@ -17,7 +17,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
@@ -2460,7 +2460,7 @@ fn clean_extern_crate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement -- should always return CrateNum struct from currently-compiled crate
-    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap(LOCAL_CRATE.CrateNum);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap();
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
