@@ -736,46 +736,15 @@ impl<T> Option<T> {
     }
 
     /// This is a guess at how many bytes into the option the payload can be found.
-    ///
-    /// For niche-optimized types it's correct because it's pigeon-holed to only
-    /// one possible place.  For other types, it's usually correct today, but
-    /// tweaks to the layout algorithm (particularly expansions of
-    /// `-Z randomize-layout`) might make it incorrect at any point.
-    ///
-    /// It's guaranteed to be a multiple of alignment (so will always give a
-    /// correctly-aligned location) and to be within the allocated object, so
-    /// is valid to use with `offset` and to use for a zero-sized read.
-    ///
-    /// FIXME: This is a horrible hack, but allows a nice optimization.  It should
-    /// be replaced with `offset_of!` once that works on enum variants.
-    const SOME_BYTE_OFFSET_GUESS: isize = {
-        let some_uninit = Some(mem::MaybeUninit::<T>::uninit());
-        let payload_ref = some_uninit.as_ref().unwrap();
-        // SAFETY: `as_ref` gives an address inside the existing `Option`,
-        // so both pointers are derived from the same thing and the result
-        // cannot overflow an `isize`.
-        let offset = unsafe { <*const _>::byte_offset_from(payload_ref, &some_uninit) };
+    /// As this version will only be ever used to compile rustc and the performance
+    /// penalty is negligible, use a minimal implementation here.
+    #[cfg(bootstrap)]
+    const SOME_BYTE_OFFSET_GUESS: usize = 0;
 
-        // The offset is into the object, so it's guaranteed to be non-negative.
-        assert!(offset >= 0);
-
-        // The payload and the overall option are aligned,
-        // so the offset will be a multiple of the alignment too.
-        assert!((offset as usize) % mem::align_of::<T>() == 0);
-
-        let max_offset = mem::size_of::<Self>() - mem::size_of::<T>();
-        if offset as usize <= max_offset {
-            // There's enough space after this offset for a `T` to exist without
-            // overflowing the bounds of the object, so let's try it.
-            offset
-        } else {
-            // The offset guess is definitely wrong, so use the address
-            // of the original option since we have it already.
-            // This also correctly handles the case of layout-optimized enums
-            // where `max_offset == 0` and thus this is the only possibility.
-            0
-        }
-    };
+    // FIXME: replace this with whatever stable method to get the offset of an enum
+    // field may appear first.
+    #[cfg(not(bootstrap))]
+    const SOME_BYTE_OFFSET_GUESS: usize = crate::intrinsics::option_some_offset::<Option<T>>();
 
     /// Returns a slice of the contained value, if any. If this is `None`, an
     /// empty slice is returned. This can be useful to have a single type of
@@ -820,7 +789,7 @@ impl<T> Option<T> {
                 let self_ptr: *const Self = self;
                 // SAFETY: `SOME_BYTE_OFFSET_GUESS` guarantees that its value is
                 // such that this will be in-bounds of the object.
-                unsafe { self_ptr.byte_offset(Self::SOME_BYTE_OFFSET_GUESS).cast() }
+                unsafe { self_ptr.byte_add(Self::SOME_BYTE_OFFSET_GUESS).cast() }
             };
         let len = usize::from(self.is_some());
 
@@ -886,7 +855,7 @@ impl<T> Option<T> {
                 let self_ptr: *mut Self = self;
                 // SAFETY: `SOME_BYTE_OFFSET_GUESS` guarantees that its value is
                 // such that this will be in-bounds of the object.
-                unsafe { self_ptr.byte_offset(Self::SOME_BYTE_OFFSET_GUESS).cast() }
+                unsafe { self_ptr.byte_add(Self::SOME_BYTE_OFFSET_GUESS).cast() }
             };
         let len = usize::from(self.is_some());
 

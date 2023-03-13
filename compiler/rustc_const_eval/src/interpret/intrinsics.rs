@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, Primitive, Size};
+use rustc_target::abi::{Abi, Align, FieldsShape, Primitive, Size, Variants};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -106,6 +106,13 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
         },
+        sym::option_some_offset => {
+            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
+            let Variants::Multiple { variants, .. } = layout.layout.variants() else { bug!() };
+            let Some(variant) = variants.iter().last() else { bug!() };
+            let FieldsShape::Arbitrary { offsets, .. } = &variant.fields else { bug!() };
+            ConstValue::from_target_usize(offsets[0].bytes(), &tcx)
+        }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }

@@ -1303,6 +1303,16 @@ extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
+    #[cfg(not(bootstrap))]
+    /// The offset of the `Some(_)` value of an `Option<T>`. Used internally for
+    /// `Option::as_slice` and `Option::as_mut_slice`. This needs to be called with an
+    /// `Option<_>` type.
+    // FIXME: This should be replaced once we get a stable public method for getting
+    // the offset of enum variant's fields (e.g. an extension of `offset_of!` to enums)
+    #[rustc_const_stable(feature = "const_option_some_offset", since = "1.68.0")]
+    #[rustc_safe_intrinsic]
+    pub fn option_some_offset<T>() -> usize;
+
     /// Masks out bits of the pointer according to a mask.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;

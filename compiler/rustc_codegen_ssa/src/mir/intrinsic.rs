@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
 use rustc_target::abi::{
     call::{FnAbi, PassMode},
-    WrappingRange,
+    FieldsShape, Variants, WrappingRange,
 };
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -103,6 +103,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
+            }
+            sym::option_some_offset => {
+                let ty = substs.type_at(0);
+                let layout = bx.layout_of(ty);
+                let Variants::Multiple { variants, .. } = layout.layout.variants() else { bug!() };
+                let Some(variant) = variants.iter().last() else { bug!() };
+                let FieldsShape::Arbitrary { offsets, .. } = &variant.fields else { bug!() };
+                bx.const_usize(offsets[0].bytes())
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();

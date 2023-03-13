@@ -110,6 +110,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
         | sym::rustc_peek
         | sym::maxnumf64
         | sym::type_name
+        | sym::option_some_offset
         | sym::forget
         | sym::black_box
         | sym::variant_count
@@ -214,6 +215,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
             sym::type_id => (1, Vec::new(), tcx.types.u64),
+            sym::option_some_offset => (1, Vec::new(), tcx.types.usize),
             sym::offset | sym::arith_offset => (
                 1,
                 vec![
