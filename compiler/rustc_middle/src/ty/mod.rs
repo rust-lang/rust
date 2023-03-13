@@ -2553,11 +2553,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn impl_trait_in_trait_parent_fn(self, mut def_id: DefId) -> DefId {
-        while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
-            debug_assert_eq!(def_kind, DefKind::ImplTraitPlaceholder);
-            def_id = self.parent(def_id);
+        match self.opt_rpitit_info(def_id) {
+            Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
+            | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) => fn_def_id,
+            None => {
+                while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
+                    debug_assert_eq!(def_kind, DefKind::ImplTraitPlaceholder);
+                    def_id = self.parent(def_id);
+                }
+                def_id
+            }
         }
-        def_id
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
