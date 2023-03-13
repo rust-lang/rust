@@ -7,38 +7,61 @@ see the ["Rustdoc overview" chapter](./rustdoc.md).
 
 ## From crate to clean
 
-In `core.rs` are two central items: the `DocContext` struct, and the `run_core`
-function. The latter is where rustdoc calls out to rustc to compile a crate to
-the point where rustdoc can take over. The former is a state container used
-when crawling through a crate to gather its documentation.
+In `core.rs` are two central items: the `DocContext` struct, and the
+`run_global_ctxt` function. The latter is where rustdoc calls out to rustc to
+compile a crate to the point where rustdoc can take over. The former is a state
+container used when crawling through a crate to gather its documentation.
 
 The main process of crate crawling is done in `clean/mod.rs` through several
-implementations of the `Clean` trait defined within. This is a conversion
-trait, which defines one method:
+functions with names that start with `clean_`. Each function accepts an `hir`
+or `ty` data structure, and outputs a `clean` structure used by rustdoc. For
+example, this function for converting lifetimes:
 
 ```rust,ignore
-pub trait Clean<T> {
-    fn clean(&self, cx: &DocContext) -> T;
+fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
+    let def = cx.tcx.named_bound_var(lifetime.hir_id);
+    if let Some(
+        rbv::ResolvedArg::EarlyBound(node_id)
+        | rbv::ResolvedArg::LateBound(_, _, node_id)
+        | rbv::ResolvedArg::Free(_, node_id),
+    ) = def
+    {
+        if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
+            return lt;
+        }
+    }
+    Lifetime(lifetime.ident.name)
 }
 ```
 
 `clean/mod.rs` also defines the types for the "cleaned" AST used later on to
-render documentation pages. Each usually accompanies an implementation of
-`Clean` that takes some AST or HIR type from rustc and converts it into the
+render documentation pages. Each usually accompanies a `clean` function
+that takes some AST or HIR type from rustc and converts it into the
 appropriate "cleaned" type. "Big" items like modules or associated items may
-have some extra processing in its `Clean` implementation, but for the most part
+have some extra processing in its `clean` function, but for the most part
 these impls are straightforward conversions. The "entry point" to this module
-is the `impl Clean<Crate> for visit_ast::RustdocVisitor`, which is called by
-`run_core` above.
+is `clean::krate`, which is called by
+`run_global_ctxt` above.
 
-You see, I actually lied a little earlier: There's another AST transformation
-that happens before the events in `clean/mod.rs`. In `visit_ast.rs` is the
-type `RustdocVisitor`, which *actually* crawls a `rustc_hir::Crate` to get the first
-intermediate representation, defined in `doctree.rs`. This pass is mainly to
-get a few intermediate wrappers around the HIR types and to process visibility
-and inlining. This is where `#[doc(inline)]`, `#[doc(no_inline)]`, and
-`#[doc(hidden)]` are processed, as well as the logic for whether a `pub use`
-should get the full page or a "Reexport" line in the module page.
+The first step in `clean::krate` is to invoke `visit_ast::RustdocVisitor` to
+process the module tree into an intermediate `visit_ast::Module`. This is the
+step that actually crawls the `rustc_hir::Crate`, normalizing various aspects
+of name resolution, such as:
+
+  * showing `#[macro_export]`-ed macros at the crate root, regardless of where
+    they're defined
+  * inlining public `use` exports of private items, or showing a "Reexport"
+    line in the module page
+  * inlining items with `#[doc(hidden)]` if the base item is hidden but the
+    reexport is not
+  * handling `#[doc(inline)]` and `#[doc(no_inline)]`
+  * handling import globs and cycles, so there are no duplicates or infinite
+    directory trees
+
+After this step, `clean::krate` invokes `clean_doc_module`, which actually
+converts the HIR items to the cleaned AST. This is also the step where cross-
+crate inlining is performed, which requires converting `rustc_middle` data
+structures into the cleaned AST instead.
 
 The other major thing that happens in `clean/mod.rs` is the collection of doc
 comments and `#[doc=""]` attributes into a separate field of the Attributes
@@ -48,41 +71,28 @@ easier to collect this documentation later in the process.
 The primary output of this process is a `clean::Crate` with a tree of Items
 which describe the publicly-documentable items in the target crate.
 
-### Hot potato
+### Passes anything but a gas station
+
+(alternate title: [hot potato](https://www.youtube.com/watch?v=WNFBIt5HxdY))
 
 Before moving on to the next major step, a few important "passes" occur over
-the documentation. These do things like combine the separate "attributes" into
-a single string to make the document easier on the markdown parser,
-or drop items that are not public or deliberately hidden with `#[doc(hidden)]`.
+the cleaned AST. Several of these passes are lints and reports, but some of
+them mutate or generate new items.
+
 These are all implemented in the `passes/` directory, one file per pass.
 By default, all of these passes are run on a crate, but the ones
 regarding dropping private/hidden items can be bypassed by passing
 `--document-private-items` to rustdoc. Note that unlike the previous set of AST
 transformations, the passes are run on the _cleaned_ crate.
 
-(Strictly speaking, you can fine-tune the passes run and even add your own, but
-[we're trying to deprecate that][44136]. If you need finer-grain control over
-these passes, please let us know!)
-
-[44136]: https://github.com/rust-lang/rust/issues/44136
-
-Here is the list of passes as of <!-- date-check --> November 2022:
+Here is the list of passes as of <!-- date-check --> March 2023:
 
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
 
-- `check-bare-urls` detects links that are not linkified, e.g., in Markdown such as
-  `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
-  `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
-  date: 2022-05 --> `rustdoc::bare_urls` lint.
-
-- `check-code-block-syntax` validates syntax inside Rust code blocks
-  (<code>```rust</code>)
-
-- `check-doc-test-visibility` runs doctest visibility–related lints.
-
-- `check-invalid-html-tags` detects invalid HTML (like an unclosed `<span>`)
-  in doc comments.
+- `check-doc-test-visibility` runs doctest visibility–related lints. This pass
+  runs before `strip-private`, which is why it needs to be separate from
+  `run-lints`.
 
 - `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/nightly/rustdoc/write-documentation/linking-to-items-by-name.html).
 
@@ -92,44 +102,66 @@ Here is the list of passes as of <!-- date-check --> November 2022:
 
 - `propagate-doc-cfg` propagates `#[doc(cfg(...))]` to child items.
 
+- `run-lints` runs some of rustdoc's lints, defind in `passes/lint`. This is
+  the last pass to run.
+
+  - `bare_urls` detects links that are not linkified, e.g., in Markdown such as
+    `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
+    `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
+    date: 2022-05 --> `rustdoc::bare_urls` lint.
+  
+  - `check_code_block_syntax` validates syntax inside Rust code blocks
+    (<code>```rust</code>)
+
+  - `html_tags` detects invalid HTML (like an unclosed `<span>`)
+    in doc comments.
+
+- `strip-hidden` and `strip-private` strip all `doc(hidden)` and private items
+  from the output. `strip-private` implies `strip-priv-imports`. Basically, the
+  goal is to remove items that are not relevant for public documentation. This
+  pass is skipped when `--document-hidden-items` is passed.
+
 - `strip-priv-imports` strips all private import statements (`use`, `extern
   crate`) from a crate. This is necessary because rustdoc will handle *public*
   imports by either inlining the item's documentation to the module or creating
   a "Reexports" section with the import in it. The pass ensures that all of
-  these imports are actually relevant to documentation.
+  these imports are actually relevant to documentation. It is technically
+  only run when `--document-private-items` is passed, but `strip-private`
+  accomplishes the same thing.
 
-- `strip-hidden` and `strip-private` strip all `doc(hidden)` and private items
-  from the output. `strip-private` implies `strip-priv-imports`. Basically, the
-  goal is to remove items that are not relevant for public documentation.
+- `strip-private` strips all private items from a crate which cannot be seen
+  externally. This pass is skipped when `--document-private-items` is passed.
 
 There is also a `stripper` module in `passes/`, but it is a collection of
 utility functions for the `strip-*` passes and is not a pass itself.
 
-## From clean to crate
+## From clean to HTML
 
 This is where the "second phase" in rustdoc begins. This phase primarily lives
-in the `html/` folder, and it all starts with `run()` in `html/render.rs`. This
-code is responsible for setting up the `Context`, `SharedContext`, and `Cache`
-which are used during rendering, copying out the static files which live in
-every rendered set of documentation (things like the fonts, CSS, and JavaScript
-that live in `html/static/`), creating the search index, and printing out the
-source code rendering, before beginning the process of rendering all the
-documentation for the crate.
+in the `formats/` and `html/` folders, and it all starts with
+`formats::run_format`. This code is responsible for setting up a type that
+`impl FormatRenderer`, which for HTML is [`Context`].
 
-Several functions implemented directly on `Context` take the `clean::Crate` and
-set up some state between rendering items or recursing on a module's child
-items. From here the "page rendering" begins, via an enormous `write!()` call
-in `html/layout.rs`. The parts that actually generate HTML from the items and
-documentation occurs within a series of `std::fmt::Display` implementations and
-functions that pass around a `&mut std::fmt::Formatter`. The top-level
-implementation that writes out the page body is the `impl<'a> fmt::Display for
-Item<'a>` in `html/render.rs`, which switches out to one of several `item_*`
-functions based on the kind of `Item` being rendered.
+This structure contains methods that get called by `run_format` to drive the
+doc rendering, which includes:
+
+* `init` generates `static.files`, as well as search index and `src/`
+* `item` generates the item HTML files themselves
+* `after_krate` generates other global resources like `all.html`
+
+In `item`, the "page rendering" occurs, via a mixture of [Askama] templates
+and manual `write!()` calls, starting in `html/layout.rs`. The parts that have
+not been converted to templates occur within a series of `std::fmt::Display`
+implementations and functions that pass around a `&mut std::fmt::Formatter`.
+
+The parts that actually generate HTML from the items and documentation start
+with `print_item` defined in `html/render/print_item.rs`, which switches out
+to one of several `item_*` functions based on kind of `Item` being rendered.
 
 Depending on what kind of rendering code you're looking for, you'll probably
-find it either in `html/render.rs` for major items like "what sections should I
-print for a struct page" or `html/format.rs` for smaller component pieces like
-"how should I print a where clause as part of some other item".
+find it either in `html/render/mod.rs` for major items like "what sections
+should I print for a struct page" or `html/format/mod.rs` for smaller
+component pieces like "how should I print a where clause as part of some other item".
 
 Whenever rustdoc comes across an item that should print hand-written
 documentation alongside, it calls out to `html/markdown.rs` which interfaces
@@ -148,23 +180,45 @@ to us"][video])
 
 [video]: https://www.youtube.com/watch?v=hOLAGYmUQV0
 
-It's important to note that the AST cleaning can ask the compiler for
-information (crucially, `DocContext` contains a `TyCtxt`), but page rendering
-cannot. The `clean::Crate` created within `run_core` is passed outside the
-compiler context before being handed to `html::render::run`. This means that a
-lot of the "supplementary data" that isn't immediately available inside an
-item's definition, like which trait is the `Deref` trait used by the language,
-needs to be collected during cleaning, stored in the `DocContext`, and passed
-along to the `SharedContext` during HTML rendering.  This manifests as a bunch
-of shared state, context variables, and `RefCell`s.
+It's important to note that rustdoc can ask the compiler for type information
+directly, even during HTML generation. This [didn't used to be the case], and
+a lot of rustdoc's architecture was designed around not doing that, but a
+`TyCtxt` is now passed to `formats::renderer::run_format`, which is used to
+run generation for both HTML and the (unstable as of March 2023) JSON format.
 
-Also of note is that some items that come from "asking the compiler" don't go
-directly into the `DocContext` - for example, when loading items from a foreign
-crate, rustdoc will ask about trait implementations and generate new `Item`s
-for the impls based on that information. This goes directly into the returned
-`Crate` rather than roundabout through the `DocContext`. This way, these
-implementations can be collected alongside the others, right before rendering
-the HTML.
+[didn't used to be the case]: https://github.com/rust-lang/rust/pull/80090
+
+This change has allowed other changes to remove data from the "clean" AST
+that can be easily derived from `TyCtxt` queries, and we'll usually accept
+PRs that remove fields from "clean" (it's been soft-deprecated), but this
+is complicated from two other constraints that rustdoc runs under:
+
+* Docs can be generated for crates that don't actually pass type checking.
+  This is used for generating docs that cover mutually-exclusive platform
+  configurations, such as `libstd` having a single package of docs that
+  cover all supported operating systems. This means rustdoc has to be able
+  to generate docs from HIR.
+* Docs can inline across crates. Since crate metadata doesn't contain HIR,
+  it must be possible to generate inlined docs from the `rustc_middle` data.
+
+The "clean" AST acts as a common output format for both input formats. There
+is also some data in clean that doesn't correspond directly to HIR, such as
+synthetic `impl`s for auto traits and blanket `impl`s generated by the
+`collect-trait-impls` pass.
+
+Some additional data is stored in
+`html::render::context::{Context, SharedContext}`. These two types serve as
+ways to segregate rustdoc's data for an eventual future with multithreaded doc
+generation, as well as just keeping things organized:
+
+* [`Context`] stores data used for generating the current page, such as its
+  path, a list of HTML IDs that have been used (to avoid duplicate `id=""`),
+  and the pointer to `SharedContext`.
+* [`SharedContext`] stores data that does not vary by page, such as the `tcx`
+  pointer, and a list of all types.
+
+[`Context`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/context/struct.Context.html
+[`SharedContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/context/struct.SharedContext.html
 
 ## Other tricks up its sleeve
 
