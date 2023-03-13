@@ -289,6 +289,8 @@ fn associated_item_for_impl_trait_in_trait(
         InternalSubsts::identity_for_item(tcx, opaque_ty_def_id.to_def_id()),
     )));
 
+    trait_assoc_ty.is_type_alias_impl_trait(false);
+
     // Copy generics_of of the opaque type item but the trait is the parent.
     trait_assoc_ty.generics_of({
         let opaque_ty_generics = tcx.generics_of(opaque_ty_def_id);

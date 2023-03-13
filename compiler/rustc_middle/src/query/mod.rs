@@ -191,6 +191,7 @@ rustc_queries! {
     {
         desc { "determine whether the opaque is a type-alias impl trait" }
         separate_provide_extern
+        feedable
     }
 
     query unsizing_params_for_adt(key: DefId) -> &'tcx rustc_index::bit_set::BitSet<u32>
