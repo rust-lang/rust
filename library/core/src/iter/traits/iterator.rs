@@ -309,10 +309,11 @@ pub trait Iterator {
     /// This method will eagerly skip `n` elements by calling [`next`] up to `n`
     /// times until [`None`] is encountered.
     ///
-    /// `advance_by(n)` will return `0` if the iterator successfully advances by
-    /// `n` elements, or an usize `k` if [`None`] is encountered, where `k` is remaining number
-    /// of steps that could not be advanced because the iterator ran out.
-    /// Note that `k` is always less than `n`.
+    /// `advance_by(n)` will return `Ok(())` if the iterator successfully advances by
+    /// `n` elements, or a `Err(NonZeroUsize)` with value `k` if [`None`] is encountered,
+    /// where `k` is remaining number of steps that could not be advanced because the iterator ran out.
+    /// If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
+    /// Otherwise, `k` is always less than `n`.
     ///
     /// Calling `advance_by(0)` can do meaningful work, for example [`Flatten`]
     /// can advance its outer iterator until it finds an inner iterator that is not empty, which
