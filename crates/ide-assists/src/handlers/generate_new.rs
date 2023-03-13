@@ -1,5 +1,5 @@
 use ide_db::{
-    imports::import_assets::item_for_path_search, use_trivial_contructor::use_trivial_constructor,
+    imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
 use itertools::Itertools;
 use stdx::format_to;

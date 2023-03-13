@@ -680,6 +680,81 @@ impl TypeOrConstParam {
     }
 }
 
+impl AstNode for TypeOrConstParam {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        matches!(kind, SyntaxKind::TYPE_PARAM | SyntaxKind::CONST_PARAM)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let res = match syntax.kind() {
+            SyntaxKind::TYPE_PARAM => TypeOrConstParam::Type(ast::TypeParam { syntax }),
+            SyntaxKind::CONST_PARAM => TypeOrConstParam::Const(ast::ConstParam { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            TypeOrConstParam::Type(it) => it.syntax(),
+            TypeOrConstParam::Const(it) => it.syntax(),
+        }
+    }
+}
+
+impl HasAttrs for TypeOrConstParam {}
+
+#[derive(Debug, Clone)]
+pub enum TraitOrAlias {
+    Trait(ast::Trait),
+    TraitAlias(ast::TraitAlias),
+}
+
+impl TraitOrAlias {
+    pub fn name(&self) -> Option<ast::Name> {
+        match self {
+            TraitOrAlias::Trait(x) => x.name(),
+            TraitOrAlias::TraitAlias(x) => x.name(),
+        }
+    }
+}
+
+impl AstNode for TraitOrAlias {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        matches!(kind, SyntaxKind::TRAIT | SyntaxKind::TRAIT_ALIAS)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let res = match syntax.kind() {
+            SyntaxKind::TRAIT => TraitOrAlias::Trait(ast::Trait { syntax }),
+            SyntaxKind::TRAIT_ALIAS => TraitOrAlias::TraitAlias(ast::TraitAlias { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            TraitOrAlias::Trait(it) => it.syntax(),
+            TraitOrAlias::TraitAlias(it) => it.syntax(),
+        }
+    }
+}
+
+impl HasAttrs for TraitOrAlias {}
+
 pub enum VisibilityKind {
     In(ast::Path),
     PubCrate,

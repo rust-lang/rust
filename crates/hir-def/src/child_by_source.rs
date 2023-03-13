@@ -1,7 +1,7 @@
 //! When *constructing* `hir`, we start at some parent syntax node and recursively
 //! lower the children.
 //!
-//! This modules allows one to go in the opposite direction: start with a syntax
+//! This module allows one to go in the opposite direction: start with a syntax
 //! node for a *child*, and get its hir.
 
 use either::Either;
@@ -145,6 +145,7 @@ impl ChildBySource for ItemScope {
                 ModuleDefId::StaticId(id) => insert!(map[keys::STATIC].insert(id)),
                 ModuleDefId::TypeAliasId(id) => insert!(map[keys::TYPE_ALIAS].insert(id)),
                 ModuleDefId::TraitId(id) => insert!(map[keys::TRAIT].insert(id)),
+                ModuleDefId::TraitAliasId(id) => insert!(map[keys::TRAIT_ALIAS].insert(id)),
                 ModuleDefId::AdtId(adt) => match adt {
                     AdtId::StructId(id) => insert!(map[keys::STRUCT].insert(id)),
                     AdtId::UnionId(id) => insert!(map[keys::UNION].insert(id)),

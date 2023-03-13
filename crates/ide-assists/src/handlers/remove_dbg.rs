@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AstToken},
-    match_ast, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
+    ast::{self, make, AstNode, AstToken},
+    match_ast, ted, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -12,24 +12,28 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     $0dbg!(92);
+//     let x = $0dbg!(42 * dbg!(4 + 2));$0
 // }
 // ```
 // ->
 // ```
 // fn main() {
-//     92;
+//     let x = 42 * (4 + 2);
 // }
 // ```
 pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let macro_calls = if ctx.has_empty_selection() {
-        vec![ctx.find_node_at_offset::<ast::MacroCall>()?]
+        vec![ctx.find_node_at_offset::<ast::MacroExpr>()?]
     } else {
         ctx.covering_element()
             .as_node()?
             .descendants()
             .filter(|node| ctx.selection_trimmed().contains_range(node.text_range()))
+            // When the selection exactly covers the macro call to be removed, `covering_element()`
+            // returns `ast::MacroCall` instead of its parent `ast::MacroExpr` that we want. So
+            // first try finding `ast::MacroCall`s and then retrieve their parent.
             .filter_map(ast::MacroCall::cast)
+            .filter_map(|it| it.syntax().parent().and_then(ast::MacroExpr::cast))
             .collect()
     };
 
@@ -44,14 +48,25 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         "Remove dbg!()",
         ctx.selection_trimmed(),
         |builder| {
-            for (range, text) in replacements {
-                builder.replace(range, text);
+            for (range, expr) in replacements {
+                if let Some(expr) = expr {
+                    builder.replace(range, expr.to_string());
+                } else {
+                    builder.delete(range);
+                }
             }
         },
     )
 }
 
-fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, String)> {
+/// Returns `None` when either
+/// - macro call is not `dbg!()`
+/// - any node inside `dbg!()` could not be parsed as an expression
+/// - (`macro_expr` has no parent - is that possible?)
+///
+/// Returns `Some(_, None)` when the macro call should just be removed.
+fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Option<ast::Expr>)> {
+    let macro_call = macro_expr.macro_call()?;
     let tt = macro_call.token_tree()?;
     let r_delim = NodeOrToken::Token(tt.right_delimiter_token()?);
     if macro_call.path()?.segment()?.name_ref()?.text() != "dbg"
@@ -68,20 +83,19 @@ fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, Str
         .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
         .collect::<Option<Vec<ast::Expr>>>()?;
 
-    let macro_expr = ast::MacroExpr::cast(macro_call.syntax().parent()?)?;
     let parent = macro_expr.syntax().parent()?;
     Some(match &*input_expressions {
         // dbg!()
         [] => {
             match_ast! {
                 match parent {
-                    ast::StmtList(__) => {
+                    ast::StmtList(_) => {
                         let range = macro_expr.syntax().text_range();
                         let range = match whitespace_start(macro_expr.syntax().prev_sibling_or_token()) {
                             Some(start) => range.cover_offset(start),
                             None => range,
                         };
-                        (range, String::new())
+                        (range, None)
                     },
                     ast::ExprStmt(it) => {
                         let range = it.syntax().text_range();
@@ -89,19 +103,23 @@ fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, Str
                             Some(start) => range.cover_offset(start),
                             None => range,
                         };
-                        (range, String::new())
+                        (range, None)
                     },
-                    _ => (macro_call.syntax().text_range(), "()".to_owned())
+                    _ => (macro_call.syntax().text_range(), Some(make::expr_unit())),
                 }
             }
         }
         // dbg!(expr0)
         [expr] => {
+            // dbg!(expr, &parent);
             let wrap = match ast::Expr::cast(parent) {
                 Some(parent) => match (expr, parent) {
                     (ast::Expr::CastExpr(_), ast::Expr::CastExpr(_)) => false,
                     (
-                        ast::Expr::BoxExpr(_) | ast::Expr::PrefixExpr(_) | ast::Expr::RefExpr(_),
+                        ast::Expr::BoxExpr(_)
+                        | ast::Expr::PrefixExpr(_)
+                        | ast::Expr::RefExpr(_)
+                        | ast::Expr::MacroExpr(_),
                         ast::Expr::AwaitExpr(_)
                         | ast::Expr::CallExpr(_)
                         | ast::Expr::CastExpr(_)
@@ -112,7 +130,10 @@ fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, Str
                         | ast::Expr::TryExpr(_),
                     ) => true,
                     (
-                        ast::Expr::BinExpr(_) | ast::Expr::CastExpr(_) | ast::Expr::RangeExpr(_),
+                        ast::Expr::BinExpr(_)
+                        | ast::Expr::CastExpr(_)
+                        | ast::Expr::RangeExpr(_)
+                        | ast::Expr::MacroExpr(_),
                         ast::Expr::AwaitExpr(_)
                         | ast::Expr::BinExpr(_)
                         | ast::Expr::CallExpr(_)
@@ -129,14 +150,59 @@ fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, Str
                 },
                 None => false,
             };
-            (
-                macro_call.syntax().text_range(),
-                if wrap { format!("({expr})") } else { expr.to_string() },
-            )
+            let expr = replace_nested_dbgs(expr.clone());
+            let expr = if wrap { make::expr_paren(expr) } else { expr.clone_subtree() };
+            (macro_call.syntax().text_range(), Some(expr))
         }
         // dbg!(expr0, expr1, ...)
-        exprs => (macro_call.syntax().text_range(), format!("({})", exprs.iter().format(", "))),
+        exprs => {
+            let exprs = exprs.iter().cloned().map(replace_nested_dbgs);
+            let expr = make::expr_tuple(exprs);
+            (macro_call.syntax().text_range(), Some(expr))
+        }
     })
+}
+
+fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
+    if let ast::Expr::MacroExpr(mac) = &expanded {
+        // Special-case when `expanded` itself is `dbg!()` since we cannot replace the whole tree
+        // with `ted`. It should be fairly rare as it means the user wrote `dbg!(dbg!(..))` but you
+        // never know how code ends up being!
+        let replaced = if let Some((_, expr_opt)) = compute_dbg_replacement(mac.clone()) {
+            match expr_opt {
+                Some(expr) => expr,
+                None => {
+                    stdx::never!("dbg! inside dbg! should not be just removed");
+                    expanded
+                }
+            }
+        } else {
+            expanded
+        };
+
+        return replaced;
+    }
+
+    let expanded = expanded.clone_for_update();
+
+    // We need to collect to avoid mutation during traversal.
+    let macro_exprs: Vec<_> =
+        expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();
+
+    for mac in macro_exprs {
+        let expr_opt = match compute_dbg_replacement(mac.clone()) {
+            Some((_, expr)) => expr,
+            None => continue,
+        };
+
+        if let Some(expr) = expr_opt {
+            ted::replace(mac.syntax(), expr.syntax().clone_for_update());
+        } else {
+            ted::remove(mac.syntax());
+        }
+    }
+
+    expanded
 }
 
 fn whitespace_start(it: Option<SyntaxElement>) -> Option<TextSize> {
@@ -286,5 +352,33 @@ fn f() {
     fn test_range_partial() {
         check_assist_not_applicable(remove_dbg, r#"$0dbg$0!(0)"#);
         check_assist_not_applicable(remove_dbg, r#"$0dbg!(0$0)"#);
+    }
+
+    #[test]
+    fn test_nested_dbg() {
+        check(
+            r#"$0let x = dbg!(dbg!(dbg!(dbg!(0 + 1)) * 2) + dbg!(3));$0"#,
+            r#"let x = ((0 + 1) * 2) + 3;"#,
+        );
+        check(r#"$0dbg!(10, dbg!(), dbg!(20, 30))$0"#, r#"(10, (), (20, 30))"#);
+    }
+
+    #[test]
+    fn test_multiple_nested_dbg() {
+        check(
+            r#"
+fn f() {
+    $0dbg!();
+    let x = dbg!(dbg!(dbg!(0 + 1)) + 2) + dbg!(3);
+    dbg!(10, dbg!(), dbg!(20, 30));$0
+}
+"#,
+            r#"
+fn f() {
+    let x = ((0 + 1) + 2) + 3;
+    (10, (), (20, 30));
+}
+"#,
+        );
     }
 }

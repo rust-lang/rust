@@ -431,6 +431,7 @@ impl PerNs {
             ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v),
             ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def, v),
             ModuleDefId::TraitId(_) => PerNs::types(def, v),
+            ModuleDefId::TraitAliasId(_) => PerNs::types(def, v),
             ModuleDefId::TypeAliasId(_) => PerNs::types(def, v),
             ModuleDefId::BuiltinType(_) => PerNs::types(def, v),
             ModuleDefId::MacroId(mac) => PerNs::macros(mac, v),

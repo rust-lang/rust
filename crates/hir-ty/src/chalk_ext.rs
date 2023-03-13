@@ -13,7 +13,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
     CallableDefId, CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
 };
 
 pub trait TyExt {
@@ -22,6 +22,7 @@ pub trait TyExt {
     fn is_floating_point(&self) -> bool;
     fn is_never(&self) -> bool;
     fn is_unknown(&self) -> bool;
+    fn contains_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
@@ -74,6 +75,10 @@ impl TyExt for Ty {
 
     fn is_unknown(&self) -> bool {
         matches!(self.kind(Interner), TyKind::Error)
+    }
+
+    fn contains_unknown(&self) -> bool {
+        self.data(Interner).flags.contains(TypeFlags::HAS_ERROR)
     }
 
     fn is_ty_var(&self) -> bool {

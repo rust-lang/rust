@@ -374,22 +374,23 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, "trait {}", name);
                 self.print_generic_params(generic_params);
-                match items {
-                    Some(items) => {
-                        self.print_where_clause_and_opening_brace(generic_params);
-                        self.indented(|this| {
-                            for item in &**items {
-                                this.print_mod_item((*item).into());
-                            }
-                        });
+                self.print_where_clause_and_opening_brace(generic_params);
+                self.indented(|this| {
+                    for item in &**items {
+                        this.print_mod_item((*item).into());
                     }
-                    None => {
-                        w!(self, " = ");
-                        // FIXME: Print the aliased traits
-                        self.print_where_clause_and_opening_brace(generic_params);
-                    }
-                }
+                });
                 wln!(self, "}}");
+            }
+            ModItem::TraitAlias(it) => {
+                let TraitAlias { name, visibility, generic_params, ast_id: _ } = &self.tree[it];
+                self.print_visibility(*visibility);
+                w!(self, "trait {}", name);
+                self.print_generic_params(generic_params);
+                w!(self, " = ");
+                self.print_where_clause(generic_params);
+                w!(self, ";");
+                wln!(self);
             }
             ModItem::Impl(it) => {
                 let Impl { target_trait, self_ty, is_negative, items, generic_params, ast_id: _ } =

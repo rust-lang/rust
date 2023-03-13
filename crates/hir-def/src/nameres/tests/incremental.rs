@@ -223,6 +223,7 @@ pub type Ty = ();
                     ModuleDefId::ConstId(it) => drop(db.const_data(it)),
                     ModuleDefId::StaticId(it) => drop(db.static_data(it)),
                     ModuleDefId::TraitId(it) => drop(db.trait_data(it)),
+                    ModuleDefId::TraitAliasId(it) => drop(db.trait_alias_data(it)),
                     ModuleDefId::TypeAliasId(it) => drop(db.type_alias_data(it)),
                     ModuleDefId::EnumVariantId(_)
                     | ModuleDefId::ModuleId(_)

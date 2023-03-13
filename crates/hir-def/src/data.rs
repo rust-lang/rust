@@ -22,7 +22,7 @@ use crate::{
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
     Intern, ItemContainerId, ItemLoc, Lookup, Macro2Id, MacroRulesId, ModuleId, ProcMacroId,
-    StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    StaticId, TraitAliasId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -245,19 +245,11 @@ impl TraitData {
             attrs.by_key("rustc_skip_array_during_method_dispatch").exists();
         let rustc_has_incoherent_inherent_impls =
             attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
-        let (items, attribute_calls, diagnostics) = match &tr_def.items {
-            Some(items) => {
-                let mut collector = AssocItemCollector::new(
-                    db,
-                    module_id,
-                    tree_id.file_id(),
-                    ItemContainerId::TraitId(tr),
-                );
-                collector.collect(&item_tree, tree_id.tree_id(), items);
-                collector.finish()
-            }
-            None => Default::default(),
-        };
+        let mut collector =
+            AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
+        collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
+        let (items, attribute_calls, diagnostics) = collector.finish();
+
         (
             Arc::new(TraitData {
                 name,
@@ -296,6 +288,23 @@ impl TraitData {
 
     pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.attribute_calls.iter().flat_map(|it| it.iter()).copied()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraitAliasData {
+    pub name: Name,
+    pub visibility: RawVisibility,
+}
+
+impl TraitAliasData {
+    pub(crate) fn trait_alias_query(db: &dyn DefDatabase, id: TraitAliasId) -> Arc<TraitAliasData> {
+        let loc = id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let alias = &item_tree[loc.id.value];
+        let visibility = item_tree[alias.visibility].clone();
+
+        Arc::new(TraitAliasData { name: alias.name.clone(), visibility })
     }
 }
 

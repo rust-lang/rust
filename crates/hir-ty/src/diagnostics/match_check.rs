@@ -146,8 +146,9 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Leaf { subpatterns }
             }
 
-            hir_def::expr::Pat::Bind { ref name, subpat, .. } => {
+            hir_def::expr::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.pat_binding_modes[&pat];
+                let name = &self.body.bindings[id].name;
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {

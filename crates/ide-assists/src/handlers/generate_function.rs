@@ -5,6 +5,7 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
+    helpers::is_editable_crate,
     path_transform::PathTransform,
     FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
@@ -65,6 +66,13 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let fn_name = &*name_ref.text();
     let TargetInfo { target_module, adt_name, target, file, insert_offset } =
         fn_target_info(ctx, path, &call, fn_name)?;
+
+    if let Some(m) = target_module {
+        if !is_editable_crate(m.krate(), ctx.db()) {
+            return None;
+        }
+    }
+
     let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
@@ -141,12 +149,11 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let receiver_ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references();
     let adt = receiver_ty.as_adt()?;
 
-    let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module = adt.module(ctx.sema.db);
-
-    if current_module.krate() != target_module.krate() {
+    if !is_editable_crate(target_module.krate(), ctx.db()) {
         return None;
     }
+
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
     let (target, insert_offset) = get_method_target(ctx, &impl_, &adt)?;
 
@@ -253,7 +260,7 @@ struct FunctionBuilder {
     params: ast::ParamList,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
-    needs_pub: bool,
+    visibility: Visibility,
     is_async: bool,
 }
 
@@ -264,12 +271,14 @@ impl FunctionBuilder {
         ctx: &AssistContext<'_>,
         call: &ast::CallExpr,
         fn_name: &str,
-        target_module: Option<hir::Module>,
+        target_module: Option<Module>,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
-        let needs_pub = target_module.is_some();
         let target_module =
             target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
+
+        let current_module = ctx.sema.scope(call.syntax())?.module();
+        let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
         let fn_name = make::name(fn_name);
         let mut necessary_generic_params = FxHashSet::default();
         let params = fn_args(
@@ -300,7 +309,7 @@ impl FunctionBuilder {
             params,
             ret_type,
             should_focus_return_type,
-            needs_pub,
+            visibility,
             is_async,
         })
     }
@@ -313,8 +322,9 @@ impl FunctionBuilder {
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
-        let needs_pub =
-            !module_is_descendant(&ctx.sema.scope(call.syntax())?.module(), &target_module, ctx);
+        let current_module = ctx.sema.scope(call.syntax())?.module();
+        let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
+
         let fn_name = make::name(&name.text());
         let mut necessary_generic_params = FxHashSet::default();
         necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
@@ -346,7 +356,7 @@ impl FunctionBuilder {
             params,
             ret_type,
             should_focus_return_type,
-            needs_pub,
+            visibility,
             is_async,
         })
     }
@@ -354,7 +364,11 @@ impl FunctionBuilder {
     fn render(self, is_method: bool) -> FunctionTemplate {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
-        let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
+        let visibility = match self.visibility {
+            Visibility::None => None,
+            Visibility::Crate => Some(make::visibility_pub_crate()),
+            Visibility::Pub => Some(make::visibility_pub()),
+        };
         let mut fn_def = make::fn_(
             visibility,
             self.fn_name,
@@ -527,7 +541,7 @@ impl GeneratedFunctionTarget {
 /// Computes parameter list for the generated function.
 fn fn_args(
     ctx: &AssistContext<'_>,
-    target_module: hir::Module,
+    target_module: Module,
     call: ast::CallableExpr,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> Option<ast::ParamList> {
@@ -957,13 +971,13 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
 
 fn fn_arg_type(
     ctx: &AssistContext<'_>,
-    target_module: hir::Module,
+    target_module: Module,
     fn_arg: &ast::Expr,
     generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> String {
     fn maybe_displayed_type(
         ctx: &AssistContext<'_>,
-        target_module: hir::Module,
+        target_module: Module,
         fn_arg: &ast::Expr,
         generic_params: &mut FxHashSet<hir::GenericParam>,
     ) -> Option<String> {
@@ -1048,16 +1062,29 @@ fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarge
     }
 }
 
-fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistContext<'_>) -> bool {
-    if module == ans {
-        return true;
+#[derive(Clone, Copy)]
+enum Visibility {
+    None,
+    Crate,
+    Pub,
+}
+
+fn calculate_necessary_visibility(
+    current_module: Module,
+    target_module: Module,
+    ctx: &AssistContext<'_>,
+) -> Visibility {
+    let db = ctx.db();
+    let current_module = current_module.nearest_non_block_module(db);
+    let target_module = target_module.nearest_non_block_module(db);
+
+    if target_module.krate() != current_module.krate() {
+        Visibility::Pub
+    } else if current_module.path_to_root(db).contains(&target_module) {
+        Visibility::None
+    } else {
+        Visibility::Crate
     }
-    for c in ans.children(ctx.sema.db) {
-        if module_is_descendant(module, &c, ctx) {
-            return true;
-        }
-    }
-    false
 }
 
 // This is never intended to be used as a generic graph strucuture. If there's ever another need of
@@ -2655,5 +2682,80 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn applicable_in_different_local_crate() {
+        check_assist(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:local
+fn dummy() {}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::foo$0();
+}
+",
+            r"
+fn dummy() {}
+
+pub fn foo() ${0:-> _} {
+    todo!()
+}
+",
+        );
+    }
+
+    #[test]
+    fn applicable_in_different_local_crate_method() {
+        check_assist(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:local
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::S.foo$0();
+}
+",
+            r"
+pub struct S;
+impl S {
+    pub fn foo(&self) ${0:-> _} {
+        todo!()
+    }
+}
+",
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_different_library_crate() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:library
+fn dummy() {}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::foo$0();
+}
+",
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_different_library_crate_method() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::S.foo$0();
+}
+",
+        );
     }
 }

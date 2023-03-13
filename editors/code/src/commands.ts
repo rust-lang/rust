@@ -93,6 +93,14 @@ export function triggerParameterHints(_: CtxInit): Cmd {
     };
 }
 
+export function openLogs(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.client.outputChannel) {
+            ctx.client.outputChannel.show();
+        }
+    };
+}
+
 export function matchingBrace(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
@@ -405,12 +413,11 @@ export function syntaxTree(ctx: CtxInit): Cmd {
     };
 }
 
-// Opens the virtual file that will show the HIR of the function containing the cursor position
-//
-// The contents of the file come from the `TextDocumentContentProvider`
-export function viewHir(ctx: CtxInit): Cmd {
+function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
+    const viewXir = xir === "hir" ? "viewHir" : "viewMir";
+    const requestType = xir === "hir" ? ra.viewHir : ra.viewMir;
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.rs");
+        readonly uri = vscode.Uri.parse(`rust-analyzer-${xir}://${viewXir}/${xir}.rs`);
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -452,7 +459,7 @@ export function viewHir(ctx: CtxInit): Cmd {
                 ),
                 position: client.code2ProtocolConverter.asPosition(rustEditor.selection.active),
             };
-            return client.sendRequest(ra.viewHir, params, ct);
+            return client.sendRequest(requestType, params, ct);
         }
 
         get onDidChange(): vscode.Event<vscode.Uri> {
@@ -461,7 +468,7 @@ export function viewHir(ctx: CtxInit): Cmd {
     })();
 
     ctx.pushExtCleanup(
-        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-hir", tdcp)
+        vscode.workspace.registerTextDocumentContentProvider(`rust-analyzer-${xir}`, tdcp)
     );
 
     return async () => {
@@ -472,6 +479,20 @@ export function viewHir(ctx: CtxInit): Cmd {
             preserveFocus: true,
         }));
     };
+}
+
+// Opens the virtual file that will show the HIR of the function containing the cursor position
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function viewHir(ctx: CtxInit): Cmd {
+    return viewHirOrMir(ctx, "hir");
+}
+
+// Opens the virtual file that will show the MIR of the function containing the cursor position
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function viewMir(ctx: CtxInit): Cmd {
+    return viewHirOrMir(ctx, "mir");
 }
 
 export function viewFileText(ctx: CtxInit): Cmd {

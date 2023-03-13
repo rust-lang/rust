@@ -86,7 +86,7 @@ use crate::{
     builtin_type::BuiltinType,
     item_tree::{
         Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
-        Static, Struct, Trait, TypeAlias, Union,
+        Static, Struct, Trait, TraitAlias, TypeAlias, Union,
     },
 };
 
@@ -128,7 +128,7 @@ impl ModuleId {
     }
 }
 
-/// An ID of a module, **local** to a specific crate
+/// An ID of a module, **local** to a `DefMap`.
 pub type LocalModuleId = Idx<nameres::ModuleData>;
 
 #[derive(Debug)]
@@ -260,6 +260,11 @@ impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 pub struct TraitId(salsa::InternId);
 pub type TraitLoc = ItemLoc<Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TraitAliasId(salsa::InternId);
+pub type TraitAliasLoc = ItemLoc<TraitAlias>;
+impl_intern!(TraitAliasId, TraitAliasLoc, intern_trait_alias, lookup_intern_trait_alias);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
@@ -453,6 +458,7 @@ pub enum ModuleDefId {
     ConstId(ConstId),
     StaticId(StaticId),
     TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
     TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
     MacroId(MacroId),
@@ -466,6 +472,7 @@ impl_from!(
     ConstId,
     StaticId,
     TraitId,
+    TraitAliasId,
     TypeAliasId,
     BuiltinType
     for ModuleDefId
@@ -516,6 +523,7 @@ pub enum GenericDefId {
     FunctionId(FunctionId),
     AdtId(AdtId),
     TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
     TypeAliasId(TypeAliasId),
     ImplId(ImplId),
     // enum variants cannot have generics themselves, but their parent enums
@@ -528,6 +536,7 @@ impl_from!(
     FunctionId,
     AdtId(StructId, EnumId, UnionId),
     TraitId,
+    TraitAliasId,
     TypeAliasId,
     ImplId,
     EnumVariantId,
@@ -555,6 +564,7 @@ pub enum AttrDefId {
     StaticId(StaticId),
     ConstId(ConstId),
     TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
     TypeAliasId(TypeAliasId),
     MacroId(MacroId),
     ImplId(ImplId),
@@ -714,6 +724,7 @@ impl HasModule for GenericDefId {
             GenericDefId::FunctionId(it) => it.lookup(db).module(db),
             GenericDefId::AdtId(it) => it.module(db),
             GenericDefId::TraitId(it) => it.lookup(db).container,
+            GenericDefId::TraitAliasId(it) => it.lookup(db).container,
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
             GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
@@ -747,6 +758,7 @@ impl ModuleDefId {
             ModuleDefId::ConstId(id) => id.lookup(db).container.module(db),
             ModuleDefId::StaticId(id) => id.lookup(db).module(db),
             ModuleDefId::TraitId(id) => id.lookup(db).container,
+            ModuleDefId::TraitAliasId(id) => id.lookup(db).container,
             ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db),
             ModuleDefId::MacroId(id) => id.module(db),
             ModuleDefId::BuiltinType(_) => return None,
@@ -765,6 +777,7 @@ impl AttrDefId {
             AttrDefId::StaticId(it) => it.lookup(db).module(db).krate,
             AttrDefId::ConstId(it) => it.lookup(db).module(db).krate,
             AttrDefId::TraitId(it) => it.lookup(db).container.krate,
+            AttrDefId::TraitAliasId(it) => it.lookup(db).container.krate,
             AttrDefId::TypeAliasId(it) => it.lookup(db).module(db).krate,
             AttrDefId::ImplId(it) => it.lookup(db).container.krate,
             AttrDefId::ExternBlockId(it) => it.lookup(db).container.krate,

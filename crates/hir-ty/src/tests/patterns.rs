@@ -476,7 +476,7 @@ fn infer_adt_pattern() {
             183..184 'x': usize
             190..191 'x': usize
             201..205 'E::B': E
-            209..212 'foo': bool
+            209..212 'foo': {unknown}
             216..217 '1': usize
             227..231 'E::B': E
             235..237 '10': usize
@@ -953,9 +953,9 @@ fn main() {
             42..51 'true | ()': bool
             49..51 '()': ()
             57..59 '{}': ()
-            68..80 '(() | true,)': ((),)
+            68..80 '(() | true,)': (bool,)
             69..71 '()': ()
-            69..78 '() | true': ()
+            69..78 '() | true': bool
             74..78 'true': bool
             74..78 'true': bool
             84..86 '{}': ()
@@ -964,19 +964,15 @@ fn main() {
             96..102 '_ | ()': bool
             100..102 '()': ()
             108..110 '{}': ()
-            119..128 '(() | _,)': ((),)
+            119..128 '(() | _,)': (bool,)
             120..122 '()': ()
-            120..126 '() | _': ()
+            120..126 '() | _': bool
             125..126 '_': bool
             132..134 '{}': ()
             49..51: expected bool, got ()
-            68..80: expected (bool,), got ((),)
             69..71: expected bool, got ()
-            69..78: expected bool, got ()
             100..102: expected bool, got ()
-            119..128: expected (bool,), got ((),)
             120..122: expected bool, got ()
-            120..126: expected bool, got ()
         "#]],
     );
 }
@@ -1089,6 +1085,22 @@ fn var_args() {
 pub struct VaListImpl<'f>;
 fn my_fn(foo: ...) {}
        //^^^ VaListImpl
+"#,
+    );
+}
+
+#[test]
+fn ref_pat_mutability() {
+    check(
+        r#"
+fn foo() {
+    let &() = &();
+    let &mut () = &mut ();
+    let &mut () = &();
+      //^^^^^^^ expected &(), got &mut ()
+    let &() = &mut ();
+      //^^^ expected &mut (), got &()
+}
 "#,
     );
 }

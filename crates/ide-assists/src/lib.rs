@@ -188,7 +188,7 @@ mod handlers {
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
-    mod replace_or_with_or_else;
+    mod replace_method_eager_lazy;
     mod replace_arith_op;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
@@ -297,8 +297,8 @@ mod handlers {
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
             replace_let_with_if_let::replace_let_with_if_let,
-            replace_or_with_or_else::replace_or_else_with_or,
-            replace_or_with_or_else::replace_or_with_or_else,
+            replace_method_eager_lazy::replace_with_eager_method,
+            replace_method_eager_lazy::replace_with_lazy_method,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_arith_op::replace_arith_with_wrapping,
