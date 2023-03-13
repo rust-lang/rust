@@ -16,7 +16,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 
     let r = unsafe {
         abi::futex_wait(
-            futex.as_mut_ptr(),
+            futex.as_ptr(),
             expected,
             timespec.as_ref().map_or(null(), |t| t as *const abi::timespec),
             abi::FUTEX_RELATIVE_TIMEOUT,
@@ -28,12 +28,12 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 
 #[inline]
 pub fn futex_wake(futex: &AtomicU32) -> bool {
-    unsafe { abi::futex_wake(futex.as_mut_ptr(), 1) > 0 }
+    unsafe { abi::futex_wake(futex.as_ptr(), 1) > 0 }
 }
 
 #[inline]
 pub fn futex_wake_all(futex: &AtomicU32) {
     unsafe {
-        abi::futex_wake(futex.as_mut_ptr(), i32::MAX);
+        abi::futex_wake(futex.as_ptr(), i32::MAX);
     }
 }
