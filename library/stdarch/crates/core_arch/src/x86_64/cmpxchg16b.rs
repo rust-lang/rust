@@ -16,9 +16,12 @@ use stdarch_test::assert_instr;
 ///
 /// # Memory Orderings
 ///
-/// This atomic operations has the same semantics of memory orderings as
+/// This atomic operation has the same semantics of memory orderings as
 /// `AtomicUsize::compare_exchange` does, only operating on 16 bytes of memory
 /// instead of just a pointer.
+///
+/// The failure ordering must be [`Ordering::SeqCst`], [`Ordering::Acquire`] or
+/// [`Ordering::Relaxed`].
 ///
 /// For more information on memory orderings here see the `compare_exchange`
 /// documentation for other `Atomic*` types in the standard library.
@@ -33,16 +36,11 @@ use stdarch_test::assert_instr;
 /// runtime to work correctly. If the CPU running the binary does not actually
 /// support `cmpxchg16b` and the program enters an execution path that
 /// eventually would reach this function the behavior is undefined.
-///
-/// The failure ordering must be [`Ordering::SeqCst`], [`Ordering::Acquire`] or
-/// [`Ordering::Relaxed`], or this function call is undefined. See the `Atomic*`
-/// documentation's `compare_exchange` function for more information. When
-/// `compare_exchange` panics, this is undefined behavior.
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[cfg_attr(test, assert_instr(cmpxchg16b, success = Ordering::SeqCst, failure = Ordering::SeqCst))]
 #[target_feature(enable = "cmpxchg16b")]
-#[stable(feature = "cmpxchg16b_instrinsic", since = "1.67.0")]
+#[stable(feature = "cmpxchg16b_intrinsic", since = "1.67.0")]
 pub unsafe fn cmpxchg16b(
     dst: *mut u128,
     old: u128,
