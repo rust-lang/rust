@@ -59,6 +59,14 @@ fn issue10272() {
         // ok, p is mutable pointer
     } else {
     }
+
+    let x = std::cell::Cell::new(true);
+    if x.get() {
+    } else if !x.take() {
+    } else if x.get() {
+        // ok, x is interior mutable type
+    } else {
+    }
 }
 
 fn main() {}
