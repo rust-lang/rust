@@ -356,7 +356,15 @@ impl ast::BlockExpr {
             Some(it) => it,
             None => return true,
         };
-        !matches!(parent.kind(), FN | IF_EXPR | WHILE_EXPR | LOOP_EXPR)
+        match parent.kind() {
+            FOR_EXPR | IF_EXPR => parent
+                .children()
+                .filter(|it| ast::Expr::can_cast(it.kind()))
+                .next()
+                .map_or(true, |it| it == *self.syntax()),
+            LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
+            _ => true,
+        }
     }
 }
 
