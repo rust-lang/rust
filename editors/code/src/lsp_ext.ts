@@ -43,9 +43,6 @@ export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, Te
     "rust-analyzer/relatedTests"
 );
 export const reloadWorkspace = new lc.RequestType0<null, void>("rust-analyzer/reloadWorkspace");
-export const addProject = new lc.RequestType<AddProjectParams, string, void>(
-    "rust-analyzer/addProject"
-);
 
 export const runFlycheck = new lc.NotificationType<{
     textDocument: lc.TextDocumentIdentifier | null;
@@ -71,8 +68,6 @@ export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>
 );
 
 export type AnalyzerStatusParams = { textDocument?: lc.TextDocumentIdentifier };
-
-export type AddProjectParams = { project: JsonProject[] };
 
 export type ExpandMacroParams = {
     textDocument: lc.TextDocumentIdentifier;

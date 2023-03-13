@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
-import { assert, log } from "./util";
+import { assert } from "./util";
 import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
 import { Config, prepareVSCodeConfig } from "./config";

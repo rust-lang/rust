@@ -4,7 +4,6 @@
 use std::{fmt, str::FromStr};
 
 use cfg::CfgOptions;
-use serde::Serialize;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum CfgFlag {
@@ -36,18 +35,6 @@ impl<'de> serde::Deserialize<'de> for CfgFlag {
         D: serde::Deserializer<'de>,
     {
         String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
-    }
-}
-
-impl Serialize for CfgFlag {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            CfgFlag::Atom(s) => serializer.serialize_str(s),
-            CfgFlag::KeyValue { .. } => serializer.serialize_str(&format!("{}", &self)),
-        }
     }
 }
 
