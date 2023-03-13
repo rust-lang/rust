@@ -1428,8 +1428,60 @@ impl<'test> TestCx<'test> {
             if !not_found.is_empty() {
                 println!("not found errors (from test file): {:#?}\n", not_found);
             }
+            if self.config.bless {
+                println!(
+                    "blessing test file (you may need to re-run tests to update stderr files)"
+                );
+                self.bless_ui_src(&self.testpaths.file, &unexpected);
+            }
             panic!();
         }
+    }
+
+    /// Rewrites the given test file, removing existing error annotations and adding
+    /// annotations for all errors that were found.
+    /// Annotations which would cause the line to be too far right add a new line with a
+    /// `//^` annotation.
+    fn bless_ui_src(&self, testfile: &Path, found_errors: &[&Error]) {
+        use std::fmt::Write;
+        let rdr = BufReader::new(File::open(testfile).unwrap());
+        let mut out = String::new();
+        for (lno, line) in rdr.lines().filter_map(|l| l.ok()).enumerate() {
+            let lno = lno + 1;
+            let (line, _) = line.split_once("//~").unwrap_or((&line, ""));
+            let line = line.trim_end();
+            let mut has_errors = false;
+            out.push_str(line);
+            for err in found_errors.iter().filter(|e| e.line_num == lno && e.kind.is_some()) {
+                let annotation = match err.kind.as_ref().unwrap() {
+                    ErrorKind::Help => "HELP",
+                    ErrorKind::Error => "ERROR",
+                    ErrorKind::Note => "NOTE",
+                    ErrorKind::Suggestion => "SUGGESTION",
+                    ErrorKind::Warning => "WARN",
+                };
+                let mut length_to_show = 100usize.saturating_sub(line.len());
+                let start = if has_errors {
+                    " //~|"
+                } else if length_to_show < 15 {
+                    length_to_show = 30;
+                    "\n//~^"
+                } else {
+                    " //~"
+                };
+                // Remove the leading location annotation
+                let msg = err
+                    .msg
+                    .trim_start_matches(|c: char| c.is_numeric() || c.is_whitespace() || c == ':')
+                    .trim_end();
+                writeln!(out, "{start} {annotation} {msg:.*}", length_to_show).unwrap();
+                has_errors = true;
+            }
+            if !has_errors {
+                out.push('\n');
+            }
+        }
+        fs::write(testfile, out).unwrap();
     }
 
     /// Returns `true` if we should report an error about `actual_error`,
