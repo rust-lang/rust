@@ -1999,6 +1999,9 @@ impl BorrowKind {
 }
 
 impl BinOp {
+    /// The checkable operators are those whose overflow checking behavior is controlled by
+    /// -Coverflow-checks option. The remaining operators have either no overflow conditions (e.g.,
+    /// BitAnd, BitOr, BitXor) or are always checked for overflow (e.g., Div, Rem).
     pub fn is_checkable(self) -> bool {
         use self::BinOp::*;
         matches!(self, Add | Sub | Mul | Shl | Shr)
