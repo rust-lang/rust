@@ -1095,6 +1095,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
             fn_has_self_parameter: has_self,
+            // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): We need to encode this
+            opt_rpitit_info: None,
         }
     }
 
