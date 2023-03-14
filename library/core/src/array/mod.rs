@@ -11,6 +11,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::UncheckedIterator;
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -55,9 +56,11 @@ pub use iter::IntoIter;
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
-pub fn from_fn<T, const N: usize, F>(cb: F) -> [T; N]
+#[rustc_const_unstable(feature = "const_array_from_fn", issue = "none")]
+pub const fn from_fn<T, const N: usize, F>(cb: F) -> [T; N]
 where
-    F: FnMut(usize) -> T,
+    F: ~const FnMut(usize) -> T + ~const Destruct,
+    T: ~const Destruct,
 {
     try_from_fn(NeverShortCircuit::wrap_mut_1(cb)).0
 }
@@ -93,11 +96,12 @@ where
 /// ```
 #[inline]
 #[unstable(feature = "array_try_from_fn", issue = "89379")]
-pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
+pub const fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
-    F: FnMut(usize) -> R,
-    R: Try,
-    R::Residual: Residual<[R::Output; N]>,
+    F: ~const FnMut(usize) -> R + ~const Destruct,
+    R: ~const Try,
+    R::Residual: ~const Residual<[R::Output; N]>,
+    R::Output: ~const Destruct,
 {
     let mut array = MaybeUninit::uninit_array::<N>();
     match try_from_fn_erased(&mut array, cb) {
@@ -835,12 +839,14 @@ where
 /// not optimizing away.  So if you give it a shot, make sure to watch what
 /// happens in the codegen tests.
 #[inline]
-fn try_from_fn_erased<T, R>(
+#[rustc_const_unstable(feature = "const_array_from_fn", issue = "none")]
+const fn try_from_fn_erased<T, R>(
     buffer: &mut [MaybeUninit<T>],
-    mut generator: impl FnMut(usize) -> R,
+    mut generator: impl ~const FnMut(usize) -> R + ~const Destruct,
 ) -> ControlFlow<R::Residual>
 where
-    R: Try<Output = T>,
+    R: ~const Try<Output = T>,
+    R::Output: ~const Destruct,
 {
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
 
@@ -866,7 +872,7 @@ where
 ///
 /// To minimize indirection fields are still pub but callers should at least use
 /// `push_unchecked` to signal that something unsafe is going on.
-struct Guard<'a, T> {
+struct Guard<'a, T: ~const Destruct> {
     /// The array to be initialized.
     pub array_mut: &'a mut [MaybeUninit<T>],
     /// The number of items that have been initialized so far.
@@ -880,7 +886,7 @@ impl<T> Guard<'_, T> {
     ///
     /// No more than N elements must be initialized.
     #[inline]
-    pub unsafe fn push_unchecked(&mut self, item: T) {
+    pub const unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
@@ -891,7 +897,7 @@ impl<T> Guard<'_, T> {
     }
 }
 
-impl<T> Drop for Guard<'_, T> {
+impl<T: ~const Destruct> const Drop for Guard<'_, T> {
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
 

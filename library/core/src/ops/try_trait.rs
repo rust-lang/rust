@@ -1,3 +1,4 @@
+use crate::marker::Destruct;
 use crate::ops::ControlFlow;
 
 /// The `?` operator and `try {}` blocks.
@@ -384,8 +385,10 @@ impl<T> NeverShortCircuit<T> {
     /// This is useful for implementing infallible functions in terms of the `try_` ones,
     /// without accidentally capturing extra generic parameters in a closure.
     #[inline]
-    pub fn wrap_mut_1<A>(mut f: impl FnMut(A) -> T) -> impl FnMut(A) -> NeverShortCircuit<T> {
-        move |a| NeverShortCircuit(f(a))
+    pub const fn wrap_mut_1<A>(
+        mut f: impl ~const FnMut(A) -> T + ~const Destruct,
+    ) -> impl ~const FnMut(A) -> NeverShortCircuit<T> + ~const Destruct {
+        const move |a| NeverShortCircuit(f(a))
     }
 
     #[inline]
