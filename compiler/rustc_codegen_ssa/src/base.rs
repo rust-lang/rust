@@ -17,10 +17,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-
-use rustc_data_structures::sync::par_iter;
-#[cfg(parallel_compiler)]
-use rustc_data_structures::sync::ParallelIterator;
+use rustc_data_structures::sync::par_map;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -695,12 +692,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             // Compile the found CGUs in parallel.
             let start_time = Instant::now();
 
-            let pre_compiled_cgus = par_iter(cgus)
-                .map(|(i, _)| {
-                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                    (i, module)
-                })
-                .collect();
+            let pre_compiled_cgus = par_map(cgus, |(i, _)| {
+                let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                (i, module)
+            });
 
             total_codegen_time += start_time.elapsed();
 

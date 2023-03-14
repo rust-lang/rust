@@ -40,8 +40,10 @@
 //! [^2] `MTLockRef` is a typedef.
 
 use crate::owned_slice::OwnedSlice;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
+use std::mem::{transmute, MaybeUninit};
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -51,7 +53,42 @@ pub use std::sync::atomic::Ordering::SeqCst;
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
 
+mod mode {
+    use super::Ordering;
+    use std::sync::atomic::AtomicU8;
+
+    const UNINITIALIZED: u8 = 0;
+    const INACTIVE: u8 = 1;
+    const ACTIVE: u8 = 2;
+
+    static MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
+
+    #[inline]
+    pub fn active() -> bool {
+        match MODE.load(Ordering::Relaxed) {
+            INACTIVE => false,
+            ACTIVE => true,
+            // Should panic here. Just for speed test.
+            // _ => panic!("uninitialized parallel mode!"),
+            _ => false,
+        }
+    }
+
+    // Only set by the `-Z threads` compile option
+    pub fn set(parallel: bool) {
+        let set: u8 = if parallel { ACTIVE } else { INACTIVE };
+        let previous =
+            MODE.compare_exchange(UNINITIALIZED, set, Ordering::Relaxed, Ordering::Relaxed);
+
+        // Check that the mode was either uninitialized or was already set to the requested mode.
+        assert!(previous.is_ok() || previous == Err(set));
+    }
+}
+
+pub use mode::{active, set};
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub unsafe auto trait Send {}
@@ -146,7 +183,7 @@ cfg_if! {
 
         #[macro_export]
         macro_rules! parallel {
-            ($($blocks:tt),*) => {
+            ($($blocks:block),*) => {
                 // We catch panics here ensuring that all the blocks execute.
                 // This makes behavior consistent with the parallel compiler.
                 let mut panic = None;
@@ -165,12 +202,6 @@ cfg_if! {
             }
         }
 
-        pub use Iterator as ParallelIterator;
-
-        pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
-            t.into_iter()
-        }
-
         pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
@@ -187,6 +218,29 @@ cfg_if! {
             }
         }
 
+        pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
+            t: T,
+            mut map: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item) -> R,
+        ) -> C {
+            // We catch panics here ensuring that all the loop iterations execute.
+            let mut panic = None;
+            let r = t.into_iter().filter_map(|i| {
+                match catch_unwind(AssertUnwindSafe(|| map(i))) {
+                    Ok(r) => Some(r),
+                    Err(p) => {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                        None
+                    }
+                }
+            }).collect();
+            if let Some(panic) = panic {
+                resume_unwind(panic);
+            }
+            r
+        }
+
         pub type MetadataRef = OwnedSlice;
 
         pub use std::rc::Rc as Lrc;
@@ -195,13 +249,11 @@ cfg_if! {
         pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
         pub use std::cell::RefMut as MappedWriteGuard;
-        pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
         pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
-        use std::cell::RefCell as InnerLock;
 
         use std::cell::Cell;
 
@@ -280,7 +332,6 @@ cfg_if! {
         pub use parking_lot::RwLockWriteGuard as WriteGuard;
         pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 
-        pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::OnceLock as OnceCell;
@@ -322,52 +373,163 @@ cfg_if! {
             }
         }
 
-        use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
         use std::thread;
-        pub use rayon::{join, scope};
+
+        #[inline]
+        pub fn join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
+        where
+            A: FnOnce() -> RA + DynSend,
+            B: FnOnce() -> RB + DynSend,
+        {
+            if mode::active() {
+                let oper_a = FromDyn::from(oper_a);
+                let oper_b = FromDyn::from(oper_b);
+                let (a, b) = rayon::join(move || FromDyn::from(oper_a.into_inner()()), move || FromDyn::from(oper_b.into_inner()()));
+                (a.into_inner(), b.into_inner())
+            } else {
+                (oper_a(), oper_b())
+            }
+        }
+
+        // This function only works when `mode::active()`.
+        pub fn scope<'scope, OP, R>(op: OP) -> R
+        where
+            OP: FnOnce(&rayon::Scope<'scope>) -> R + DynSend,
+            R: DynSend,
+        {
+            let op = FromDyn::from(op);
+            rayon::scope(|s| FromDyn::from(op.into_inner()(s))).into_inner()
+        }
 
         /// Runs a list of blocks in parallel. The first block is executed immediately on
         /// the current thread. Use that for the longest running block.
         #[macro_export]
         macro_rules! parallel {
-            (impl $fblock:tt [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
+            (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
                 parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
-            (impl $fblock:tt [$($blocks:tt,)*] []) => {
+            (impl $fblock:block [$($blocks:expr,)*] []) => {
                 ::rustc_data_structures::sync::scope(|s| {
-                    $(
-                        s.spawn(|_| $blocks);
-                    )*
-                    $fblock;
-                })
+                    $(let block = rustc_data_structures::sync::FromDyn::from(|| $blocks);
+                    s.spawn(move |_| block.into_inner()());)*
+                    (|| $fblock)();
+                });
             };
-            ($fblock:tt, $($blocks:tt),*) => {
-                // Reverse the order of the later blocks since Rayon executes them in reverse order
-                // when using a single thread. This ensures the execution order matches that
-                // of a single threaded rustc
-                parallel!(impl $fblock [] [$($blocks),*]);
+            ($fblock:block, $($blocks:block),*) => {
+                if rustc_data_structures::sync::active() {
+                    // Reverse the order of the later blocks since Rayon executes them in reverse order
+                    // when using a single thread. This ensures the execution order matches that
+                    // of a single threaded rustc
+                    parallel!(impl $fblock [] [$($blocks),*]);
+                } else {
+                    // We catch panics here ensuring that all the blocks execute.
+                    // This makes behavior consistent with the parallel compiler.
+                    let mut panic = None;
+                    $(
+                        if let Err(p) = ::std::panic::catch_unwind(
+                            ::std::panic::AssertUnwindSafe(|| $blocks)
+                        ) {
+                            if panic.is_none() {
+                                panic = Some(p);
+                            }
+                        }
+                    )*
+                    if let Some(panic) = panic {
+                        ::std::panic::resume_unwind(panic);
+                    }
+                }
             };
         }
 
         pub use rayon_core::WorkerLocal;
 
-        pub use rayon::iter::ParallelIterator;
-        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
-        pub fn par_iter<T: IntoParallelIterator>(t: T) -> T::Iter {
-            t.into_par_iter()
+        pub fn par_for_each_in<I, T: IntoIterator<Item = I> + IntoParallelIterator<Item = I>>(
+            t: T,
+            for_each: impl Fn(I) + DynSync + DynSend
+        ) {
+            if mode::active() {
+                let for_each = FromDyn::from(for_each);
+                let panic: Lock<Option<_>> = Lock::new(None);
+                t.into_par_iter().for_each(|i| if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
+                    let mut l = panic.lock();
+                    if l.is_none() {
+                        *l = Some(p)
+                    }
+                });
+
+                if let Some(panic) = panic.into_inner() {
+                    resume_unwind(panic);
+                }
+            } else {
+                // We catch panics here ensuring that all the loop iterations execute.
+                // This makes behavior consistent with the parallel compiler.
+                let mut panic = None;
+                t.into_iter().for_each(|i| {
+                    if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                    }
+                });
+                if let Some(panic) = panic {
+                    resume_unwind(panic);
+                }
+            }
         }
 
-        pub fn par_for_each_in<T: IntoParallelIterator>(
+        pub fn par_map<
+            I,
+            T: IntoIterator<Item = I> + IntoParallelIterator<Item = I>,
+            R: std::marker::Send,
+            C: FromIterator<R> + FromParallelIterator<R>
+        >(
             t: T,
-            for_each: impl Fn(T::Item) + Sync + Send,
-        ) {
-            let ps: Vec<_> = t.into_par_iter().map(|i| catch_unwind(AssertUnwindSafe(|| for_each(i)))).collect();
-            ps.into_iter().for_each(|p| if let Err(panic) = p {
-                resume_unwind(panic)
-            });
+            map: impl Fn(I) -> R + DynSync + DynSend
+        ) -> C {
+            if mode::active() {
+                let panic: Lock<Option<_>> = Lock::new(None);
+                let map = FromDyn::from(map);
+                // We catch panics here ensuring that all the loop iterations execute.
+                let r = t.into_par_iter().filter_map(|i| {
+                    match catch_unwind(AssertUnwindSafe(|| map(i))) {
+                        Ok(r) => Some(r),
+                        Err(p) => {
+                            let mut l = panic.lock();
+                            if l.is_none() {
+                                *l = Some(p);
+                            }
+                            None
+                        },
+                    }
+                }).collect();
+
+                if let Some(panic) = panic.into_inner() {
+                    resume_unwind(panic);
+                }
+                r
+            } else {
+                // We catch panics here ensuring that all the loop iterations execute.
+                let mut panic = None;
+                let r = t.into_iter().filter_map(|i| {
+                    match catch_unwind(AssertUnwindSafe(|| map(i))) {
+                        Ok(r) => Some(r),
+                        Err(p) => {
+                            if panic.is_none() {
+                                panic = Some(p);
+                            }
+                            None
+                        }
+                    }
+                }).collect();
+                if let Some(panic) = panic {
+                    resume_unwind(panic);
+                }
+                r
+            }
         }
 
         pub type MetadataRef = OwnedSlice;
@@ -375,6 +537,48 @@ cfg_if! {
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
+    }
+}
+
+pub unsafe trait DynSend {}
+pub unsafe trait DynSync {}
+
+unsafe impl<T> DynSend for T where T: Send {}
+unsafe impl<T> DynSync for T where T: Sync {}
+
+#[derive(Copy, Clone)]
+pub struct FromDyn<T>(T);
+
+impl<T> FromDyn<T> {
+    #[inline(always)]
+    pub fn from(val: T) -> Self {
+        // Check that `sync::active()` is true on creation so we can
+        // implement `Send` and `Sync` for this structure when `T`
+        // implements `DynSend` and `DynSync` respectively.
+        #[cfg(parallel_compiler)]
+        assert!(mode::active());
+        FromDyn(val)
+    }
+
+    #[inline(always)]
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::active() is true.
+#[cfg(parallel_compiler)]
+unsafe impl<T: DynSend> Send for FromDyn<T> {}
+
+// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::active() is true.
+#[cfg(parallel_compiler)]
+unsafe impl<T: DynSync> Sync for FromDyn<T> {}
+
+impl<T> const std::ops::Deref for FromDyn<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -396,52 +600,77 @@ impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> 
 }
 
 #[derive(Debug)]
-pub struct Lock<T>(InnerLock<T>);
+pub struct Lock<T> {
+    single_thread: bool,
+    inner: RefCell<T>,
+    mt_inner: Option<Mutex<T>>,
+}
 
 impl<T> Lock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        Lock(InnerLock::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_lock()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_borrow_mut().ok()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    #[track_caller]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_lock().expect("lock was already held")
+    #[inline]
+    pub fn new(val: T) -> Self {
+        if !active() {
+            Self { single_thread: true, inner: RefCell::new(val), mt_inner: None }
         } else {
-            self.0.lock()
+            Self {
+                single_thread: false,
+                // SAFETY: `inner` will never be accessed in multiple thread
+                inner: unsafe { MaybeUninit::zeroed().assume_init() },
+                mt_inner: Some(Mutex::new(val)),
+            }
         }
     }
 
-    #[cfg(not(parallel_compiler))]
+    #[inline]
+    pub fn into_inner(self) -> T {
+        if self.single_thread {
+            self.inner.into_inner()
+        } else {
+            self.mt_inner.unwrap().into_inner().unwrap()
+        }
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut T {
+        if self.single_thread {
+            self.inner.get_mut()
+        } else {
+            // SAFETY: the `&mut T` is accessible as long as self exists.
+            self.mt_inner.as_mut().unwrap().get_mut().unwrap()
+        }
+    }
+
+    #[inline]
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
+        // SAFETY: the `&mut T` is accessible as long as self exists.
+        if self.single_thread {
+            self.inner.try_borrow_mut().map(|mut r| unsafe { transmute(r.deref_mut()) }).ok()
+        } else {
+            self.mt_inner
+                .as_ref()
+                .unwrap()
+                .try_lock()
+                .map(|mut l| unsafe { transmute(l.deref_mut()) })
+                .ok()
+        }
+    }
+
+    fn mt_lock(&self) -> MutexGuard<'_, T> {
+        self.mt_inner.as_ref().unwrap().lock().unwrap_or_else(|e| {
+            self.mt_inner.as_ref().unwrap().clear_poison();
+            e.into_inner()
+        })
+    }
+
     #[inline(always)]
     #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
+        // SAFETY: the `&mut T` is accessible as long as self exists.
+        if self.single_thread {
+            unsafe { transmute(self.inner.borrow_mut().deref_mut()) }
+        } else {
+            unsafe { transmute(self.mt_lock().deref_mut()) }
+        }
     }
 
     #[inline(always)]
@@ -467,6 +696,26 @@ impl<T: Default> Default for Lock<T> {
     #[inline]
     fn default() -> Self {
         Lock::new(T::default())
+    }
+}
+
+// Just for speed test
+unsafe impl<T: Send> std::marker::Send for Lock<T> {}
+unsafe impl<T: Send> std::marker::Sync for Lock<T> {}
+
+pub struct LockGuard<'a, T>(&'a mut T);
+
+impl<T> const Deref for LockGuard<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+
+impl<T> const DerefMut for LockGuard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.0
     }
 }
 

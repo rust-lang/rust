@@ -8,7 +8,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
-use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
+use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -2125,7 +2125,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         return;
     }
 
-    par_iter(tcx.mir_keys(())).for_each(|&def_id| {
+    par_for_each_in(tcx.mir_keys(()), |&def_id| {
         let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
 
         if encode_const {
