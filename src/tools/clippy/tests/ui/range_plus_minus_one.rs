@@ -1,7 +1,7 @@
 //@run-rustfix
 
 #![allow(unused_parens)]
-#![allow(clippy::iter_with_drain)]
+#![allow(clippy::iter_with_drain, clippy::needless_parens_on_range_literals)]
 fn f() -> usize {
     42
 }

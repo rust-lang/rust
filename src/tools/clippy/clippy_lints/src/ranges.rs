@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::higher;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, in_constant, is_integer_const, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
@@ -356,6 +355,8 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             end: Some(end),
             limits: RangeLimits::HalfOpen
         }) = higher::Range::hir(expr);
+        if start.map_or(true, |start| start.span.can_be_used_for_suggestions());
+        if end.span.can_be_used_for_suggestions();
         if let Some(y) = y_plus_one(cx, end);
         then {
             let span = expr.span;
@@ -365,25 +366,19 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span,
                 "an inclusive range would be more readable",
                 |diag| {
-                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                    let end = Sugg::hir(cx, y, "y").maybe_par();
-                    if let Some(is_wrapped) = &snippet_opt(cx, span) {
-                        if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                            diag.span_suggestion(
-                                span,
-                                "use",
-                                format!("({start}..={end})"),
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            diag.span_suggestion(
-                                span,
-                                "use",
-                                format!("{start}..={end}"),
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        }
-                    }
+                    diag.multipart_suggestion(
+                        "use an inclusive range instead",
+                        vec![
+                            (
+                                start.map(|s| s.span.shrink_to_hi())
+                                    .unwrap_or(expr.span)
+                                    .until(end.span),
+                                "..=".to_string(),
+                            ),
+                            (y, String::new()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
                 },
             );
         }
@@ -392,9 +387,12 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
+
     if_chain! {
         if expr.span.can_be_used_for_suggestions();
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::Range::hir(expr);
+        if start.map_or(true, |start| start.span.can_be_used_for_suggestions());
+        if end.span.can_be_used_for_suggestions();
         if let Some(y) = y_minus_one(cx, end);
         then {
             span_lint_and_then(
@@ -403,13 +401,18 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 expr.span,
                 "an exclusive range would be more readable",
                 |diag| {
-                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                    let end = Sugg::hir(cx, y, "y").maybe_par();
-                    diag.span_suggestion(
-                        expr.span,
-                        "use",
-                        format!("{start}..{end}"),
-                        Applicability::MachineApplicable, // snippet
+                    diag.multipart_suggestion(
+                        "use an exclusive range instead",
+                        vec![
+                            (
+                                start.map(|s| s.span.shrink_to_hi())
+                                    .unwrap_or(expr.span)
+                                    .until(end.span),
+                                "..".to_string(),
+                            ),
+                            (y, String::new()),
+                        ],
+                        Applicability::MachineApplicable,
                     );
                 },
             );
@@ -497,19 +500,24 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
-fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<Span> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
-                node: BinOpKind::Add, ..
+                node: BinOpKind::Add,
+                span,
             },
             lhs,
             rhs,
         ) => {
-            if is_integer_const(cx, lhs, 1) {
-                Some(rhs)
-            } else if is_integer_const(cx, rhs, 1) {
-                Some(lhs)
+            if is_integer_const(cx, lhs, 1)
+                && lhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+            {
+                Some(lhs.span.to(span))
+            } else if is_integer_const(cx, rhs, 1)
+                && rhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+            {
+                Some(span.to(rhs.span))
             } else {
                 None
             }
@@ -518,15 +526,18 @@ fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'
     }
 }
 
-fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<Span> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
-                node: BinOpKind::Sub, ..
+                node: BinOpKind::Sub,
+                span,
             },
-            lhs,
+            _,
             rhs,
-        ) if is_integer_const(cx, rhs, 1) => Some(lhs),
+        ) if is_integer_const(cx, rhs, 1)
+            && rhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+            => Some(span.to(rhs.span)),
         _ => None,
     }
 }
