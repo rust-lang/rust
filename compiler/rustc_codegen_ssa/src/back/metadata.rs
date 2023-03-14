@@ -201,24 +201,20 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
-  
-    if binary_format == BinaryFormat::Elf{
-      if architecture == Architecture::X86_64{
-        // check bti protection not working
-        //if let Some(bp) = sess.opts.unstable_opts.branch_protection { if bp.bti{name = b"bti true".to_vec();}}     
-        
-        let name:Vec<u8> =  b".new.gnu.property".to_vec();
-        let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
-        let kind = SectionKind::Note;
-        let section = file.add_section(segment, name, kind);
-        
-        // b"GNU                  0x00000014	NT_GNU_BUILD_ID (unique build ID bitstring)	    Build ID: 1..";
-        let size: u8 = 14;
-        let id:u8 = 1;
-        let data: &[u8] = &[b'G', b'N', b'U', size, b'N', b'T', b'_',b'G', b'N', b'U',b'_',b'B', b'U', b'I',b'L', b'D', b'_',b'I',b'D', b' ', b'(', b'u', b'n',b'i', b'q', b'u',b'e',b' ', b'b', b'u',b'i', b'l', b'd', b' ', b'I',b'D', b' ', b'b',b'i',b't', b's', b't',b'r', b'i',b'n',b'g',b')', b' ', b'B', b'u', b'i',b'l', b'd', b' ',b'I',b'D',b':', id];
-        file.append_section_data(section, data, 1);    
-
-      }
+   
+    // check bti protection
+    let mut check_cfprotection = false;
+    if architecture == Architecture::X86_64 && 
+    let rustc_session::config::CFProtection::Branch | rustc_session::config::CFProtection::Full = sess.opts.unstable_opts.cf_protection {check_cfprotection =true;}
+    else if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch == "aarch64" 
+      {check_cfprotection =true;}
+    if check_cfprotection && binary_format == BinaryFormat::Elf{
+      let name:Vec<u8> =  b".new.gnu.property".to_vec();  
+      let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
+      let kind = SectionKind::Note;
+      let section = file.add_section(segment, name, kind);
+      let data: &[u8] = &[b'G', b'N', b'U'];
+      let _ = file.append_section_data(section, data, 1);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
