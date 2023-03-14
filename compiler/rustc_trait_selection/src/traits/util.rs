@@ -1,11 +1,11 @@
 use super::NormalizeExt;
-use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use super::{ObligationCause, PredicateObligation, SelectionContext};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferOk;
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, SubstsRef};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
@@ -216,33 +216,6 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
         .chain(normalization_obligations2.into_iter());
 
     (subject, impl_obligations)
-}
-
-pub fn predicate_for_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cause: ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
-    recursion_depth: usize,
-) -> PredicateObligation<'tcx> {
-    Obligation {
-        cause,
-        param_env,
-        recursion_depth,
-        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
-    }
-}
-
-pub fn predicate_for_trait_def<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    cause: ObligationCause<'tcx>,
-    trait_def_id: DefId,
-    recursion_depth: usize,
-    params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-) -> PredicateObligation<'tcx> {
-    let trait_ref = tcx.mk_trait_ref(trait_def_id, params);
-    predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
 /// Casts a trait reference into a reference to one of its super

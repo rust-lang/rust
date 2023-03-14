@@ -17,7 +17,7 @@ use super::project;
 use super::project::normalize_with_depth_to;
 use super::project::ProjectionTyObligation;
 use super::util;
-use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
+use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
     ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
@@ -2440,15 +2440,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             placeholder_ty,
                         )
                     });
-                let placeholder_obligation = predicate_for_trait_def(
+
+                let obligation = Obligation::new(
                     self.tcx(),
-                    param_env,
                     cause.clone(),
-                    trait_def_id,
-                    recursion_depth,
-                    [normalized_ty],
+                    param_env,
+                    self.tcx().mk_trait_ref(trait_def_id, [normalized_ty]),
                 );
-                obligations.push(placeholder_obligation);
+                obligations.push(obligation);
                 obligations
             })
             .collect()

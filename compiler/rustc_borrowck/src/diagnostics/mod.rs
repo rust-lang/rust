@@ -1078,7 +1078,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     self.param_env,
                                     tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
                                     def_id,
-                                    DUMMY_SP,
                                 )
                             }
                             _ => false,

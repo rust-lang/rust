@@ -668,7 +668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
             if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_ty)
-                && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
+                && !self.type_is_sized_modulo_regions(self.param_env, output_ty)
             {
                 let descr = match maybe_def {
                     DefIdOrName::DefId(def_id) => self.tcx.def_descr(def_id),

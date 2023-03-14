@@ -21,7 +21,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, FulfillmentError};
+use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -434,7 +434,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.type_is_copy_modulo_regions(
                         self.param_env,
                         *lhs_deref_ty,
-                        lhs_expr.span,
                     ) {
                         suggest_deref_binop(*lhs_deref_ty);
                     }
@@ -776,7 +775,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, Some(trait_did)) => {
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
-                Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
+                // FIXME: This should potentially just add the obligation to the `FnCtxt`
+                let ocx = ObligationCtxt::new(&self.infcx);
+                ocx.register_obligation(obligation);
+                Err(ocx.select_all_or_error())
             }
         }
     }

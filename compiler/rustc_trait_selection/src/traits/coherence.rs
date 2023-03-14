@@ -383,7 +383,10 @@ fn resolve_negative_obligation<'tcx>(
     };
 
     let param_env = o.param_env;
-    if !super::fully_solve_obligation(&infcx, o).is_empty() {
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligation(o);
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
         return false;
     }
 

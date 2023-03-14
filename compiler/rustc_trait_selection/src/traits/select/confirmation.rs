@@ -18,7 +18,7 @@ use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
-use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
+use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::vtable::{
     count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
     VtblSegment,
@@ -253,15 +253,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             };
 
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
-            ensure_sufficient_stack(|| {
-                self.collect_predicates_for_types(
-                    obligation.param_env,
-                    cause,
-                    obligation.recursion_depth + 1,
-                    trait_def,
-                    nested,
-                )
-            })
+            self.collect_predicates_for_types(
+                obligation.param_env,
+                cause,
+                obligation.recursion_depth + 1,
+                trait_def,
+                nested,
+            )
         } else {
             vec![]
         };
@@ -1118,14 +1116,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Construct the nested `TailField<T>: Unsize<TailField<U>>` predicate.
-                nested.push(predicate_for_trait_def(
+                let tail_unsize_obligation = obligation.with(
                     tcx,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.predicate.def_id(),
-                    obligation.recursion_depth + 1,
-                    [source_tail, target_tail],
-                ));
+                    tcx.mk_trait_ref(obligation.predicate.def_id(), [source_tail, target_tail]),
+                );
+                nested.push(tail_unsize_obligation);
             }
 
             // `(.., T)` -> `(.., U)`
@@ -1147,17 +1142,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
-                // Construct the nested `T: Unsize<U>` predicate.
-                nested.push(ensure_sufficient_stack(|| {
-                    predicate_for_trait_def(
-                        tcx,
-                        obligation.param_env,
-                        obligation.cause.clone(),
-                        obligation.predicate.def_id(),
-                        obligation.recursion_depth + 1,
-                        [a_last, b_last],
-                    )
-                }));
+                // Add a nested `T: Unsize<U>` predicate.
+                let last_unsize_obligation = obligation
+                    .with(tcx, tcx.mk_trait_ref(obligation.predicate.def_id(), [a_last, b_last]));
+                nested.push(last_unsize_obligation);
             }
 
             _ => bug!("source: {source}, target: {target}"),

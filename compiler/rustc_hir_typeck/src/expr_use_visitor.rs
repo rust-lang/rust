@@ -867,10 +867,7 @@ fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
     place_with_id: &PlaceWithHirId<'tcx>,
 ) -> ConsumeMode {
-    if !mc.type_is_copy_modulo_regions(
-        place_with_id.place.ty(),
-        mc.tcx().hir().span(place_with_id.hir_id),
-    ) {
+    if !mc.type_is_copy_modulo_regions(place_with_id.place.ty()) {
         ConsumeMode::Move
     } else {
         ConsumeMode::Copy

@@ -24,6 +24,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -760,20 +761,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        let copy_did = infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
-        let cause = ObligationCause::new(
-            span,
-            self.mir_def_id(),
-            rustc_infer::traits::ObligationCauseCode::MiscObligation,
-        );
-        let errors = rustc_trait_selection::traits::fully_solve_bound(
-            &infcx,
-            cause,
-            self.param_env,
-            // Erase any region vids from the type, which may not be resolved
-            infcx.tcx.erase_regions(ty),
-            copy_did,
-        );
+        let ocx = ObligationCtxt::new(&infcx);
+        let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
+        let cause = ObligationCause::misc(span, self.mir_def_id());
+
+        ocx.register_bound(cause, self.param_env, infcx.tcx.erase_regions(ty), copy_did);
+        let errors = ocx.select_all_or_error();
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors

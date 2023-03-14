@@ -424,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // closures. We want to make sure any adjustment that might make us move the place into
                 // the closure gets handled.
                 let (place, capture_kind) =
-                    restrict_precision_for_drop_types(self, place, capture_kind, usage_span);
+                    restrict_precision_for_drop_types(self, place, capture_kind);
 
                 capture_info.capture_kind = capture_kind;
                 (place, capture_info)
@@ -1822,9 +1822,8 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     mut place: Place<'tcx>,
     mut curr_mode: ty::UpvarCapture,
-    span: Span,
 ) -> (Place<'tcx>, ty::UpvarCapture) {
-    let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty(), span);
+    let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty());
 
     if let (false, UpvarCapture::ByValue) = (is_copy_type, curr_mode) {
         for i in 0..place.projections.len() {
