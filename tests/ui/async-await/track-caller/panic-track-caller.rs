@@ -79,6 +79,16 @@ async fn foo_closure() {
     c().await
 }
 
+// Since compilation is expected to fail for this fn when using
+// `nofeat`, we test that separately in `async-block.rs`
+#[cfg(feat)]
+async fn foo_block() {
+    let a = #[track_caller] async {
+        panic!();
+    };
+    a.await
+}
+
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     let loc = Arc::new(Mutex::new(None));
 
@@ -110,4 +120,7 @@ fn main() {
 
     #[cfg(feat)]
     assert_eq!(panicked_at(|| block_on(foo_closure())), 79);
+
+    #[cfg(feat)]
+    assert_eq!(panicked_at(|| block_on(foo_block())), 89);
 }

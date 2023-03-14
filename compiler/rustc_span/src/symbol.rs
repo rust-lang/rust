@@ -792,7 +792,6 @@ symbols! {
         i64,
         i8,
         ident,
-        identity_future,
         if_let,
         if_let_guard,
         if_while_or_patterns,

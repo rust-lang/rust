@@ -1,5 +1,5 @@
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/feature-gate-closure_track_caller.rs:5:20
+  --> $DIR/feature-gate-closure_track_caller.rs:6:20
    |
 LL |     let _closure = #[track_caller] || {};
    |                    ^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _closure = #[track_caller] || {};
    = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/feature-gate-closure_track_caller.rs:6:22
+  --> $DIR/feature-gate-closure_track_caller.rs:7:22
    |
 LL |     let _generator = #[track_caller] || { yield; };
    |                      ^^^^^^^^^^^^^^^
@@ -16,6 +16,15 @@ LL |     let _generator = #[track_caller] || { yield; };
    = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
    = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/feature-gate-closure_track_caller.rs:8:19
+   |
+LL |     let _future = #[track_caller] async {};
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

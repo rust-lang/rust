@@ -2,16 +2,18 @@ error[E0308]: mismatched types
   --> $DIR/generator-desc.rs:10:19
    |
 LL |     fun(async {}, async {});
-   |         --------  ^^^^^^^^
-   |         |         |
-   |         |         expected `async` block, found a different `async` block
-   |         |         arguments to this function are incorrect
-   |         the expected `async` block
+   |     --- --------  ^^^^^^^^ expected `async` block, found a different `async` block
+   |     |   |
+   |     |   the expected `async` block
+   |     arguments to this function are incorrect
    |
    = note: expected `async` block `[async block@$DIR/generator-desc.rs:10:9: 10:17]`
               found `async` block `[async block@$DIR/generator-desc.rs:10:19: 10:27]`
 note: function defined here
-  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+  --> $DIR/generator-desc.rs:8:4
+   |
+LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
+   |    ^^^                                -----
 
 error[E0308]: mismatched types
   --> $DIR/generator-desc.rs:12:16
