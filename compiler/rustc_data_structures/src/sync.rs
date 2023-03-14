@@ -402,6 +402,13 @@ cfg_if! {
                     // We catch panics here ensuring that all the blocks execute.
                     // This makes behavior consistent with the parallel compiler.
                     let mut panic = None;
+                    if let Err(p) = ::std::panic::catch_unwind(
+                        ::std::panic::AssertUnwindSafe(|| $fblock)
+                    ) {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                    }
                     $(
                         if let Err(p) = ::std::panic::catch_unwind(
                             ::std::panic::AssertUnwindSafe(|| $blocks)
