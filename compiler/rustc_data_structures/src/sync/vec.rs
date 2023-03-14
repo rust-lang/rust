@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use rustc_index::vec::Idx;
 
+#[derive(Default)]
 pub struct AppendOnlyIndexVec<I: Idx, T: Copy> {
     #[cfg(not(parallel_compiler))]
     vec: elsa::vec::FrozenVec<T>,
@@ -40,6 +41,7 @@ impl<I: Idx, T: Copy> AppendOnlyIndexVec<I, T> {
     }
 }
 
+#[derive(Default)]
 pub struct AppendOnlyVec<T: Copy> {
     #[cfg(not(parallel_compiler))]
     vec: elsa::vec::FrozenVec<T>,
@@ -57,11 +59,14 @@ impl<T: Copy> AppendOnlyVec<T> {
         }
     }
 
-    pub fn push(&self, val: T) {
+    pub fn push(&self, val: T) -> usize {
+        #[cfg(not(parallel_compiler))]
+        let i = self.vec.len();
         #[cfg(not(parallel_compiler))]
         self.vec.push(val);
         #[cfg(parallel_compiler)]
-        self.vec.push(val)
+        let i = self.vec.push(val);
+        i
     }
 
     pub fn get(&self, i: usize) -> Option<T> {

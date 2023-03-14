@@ -8,7 +8,7 @@ use crate::lint::{
 };
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{AtomicBool, Lock, Lrc};
+use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
@@ -219,7 +219,7 @@ pub struct ParseSess {
     pub assume_incomplete_release: bool,
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
     /// identifier represented by its position in the vector.
-    pub proc_macro_quoted_spans: Lock<Vec<Span>>,
+    pub proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
 }
@@ -324,13 +324,16 @@ impl ParseSess {
     }
 
     pub fn save_proc_macro_span(&self, span: Span) -> usize {
-        let mut spans = self.proc_macro_quoted_spans.lock();
-        spans.push(span);
-        return spans.len() - 1;
+        self.proc_macro_quoted_spans.push(span)
     }
 
-    pub fn proc_macro_quoted_spans(&self) -> Vec<Span> {
-        self.proc_macro_quoted_spans.lock().clone()
+    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> + '_ {
+        // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
+        // AppendOnlyVec, so we resort to this scheme.
+        (0..)
+            .map(|i| (i, self.proc_macro_quoted_spans.get(i)))
+            .take_while(|(_, o)| o.is_some())
+            .filter_map(|(i, o)| Some((i, o?)))
     }
 
     #[track_caller]
