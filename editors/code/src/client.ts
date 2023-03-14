@@ -96,7 +96,9 @@ export async function createClient(
                     if (resp && Array.isArray(resp)) {
                         return resp.map((val) => {
                             return prepareVSCodeConfig(val, (key, cfg) => {
-                                cfg[key] = config.discoveredWorkspaces;
+                                if (key === "linkedProjects") {
+                                    cfg[key] = config.discoveredWorkspaces;
+                                }
                             });
                         });
                     } else {
