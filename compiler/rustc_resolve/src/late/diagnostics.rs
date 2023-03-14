@@ -214,17 +214,29 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             let item_span = path.last().unwrap().ident.span;
             let sp = item_span.peel_ctxt();
             let ctxt_kind = sp.ctxt().outer_expn_data().kind;
-            let (mod_prefix, mod_str, suggestion) =
+            let (mod_prefix, mod_str, name, mod_label, suggestion) =
                 if let ExpnKind::Macro(MacroKind::Attr | MacroKind::Bang, name) = ctxt_kind
                     && sp.parent_callsite().map(|p| (p.lo(), p.hi())) == Some((sp.lo(), sp.hi()))
             {
                 // This span comes from a proc macro and it doesn't point at user code.
-                (String::new(), format!("the expanded code of procedural macro `{name}`"), None)
+                (
+                    String::new(),
+                    format!("the expanded code of procedural macro `{name}`"),
+                    format!("`{path_str}` "),
+                    format!("expanded code of this procedural macro"),
+                    None,
+                )
             } else if let ExpnKind::Macro(MacroKind::Derive, name) = ctxt_kind
                 && sp.parent_callsite().map(|p| (p.lo(), p.hi())) == Some((sp.lo(), sp.hi()))
             {
                 // This span comes from a `derive` macro and it doesn't point at user code.
-                (String::new(), format!("the expanded code of `derive` macro `{name}`"), None)
+                (
+                    String::new(),
+                    format!("the expanded code of `derive` macro `{name}`"),
+                    format!("`{path_str}` "),
+                    format!("expanded code of this `derive` macro"),
+                    None,
+                )
             } else if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
                 debug!(?self.diagnostic_metadata.current_function);
@@ -259,18 +271,22 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 } else {
                     None
                 };
-                (String::new(), "this scope".to_string(), suggestion)
+                let s = "this scope".to_string();
+                (String::new(), s.clone(), String::new(), s, suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.tcx.sess.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
-                    (String::new(), "the list of imported crates".to_string(), None)
+                    let s = "the list of imported crates".to_string();
+                    (String::new(), s.clone(), String::new(), s, None)
                 } else {
-                    (String::new(), "the crate root".to_string(), None)
+                    let s = "the crate root".to_string();
+                    (String::new(), s.clone(), String::new(), s, None)
                 }
             } else if path.len() == 2 && path[0].ident.name == kw::Crate {
-                (String::new(), "the crate root".to_string(), None)
+                let s = "the crate root".to_string();
+                (String::new(), s.clone(), String::new(), s, None)
             } else {
                 let mod_path = &path[..path.len() - 1];
                 let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), None) {
@@ -278,7 +294,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => None,
                 }
                 .map_or_else(String::new, |res| format!("{} ", res.descr()));
-                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), None)
+                let s = format!("`{}`", Segment::names_to_string(mod_path));
+                (mod_prefix, s.clone(), String::new(), s, None)
             };
 
             let (fallback_label, suggestion) = if path_str == "async"
@@ -302,7 +319,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else {
                         suggestion
                     };
-                (format!("not found in {mod_str}"), override_suggestion)
+                (format!("{name}not found in {mod_label}"), override_suggestion)
             };
 
             BaseError {
