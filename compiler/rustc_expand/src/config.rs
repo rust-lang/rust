@@ -24,7 +24,6 @@ use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use thin_vec::ThinVec;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -37,7 +36,7 @@ pub struct StripUnconfigured<'a> {
     pub lint_node_id: NodeId,
 }
 
-fn get_features(sess: &Session, krate_attrs: &[ast::Attribute]) -> Features {
+pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     fn feature_removed(sess: &Session, span: Span, reason: Option<&str>) {
         sess.emit_err(FeatureRemoved {
             span,
@@ -191,33 +190,16 @@ fn get_features(sess: &Session, krate_attrs: &[ast::Attribute]) -> Features {
     features
 }
 
-/// `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(sess: &Session, krate: &mut ast::Crate, lint_node_id: NodeId) -> Features {
-    let mut strip_unconfigured =
-        StripUnconfigured { sess, features: None, config_tokens: false, lint_node_id };
-
-    let mut unconfigured_attrs = krate.attrs.clone();
-    let diag = &sess.parse_sess.span_diagnostic;
-    let err_count = diag.err_count();
-
-    krate.attrs.flat_map_in_place(|attr| strip_unconfigured.process_cfg_attr(&attr));
-    if !strip_unconfigured.in_cfg(&krate.attrs) {
-        // The entire crate is unconfigured.
-        krate.attrs = ast::AttrVec::new();
-        krate.items = ThinVec::new();
-        Features::default()
-    } else {
-        let features = get_features(sess, &krate.attrs);
-        if err_count == diag.err_count() {
-            // Avoid reconfiguring malformed `cfg_attr`s.
-            strip_unconfigured.features = Some(&features);
-            // Run configuration again, this time with features available
-            // so that we can perform feature-gating.
-            unconfigured_attrs.flat_map_in_place(|attr| strip_unconfigured.process_cfg_attr(&attr));
-            strip_unconfigured.in_cfg(&unconfigured_attrs);
-        }
-        features
-    }
+pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec {
+    let strip_unconfigured = StripUnconfigured {
+        sess,
+        features: None,
+        config_tokens: false,
+        lint_node_id: ast::CRATE_NODE_ID,
+    };
+    let attrs: ast::AttrVec =
+        attrs.iter().flat_map(|attr| strip_unconfigured.process_cfg_attr(attr)).collect();
+    if strip_unconfigured.in_cfg(&attrs) { attrs } else { ast::AttrVec::new() }
 }
 
 #[macro_export]

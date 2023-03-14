@@ -8,14 +8,20 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 
-pub fn inject(krate: &mut ast::Crate, resolver: &mut dyn ResolverExpand, sess: &Session) {
+pub fn inject(
+    krate: &mut ast::Crate,
+    pre_configured_attrs: &[ast::Attribute],
+    resolver: &mut dyn ResolverExpand,
+    sess: &Session,
+) -> usize {
+    let orig_num_items = krate.items.len();
     let edition = sess.parse_sess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if attr::contains_name(&krate.attrs, sym::no_core) {
-        return;
-    } else if attr::contains_name(&krate.attrs, sym::no_std) {
-        if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
+    let names: &[Symbol] = if attr::contains_name(pre_configured_attrs, sym::no_core) {
+        return 0;
+    } else if attr::contains_name(pre_configured_attrs, sym::no_std) {
+        if attr::contains_name(pre_configured_attrs, sym::compiler_builtins) {
             &[sym::core]
         } else {
             &[sym::core, sym::compiler_builtins]
@@ -84,4 +90,5 @@ pub fn inject(krate: &mut ast::Crate, resolver: &mut dyn ResolverExpand, sess: &
     );
 
     krate.items.insert(0, use_item);
+    krate.items.len() - orig_num_items
 }
