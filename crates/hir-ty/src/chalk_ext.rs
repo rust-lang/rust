@@ -12,7 +12,7 @@ use hir_def::{
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
-    CallableDefId, CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
+    CallableDefId, CallableSig, DynTy, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
     QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
 };
 
@@ -375,6 +375,19 @@ impl ProjectionTyExt for ProjectionTy {
 
     fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty {
         self.trait_ref(db).self_type_parameter(Interner)
+    }
+}
+
+pub trait DynTyExt {
+    fn principal(&self) -> Option<&TraitRef>;
+}
+
+impl DynTyExt for DynTy {
+    fn principal(&self) -> Option<&TraitRef> {
+        self.bounds.skip_binders().interned().get(0).and_then(|b| match b.skip_binders() {
+            crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
+            _ => None,
+        })
     }
 }
 

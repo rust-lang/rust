@@ -24,8 +24,8 @@ use crate::{
     primitive::{FloatTy, IntTy, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, InEnvironment,
+    Interner, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -805,20 +805,9 @@ fn is_inherent_impl_coherent(
         | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
 
         &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
-        // FIXME: Factor out the principal trait fetching into a function
-        TyKind::Dyn(it) => it
-            .bounds
-            .skip_binders()
-            .interned()
-            .get(0)
-            .and_then(|b| match b.skip_binders() {
-                crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                _ => None,
-            })
-            .map_or(false, |trait_ref| {
-                from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate()
-                    == def_map.krate()
-            }),
+        TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+            from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate() == def_map.krate()
+        }),
 
         _ => true,
     };
@@ -843,20 +832,10 @@ fn is_inherent_impl_coherent(
                 }
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
-            // FIXME: Factor out the principal trait fetching into a function
-            TyKind::Dyn(it) => it
-                .bounds
-                .skip_binders()
-                .interned()
-                .get(0)
-                .and_then(|b| match b.skip_binders() {
-                    crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                    _ => None,
-                })
-                .map_or(false, |trait_ref| {
-                    db.trait_data(from_chalk_trait_id(trait_ref.trait_id))
-                        .rustc_has_incoherent_inherent_impls
-                }),
+            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+                db.trait_data(from_chalk_trait_id(trait_ref.trait_id))
+                    .rustc_has_incoherent_inherent_impls
+            }),
 
             _ => false,
         };
