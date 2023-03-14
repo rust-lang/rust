@@ -597,7 +597,10 @@ pub mod option {
             loop {}
         }
         pub fn unwrap_or(self, default: T) -> T {
-            loop {}
+            match self {
+                Some(val) => val,
+                None => default,
+            }
         }
         // region:fn
         pub fn and_then<U, F>(self, f: F) -> Option<U>

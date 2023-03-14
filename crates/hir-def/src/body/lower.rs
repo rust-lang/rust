@@ -1030,9 +1030,16 @@ impl ExprCollector<'_> {
                         .collect(),
                 }
             }
-            ast::Pat::LiteralPat(lit) => {
+            ast::Pat::LiteralPat(lit) => 'b: {
                 if let Some(ast_lit) = lit.literal() {
-                    let expr = Expr::Literal(ast_lit.kind().into());
+                    let mut hir_lit: Literal = ast_lit.kind().into();
+                    if lit.minus_token().is_some() {
+                        let Some(h) = hir_lit.negate() else {
+                            break 'b Pat::Missing;
+                        };
+                        hir_lit = h;
+                    }
+                    let expr = Expr::Literal(hir_lit);
                     let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
                     let expr_id = self.alloc_expr(expr, expr_ptr);
                     Pat::Lit(expr_id)
@@ -1144,11 +1151,11 @@ impl From<ast::LiteralKind> for Literal {
                         FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
                         builtin,
                     )
-                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinInt::from_suffix) {
-                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
-                } else {
-                    let builtin = lit.suffix().and_then(BuiltinUint::from_suffix);
+                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
                     Literal::Uint(lit.value().unwrap_or(0), builtin)
+                } else {
+                    let builtin = lit.suffix().and_then(BuiltinInt::from_suffix);
+                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
                 }
             }
             LiteralKind::FloatNumber(lit) => {

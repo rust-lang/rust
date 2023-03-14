@@ -92,6 +92,16 @@ pub enum Literal {
     Float(FloatTypeWrapper, Option<BuiltinFloat>),
 }
 
+impl Literal {
+    pub fn negate(self) -> Option<Self> {
+        if let Literal::Int(i, k) = self {
+            Some(Literal::Int(-i, k))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.

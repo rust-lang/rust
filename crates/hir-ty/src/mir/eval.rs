@@ -423,6 +423,7 @@ impl Evaluator<'_> {
         args: impl Iterator<Item = Vec<u8>>,
         subst: Substitution,
     ) -> Result<Vec<u8>> {
+        dbg!(body.dbg(self.db));
         if let Some(x) = self.stack_depth_limit.checked_sub(1) {
             self.stack_depth_limit = x;
         } else {
@@ -581,7 +582,14 @@ impl Evaluator<'_> {
                 let mut ty = self.operand_ty(lhs, locals)?;
                 while let TyKind::Ref(_, _, z) = ty.kind(Interner) {
                     ty = z.clone();
-                    let size = self.size_of_sized(&ty, locals, "operand of binary op")?;
+                    let size = if ty.kind(Interner) == &TyKind::Str {
+                        let ns = from_bytes!(usize, &lc[self.ptr_size()..self.ptr_size() * 2]);
+                        lc = &lc[..self.ptr_size()];
+                        rc = &rc[..self.ptr_size()];
+                        ns
+                    } else {
+                        self.size_of_sized(&ty, locals, "operand of binary op")?
+                    };
                     lc = self.read_memory(Address::from_bytes(lc)?, size)?;
                     rc = self.read_memory(Address::from_bytes(rc)?, size)?;
                 }

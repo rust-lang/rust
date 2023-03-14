@@ -686,6 +686,36 @@ fn path_pattern_matching() {
 }
 
 #[test]
+fn pattern_matching_literal() {
+    check_number(
+        r#"
+    const fn f(x: i32) -> i32 {
+        match x {
+            -1 => 1,
+            1 => 10,
+            _ => 100,
+        }
+    }
+    const GOAL: i32 = f(-1) + f(1) + f(0) + f(-5);
+        "#,
+        211
+    );
+    check_number(
+        r#"
+    const fn f(x: &str) -> u8 {
+        match x {
+            "foo" => 1,
+            "bar" => 10,
+            _ => 100,
+        }
+    }
+    const GOAL: u8 = f("foo") + f("bar");
+        "#,
+        11
+    );
+}
+
+#[test]
 fn pattern_matching_ergonomics() {
     check_number(
         r#"
@@ -695,6 +725,16 @@ fn pattern_matching_ergonomics() {
         }
     }
     const GOAL: u8 = f(&(2, 3));
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let a = &(2, 3);
+        let &(x, y) = a;
+        x + y
+    };
         "#,
         5,
     );
@@ -778,6 +818,33 @@ fn function_param_patterns() {
     const GOAL: u8 = Foo(4).f(&(2, 3));
         "#,
         9,
+    );
+}
+
+#[test]
+fn match_guards() {
+    check_number(
+        r#"
+    //- minicore: option, eq
+    impl<T: PartialEq> PartialEq for Option<T> {
+        fn eq(&self, other: &Rhs) -> bool {
+            match (self, other) {
+                (Some(x), Some(y)) => x == y,
+                (None, None) => true,
+                _ => false,
+            }
+        }
+    }
+    fn f(x: Option<i32>) -> i32 {
+        match x {
+            y if y == Some(42) => 42000,
+            Some(y) => y,
+            None => 10
+        }
+    }
+    const GOAL: i32 = f(Some(42)) + f(Some(2)) + f(None);
+        "#,
+        42012,
     );
 }
 
@@ -977,6 +1044,51 @@ fn function_pointer() {
     const GOAL: u8 = {
         let x = [add2, mult3];
         x[0](1) + x[1](5)
+    };
+        "#,
+        18,
+    );
+}
+
+#[test]
+fn enum_variant_as_function() {
+    check_number(
+        r#"
+    //- minicore: option
+    const GOAL: u8 = {
+        let f = Some;
+        f(3).unwrap_or(2)
+    };
+        "#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const GOAL: u8 = {
+        let f: fn(u8) -> Option<u8> = Some;
+        f(3).unwrap_or(2)
+    };
+        "#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    enum Foo {
+        Add2(u8),
+        Mult3(u8),
+    }
+    use Foo::*;
+    const fn f(x: Foo) -> u8 {
+        match x {
+            Add2(x) => x + 2,
+            Mult3(x) => x * 3,
+        }
+    }
+    const GOAL: u8 = {
+        let x = [Add2, Mult3];
+        f(x[0](1)) + f(x[1](5))
     };
         "#,
         18,

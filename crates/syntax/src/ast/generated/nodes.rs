@@ -1376,6 +1376,7 @@ pub struct LiteralPat {
 }
 impl LiteralPat {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
+    pub fn minus_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![-]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,6 +1,6 @@
 //! A pretty-printer for MIR.
 
-use std::fmt::{Display, Write};
+use std::fmt::{Display, Write, Debug};
 
 use hir_def::{body::Body, expr::BindingId};
 use hir_expand::name::Name;
@@ -22,6 +22,18 @@ impl MirBody {
         let mut ctx = MirPrettyCtx::new(self, &hir_body, db);
         ctx.for_body();
         ctx.result
+    }
+
+    // String with lines is rendered poorly in `dbg!` macros, which I use very much, so this
+    // function exists to solve that.
+    pub fn dbg(&self, db: &dyn HirDatabase) -> impl Debug {
+        struct StringDbg(String);
+        impl Debug for StringDbg {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        StringDbg(self.pretty_print(db))
     }
 }
 
