@@ -20,7 +20,7 @@ use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
@@ -2213,7 +2213,7 @@ impl CheckAttrVisitor<'_> {
             tcx.fn_sig(def_id).subst(tcx, fresh_substs),
         );
 
-        let cause = ObligationCause::misc(span, def_id);
+        let mut cause = ObligationCause::misc(span, def_id);
         let sig = ocx.normalize(&cause, param_env, sig);
 
         // proc macro is not WF.
@@ -2235,6 +2235,39 @@ impl CheckAttrVisitor<'_> {
 
         if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {
             let mut diag = tcx.sess.create_err(errors::ProcMacroBadSig { span, kind });
+
+            let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id);
+            if let Some(hir_sig) = hir_sig {
+                match terr {
+                    TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
+                        if let Some(ty) = hir_sig.decl.inputs.get(idx) {
+                            diag.set_span(ty.span);
+                            cause.span = ty.span;
+                        } else if idx == hir_sig.decl.inputs.len() {
+                            let span = hir_sig.decl.output.span();
+                            diag.set_span(span);
+                            cause.span = span;
+                        }
+                    }
+                    TypeError::ArgCount => {
+                        if let Some(ty) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
+                            diag.set_span(ty.span);
+                            cause.span = ty.span;
+                        }
+                    }
+                    TypeError::UnsafetyMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    TypeError::AbiMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    TypeError::VariadicMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    _ => {}
+                }
+            }
+
             infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,

@@ -26,10 +26,10 @@ LL | pub fn bad_everything(input: String) -> String {
               found signature `fn(std::string::String) -> std::string::String`
 
 error: attribute proc macro has incorrect signature
-  --> $DIR/signature-proc-macro-attribute.rs:28:1
+  --> $DIR/signature-proc-macro-attribute.rs:28:52
    |
 LL | pub fn too_many(a: TokenStream, b: TokenStream, c: String) -> TokenStream {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |                                                    ^^^^^^ incorrect number of function parameters
    |
    = note: expected signature `fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream`
               found signature `fn(proc_macro::TokenStream, proc_macro::TokenStream, std::string::String) -> proc_macro::TokenStream`
