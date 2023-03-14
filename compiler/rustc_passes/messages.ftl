@@ -720,26 +720,7 @@ passes_ignored_derived_impls =
      *[other] traits {$trait_list}, but these are
     } intentionally ignored during dead code analysis
 
-passes_proc_macro_typeerror = mismatched {$kind} signature
-    .label = found {$found}, expected type `proc_macro::TokenStream`
-    .note = {$kind}s must have a signature of `{$expected_signature}`
-
-passes_proc_macro_diff_arg_count = mismatched {$kind} signature
-    .label = found unexpected {$count ->
-      [one] argument
-     *[other] arguments
-    }
-    .note = {$kind}s must have a signature of `{$expected_signature}`
-
-passes_proc_macro_missing_args = mismatched {$kind} signature
-    .label = {$kind} must have {$expected_input_count ->
-      [one] one argument
-     *[other] two arguments
-    } of type `proc_macro::TokenStream`
-
-passes_proc_macro_invalid_abi = proc macro functions may not be `extern "{$abi}"`
-
-passes_proc_macro_unsafe = proc macro functions may not be `unsafe`
+passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_skipping_const_checks = skipping const checks
 
