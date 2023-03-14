@@ -16,7 +16,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList},
-    match_ast, AstNode, Direction, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxElementChildren, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -102,6 +102,14 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                     }
                     return signature_help_for_record_lit(&sema, record, token);
                 },
+                ast::RecordPat(record) => {
+                    let cursor_outside = record.record_pat_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_record_pat(&sema, record, token);
+                },
+                ast::TupleStructPat(tuple_pat) => {},
                 _ => (),
             }
         }
@@ -346,10 +354,27 @@ fn signature_help_for_record_lit(
     record: ast::RecordExpr,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let active_parameter = record
-        .record_expr_field_list()?
-        .syntax()
-        .children_with_tokens()
+    signature_help_for_record_(
+        sema,
+        record.record_expr_field_list()?.syntax().children_with_tokens(),
+        &record.path()?,
+        record
+            .record_expr_field_list()?
+            .fields()
+            .filter_map(|field| sema.resolve_record_field(&field))
+            .map(|(field, _, ty)| (field, ty)),
+        token,
+    )
+}
+
+fn signature_help_for_record_(
+    sema: &Semantics<'_, RootDatabase>,
+    field_list_children: SyntaxElementChildren,
+    path: &ast::Path,
+    fields2: impl Iterator<Item = (hir::Field, hir::Type)>,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let active_parameter = field_list_children
         .filter_map(syntax::NodeOrToken::into_token)
         .filter(|t| t.kind() == syntax::T![,])
         .take_while(|t| t.text_range().start() <= token.text_range().start())
@@ -365,7 +390,7 @@ fn signature_help_for_record_lit(
     let fields;
 
     let db = sema.db;
-    let path_res = sema.resolve_path(&record.path()?)?;
+    let path_res = sema.resolve_path(path)?;
     if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
         fields = variant.fields(db);
         let en = variant.parent_enum(db);
@@ -397,8 +422,7 @@ fn signature_help_for_record_lit(
     let mut fields =
         fields.into_iter().map(|field| (field.name(db), Some(field))).collect::<FxIndexMap<_, _>>();
     let mut buf = String::new();
-    for field in record.record_expr_field_list()?.fields() {
-        let Some((field, _, ty)) = sema.resolve_record_field(&field) else { continue };
+    for (field, ty) in fields2 {
         let name = field.name(db);
         format_to!(buf, "{name}: {}", ty.display_truncated(db, Some(20)));
         res.push_record_field(&buf);
@@ -416,6 +440,23 @@ fn signature_help_for_record_lit(
     }
     res.signature.push_str(" }");
     Some(res)
+}
+
+fn signature_help_for_record_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    record: ast::RecordPat,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    signature_help_for_record_(
+        sema,
+        record.record_pat_field_list()?.syntax().children_with_tokens(),
+        &record.path()?,
+        record
+            .record_pat_field_list()?
+            .fields()
+            .filter_map(|field| sema.resolve_record_pat_field(&field)),
+        token,
+    )
 }
 
 #[cfg(test)]
@@ -1546,6 +1587,29 @@ impl S {
             expect![[r#"
                 struct S { t: u8 }
                            ^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_pat() {
+        check(
+            r#"
+struct Strukt<T, U = ()> {
+    t: T,
+    u: U,
+    unit: (),
+}
+fn f() {
+    let Strukt {
+        u: 0,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { u: i32, t: T, unit: () }
+                                ------  ^^^^  --------
             "#]],
         );
     }

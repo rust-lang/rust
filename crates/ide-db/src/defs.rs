@@ -327,7 +327,7 @@ impl NameClass {
             let pat_parent = ident_pat.syntax().parent();
             if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
                 if record_pat_field.name_ref().is_none() {
-                    if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
+                    if let Some((field, _)) = sema.resolve_record_pat_field(&record_pat_field) {
                         return Some(NameClass::PatFieldShorthand {
                             local_def: local,
                             field_ref: field,
@@ -483,6 +483,13 @@ impl NameRefClass {
                 },
                 ast::RecordPatField(record_pat_field) => {
                     sema.resolve_record_pat_field(&record_pat_field)
+                        .map(|(field, ..)|field)
+                        .map(Definition::Field)
+                        .map(NameRefClass::Definition)
+                },
+                ast::RecordExprField(record_expr_field) => {
+                    sema.resolve_record_field(&record_expr_field)
+                        .map(|(field, ..)|field)
                         .map(Definition::Field)
                         .map(NameRefClass::Definition)
                 },
