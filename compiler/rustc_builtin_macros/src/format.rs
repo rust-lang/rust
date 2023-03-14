@@ -36,6 +36,21 @@ enum PositionUsedAs {
 }
 use PositionUsedAs::*;
 
+struct MacroInput {
+    fmtstr: P<Expr>,
+    args: FormatArguments,
+    /// Whether the first argument was a string literal or a result from eager macro expansion.
+    /// If it's not a string literal, we disallow implicit arugment capturing.
+    ///
+    /// This does not correspond to whether we can treat spans to the literal normally, as the whole
+    /// invocation might be the result of another macro expansion, in which case this flag may still be true.
+    ///
+    /// See [RFC 2795] for more information.
+    ///
+    /// [RFC 2795]: https://rust-lang.github.io/rfcs/2795-format-args-implicit-identifiers.html#macro-hygiene
+    is_direct_literal: bool,
+}
+
 /// Parses the arguments from the given list of tokens, returning the diagnostic
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
@@ -45,11 +60,7 @@ use PositionUsedAs::*;
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(
-    ecx: &mut ExtCtxt<'a>,
-    sp: Span,
-    tts: TokenStream,
-) -> PResult<'a, (P<Expr>, FormatArguments)> {
+fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
     let mut args = FormatArguments::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -59,24 +70,20 @@ fn parse_args<'a>(
     }
 
     let first_token = &p.token;
-    let fmtstr = match first_token.kind {
-        token::TokenKind::Literal(token::Lit {
-            kind: token::LitKind::Str | token::LitKind::StrRaw(_),
-            ..
-        }) => {
-            // If the first token is a string literal, then a format expression
-            // is constructed from it.
-            //
-            // This allows us to properly handle cases when the first comma
-            // after the format string is mistakenly replaced with any operator,
-            // which cause the expression parser to eat too much tokens.
-            p.parse_literal_maybe_minus()?
-        }
-        _ => {
-            // Otherwise, we fall back to the expression parser.
-            p.parse_expr()?
-        }
+
+    let fmtstr = if let token::Literal(lit) = first_token.kind && matches!(lit.kind, token::Str | token::StrRaw(_)) {
+        // This allows us to properly handle cases when the first comma
+        // after the format string is mistakenly replaced with any operator,
+        // which cause the expression parser to eat too much tokens.
+        p.parse_literal_maybe_minus()?
+    } else {
+        // Otherwise, we fall back to the expression parser.
+        p.parse_expr()?
     };
+
+    // Only allow implicit captures to be used when the argument is a direct literal
+    // instead of a macro expanding to one.
+    let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
 
     let mut first = true;
 
@@ -147,17 +154,19 @@ fn parse_args<'a>(
             }
         }
     }
-    Ok((fmtstr, args))
+    Ok(MacroInput { fmtstr, args, is_direct_literal })
 }
 
-pub fn make_format_args(
+fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
-    efmt: P<Expr>,
-    mut args: FormatArguments,
+    input: MacroInput,
     append_newline: bool,
 ) -> Result<FormatArgs, ()> {
     let msg = "format argument must be a string literal";
-    let unexpanded_fmt_span = efmt.span;
+    let unexpanded_fmt_span = input.fmtstr.span;
+
+    let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
+
     let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
         Ok(mut fmt) if append_newline => {
             fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
@@ -208,11 +217,11 @@ pub fn make_format_args(
         }
     }
 
-    let is_literal = parser.is_literal;
+    let is_source_literal = parser.is_source_literal;
 
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
-        let sp = if is_literal {
+        let sp = if is_source_literal {
             fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end))
         } else {
             // The format string could be another macro invocation, e.g.:
@@ -230,7 +239,7 @@ pub fn make_format_args(
         if let Some(note) = err.note {
             e.note(&note);
         }
-        if let Some((label, span)) = err.secondary_label && is_literal {
+        if let Some((label, span)) = err.secondary_label && is_source_literal {
             e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
         }
         if err.should_be_replaced_with_positional_argument {
@@ -256,7 +265,7 @@ pub fn make_format_args(
     }
 
     let to_span = |inner_span: rustc_parse_format::InnerSpan| {
-        is_literal.then(|| {
+        is_source_literal.then(|| {
             fmt_span.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end })
         })
     };
@@ -304,7 +313,7 @@ pub fn make_format_args(
                     // Name not found in `args`, so we add it as an implicitly captured argument.
                     let span = span.unwrap_or(fmt_span);
                     let ident = Ident::new(name, span);
-                    let expr = if is_literal {
+                    let expr = if is_direct_literal {
                         ecx.expr_ident(span, ident)
                     } else {
                         // For the moment capturing variables from format strings expanded from macros is
@@ -814,7 +823,7 @@ fn report_invalid_references(
         // for `println!("{7:7$}", 1);`
         indexes.sort();
         indexes.dedup();
-        let span: MultiSpan = if !parser.is_literal || parser.arg_places.is_empty() {
+        let span: MultiSpan = if !parser.is_source_literal || parser.arg_places.is_empty() {
             MultiSpan::from_span(fmt_span)
         } else {
             MultiSpan::from_spans(invalid_refs.iter().filter_map(|&(_, span, _, _)| span).collect())
@@ -855,8 +864,8 @@ fn expand_format_args_impl<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     sp = ecx.with_def_site_ctxt(sp);
     match parse_args(ecx, sp, tts) {
-        Ok((efmt, args)) => {
-            if let Ok(format_args) = make_format_args(ecx, efmt, args, nl) {
+        Ok(input) => {
+            if let Ok(format_args) = make_format_args(ecx, input, nl) {
                 MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
             } else {
                 MacEager::expr(DummyResult::raw_expr(sp, true))
