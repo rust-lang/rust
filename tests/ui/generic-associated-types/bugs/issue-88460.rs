@@ -1,7 +1,6 @@
-// check-fail
-// known-bug: #88460
+// check-pass
 
-// This should pass, but has a missed normalization due to HRTB.
+// Used to fail due to a missed normalization due to HRTB.
 
 pub trait Marker {}
 

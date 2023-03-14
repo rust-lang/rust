@@ -2512,7 +2512,20 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         debug!(?impl_trait_ref);
 
-        let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
+        let Normalized {
+            value: placeholder_obligation_trait_ref,
+            obligations: mut nested_obligations,
+        } = ensure_sufficient_stack(|| {
+            project::normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                placeholder_obligation_trait_ref,
+            )
+        });
+
+        let Normalized { value: impl_trait_ref, obligations: more_nested_obligations } =
             ensure_sufficient_stack(|| {
                 project::normalize_with_depth(
                     self,
@@ -2522,6 +2535,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     impl_trait_ref,
                 )
             });
+        nested_obligations.extend(more_nested_obligations);
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
