@@ -3232,6 +3232,13 @@ impl Type {
         }
     }
 
+    pub fn as_slice(&self) -> Option<Type> {
+        match &self.ty.kind(Interner) {
+            TyKind::Slice(ty) => Some(self.derived(ty.clone())),
+            _ => None,
+        }
+    }
+
     pub fn strip_references(&self) -> Type {
         self.derived(self.ty.strip_references().clone())
     }
