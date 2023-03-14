@@ -940,7 +940,7 @@ fn cargo_to_crate_graph(
     if has_private {
         // If the user provided a path to rustc sources, we add all the rustc_private crates
         // and create dependencies on them for the crates which opt-in to that
-        if let Some((rustc_workspace, build_scripts)) = rustc {
+        if let Some((rustc_workspace, rustc_build_scripts)) = rustc {
             handle_rustc_crates(
                 &mut crate_graph,
                 &mut pkg_to_lib_crate,
@@ -953,7 +953,13 @@ fn cargo_to_crate_graph(
                 &pkg_crates,
                 &cfg_options,
                 override_cfg,
-                build_scripts,
+                if rustc_workspace.workspace_root() == cargo.workspace_root() {
+                    // the rustc workspace does not use the installed toolchain's proc-macro server
+                    // so we need to make sure we don't use the pre compiled proc-macros there either
+                    build_scripts
+                } else {
+                    rustc_build_scripts
+                },
                 target_layout,
             );
         }
