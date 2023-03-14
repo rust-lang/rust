@@ -184,7 +184,8 @@ It's important to note that rustdoc can ask the compiler for type information
 directly, even during HTML generation. This [didn't used to be the case], and
 a lot of rustdoc's architecture was designed around not doing that, but a
 `TyCtxt` is now passed to `formats::renderer::run_format`, which is used to
-run generation for both HTML and the (unstable as of March 2023) JSON format.
+run generation for both HTML and the
+(unstable as of <!-- date-check --> March 2023) JSON format.
 
 [didn't used to be the case]: https://github.com/rust-lang/rust/pull/80090
 
