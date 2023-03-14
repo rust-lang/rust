@@ -2578,6 +2578,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
 
+        if self.lower_impl_trait_in_trait_to_assoc_ty() {
+            return !self.associated_items_for_impl_trait_in_trait(trait_item_def_id).is_empty();
+        }
+
         // FIXME(RPITIT): This does a somewhat manual walk through the signature
         // of the trait fn to look for any RPITITs, but that's kinda doing a lot
         // of work. We can probably remove this when we refactor RPITITs to be

@@ -1,7 +1,6 @@
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use hir::def::DefKind;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -1549,7 +1548,12 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
         for arg in fn_output.walk() {
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Alias(ty::Opaque, proj) = ty.kind()
-                && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
+                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) we should just check
+                // `tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder`. Right now
+                // `check_associated_type_bounds` is not called for RPITITs synthesized as
+                // associated types. See `check_mod_type_wf` to see how synthesized associated
+                // types are missed due to iterating over HIR.
+                && tcx.is_impl_trait_in_trait(proj.def_id)
                 && tcx.impl_trait_in_trait_parent_fn(proj.def_id) == fn_def_id.to_def_id()
             {
                 let span = tcx.def_span(proj.def_id);
