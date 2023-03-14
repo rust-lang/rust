@@ -2,12 +2,20 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config, substituteVSCodeVariables } from "./config";
+import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
-import { isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
+import {
+    executeDiscoverProject,
+    isRustDocument,
+    isRustEditor,
+    LazyOutputChannel,
+    log,
+    RustEditor,
+} from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
+import { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -41,6 +49,17 @@ export function fetchWorkspace(): Workspace {
         : { kind: "Workspace Folder" };
 }
 
+export async function discoverWorkspace(
+    files: readonly vscode.TextDocument[],
+    command: string[],
+    options: ExecOptions
+): Promise<JsonProject> {
+    const paths = files.map((f) => `"${f.uri.fsPath}"`).join(" ");
+    const joinedCommand = command.join(" ");
+    const data = await executeDiscoverProject(`${joinedCommand} ${paths}`, options);
+    return JSON.parse(data) as JsonProject;
+}
+
 export type CommandFactory = {
     enabled: (ctx: CtxInit) => Cmd;
     disabled?: (ctx: Ctx) => Cmd;
@@ -52,7 +71,7 @@ export type CtxInit = Ctx & {
 
 export class Ctx {
     readonly statusBar: vscode.StatusBarItem;
-    readonly config: Config;
+    config: Config;
     readonly workspace: Workspace;
 
     private _client: lc.LanguageClient | undefined;
@@ -169,7 +188,30 @@ export class Ctx {
                 };
             }
 
-            const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
+            const discoverProjectCommand = this.config.discoverProjectCommand;
+            if (discoverProjectCommand) {
+                const workspaces: JsonProject[] = await Promise.all(
+                    vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                        const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                        return discoverWorkspace(rustDocuments, discoverProjectCommand, {
+                            cwd: folder.uri.fsPath,
+                        });
+                    })
+                );
+
+                this.addToDiscoveredWorkspaces(workspaces);
+            }
+
+            const initializationOptions = prepareVSCodeConfig(
+                rawInitializationOptions,
+                (key, obj) => {
+                    // we only want to set discovered workspaces on the right key
+                    // and if a workspace has been discovered.
+                    if (key === "linkedProjects" && this.config.discoveredWorkspaces.length > 0) {
+                        obj["linkedProjects"] = this.config.discoveredWorkspaces;
+                    }
+                }
+            );
 
             this._client = await createClient(
                 this.traceOutputChannel,
@@ -249,6 +291,17 @@ export class Ctx {
 
     get serverPath(): string | undefined {
         return this._serverPath;
+    }
+
+    addToDiscoveredWorkspaces(workspaces: JsonProject[]) {
+        for (const workspace of workspaces) {
+            const index = this.config.discoveredWorkspaces.indexOf(workspace);
+            if (~index) {
+                this.config.discoveredWorkspaces[index] = workspace;
+            } else {
+                this.config.discoveredWorkspaces.push(workspace);
+            }
+        }
     }
 
     private updateCommands(forceDisable?: "disable") {
