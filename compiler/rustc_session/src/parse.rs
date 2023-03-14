@@ -8,7 +8,7 @@ use crate::lint::{
 };
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{AtomicBool, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
@@ -208,7 +208,7 @@ pub struct ParseSess {
     pub gated_spans: GatedSpans,
     pub symbol_gallery: SymbolGallery,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
-    pub reached_eof: Lock<bool>,
+    pub reached_eof: AtomicBool,
     /// Environment variables accessed during the build and their values when they exist.
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// File paths accessed during the build.
@@ -254,7 +254,7 @@ impl ParseSess {
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             gated_spans: GatedSpans::default(),
             symbol_gallery: SymbolGallery::default(),
-            reached_eof: Lock::new(false),
+            reached_eof: AtomicBool::new(false),
             env_depinfo: Default::default(),
             file_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),

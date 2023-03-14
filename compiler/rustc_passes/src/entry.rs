@@ -187,7 +187,7 @@ fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     let sp = tcx.def_span(CRATE_DEF_ID);
-    if *tcx.sess.parse_sess.reached_eof.borrow() {
+    if tcx.sess.parse_sess.reached_eof.load(rustc_data_structures::sync::Ordering::Relaxed) {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
         tcx.sess.delay_span_bug(sp, "`main` not found, but expected unclosed brace error");
