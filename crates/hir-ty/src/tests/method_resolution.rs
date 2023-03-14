@@ -9,6 +9,7 @@ fn infer_slice_method() {
     check_types(
         r#"
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -35,6 +36,7 @@ fn test() {
 //- /lib.rs crate:other_crate
 mod foo {
     impl f32 {
+        #[rustc_allow_incoherent_impl]
         pub fn foo(self) -> f32 { 0. }
     }
 }
@@ -47,6 +49,7 @@ fn infer_array_inherent_impl() {
     check_types(
         r#"
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -1437,6 +1440,7 @@ fn resolve_const_generic_array_methods() {
         r#"
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
@@ -1445,6 +1449,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1468,6 +1473,7 @@ struct Const<const N: usize>;
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     pub fn my_map<F, U, const X: usize>(self, f: F, c: Const<X>) -> [U; X]
     where
         F: FnMut(T) -> U,
@@ -1476,6 +1482,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     pub fn my_map<F, const X: usize, U>(self, f: F, c: Const<X>) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1874,14 +1881,14 @@ fn incoherent_impls() {
 pub struct Box<T>(T);
 use core::error::Error;
 
-#[rustc_allow_incoherent_impl]
 impl dyn Error {
+    #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         loop {}
     }
 }
-#[rustc_allow_incoherent_impl]
 impl dyn Error + Send {
+    #[rustc_allow_incoherent_impl]
     /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
