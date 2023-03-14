@@ -1,7 +1,8 @@
 // Operator precedence of type ascription
 // Type ascription has very high precedence, the same as operator `as`
-use std::ops::*;
+#![feature(type_ascription)]
 
+use std::ops::*;
 struct S;
 struct Z;
 
@@ -22,28 +23,34 @@ impl Deref for S {
     fn deref(&self) -> &Z { panic!() }
 }
 
-fn main() {
+fn test1() {
     &S: &S; //~ ERROR expected one of
-    (&S): &S; // OK
+    (&S): &S;
     &(S: &S);
-
-    *S: Z; // OK
-    (*S): Z; // OK
-    *(S: Z);
-
-    -S: Z; // OK
-    (-S): Z; // OK
-    -(S: Z);
-
-    S + Z: Z; // OK
-    S + (Z: Z); // OK
-    (S + Z): Z;
-
-    S * Z: Z; // OK
-    S * (Z: Z); // OK
-    (S * Z): Z;
-
-    S .. S: S; // OK
-    S .. (S: S); // OK
-    (S .. S): S;
 }
+
+fn test2() {
+    *(S: Z); //~ ERROR expected identifier
+}
+
+fn test3() {
+    -(S: Z); //~ ERROR expected identifier
+}
+
+fn test4() {
+    (S + Z): Z; //~ ERROR expected one of
+}
+
+fn test5() {
+    (S * Z): Z; //~ ERROR expected one of
+}
+
+fn test6() {
+    S .. S: S; //~ ERROR expected identifier, found `:`
+}
+
+fn test7() {
+    (S .. S): S; //~ ERROR expected one of
+}
+
+fn main() {}
