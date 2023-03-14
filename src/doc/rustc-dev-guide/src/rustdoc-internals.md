@@ -102,7 +102,7 @@ Here is the list of passes as of <!-- date-check --> March 2023:
 
 - `propagate-doc-cfg` propagates `#[doc(cfg(...))]` to child items.
 
-- `run-lints` runs some of rustdoc's lints, defind in `passes/lint`. This is
+- `run-lints` runs some of rustdoc's lints, defined in `passes/lint`. This is
   the last pass to run.
 
   - `bare_urls` detects links that are not linkified, e.g., in Markdown such as
