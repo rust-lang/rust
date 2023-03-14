@@ -1009,6 +1009,57 @@ fn function_traits() {
 }
 
 #[test]
+fn dyn_trait() {
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    trait Foo {
+        fn foo(&self) -> u8 { 10 }
+    }
+    struct S1;
+    struct S2;
+    struct S3;
+    impl Foo for S1 {
+        fn foo(&self) -> u8 { 1 }
+    }
+    impl Foo for S2 {
+        fn foo(&self) -> u8 { 2 }
+    }
+    impl Foo for S3 {}
+    const GOAL: u8 = {
+        let x: &[&dyn Foo] = &[&S1, &S2, &S3];
+        x[0].foo() + x[1].foo() + x[2].foo()
+    };
+        "#,
+        13,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    trait Foo {
+        fn foo(&self) -> i32 { 10 }
+    }
+    trait Bar {
+        fn bar(&self) -> i32 { 20 }
+    }
+
+    struct S;
+    impl Foo for S {
+        fn foo(&self) -> i32 { 200 }
+    }
+    impl Bar for dyn Foo {
+        fn bar(&self) -> i32 { 700 }
+    }
+    const GOAL: i32 = {
+        let x: &dyn Foo = &S;
+        x.bar() + x.foo()
+    };
+        "#,
+        900,
+    );
+}
+
+#[test]
 fn array_and_index() {
     check_number(
         r#"

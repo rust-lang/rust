@@ -5,7 +5,7 @@
 use std::{ops::ControlFlow, sync::Arc};
 
 use base_db::{CrateId, Edition};
-use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex};
+use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
     data::ImplData, item_scope::ItemScope, lang_item::LangItem, nameres::DefMap, AssocItemId,
     BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
@@ -692,6 +692,38 @@ pub fn lookup_impl_const(
         .unwrap_or((const_id, subs))
 }
 
+/// Checks if the self parameter of `Trait` method is the `dyn Trait` and we should
+/// call the method using the vtable.
+pub fn is_dyn_method(
+    db: &dyn HirDatabase,
+    _env: Arc<TraitEnvironment>,
+    func: FunctionId,
+    fn_subst: Substitution,
+) -> Option<usize> {
+    let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
+        return None;
+    };
+    let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
+    let fn_params = fn_subst.len(Interner) - trait_params;
+    let trait_ref = TraitRef {
+        trait_id: to_chalk_trait_id(trait_id),
+        substitution: Substitution::from_iter(Interner, fn_subst.iter(Interner).skip(fn_params)),
+    };
+    let self_ty = trait_ref.self_type_parameter(Interner);
+    if let TyKind::Dyn(d) = self_ty.kind(Interner) {
+        let is_my_trait_in_bounds = d.bounds.skip_binders().as_slice(Interner).iter().any(|x| match x.skip_binders() {
+            // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
+            // what the generics are, we are sure that the method is come from the vtable.
+            WhereClause::Implemented(tr) => tr.trait_id == trait_ref.trait_id,
+            _ => false,
+        });
+        if is_my_trait_in_bounds {
+            return Some(fn_params);
+        }
+    }
+    None
+}
+
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
@@ -701,9 +733,8 @@ pub fn lookup_impl_method(
     func: FunctionId,
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
-    let trait_id = match func.lookup(db.upcast()).container {
-        ItemContainerId::TraitId(id) => id,
-        _ => return (func, fn_subst),
+    let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
+        return (func, fn_subst)
     };
     let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
     let fn_params = fn_subst.len(Interner) - trait_params;

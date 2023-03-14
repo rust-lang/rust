@@ -23,16 +23,25 @@ use crate::{
     infer::{normalize, PointerCast},
     layout::layout_of_ty,
     mapping::from_chalk,
-    method_resolution::lookup_impl_method,
+    method_resolution::{is_dyn_method, lookup_impl_method},
     traits::FnTrait,
     CallableDefId, Const, ConstScalar, FnDefId, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt,
+    TraitEnvironment, Ty, TyBuilder, TyExt, GenericArgData,
 };
 
 use super::{
     const_as_usize, return_slot, AggregateKind, BinOp, CastKind, LocalId, MirBody, MirLowerError,
     Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, UnOp,
 };
+
+macro_rules! from_bytes {
+    ($ty:tt, $value:expr) => {
+        ($ty::from_le_bytes(match ($value).try_into() {
+            Ok(x) => x,
+            Err(_) => return Err(MirEvalError::TypeError("mismatched size")),
+        }))
+    };
+}
 
 #[derive(Debug, Default)]
 struct VTableMap {
@@ -53,6 +62,11 @@ impl VTableMap {
 
     fn ty(&self, id: usize) -> Result<&Ty> {
         self.id_to_ty.get(id).ok_or(MirEvalError::InvalidVTableId(id))
+    }
+
+    fn ty_of_bytes(&self, bytes: &[u8]) -> Result<&Ty> {
+        let id = from_bytes!(usize, bytes);
+        self.ty(id)
     }
 }
 
@@ -108,15 +122,6 @@ impl IntervalOrOwned {
             IntervalOrOwned::Borrowed(b) => b.get(memory)?.to_vec(),
         })
     }
-}
-
-macro_rules! from_bytes {
-    ($ty:tt, $value:expr) => {
-        ($ty::from_le_bytes(match ($value).try_into() {
-            Ok(x) => x,
-            Err(_) => return Err(MirEvalError::TypeError("mismatched size")),
-        }))
-    };
 }
 
 impl Address {
@@ -781,7 +786,18 @@ impl Evaluator<'_> {
                                         }
                                         _ => not_supported!("slice unsizing from non pointers"),
                                     },
-                                    TyKind::Dyn(_) => not_supported!("dyn pointer unsize cast"),
+                                    TyKind::Dyn(_) => match &current_ty.data(Interner).kind {
+                                        TyKind::Raw(_, ty) | TyKind::Ref(_, _, ty) => {
+                                            let vtable = self.vtable_map.id(ty.clone());
+                                            let addr =
+                                                self.eval_operand(operand, locals)?.get(&self)?;
+                                            let mut r = Vec::with_capacity(16);
+                                            r.extend(addr.iter().copied());
+                                            r.extend(vtable.to_le_bytes().into_iter());
+                                            Owned(r)
+                                        }
+                                        _ => not_supported!("dyn unsizing from non pointers"),
+                                    },
                                     _ => not_supported!("unknown unsized cast"),
                                 }
                             }
@@ -1227,44 +1243,8 @@ impl Evaluator<'_> {
                 let arg_bytes = args
                     .iter()
                     .map(|x| Ok(self.eval_operand(x, &locals)?.get(&self)?.to_owned()))
-                    .collect::<Result<Vec<_>>>()?
-                    .into_iter();
-                let function_data = self.db.function_data(def);
-                let is_intrinsic = match &function_data.abi {
-                    Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
-                    None => match def.lookup(self.db.upcast()).container {
-                        hir_def::ItemContainerId::ExternBlockId(block) => {
-                            let id = block.lookup(self.db.upcast()).id;
-                            id.item_tree(self.db.upcast())[id.value].abi.as_deref()
-                                == Some("rust-intrinsic")
-                        }
-                        _ => false,
-                    },
-                };
-                let result = if is_intrinsic {
-                    self.exec_intrinsic(
-                        function_data.name.as_text().unwrap_or_default().as_str(),
-                        arg_bytes,
-                        generic_args,
-                        &locals,
-                    )?
-                } else if let Some(x) = self.detect_lang_function(def) {
-                    self.exec_lang_item(x, arg_bytes)?
-                } else {
-                    let (imp, generic_args) = lookup_impl_method(
-                        self.db,
-                        self.trait_env.clone(),
-                        def,
-                        generic_args.clone(),
-                    );
-                    let generic_args = self.subst_filler(&generic_args, &locals);
-                    let def = imp.into();
-                    let mir_body =
-                        self.db.mir_body(def).map_err(|e| MirEvalError::MirLowerError(imp, e))?;
-                    self.interpret_mir(&mir_body, arg_bytes, generic_args)
-                        .map_err(|e| MirEvalError::InFunction(imp, Box::new(e)))?
-                };
-                self.write_memory(dest_addr, &result)?;
+                    .collect::<Result<Vec<_>>>()?;
+                self.exec_fn_with_args(def, arg_bytes, generic_args, locals, dest_addr)?;
             }
             CallableDefId::StructId(id) => {
                 let (size, variant_layout, tag) =
@@ -1281,6 +1261,77 @@ impl Evaluator<'_> {
                 self.write_memory(dest_addr, &result)?;
             }
         }
+        Ok(())
+    }
+
+    fn exec_fn_with_args(
+        &mut self,
+        def: FunctionId,
+        arg_bytes: Vec<Vec<u8>>,
+        generic_args: Substitution,
+        locals: &Locals<'_>,
+        dest_addr: Address,
+    ) -> Result<()> {
+        let function_data = self.db.function_data(def);
+        let is_intrinsic = match &function_data.abi {
+            Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
+            None => match def.lookup(self.db.upcast()).container {
+                hir_def::ItemContainerId::ExternBlockId(block) => {
+                    let id = block.lookup(self.db.upcast()).id;
+                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
+                        == Some("rust-intrinsic")
+                }
+                _ => false,
+            },
+        };
+        let result = if is_intrinsic {
+            self.exec_intrinsic(
+                function_data.name.as_text().unwrap_or_default().as_str(),
+                arg_bytes.iter().cloned(),
+                generic_args,
+                &locals,
+            )?
+        } else if let Some(x) = self.detect_lang_function(def) {
+            self.exec_lang_item(x, &arg_bytes)?
+        } else {
+            if let Some(self_ty_idx) =
+                is_dyn_method(self.db, self.trait_env.clone(), def, generic_args.clone())
+            {
+                // In the layout of current possible receiver, which at the moment of writing this code is one of
+                // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible recievers,
+                // the vtable is exactly in the `[ptr_size..2*ptr_size]` bytes. So we can use it without branching on
+                // the type.
+                let ty = self
+                    .vtable_map
+                    .ty_of_bytes(&arg_bytes[0][self.ptr_size()..self.ptr_size() * 2])?;
+                let ty = GenericArgData::Ty(ty.clone()).intern(Interner);
+                let mut args_for_target = arg_bytes;
+                args_for_target[0] = args_for_target[0][0..self.ptr_size()].to_vec();
+                let generics_for_target = Substitution::from_iter(
+                    Interner,
+                    generic_args
+                        .iter(Interner)
+                        .enumerate()
+                        .map(|(i, x)| if i == self_ty_idx { &ty } else { x })
+                );
+                return self.exec_fn_with_args(
+                    def,
+                    args_for_target,
+                    generics_for_target,
+                    locals,
+                    dest_addr,
+                );
+            }
+            let (imp, generic_args) =
+                lookup_impl_method(self.db, self.trait_env.clone(), def, generic_args.clone());
+            let generic_args = self.subst_filler(&generic_args, &locals);
+            let def = imp.into();
+            let mir_body =
+                self.db.mir_body(def).map_err(|e| MirEvalError::MirLowerError(imp, e))?;
+            self.interpret_mir(&mir_body, arg_bytes.iter().cloned(), generic_args)
+                .map_err(|e| MirEvalError::InFunction(imp, Box::new(e)))?
+        };
+        self.write_memory(dest_addr, &result)?;
         Ok(())
     }
 
@@ -1317,12 +1368,9 @@ impl Evaluator<'_> {
         Ok(())
     }
 
-    fn exec_lang_item(
-        &self,
-        x: LangItem,
-        mut args: std::vec::IntoIter<Vec<u8>>,
-    ) -> Result<Vec<u8>> {
+    fn exec_lang_item(&self, x: LangItem, args: &[Vec<u8>]) -> Result<Vec<u8>> {
         use LangItem::*;
+        let mut args = args.iter();
         match x {
             PanicFmt | BeginPanic => Err(MirEvalError::Panic),
             SliceLen => {

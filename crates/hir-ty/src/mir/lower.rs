@@ -230,7 +230,14 @@ impl MirLowerCtx<'_> {
                                     self.lower_const(c, current, place, expr_id.into())?;
                                     return Ok(Some(current))
                                 },
-                                _ => not_supported!("associated functions and types"),
+                                hir_def::AssocItemId::FunctionId(_) => {
+                                    // FnDefs are zero sized, no action is needed.
+                                    return Ok(Some(current))
+                                }
+                                hir_def::AssocItemId::TypeAliasId(_) => {
+                                    // FIXME: If it is unreachable, use proper error instead of `not_supported`.
+                                    not_supported!("associated functions and types")
+                                },
                             }
                         } else if let Some(variant) = self
                             .infer
