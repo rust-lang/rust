@@ -780,7 +780,6 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::DropTemps(ref source) => {
                 ExprKind::Use { source: self.mirror_expr(source) }
             }
-            hir::ExprKind::Box(ref value) => ExprKind::Box { value: self.mirror_expr(value) },
             hir::ExprKind::Array(ref fields) => {
                 ExprKind::Array { fields: self.mirror_exprs(fields) }
             }

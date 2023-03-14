@@ -305,8 +305,6 @@ pub enum ObligationCauseCode<'tcx> {
     SizedReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
-    /// Box expression result type must be `Sized`.
-    SizedBoxType,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
     /// `[expr; N]` requires `type_of(expr): Copy`.

@@ -1673,7 +1673,6 @@ pub struct Expr<'hir> {
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1763,7 +1762,6 @@ impl Expr<'_> {
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
             | ExprKind::Unary(..)
-            | ExprKind::Box(..)
             | ExprKind::AddrOf(..)
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
@@ -1851,7 +1849,6 @@ impl Expr<'_> {
             | ExprKind::InlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::ConstBlock(..)
-            | ExprKind::Box(..)
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
@@ -1862,8 +1859,7 @@ impl Expr<'_> {
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.kind {
-            ExprKind::Box(_)
-            | ExprKind::Array(_)
+            ExprKind::Array(_)
             | ExprKind::Call(..)
             | ExprKind::Tup(_)
             | ExprKind::Lit(_)
@@ -1910,8 +1906,6 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 
 #[derive(Debug, HashStable_Generic)]
 pub enum ExprKind<'hir> {
-    /// A `box x` expression.
-    Box(&'hir Expr<'hir>),
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(AnonConst),
     /// An array (e.g., `[a, b, c, d]`).

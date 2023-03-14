@@ -682,7 +682,6 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
-        ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
