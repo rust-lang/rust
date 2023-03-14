@@ -416,6 +416,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 probe.is_ok()
             });
+
+            self.note_internal_mutation_in_method(
+                &mut err,
+                rcvr_expr,
+                expected.to_option(&self),
+                rcvr_ty,
+            );
         }
 
         let mut custom_span_label = false;

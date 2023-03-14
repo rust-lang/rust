@@ -950,44 +950,75 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        expected: Ty<'tcx>,
+        expected: Option<Ty<'tcx>>,
         found: Ty<'tcx>,
     ) {
         if found != self.tcx.types.unit {
             return;
         }
-        if let ExprKind::MethodCall(path_segment, rcvr, ..) = expr.kind {
-            if self
-                .typeck_results
+
+        let ExprKind::MethodCall(path_segment, rcvr, ..) = expr.kind else {
+            return;
+        };
+
+        let rcvr_has_the_expected_type = self
+            .typeck_results
+            .borrow()
+            .expr_ty_adjusted_opt(rcvr)
+            .and_then(|ty| expected.map(|expected_ty| expected_ty.peel_refs() == ty.peel_refs()))
+            .unwrap_or(false);
+
+        let prev_call_mutates_and_returns_unit = || {
+            self.typeck_results
                 .borrow()
-                .expr_ty_adjusted_opt(rcvr)
-                .map_or(true, |ty| expected.peel_refs() != ty.peel_refs())
-            {
-                return;
-            }
-            let mut sp = MultiSpan::from_span(path_segment.ident.span);
-            sp.push_span_label(
-                path_segment.ident.span,
-                format!(
-                    "this call modifies {} in-place",
-                    match rcvr.kind {
-                        ExprKind::Path(QPath::Resolved(
-                            None,
-                            hir::Path { segments: [segment], .. },
-                        )) => format!("`{}`", segment.ident),
-                        _ => "its receiver".to_string(),
-                    }
-                ),
-            );
+                .type_dependent_def_id(expr.hir_id)
+                .map(|def_id| self.tcx.fn_sig(def_id).skip_binder().skip_binder())
+                .and_then(|sig| sig.inputs_and_output.split_last())
+                .map(|(output, inputs)| {
+                    output.is_unit()
+                        && inputs
+                            .get(0)
+                            .and_then(|self_ty| self_ty.ref_mutability())
+                            .map_or(false, rustc_ast::Mutability::is_mut)
+                })
+                .unwrap_or(false)
+        };
+
+        if !(rcvr_has_the_expected_type || prev_call_mutates_and_returns_unit()) {
+            return;
+        }
+
+        let mut sp = MultiSpan::from_span(path_segment.ident.span);
+        sp.push_span_label(
+            path_segment.ident.span,
+            format!(
+                "this call modifies {} in-place",
+                match rcvr.kind {
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        hir::Path { segments: [segment], .. },
+                    )) => format!("`{}`", segment.ident),
+                    _ => "its receiver".to_string(),
+                }
+            ),
+        );
+
+        let modifies_rcvr_note =
+            format!("method `{}` modifies its receiver in-place", path_segment.ident);
+        if rcvr_has_the_expected_type {
             sp.push_span_label(
                 rcvr.span,
                 "you probably want to use this value after calling the method...",
             );
+            err.span_note(sp, &modifies_rcvr_note);
+            err.note(&format!("...instead of the `()` output of method `{}`", path_segment.ident));
+        } else if let ExprKind::MethodCall(..) = rcvr.kind {
             err.span_note(
                 sp,
-                &format!("method `{}` modifies its receiver in-place", path_segment.ident),
+                modifies_rcvr_note.clone() + ", it is not meant to be used in method chains.",
             );
-            err.note(&format!("...instead of the `()` output of method `{}`", path_segment.ident));
+        } else {
+            err.span_note(sp, &modifies_rcvr_note);
         }
     }
 
