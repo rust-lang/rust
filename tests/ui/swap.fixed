@@ -186,3 +186,11 @@ const fn issue_9864(mut u: u32) -> u32 {
     v = temp;
     u + v
 }
+
+#[allow(clippy::let_and_return)]
+const fn issue_10421(x: u32) -> u32 {
+    let a = x;
+    let a = a;
+    let a = a;
+    a
+}

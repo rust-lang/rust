@@ -190,6 +190,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             && first.span.eq_ctxt(second.span)
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
+			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
             && let Some(lhs_sugg) = match &lhs0 {
                 ExprOrIdent::Expr(expr) => Sugg::hir_opt(cx, expr),
                 ExprOrIdent::Ident(ident) => Some(Sugg::NonParen(ident.as_str().into())),
