@@ -221,11 +221,12 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
+    pub skip_array_during_method_dispatch: bool,
+    pub fundamental: bool,
     pub visibility: RawVisibility,
     /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
     /// method calls to this trait's methods when the receiver is an array and the crate edition is
     /// 2015 or 2018.
-    pub skip_array_during_method_dispatch: bool,
     // box it as the vec is usually empty anyways
     pub attribute_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
 }
@@ -254,6 +255,7 @@ impl TraitData {
             attrs.by_key("rustc_skip_array_during_method_dispatch").exists();
         let rustc_has_incoherent_inherent_impls =
             attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
+        let fundamental = attrs.by_key("fundamental").exists();
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
@@ -269,6 +271,7 @@ impl TraitData {
                 visibility,
                 skip_array_during_method_dispatch,
                 rustc_has_incoherent_inherent_impls,
+                fundamental,
             }),
             diagnostics.into(),
         )
