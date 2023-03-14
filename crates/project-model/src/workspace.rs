@@ -450,6 +450,14 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn workspace_definition_path(&self) -> Option<&AbsPath> {
+        match self {
+            ProjectWorkspace::Cargo { cargo, .. } => Some(cargo.workspace_root()),
+            ProjectWorkspace::Json { project, .. } => Some(project.path()),
+            ProjectWorkspace::DetachedFiles { .. } => None,
+        }
+    }
+
     pub fn find_sysroot_proc_macro_srv(&self) -> Option<AbsPathBuf> {
         match self {
             ProjectWorkspace::Cargo { sysroot: Some(sysroot), .. }
