@@ -201,6 +201,23 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
+    if binary_format == BinaryFormat::Elf{
+      if architecture == Architecture::I386 || architecture == Architecture::Arm{
+       if let Some(bp) = sess.opts.unstable_opts.branch_protection {
+         if bp.bti{
+          //&sess.target.options.features
+          // Information it should include Owner, Data size,Description
+          let name:Vec<u8> =  b"hello".to_vec();//.new.gnu.property"
+          let segment:Vec<u8>  = b"world".to_vec();
+          let kind: SectionKind = SectionKind::Note;
+          let section = file.add_section(segment, name, kind);
+          let data: &[u8] = b"howdy";
+          file.append_section_data(section, data, 1);
+          ()
+         } 
+       }     
+      }
+    } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
 }
