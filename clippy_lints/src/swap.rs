@@ -6,7 +6,8 @@ use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core}
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -75,7 +76,9 @@ declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         check_manual_swap(cx, block);
-        check_suspicious_swap(cx, block);
+        if !in_external_macro(cx.sess(), block.span) {
+            check_suspicious_swap(cx, block);
+        }
         check_xor_swap(cx, block);
     }
 }
