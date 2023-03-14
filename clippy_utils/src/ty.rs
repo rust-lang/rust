@@ -1121,3 +1121,47 @@ pub fn make_normalized_projection<'tcx>(
     }
     helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, substs)?)
 }
+
+/// Check if given type has inner mutability such as [`std::cell::Cell`] or [`std::cell::RefCell`]
+/// etc.
+pub fn is_interior_mut_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    match *ty.kind() {
+        ty::Ref(_, inner_ty, mutbl) => mutbl == Mutability::Mut || is_interior_mut_ty(cx, inner_ty),
+        ty::Slice(inner_ty) => is_interior_mut_ty(cx, inner_ty),
+        ty::Array(inner_ty, size) => {
+            size.try_eval_target_usize(cx.tcx, cx.param_env)
+                .map_or(true, |u| u != 0)
+                && is_interior_mut_ty(cx, inner_ty)
+        },
+        ty::Tuple(fields) => fields.iter().any(|ty| is_interior_mut_ty(cx, ty)),
+        ty::Adt(def, substs) => {
+            // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
+            // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
+            // because they have no impl for `Hash` or `Ord`.
+            let def_id = def.did();
+            let is_std_collection = [
+                sym::Option,
+                sym::Result,
+                sym::LinkedList,
+                sym::Vec,
+                sym::VecDeque,
+                sym::BTreeMap,
+                sym::BTreeSet,
+                sym::Rc,
+                sym::Arc,
+            ]
+            .iter()
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def_id));
+            let is_box = Some(def_id) == cx.tcx.lang_items().owned_box();
+            if is_std_collection || is_box {
+                // The type is mutable if any of its type parameters are
+                substs.types().any(|ty| is_interior_mut_ty(cx, ty))
+            } else {
+                !ty.has_escaping_bound_vars()
+                    && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
+                    && !ty.is_freeze(cx.tcx, cx.param_env)
+            }
+        },
+        _ => false,
+    }
+}
