@@ -22,9 +22,9 @@ use rustc_trait_selection::traits;
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
-    ImmTy, Immediate, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer,
-    Scalar, StackPopCleanup,
+    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, Frame, ImmTy, Immediate,
+    InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    StackPopCleanup,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -628,18 +628,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         trace!("attempting to replace {:?} with {:?}", rval, value);
-        if let Err(e) = self.ecx.const_validate_operand(
-            value,
-            vec![],
-            // FIXME: is ref tracking too expensive?
-            // FIXME: what is the point of ref tracking if we do not even check the tracked refs?
-            &mut interpret::RefTracking::empty(),
-            CtfeValidationMode::Regular,
-        ) {
-            trace!("validation error, attempt failed: {:?}", e);
-            return;
-        }
-
         // FIXME> figure out what to do when read_immediate_raw fails
         let imm = self.ecx.read_immediate_raw(value).ok();
 
