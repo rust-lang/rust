@@ -104,9 +104,7 @@ where
     // Type in const path
     const {
         pub struct Foo;
-        fn foo() -> Type5 {
-            Foo
-        }
+        let _: Type5 = Foo;
     };
 
     // Type in impl path

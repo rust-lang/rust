@@ -184,6 +184,14 @@ pub struct OpaqueTypeConstrainedButNotInSig {
     #[label(hir_analysis_item_label)]
     pub item_span: Span,
 }
+#[derive(Diagnostic)]
+#[diag(hir_analysis_opaque_type_constrained_but_not_in_sibling)]
+pub struct OpaqueTypeConstrainedInNonSibling {
+    #[primary_span]
+    pub span: Span,
+    #[label(hir_analysis_item_label)]
+    pub item_span: Span,
+}
 
 pub struct MissingTypeParams {
     pub span: Span,

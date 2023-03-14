@@ -1,0 +1,26 @@
+error: opaque type constrained in nested item
+  --> $DIR/defining-use-item-child.rs:9:9
+   |
+LL |     pub fn foo() -> Foo {
+   |     ------------------- this item is not a sibling of the opaque type
+LL |         "foo"
+   |         ^^^^^
+
+error: opaque type constrained in nested item
+  --> $DIR/defining-use-item-child.rs:16:9
+   |
+LL |     pub fn foo() -> Foo {
+   |     ------------------- this item is not a sibling of the opaque type
+LL |         "foo"
+   |         ^^^^^
+
+error: opaque type constrained in nested item
+  --> $DIR/defining-use-item-child.rs:25:13
+   |
+LL |         fn blob() -> Foo {
+   |         ---------------- this item is not a sibling of the opaque type
+LL |             "blob"
+   |             ^^^^^^
+
+error: aborting due to 3 previous errors
+

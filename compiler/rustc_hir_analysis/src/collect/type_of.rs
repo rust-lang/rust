@@ -22,7 +22,9 @@ use rustc_span::{sym, Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
-use crate::errors::{OpaqueTypeConstrainedButNotInSig, UnconstrainedOpaqueType};
+use crate::errors::{
+    OpaqueTypeConstrainedButNotInSig, OpaqueTypeConstrainedInNonSibling, UnconstrainedOpaqueType,
+};
 
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
@@ -640,13 +642,20 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
-                if let Err(item_def_id) =
+                if let Err((item_def_id, sibling)) =
                     may_define_opaque_type(self.tcx, item_def_id, self.def_id, concrete_type.span)
                 {
-                    self.tcx.sess.emit_err(OpaqueTypeConstrainedButNotInSig {
-                        span: concrete_type.span,
-                        item_span: self.tcx.def_span(item_def_id),
-                    });
+                    if sibling {
+                        self.tcx.sess.emit_err(OpaqueTypeConstrainedButNotInSig {
+                            span: concrete_type.span,
+                            item_span: self.tcx.def_span(item_def_id),
+                        });
+                    } else {
+                        self.tcx.sess.emit_err(OpaqueTypeConstrainedInNonSibling {
+                            span: concrete_type.span,
+                            item_span: self.tcx.def_span(item_def_id),
+                        });
+                    }
                 }
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
@@ -766,8 +775,27 @@ fn may_define_opaque_type<'tcx>(
     def_id: LocalDefId,
     opaque_def_id: LocalDefId,
     span: Span,
-) -> Result<(), LocalDefId> {
-    if tcx.is_descendant_of(opaque_def_id.to_def_id(), def_id.to_def_id()) {
+) -> Result<(), (LocalDefId, bool)> {
+    let mut parent = tcx.local_parent(opaque_def_id);
+    loop {
+        trace!(?parent);
+        match tcx.def_kind(parent) {
+            DefKind::AssocTy | DefKind::TyAlias => {
+                parent = tcx.local_parent(parent);
+                break;
+            }
+            // Skip nested opaque types
+            DefKind::OpaqueTy => {
+                parent = tcx.local_parent(parent);
+            }
+            def_kind => {
+                trace!(?def_kind);
+                return Err((def_id, false));
+            }
+        }
+    }
+    trace!(?parent);
+    if parent == def_id {
         // If the opaque type is defined in the body of a function, that function
         // may constrain the opaque type since it can't mention it in bounds.
         return Ok(());
@@ -777,9 +805,31 @@ fn may_define_opaque_type<'tcx>(
         return may_define_opaque_type(tcx, tcx.local_parent(def_id), opaque_def_id, span);
     }
 
+    let mut item_parent = tcx.local_parent(def_id);
+    while item_parent != parent {
+        trace!(?item_parent);
+        match tcx.def_kind(item_parent) {
+            // Skip impls, to allow methods to constrain opaque types from the surrounding module.
+            DefKind::Impl { .. } | DefKind::Trait => {
+                item_parent = tcx.local_parent(item_parent);
+            }
+            // Skip modules, to allow constraining opaque types in child modules
+            DefKind::Mod => {
+                item_parent = tcx.local_parent(item_parent);
+            }
+            def_kind => {
+                trace!(?def_kind);
+                break;
+            }
+        }
+    }
+
+    if item_parent != parent {
+        return Err((def_id, false));
+    }
+
     let param_env = tcx.param_env(def_id);
 
-    trace!(parent = ?tcx.parent(opaque_def_id.to_def_id()));
     fn has_tait<'tcx>(
         val: impl TypeVisitable<TyCtxt<'tcx>>,
         opaque_def_id: LocalDefId,
@@ -874,7 +924,7 @@ fn may_define_opaque_type<'tcx>(
     let tait_in_where_bounds =
         has_tait(tcx.predicates_of(def_id.to_def_id()).predicates, opaque_def_id, tcx, param_env);
     if tcx.features().type_alias_impl_trait_in_where_bounds {
-        if tait_in_where_bounds { Ok(()) } else { Err(def_id) }
+        if tait_in_where_bounds { Ok(()) } else { Err((def_id, true)) }
     } else {
         if tait_in_where_bounds {
             feature_err(
@@ -885,7 +935,7 @@ fn may_define_opaque_type<'tcx>(
             )
             .emit();
         }
-        Err(def_id)
+        Err((def_id, true))
     }
 }
 

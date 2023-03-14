@@ -72,6 +72,9 @@ hir_analysis_trait_object_declared_with_no_traits =
 hir_analysis_opaque_type_constrained_but_not_in_sig = opaque type constrained without being represented in the signature
     .item_label = this item must mention the opaque type in its signature or where bounds
 
+hir_analysis_opaque_type_constrained_but_not_in_sibling = opaque type constrained in nested item
+    .item_label = this item is not a sibling of the opaque type
+
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
         [one] parameter
