@@ -828,11 +828,10 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
-        let res = kets.iter().any(|k| match expect {
+        kets.iter().any(|k| match expect {
             TokenExpectType::Expect => self.check(k),
             TokenExpectType::NoExpect => self.token == **k,
-        });
-        res
+        })
     }
 
     fn parse_seq_to_before_tokens<T>(
@@ -960,6 +959,7 @@ impl<'a> Parser<'a> {
             let t = f(self)?;
             v.push(t);
         }
+
         Ok((v, trailing, recovered))
     }
 
@@ -1045,7 +1045,6 @@ impl<'a> Parser<'a> {
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-
         if !recovered {
             self.eat(ket);
         }

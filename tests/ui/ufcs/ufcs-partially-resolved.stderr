@@ -3,22 +3,12 @@ error[E0433]: failed to resolve: `Y` is a variant, not a module
    |
 LL |     let _: <u8 as E::Y>::NN;
    |                      ^ `Y` is a variant, not a module
-   |
-help: there is an enum variant `E::Y`; try using the variant's enum
-   |
-LL |     let _: E;
-   |            ~
 
 error[E0433]: failed to resolve: `Y` is a variant, not a module
   --> $DIR/ufcs-partially-resolved.rs:50:15
    |
 LL |     <u8 as E::Y>::NN;
    |               ^ `Y` is a variant, not a module
-   |
-help: there is an enum variant `E::Y`; try using the variant's enum
-   |
-LL |     E;
-   |     ~
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:19:24

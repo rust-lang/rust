@@ -294,17 +294,6 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            // Special cases:
-            if op.node == AssocOp::As {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
-                continue;
-            } else if op.node == AssocOp::DotDot || op.node == AssocOp::DotDotEq {
-                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
-                // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, op.node, cur_op_span)?;
-                break;
-            }
-
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -619,9 +608,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
-            _ => {
-                return this.parse_expr_dot_or_call(Some(attrs));
-            }
+            _ => return this.parse_expr_dot_or_call(Some(attrs)),
         }
     }
 

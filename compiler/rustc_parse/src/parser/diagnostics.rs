@@ -238,7 +238,6 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 
 impl<'a> Parser<'a> {
     #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
