@@ -24,8 +24,8 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for deriving `Hash` but implementing `PartialEq`
-    /// explicitly or vice versa.
+    /// Lints against manual `PartialEq` implementations for types with a derived `Hash`
+    /// implementation.
     ///
     /// ### Why is this bad?
     /// The implementation of these traits must agree (for
@@ -54,8 +54,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for deriving `Ord` but implementing `PartialOrd`
-    /// explicitly or vice versa.
+    /// Lints against manual `PartialOrd` and `Ord` implementations for types with a derived `Ord`
+    /// or `PartialOrd` implementation.
     ///
     /// ### Why is this bad?
     /// The implementation of these traits must agree (for
