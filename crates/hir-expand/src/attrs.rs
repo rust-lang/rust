@@ -10,7 +10,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::{ast, match_ast, AstNode, SmolStr, SyntaxNode};
 
 use crate::{
-    db::AstDatabase,
+    db::ExpandDatabase,
     hygiene::Hygiene,
     mod_path::{ModPath, PathKind},
     name::AsName,
@@ -38,7 +38,7 @@ impl ops::Deref for RawAttrs {
 impl RawAttrs {
     pub const EMPTY: Self = Self { entries: None };
 
-    pub fn new(db: &dyn AstDatabase, owner: &dyn ast::HasAttrs, hygiene: &Hygiene) -> Self {
+    pub fn new(db: &dyn ExpandDatabase, owner: &dyn ast::HasAttrs, hygiene: &Hygiene) -> Self {
         let entries = collect_attrs(owner)
             .filter_map(|(id, attr)| match attr {
                 Either::Left(attr) => {
@@ -55,7 +55,7 @@ impl RawAttrs {
         Self { entries: if entries.is_empty() { None } else { Some(entries) } }
     }
 
-    pub fn from_attrs_owner(db: &dyn AstDatabase, owner: InFile<&dyn ast::HasAttrs>) -> Self {
+    pub fn from_attrs_owner(db: &dyn ExpandDatabase, owner: InFile<&dyn ast::HasAttrs>) -> Self {
         let hygiene = Hygiene::new(db, owner.file_id);
         Self::new(db, owner.value, &hygiene)
     }
@@ -87,7 +87,7 @@ impl RawAttrs {
 
     /// Processes `cfg_attr`s, returning the resulting semantic `Attrs`.
     // FIXME: This should return a different type
-    pub fn filter(self, db: &dyn AstDatabase, krate: CrateId) -> RawAttrs {
+    pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
             .any(|attr| attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]));
@@ -199,7 +199,7 @@ impl fmt::Display for AttrInput {
 
 impl Attr {
     fn from_src(
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         ast: ast::Meta,
         hygiene: &Hygiene,
         id: AttrId,
@@ -221,7 +221,7 @@ impl Attr {
     }
 
     fn from_tt(
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         tt: &tt::Subtree,
         hygiene: &Hygiene,
         id: AttrId,

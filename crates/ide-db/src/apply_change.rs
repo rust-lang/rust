@@ -71,7 +71,7 @@ impl RootDatabase {
             base_db::SourceRootQuery
             base_db::SourceRootCratesQuery
 
-            // AstDatabase
+            // ExpandDatabase
             hir::db::AstIdMapQuery
             hir::db::ParseMacroExpansionQuery
             hir::db::InternMacroCallQuery

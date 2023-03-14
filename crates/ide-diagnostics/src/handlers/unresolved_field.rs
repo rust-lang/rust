@@ -1,4 +1,4 @@
-use hir::{db::AstDatabase, HirDisplay, InFile};
+use hir::{db::ExpandDatabase, HirDisplay, InFile};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     base_db::FileRange,

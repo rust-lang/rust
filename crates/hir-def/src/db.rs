@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
-use hir_expand::{db::AstDatabase, HirFileId};
+use hir_expand::{db::ExpandDatabase, HirFileId};
 use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
@@ -64,7 +64,7 @@ pub trait InternDatabase: SourceDatabase {
 }
 
 #[salsa::query_group(DefDatabaseStorage)]
-pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
+pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDatabase> {
     #[salsa::input]
     fn enable_proc_attr_macros(&self) -> bool;
 
