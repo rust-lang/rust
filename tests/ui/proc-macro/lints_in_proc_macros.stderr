@@ -2,7 +2,7 @@ error[E0425]: cannot find value `foobar2` in the expanded code of procedural mac
   --> $DIR/lints_in_proc_macros.rs:9:5
    |
 LL |     bang_proc_macro2!();
-   |     ^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `foobar`
+   |     ^^^^^^^^^^^^^^^^^^^ `foobar2` not found in expanded code of this procedural macro
    |
    = note: this error originates in the macro `bang_proc_macro2` (in Nightly builds, run with -Z macro-backtrace for more info)
 

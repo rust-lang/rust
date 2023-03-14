@@ -4,8 +4,6 @@ error[E0412]: cannot find type `FromOutside` in the expanded code of procedural 
 LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ `FromOutside` not found in expanded code of this procedural macro
    |
-   = help: consider importing this struct:
-           FromOutside
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `Outer` in the expanded code of procedural macro `generate_mod::check`
@@ -14,8 +12,6 @@ error[E0412]: cannot find type `Outer` in the expanded code of procedural macro 
 LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ `Outer` not found in expanded code of this procedural macro
    |
-   = help: consider importing this struct:
-           Outer
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `FromOutside` in the expanded code of procedural macro `generate_mod::check_attr`
