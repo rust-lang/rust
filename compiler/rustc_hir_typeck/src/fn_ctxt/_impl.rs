@@ -1405,9 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
-                self.err_ctxt()
-                    .emit_inference_failure_err(self.body_id, sp, ty.into(), E0282, true)
-                    .emit()
+                self.err_ctxt().emit_inference_failure_err(sp, ty.into(), E0282, true).emit()
             });
             let err = self.tcx.ty_error(e);
             self.demand_suptype(sp, err, ty);

@@ -95,6 +95,8 @@ pub mod nice_region_error;
 /// Get an instance by calling `InferCtxt::err` or `FnCtxt::infer_err`.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
+
+    // These three fields are only used by hir typeck.
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
     pub fallback_has_occurred: bool,
 

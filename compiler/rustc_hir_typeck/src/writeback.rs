@@ -47,7 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rustc_dump_user_substs =
             self.tcx.has_attr(item_def_id.to_def_id(), sym::rustc_dump_user_substs);
 
-        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
+        let mut wbcx = WritebackCx::new(self, rustc_dump_user_substs);
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
@@ -106,23 +106,16 @@ struct WritebackCx<'cx, 'tcx> {
 
     typeck_results: ty::TypeckResults<'tcx>,
 
-    body: &'tcx hir::Body<'tcx>,
-
     rustc_dump_user_substs: bool,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
-    fn new(
-        fcx: &'cx FnCtxt<'cx, 'tcx>,
-        body: &'tcx hir::Body<'tcx>,
-        rustc_dump_user_substs: bool,
-    ) -> WritebackCx<'cx, 'tcx> {
-        let owner = body.id().hir_id.owner;
-
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>, rustc_dump_user_substs: bool) -> WritebackCx<'cx, 'tcx> {
+        // All bodies which share typeck results have the same `OwnerId`.
+        let hir_id = fcx.tcx.hir().local_def_id_to_hir_id(fcx.body_id);
         WritebackCx {
             fcx,
-            typeck_results: ty::TypeckResults::new(owner),
-            body,
+            typeck_results: ty::TypeckResults::new(hir_id.owner),
             rustc_dump_user_substs,
         }
     }
@@ -687,7 +680,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let mut resolver = Resolver::new(self.fcx, span, self.body);
+        let mut resolver = Resolver::new(self.fcx, span);
         let x = x.fold_with(&mut resolver);
         if cfg!(debug_assertions) && x.needs_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
@@ -726,19 +719,14 @@ struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'tcx>,
     span: &'cx dyn Locatable,
-    body: &'tcx hir::Body<'tcx>,
 
     /// Set to `Some` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
     replaced_with_error: Option<ErrorGuaranteed>,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
-    fn new(
-        fcx: &'cx FnCtxt<'cx, 'tcx>,
-        span: &'cx dyn Locatable,
-        body: &'tcx hir::Body<'tcx>,
-    ) -> Resolver<'cx, 'tcx> {
-        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: None }
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>, span: &'cx dyn Locatable) -> Resolver<'cx, 'tcx> {
+        Resolver { tcx: fcx.tcx, infcx: fcx, span, replaced_with_error: None }
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
@@ -747,13 +735,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             None => self
                 .infcx
                 .err_ctxt()
-                .emit_inference_failure_err(
-                    self.tcx.hir().body_owner_def_id(self.body.id()),
-                    self.span.to_span(self.tcx),
-                    p.into(),
-                    E0282,
-                    false,
-                )
+                .emit_inference_failure_err(self.span.to_span(self.tcx), p.into(), E0282, false)
                 .emit(),
         }
     }

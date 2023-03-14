@@ -2267,7 +2267,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
                     if let None = self.tainted_by_errors() {
                         self.emit_inference_failure_err(
-                            obligation.cause.body_id,
                             span,
                             trait_ref.self_ty().skip_binder().into(),
                             ErrorCode::E0282,
@@ -2294,13 +2293,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let subst = data.trait_ref.substs.iter().find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(subst) = subst {
-                    self.emit_inference_failure_err(
-                        obligation.cause.body_id,
-                        span,
-                        subst,
-                        ErrorCode::E0283,
-                        true,
-                    )
+                    self.emit_inference_failure_err(span, subst, ErrorCode::E0283, true)
                 } else {
                     struct_span_err!(
                         self.tcx.sess,
@@ -2467,13 +2460,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(
-                    obligation.cause.body_id,
-                    span,
-                    arg,
-                    ErrorCode::E0282,
-                    false,
-                )
+                self.emit_inference_failure_err(span, arg, ErrorCode::E0282, false)
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -2487,13 +2474,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(
-                    obligation.cause.body_id,
-                    span,
-                    a.into(),
-                    ErrorCode::E0282,
-                    true,
-                )
+                self.emit_inference_failure_err(span, a.into(), ErrorCode::E0282, true)
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
@@ -2506,13 +2487,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .chain(Some(data.term.into_arg()))
                     .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
-                    let mut err = self.emit_inference_failure_err(
-                        obligation.cause.body_id,
-                        span,
-                        subst,
-                        ErrorCode::E0284,
-                        true,
-                    );
+                    let mut err =
+                        self.emit_inference_failure_err(span, subst, ErrorCode::E0284, true);
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {
@@ -2535,13 +2511,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 let subst = data.walk().find(|g| g.is_non_region_infer());
                 if let Some(subst) = subst {
-                    let err = self.emit_inference_failure_err(
-                        obligation.cause.body_id,
-                        span,
-                        subst,
-                        ErrorCode::E0284,
-                        true,
-                    );
+                    let err = self.emit_inference_failure_err(span, subst, ErrorCode::E0284, true);
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error

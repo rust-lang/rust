@@ -157,8 +157,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         TypeErrCtxt {
             infcx: &self.infcx,
+
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
+
             normalize_fn_sig: Box::new(|fn_sig| {
                 if fn_sig.has_escaping_bound_vars() {
                     return fn_sig;
