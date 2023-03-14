@@ -215,7 +215,7 @@ pub struct ModuleData {
     pub origin: ModuleOrigin,
     /// Declared visibility of this module.
     pub visibility: Visibility,
-
+    /// Always [`None`] for block modules
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ItemScope,
@@ -429,7 +429,7 @@ impl DefMap {
         Some(self.block?.parent)
     }
 
-    /// Returns the module containing `local_mod`, either the parent `mod`, or the module containing
+    /// Returns the module containing `local_mod`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(&self, local_mod: LocalModuleId) -> Option<ModuleId> {
         match self[local_mod].parent {
