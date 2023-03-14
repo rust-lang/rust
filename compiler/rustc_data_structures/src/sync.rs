@@ -481,14 +481,6 @@ impl<T: Default> Default for Lock<T> {
     }
 }
 
-// FIXME: Probably a bad idea
-impl<T: Clone> Clone for Lock<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Lock::new(self.borrow().clone())
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct RwLock<T>(InnerRwLock<T>);
 

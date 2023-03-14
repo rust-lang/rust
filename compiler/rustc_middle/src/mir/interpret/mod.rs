@@ -263,7 +263,8 @@ impl AllocDecodingState {
     }
 
     pub fn new(data_offsets: Vec<u32>) -> Self {
-        let decoding_state = vec![Lock::new(State::Empty); data_offsets.len()];
+        let decoding_state =
+            std::iter::repeat_with(|| Lock::new(State::Empty)).take(data_offsets.len()).collect();
 
         Self { decoding_state, data_offsets }
     }
