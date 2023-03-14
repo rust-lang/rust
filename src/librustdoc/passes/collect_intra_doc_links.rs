@@ -1016,7 +1016,7 @@ impl LinkCollector<'_, '_> {
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![(res, res.def_id(self.cx.tcx)), (prim, None)];
-                    ambiguity_error(self.cx, diag_info, path_str, candidates);
+                    ambiguity_error(self.cx, &diag_info, path_str, &candidates);
                     return None;
                 }
             }
@@ -1206,6 +1206,10 @@ impl LinkCollector<'_, '_> {
             }
         }
 
+        if candidates.len() > 1 && !ambiguity_error(self.cx, &diag, &key.path_str, &candidates) {
+            candidates = vec![candidates[0]];
+        }
+
         if let &[(res, def_id)] = candidates.as_slice() {
             let fragment = match (&key.extra_fragment, def_id) {
                 (Some(_), Some(def_id)) => {
@@ -1221,9 +1225,6 @@ impl LinkCollector<'_, '_> {
             return r;
         }
 
-        if !candidates.is_empty() {
-            ambiguity_error(self.cx, diag, &key.path_str, candidates);
-        }
         if cache_errors {
             self.visited_links.insert(key, None);
         }
@@ -1898,21 +1899,30 @@ fn report_malformed_generics(
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
+///
+/// If all `candidates` have the same kind, it's not possible to disambiguate so in this case,
+/// the function returns `false`. Otherwise, it'll emit the error and return `true`.
 fn ambiguity_error(
     cx: &DocContext<'_>,
-    diag_info: DiagnosticInfo<'_>,
+    diag_info: &DiagnosticInfo<'_>,
     path_str: &str,
-    candidates: Vec<(Res, Option<DefId>)>,
-) {
+    candidates: &[(Res, Option<DefId>)],
+) -> bool {
     let mut msg = format!("`{}` is ", path_str);
     let kinds = candidates
-        .into_iter()
+        .iter()
         .map(
             |(res, def_id)| {
-                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, def_id) } else { res }
+                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res }
             },
         )
         .collect::<Vec<_>>();
+    let descrs = kinds.iter().map(|res| res.descr()).collect::<FxHashSet<&'static str>>();
+    if descrs.len() == 1 {
+        // There is no way for users to disambiguate at this point, so better return the first
+        // candidate and not show a warning.
+        return false;
+    }
 
     match kinds.as_slice() {
         [res1, res2] => {
@@ -1936,7 +1946,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -1947,6 +1957,7 @@ fn ambiguity_error(
             suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
         }
     });
+    true
 }
 
 /// In case of an ambiguity or mismatched disambiguator, suggest the correct
