@@ -1,22 +1,9 @@
-error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
+error[E0275]: overflow evaluating the requirement `RootDatabase: RefUnwindSafe`
   --> $DIR/cycle-cache-err-60010.rs:27:13
    |
 LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required because it appears within the type `PhantomData<SalsaStorage>`
-   = note: required because it appears within the type `Unique<SalsaStorage>`
-   = note: required because it appears within the type `Box<SalsaStorage>`
-note: required because it appears within the type `Runtime<RootDatabase>`
-  --> $DIR/cycle-cache-err-60010.rs:23:8
-   |
-LL | struct Runtime<DB: Database> {
-   |        ^^^^^^^
-note: required because it appears within the type `RootDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:20:8
-   |
-LL | struct RootDatabase {
-   |        ^^^^^^^^^^^^
 note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:44:9
    |
