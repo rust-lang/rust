@@ -202,9 +202,6 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        if segments.len() > 1 {
-            //panic!("debug now ...");
-        }
         Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
     }
 
@@ -740,7 +737,6 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
-        debug!("pain");
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
@@ -749,7 +745,6 @@ impl<'a> Parser<'a> {
             // Parse const argument.
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
-            debug!("type");
             // Parse type argument.
 
             // Proactively create a parser snapshot enabling us to rewind and try to reparse the

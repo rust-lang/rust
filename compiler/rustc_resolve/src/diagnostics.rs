@@ -777,10 +777,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .sess
                 .create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span }),
             ResolutionError::FailedToResolve { label, suggestion } => {
-                if label.len() > 0 {
-                    //panic!("debug now");
-                }
-
                 let mut err =
                     struct_span_err!(self.tcx.sess, span, E0433, "failed to resolve: {}", &label);
                 err.span_label(span, label);

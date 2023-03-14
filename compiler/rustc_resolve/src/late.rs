@@ -3715,7 +3715,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     /// Handles paths that may refer to associated items.
-    #[instrument(level = "debug", skip(self))]
     fn resolve_qpath(
         &mut self,
         qself: &Option<P<QSelf>>,
@@ -3723,6 +3722,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         ns: Namespace,
         finalize: Finalize,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
+        debug!(
+            "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
+            qself, path, ns, finalize,
+        );
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no

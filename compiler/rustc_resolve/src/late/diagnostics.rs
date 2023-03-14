@@ -305,7 +305,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn smart_resolve_report_errors(
         &mut self,
         path: &[Segment],
