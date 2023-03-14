@@ -33,10 +33,6 @@ struct SortByKeyDetection {
 /// contains a and the other replaces it with b)
 fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident: &Ident) -> bool {
     match (&a_expr.kind, &b_expr.kind) {
-        // Two boxes with mirrored contents
-        (ExprKind::Box(left_expr), ExprKind::Box(right_expr)) => {
-            mirrored_exprs(left_expr, a_ident, right_expr, b_ident)
-        },
         // Two arrays with mirrored contents
         (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => {
             iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
