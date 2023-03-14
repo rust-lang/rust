@@ -75,20 +75,31 @@ impl<T: Copy> AppendOnlyVec<T> {
         #[cfg(parallel_compiler)]
         return self.vec.get(i);
     }
+
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (usize, T)> + '_ {
+        (0..)
+            .map(|i| (i, self.get(i)))
+            .take_while(|(_, o)| o.is_some())
+            .filter_map(|(i, o)| Some((i, o?)))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        (0..).map(|i| self.get(i)).take_while(|o| o.is_some()).filter_map(|o| o)
+    }
 }
 
 impl<T: Copy + PartialEq> AppendOnlyVec<T> {
     pub fn contains(&self, val: T) -> bool {
-        for i in 0.. {
-            match self.get(i) {
-                None => return false,
-                Some(v) => {
-                    if val == v {
-                        return true;
-                    }
-                }
-            }
+        self.iter_enumerated().any(|(_, v)| v == val)
+    }
+}
+
+impl<A: Copy> FromIterator<A> for AppendOnlyVec<A> {
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
+        let this = Self::new();
+        for val in iter {
+            this.push(val);
         }
-        false
+        this
     }
 }
