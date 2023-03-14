@@ -96,7 +96,12 @@ export async function createClient(
                     if (resp && Array.isArray(resp)) {
                         return resp.map((val) => {
                             return prepareVSCodeConfig(val, (key, cfg) => {
-                                if (key === "linkedProjects") {
+                                // we only want to set discovered workspaces on the right key
+                                // and if a workspace has been discovered.
+                                if (
+                                    key === "linkedProjects" &&
+                                    config.discoveredWorkspaces.length > 0
+                                ) {
                                     cfg[key] = config.discoveredWorkspaces;
                                 }
                             });

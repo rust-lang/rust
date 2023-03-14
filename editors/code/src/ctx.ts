@@ -205,7 +205,9 @@ export class Ctx {
             const initializationOptions = prepareVSCodeConfig(
                 rawInitializationOptions,
                 (key, obj) => {
-                    if (key === "linkedProjects") {
+                    // we only want to set discovered workspaces on the right key
+                    // and if a workspace has been discovered.
+                    if (key === "linkedProjects" && this.config.discoveredWorkspaces.length > 0) {
                         obj["linkedProjects"] = this.config.discoveredWorkspaces;
                     }
                 }
