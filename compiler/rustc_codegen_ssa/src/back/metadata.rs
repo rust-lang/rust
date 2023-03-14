@@ -209,11 +209,13 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     else if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch == "aarch64" 
       {check_cfprotection =true;}
     if check_cfprotection && binary_format == BinaryFormat::Elf{
-      let name:Vec<u8> =  b".new.gnu.property".to_vec();  
+      let name:Vec<u8> =  b".note.gnu.property".to_vec();  
       let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
       let kind = SectionKind::Note;
       let section = file.add_section(segment, name, kind);
       let data: &[u8] = &[b'G', b'N', b'U'];
+      //sess.opts.unstable_opts.branch_protection = Some(rustc_session::config::BranchProtection{bti:true, pac_ret:None});
+ 
       let _ = file.append_section_data(section, data, 1);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
