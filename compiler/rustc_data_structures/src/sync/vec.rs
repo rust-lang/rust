@@ -76,3 +76,19 @@ impl<T: Copy> AppendOnlyVec<T> {
         return self.vec.get(i);
     }
 }
+
+impl<T: Copy + PartialEq> AppendOnlyVec<T> {
+    pub fn contains(&self, val: T) -> bool {
+        for i in 0.. {
+            match self.get(i) {
+                None => return false,
+                Some(v) => {
+                    if val == v {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+}

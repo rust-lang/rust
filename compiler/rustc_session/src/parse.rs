@@ -194,7 +194,7 @@ pub struct ParseSess {
     pub edition: Edition,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.
-    pub raw_identifier_spans: Lock<Vec<Span>>,
+    pub raw_identifier_spans: AppendOnlyVec<Span>,
     /// Places where identifiers that contain invalid Unicode codepoints but that look like they
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
@@ -247,7 +247,7 @@ impl ParseSess {
             config: FxIndexSet::default(),
             check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
-            raw_identifier_spans: Lock::new(Vec::new()),
+            raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),

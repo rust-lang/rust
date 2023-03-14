@@ -175,7 +175,7 @@ impl<'a> StringReader<'a> {
                     if !sym.can_be_raw() {
                         self.sess.emit_err(errors::CannotBeRawIdent { span, ident: sym });
                     }
-                    self.sess.raw_identifier_spans.borrow_mut().push(span);
+                    self.sess.raw_identifier_spans.push(span);
                     token::Ident(sym, true)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
