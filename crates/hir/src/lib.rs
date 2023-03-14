@@ -3210,6 +3210,14 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
+    pub fn is_float(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Float(_)))
+    }
+
+    pub fn is_char(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Char))
+    }
+
     pub fn is_int_or_uint(&self) -> bool {
         match self.ty.kind(Interner) {
             TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)) => true,
