@@ -1,0 +1,10 @@
+error: opaque type constrained without being represented in the signature
+  --> $DIR/issue-63263-closure-return-fail.rs:9:21
+   |
+LL | fn main() {
+   | --------- this item must mention the opaque type in its signature or where bounds
+LL |     || -> Closure { || () };
+   |                     ^^^^^
+
+error: aborting due to previous error
+

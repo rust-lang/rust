@@ -1,0 +1,11 @@
+error: opaque type constrained without being represented in the signature
+  --> $DIR/issue-63263-anon-const-fail.rs:11:26
+   |
+LL | fn main() {
+   | --------- this item must mention the opaque type in its signature or where bounds
+LL |     const {
+LL |         let x: Closure = || {};
+   |                          ^^^^^
+
+error: aborting due to previous error
+

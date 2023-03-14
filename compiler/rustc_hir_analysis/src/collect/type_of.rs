@@ -640,7 +640,9 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
-                if !may_define_opaque_type(self.tcx, item_def_id, self.def_id, concrete_type.span) {
+                if let Err(item_def_id) =
+                    may_define_opaque_type(self.tcx, item_def_id, self.def_id, concrete_type.span)
+                {
                     self.tcx.sess.emit_err(OpaqueTypeConstrainedButNotInSig {
                         span: concrete_type.span,
                         item_span: self.tcx.def_span(item_def_id),
@@ -666,8 +668,12 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure(closure) = ex.kind {
-                self.check(closure.def_id);
+            match ex.kind {
+                hir::ExprKind::Closure(closure) => {
+                    self.check(closure.def_id);
+                }
+                hir::ExprKind::ConstBlock(anon) => self.check(anon.def_id),
+                _ => (),
             }
             intravisit::walk_expr(self, ex);
         }
@@ -760,14 +766,14 @@ fn may_define_opaque_type<'tcx>(
     def_id: LocalDefId,
     opaque_def_id: LocalDefId,
     span: Span,
-) -> bool {
+) -> Result<(), LocalDefId> {
     if tcx.is_descendant_of(opaque_def_id.to_def_id(), def_id.to_def_id()) {
         // If the opaque type is defined in the body of a function, that function
         // may constrain the opaque type since it can't mention it in bounds.
-        return true;
+        return Ok(());
     }
 
-    if tcx.is_closure(def_id.to_def_id()) {
+    if tcx.is_typeck_child(def_id.to_def_id()) {
         return may_define_opaque_type(tcx, tcx.local_parent(def_id), opaque_def_id, span);
     }
 
@@ -863,12 +869,12 @@ fn may_define_opaque_type<'tcx>(
     };
     trace!(?tait_in_fn_sig);
     if tait_in_fn_sig {
-        return true;
+        return Ok(());
     }
     let tait_in_where_bounds =
         has_tait(tcx.predicates_of(def_id.to_def_id()).predicates, opaque_def_id, tcx, param_env);
     if tcx.features().type_alias_impl_trait_in_where_bounds {
-        tait_in_where_bounds
+        if tait_in_where_bounds { Ok(()) } else { Err(def_id) }
     } else {
         if tait_in_where_bounds {
             feature_err(
@@ -879,7 +885,7 @@ fn may_define_opaque_type<'tcx>(
             )
             .emit();
         }
-        false
+        Err(def_id)
     }
 }
 
