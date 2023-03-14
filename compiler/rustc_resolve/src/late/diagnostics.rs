@@ -492,24 +492,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 .filter(|(_, enum_ty_path)| !enum_ty_path.starts_with("std::prelude::"))
                 .collect();
             if !enum_candidates.is_empty() {
-                if let (PathSource::Type, Some(span)) =
-                    (source, self.diagnostic_metadata.current_type_ascription.last())
-                {
-                    if self
-                        .r
-                        .tcx
-                        .sess
-                        .parse_sess
-                        .type_ascription_path_suggestions
-                        .borrow()
-                        .contains(span)
-                    {
-                        // Already reported this issue on the lhs of the type ascription.
-                        err.downgrade_to_delayed_bug();
-                        return (true, candidates);
-                    }
-                }
-
                 enum_candidates.sort();
 
                 // Contextualize for E0412 "cannot find type", but don't belabor the point
@@ -1391,26 +1373,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Res::Def(DefKind::Enum, def_id),
                 PathSource::TupleStruct(..) | PathSource::Expr(..),
             ) => {
-                if self
-                    .diagnostic_metadata
-                    .current_type_ascription
-                    .last()
-                    .map(|sp| {
-                        self.r
-                            .tcx
-                            .sess
-                            .parse_sess
-                            .type_ascription_path_suggestions
-                            .borrow()
-                            .contains(&sp)
-                    })
-                    .unwrap_or(false)
-                {
-                    err.downgrade_to_delayed_bug();
-                    // We already suggested changing `:` into `::` during parsing.
-                    return false;
-                }
-
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
