@@ -612,15 +612,13 @@ impl Span {
             // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
             // the callsite span and the span will be pointing at different places. It also means that
             // we can safely provide suggestions on this span.
-            ExpnKind::Macro(MacroKind::Attr, _) | ExpnKind::Macro(MacroKind::Derive, _)
+            ExpnKind::Macro(..)
                 if self.parent_callsite().map(|p| (p.lo(), p.hi()))
                     != Some((self.lo(), self.hi())) =>
             {
                 true
             }
-            ExpnKind::Desugaring(DesugaringKind::Resize)
-            | ExpnKind::Macro(MacroKind::Bang, _)
-            | ExpnKind::Desugaring(_) => {
+            ExpnKind::Desugaring(DesugaringKind::Resize) | ExpnKind::Desugaring(_) => {
                 self.parent_callsite().unwrap().can_be_used_for_suggestions()
             }
             ExpnKind::Macro(..) => false,

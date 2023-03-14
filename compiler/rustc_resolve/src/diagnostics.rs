@@ -1439,6 +1439,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
+        if !span.can_be_used_for_suggestions() {
+            return false;
+        }
         let suggestion = match suggestion {
             None => return false,
             // We shouldn't suggest underscore.
@@ -1446,7 +1449,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(suggestion) => suggestion,
         };
         if let Some(def_span) = suggestion.res.opt_def_id().map(|def_id| self.def_span(def_id)) {
-            if span.overlaps(def_span) {
+            if span.overlaps(def_span) || !def_span.can_be_used_for_suggestions() {
                 // Don't suggest typo suggestion for itself like in the following:
                 // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
                 //   --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14

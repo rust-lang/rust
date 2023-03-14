@@ -10,7 +10,7 @@ error[E0425]: cannot find value `local_use` in the expanded code of procedural m
   --> $DIR/mixed-site-span.rs:13:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
+   |         ^^^^^^^^^^^^^^^^^^^ `local_use` not found in expanded code of this procedural macro
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
