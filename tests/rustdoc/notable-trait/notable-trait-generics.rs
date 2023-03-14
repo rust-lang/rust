@@ -1,7 +1,7 @@
 #![feature(doc_notable_trait)]
 
-// Notable traits SHOULD be shown when the `impl` has a generic type and the
-// return type has a concrete type.
+// Notable traits SHOULD NOT be shown when the `impl` has a concrete type and
+// the return type has a generic type.
 pub mod generic_return {
     pub struct Wrapper<T>(T);
 
@@ -17,8 +17,8 @@ pub mod generic_return {
     }
 }
 
-// Notable traits SHOULD NOT be shown when the `impl` has a concrete type and
-// the return type has a generic type.
+// Notable traits SHOULD be shown when the `impl` has a generic type and the
+// return type has a concrete type.
 pub mod generic_impl {
     pub struct Wrapper<T>(T);
 
