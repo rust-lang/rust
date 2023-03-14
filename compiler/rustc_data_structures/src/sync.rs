@@ -51,7 +51,7 @@ use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
-pub use vec::AppendOnlyVec;
+pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
 
