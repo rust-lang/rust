@@ -25,8 +25,8 @@ use crate::{
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_method},
     traits::FnTrait,
-    CallableDefId, Const, ConstScalar, FnDefId, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt, GenericArgData,
+    CallableDefId, Const, ConstScalar, FnDefId, GenericArgData, Interner, MemoryMap, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::{
@@ -1315,10 +1315,13 @@ impl Evaluator<'_> {
                 args_for_target[0] = args_for_target[0][0..self.ptr_size()].to_vec();
                 let generics_for_target = Substitution::from_iter(
                     Interner,
-                    generic_args
-                        .iter(Interner)
-                        .enumerate()
-                        .map(|(i, x)| if i == self_ty_idx { &ty } else { x })
+                    generic_args.iter(Interner).enumerate().map(|(i, x)| {
+                        if i == self_ty_idx {
+                            &ty
+                        } else {
+                            x
+                        }
+                    }),
                 );
                 return self.exec_fn_with_args(
                     def,

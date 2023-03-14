@@ -555,6 +555,38 @@ fn structs() {
         "#,
         17,
     );
+    check_number(
+        r#"
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        const GOAL: i32 = {
+            let p = Point { x: 5, y: 2 };
+            let p2 = Point { x: 3, ..p };
+            p.x * 1000 + p.y * 100 + p2.x * 10 + p2.y
+        };
+        "#,
+        5232,
+    );
+    check_number(
+        r#"
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        const GOAL: i32 = {
+            let p = Point { x: 5, y: 2 };
+            let Point { x, y } = p;
+            let Point { x: x2, .. } = p;
+            let Point { y: y2, .. } = p;
+            x * 1000 + y * 100 + x2 * 10 + y2
+        };
+        "#,
+        5252,
+    );
 }
 
 #[test]
@@ -599,13 +631,14 @@ fn tuples() {
     );
     check_number(
         r#"
-    struct TupleLike(i32, u8, i64, u16);
-    const GOAL: u8 = {
+    struct TupleLike(i32, i64, u8, u16);
+    const GOAL: i64 = {
         let a = TupleLike(10, 20, 3, 15);
-        a.1
+        let TupleLike(b, .., c) = a;
+        a.1 * 100 + b as i64 + c as i64
     };
         "#,
-        20,
+        2025,
     );
     check_number(
         r#"
