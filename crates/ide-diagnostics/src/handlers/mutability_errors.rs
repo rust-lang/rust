@@ -506,6 +506,30 @@ fn main() {
     }
 
     #[test]
+    fn initialization_is_not_mutation_in_loop() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let a;
+    loop {
+        let c @ (
+            mut b,
+          //^^^^^ 💡 weak: variable does not need to be mutable
+            mut d
+          //^^^^^ 💡 weak: variable does not need to be mutable
+        );
+        a = 1;
+      //^^^^^ 💡 error: cannot mutate immutable variable `a`
+        b = 1;
+        c = (2, 3);
+        d = 3;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn function_arguments_are_initialized() {
         check_diagnostics(
             r#"
