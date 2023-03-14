@@ -1440,6 +1440,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
+                                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
                                 .map(|item| item.def_id),
                         );
                     }

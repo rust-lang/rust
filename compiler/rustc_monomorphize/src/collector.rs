@@ -1326,6 +1326,21 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     }
 
+    // Unlike 'lazy' monomorphization that begins by collecting items transitively
+    // called by `main` or other global items, when eagerly monomorphizing impl
+    // items, we never actually check that the predicates of this impl are satisfied
+    // in a empty reveal-all param env (i.e. with no assumptions).
+    //
+    // Even though this impl has no substitutions, because we don't consider higher-
+    // ranked predicates such as `for<'a> &'a mut [u8]: Copy` to be trivially false,
+    // we must now check that the impl has no impossible-to-satisfy predicates.
+    if tcx.subst_and_check_impossible_predicates((
+        item.owner_id.to_def_id(),
+        &InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id()),
+    )) {
+        return;
+    }
+
     let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
         return;
     };

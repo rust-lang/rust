@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
-        self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.note_internal_mutation_in_method(err, expr, Some(expected), expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
         self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
         self.check_wrong_return_type_due_to_generic_arg(err, expr, expr_ty);
