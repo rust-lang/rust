@@ -1187,7 +1187,7 @@ impl Evaluator<'_> {
     fn exec_intrinsic(
         &self,
         as_str: &str,
-        _arg_bytes: impl Iterator<Item = Vec<u8>>,
+        mut arg_bytes: impl Iterator<Item = Vec<u8>>,
         generic_args: Substitution,
         locals: &Locals<'_>,
     ) -> Result<Vec<u8>> {
@@ -1201,6 +1201,12 @@ impl Evaluator<'_> {
                     Some(x) => Ok(x.to_le_bytes().to_vec()),
                     None => return Err(MirEvalError::TypeError("size_of arg is unsized")),
                 }
+            }
+            "transmute" => {
+                let Some(arg) = arg_bytes.next() else {
+                    return Err(MirEvalError::TypeError("trasmute arg is not provided"));
+                };
+                Ok(arg)
             }
             _ => not_supported!("unknown intrinsic {as_str}"),
         }
