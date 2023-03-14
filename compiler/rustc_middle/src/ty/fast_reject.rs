@@ -103,6 +103,7 @@ pub enum TreatProjections {
 /// is only correct if they are fully normalized.
 ///
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
+#[inline(always)]
 pub fn simplify_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
