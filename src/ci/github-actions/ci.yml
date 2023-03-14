@@ -308,6 +308,9 @@ jobs:
             <<: *job-linux-xl
             tidy: false
 
+          - name: wasm32
+            <<: *job-linux-xl
+
   auto:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds

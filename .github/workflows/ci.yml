@@ -62,6 +62,9 @@ jobs:
             tidy: false
             os: ubuntu-20.04-xl
             env: {}
+          - name: wasm32
+            os: ubuntu-20.04-xl
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
