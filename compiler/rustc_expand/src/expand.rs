@@ -1038,6 +1038,9 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     ) -> Result<Self::OutputTy, Self> {
         Ok(noop_flat_map(node, collector))
     }
+    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, span: Span) {
+        collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+    }
 }
 
 impl InvocationCollectorNode for P<ast::Item> {
@@ -1377,6 +1380,11 @@ impl InvocationCollectorNode for ast::Crate {
     }
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
+    }
+    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, _span: Span) {
+        self.attrs.clear();
+        // Standard prelude imports are left in the crate for backward compatibility.
+        self.items.truncate(collector.cx.num_standard_library_imports);
     }
 }
 
@@ -1756,7 +1764,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             continue;
                         }
 
-                        self.cx.emit_err(RemoveNodeNotSupported { span, descr: Node::descr() });
+                        node.expand_cfg_false(self, span);
                         continue;
                     }
                     sym::cfg_attr => {

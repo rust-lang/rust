@@ -2116,7 +2116,7 @@ rustc_queries! {
         desc { "raw operations for metadata file access" }
     }
 
-    query crate_for_resolver((): ()) -> &'tcx Steal<rustc_ast::ast::Crate> {
+    query crate_for_resolver((): ()) -> &'tcx Steal<(rustc_ast::Crate, rustc_ast::AttrVec)> {
         feedable
         no_hash
         desc { "the ast before macro expansion and name resolution" }
