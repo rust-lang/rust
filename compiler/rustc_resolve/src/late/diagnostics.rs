@@ -28,7 +28,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::Span;
 
 use std::iter;
 use std::ops::Deref;
@@ -351,18 +351,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return (err, candidates);
         }
 
-        if !self.suggest_missing_let(&mut err, base_error.span) {
-            let mut fallback =
-                self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
+        let mut fallback = self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
 
-            // if we have suggested using pattern matching, then don't add needless suggestions
-            // for typos.
-            fallback |= self.suggest_typo(&mut err, source, path, span, &base_error);
+        // if we have suggested using pattern matching, then don't add needless suggestions
+        // for typos.
+        fallback |= self.suggest_typo(&mut err, source, path, span, &base_error);
 
-            if fallback {
-                // Fallback label.
-                err.span_label(base_error.span, &base_error.fallback_label);
-            }
+        if fallback {
+            // Fallback label.
+            err.span_label(base_error.span, &base_error.fallback_label);
         }
         self.err_code_special_cases(&mut err, source, path, span);
 
@@ -1816,75 +1813,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             "double" => sym::f64,
             _ => return None,
         })
-    }
-
-    /// Only used in a specific case of type ascription suggestions
-    fn get_colon_suggestion_span(&self, start: Span) -> Span {
-        let sm = self.r.tcx.sess.source_map();
-        start.to(sm.next_point(start))
-    }
-
-    #[instrument(level = "debug", skip(self, err))]
-    fn suggest_missing_let(&self, err: &mut Diagnostic, base_span: Span) -> bool {
-        let sm = self.r.tcx.sess.source_map();
-        let base_snippet = sm.span_to_snippet(base_span);
-        if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
-            if let Ok(snippet) = sm.span_to_snippet(sp) {
-                let len = snippet.trim_end().len() as u32;
-                if snippet.trim() == ":" {
-                    let colon_sp =
-                        sp.with_lo(sp.lo() + BytePos(len - 1)).with_hi(sp.lo() + BytePos(len));
-                    let mut show_label = true;
-                    if sm.is_multiline(sp) {
-                        err.span_suggestion_short(
-                            colon_sp,
-                            "maybe you meant to write `;` here",
-                            ";",
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        let after_colon_sp =
-                            self.get_colon_suggestion_span(colon_sp.shrink_to_hi());
-                        if snippet.len() == 1 {
-                            // `foo:bar`
-                            err.span_suggestion(
-                                colon_sp,
-                                "maybe you meant to write a path separator here",
-                                "::",
-                                Applicability::MaybeIncorrect,
-                            );
-                            show_label = false;
-                            if !self
-                                .r
-                                .tcx
-                                .sess
-                                .parse_sess
-                                .type_ascription_path_suggestions
-                                .borrow_mut()
-                                .insert(colon_sp)
-                            {
-                                err.downgrade_to_delayed_bug();
-                            }
-                        }
-                        if let Ok(base_snippet) = base_snippet {
-                            // Try to find an assignment
-                            let eq_span = sm.span_look_ahead(after_colon_sp, Some("="), Some(50));
-                            if let Ok(ref snippet) = sm.span_to_snippet(eq_span) && snippet == "=" {
-                                err.span_suggestion(
-                                    base_span,
-                                    "maybe you meant to write an assignment here",
-                                    format!("let {}", base_snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                                show_label = false;
-                            }
-                        }
-                    }
-                    return show_label;
-                }
-            }
-        }
-        false
     }
 
     // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
