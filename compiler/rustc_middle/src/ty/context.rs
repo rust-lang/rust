@@ -2053,7 +2053,7 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert_matches!(
             (kind, self.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
-                | (ty::Projection, DefKind::AssocTy | DefKind::AssocConst)
+                | (ty::Projection, DefKind::AssocTy)
                 | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
         );
         self.mk_ty_from_kind(Alias(kind, alias_ty))
