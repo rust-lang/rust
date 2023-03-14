@@ -257,33 +257,6 @@ cfg_if! {
 
         use std::cell::Cell;
 
-        #[derive(Debug)]
-        pub struct WorkerLocal<T>(OneThread<T>);
-
-        impl<T> WorkerLocal<T> {
-            /// Creates a new worker local where the `initial` closure computes the
-            /// value this worker local should take for each thread in the thread pool.
-            #[inline]
-            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
-                WorkerLocal(OneThread::new(f(0)))
-            }
-
-            /// Returns the worker-local value for each thread
-            #[inline]
-            pub fn into_inner(self) -> Vec<T> {
-                vec![OneThread::into_inner(self.0)]
-            }
-        }
-
-        impl<T> Deref for WorkerLocal<T> {
-            type Target = T;
-
-            #[inline(always)]
-            fn deref(&self) -> &T {
-                &self.0
-            }
-        }
-
         pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
         #[derive(Debug, Default)]
@@ -442,8 +415,6 @@ cfg_if! {
                 }
             };
         }
-
-        pub use rayon_core::WorkerLocal;
 
         use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
@@ -831,6 +802,48 @@ impl<T: Clone> Clone for RwLock<T> {
         RwLock::new(self.borrow().clone())
     }
 }
+
+#[derive(Debug)]
+pub struct WorkerLocal<T> {
+    single_thread: bool,
+    inner: T,
+    mt_inner: Option<rayon_core::WorkerLocal<T>>,
+}
+
+impl<T> WorkerLocal<T> {
+    /// Creates a new worker local where the `initial` closure computes the
+    /// value this worker local should take for each thread in the thread pool.
+    #[inline]
+    pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
+        if !active() {
+            WorkerLocal { single_thread: true, inner: f(0), mt_inner: None }
+        } else {
+            WorkerLocal {
+                single_thread: false,
+                inner: unsafe { MaybeUninit::uninit().assume_init() },
+                mt_inner: Some(rayon_core::WorkerLocal::new(f)),
+            }
+        }
+    }
+
+    /// Returns the worker-local value for each thread
+    #[inline]
+    pub fn into_inner(self) -> Vec<T> {
+        if self.single_thread { vec![self.inner] } else { self.mt_inner.unwrap().into_inner() }
+    }
+}
+
+impl<T> Deref for WorkerLocal<T> {
+    type Target = T;
+
+    #[inline(always)]
+    fn deref(&self) -> &T {
+        if self.single_thread { &self.inner } else { self.mt_inner.as_ref().unwrap().deref() }
+    }
+}
+
+// Just for speed test
+unsafe impl<T: Send> std::marker::Sync for WorkerLocal<T> {}
 
 /// A type which only allows its inner value to be used in one thread.
 /// It will panic if it is used on multiple threads.
