@@ -1,5 +1,5 @@
 error: `impl` item signature doesn't match `trait` item signature
-  --> $DIR/signature-mismatch.rs:15:5
+  --> $DIR/signature-mismatch.rs:17:5
    |
 LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
    |     ----------------------------------------------------------------- expected `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '3`
