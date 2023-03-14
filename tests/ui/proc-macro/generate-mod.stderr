@@ -2,7 +2,7 @@ error[E0412]: cannot find type `FromOutside` in the expanded code of procedural 
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
-   | ^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `generate_mod::check`
+   | ^^^^^^^^^^^^^^^^^^^^^^ `FromOutside` not found in expanded code of this procedural macro
    |
    = help: consider importing this struct:
            FromOutside
@@ -12,7 +12,7 @@ error[E0412]: cannot find type `Outer` in the expanded code of procedural macro 
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
-   | ^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `generate_mod::check`
+   | ^^^^^^^^^^^^^^^^^^^^^^ `Outer` not found in expanded code of this procedural macro
    |
    = help: consider importing this struct:
            Outer
@@ -22,7 +22,7 @@ error[E0412]: cannot find type `FromOutside` in the expanded code of procedural 
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `generate_mod::check_attr`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `FromOutside` not found in expanded code of this procedural macro
    |
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -30,7 +30,7 @@ error[E0412]: cannot find type `OuterAttr` in the expanded code of procedural ma
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in the expanded code of procedural macro `generate_mod::check_attr`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OuterAttr` not found in expanded code of this procedural macro
    |
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
