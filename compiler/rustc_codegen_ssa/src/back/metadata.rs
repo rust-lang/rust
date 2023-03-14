@@ -100,7 +100,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Big => Endianness::Big,
     };
     let architecture = match &sess.target.arch[..] {
-        "arm" => Architecture::Arm,
+        "arm" => { Architecture::Arm},
         "aarch64" => {
             if sess.target.pointer_width == 32 {
                 Architecture::Aarch64_Ilp32
@@ -112,7 +112,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "s390x" => Architecture::S390x,
         "mips" => Architecture::Mips,
         "mips64" => Architecture::Mips64,
-        "x86_64" => {
+        "x86_64" => { 
             if sess.target.pointer_width == 32 {
                 Architecture::X86_64_X32
             } else {
@@ -201,21 +201,23 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
+  
     if binary_format == BinaryFormat::Elf{
-      if architecture == Architecture::I386 || architecture == Architecture::Arm{
-       if let Some(bp) = sess.opts.unstable_opts.branch_protection {
-         if bp.bti{
-          //&sess.target.options.features
-          // Information it should include Owner, Data size,Description
-          let name:Vec<u8> =  b"hello".to_vec();//.new.gnu.property"
-          let segment:Vec<u8>  = b"world".to_vec();
-          let kind: SectionKind = SectionKind::Note;
-          let section = file.add_section(segment, name, kind);
-          let data: &[u8] = b"howdy";
-          file.append_section_data(section, data, 1);
-          ()
-         } 
-       }     
+      if architecture == Architecture::X86_64{
+        // check bti protection not working
+        //if let Some(bp) = sess.opts.unstable_opts.branch_protection { if bp.bti{name = b"bti true".to_vec();}}     
+        
+        let name:Vec<u8> =  b".new.gnu.property".to_vec();
+        let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
+        let kind = SectionKind::Note;
+        let section = file.add_section(segment, name, kind);
+        
+        // b"GNU                  0x00000014	NT_GNU_BUILD_ID (unique build ID bitstring)	    Build ID: 1..";
+        let size: u8 = 14;
+        let id:u8 = 1;
+        let data: &[u8] = &[b'G', b'N', b'U', size, b'N', b'T', b'_',b'G', b'N', b'U',b'_',b'B', b'U', b'I',b'L', b'D', b'_',b'I',b'D', b' ', b'(', b'u', b'n',b'i', b'q', b'u',b'e',b' ', b'b', b'u',b'i', b'l', b'd', b' ', b'I',b'D', b' ', b'b',b'i',b't', b's', b't',b'r', b'i',b'n',b'g',b')', b' ', b'B', b'u', b'i',b'l', b'd', b' ',b'I',b'D',b':', id];
+        file.append_section_data(section, data, 1);    
+
       }
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
