@@ -7,7 +7,6 @@ use syntax::SmolStr;
 
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
-    item::CompletionRelevanceTypeMatch,
     render::{
         variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
@@ -38,7 +37,9 @@ pub(crate) fn render_struct_pat(
     let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, lookup, pat, strukt, true))
+    let db = ctx.db();
+
+    Some(build_completion(ctx, label, lookup, pat, strukt, strukt.ty(db)))
 }
 
 pub(crate) fn render_variant_pat(
@@ -48,12 +49,12 @@ pub(crate) fn render_variant_pat(
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
-    is_exact_type_match: bool,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
+    let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
 
     let (name, escaped_name) = match path {
         Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
@@ -83,7 +84,7 @@ pub(crate) fn render_variant_pat(
         }
     };
 
-    Some(build_completion(ctx, label, lookup, pat, variant, is_exact_type_match))
+    Some(build_completion(ctx, label, lookup, pat, variant, enum_ty))
 }
 
 fn build_completion(
@@ -92,13 +93,11 @@ fn build_completion(
     lookup: SmolStr,
     pat: String,
     def: impl HasAttrs + Copy,
-    is_exact_type_match: bool,
+    adt_ty: hir::Type,
 ) -> CompletionItem {
     let mut relevance = ctx.completion_relevance();
 
-    if is_exact_type_match {
-        relevance.type_match = Some(CompletionRelevanceTypeMatch::Exact);
-    }
+    relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
 
     let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
     item.set_documentation(ctx.docs(def))

@@ -496,7 +496,6 @@ impl Completions {
             variant,
             local_name.clone(),
             None,
-            false,
         ));
     }
 
@@ -515,7 +514,6 @@ impl Completions {
             variant,
             None,
             path,
-            true,
         ));
     }
 

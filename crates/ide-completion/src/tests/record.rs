@@ -50,6 +50,7 @@ fn foo(s: Struct) {
 fn record_pattern_field_enum() {
     check(
         r#"
+//- minicore:result
 enum Baz { FOO, BAR }
 
 fn foo(baz: Baz) {
@@ -61,7 +62,13 @@ fn foo(baz: Baz) {
 "#,
         expect![[r#"
             en Baz
+            en Result
+            md core
+            ev Err
+            ev Ok
             bn Baz::BAR Baz::BAR$0
+            bn Err(…)   Err($1)$0
+            bn Ok(…)    Ok($1)$0
             kw mut
             kw ref
         "#]],
@@ -69,6 +76,7 @@ fn foo(baz: Baz) {
 
     check(
         r#"
+//- minicore:result
 enum Baz { FOO, BAR }
 
 fn foo(baz: Baz) {
@@ -77,13 +85,19 @@ fn foo(baz: Baz) {
         $0
     }
 }
-"#,
+ "#,
         expect![[r#"
-            en Baz
-            bn Baz::BAR Baz::BAR$0
-            kw mut
-            kw ref
-        "#]],
+         en Baz
+         en Result
+         md core
+         ev Err
+         ev Ok
+         bn Baz::BAR Baz::BAR$0
+         bn Err(…)   Err($1)$0
+         bn Ok(…)    Ok($1)$0
+         kw mut
+         kw ref
+         "#]],
     );
 }
 
