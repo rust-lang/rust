@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=3 --edition=2021
+// compile-flags: -C opt-level=3 -Z merge-functions=disabled --edition=2021
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
 

@@ -61,25 +61,29 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
 
-    // In some cases, attribute are only valid on functions, but it's the `check_attr`
-    // pass that check that they aren't used anywhere else, rather this module.
-    // In these cases, we bail from performing further checks that are only meaningful for
-    // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
-    // report a delayed bug, just in case `check_attr` isn't doing its job.
-    let validate_fn_only_attr = |attr_sp| -> bool {
-        let def_kind = tcx.def_kind(did);
-        if let DefKind::Fn | DefKind::AssocFn | DefKind::Variant | DefKind::Ctor(..) = def_kind {
-            true
-        } else {
-            tcx.sess.delay_span_bug(attr_sp, "this attribute can only be applied to functions");
-            false
-        }
-    };
-
     let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
+
     for attr in attrs.iter() {
+        // In some cases, attribute are only valid on functions, but it's the `check_attr`
+        // pass that check that they aren't used anywhere else, rather this module.
+        // In these cases, we bail from performing further checks that are only meaningful for
+        // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
+        // report a delayed bug, just in case `check_attr` isn't doing its job.
+        let fn_sig = || {
+            use DefKind::*;
+
+            let def_kind = tcx.def_kind(did);
+            if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
+                Some(tcx.fn_sig(did))
+            } else {
+                tcx.sess
+                    .delay_span_bug(attr.span, "this attribute can only be applied to functions");
+                None
+            }
+        };
+
         if attr.has_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
         } else if attr.has_name(sym::rustc_allocator) {
@@ -169,8 +173,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 }
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if validate_fn_only_attr(attr.span)
-                && !matches!(tcx.fn_sig(did).skip_binder().abi(), abi::Abi::C { .. })
+            if let Some(fn_sig) = fn_sig()
+                && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
             {
                 struct_span_err!(
                     tcx.sess,
@@ -189,8 +193,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
             if !tcx.is_closure(did.to_def_id())
-                && validate_fn_only_attr(attr.span)
-                && tcx.fn_sig(did).skip_binder().abi() != abi::Abi::Rust
+                && let Some(fn_sig) = fn_sig()
+                && fn_sig.skip_binder().abi() != abi::Abi::Rust
             {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
@@ -222,7 +226,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::target_feature) {
             if !tcx.is_closure(did.to_def_id())
-                && tcx.fn_sig(did).skip_binder().unsafety() == hir::Unsafety::Normal
+                && let Some(fn_sig) = fn_sig()
+                && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
             {
                 if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                     // The `#[target_feature]` attribute is allowed on
