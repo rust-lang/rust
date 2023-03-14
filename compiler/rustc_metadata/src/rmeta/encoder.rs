@@ -1855,12 +1855,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
                     let trait_ref = trait_ref.subst_identity();
 
-                    let simplified_self_ty = fast_reject::simplify_type(
-                        self.tcx,
-                        trait_ref.self_ty(),
-                        TreatParams::AsCandidateKey,
-                        TreatProjections::AsCandidateKey,
-                    );
+                    let simplified_self_ty = fast_reject::simplify_type::<
+                        { TreatParams::AsCandidateKey },
+                        { TreatProjections::AsCandidateKey },
+                    >(self.tcx, trait_ref.self_ty());
 
                     fx_hash_map
                         .entry(trait_ref.def_id)

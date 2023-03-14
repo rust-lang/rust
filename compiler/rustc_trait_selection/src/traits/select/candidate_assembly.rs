@@ -781,12 +781,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Adt(..) => {
                 // Find a custom `impl Drop` impl, if it exists
-                let relevant_impl = self.tcx().find_map_relevant_impl(
-                    self.tcx().require_lang_item(LangItem::Drop, None),
-                    obligation.predicate.skip_binder().trait_ref.self_ty(),
-                    TreatProjections::ForLookup,
-                    Some,
-                );
+                let relevant_impl =
+                    self.tcx().find_map_relevant_impl::<_, { TreatProjections::ForLookup }>(
+                        self.tcx().require_lang_item(LangItem::Drop, None),
+                        obligation.predicate.skip_binder().trait_ref.self_ty(),
+                        Some,
+                    );
 
                 if let Some(impl_def_id) = relevant_impl {
                     // Check that `impl Drop` is actually const, if there is a custom impl

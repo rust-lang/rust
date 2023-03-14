@@ -103,11 +103,13 @@ pub enum TreatProjections {
 /// is only correct if they are fully normalized.
 ///
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
-pub fn simplify_type<'tcx>(
+pub fn simplify_type<
+    'tcx,
+    const TREAT_PARAMS: TreatParams,
+    const TREAT_PROJECTIONS: TreatProjections,
+>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    treat_params: TreatParams,
-    treat_projections: TreatProjections,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -135,11 +137,11 @@ pub fn simplify_type<'tcx>(
         ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::Placeholder(..) => Some(PlaceholderSimplifiedType),
-        ty::Param(_) => match treat_params {
+        ty::Param(_) => match TREAT_PARAMS {
             TreatParams::ForLookup => Some(PlaceholderSimplifiedType),
             TreatParams::AsCandidateKey => None,
         },
-        ty::Alias(..) => match treat_projections {
+        ty::Alias(..) => match TREAT_PROJECTIONS {
             TreatProjections::ForLookup if !ty.needs_infer() => Some(PlaceholderSimplifiedType),
             TreatProjections::NextSolverLookup => Some(PlaceholderSimplifiedType),
             TreatProjections::AsCandidateKey | TreatProjections::ForLookup => None,

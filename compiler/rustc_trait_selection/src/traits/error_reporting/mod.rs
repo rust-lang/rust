@@ -1800,10 +1800,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     })
                     .and_then(|(trait_assoc_item, id)| {
                         let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-                        self.tcx.find_map_relevant_impl(
+                        self.tcx.find_map_relevant_impl::<_, { TreatProjections::ForLookup }>(
                             id,
                             proj.projection_ty.self_ty(),
-                            TreatProjections::ForLookup,
                             |did| {
                                 self.tcx
                                     .associated_items(did)
@@ -2182,10 +2181,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> bool {
         let get_trait_impl = |trait_def_id| {
-            self.tcx.find_map_relevant_impl(
+            self.tcx.find_map_relevant_impl::<_, { TreatProjections::ForLookup }>(
                 trait_def_id,
                 trait_ref.skip_binder().self_ty(),
-                TreatProjections::ForLookup,
                 Some,
             )
         };

@@ -1517,13 +1517,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
         let found_assoc = |ty: Ty<'tcx>| {
-            simplify_type(tcx, ty, TreatParams::AsCandidateKey, TreatProjections::AsCandidateKey)
-                .and_then(|simp| {
-                    tcx.incoherent_impls(simp)
-                        .iter()
-                        .find_map(|&id| self.associated_value(id, item_name))
-                })
-                .is_some()
+            simplify_type::<{ TreatParams::AsCandidateKey }, { TreatProjections::AsCandidateKey }>(
+                tcx, ty,
+            )
+            .and_then(|simp| {
+                tcx.incoherent_impls(simp)
+                    .iter()
+                    .find_map(|&id| self.associated_value(id, item_name))
+            })
+            .is_some()
         };
         let found_candidate = found_candidate
             || found_assoc(tcx.types.i8)
@@ -2646,12 +2648,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // FIXME: Even though negative bounds are not implemented, we could maybe handle
                 // cases where a positive bound implies a negative impl.
                 (candidates, Vec::new())
-            } else if let Some(simp_rcvr_ty) = simplify_type(
-                self.tcx,
-                rcvr_ty,
-                TreatParams::ForLookup,
-                TreatProjections::ForLookup,
-            ) {
+            } else if let Some(simp_rcvr_ty) = simplify_type::<
+                { TreatParams::ForLookup },
+                { TreatProjections::ForLookup },
+            >(self.tcx, rcvr_ty)
+            {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
                 for candidate in candidates {
@@ -2664,12 +2665,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .any(|imp_did| {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap().subst_identity();
-                            let imp_simp = simplify_type(
-                                self.tcx,
-                                imp.self_ty(),
-                                TreatParams::ForLookup,
-                                TreatProjections::ForLookup,
-                            );
+                            let imp_simp = simplify_type::<
+                                { TreatParams::ForLookup },
+                                { TreatProjections::ForLookup },
+                            >(self.tcx, imp.self_ty());
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })
                     {

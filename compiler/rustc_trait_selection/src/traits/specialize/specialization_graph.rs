@@ -49,12 +49,11 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            TreatParams::AsCandidateKey,
-            TreatProjections::AsCandidateKey,
-        ) {
+        if let Some(st) = fast_reject::simplify_type::<
+            { TreatParams::AsCandidateKey },
+            { TreatProjections::AsCandidateKey },
+        >(tcx, trait_ref.self_ty())
+        {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
         } else {
@@ -69,12 +68,11 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
         let vec: &mut Vec<DefId>;
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            TreatParams::AsCandidateKey,
-            TreatProjections::AsCandidateKey,
-        ) {
+        if let Some(st) = fast_reject::simplify_type::<
+            { TreatParams::AsCandidateKey },
+            { TreatProjections::AsCandidateKey },
+        >(tcx, trait_ref.self_ty())
+        {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
         } else {
@@ -310,12 +308,10 @@ impl<'tcx> GraphExt<'tcx> for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            TreatParams::AsCandidateKey,
-            TreatProjections::AsCandidateKey,
-        );
+        let simplified = fast_reject::simplify_type::<
+            { TreatParams::AsCandidateKey },
+            { TreatProjections::AsCandidateKey },
+        >(tcx, trait_ref.self_ty());
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {

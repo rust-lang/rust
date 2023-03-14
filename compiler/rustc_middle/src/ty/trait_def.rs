@@ -124,23 +124,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         f: impl FnMut(DefId),
     ) {
-        self.for_each_relevant_impl_treating_projections(
+        self.for_each_relevant_impl_treating_projections::<{ TreatProjections::ForLookup }>(
             trait_def_id,
             self_ty,
-            TreatProjections::ForLookup,
             f,
         )
     }
 
-    pub fn for_each_relevant_impl_treating_projections(
+    pub fn for_each_relevant_impl_treating_projections<
+        const TREAT_PROJECTIONS: TreatProjections,
+    >(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        treat_projections: TreatProjections,
         mut f: impl FnMut(DefId),
     ) {
         let _: Option<()> =
-            self.find_map_relevant_impl(trait_def_id, self_ty, treat_projections, |did| {
+            self.find_map_relevant_impl::<_, TREAT_PROJECTIONS>(trait_def_id, self_ty, |did| {
                 f(did);
                 None
             });
@@ -153,12 +153,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
         let impls = self.trait_impls_of(trait_def_id);
-        if let Some(simp) = fast_reject::simplify_type(
-            self,
-            self_ty,
-            TreatParams::AsCandidateKey,
-            TreatProjections::AsCandidateKey,
-        ) {
+        if let Some(simp) = fast_reject::simplify_type::<
+            { TreatParams::AsCandidateKey },
+            { TreatProjections::AsCandidateKey },
+        >(self, self_ty)
+        {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
             }
@@ -171,11 +170,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// the first non-none value.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn find_map_relevant_impl<T>(
+    pub fn find_map_relevant_impl<T, const TREAT_PROJECTIONS: TreatProjections>(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        treat_projections: TreatProjections,
         mut f: impl FnMut(DefId) -> Option<T>,
     ) -> Option<T> {
         // FIXME: This depends on the set of all impls for the trait. That is
@@ -195,8 +193,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        if let Some(simp) =
-            fast_reject::simplify_type(self, self_ty, TreatParams::ForLookup, treat_projections)
+        if let Some(simp) = fast_reject::simplify_type::<
+            { TreatParams::ForLookup },
+            TREAT_PROJECTIONS,
+        >(self, self_ty)
         {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
@@ -258,12 +258,11 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
             continue;
         }
 
-        if let Some(simplified_self_ty) = fast_reject::simplify_type(
-            tcx,
-            impl_self_ty,
-            TreatParams::AsCandidateKey,
-            TreatProjections::AsCandidateKey,
-        ) {
+        if let Some(simplified_self_ty) = fast_reject::simplify_type::<
+            { TreatParams::AsCandidateKey },
+            { TreatProjections::AsCandidateKey },
+        >(tcx, impl_self_ty)
+        {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
             impls.blanket_impls.push(impl_def_id);

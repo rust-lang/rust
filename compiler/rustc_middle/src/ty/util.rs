@@ -364,11 +364,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did).subst_identity();
-        let (did, constness) = self.find_map_relevant_impl(
+        // FIXME: This could also be some other mode, like "unexpected"
+        let (did, constness) = self.find_map_relevant_impl::<_, { TreatProjections::ForLookup }>(
             drop_trait,
             ty,
-            // FIXME: This could also be some other mode, like "unexpected"
-            TreatProjections::ForLookup,
             |impl_did| {
                 if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
                     if validate(self, impl_did).is_ok() {

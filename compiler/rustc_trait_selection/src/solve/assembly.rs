@@ -300,10 +300,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        tcx.for_each_relevant_impl_treating_projections(
+        tcx.for_each_relevant_impl_treating_projections::<{ TreatProjections::NextSolverLookup }>(
             goal.predicate.trait_def_id(tcx),
             goal.predicate.self_ty(),
-            TreatProjections::NextSolverLookup,
             |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(result) => candidates
                     .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),

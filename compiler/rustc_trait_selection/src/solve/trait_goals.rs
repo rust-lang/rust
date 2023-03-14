@@ -140,12 +140,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // `instantiate_constituent_tys_for_auto_trait` returns nothing for
         // projection types anyways. So it doesn't really matter what we do
         // here, and this is faster.
-        if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
-            goal.predicate.def_id(),
-            goal.predicate.self_ty(),
-            TreatProjections::NextSolverLookup,
-            Some,
-        ) {
+        if let Some(def_id) =
+            ecx.tcx().find_map_relevant_impl::<_, { TreatProjections::NextSolverLookup }>(
+                goal.predicate.def_id(),
+                goal.predicate.self_ty(),
+                Some,
+            )
+        {
             debug!(?def_id, ?goal, "disqualified auto-trait implementation");
             return Err(NoSolution);
         }
