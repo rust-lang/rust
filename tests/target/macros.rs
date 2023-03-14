@@ -122,7 +122,7 @@ fn main() {
         20, 21, 22);
 
     // #1092
-    chain!(input, a: take!(max_size), || []);
+    chain!(input, a:take!(max_size), || []);
 
     // #2727
     foo!("bar");
@@ -156,17 +156,13 @@ fn issue1178() {
 }
 
 fn issue1739() {
-    sql_function!(
-        add_rss_item,
-        add_rss_item_t,
-        (
-            a: types::Integer,
-            b: types::Timestamptz,
-            c: types::Text,
-            d: types::Text,
-            e: types::Text
-        )
-    );
+    sql_function!(add_rss_item,
+                  add_rss_item_t,
+                  (a: types::Integer,
+                   b: types::Timestamptz,
+                   c: types::Text,
+                   d: types::Text,
+                   e: types::Text));
 
     w.slice_mut(s![
         ..,
@@ -232,7 +228,7 @@ fn issue_3174() {
             "debugMessage": debug.message,
         })
     } else {
-        json!({ "errorKind": format!("{:?}", error.err_kind()) })
+        json!({"errorKind": format!("{:?}", error.err_kind())})
     };
 }
 
