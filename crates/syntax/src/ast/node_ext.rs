@@ -937,12 +937,6 @@ impl From<ast::Adt> for ast::Item {
     }
 }
 
-impl ast::IfExpr {
-    pub fn condition(&self) -> Option<ast::Expr> {
-        support::child(&self.syntax)
-    }
-}
-
 impl ast::MatchGuard {
     pub fn condition(&self) -> Option<ast::Expr> {
         support::child(&self.syntax)
