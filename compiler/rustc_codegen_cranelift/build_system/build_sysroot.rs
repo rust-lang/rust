@@ -46,13 +46,15 @@ pub(crate) fn build_sysroot(
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
+        let wrapper_path = DIST_DIR.to_path(dirs).join(&wrapper_name);
         build_cargo_wrapper_cmd
             .env("TOOLCHAIN_NAME", toolchain_name.clone())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
-            .arg(DIST_DIR.to_path(dirs).join(wrapper_name))
+            .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
         spawn_and_wait(build_cargo_wrapper_cmd);
+        try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
     }
 
     let host = build_sysroot_for_triple(
@@ -247,6 +249,7 @@ fn build_clif_sysroot_for_triple(
     if channel == "release" {
         build_cmd.arg("--release");
     }
+    build_cmd.arg("--locked");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");

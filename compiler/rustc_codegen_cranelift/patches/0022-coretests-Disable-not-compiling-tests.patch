@@ -13,14 +13,14 @@ Subject: [PATCH] [core] Disable not compiling tests
  6 files changed, 16 insertions(+), 1 deletion(-)
  create mode 100644 library/core/tests/Cargo.toml
 
-diff --git a/library/core/tests/Cargo.toml b/library/core/tests/Cargo.toml
+diff --git a/Cargo.toml b/Cargo.toml
 new file mode 100644
 index 0000000..46fd999
 --- /dev/null
-+++ b/library/core/tests/Cargo.toml
++++ b/Cargo.toml
 @@ -0,0 +1,12 @@
 +[package]
-+name = "core"
++name = "coretests"
 +version = "0.0.0"
 +edition = "2021"
 +
@@ -31,5 +31,14 @@ index 0000000..46fd999
 +[dependencies]
 +rand = { version = "0.8.5", default-features = false }
 +rand_xorshift = { version = "0.3.0", default-features = false }
+diff --git a/lib.rs b/lib.rs
+index 42a26ae..5ac1042 100644
+--- a/lib.rs
++++ b/lib.rs
+@@ -1,3 +1,4 @@
++#![cfg(test)]
+ #![feature(alloc_layout_extra)]
+ #![feature(array_chunks)]
+ #![feature(array_methods)]
 --
 2.21.0 (Apple Git-122)
