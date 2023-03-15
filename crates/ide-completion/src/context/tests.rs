@@ -411,3 +411,15 @@ fn main() {
         expect!["ty: i32, name: ?"],
     );
 }
+
+#[test]
+fn expected_type_ref_return_pos() {
+    check_expected_type_and_name(
+        r#"
+fn f(thing: u32) -> &u32 {
+    &thin$0
+}
+"#,
+        expect!["ty: u32, name: ?"],
+    );
+}
