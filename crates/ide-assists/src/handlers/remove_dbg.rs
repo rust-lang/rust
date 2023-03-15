@@ -46,7 +46,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     acc.add(
         AssistId("remove_dbg", AssistKind::Refactor),
         "Remove dbg!()",
-        ctx.selection_trimmed(),
+        replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range)).unwrap(),
         |builder| {
             for (range, expr) in replacements {
                 if let Some(expr) = expr {
