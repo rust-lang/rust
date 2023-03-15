@@ -1199,7 +1199,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
                     .unwrap_or(stem);
 
-                // GCC can have an optional target prefix.
+                // GCC/Clang can have an optional target prefix.
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::EmCc
                 } else if stem == "gcc"
@@ -1207,7 +1207,9 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     || stem == "g++"
                     || stem.ends_with("-g++")
                     || stem == "clang"
+                    || stem.ends_with("-clang")
                     || stem == "clang++"
+                    || stem.ends_with("-clang++")
                 {
                     LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
                 } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
