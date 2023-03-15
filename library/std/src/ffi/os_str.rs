@@ -1732,6 +1732,104 @@ unsafe impl<'hs> ReverseSearcher<&'hs OsStr> for CharSearcher<'hs> {
 impl<'hs> DoubleEndedSearcher<&'hs OsStr> for CharSearcher<'hs> {}
 
 #[unstable(feature = "pattern", issue = "27721")]
+// FIXME: Using Predicate because of:
+//     error[E0210]: type parameter `F` must be covered by another type when it
+//                   appears before the first local type (`OsStr`)
+//         --> library/std/src/ffi/os_str.rs:1697:11
+//          |
+//     1697 | impl<'hs, F: FnMut(char) -> bool> core::pattern::Pattern<&'hs OsStr> for F {
+//          |           ^ type parameter `F` must be covered by another type
+//                        when it appears before the first local type (`OsStr`)
+impl<'hs, F: FnMut(char) -> bool> core::pattern::Pattern<&'hs OsStr>
+    for core::pattern::Predicate<F>
+{
+    type Searcher = PredicateSearcher<'hs, F>;
+
+    fn into_searcher(self, haystack: &'hs OsStr) -> Self::Searcher {
+        Self::Searcher::new(haystack, self.into_fn())
+    }
+
+    fn is_contained_in(self, haystack: &'hs OsStr) -> bool {
+        self.into_fn().is_contained_in(core::str_bytes::Bytes::from(haystack))
+    }
+
+    fn is_prefix_of(self, haystack: &'hs OsStr) -> bool {
+        self.into_fn().is_prefix_of(core::str_bytes::Bytes::from(haystack))
+    }
+
+    fn is_suffix_of(self, haystack: &'hs OsStr) -> bool {
+        self.into_fn().is_suffix_of(core::str_bytes::Bytes::from(haystack))
+    }
+
+    /// Removes the pattern from the front of haystack, if it matches.
+    fn strip_prefix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr> {
+        self.into_fn()
+            .strip_prefix_of(core::str_bytes::Bytes::from(haystack))
+            .map(|bytes| bytes.into())
+    }
+
+    /// Removes the pattern from the back of haystack, if it matches.
+    fn strip_suffix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr>
+    where
+        Self::Searcher: ReverseSearcher<&'hs OsStr>,
+    {
+        self.into_fn()
+            .strip_suffix_of(core::str_bytes::Bytes::from(haystack))
+            .map(|bytes| bytes.into())
+    }
+}
+
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct PredicateSearcher<'hs, P>(core::str_bytes::PredicateSearcher<'hs, BytesFlavour, P>);
+
+impl<'hs, P> PredicateSearcher<'hs, P> {
+    fn new(haystack: &'hs OsStr, pred: P) -> PredicateSearcher<'hs, P> {
+        Self(core::str_bytes::PredicateSearcher::new(haystack.into(), pred))
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, P: FnMut(char) -> bool> Searcher<&'hs OsStr> for PredicateSearcher<'hs, P> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, P: FnMut(char) -> bool> ReverseSearcher<&'hs OsStr> for PredicateSearcher<'hs, P> {
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, P: FnMut(char) -> bool> DoubleEndedSearcher<&'hs OsStr> for PredicateSearcher<'hs, P> {}
+
+#[unstable(feature = "pattern", issue = "27721")]
 impl<'hs, 'p> core::pattern::Pattern<&'hs OsStr> for &'p str {
     type Searcher = StrSearcher<'hs, 'p>;
 

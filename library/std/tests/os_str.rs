@@ -1,6 +1,6 @@
 #![feature(associated_type_bounds, pattern)]
 
-use core::pattern::{Pattern, Searcher, ReverseSearcher};
+use core::pattern::{Pattern, Searcher, ReverseSearcher, predicate};
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
 
@@ -111,6 +111,23 @@ fn do_test_short_flag(valid: bool) {
     assert_eq!(Some(&*os("shórt")), arg.strip_prefix('-'));
     assert_eq!(Some(&*os("shórt")), arg.strip_prefix("-"));
     assert_eq!(None, arg.strip_prefix("--"));
+
+    // A bit awkward but closure can be used to test short options character
+    // by character.
+    let mut switch = '\0';
+    let mut check_switch = |chr| {
+        switch = chr;
+        chr == 's' || chr == 'h'
+    };
+    assert_eq!(
+        Some(&*os("hórt")),
+        os("shórt").strip_prefix(predicate(&mut check_switch))
+    );
+    assert_eq!(
+        Some(&*os("órt")),
+        os("hórt").strip_prefix(predicate(&mut check_switch))
+    );
+    assert_eq!(None, os("órt").strip_prefix(predicate(&mut check_switch)));
 }
 
 #[test]
@@ -157,15 +174,21 @@ fn test_le() {
 #[test]
 fn test_find() {
     assert_eq!(find("hello", 'l'), Some(2));
+    assert_eq!(find("hello", predicate(|c: char| c == 'o')), Some(4));
     assert!(find("hello", 'x').is_none());
+    assert!(find("hello", predicate(|c: char| c == 'x')).is_none());
     assert_eq!(find("ประเทศไทย中华Việt Nam", '华'), Some(30));
+    assert_eq!(find("ประเทศไทย中华Việt Nam", predicate(|c: char| c == '华')), Some(30));
 }
 
 #[test]
 fn test_rfind() {
     assert_eq!(rfind("hello", 'l'), Some(3));
+    assert_eq!(rfind("hello", predicate(|c: char| c == 'o')), Some(4));
     assert!(rfind("hello", 'x').is_none());
+    assert!(rfind("hello", predicate(|c: char| c == 'x')).is_none());
     assert_eq!(rfind("ประเทศไทย中华Việt Nam", '华'), Some(30));
+    assert_eq!(rfind("ประเทศไทย中华Việt Nam", predicate(|c: char| c == '华')), Some(30));
 }
 
 /*
@@ -1832,11 +1855,25 @@ fn test_split_char_iterator() {
     rsplit.reverse();
     assert_eq!(rsplit, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
+    let split: Vec<&OsStr> = os(data).split(predicate(|c: char| c == ' ')).collect();
+    assert_eq!(split, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
+    let mut rsplit: Vec<&OsStr> = os(data).split(predicate(|c: char| c == ' ')).rev().collect();
+    rsplit.reverse();
+    assert_eq!(rsplit, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
     // Unicode
     let split: Vec<&OsStr> = os(data).split('ä').collect();
     assert_eq!(split, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
     let mut rsplit: Vec<&OsStr> = os(data).split('ä').rev().collect();
+    rsplit.reverse();
+    assert_eq!(rsplit, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+
+    let split: Vec<&OsStr> = os(data).split(predicate(|c: char| c == 'ä')).collect();
+    assert_eq!(split, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+
+    let mut rsplit: Vec<&OsStr> = os(data).split(predicate(|c: char| c == 'ä')).rev().collect();
     rsplit.reverse();
     assert_eq!(rsplit, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 }
