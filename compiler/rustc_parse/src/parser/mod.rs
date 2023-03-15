@@ -1541,10 +1541,8 @@ pub(crate) fn make_unclosed_delims_error(
 }
 
 pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedDelim>, sess: &ParseSess) {
-    let _ = sess.reached_eof.compare_exchange(
-        false,
+    let _ = sess.reached_eof.fetch_or(
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none()),
-        Ordering::Relaxed,
         Ordering::Relaxed,
     );
     for unmatched in unclosed_delims.drain(..) {

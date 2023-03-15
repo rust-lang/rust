@@ -107,6 +107,14 @@ cfg_if! {
             }
         }
 
+        impl Atomic<bool> {
+            pub fn fetch_or(&self, val: bool, _: Ordering) -> bool {
+                let result = self.0.get() | val;
+                self.0.set(val);
+                result
+            }
+        }
+
         impl<T: Copy + PartialEq> Atomic<T> {
             #[inline]
             pub fn compare_exchange(&self,
