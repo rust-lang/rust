@@ -40,7 +40,7 @@
 //! [^2] `MTLockRef` is a typedef.
 
 use crate::owned_slice::OwnedSlice;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::mem::{transmute, MaybeUninit};
@@ -400,6 +400,13 @@ cfg_if! {
                     // We catch panics here ensuring that all the blocks execute.
                     // This makes behavior consistent with the parallel compiler.
                     let mut panic = None;
+                    if let Err(p) = ::std::panic::catch_unwind(
+                        ::std::panic::AssertUnwindSafe(|| $fblock)
+                    ) {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                    }
                     $(
                         if let Err(p) = ::std::panic::catch_unwind(
                             ::std::panic::AssertUnwindSafe(|| $blocks)
@@ -615,14 +622,11 @@ impl<T> Lock<T> {
     pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         // SAFETY: the `&mut T` is accessible as long as self exists.
         if self.single_thread {
-            self.inner.try_borrow_mut().map(|mut r| unsafe { transmute(r.deref_mut()) }).ok()
+            let mut r = self.inner.try_borrow_mut().ok()?;
+            Some(LockGuard(unsafe { transmute(r.deref_mut()) }, Some(r), None))
         } else {
-            self.mt_inner
-                .as_ref()
-                .unwrap()
-                .try_lock()
-                .map(|mut l| unsafe { transmute(l.deref_mut()) })
-                .ok()
+            let mut l = self.mt_inner.as_ref().unwrap().try_lock().ok()?;
+            Some(LockGuard(unsafe { transmute(l.deref_mut()) }, None, Some(l)))
         }
     }
 
@@ -638,9 +642,11 @@ impl<T> Lock<T> {
     pub fn lock(&self) -> LockGuard<'_, T> {
         // SAFETY: the `&mut T` is accessible as long as self exists.
         if self.single_thread {
-            unsafe { transmute(self.inner.borrow_mut().deref_mut()) }
+            let mut r = self.inner.borrow_mut();
+            LockGuard(unsafe { transmute(r.deref_mut()) }, Some(r), None)
         } else {
-            unsafe { transmute(self.mt_lock().deref_mut()) }
+            let mut l = self.mt_lock();
+            LockGuard(unsafe { transmute(l.deref_mut()) }, None, Some(l))
         }
     }
 
@@ -674,7 +680,7 @@ impl<T: Default> Default for Lock<T> {
 unsafe impl<T: Send> std::marker::Send for Lock<T> {}
 unsafe impl<T: Send> std::marker::Sync for Lock<T> {}
 
-pub struct LockGuard<'a, T>(&'a mut T);
+pub struct LockGuard<'a, T>(&'a mut T, Option<RefMut<'a, T>>, Option<MutexGuard<'a, T>>);
 
 impl<T> const Deref for LockGuard<'_, T> {
     type Target = T;
