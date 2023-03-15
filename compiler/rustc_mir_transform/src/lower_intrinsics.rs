@@ -150,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         }
                     }
                     sym::read_via_copy => {
-                        let Ok([arg]) = <[_; 1]>::try_from(std::mem::take(args)) else {
+                        let [arg] = args.as_slice() else {
                             span_bug!(terminator.source_info.span, "Wrong number of arguments");
                         };
                         let derefed_place =
@@ -159,18 +159,23 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             } else {
                                 span_bug!(terminator.source_info.span, "Only passing a local is supported");
                             };
-                        block.statements.push(Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::Use(Operand::Copy(derefed_place)),
-                            ))),
-                        });
-                        if let Some(target) = *target {
-                            terminator.kind = TerminatorKind::Goto { target };
-                        } else {
-                            // Reading something uninhabited means this is unreachable.
-                            terminator.kind = TerminatorKind::Unreachable;
+                        terminator.kind = match *target {
+                            None => {
+                                // No target means this read something uninhabited,
+                                // so it must be unreachable, and we don't need to
+                                // preserve the assignment either.
+                                TerminatorKind::Unreachable
+                            }
+                            Some(target) => {
+                                block.statements.push(Statement {
+                                    source_info: terminator.source_info,
+                                    kind: StatementKind::Assign(Box::new((
+                                        *destination,
+                                        Rvalue::Use(Operand::Copy(derefed_place)),
+                                    ))),
+                                });
+                                TerminatorKind::Goto { target }
+                            }
                         }
                     }
                     sym::discriminant_value => {

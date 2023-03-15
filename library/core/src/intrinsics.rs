@@ -2020,16 +2020,12 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
-    /// This is a *typed* read, `copy *p` in MIR.
+    /// This is an implementation detail of [`crate::ptr::read`] and should
+    /// not be used anywhere else.  See its comments for why this exists.
     ///
-    /// The stabilized form of this intrinsic is [`crate::ptr::read`], so
-    /// that can be implemented without needing to do an *untyped* copy
-    /// via [`copy_nonoverlapping`], and thus can get proper metadata.
-    ///
-    /// This intrinsic can *only* be called with a copy or move of a local.
-    /// (It allows neither constants nor projections.)
-    ///
-    /// To avoid introducing any `noalias` requirements, it just takes a pointer.
+    /// This intrinsic can *only* be called where the argument is a local without
+    /// projections (`read_via_copy(p)`, not `read_via_copy(*p)`) so that it
+    /// trivially obeys runtime-MIR rules about derefs in operands.
     #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     pub fn read_via_copy<T>(p: *const T) -> T;

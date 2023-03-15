@@ -1136,10 +1136,12 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn read<T>(src: *const T) -> T {
     // It would be semantically correct to implement this via `copy_nonoverlapping`
-    // and `MaybeUninit`, as was done before PR #109035.
+    // and `MaybeUninit`, as was done before PR #109035. Calling `assume_init`
+    // provides enough information to know that this is a typed operation.
 
-    // However, it switched to intrinsic that lowers to `_0 = *src` in MIR in
-    // order to address a few implementation issues:
+    // However, as of March 2023 the compiler was not capable of taking advantage
+    // of that information.  Thus the implementation here switched to an intrinsic,
+    // which lowers to `_0 = *src` in MIR, to address a few issues:
     //
     // - Using `MaybeUninit::assume_init` after a `copy_nonoverlapping` was not
     //   turning the untyped copy into a typed load. As such, the generated
