@@ -135,7 +135,7 @@ where
                 let def_id = tcx.impl_trait_in_trait_parent(projection.def_id);
                 let trait_generics = tcx.generics_of(def_id);
                 (
-                    tcx.mk_trait_ref(def_id, projection.substs.truncate_to(tcx, trait_generics)),
+                    tcx.mk().trait_ref(def_id, projection.substs.truncate_to(tcx, trait_generics)),
                     &projection.substs[trait_generics.count()..],
                 )
             };

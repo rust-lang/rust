@@ -241,7 +241,7 @@ pub fn predicate_for_trait_def<'tcx>(
     recursion_depth: usize,
     params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
 ) -> PredicateObligation<'tcx> {
-    let trait_ref = tcx.mk_trait_ref(trait_def_id, params);
+    let trait_ref = tcx.mk().trait_ref(trait_def_id, params);
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
@@ -292,9 +292,9 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
-        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.skip_binder().inputs()),
+        TupleArgumentsFlag::Yes => tcx.mk().tup(sig.skip_binder().inputs()),
     };
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
+    let trait_ref = tcx.mk().trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
@@ -305,7 +305,7 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
+    let trait_ref = tcx.mk().trait_ref(fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }
 
@@ -316,7 +316,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty]);
+    let trait_ref = tcx.mk().trait_ref(fn_trait_def_id, [self_ty]);
     sig.map_bound(|sig| (trait_ref, sig.return_ty))
 }
 

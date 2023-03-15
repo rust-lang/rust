@@ -160,7 +160,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .opaque_types
             .iter()
             .map(|&(k, ref v)| {
-                (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty)
+                (self.tcx.mk().opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty)
             })
             .collect()
     }
@@ -168,7 +168,7 @@ impl<'tcx> InferCtxt<'tcx> {
     fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
+            .map(|(k, v)| (self.tcx.mk().opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()
     }
 
@@ -484,7 +484,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: self.tcx.mk_substs_from_iter(
+            var_values: self.tcx.mk().substs_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
@@ -649,13 +649,13 @@ pub fn make_query_region_constraints<'tcx>(
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
                 Constraint::VarSubVar(v1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), tcx.mk_re_var(v1))
+                    ty::OutlivesPredicate(tcx.mk().re_var(v2).into(), tcx.mk().re_var(v1))
                 }
                 Constraint::VarSubReg(v1, r2) => {
-                    ty::OutlivesPredicate(r2.into(), tcx.mk_re_var(v1))
+                    ty::OutlivesPredicate(r2.into(), tcx.mk().re_var(v1))
                 }
                 Constraint::RegSubVar(r1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), r1)
+                    ty::OutlivesPredicate(tcx.mk().re_var(v2).into(), r1)
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
             };
@@ -699,7 +699,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        self.infcx.tcx.mk_re_placeholder(placeholder)
+        self.infcx.tcx.mk().re_placeholder(placeholder)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {

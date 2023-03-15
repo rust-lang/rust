@@ -131,7 +131,7 @@ impl PrimitiveExt for Primitive {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
+            Pointer(_) => tcx.mk().mut_ptr(tcx.mk().unit()),
         }
     }
 
@@ -697,11 +697,11 @@ where
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
-                        let nil = tcx.mk_unit();
+                        let nil = tcx.mk().unit();
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
-                            tcx.mk_mut_ptr(nil)
+                            tcx.mk().mut_ptr(nil)
                         } else {
-                            tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
+                            tcx.mk().mut_ref(tcx.lifetimes.re_static, nil)
                         };
 
                         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing
@@ -714,7 +714,8 @@ where
                     }
 
                     let mk_dyn_vtable = || {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        tcx.mk()
+                            .imm_ref(tcx.lifetimes.re_static, tcx.mk().array(tcx.types.usize, 3))
                         /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
@@ -737,7 +738,7 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
-                            tcx.mk_projection(metadata_def_id, [pointee]),
+                            tcx.mk().projection(metadata_def_id, [pointee]),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
@@ -811,13 +812,13 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
+                        TyMaybeWithLayout::Ty(tcx.mk().mut_ptr(tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
                         TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
+                            tcx.mk().imm_ref(
                                 tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
+                                tcx.mk().array(tcx.types.usize, 3),
                             ),
                         )
                     } else {
@@ -868,10 +869,8 @@ where
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
-                    align: layout.align.abi,
-                    safe: None,
+                tcx.layout_of(param_env.and(tcx.mk().fn_ptr(fn_sig))).ok().map(|layout| {
+                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {

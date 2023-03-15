@@ -123,7 +123,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // <ty as Deref>
-        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
+        let trait_ref = tcx.mk().trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
@@ -141,7 +141,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let normalized_ty = self
             .infcx
             .at(&cause, self.param_env)
-            .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
+            .normalize(tcx.mk().projection(tcx.lang_items().deref_target()?, trait_ref.substs));
         let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
         let normalized_ty =
             normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);

@@ -133,7 +133,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    let trait_ref = ty::Binder::dummy(infcx.tcx.mk_trait_ref(def_id, [ty]));
+    let trait_ref = ty::Binder::dummy(infcx.tcx.mk().trait_ref(def_id, [ty]));
     pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref.without_const(), span)
 }
 
@@ -283,7 +283,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let elaborated_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&predicates),
+        tcx.mk().predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -337,7 +337,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
     let outlives_env = ty::ParamEnv::new(
-        tcx.mk_predicates_from_iter(outlives_env),
+        tcx.mk().predicates_from_iter(outlives_env),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -357,7 +357,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
-        tcx.mk_predicates(&predicates),
+        tcx.mk().predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     )
@@ -420,7 +420,7 @@ pub fn fully_solve_bound<'tcx>(
     bound: DefId,
 ) -> Vec<FulfillmentError<'tcx>> {
     let tcx = infcx.tcx;
-    let trait_ref = tcx.mk_trait_ref(bound, [ty]);
+    let trait_ref = tcx.mk().trait_ref(bound, [ty]);
     let obligation = Obligation::new(tcx, cause, param_env, ty::Binder::dummy(trait_ref));
 
     fully_solve_obligation(infcx, obligation)

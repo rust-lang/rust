@@ -53,8 +53,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                    inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                    sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+                    inputs_and_output[0] = tcx.mk().mut_ptr(inputs_and_output[0]);
+                    sig.inputs_and_output = tcx.mk().type_list(&inputs_and_output);
                     sig
                 });
             }
@@ -63,19 +63,19 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Closure(def_id, substs) => {
             let sig = substs.as_closure().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+            let bound_vars = tcx.mk().bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
             );
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
+            let env_region = tcx.mk().re_late_bound(ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
+                tcx.mk().fn_sig(
                     iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                     sig.output(),
                     sig.c_variadic,
@@ -88,19 +88,19 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Generator(did, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+            let bound_vars = tcx.mk().bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
             );
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_ty = tcx.mk_mut_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), ty);
+            let env_ty = tcx.mk().mut_ref(tcx.mk().re_late_bound(ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_substs = tcx.mk_substs(&[env_ty.into()]);
-            let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+            let env_ty = tcx.mk().adt(pin_adt_ref, pin_substs);
 
             let sig = sig.skip_binder();
             // The `FnSig` and the `ret_ty` here is for a generators main
@@ -112,7 +112,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
                 let poll_substs = tcx.mk_substs(&[sig.return_ty.into()]);
-                let ret_ty = tcx.mk_adt(poll_adt_ref, poll_substs);
+                let ret_ty = tcx.mk().adt(poll_adt_ref, poll_substs);
 
                 // We have to replace the `ResumeTy` that is used for type and borrow checking
                 // with `&mut Context<'_>` which is used in codegen.
@@ -126,7 +126,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                     };
                 }
-                let context_mut_ref = tcx.mk_task_context();
+                let context_mut_ref = tcx.mk().task_context();
 
                 (context_mut_ref, ret_ty)
             } else {
@@ -134,13 +134,13 @@ fn fn_sig_for_fn_abi<'tcx>(
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
                 let state_substs = tcx.mk_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+                let ret_ty = tcx.mk().adt(state_adt_ref, state_substs);
 
                 (sig.resume_ty, ret_ty)
             };
 
             ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
+                tcx.mk().fn_sig(
                     [env_ty, resume_ty],
                     ret_ty,
                     false,
@@ -525,7 +525,7 @@ fn make_thin_self_ptr<'tcx>(
     let fat_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
-        tcx.mk_mut_ptr(layout.ty)
+        tcx.mk().mut_ptr(layout.ty)
     } else {
         match layout.abi {
             Abi::ScalarPair(..) | Abi::Scalar(..) => (),
@@ -559,7 +559,7 @@ fn make_thin_self_ptr<'tcx>(
     // we now have a type like `*mut RcBox<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
-    let unit_ptr_ty = tcx.mk_mut_ptr(tcx.mk_unit());
+    let unit_ptr_ty = tcx.mk().mut_ptr(tcx.mk().unit());
 
     TyAndLayout {
         ty: fat_pointer_ty,

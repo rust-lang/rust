@@ -548,7 +548,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
             FnDef(def_id, substs) => {
-                self.tcx.mk_fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
+                self.tcx.mk().fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
             }
 
             // FIXME(compiler-errors): We could replace these with infer, I guess.

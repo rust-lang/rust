@@ -771,7 +771,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderRegion { universe, name: br.kind };
                 self.mapped_regions.insert(p, br);
-                self.infcx.tcx.mk_re_placeholder(p)
+                self.infcx.tcx.mk().re_placeholder(p)
             }
             _ => r,
         }
@@ -789,7 +789,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderType { universe, name: bound_ty.kind };
                 self.mapped_types.insert(p, bound_ty);
-                self.infcx.tcx.mk_placeholder(p)
+                self.infcx.tcx.mk().placeholder(p)
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
             _ => t,
@@ -808,7 +808,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx.tcx.mk_const(p, ct.ty())
+                self.infcx.tcx.mk().const_(p, ct.ty())
             }
             _ => ct.super_fold_with(self),
         }
@@ -892,7 +892,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        self.interner().mk_re_late_bound(db, *replace_var)
+                        self.interner().mk().re_late_bound(db, *replace_var)
                     }
                     None => r1,
                 }
@@ -919,7 +919,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        self.interner().mk_bound(db, *replace_var)
+                        self.interner().mk().bound(db, *replace_var)
                     }
                     None => ty,
                 }
@@ -943,7 +943,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.interner().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty())
+                    self.interner().mk().const_(ty::ConstKind::Bound(db, *replace_var), ct.ty())
                 }
                 None => ct,
             }
@@ -1274,7 +1274,8 @@ fn project<'cx, 'tcx>(
             // need to investigate whether or not this is fine.
             selcx
                 .tcx()
-                .mk_projection(obligation.predicate.def_id, obligation.predicate.substs)
+                .mk()
+                .projection(obligation.predicate.def_id, obligation.predicate.substs)
                 .into(),
         )),
         // Error occurred while trying to processing impls.
@@ -1301,7 +1302,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
         // FIXME(named-returns): Binders
-        let trait_predicate = ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, trait_substs));
+        let trait_predicate = ty::Binder::dummy(tcx.mk().trait_ref(trait_def_id, trait_substs));
 
         let _ = selcx.infcx.commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
@@ -1849,7 +1850,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         };
 
         ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
+            projection_ty: tcx.mk().alias_ty(obligation.predicate.def_id, trait_ref.substs),
             term: ty.into(),
         }
     });
@@ -1888,7 +1889,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
         ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
+            projection_ty: tcx.mk().alias_ty(obligation.predicate.def_id, trait_ref.substs),
             term: return_ty.into(),
         }
     });
@@ -1942,7 +1943,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     };
 
     let predicate =
-        ty::ProjectionPredicate { projection_ty: tcx.mk_alias_ty(item_def_id, substs), term };
+        ty::ProjectionPredicate { projection_ty: tcx.mk().alias_ty(item_def_id, substs), term };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
         .with_addl_obligations(obligations)
@@ -2011,7 +2012,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         flag,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_ty: tcx.mk_alias_ty(fn_once_output_def_id, trait_ref.substs),
+        projection_ty: tcx.mk().alias_ty(fn_once_output_def_id, trait_ref.substs),
         term: ret_type.into(),
     });
 
@@ -2128,7 +2129,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
         let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-        ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
+        ty.map_bound(|ty| tcx.mk().const_(kind, ty).into())
     } else {
         ty.map_bound(|ty| ty.into())
     };
@@ -2207,7 +2208,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     // Use the default `impl Trait` for the trait, e.g., for a default trait body
     if leaf_def.item.container == ty::AssocItemContainer::TraitContainer {
         return Progress {
-            term: tcx.mk_opaque(obligation.predicate.def_id, obligation.predicate.substs).into(),
+            term: tcx.mk().opaque(obligation.predicate.def_id, obligation.predicate.substs).into(),
             obligations,
         };
     }

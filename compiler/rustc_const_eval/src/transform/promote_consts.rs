@@ -857,7 +857,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let ty = local_decls[place.local].ty;
             let span = statement.source_info.span;
 
-            let ref_ty = tcx.mk_ref(
+            let ref_ty = tcx.mk().ref_(
                 tcx.lifetimes.re_erased,
                 ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
             );

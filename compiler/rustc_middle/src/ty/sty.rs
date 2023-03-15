@@ -259,7 +259,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         parts: ClosureSubstsParts<'tcx, Ty<'tcx>>,
     ) -> ClosureSubsts<'tcx> {
         ClosureSubsts {
-            substs: tcx.mk_substs_from_iter(
+            substs: tcx.mk().substs_from_iter(
                 parts.parent_substs.iter().copied().chain(
                     [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
                         .iter()
@@ -386,7 +386,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         parts: GeneratorSubstsParts<'tcx, Ty<'tcx>>,
     ) -> GeneratorSubsts<'tcx> {
         GeneratorSubsts {
-            substs: tcx.mk_substs_from_iter(
+            substs: tcx.mk().substs_from_iter(
                 parts.parent_substs.iter().copied().chain(
                     [
                         parts.resume_ty,
@@ -664,7 +664,7 @@ impl<'tcx> InlineConstSubsts<'tcx> {
         parts: InlineConstSubstsParts<'tcx, Ty<'tcx>>,
     ) -> InlineConstSubsts<'tcx> {
         InlineConstSubsts {
-            substs: tcx.mk_substs_from_iter(
+            substs: tcx.mk().substs_from_iter(
                 parts.parent_substs.iter().copied().chain(std::iter::once(parts.ty.into())),
             ),
         }
@@ -740,13 +740,13 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
                 let trait_ref = if generics.params.len() == 1 {
-                    tcx.mk_trait_ref(did, [self_ty])
+                    tcx.mk().trait_ref(did, [self_ty])
                 } else {
                     // If this is an ill-formed auto trait, then synthesize
                     // new error substs for the missing generics.
                     let err_substs =
                         ty::InternalSubsts::extend_with_error(tcx, did, &[self_ty.into()]);
-                    tcx.mk_trait_ref(did, err_substs)
+                    tcx.mk().trait_ref(did, err_substs)
                 };
                 self.rebind(trait_ref).without_const().to_predicate(tcx)
             }
@@ -839,16 +839,16 @@ pub struct TraitRef<'tcx> {
 
 impl<'tcx> TraitRef<'tcx> {
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_trait_ref(
-            self.def_id,
-            [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
-        )
+        tcx.mk()
+            .trait_ref(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> Binder<'tcx, TraitRef<'tcx>> {
-        ty::Binder::dummy(tcx.mk_trait_ref(def_id, InternalSubsts::identity_for_item(tcx, def_id)))
+        ty::Binder::dummy(
+            tcx.mk().trait_ref(def_id, InternalSubsts::identity_for_item(tcx, def_id)),
+        )
     }
 
     #[inline]
@@ -862,7 +862,7 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        tcx.mk_trait_ref(trait_id, tcx.mk_substs(&substs[..defs.params.len()]))
+        tcx.mk().trait_ref(trait_id, tcx.mk_substs(&substs[..defs.params.len()]))
     }
 }
 
@@ -920,7 +920,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        tcx.mk_trait_ref(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter()))
+        tcx.mk().trait_ref(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter()))
     }
 }
 
@@ -1189,7 +1189,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.interner().mk_bound(index.shifted_out(1), bv))
+                Ok(self.interner().mk().bound(index.shifted_out(1), bv))
             }
         } else {
             ty.try_super_fold_with(self)
@@ -1203,7 +1203,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.interner().mk_re_late_bound(index.shifted_out(1), bv))
+                Ok(self.interner().mk().re_late_bound(index.shifted_out(1), bv))
             }
         } else {
             r.try_super_fold_with(self)
@@ -1217,7 +1217,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.interner().mk_const(
+                Ok(self.interner().mk().const_(
                     ty::ConstKind::Bound(index.shifted_out(1), bv),
                     ct.ty().try_fold_with(self)?,
                 ))
@@ -1278,7 +1278,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_alias(self.kind(tcx), self)
+        tcx.mk().alias(self.kind(tcx), self)
     }
 }
 
@@ -1305,7 +1305,7 @@ impl<'tcx> AliasTy<'tcx> {
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (
-            tcx.mk_trait_ref(trait_def_id, self.substs.truncate_to(tcx, trait_generics)),
+            tcx.mk().trait_ref(trait_def_id, self.substs.truncate_to(tcx, trait_generics)),
             &self.substs[trait_generics.count()..],
         )
     }
@@ -1319,7 +1319,7 @@ impl<'tcx> AliasTy<'tcx> {
     /// as well.
     pub fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
         let def_id = self.trait_def_id(tcx);
-        tcx.mk_trait_ref(def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
+        tcx.mk().trait_ref(def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
     }
 
     pub fn self_ty(self) -> Ty<'tcx> {
@@ -1327,7 +1327,8 @@ impl<'tcx> AliasTy<'tcx> {
     }
 
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
+        tcx.mk()
+            .alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
     }
 }
 
@@ -1425,7 +1426,7 @@ impl<'tcx> ParamTy {
 
     #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty_param(self.index, self.name)
+        tcx.mk().ty_param(self.index, self.name)
     }
 
     pub fn span_from_generics(&self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
@@ -1574,7 +1575,8 @@ impl<'tcx> ExistentialProjection<'tcx> {
 
         ty::ProjectionPredicate {
             projection_ty: tcx
-                .mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs)),
+                .mk()
+                .alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs)),
             term: self.term,
         }
     }
@@ -2218,7 +2220,7 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
-                tcx.mk_projection(assoc_items[0], tcx.mk_substs(&[self.into()]))
+                tcx.mk().projection(assoc_items[0], tcx.mk_substs(&[self.into()]))
             }
 
             ty::Bool

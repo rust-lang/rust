@@ -80,7 +80,7 @@ impl<'tcx> Const<'tcx> {
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
-            None => tcx.mk_const(
+            None => tcx.mk().const_(
                 ty::UnevaluatedConst {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
@@ -146,9 +146,9 @@ impl<'tcx> Const<'tcx> {
                         let generics = tcx.generics_of(item_def_id);
                         let index = generics.param_def_id_to_index[&def_id];
                         let name = tcx.item_name(def_id);
-                        Some(tcx.mk_const(ty::ParamConst::new(index, name), param_ty))
+                        Some(tcx.mk().const_(ty::ParamConst::new(index, name), param_ty))
                     }
-                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk().const_(
                         ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
                         param_ty,
                     )),
@@ -177,7 +177,7 @@ impl<'tcx> Const<'tcx> {
             .layout_of(ty)
             .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
             .size;
-        tcx.mk_const(
+        tcx.mk().const_(
             ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
             ty.value,
         )
@@ -186,7 +186,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ty::ValTree::zst(), ty)
+        tcx.mk().const_(ty::ValTree::zst(), ty)
     }
 
     #[inline]
@@ -237,7 +237,7 @@ impl<'tcx> Const<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
-                Ok(val) => tcx.mk_const(val, self.ty()),
+                Ok(val) => tcx.mk().const_(val, self.ty()),
                 Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
             }
         } else {

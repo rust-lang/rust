@@ -303,7 +303,7 @@ impl<'tcx> InternalSubsts<'tcx> {
 
     /// Creates an `InternalSubsts` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
-        Self::for_item(tcx, def_id, |param, _| tcx.mk_param_from_def(param))
+        Self::for_item(tcx, def_id, |param, _| tcx.mk().param_from_def(param))
     }
 
     /// Creates an `InternalSubsts` for generic parameter definitions,
@@ -468,11 +468,11 @@ impl<'tcx> InternalSubsts<'tcx> {
         target_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs_from_iter(target_substs.iter().chain(self.iter().skip(defs.params.len())))
+        tcx.mk().substs_from_iter(target_substs.iter().chain(self.iter().skip(defs.params.len())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> SubstsRef<'tcx> {
-        tcx.mk_substs_from_iter(self.iter().take(generics.count()))
+        tcx.mk().substs_from_iter(self.iter().take(generics.count()))
     }
 }
 
@@ -538,10 +538,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().mk_type_list(&[param0, param1]))
+                    Ok(folder.interner().mk().type_list(&[param0, param1]))
                 }
             }
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk().type_list(v)),
         }
     }
 }

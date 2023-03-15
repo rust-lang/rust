@@ -137,7 +137,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     upvars: &[Upvar<'tcx>],
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
-    let implicit_region_bound = infcx.tcx.mk_re_var(universal_regions.fr_fn_body);
+    let implicit_region_bound = infcx.tcx.mk().re_var(universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
@@ -669,7 +669,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 PlaceTy::from_ty(match base_ty.kind() {
                     ty::Array(inner, _) => {
                         assert!(!from_end, "array subslices should not use from_end");
-                        tcx.mk_array(*inner, to - from)
+                        tcx.mk().array(*inner, to - from)
                     }
                     ty::Slice(..) => {
                         assert!(from_end, "slice subslices should use from_end");
@@ -1866,7 +1866,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // and hence may contain unnormalized results.
                         let fn_sig = self.normalize(fn_sig, location);
 
-                        let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
+                        let ty_fn_ptr_from = tcx.mk().fn_ptr(fn_sig);
 
                         if let Err(terr) = self.eq_types(
                             *ty,
@@ -1890,7 +1890,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty::Closure(_, substs) => substs.as_closure().sig(),
                             _ => bug!(),
                         };
-                        let ty_fn_ptr_from = tcx.mk_fn_ptr(tcx.signature_unclosure(sig, *unsafety));
+                        let ty_fn_ptr_from =
+                            tcx.mk().fn_ptr(tcx.signature_unclosure(sig, *unsafety));
 
                         if let Err(terr) = self.eq_types(
                             *ty,
@@ -1971,7 +1972,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         let outlives_predicate =
-                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::Clause(
+                            tcx.mk().predicate(Binder::dummy(ty::PredicateKind::Clause(
                                 ty::Clause::TypeOutlives(ty::OutlivesPredicate(self_ty, *region)),
                             )));
                         self.prove_predicate(

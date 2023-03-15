@@ -718,7 +718,8 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
 fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
         ty::GenericParamDefKind::Type { .. } => tcx
-            .mk_bound(
+            .mk()
+            .bound(
                 ty::INNERMOST,
                 ty::BoundTy {
                     var: ty::BoundVar::from(param.index),
@@ -732,11 +733,12 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(substs.len() as u32, None),
             };
-            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
+            tcx.mk().re_late_bound(ty::INNERMOST, br).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
-            .mk_const(
+            .mk()
+            .const_(
                 ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                 tcx.type_of(param.def_id).subst_identity(),
             )
@@ -789,7 +791,8 @@ impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ReplaceOpaqueTyFolder<'tcx> {
             if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
                 return self
                     .tcx
-                    .mk_bound(self.binder_index, ty::BoundTy::from(ty::BoundVar::from_u32(0)));
+                    .mk()
+                    .bound(self.binder_index, ty::BoundTy::from(ty::BoundVar::from_u32(0)));
             }
         }
         ty

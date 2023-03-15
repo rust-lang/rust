@@ -82,20 +82,21 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                self.tcx.mk_re_placeholder(ty::PlaceholderRegion {
+                self.tcx.mk().re_placeholder(ty::PlaceholderRegion {
                     universe: next_universe,
                     name: br.kind,
                 })
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                self.tcx.mk_placeholder(ty::PlaceholderType {
+                self.tcx.mk().placeholder(ty::PlaceholderType {
                     universe: next_universe,
                     name: bound_ty.kind,
                 })
             },
             consts: &mut |bound_var: ty::BoundVar, ty| {
                 self.tcx
-                    .mk_const(ty::PlaceholderConst { universe: next_universe, name: bound_var }, ty)
+                    .mk()
+                    .const_(ty::PlaceholderConst { universe: next_universe, name: bound_var }, ty)
             },
         };
 

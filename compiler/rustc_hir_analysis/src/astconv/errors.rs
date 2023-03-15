@@ -348,13 +348,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_ty = pred.skip_binder().projection_ty;
 
-                    let substs_with_infer_self = tcx.mk_substs_from_iter(
-                        std::iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
+                    let substs_with_infer_self = tcx.mk().substs_from_iter(
+                        std::iter::once(tcx.mk().ty_var(ty::TyVid::from_u32(0)).into())
                             .chain(projection_ty.substs.iter().skip(1)),
                     );
 
                     let quiet_projection_ty =
-                        tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+                        tcx.mk().alias_ty(projection_ty.def_id, substs_with_infer_self);
 
                     let term = pred.skip_binder().term;
 

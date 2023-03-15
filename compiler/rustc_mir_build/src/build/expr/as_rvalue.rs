@@ -145,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let storage = this.temp(tcx.mk().mut_ptr(tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -183,7 +183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // initialize the box contents:
                 unpack!(
                     block = this.expr_into_dest(
-                        this.tcx.mk_place_deref(Place::from(result)),
+                        this.tcx.mk().place_deref(Place::from(result)),
                         block,
                         value
                     )
@@ -520,7 +520,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
         if self.check_overflow && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
+            let result_tup = self.tcx.mk().tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);
 
             self.cfg.push_assign(
@@ -533,8 +533,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let of_fld = Field::new(1);
 
             let tcx = self.tcx;
-            let val = tcx.mk_place_field(result_value, val_fld, ty);
-            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
+            let val = tcx.mk().place_field(result_value, val_fld, ty);
+            let of = tcx.mk().place_field(result_value, of_fld, bool_ty);
 
             let err = AssertKind::Overflow(op, lhs, rhs);
 

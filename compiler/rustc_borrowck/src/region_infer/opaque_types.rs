@@ -92,7 +92,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                     None => {
                         subst_regions.push(vid);
-                        infcx.tcx.mk_re_error_with_message(
+                        infcx.tcx.mk().re_error_with_message(
                             concrete_type.span,
                             "opaque type with non-universal region substs",
                         )
@@ -288,7 +288,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.
-        let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
+        let opaque_ty = self.tcx.mk().opaque(def_id.to_def_id(), id_substs);
         if let Err(err) = ocx.eq(
             &ObligationCause::misc(instantiated_ty.span, def_id),
             param_env,

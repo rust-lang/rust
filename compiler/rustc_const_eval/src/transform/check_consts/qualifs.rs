@@ -220,7 +220,7 @@ impl Qualif for CustomEq {
         def: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool {
-        let ty = cx.tcx.mk_adt(def, substs);
+        let ty = cx.tcx.mk().adt(def, substs);
         !ty.is_structural_eq_shallow(cx.tcx)
     }
 }

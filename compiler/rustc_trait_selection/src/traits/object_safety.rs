@@ -517,7 +517,7 @@ fn virtual_call_violation_for_method<'tcx>(
 
             // e.g., `Rc<()>`
             let unit_receiver_ty =
-                receiver_for_self_ty(tcx, receiver_ty, tcx.mk_unit(), method.def_id);
+                receiver_for_self_ty(tcx, receiver_ty, tcx.mk().unit(), method.def_id);
 
             match abi_of_ty(unit_receiver_ty) {
                 Some(Abi::Scalar(..)) => (),
@@ -621,7 +621,7 @@ fn receiver_for_self_ty<'tcx>(
 ) -> Ty<'tcx> {
     debug!("receiver_for_self_ty({:?}, {:?}, {:?})", receiver_ty, self_ty, method_def_id);
     let substs = InternalSubsts::for_item(tcx, method_def_id, |param, _| {
-        if param.index == 0 { self_ty.into() } else { tcx.mk_param_from_def(param) }
+        if param.index == 0 { self_ty.into() } else { tcx.mk().param_from_def(param) }
     });
 
     let result = EarlyBinder(receiver_ty).subst(tcx, substs);
@@ -666,12 +666,12 @@ fn object_ty_for_trait<'tcx>(
     elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
     elaborated_predicates.dedup();
 
-    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
+    let existential_predicates = tcx.mk().poly_existential_predicates_from_iter(
         iter::once(trait_predicate).chain(elaborated_predicates),
     );
     debug!(?existential_predicates);
 
-    tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
+    tcx.mk().dynamic(existential_predicates, lifetime, ty::Dyn)
 }
 
 /// Checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a
@@ -739,7 +739,7 @@ fn receiver_is_dispatchable<'tcx>(
     // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
-        tcx.mk_ty_param(u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+        tcx.mk().ty_param(u32::MAX, Symbol::intern("RustaceansAreAwesome"));
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =
@@ -752,7 +752,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         // Self: Unsize<U>
         let unsize_predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
+            tcx.mk().trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
         )
         .without_const()
         .to_predicate(tcx);
@@ -761,17 +761,21 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = {
             let trait_def_id = method.trait_container(tcx).unwrap();
             let substs = InternalSubsts::for_item(tcx, trait_def_id, |param, _| {
-                if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
+                if param.index == 0 {
+                    unsized_self_ty.into()
+                } else {
+                    tcx.mk().param_from_def(param)
+                }
             });
 
-            ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
+            ty::Binder::dummy(tcx.mk().trait_ref(trait_def_id, substs)).to_predicate(tcx)
         };
 
         let caller_bounds =
             param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
         ty::ParamEnv::new(
-            tcx.mk_predicates_from_iter(caller_bounds),
+            tcx.mk().predicates_from_iter(caller_bounds),
             param_env.reveal(),
             param_env.constness(),
         )
@@ -780,7 +784,7 @@ fn receiver_is_dispatchable<'tcx>(
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
         let predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
+            tcx.mk().trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
         );
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)

@@ -203,7 +203,7 @@ fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
     cx.scalar_pair_element_backend_type(
         cx.layout_of(match kind {
             // vtable is the second field of `*mut dyn Trait`
-            ty::Dyn => cx.tcx().mk_mut_ptr(target),
+            ty::Dyn => cx.tcx().mk().mut_ptr(target),
             // vtable is the second field of `dyn* Trait`
             ty::DynStar => target,
         }),

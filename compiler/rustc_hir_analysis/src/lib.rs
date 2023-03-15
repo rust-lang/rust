@@ -325,15 +325,15 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         expected_return_type = main_fnsig.output();
     } else {
         // standard () main return type
-        expected_return_type = ty::Binder::dummy(tcx.mk_unit());
+        expected_return_type = ty::Binder::dummy(tcx.mk().unit());
     }
 
     if error {
         return;
     }
 
-    let se_ty = tcx.mk_fn_ptr(expected_return_type.map_bound(|expected_return_type| {
-        tcx.mk_fn_sig([], expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
+    let se_ty = tcx.mk().fn_ptr(expected_return_type.map_bound(|expected_return_type| {
+        tcx.mk().fn_sig([], expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
     }));
 
     require_same_types(
@@ -344,7 +344,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             ObligationCauseCode::MainFunctionType,
         ),
         se_ty,
-        tcx.mk_fn_ptr(main_fnsig),
+        tcx.mk().fn_ptr(main_fnsig),
     );
 }
 fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
@@ -402,8 +402,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 }
             }
 
-            let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))],
+            let se_ty = tcx.mk().fn_ptr(ty::Binder::dummy(tcx.mk().fn_sig(
+                [tcx.types.isize, tcx.mk().imm_ptr(tcx.mk().imm_ptr(tcx.types.u8))],
                 tcx.types.isize,
                 false,
                 hir::Unsafety::Normal,
@@ -418,7 +418,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     ObligationCauseCode::StartFunctionType,
                 ),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id).subst_identity()),
+                tcx.mk().fn_ptr(tcx.fn_sig(start_def_id).subst_identity()),
             );
         }
         _ => {

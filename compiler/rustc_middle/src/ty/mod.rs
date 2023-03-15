@@ -502,14 +502,14 @@ impl<'tcx> Predicate<'tcx> {
             })
             .transpose()?;
 
-        Some(tcx.mk_predicate(kind))
+        Some(tcx.mk().predicate(kind))
     }
 
     pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
         if let PredicateKind::Clause(Clause::Trait(TraitPredicate { trait_ref, constness, polarity })) = self.kind().skip_binder()
             && constness != BoundConstness::NotConst
         {
-            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+            self = tcx.mk().predicate(self.kind().rebind(PredicateKind::Clause(Clause::Trait(TraitPredicate {
                 trait_ref,
                 constness: BoundConstness::NotConst,
                 polarity,
@@ -752,7 +752,7 @@ impl<'tcx> Predicate<'tcx> {
         let new = EarlyBinder(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
-            tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
+            tcx.mk().bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
         tcx.reuse_or_mk_predicate(self, ty::Binder::bind_with_vars(new, bound_vars))
     }
 }
@@ -990,7 +990,7 @@ impl<'tcx> Term<'tcx> {
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def.did, uv.substs)),
+                ConstKind::Unevaluated(uv) => Some(tcx.mk().alias_ty(uv.def.did, uv.substs)),
                 _ => None,
             },
         }
@@ -1131,14 +1131,14 @@ impl<'tcx, T> ToPredicate<'tcx, T> for T {
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        tcx.mk_predicate(self)
+        tcx.mk().predicate(self)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for Clause<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self)))
+        tcx.mk().predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self)))
     }
 }
 

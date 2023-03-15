@@ -79,7 +79,7 @@ impl<'tcx> ReverseMapper<'tcx> {
         // during codegen.
 
         let generics = self.tcx.generics_of(def_id);
-        self.tcx.mk_substs_from_iter(substs.iter().enumerate().map(|(index, kind)| {
+        self.tcx.mk().substs_from_iter(substs.iter().enumerate().map(|(index, kind)| {
             if index < generics.parent_count {
                 // Accommodate missing regions in the parent kinds...
                 self.fold_kind_no_missing_regions_error(kind)
@@ -141,7 +141,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.interner().mk_re_error(e)
+                self.interner().mk().re_error(e)
             }
         }
     }
@@ -150,17 +150,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         match *ty.kind() {
             ty::Closure(def_id, substs) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_closure(def_id, substs)
+                self.tcx.mk().closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_generator(def_id, substs, movability)
+                self.tcx.mk().generator(def_id, substs, movability)
             }
 
             ty::GeneratorWitnessMIR(def_id, substs) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_generator_witness_mir(def_id, substs)
+                self.tcx.mk().generator_witness_mir(def_id, substs)
             }
 
             ty::Param(param) => {

@@ -163,7 +163,7 @@ fn layout_of_uncached<'tcx>(
             {
                 let metadata_ty = tcx.normalize_erasing_regions(
                     param_env,
-                    tcx.mk_projection(metadata_def_id, [pointee]),
+                    tcx.mk().projection(metadata_def_id, [pointee]),
                 );
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
@@ -645,7 +645,7 @@ fn generator_layout<'tcx>(
     let promoted_layouts = ineligible_locals
         .iter()
         .map(|local| subst_field(info.field_tys[local].ty))
-        .map(|ty| tcx.mk_maybe_uninit(ty))
+        .map(|ty| tcx.mk().maybe_uninit(ty))
         .map(|ty| Ok(cx.layout_of(ty)?.layout));
     let prefix_layouts = substs
         .as_generator()

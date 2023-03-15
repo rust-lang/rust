@@ -272,9 +272,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |c| c,
             ty_op: |t| match *t.kind() {
-                ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),
-                ty::Infer(ty::IntVar(_)) => self.tcx.mk_int_var(ty::IntVid { index: 0 }),
-                ty::Infer(ty::FloatVar(_)) => self.tcx.mk_float_var(ty::FloatVid { index: 0 }),
+                ty::Infer(ty::TyVar(_)) => self.tcx.mk().ty_var(ty::TyVid::from_u32(0)),
+                ty::Infer(ty::IntVar(_)) => self.tcx.mk().int_var(ty::IntVid { index: 0 }),
+                ty::Infer(ty::FloatVar(_)) => self.tcx.mk().float_var(ty::FloatVid { index: 0 }),
                 _ => t,
             },
         };
@@ -1269,10 +1269,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 let ref_ty = match mutability {
                     hir::Mutability::Mut => {
-                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        self.tcx.mk().mut_ref(self.tcx.lifetimes.re_static, checked_ty)
                     }
                     hir::Mutability::Not => {
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        self.tcx.mk().imm_ref(self.tcx.lifetimes.re_static, checked_ty)
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {

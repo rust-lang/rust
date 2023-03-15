@@ -365,7 +365,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
         self.require_type_is_sized(referent_ty, expr.span, traits::SizedBoxType);
-        self.tcx.mk_box(referent_ty)
+        self.tcx.mk().box_(referent_ty)
     }
 
     fn check_expr_unary(
@@ -455,7 +455,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if tm.ty.references_error() => self.tcx.ty_error_misc(),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
-                self.tcx.mk_ptr(tm)
+                self.tcx.mk().ptr(tm)
             }
             hir::BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                self.tcx.mk_ref(region, tm)
+                self.tcx.mk().ref_(region, tm)
             }
         }
     }
@@ -642,7 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Otherwise, this is a break *without* a value. That's
                 // always legal, and is equivalent to `break ()`.
-                e_ty = tcx.mk_unit();
+                e_ty = tcx.mk().unit();
                 cause = self.misc(expr.span);
             }
 
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type is `bool` but this will result in `()` so we can reasonably
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = self.tcx.mk_unit();
+            let actual_ty = self.tcx.mk().unit();
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(&lhs);
             let rhs_ty = self.check_expr(&rhs);
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
             self.tcx.ty_error(guar)
         } else {
-            self.tcx.mk_unit()
+            self.tcx.mk().unit()
         }
     }
 
@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // [1]
             self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
+        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk().unit())
     }
 
     /// Checks a method call.
@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let array_len = args.len() as u64;
         self.suggest_array_len(expr, array_len);
-        self.tcx.mk_array(element_ty, array_len)
+        self.tcx.mk().array(element_ty, array_len)
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
-        tcx.mk_array_with_const_len(t, count)
+        tcx.mk().array_with_const_len(t, count)
     }
 
     fn check_repeat_element_needs_copy_bound(
@@ -1492,7 +1492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
-        let tuple = self.tcx.mk_tup_from_iter(elt_ts_iter);
+        let tuple = self.tcx.mk().tup_from_iter(elt_ts_iter);
         if let Err(guar) = tuple.error_reported() {
             self.tcx.ty_error(guar)
         } else {
@@ -1722,7 +1722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `MyStruct<'a, _, F2, C>`, as opposed to just `_`...
                     // This is important to allow coercions to happen in
                     // `other_struct` itself. See `coerce-in-base-expr.rs`.
-                    let fresh_base_ty = self.tcx.mk_adt(*adt, fresh_substs);
+                    let fresh_base_ty = self.tcx.mk().adt(*adt, fresh_substs);
                     self.check_expr_has_type_or_error(
                         base_expr,
                         self.resolve_vars_if_possible(fresh_base_ty),
@@ -2883,14 +2883,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
             None if src.is_await() => {
-                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit(), None);
-                self.tcx.mk_unit()
+                self.check_expr_coercable_to_type(&value, self.tcx.mk().unit(), None);
+                self.tcx.mk().unit()
             }
             _ => {
                 self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
                 // Avoid expressions without types during writeback (#78653).
                 self.check_expr(value);
-                self.tcx.mk_unit()
+                self.tcx.mk().unit()
             }
         }
     }
@@ -2917,11 +2917,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.structurally_resolved_type(expr.span, ty);
             match *ty.kind() {
                 ty::FnDef(..) => {
-                    let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
+                    let fnptr_ty = self.tcx.mk().fn_ptr(ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
                 }
                 ty::Ref(_, base_ty, mutbl) => {
-                    let ptr_ty = self.tcx.mk_ptr(ty::TypeAndMut { ty: base_ty, mutbl });
+                    let ptr_ty = self.tcx.mk().ptr(ty::TypeAndMut { ty: base_ty, mutbl });
                     self.demand_coerce(expr, ty, ptr_ty, None, AllowTwoPhase::No);
                 }
                 _ => {}
@@ -2956,7 +2956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
             self.tcx.types.never
         } else {
-            self.tcx.mk_unit()
+            self.tcx.mk().unit()
         }
     }
 }

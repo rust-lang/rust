@@ -492,7 +492,7 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds = tcx.mk_predicates_from_iter(
+    let bounds = tcx.mk().predicates_from_iter(
         param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()),
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
@@ -553,11 +553,11 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
                 let ty_param = gat_generics.param_at(*ty_idx, tcx);
-                let ty_param = tcx.mk_ty_param(ty_param.index, ty_param.name);
+                let ty_param = tcx.mk().ty_param(ty_param.index, ty_param.name);
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                let region_param = tcx.mk().re_early_bound(ty::EarlyBoundRegion {
                     def_id: region_param.def_id,
                     index: region_param.index,
                     name: region_param.name,
@@ -567,7 +567,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 let clause = ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                     ty::OutlivesPredicate(ty_param, region_param),
                 ));
-                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                let clause = tcx.mk().predicate(ty::Binder::dummy(clause));
                 bounds.insert(clause);
             }
         }
@@ -594,14 +594,14 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_a_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                let region_a_param = tcx.mk().re_early_bound(ty::EarlyBoundRegion {
                     def_id: region_a_param.def_id,
                     index: region_a_param.index,
                     name: region_a_param.name,
                 });
                 // Same for the region.
                 let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
-                let region_b_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                let region_b_param = tcx.mk().re_early_bound(ty::EarlyBoundRegion {
                     def_id: region_b_param.def_id,
                     index: region_b_param.index,
                     name: region_b_param.name,
@@ -610,7 +610,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 let clause = ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(region_a_param, region_b_param),
                 ));
-                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                let clause = tcx.mk().predicate(ty::Binder::dummy(clause));
                 bounds.insert(clause);
             }
         }
@@ -1340,7 +1340,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
-                tcx.mk_param_from_def(param)
+                tcx.mk().param_from_def(param)
             }
 
             GenericParamDefKind::Type { .. } => {
@@ -1354,7 +1354,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     }
                 }
 
-                tcx.mk_param_from_def(param)
+                tcx.mk().param_from_def(param)
             }
             GenericParamDefKind::Const { .. } => {
                 // If the param has a default, ...
@@ -1367,7 +1367,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     }
                 }
 
-                tcx.mk_param_from_def(param)
+                tcx.mk().param_from_def(param)
             }
         }
     });
@@ -1475,7 +1475,7 @@ fn check_fn_or_method<'tcx>(
         |idx| hir_decl.inputs.get(idx).map_or(hir_decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
 
     sig.inputs_and_output =
-        tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
+        tcx.mk().type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
             wfcx.normalize(
                 arg_span(idx),
                 Some(WellFormedLoc::Param {
@@ -1742,7 +1742,7 @@ fn receiver_is_implemented<'tcx>(
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     let tcx = wfcx.tcx();
-    let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(receiver_trait_def_id, [receiver_ty]));
+    let trait_ref = ty::Binder::dummy(tcx.mk().trait_ref(receiver_trait_def_id, [receiver_ty]));
 
     let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
 

@@ -276,7 +276,7 @@ where
                 assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
                 let field_ty =
                     tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
-                (tcx.mk_place_field(base_place, field, field_ty), subpath)
+                (tcx.mk().place_field(base_place, field, field_ty), subpath)
             })
             .collect()
     }
@@ -397,7 +397,7 @@ where
             .enumerate()
             .map(|(i, &ty)| {
                 (
-                    self.tcx().mk_place_field(self.place, Field::new(i), ty),
+                    self.tcx().mk().place_field(self.place, Field::new(i), ty),
                     self.elaborator.field_subpath(self.path, Field::new(i)),
                 )
             })
@@ -414,12 +414,12 @@ where
         let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
         let nonnull_ty =
             unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
-        let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
+        let ptr_ty = self.tcx().mk().imm_ptr(substs[0].expect_ty());
 
-        let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
-        let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
-        let interior = self.tcx().mk_place_deref(ptr_place);
+        let unique_place = self.tcx().mk().place_field(self.place, Field::new(0), unique_ty);
+        let nonnull_place = self.tcx().mk().place_field(unique_place, Field::new(0), nonnull_ty);
+        let ptr_place = self.tcx().mk().place_field(nonnull_place, Field::new(0), ptr_ty);
+        let interior = self.tcx().mk().place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);
 
@@ -498,7 +498,7 @@ where
             let subpath = self.elaborator.downcast_subpath(self.path, variant_index);
 
             if let Some(variant_path) = subpath {
-                let base_place = tcx.mk_place_elem(
+                let base_place = tcx.mk().place_elem(
                     self.place,
                     ProjectionElem::Downcast(Some(variant.name), variant_index),
                 );
@@ -615,10 +615,11 @@ where
         let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
 
-        let ref_ty =
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
+        let ref_ty = tcx
+            .mk()
+            .ref_(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
+        let unit_temp = Place::from(self.new_temp(tcx.mk().unit()));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
@@ -680,7 +681,7 @@ where
         let move_ = |place: Place<'tcx>| Operand::Move(place);
         let tcx = self.tcx();
 
-        let ptr_ty = tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
+        let ptr_ty = tcx.mk().ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
         let ptr = Place::from(self.new_temp(ptr_ty));
         let can_go = Place::from(self.new_temp(tcx.types.bool));
 
@@ -692,7 +693,7 @@ where
             )
         } else {
             (
-                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
+                Rvalue::AddressOf(Mutability::Mut, tcx.mk().place_index(self.place, cur)),
                 Rvalue::BinaryOp(BinOp::Add, Box::new((move_(cur.into()), one))),
             )
         };
@@ -727,7 +728,7 @@ where
         self.elaborator.patch().patch_terminator(
             drop_block,
             TerminatorKind::Drop {
-                place: tcx.mk_place_deref(ptr),
+                place: tcx.mk().place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
             },
@@ -751,7 +752,7 @@ where
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
                 .map(|i| {
                     (
-                        tcx.mk_place_elem(
+                        tcx.mk().place_elem(
                             self.place,
                             ProjectionElem::ConstantIndex {
                                 offset: i,
@@ -806,7 +807,7 @@ where
     ) -> BasicBlock {
         debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
         let tcx = self.tcx();
-        let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types.usize };
+        let iter_ty = if ptr_based { tcx.mk().mut_ptr(ety) } else { tcx.types.usize };
 
         let cur = self.new_temp(iter_ty);
         let length_or_end = if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length };
@@ -819,7 +820,7 @@ where
 
         let cur = Place::from(cur);
         let drop_block_stmts = if ptr_based {
-            let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
+            let tmp_ty = tcx.mk().mut_ptr(self.place_ty(self.place));
             let tmp = Place::from(self.new_temp(tmp_ty));
             // tmp = &raw mut P;
             // cur = tmp as *mut T;
@@ -960,7 +961,7 @@ where
         unwind: Unwind,
     ) -> BasicBlock {
         let tcx = self.tcx();
-        let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
+        let unit_temp = Place::from(self.new_temp(tcx.mk().unit()));
         let free_func = tcx.require_lang_item(LangItem::BoxFree, Some(self.source_info.span));
         let args = adt
             .variant(VariantIdx::new(0))
@@ -970,7 +971,7 @@ where
             .map(|(i, f)| {
                 let field = Field::new(i);
                 let field_ty = f.ty(tcx, substs);
-                Operand::Move(tcx.mk_place_field(self.place, field, field_ty))
+                Operand::Move(tcx.mk().place_field(self.place, field, field_ty))
             })
             .collect();
 

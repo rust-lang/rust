@@ -542,7 +542,7 @@ fn method_autoderef_steps<'tcx>(
             steps.push(CandidateStep {
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
-                    infcx.tcx.mk_slice(*elem_ty),
+                    infcx.tcx.mk().slice(*elem_ty),
                 ),
                 autoderefs: dereferences,
                 // this could be from an unsafe deref if we had
@@ -949,7 +949,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
         let trait_substs = self.fresh_item_substs(trait_def_id);
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, trait_substs);
+        let trait_ref = self.tcx.mk().trait_ref(trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant
@@ -1196,7 +1196,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
-        let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty: self_ty, mutbl });
+        let autoref_ty = tcx.mk().ref_(region, ty::TypeAndMut { ty: self_ty, mutbl });
         self.pick_method(autoref_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
@@ -1226,7 +1226,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
 
         let const_self_ty = ty::TypeAndMut { ty, mutbl: hir::Mutability::Not };
-        let const_ptr_ty = self.tcx.mk_ptr(const_self_ty);
+        let const_ptr_ty = self.tcx.mk().ptr(const_self_ty);
         self.pick_method(const_ptr_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;

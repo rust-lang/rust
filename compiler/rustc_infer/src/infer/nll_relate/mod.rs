@@ -962,7 +962,7 @@ where
                             // the universe `_universe`.
                             let new_var_id = variables.new_var(self.universe, origin);
 
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = self.tcx().mk().ty_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }
@@ -1046,7 +1046,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const(new_var_id, a.ty()))
+                        Ok(self.tcx().mk().const_(new_var_id, a.ty()))
                     }
                 }
             }

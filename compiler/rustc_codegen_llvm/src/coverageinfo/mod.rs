@@ -190,7 +190,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
             if let ty::GenericParamDefKind::Lifetime = param.kind {
                 tcx.lifetimes.re_erased.into()
             } else {
-                tcx.mk_param_from_def(param)
+                tcx.mk().param_from_def(param)
             }
         }),
     );
@@ -198,9 +198,9 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
     let llfn = cx.declare_fn(
         tcx.symbol_name(instance).name,
         cx.fn_abi_of_fn_ptr(
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.mk_unit()],
-                tcx.mk_unit(),
+            ty::Binder::dummy(tcx.mk().fn_sig(
+                [tcx.mk().unit()],
+                tcx.mk().unit(),
                 false,
                 hir::Unsafety::Unsafe,
                 Abi::Rust,

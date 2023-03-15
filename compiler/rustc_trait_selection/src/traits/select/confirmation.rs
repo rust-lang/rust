@@ -527,48 +527,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_bound(
-                                    ty::INNERMOST,
-                                    ty::BoundTy {
-                                        var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                        kind,
-                                    },
-                                )
-                                .into()
+                                tcx.mk()
+                                    .bound(
+                                        ty::INNERMOST,
+                                        ty::BoundTy {
+                                            var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                            kind,
+                                        },
+                                    )
+                                    .into()
                             }
                             GenericParamDefKind::Lifetime => {
                                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Region(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_re_late_bound(
-                                    ty::INNERMOST,
-                                    ty::BoundRegion {
-                                        var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                        kind,
-                                    },
-                                )
-                                .into()
+                                tcx.mk()
+                                    .re_late_bound(
+                                        ty::INNERMOST,
+                                        ty::BoundRegion {
+                                            var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                            kind,
+                                        },
+                                    )
+                                    .into()
                             }
                             GenericParamDefKind::Const { .. } => {
                                 let bound_var = ty::BoundVariableKind::Const;
                                 bound_vars.push(bound_var);
-                                tcx.mk_const(
-                                    ty::ConstKind::Bound(
-                                        ty::INNERMOST,
-                                        ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                    ),
-                                    tcx.type_of(param.def_id)
-                                        .no_bound_vars()
-                                        .expect("const parameter types cannot be generic"),
-                                )
-                                .into()
+                                tcx.mk()
+                                    .const_(
+                                        ty::ConstKind::Bound(
+                                            ty::INNERMOST,
+                                            ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                        ),
+                                        tcx.type_of(param.def_id)
+                                            .no_bound_vars()
+                                            .expect("const parameter types cannot be generic"),
+                                    )
+                                    .into()
                             }
                         });
                         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
                         let assoc_ty_substs = tcx.mk_substs(&substs);
                         let bound =
                             bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
-                        tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
+                        tcx.mk().predicate(ty::Binder::bind_with_vars(bound, bound_vars))
                     };
                 let normalized_bound = normalize_with_depth_to(
                     self,
@@ -888,8 +891,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_a);
+                let existential_predicates = tcx.mk().poly_existential_predicates_from_iter(iter);
+                let source_trait = tcx.mk().dynamic(existential_predicates, r_b, repr_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -987,8 +990,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
+                let existential_predicates = tcx.mk().poly_existential_predicates_from_iter(iter);
+                let source_trait = tcx.mk().dynamic(existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1107,10 +1110,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.
-                let substs = tcx.mk_substs_from_iter(substs_a.iter().enumerate().map(|(i, k)| {
-                    if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
-                }));
-                let new_struct = tcx.mk_adt(def, substs);
+                let substs =
+                    tcx.mk().substs_from_iter(substs_a.iter().enumerate().map(|(i, k)| {
+                        if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
+                    }));
+                let new_struct = tcx.mk().adt(def, substs);
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -1140,7 +1144,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
                 let new_tuple =
-                    tcx.mk_tup_from_iter(a_mid.iter().copied().chain(iter::once(b_last)));
+                    tcx.mk().tup_from_iter(a_mid.iter().copied().chain(iter::once(b_last)));
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)

@@ -304,7 +304,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let trait_substs = trait_ref
             .subst_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
-            .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
+            .with_self_ty(self.tcx, self.tcx.mk().ty_param(0, kw::SelfUpper))
             .substs;
         let trait_item_substs =
             ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id.to_def_id())

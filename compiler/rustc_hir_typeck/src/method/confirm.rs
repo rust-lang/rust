@@ -98,7 +98,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // in scope, and if we find another method which can be used, we'll output an
         // appropriate hint suggesting to import the trait.
         let filler_substs = rcvr_substs
-            .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
+            .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk().param_from_def(def));
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
             self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
         );
@@ -128,7 +128,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
             self.add_obligations(
-                self.tcx.mk_fn_ptr(method_sig),
+                self.tcx.mk().fn_ptr(method_sig),
                 all_substs,
                 method_predicates,
                 pick.item.def_id,
@@ -172,7 +172,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // Type we're wrapping in a reference, used later for unsizing
                 let base_ty = target;
 
-                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
+                target = self.tcx.mk().ref_(region, ty::TypeAndMut { mutbl, ty: target });
 
                 // Method call receivers are the primary use case
                 // for two-phase borrows.
@@ -185,7 +185,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
-                        self.tcx.mk_slice(*elem_ty)
+                        self.tcx.mk().slice(*elem_ty)
                     } else {
                         bug!(
                             "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
@@ -194,7 +194,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     };
                     target = self
                         .tcx
-                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty });
+                        .mk()
+                        .ref_(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty });
                     adjustments
                         .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
                 }
@@ -203,7 +204,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 target = match target.kind() {
                     &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                         assert!(mutbl.is_mut());
-                        self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
+                        self.tcx.mk().ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
                 };

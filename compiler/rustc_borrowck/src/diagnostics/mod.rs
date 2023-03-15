@@ -1076,7 +1076,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 type_known_to_meet_bound_modulo_regions(
                                     &infcx,
                                     self.param_env,
-                                    tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
+                                    tcx.mk()
+                                        .imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
                                     def_id,
                                     DUMMY_SP,
                                 )
@@ -1153,7 +1154,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             );
                         }
                         if let Some(clone_trait) = tcx.lang_items().clone_trait()
-                            && let trait_ref = tcx.mk_trait_ref(clone_trait, [ty])
+                            && let trait_ref = tcx.mk().trait_ref(clone_trait, [ty])
                             && let o = Obligation::new(
                                 tcx,
                                 ObligationCause::dummy(),

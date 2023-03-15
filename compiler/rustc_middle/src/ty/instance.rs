@@ -561,13 +561,13 @@ impl<'tcx> Instance<'tcx> {
             tcx.codegen_fn_attrs(closure_did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER);
         let def = ty::InstanceDef::ClosureOnceShim { call_once, track_caller };
 
-        let self_ty = tcx.mk_closure(closure_did, substs);
+        let self_ty = tcx.mk().closure(closure_did, substs);
 
         let sig = substs.as_closure().sig();
         let sig =
             tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let substs = tcx.mk_substs_trait(self_ty, [sig.inputs()[0].into()]);
+        let substs = tcx.mk().substs_trait(self_ty, [sig.inputs()[0].into()]);
 
         debug!(?self_ty, ?sig);
         Some(Instance { def, substs })
@@ -691,7 +691,7 @@ fn polymorphize<'tcx>(
                     if substs == polymorphized_substs {
                         ty
                     } else {
-                        self.tcx.mk_closure(def_id, polymorphized_substs)
+                        self.tcx.mk().closure(def_id, polymorphized_substs)
                     }
                 }
                 ty::Generator(def_id, substs, movability) => {
@@ -703,7 +703,7 @@ fn polymorphize<'tcx>(
                     if substs == polymorphized_substs {
                         ty
                     } else {
-                        self.tcx.mk_generator(def_id, polymorphized_substs, movability)
+                        self.tcx.mk().generator(def_id, polymorphized_substs, movability)
                     }
                 }
                 _ => ty.super_fold_with(self),
@@ -736,7 +736,7 @@ fn polymorphize<'tcx>(
                 // ..and is within range and unused..
                 unused.is_unused(param.index) =>
                     // ..then use the identity for this parameter.
-                    tcx.mk_param_from_def(param),
+                    tcx.mk().param_from_def(param),
 
             // Otherwise, use the parameter as before.
             _ => substs[param.index as usize],

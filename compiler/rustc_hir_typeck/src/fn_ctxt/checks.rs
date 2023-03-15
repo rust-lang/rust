@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
+                TupleArguments => vec![self.tcx.mk().tup(&err_inputs)],
             };
 
             self.check_argument_types(
@@ -419,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
-                        let ptr_ty = self.tcx.mk_fn_ptr(arg_ty.fn_sig(self.tcx));
+                        let ptr_ty = self.tcx.mk().fn_ptr(arg_ty.fn_sig(self.tcx));
                         let ptr_ty = self.resolve_vars_if_possible(ptr_ty);
                         variadic_error(tcx.sess, arg.span, arg_ty, &ptr_ty.to_string());
                     }
@@ -641,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = tcx.mk_tup_from_iter(
+                let provided_as_tuple = tcx.mk().tup_from_iter(
                     provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
                 );
 
@@ -1258,14 +1258,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         match lit.node {
-            ast::LitKind::Str(..) => tcx.mk_static_str(),
-            ast::LitKind::ByteStr(ref v, _) => {
-                tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.u8, v.len() as u64))
-            }
+            ast::LitKind::Str(..) => tcx.mk().static_str(),
+            ast::LitKind::ByteStr(ref v, _) => tcx
+                .mk()
+                .imm_ref(tcx.lifetimes.re_static, tcx.mk().array(tcx.types.u8, v.len() as u64)),
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
-            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(ty::int_ty(t)),
-            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(ty::uint_ty(t)),
+            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk().mach_int(ty::int_ty(t)),
+            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => {
+                tcx.mk().mach_uint(ty::uint_ty(t))
+            }
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
@@ -1277,7 +1279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 opt_ty.unwrap_or_else(|| self.next_int_var())
             }
             ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => {
-                tcx.mk_mach_float(ty::float_ty(t))
+                tcx.mk().mach_float(ty::float_ty(t))
             }
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
@@ -1447,7 +1449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk().unit(), |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }
@@ -1470,7 +1472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
-        let unit = self.tcx.mk_unit();
+        let unit = self.tcx.mk().unit();
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
@@ -1882,7 +1884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Look for a user-provided impl of a `Fn` trait, and point to it.
                     let new_def_id = self.probe(|_| {
-                        let trait_ref = self.tcx.mk_trait_ref(
+                        let trait_ref = self.tcx.mk().trait_ref(
                             call_kind.to_def_id(self.tcx),
                             [
                                 callee_ty,

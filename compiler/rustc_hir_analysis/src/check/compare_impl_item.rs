@@ -195,7 +195,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&hybrid_preds.predicates),
+        tcx.mk().predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -246,7 +246,7 @@ fn compare_method_predicate_entailment<'tcx>(
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).subst_identity(),
     );
-    let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
+    let unnormalized_impl_fty = tcx.mk().fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
@@ -263,7 +263,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // We also have to add the normalized trait signature
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
-    let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
+    let trait_fty = tcx.mk().fn_ptr(ty::Binder::dummy(trait_sig));
 
     debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
@@ -463,7 +463,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReFree(fr) = *r {
-            self.tcx.mk_re_free(
+            self.tcx.mk().re_free(
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
             )
@@ -778,9 +778,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        return tcx.mk_re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
+                        return tcx.mk().re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
                     };
-                    tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    tcx.mk().re_early_bound(ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
                         index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
@@ -1799,7 +1799,7 @@ fn compare_type_predicate_entailment<'tcx>(
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&hybrid_preds.predicates),
+        tcx.mk().predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -1905,7 +1905,7 @@ pub(super) fn check_type_bounds<'tcx>(
     if let Some(def_id) = defs.parent {
         let parent_defs = tcx.generics_of(def_id);
         InternalSubsts::fill_item(&mut substs, tcx, parent_defs, &mut |param, _| {
-            tcx.mk_param_from_def(param)
+            tcx.mk().param_from_def(param)
         });
     }
     let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
@@ -1915,30 +1915,36 @@ pub(super) fn check_type_bounds<'tcx>(
             let kind = ty::BoundTyKind::Param(param.def_id, param.name);
             let bound_var = ty::BoundVariableKind::Ty(kind);
             bound_vars.push(bound_var);
-            tcx.mk_bound(
-                ty::INNERMOST,
-                ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
+            tcx.mk()
+                .bound(
+                    ty::INNERMOST,
+                    ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+                )
+                .into()
         }
         GenericParamDefKind::Lifetime => {
             let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
             let bound_var = ty::BoundVariableKind::Region(kind);
             bound_vars.push(bound_var);
-            tcx.mk_re_late_bound(
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
+            tcx.mk()
+                .re_late_bound(
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+                )
+                .into()
         }
         GenericParamDefKind::Const { .. } => {
             let bound_var = ty::BoundVariableKind::Const;
             bound_vars.push(bound_var);
-            tcx.mk_const(
-                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
-                tcx.type_of(param.def_id).subst_identity(),
-            )
-            .into()
+            tcx.mk()
+                .const_(
+                    ty::ConstKind::Bound(
+                        ty::INNERMOST,
+                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    ),
+                    tcx.type_of(param.def_id).subst_identity(),
+                )
+                .into()
         }
     });
     let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
@@ -1974,7 +1980,7 @@ pub(super) fn check_type_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_substs),
+                        projection_ty: tcx.mk().alias_ty(trait_ty.def_id, rebased_substs),
                         term: impl_ty_value.into(),
                     },
                     bound_vars,
@@ -1982,7 +1988,11 @@ pub(super) fn check_type_bounds<'tcx>(
                 .to_predicate(tcx),
             ),
         };
-        ty::ParamEnv::new(tcx.mk_predicates(&predicates), Reveal::UserFacing, param_env.constness())
+        ty::ParamEnv::new(
+            tcx.mk().predicates(&predicates),
+            Reveal::UserFacing,
+            param_env.constness(),
+        )
     };
     debug!(?normalize_param_env);
 

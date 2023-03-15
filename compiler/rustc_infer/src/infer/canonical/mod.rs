@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: self.tcx.mk_substs_from_iter(
+            var_values: self.tcx.mk().substs_from_iter(
                 variables
                     .iter()
                     .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),
@@ -128,7 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, name }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, name };
-                self.tcx.mk_placeholder(placeholder_mapped).into()
+                self.tcx.mk().placeholder(placeholder_mapped).into()
             }
 
             CanonicalVarKind::Region(ui) => self
@@ -141,7 +141,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, name }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderRegion { universe: universe_mapped, name };
-                self.tcx.mk_re_placeholder(placeholder_mapped).into()
+                self.tcx.mk().re_placeholder(placeholder_mapped).into()
             }
 
             CanonicalVarKind::Const(ui, ty) => self
@@ -155,7 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx.mk_const(placeholder_mapped, ty).into()
+                self.tcx.mk().const_(placeholder_mapped, ty).into()
             }
         }
     }

@@ -337,7 +337,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // name the placeholder, then the placeholder is
                     // larger; otherwise, the only ancestor is `'static`.
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
-                        self.tcx().mk_re_placeholder(placeholder)
+                        self.tcx().mk().re_placeholder(placeholder)
                     }
                     Err(_) => self.tcx().lifetimes.re_static,
                 };

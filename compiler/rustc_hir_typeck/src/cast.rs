@@ -391,7 +391,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(
+                                fcx.tcx.mk().ref_(
                                     fcx.tcx.lifetimes.re_erased,
                                     TypeAndMut { ty: expr_ty, mutbl },
                                 ),
@@ -408,7 +408,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(
+                                fcx.tcx.mk().ref_(
                                     expr_reg,
                                     TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
                                 ),
@@ -426,7 +426,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                                fcx.tcx.mk().ref_(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
                                 self.cast_ty,
                                 AllowTwoPhase::No,
                                 None,
@@ -439,7 +439,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     && fcx
                         .try_coerce(
                             self.expr,
-                            fcx.tcx.mk_ref(
+                            fcx.tcx.mk().ref_(
                                 fcx.tcx.lifetimes.re_erased,
                                 TypeAndMut { ty: self.expr_ty, mutbl },
                             ),
@@ -765,7 +765,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let res = fcx.try_coerce(
                             self.expr,
                             self.expr_ty,
-                            fcx.tcx.mk_fn_ptr(f),
+                            fcx.tcx.mk().fn_ptr(f),
                             AllowTwoPhase::No,
                             None,
                         );
@@ -957,7 +957,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // from a region pointer to a vector.
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
-                let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
+                let array_ptr_type = fcx.tcx.mk().ptr(m_expr);
                 fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(

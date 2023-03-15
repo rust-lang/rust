@@ -727,7 +727,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     #[track_caller]
     pub fn ty_error(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Error(reported))
+        self.mk().ty_from_kind(Error(reported))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
@@ -741,7 +741,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_ty_from_kind(Error(reported))
+        self.mk().ty_from_kind(Error(reported))
     }
 
     /// Constructs a `RegionKind::ReError` lifetime.
@@ -777,7 +777,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         reported: ErrorGuaranteed,
     ) -> Const<'tcx> {
-        self.mk_const(ty::ConstKind::Error(reported), ty)
+        self.mk().const_(ty::ConstKind::Error(reported), ty)
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
@@ -799,7 +799,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstKind::Error(reported), ty)
+        self.mk().const_(ty::ConstKind::Error(reported), ty)
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -1201,7 +1201,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `&'static core::panic::Location<'static>`.
     pub fn caller_location_ty(self) -> Ty<'tcx> {
-        self.mk_imm_ref(
+        self.mk().imm_ref(
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
                 .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
@@ -1614,7 +1614,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
-        self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
+        self.mk().fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -1686,7 +1686,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
+            self.mk().fn_sig(params, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
         })
     }
 
@@ -1932,7 +1932,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 substs.collect::<Vec<_>>(),
             );
         }
-        self.mk_substs_from_iter(substs)
+        self.mk().substs_from_iter(substs)
     }
 
     #[inline]

@@ -79,7 +79,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(self.tcx().mk().re_var(*vid)),
                 cause,
                 Some(*sub_placeholder),
                 Some(*sup_placeholder),
@@ -95,7 +95,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(self.tcx().mk().re_var(*vid)),
                 cause,
                 Some(*sub_placeholder),
                 None,
@@ -111,7 +111,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(self.tcx().mk().re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -127,7 +127,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(self.tcx().mk().re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -141,7 +141,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(self.tcx().mk().re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -263,9 +263,10 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
 
         let expected_trait_ref = self
             .cx
-            .resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, expected_substs));
-        let actual_trait_ref =
-            self.cx.resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, actual_substs));
+            .resolve_vars_if_possible(self.cx.tcx.mk().trait_ref(trait_def_id, expected_substs));
+        let actual_trait_ref = self
+            .cx
+            .resolve_vars_if_possible(self.cx.tcx.mk().trait_ref(trait_def_id, actual_substs));
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes

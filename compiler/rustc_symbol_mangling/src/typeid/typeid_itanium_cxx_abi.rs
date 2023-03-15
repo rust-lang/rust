@@ -594,7 +594,7 @@ fn encode_ty<'tcx>(
             s.push_str("u3refI");
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             s.push('E');
-            compress(dict, DictKey::Ty(tcx.mk_imm_ref(*region, *ty0), TyQ::None), &mut s);
+            compress(dict, DictKey::Ty(tcx.mk().imm_ref(*region, *ty0), TyQ::None), &mut s);
             if ty.is_mutable_ptr() {
                 s = format!("{}{}", "U3mut", &s);
                 compress(dict, DictKey::Ty(ty, TyQ::Mut), &mut s);
@@ -675,24 +675,24 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         _ if ty.is_unit() => {}
 
         ty::Tuple(tys) => {
-            ty = tcx.mk_tup_from_iter(tys.iter().map(|ty| transform_ty(tcx, ty, options)));
+            ty = tcx.mk().tup_from_iter(tys.iter().map(|ty| transform_ty(tcx, ty, options)));
         }
 
         ty::Array(ty0, len) => {
             let len = len.kind().try_to_scalar().unwrap().to_u64().unwrap();
-            ty = tcx.mk_array(transform_ty(tcx, *ty0, options), len);
+            ty = tcx.mk().array(transform_ty(tcx, *ty0, options), len);
         }
 
         ty::Slice(ty0) => {
-            ty = tcx.mk_slice(transform_ty(tcx, *ty0, options));
+            ty = tcx.mk().slice(transform_ty(tcx, *ty0, options));
         }
 
         ty::Adt(adt_def, substs) => {
             if is_c_void_ty(tcx, ty) {
-                ty = tcx.mk_unit();
+                ty = tcx.mk().unit();
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
-                ty = tcx.mk_adt(*adt_def, ty::List::empty());
+                ty = tcx.mk().adt(*adt_def, ty::List::empty());
             } else if adt_def.repr().transparent() && adt_def.is_struct() {
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
@@ -718,37 +718,37 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     }
                 } else {
                     // Transform repr(transparent) types without non-ZST field into ()
-                    ty = tcx.mk_unit();
+                    ty = tcx.mk().unit();
                 }
             } else {
-                ty = tcx.mk_adt(*adt_def, transform_substs(tcx, substs, options));
+                ty = tcx.mk().adt(*adt_def, transform_substs(tcx, substs, options));
             }
         }
 
         ty::FnDef(def_id, substs) => {
-            ty = tcx.mk_fn_def(*def_id, transform_substs(tcx, substs, options));
+            ty = tcx.mk().fn_def(*def_id, transform_substs(tcx, substs, options));
         }
 
         ty::Closure(def_id, substs) => {
-            ty = tcx.mk_closure(*def_id, transform_substs(tcx, substs, options));
+            ty = tcx.mk().closure(*def_id, transform_substs(tcx, substs, options));
         }
 
         ty::Generator(def_id, substs, movability) => {
-            ty = tcx.mk_generator(*def_id, transform_substs(tcx, substs, options), *movability);
+            ty = tcx.mk().generator(*def_id, transform_substs(tcx, substs, options), *movability);
         }
 
         ty::Ref(region, ty0, ..) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = tcx.mk().mut_ref(tcx.lifetimes.re_static, tcx.mk().unit());
                 } else {
-                    ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = tcx.mk().imm_ref(tcx.lifetimes.re_static, tcx.mk().unit());
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ref(*region, transform_ty(tcx, *ty0, options));
+                    ty = tcx.mk().mut_ref(*region, transform_ty(tcx, *ty0, options));
                 } else {
-                    ty = tcx.mk_imm_ref(*region, transform_ty(tcx, *ty0, options));
+                    ty = tcx.mk().imm_ref(*region, transform_ty(tcx, *ty0, options));
                 }
             }
         }
@@ -756,22 +756,22 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::RawPtr(tm) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ptr(tcx.mk_unit());
+                    ty = tcx.mk().mut_ptr(tcx.mk().unit());
                 } else {
-                    ty = tcx.mk_imm_ptr(tcx.mk_unit());
+                    ty = tcx.mk().imm_ptr(tcx.mk().unit());
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ptr(transform_ty(tcx, tm.ty, options));
+                    ty = tcx.mk().mut_ptr(transform_ty(tcx, tm.ty, options));
                 } else {
-                    ty = tcx.mk_imm_ptr(transform_ty(tcx, tm.ty, options));
+                    ty = tcx.mk().imm_ptr(transform_ty(tcx, tm.ty, options));
                 }
             }
         }
 
         ty::FnPtr(fn_sig) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                ty = tcx.mk_imm_ptr(tcx.mk_unit());
+                ty = tcx.mk().imm_ptr(tcx.mk().unit());
             } else {
                 let parameters: Vec<Ty<'tcx>> = fn_sig
                     .skip_binder()
@@ -780,8 +780,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     .map(|ty| transform_ty(tcx, *ty, options))
                     .collect();
                 let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
-                ty = tcx.mk_fn_ptr(ty::Binder::bind_with_vars(
-                    tcx.mk_fn_sig(
+                ty = tcx.mk().fn_ptr(ty::Binder::bind_with_vars(
+                    tcx.mk().fn_sig(
                         parameters,
                         output,
                         fn_sig.c_variadic(),
@@ -817,7 +817,7 @@ fn transform_substs<'tcx>(
     let substs = substs.iter().map(|subst| {
         if let GenericArgKind::Type(ty) = subst.unpack() {
             if is_c_void_ty(tcx, ty) {
-                tcx.mk_unit().into()
+                tcx.mk().unit().into()
             } else {
                 transform_ty(tcx, ty, options).into()
             }
@@ -825,7 +825,7 @@ fn transform_substs<'tcx>(
             subst
         }
     });
-    tcx.mk_substs_from_iter(substs)
+    tcx.mk().substs_from_iter(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

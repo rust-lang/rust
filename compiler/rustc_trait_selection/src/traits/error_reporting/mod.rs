@@ -358,7 +358,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let trait_ref = self.tcx.mk_trait_ref(trait_def_id, [ty.skip_binder(), var]);
+                let trait_ref = self.tcx.mk().trait_ref(trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),
@@ -1092,7 +1092,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|trait_pred| {
-                                trait_pred.with_self_ty(self.tcx, self.tcx.mk_unit())
+                                trait_pred.with_self_ty(self.tcx, self.tcx.mk().unit())
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
@@ -1721,11 +1721,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let unnormalized_term = match data.term.unpack() {
                     ty::TermKind::Ty(_) => self
                         .tcx
-                        .mk_projection(data.projection_ty.def_id, data.projection_ty.substs)
+                        .mk()
+                        .projection(data.projection_ty.def_id, data.projection_ty.substs)
                         .into(),
                     ty::TermKind::Const(ct) => self
                         .tcx
-                        .mk_const(
+                        .mk()
+                        .const_(
                             ty::UnevaluatedConst {
                                 def: ty::WithOptConstParam::unknown(data.projection_ty.def_id),
                                 substs: data.projection_ty.substs,

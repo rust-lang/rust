@@ -48,7 +48,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::Binder<'_, ty::FnSig<'_>> {
             unreachable!()
         };
 
-        let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        let fn_sig = ty::Binder::dummy(tcx.mk().fn_sig(
             std::iter::repeat(err).take(arity),
             err,
             false,

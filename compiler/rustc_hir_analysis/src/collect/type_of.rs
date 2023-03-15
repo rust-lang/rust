@@ -274,7 +274,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                tcx.mk_fn_def(def_id.to_def_id(), substs)
+                tcx.mk().fn_def(def_id.to_def_id(), substs)
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
@@ -291,7 +291,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                tcx.mk_fn_def(def_id.to_def_id(), substs)
+                tcx.mk().fn_def(def_id.to_def_id(), substs)
             }
             ImplItemKind::Const(ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
@@ -346,12 +346,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                    tcx.mk_fn_def(def_id.to_def_id(), substs)
+                    tcx.mk().fn_def(def_id.to_def_id(), substs)
                 }
                 ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                    tcx.mk_adt(def, substs)
+                    tcx.mk().adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                     find_opaque_ty_constraints_for_tait(tcx, def_id)
@@ -388,10 +388,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                tcx.mk_fn_def(def_id.to_def_id(), substs)
+                tcx.mk().fn_def(def_id.to_def_id(), substs)
             }
             ForeignItemKind::Static(t, _) => icx.to_ty(t),
-            ForeignItemKind::Type => tcx.mk_foreign(def_id.to_def_id()),
+            ForeignItemKind::Type => tcx.mk().foreign(def_id.to_def_id()),
         },
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
@@ -400,7 +400,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                tcx.mk_fn_def(def_id.to_def_id(), substs)
+                tcx.mk().fn_def(def_id.to_def_id(), substs)
             }
         },
 
@@ -847,7 +847,7 @@ fn find_opaque_ty_constraints_for_rpit(
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                tcx.mk_diverging_default()
+                tcx.mk().diverging_default()
             })
         }
     })
@@ -874,7 +874,7 @@ fn infer_placeholder_type<'a>(
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             let ty = match *ty.kind() {
                 ty::FnDef(def_id, substs) => {
-                    self.tcx.mk_fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
+                    self.tcx.mk().fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
                 }
                 _ => ty,
             };

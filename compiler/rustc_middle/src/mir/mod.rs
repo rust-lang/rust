@@ -1863,7 +1863,7 @@ impl<'tcx> Operand<'tcx> {
         substs: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
-        let ty = tcx.mk_fn_def(def_id, substs);
+        let ty = tcx.mk().fn_def(def_id, substs);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
@@ -2522,7 +2522,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                let ty_const = tcx.mk_const(ty::ParamConst::new(index, name), ty);
+                let ty_const = tcx.mk().const_(ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);
@@ -2543,7 +2543,7 @@ impl<'tcx> ConstantKind<'tcx> {
         let did = def.did.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
         let substs =
-            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
+            tcx.mk().substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);

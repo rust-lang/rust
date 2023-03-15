@@ -234,7 +234,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, _)| {
-                tcx.mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                tcx.mk().trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
             })
             .to_predicate(tcx);
         // A built-in `Fn` impl only holds if the output is sized.
@@ -300,7 +300,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             ecx,
             goal,
             ty::Binder::dummy(
-                tcx.mk_trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+                tcx.mk().trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
             )
             .to_predicate(tcx),
             // Technically, we need to check that the generator types are Sized,
@@ -350,7 +350,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             // The type must be Sized to be unsized.
                             goal.with(
                                 tcx,
-                                ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty])),
+                                ty::Binder::dummy(tcx.mk().trait_ref(sized_def_id, [a_ty])),
                             ),
                             // The type must outlive the lifetime of the `dyn` we're unsizing into.
                             goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
@@ -390,10 +390,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // this substitution must be equal to B. This is so we don't unsize
                     // unrelated type parameters.
                     let new_a_substs =
-                        tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
+                        tcx.mk().substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
                             if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
                         }));
-                    let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
+                    let unsized_a_ty = tcx.mk().adt(a_def, new_a_substs);
 
                     // Finally, we require that `TailA: Unsize<TailB>` for the tail field
                     // types.
@@ -401,7 +401,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     nested_goals.push(goal.with(
                         tcx,
                         ty::Binder::dummy(
-                            tcx.mk_trait_ref(goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
+                            tcx.mk().trait_ref(goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
                         ),
                     ));
 
@@ -416,14 +416,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
                     // Substitute just the tail field of B., and require that they're equal.
                     let unsized_a_ty =
-                        tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
+                        tcx.mk().tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
                     let mut nested_goals = ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
                     // Similar to ADTs, require that the rest of the fields are equal.
                     nested_goals.push(goal.with(
                         tcx,
                         ty::Binder::dummy(
-                            tcx.mk_trait_ref(goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
+                            tcx.mk().trait_ref(goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
                         ),
                     ));
 
@@ -473,8 +473,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
-                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+                let new_a_data = tcx.mk().poly_existential_predicates_from_iter(new_a_data);
+                let new_a_ty = tcx.mk().dynamic(new_a_data, b_region, ty::Dyn);
 
                 // We also require that A's lifetime outlives B's lifetime.
                 let mut nested_obligations = ecx.eq(goal.param_env, new_a_ty, b_ty)?;

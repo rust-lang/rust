@@ -258,7 +258,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             var
         });
         let br = ty::BoundRegion { var, kind: BrAnon(var.as_u32(), None) };
-        self.interner().mk_re_late_bound(self.binder_index, br)
+        self.interner().mk().re_late_bound(self.binder_index, br)
     }
 
     fn fold_ty(&mut self, mut t: Ty<'tcx>) -> Ty<'tcx> {
@@ -269,7 +269,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.root_var(vid);
                 if root_vid != vid {
-                    t = self.infcx.tcx.mk_ty_var(root_vid);
+                    t = self.infcx.tcx.mk().ty_var(root_vid);
                     vid = root_vid;
                 }
 
@@ -346,7 +346,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             }),
         );
         let bt = ty::BoundTy { var, kind: BoundTyKind::Anon(var.index() as u32) };
-        self.interner().mk_bound(self.binder_index, bt)
+        self.interner().mk().bound(self.binder_index, bt)
     }
 
     fn fold_const(&mut self, mut c: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -357,7 +357,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.root_const_var(vid);
                 if root_vid != vid {
-                    c = self.infcx.tcx.mk_const(ty::InferConst::Var(root_vid), c.ty());
+                    c = self.infcx.tcx.mk().const_(ty::InferConst::Var(root_vid), c.ty());
                     vid = root_vid;
                 }
 
@@ -406,6 +406,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 var
             }),
         );
-        self.interner().mk_const(ty::ConstKind::Bound(self.binder_index, var), c.ty())
+        self.interner().mk().const_(ty::ConstKind::Bound(self.binder_index, var), c.ty())
     }
 }

@@ -327,8 +327,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
-            IntType(v) => Ok(self.tcx.mk_mach_int(v)),
-            UintType(v) => Ok(self.tcx.mk_mach_uint(v)),
+            IntType(v) => Ok(self.tcx.mk().mach_int(v)),
+            UintType(v) => Ok(self.tcx.mk().mach_uint(v)),
         }
     }
 
@@ -343,7 +343,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .float_unification_table()
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(self.tcx.mk_mach_float(val))
+        Ok(self.tcx.mk().mach_float(val))
     }
 }
 
@@ -703,7 +703,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 .borrow_mut()
                                 .type_variables()
                                 .new_var(self.for_universe, origin);
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = self.tcx().mk().ty_var(new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the
@@ -723,7 +723,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 let s = self.relate(substs, substs)?;
-                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
+                Ok(if s == substs { t } else { self.infcx.tcx.mk().opaque(def_id, s) })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;
@@ -803,7 +803,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(self.tcx().mk().const_(new_var_id, c.ty()))
                         }
                     }
                 }
@@ -815,7 +815,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     substs,
                     substs,
                 )?;
-                Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
+                Ok(self.tcx().mk().const_(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
             _ => relate::super_relate_consts(self, c, c),
         }
@@ -917,7 +917,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                             .borrow_mut()
                             .type_variables()
                             .new_var(self.for_universe, origin);
-                        Ok(self.interner().mk_ty_var(new_var_id))
+                        Ok(self.interner().mk().ty_var(new_var_id))
                     }
                 }
             }
@@ -995,7 +995,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.interner().mk_const(new_var_id, c.ty()))
+                            Ok(self.interner().mk().const_(new_var_id, c.ty()))
                         }
                     }
                 }

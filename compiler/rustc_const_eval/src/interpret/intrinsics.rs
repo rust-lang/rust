@@ -169,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
-                    sym::type_name => self.tcx.mk_static_str(),
+                    sym::type_name => self.tcx.mk().static_str(),
                     _ => bug!(),
                 };
                 let val = self.ctfe_query(None, |tcx| {

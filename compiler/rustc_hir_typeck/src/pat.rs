@@ -398,7 +398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .borrow_mut()
                     .treat_byte_string_as_slice
                     .insert(lt.hir_id.local_id);
-                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
+                pat_ty = tcx.mk().imm_ref(tcx.lifetimes.re_static, tcx.mk().slice(tcx.types.u8));
             }
         }
 
@@ -407,7 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expected = self.resolve_vars_if_possible(expected);
             pat_ty = match expected.kind() {
                 ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
-                ty::Str => tcx.mk_static_str(),
+                ty::Str => tcx.mk().static_str(),
                 _ => pat_ty,
             };
         }
@@ -1295,8 +1295,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
             )
         });
-        let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
-        let pat_ty = tcx.mk_tup(element_tys);
+        let element_tys = tcx.mk().type_list_from_iter(element_tys_iter);
+        let pat_ty = tcx.mk().tup(element_tys);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
@@ -1305,7 +1305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, tcx.ty_error(reported), def_bm, ti);
             }
-            tcx.mk_tup_from_iter(element_tys_iter)
+            tcx.mk().tup_from_iter(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, element_tys[i], def_bm, ti);
@@ -1932,7 +1932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::TypeInference,
                     span: inner.span,
                 });
-                let box_ty = tcx.mk_box(inner_ty);
+                let box_ty = tcx.mk().box_(inner_ty);
                 self.demand_eqtype_pat(span, expected, box_ty, ti);
                 (box_ty, inner_ty)
             }
@@ -2000,7 +2000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         let mt = ty::TypeAndMut { ty, mutbl };
-        self.tcx.mk_ref(region, mt)
+        self.tcx.mk().ref_(region, mt)
     }
 
     /// Type check a slice pattern.
@@ -2089,7 +2089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(pat_len) = len.checked_sub(min_len) {
                 // The variable-length pattern was there,
                 // so it has an array type with the remaining elements left as its size...
-                return (Some(self.tcx.mk_array(element_ty, pat_len)), arr_ty);
+                return (Some(self.tcx.mk().array(element_ty, pat_len)), arr_ty);
             } else {
                 // ...however, in this case, there were no remaining elements.
                 // That is, the slice pattern requires more than the array type offers.
@@ -2098,7 +2098,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if slice.is_none() {
             // We have a pattern with a fixed length,
             // which we can use to infer the length of the array.
-            let updated_arr_ty = self.tcx.mk_array(element_ty, min_len);
+            let updated_arr_ty = self.tcx.mk().array(element_ty, min_len);
             self.demand_eqtype(span, updated_arr_ty, arr_ty);
             return (None, updated_arr_ty);
         } else {

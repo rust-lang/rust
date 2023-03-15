@@ -552,7 +552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
             );
-            let witness = self.tcx.mk_generator_witness_mir(expr_def_id.to_def_id(), substs);
+            let witness = self.tcx.mk().generator_witness_mir(expr_def_id.to_def_id(), substs);
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;

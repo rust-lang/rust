@@ -573,12 +573,12 @@ impl<'tcx> TyCtxt<'tcx> {
         closure_substs: SubstsRef<'tcx>,
         env_region: ty::Region<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        let closure_ty = self.mk_closure(closure_def_id, closure_substs);
+        let closure_ty = self.mk().closure(closure_def_id, closure_substs);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
-            ty::ClosureKind::Fn => self.mk_imm_ref(env_region, closure_ty),
-            ty::ClosureKind::FnMut => self.mk_mut_ref(env_region, closure_ty),
+            ty::ClosureKind::Fn => self.mk().imm_ref(env_region, closure_ty),
+            ty::ClosureKind::FnMut => self.mk().mut_ref(env_region, closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
         Some(env_ty)
@@ -617,11 +617,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // Make sure that accesses to unsafe statics end up using raw pointers.
         // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
         if self.is_mutable_static(def_id) {
-            self.mk_mut_ptr(static_ty)
+            self.mk().mut_ptr(static_ty)
         } else if self.is_foreign_item(def_id) {
-            self.mk_imm_ptr(static_ty)
+            self.mk().imm_ptr(static_ty)
         } else {
-            self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
+            self.mk().imm_ref(self.lifetimes.re_erased, static_ty)
         }
     }
 
@@ -867,7 +867,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                         let hidden_ty = bty.subst(self.tcx, substs);
                         self.fold_ty(hidden_ty);
                     }
-                    let expanded_ty = self.tcx.mk_generator_witness_mir(def_id, substs);
+                    let expanded_ty = self.tcx.mk().generator_witness_mir(def_id, substs);
                     self.expanded_cache.insert((def_id, substs), expanded_ty);
                     expanded_ty
                 }

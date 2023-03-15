@@ -61,7 +61,7 @@ fn sized_constraint_for_ty<'tcx>(
             // it on the impl.
 
             let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
-            let sized_predicate = ty::Binder::dummy(tcx.mk_trait_ref(sized_trait, [ty]))
+            let sized_predicate = ty::Binder::dummy(tcx.mk().trait_ref(sized_trait, [ty]))
                 .without_const()
                 .to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
@@ -98,12 +98,12 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
 fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
     if let Some(def_id) = def_id.as_local() {
         if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
-            return tcx.mk_type_list(&[tcx.ty_error_misc()]);
+            return tcx.mk().type_list(&[tcx.ty_error_misc()]);
         }
     }
     let def = tcx.adt_def(def_id);
 
-    let result = tcx.mk_type_list_from_iter(
+    let result = tcx.mk().type_list_from_iter(
         def.variants()
             .iter()
             .flat_map(|v| v.fields.last())
@@ -235,7 +235,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     };
 
     let unnormalized_env =
-        ty::ParamEnv::new(tcx.mk_predicates(&predicates), traits::Reveal::UserFacing, constness);
+        ty::ParamEnv::new(tcx.mk().predicates(&predicates), traits::Reveal::UserFacing, constness);
 
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
@@ -277,7 +277,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // constructing the top-level projection predicate.
             let alias_ty = self.tcx.fold_regions(alias_ty, |re, _| {
                 if let ty::ReLateBound(index, bv) = re.kind() {
-                    self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                    self.tcx.mk().re_late_bound(index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
                 }
@@ -286,7 +286,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: alias_ty,
-                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
+                        term: self.tcx.mk().alias(ty::Opaque, alias_ty).into(),
                     },
                     self.bound_vars,
                 )
@@ -401,7 +401,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 let binder = Binder::dummy(PredicateKind::TypeWellFormedFromEnv(ty));
-                Some(tcx.mk_predicate(binder))
+                Some(tcx.mk().predicate(binder))
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?
@@ -412,7 +412,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         }
     });
 
-    tcx.mk_predicates_from_iter(clauses.chain(input_clauses))
+    tcx.mk().predicates_from_iter(clauses.chain(input_clauses))
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {

@@ -394,7 +394,7 @@ impl<'tcx> ConstToPat<'tcx> {
                                 suffix: Box::new([]),
                             },
                             span,
-                            ty: tcx.mk_slice(elem_ty),
+                            ty: tcx.mk().slice(elem_ty),
                         }),
                     };
                     self.behind_reference.set(old);

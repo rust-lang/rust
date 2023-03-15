@@ -258,7 +258,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 let did = ty::WithOptConstParam::unknown(assoc_def.item.def_id);
                 let kind =
                     ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-                ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
+                ty.map_bound(|ty| tcx.mk().const_(kind, ty).into())
             } else {
                 ty.map_bound(|ty| ty.into())
             };
@@ -322,7 +322,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
                 projection_ty: tcx
-                    .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
+                    .mk()
+                    .alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
                 term: output.into(),
             })
             .to_predicate(tcx);
@@ -451,7 +452,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ecx,
             goal,
             ty::Binder::dummy(ty::ProjectionPredicate {
-                projection_ty: ecx.tcx().mk_alias_ty(goal.predicate.def_id(), [self_ty]),
+                projection_ty: ecx.tcx().mk().alias_ty(goal.predicate.def_id(), [self_ty]),
                 term,
             })
             .to_predicate(tcx),
@@ -493,7 +494,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ty::Binder::dummy(ty::ProjectionPredicate {
                 projection_ty: ecx
                     .tcx()
-                    .mk_alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+                    .mk()
+                    .alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
                 term,
             })
             .to_predicate(tcx),

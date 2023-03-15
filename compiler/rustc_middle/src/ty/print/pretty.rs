@@ -182,7 +182,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(self.tcx.mk_re_var(vid), number)
+        self.highlighting_region(self.tcx.mk().re_var(vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -1212,7 +1212,7 @@ pub trait PrettyPrinter<'tcx>:
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
                     // Use a type that can't appear in defaults of type parameters.
-                    let dummy_cx = cx.tcx().mk_fresh_ty(0);
+                    let dummy_cx = cx.tcx().mk().fresh_ty(0);
                     let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
                     let args = cx
@@ -1585,7 +1585,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents = self.tcx().destructure_const(self.tcx().mk_const(valtree, ty));
+                let contents = self.tcx().destructure_const(self.tcx().mk().const_(valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match *ty.kind() {
                     ty::Array(..) => {
@@ -2274,7 +2274,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_re_late_bound(self.current_index, br)
+            self.tcx.mk().re_late_bound(self.current_index, br)
         } else {
             region
         }
@@ -2386,7 +2386,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return tcx.mk_re_late_bound(
+                                return tcx.mk().re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2401,7 +2401,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return tcx.mk_re_late_bound(
+                                return tcx.mk().re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2414,7 +2414,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return tcx.mk_re_late_bound(
+                                return tcx.mk().re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2429,7 +2429,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     start_or_continue(&mut self, "for<", ", ");
                     do_continue(&mut self, name);
                 }
-                tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
+                tcx.mk().re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
             };
             let mut folder = RegionFolder {
                 tcx,
@@ -2699,7 +2699,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = cx.tcx().mk_fresh_ty(0);
+        let dummy_self = cx.tcx().mk().fresh_ty(0);
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }

@@ -155,7 +155,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         };
                         let derefed_place =
                             if let Some(place) = arg.place() && let Some(local) = place.as_local() {
-                                tcx.mk_place_deref(local.into())
+                                tcx.mk().place_deref(local.into())
                             } else {
                                 span_bug!(terminator.source_info.span, "Only passing a local is supported");
                             };
@@ -180,7 +180,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     }
                     sym::discriminant_value => {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
-                            let arg = tcx.mk_place_deref(arg);
+                            let arg = tcx.mk().place_deref(arg);
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((

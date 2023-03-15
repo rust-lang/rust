@@ -255,7 +255,7 @@ impl<'tcx> Elaborator<'tcx> {
                             }
 
                             Component::Param(p) => {
-                                let ty = tcx.mk_ty_param(p.index, p.name);
+                                let ty = tcx.mk().ty_param(p.index, p.name);
                                 Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                                     ty::OutlivesPredicate(ty, r_min),
                                 )))

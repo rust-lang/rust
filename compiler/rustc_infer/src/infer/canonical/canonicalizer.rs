@@ -382,7 +382,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.root_var(vid);
                 if root_vid != vid {
-                    t = self.infcx.tcx.mk_ty_var(root_vid);
+                    t = self.infcx.tcx.mk().ty_var(root_vid);
                     vid = root_vid;
                 }
 
@@ -497,7 +497,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.root_const_var(vid);
                 if root_vid != vid {
-                    ct = self.infcx.tcx.mk_const(ty::InferConst::Var(root_vid), ct.ty());
+                    ct = self.infcx.tcx.mk().const_(ty::InferConst::Var(root_vid), ct.ty());
                     vid = root_vid;
                 }
 
@@ -771,7 +771,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
-        self.interner().mk_re_late_bound(self.binder_index, br)
+        self.interner().mk().re_late_bound(self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -785,7 +785,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_ty(bound_to)
         } else {
             let var = self.canonical_var(info, ty_var.into());
-            self.interner().mk_bound(self.binder_index, var.into())
+            self.interner().mk().bound(self.binder_index, var.into())
         }
     }
 
@@ -804,10 +804,9 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.interner().mk_const(
-                ty::ConstKind::Bound(self.binder_index, var),
-                self.fold_ty(const_var.ty()),
-            )
+            self.interner()
+                .mk()
+                .const_(ty::ConstKind::Bound(self.binder_index, var), self.fold_ty(const_var.ty()))
         }
     }
 }

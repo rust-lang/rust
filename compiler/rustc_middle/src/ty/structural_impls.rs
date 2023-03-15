@@ -431,7 +431,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPred
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_poly_existential_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk().poly_existential_predicates(v))
     }
 }
 
@@ -514,7 +514,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return Ok(self),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty_from_kind(kind) })
+        Ok(if *self.kind() == kind { self } else { folder.interner().mk().ty_from_kind(kind) })
     }
 }
 
@@ -637,7 +637,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk().predicates(v))
     }
 }
 
@@ -664,7 +664,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         let ty = self.ty().try_fold_with(folder)?;
         let kind = self.kind().try_fold_with(folder)?;
         if ty != self.ty() || kind != self.kind() {
-            Ok(folder.interner().mk_const(kind, ty))
+            Ok(folder.interner().mk().const_(kind, ty))
         } else {
             Ok(self)
         }

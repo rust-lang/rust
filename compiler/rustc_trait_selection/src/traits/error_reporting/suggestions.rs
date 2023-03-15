@@ -766,7 +766,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(steps) =
                     autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
                         // Re-add the `&`
-                        let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                        let ty = self.tcx.mk().ref_(region, TypeAndMut { ty, mutbl });
 
                         // Remapping bound vars here
                         let real_trait_pred_and_ty =
@@ -1275,13 +1275,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
                 (
                     trait_pred,
-                    self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                    self.tcx.mk().imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
                 )
             });
             let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
                 (
                     trait_pred,
-                    self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                    self.tcx.mk().mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
                 )
             });
 
@@ -1423,7 +1423,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         object_ty: Ty<'tcx>,
     ) {
         let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else { return; };
-        let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
+        let self_ref_ty = self.tcx.mk().imm_ref(self.tcx.lifetimes.re_erased, self_ty);
 
         for predicate in predicates.iter() {
             if !self.predicate_must_hold_modulo_regions(
@@ -1651,8 +1651,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let ty::Ref(region, t_type, mutability) = *trait_pred.skip_binder().self_ty().kind()
             {
                 let suggested_ty = match mutability {
-                    hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
-                    hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
+                    hir::Mutability::Mut => self.tcx.mk().imm_ref(region, t_type),
+                    hir::Mutability::Not => self.tcx.mk().mut_ref(region, t_type),
                 };
 
                 // Remapping bound vars here
@@ -2022,7 +2022,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
-                    infcx.tcx.mk_fn_sig(
+                    infcx.tcx.mk().fn_sig(
                         *inputs,
                         infcx.next_ty_var(TypeVariableOrigin {
                             span: DUMMY_SP,
@@ -2033,7 +2033,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         abi::Abi::Rust,
                     )
                 }
-                _ => infcx.tcx.mk_fn_sig(
+                _ => infcx.tcx.mk().fn_sig(
                     [inputs],
                     infcx.next_ty_var(TypeVariableOrigin {
                         span: DUMMY_SP,
@@ -2045,7 +2045,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ),
             };
 
-            infcx.tcx.mk_fn_ptr(trait_ref.rebind(sig))
+            infcx.tcx.mk().fn_ptr(trait_ref.rebind(sig))
         }
 
         let argument_kind = match expected.skip_binder().self_ty().kind() {
@@ -3383,7 +3383,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
                 // `<T as Future>::Output`
                 let projection_ty = trait_pred.map_bound(|trait_pred| {
-                    self.tcx.mk_projection(
+                    self.tcx.mk().projection(
                         item_def_id,
                         // Future::Output has no substs
                         [trait_pred.self_ty()],
@@ -3471,7 +3471,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         _ => None,
                     };
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
-                        trait_ref: self.tcx.mk_trait_ref(
+                        trait_ref: self.tcx.mk().trait_ref(
                             trait_pred.def_id(),
                             [field_ty].into_iter().chain(trait_substs),
                         ),
@@ -3579,7 +3579,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 {
                     type_diffs = vec![
                         Sorts(ty::error::ExpectedFound {
-                            expected: self.tcx.mk_alias(ty::Projection, where_pred.skip_binder().projection_ty),
+                            expected: self.tcx.mk().alias(ty::Projection, where_pred.skip_binder().projection_ty),
                             found,
                         }),
                     ];
@@ -3800,7 +3800,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Projection(
                 ty::ProjectionPredicate {
-                    projection_ty: self.tcx.mk_alias_ty(proj.def_id, substs),
+                    projection_ty: self.tcx.mk().alias_ty(proj.def_id, substs),
                     term: ty_var.into(),
                 },
             )));

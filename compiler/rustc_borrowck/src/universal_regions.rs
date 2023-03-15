@@ -510,11 +510,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("c-variadic")))
                     .to_region_vid();
 
-                let region = self.infcx.tcx.mk_re_var(reg_vid);
+                let region = self.infcx.tcx.mk().re_var(reg_vid);
                 let va_list_ty =
                     self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
 
-                unnormalized_input_tys = self.infcx.tcx.mk_type_list_from_iter(
+                unnormalized_input_tys = self.infcx.tcx.mk().type_list_from_iter(
                     unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),
                 );
             }
@@ -660,7 +660,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let closure_sig = substs.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+                let bound_vars = tcx.mk().bound_variable_kinds_from_iter(
                     inputs_and_output
                         .bound_vars()
                         .iter()
@@ -670,7 +670,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
+                let env_region = tcx.mk().re_late_bound(ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
                 // The "inputs" of the closure in the
@@ -684,7 +684,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 };
 
                 ty::Binder::bind_with_vars(
-                    tcx.mk_type_list_from_iter(
+                    tcx.mk().type_list_from_iter(
                         iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
                     ),
                     bound_vars,
@@ -695,9 +695,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let resume_ty = substs.as_generator().resume_ty();
                 let output = substs.as_generator().return_ty();
-                let generator_ty = tcx.mk_generator(def_id, substs, movability);
+                let generator_ty = tcx.mk().generator(def_id, substs, movability);
                 let inputs_and_output =
-                    self.infcx.tcx.mk_type_list(&[generator_ty, resume_ty, output]);
+                    self.infcx.tcx.mk().type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 
@@ -713,13 +713,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def.def_id_for_type_of()).subst_identity();
                 let ty = indices.fold_to_region_vids(tcx, ty);
-                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
+                ty::Binder::dummy(tcx.mk().type_list(&[ty]))
             }
 
             DefiningTy::InlineConst(def_id, substs) => {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = substs.as_inline_const().ty();
-                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
+                ty::Binder::dummy(tcx.mk().type_list(&[ty]))
             }
         }
     }
@@ -793,7 +793,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!(?br);
-            let liberated_region = self.tcx.mk_re_free(all_outlive_scope.to_def_id(), br.kind);
+            let liberated_region = self.tcx.mk().re_free(all_outlive_scope.to_def_id(), br.kind);
             let region_vid = {
                 let name = match br.kind.get_name() {
                     Some(name) => name,
@@ -912,7 +912,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |region, _| tcx.mk_re_var(self.to_region_vid(region)))
+        tcx.fold_regions(value, |region, _| tcx.mk().re_var(self.to_region_vid(region)))
     }
 }
 
@@ -952,7 +952,7 @@ fn for_each_late_bound_region_in_item<'tcx>(
 
     for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
         let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
-        let liberated_region = tcx.mk_re_free(mir_def_id.to_def_id(), bound_region);
+        let liberated_region = tcx.mk().re_free(mir_def_id.to_def_id(), bound_region);
         f(liberated_region);
     }
 }

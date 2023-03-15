@@ -100,7 +100,7 @@ impl GenericParamDef {
         preceding_substs: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArg<'tcx> {
         match &self.kind {
-            ty::GenericParamDefKind::Lifetime => tcx.mk_re_error_misc().into(),
+            ty::GenericParamDefKind::Lifetime => tcx.mk().re_error_misc().into(),
             ty::GenericParamDefKind::Type { .. } => tcx.ty_error_misc().into(),
             ty::GenericParamDefKind::Const { .. } => {
                 tcx.const_error(tcx.type_of(self.def_id).subst(tcx, preceding_substs)).into()

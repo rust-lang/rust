@@ -451,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !expected.is_box() || found.is_box() {
             return false;
         }
-        let boxed_found = self.tcx.mk_box(found);
+        let boxed_found = self.tcx.mk().box_(found);
         if self.can_coerce(boxed_found, expected) {
             err.multipart_suggestion(
                 "store this in the heap by calling `Box::new`",
@@ -530,9 +530,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
         }
-        let box_found = self.tcx.mk_box(found);
-        let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
-        let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
+        let box_found = self.tcx.mk().box_(found);
+        let pin_box_found = self.tcx.mk().lang_item(box_found, LangItem::Pin).unwrap();
+        let pin_found = self.tcx.mk().lang_item(found, LangItem::Pin).unwrap();
         match expected.kind() {
             ty::Adt(def, _) if Some(def.did()) == pin_did => {
                 if self.can_coerce(pin_box_found, expected) {
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.misc(expr.span),
                 self.param_env,
-                ty::Binder::dummy(self.tcx.mk_trait_ref(
+                ty::Binder::dummy(self.tcx.mk().trait_ref(
                     into_def_id,
                     [expr_ty, expected_ty]
                 )),
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
             // Check that we're in fact trying to clone into the expected type
             && self.can_coerce(*pointee_ty, expected_ty)
-            && let trait_ref = ty::Binder::dummy(self.tcx.mk_trait_ref(clone_trait_did, [expected_ty]))
+            && let trait_ref = ty::Binder::dummy(self.tcx.mk().trait_ref(clone_trait_did, [expected_ty]))
             // And the expected type doesn't implement `Clone`
             && !self.predicate_must_hold_considering_regions(&traits::Obligation::new(
                 self.tcx,

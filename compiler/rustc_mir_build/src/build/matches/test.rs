@@ -244,8 +244,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         bug!("matching on `String` went through without enabling string_deref_patterns");
                     }
                     let re_erased = tcx.lifetimes.re_erased;
-                    let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
-                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
+                    let ref_string = self.temp(tcx.mk().imm_ref(re_erased, ty), test.span);
+                    let ref_str_ty = tcx.mk().imm_ref(re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
                     let method = trait_method(tcx, deref, sym::deref, [ty]);
@@ -414,7 +414,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = tcx.mk_imm_ref(*region, tcx.mk_slice(*elem_ty));
+                ty = tcx.mk().imm_ref(*region, tcx.mk().slice(*elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
@@ -842,7 +842,7 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.mk_fn_def(item.def_id, substs);
+    let method_ty = tcx.mk().fn_def(item.def_id, substs);
 
     ConstantKind::zero_sized(method_ty)
 }

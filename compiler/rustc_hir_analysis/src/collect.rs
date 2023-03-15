@@ -420,7 +420,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 item_segment,
                 trait_ref.substs,
             );
-            self.tcx().mk_projection(item_def_id, item_substs)
+            self.tcx().mk().projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
             let mut err = struct_span_err!(
@@ -458,7 +458,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                         self.tcx.replace_late_bound_regions_uncached(
                                             poly_trait_ref,
                                             |_| {
-                                                self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                                                self.tcx.mk().re_early_bound(ty::EarlyBoundRegion {
                                                     def_id: item_def_id,
                                                     index: 0,
                                                     name: Symbol::intern(&lt_name),
@@ -905,7 +905,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
         }
         _ => bug!(),
     };
-    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
+    tcx.mk().adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
@@ -1145,7 +1145,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
             let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity();
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).subst_identity());
-            ty::Binder::dummy(tcx.mk_fn_sig(
+            ty::Binder::dummy(tcx.mk().fn_sig(
                 inputs,
                 ty,
                 false,
@@ -1324,7 +1324,7 @@ fn suggest_impl_trait<'tcx>(
         let item_ty = ocx.normalize(
             &ObligationCause::misc(span, def_id),
             param_env,
-            tcx.mk_projection(assoc_item_def_id, substs),
+            tcx.mk().projection(assoc_item_def_id, substs),
         );
         // FIXME(compiler-errors): We may benefit from resolving regions here.
         if ocx.select_where_possible().is_empty()

@@ -74,7 +74,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
                 let extra_args =
-                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout.ty));
+                    self.tcx.mk().type_list_from_iter(extra_args.iter().map(|arg| arg.layout.ty));
 
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
@@ -647,7 +647,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Adjust receiver argument. Layout can be any (thin) ptr.
                 args[0] = ImmTy::from_immediate(
                     Scalar::from_maybe_pointer(adjusted_receiver, self).into(),
-                    self.layout_of(self.tcx.mk_mut_ptr(dyn_ty))?,
+                    self.layout_of(self.tcx.mk().mut_ptr(dyn_ty))?,
                 )
                 .into();
                 trace!("Patched receiver operand to {:#?}", args[0]);
@@ -700,7 +700,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let arg = ImmTy::from_immediate(
             place.to_ref(self),
-            self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
+            self.layout_of(self.tcx.mk().mut_ptr(place.layout.ty))?,
         );
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 

@@ -116,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             );
 
-            return self.tcx.mk_generator(
+            return self.tcx.mk().generator(
                 expr_def_id.to_def_id(),
                 generator_substs.substs,
                 movability,
@@ -126,8 +126,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
         let sig = bound_sig.map_bound(|sig| {
-            self.tcx.mk_fn_sig(
-                [self.tcx.mk_tup(sig.inputs())],
+            self.tcx.mk().fn_sig(
+                [self.tcx.mk().tup(sig.inputs())],
                 sig.output(),
                 sig.c_variadic,
                 sig.unsafety,
@@ -154,12 +154,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::ClosureSubstsParts {
                 parent_substs,
                 closure_kind_ty,
-                closure_sig_as_fn_ptr_ty: self.tcx.mk_fn_ptr(sig),
+                closure_sig_as_fn_ptr_ty: self.tcx.mk().fn_ptr(sig),
                 tupled_upvars_ty,
             },
         );
 
-        self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs)
+        self.tcx.mk().closure(expr_def_id.to_def_id(), closure_substs.substs)
     }
 
     /// Given the expected type, figures out what it can about this closure we
@@ -186,7 +186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
-                self.tcx.mk_ty_var(self.root_var(vid)),
+                self.tcx.mk().ty_var(self.root_var(vid)),
                 self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
             ),
             ty::FnPtr(sig) => {
@@ -326,7 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!(?ret_param_ty);
 
-        let sig = projection.rebind(self.tcx.mk_fn_sig(
+        let sig = projection.rebind(self.tcx.mk().fn_sig(
             input_tys,
             ret_param_ty,
             false,
@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
-            self.tcx.mk_fn_sig(
+            self.tcx.mk().fn_sig(
                 sig.inputs().iter().cloned(),
                 sig.output(),
                 sig.c_variadic,
@@ -584,7 +584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));
 
-            expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
+            expected_sigs.liberated_sig = self.tcx.mk().fn_sig(
                 inputs,
                 supplied_output_ty,
                 expected_sigs.liberated_sig.c_variadic,
@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let result = ty::Binder::bind_with_vars(
-            self.tcx.mk_fn_sig(
+            self.tcx.mk().fn_sig(
                 supplied_arguments,
                 supplied_return,
                 decl.c_variadic,
@@ -812,7 +812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             astconv.ast_ty_to_ty(&output);
         }
 
-        let result = ty::Binder::dummy(self.tcx.mk_fn_sig(
+        let result = ty::Binder::dummy(self.tcx.mk().fn_sig(
             supplied_arguments,
             err_ty,
             decl.c_variadic,

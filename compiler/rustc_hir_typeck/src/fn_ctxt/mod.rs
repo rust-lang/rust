@@ -302,7 +302,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             trait_ref.substs,
         );
 
-        self.tcx().mk_projection(item_def_id, item_substs)
+        self.tcx().mk().projection(item_def_id, item_substs)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {

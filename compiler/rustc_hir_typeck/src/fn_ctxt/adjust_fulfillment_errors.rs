@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
         let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
-            self.tcx.mk_trait_ref(
+            self.tcx.mk().trait_ref(
                 obligation.impl_or_alias_def_id,
                 ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
             )
@@ -633,9 +633,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Err(expr);
             }
 
-            let param_to_point_at_in_struct = self.tcx.mk_param_from_def(
-                struct_generic_parameters.param_at(drill_generic_index, self.tcx),
-            );
+            let param_to_point_at_in_struct = self
+                .tcx
+                .mk()
+                .param_from_def(struct_generic_parameters.param_at(drill_generic_index, self.tcx));
 
             // We make 3 steps:
             // Suppose we have a type like
@@ -756,9 +757,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Err(expr);
             }
 
-            let param_to_point_at_in_struct = self.tcx.mk_param_from_def(
-                struct_generic_parameters.param_at(drill_generic_index, self.tcx),
-            );
+            let param_to_point_at_in_struct = self
+                .tcx
+                .mk()
+                .param_from_def(struct_generic_parameters.param_at(drill_generic_index, self.tcx));
 
             // We make 3 steps:
             // Suppose we have a type like

@@ -436,7 +436,7 @@ fn for_each_region_constraint<'tcx>(
         let subject = match req.subject {
             ClosureOutlivesSubject::Region(subject) => format!("{:?}", subject),
             ClosureOutlivesSubject::Ty(ty) => {
-                format!("{:?}", ty.instantiate(tcx, |vid| tcx.mk_re_var(vid)))
+                format!("{:?}", ty.instantiate(tcx, |vid| tcx.mk().re_var(vid)))
             }
         };
         with_msg(&format!("where {}: {:?}", subject, req.outlived_free_region,))?;

@@ -535,7 +535,7 @@ impl<'tcx> Inliner<'tcx> {
                         source_info: callsite.source_info,
                         kind: StatementKind::Assign(Box::new((temp, dest))),
                     });
-                    self.tcx.mk_place_deref(temp)
+                    self.tcx.mk().place_deref(temp)
                 } else {
                     destination
                 };
@@ -706,7 +706,7 @@ impl<'tcx> Inliner<'tcx> {
             // The `tmp0`, `tmp1`, and `tmp2` in our example above.
             let tuple_tmp_args = tuple_tys.iter().enumerate().map(|(i, ty)| {
                 // This is e.g., `tuple_tmp.0` in our example above.
-                let tuple_field = Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty));
+                let tuple_field = Operand::Move(tcx.mk().place_field(tuple, Field::new(i), ty));
 
                 // Spill to a local to make e.g., `tmp0`.
                 self.create_temp_if_necessary(tuple_field, callsite, caller_body)

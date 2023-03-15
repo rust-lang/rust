@@ -306,9 +306,9 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     {
         let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
         let opaque_identity_ty = if in_trait {
-            tcx.mk_projection(def_id.to_def_id(), substs)
+            tcx.mk().projection(def_id.to_def_id(), substs)
         } else {
-            tcx.mk_opaque(def_id.to_def_id(), substs)
+            tcx.mk().opaque(def_id.to_def_id(), substs)
         };
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
@@ -407,7 +407,7 @@ fn check_opaque_meets_bounds<'tcx>(
         .with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor))
         .build();
     let ocx = ObligationCtxt::new(&infcx);
-    let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
+    let opaque_ty = tcx.mk().opaque(def_id.to_def_id(), substs);
 
     // `ReErased` regions appear in the "parent_substs" of closures/generators.
     // We're ignoring them here and replacing them with fresh region variables.
@@ -540,7 +540,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                             tcx,
                             assoc_item,
                             assoc_item,
-                            tcx.mk_trait_ref(id.owner_id.to_def_id(), trait_substs),
+                            tcx.mk().trait_ref(id.owner_id.to_def_id(), trait_substs),
                         );
                     }
                     _ => {}

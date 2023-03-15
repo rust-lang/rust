@@ -75,7 +75,7 @@ fn lower_slice_len_call<'tcx>(
                     // ```
 
                     // make new RValue for Len
-                    let deref_arg = tcx.mk_place_deref(arg);
+                    let deref_arg = tcx.mk().place_deref(arg);
                     let r_value = Rvalue::Len(deref_arg);
                     let len_statement_kind =
                         StatementKind::Assign(Box::new((*destination, r_value)));

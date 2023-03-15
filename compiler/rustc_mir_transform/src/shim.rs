@@ -187,7 +187,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         let reborrow = Rvalue::Ref(
             tcx.lifetimes.re_erased,
             BorrowKind::Mut { allow_two_phase_borrow: false },
-            tcx.mk_place_deref(dropee_ptr),
+            tcx.mk().place_deref(dropee_ptr),
         );
         let ref_ty = reborrow.ty(body.local_decls(), tcx);
         dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
@@ -207,7 +207,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             let param_env = tcx.param_env_reveal_all_normalized(def_id);
             let mut elaborator =
                 DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
-            let dropee = tcx.mk_place_deref(dropee_ptr);
+            let dropee = tcx.mk().place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
@@ -331,7 +331,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
 
     let dest = Place::return_place();
-    let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
+    let src = tcx.mk().place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind() {
         _ if is_copy => builder.copy_shim(),
@@ -415,7 +415,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     }
 
     fn copy_shim(&mut self) {
-        let rcvr = self.tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
+        let rcvr = self.tcx.mk().place_deref(Place::from(Local::new(1 + 0)));
         let ret_statement = self.make_statement(StatementKind::Assign(Box::new((
             Place::return_place(),
             Rvalue::Use(Operand::Copy(rcvr)),
@@ -443,7 +443,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = tcx.mk_fn_def(self.def_id, [ty]);
+        let func_ty = tcx.mk().fn_def(self.def_id, [ty]);
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
@@ -452,7 +452,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         let ref_loc = self.make_place(
             Mutability::Not,
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
+            tcx.mk()
+                .ref_(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
         );
 
         // `let ref_loc: &ty = &src;`
@@ -501,9 +502,9 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             // will unwind to it if cloning fails.
 
             let field = Field::new(i);
-            let src_field = self.tcx.mk_place_field(src, field, ity);
+            let src_field = self.tcx.mk().place_field(src, field, ity);
 
-            let dest_field = self.tcx.mk_place_field(dest, field, ity);
+            let dest_field = self.tcx.mk().place_field(dest, field, ity);
 
             let next_unwind = self.block_index_offset(1);
             let next_block = self.block_index_offset(2);
@@ -548,8 +549,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let mut cases = Vec::with_capacity(substs.state_tys(gen_def_id, self.tcx).count());
         for (index, state_tys) in substs.state_tys(gen_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);
-            let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
-            let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
+            let dest = self.tcx.mk().place_downcast_unnamed(dest, variant_index);
+            let src = self.tcx.mk().place_downcast_unnamed(src, variant_index);
             let clone_block = self.block_index_offset(1);
             let start_block = self.block(
                 vec![self.make_statement(StatementKind::SetDiscriminant {
@@ -597,7 +598,7 @@ fn build_call_shim<'tcx>(
         let untuple_args = sig.inputs();
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
-        let arg_tup = tcx.mk_tup(untuple_args);
+        let arg_tup = tcx.mk().tup(untuple_args);
 
         (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
     } else {
@@ -629,10 +630,10 @@ fn build_call_shim<'tcx>(
         let self_arg = &mut inputs_and_output[0];
         *self_arg = match rcvr_adjustment.unwrap() {
             Adjustment::Identity => fnty,
-            Adjustment::Deref => tcx.mk_imm_ptr(fnty),
-            Adjustment::RefMut => tcx.mk_mut_ptr(fnty),
+            Adjustment::Deref => tcx.mk().imm_ptr(fnty),
+            Adjustment::RefMut => tcx.mk().mut_ptr(fnty),
         };
-        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+        sig.inputs_and_output = tcx.mk().type_list(&inputs_and_output);
     }
 
     // FIXME(eddyb) avoid having this snippet both here and in
@@ -642,8 +643,8 @@ fn build_call_shim<'tcx>(
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];
         debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
-        *self_arg = tcx.mk_mut_ptr(*self_arg);
-        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+        *self_arg = tcx.mk().mut_ptr(*self_arg);
+        sig.inputs_and_output = tcx.mk().type_list(&inputs_and_output);
     }
 
     let span = tcx.def_span(def_id);
@@ -661,12 +662,12 @@ fn build_call_shim<'tcx>(
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
-        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::Deref => Operand::Move(tcx.mk().place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(
                 LocalDecl::new(
-                    tcx.mk_ref(
+                    tcx.mk().ref_(
                         tcx.lifetimes.re_erased,
                         ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
                     ),
@@ -723,7 +724,7 @@ fn build_call_shim<'tcx>(
     if let Some(untuple_args) = untuple_args {
         let tuple_arg = Local::new(1 + (sig.inputs().len() - 1));
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), Field::new(i), *ity))
+            Operand::Move(tcx.mk().place_field(Place::from(tuple_arg), Field::new(i), *ity))
         }));
     }
 

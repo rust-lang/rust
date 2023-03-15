@@ -141,7 +141,7 @@ impl EnumSizeOpt {
                         self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
                     let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
 
-                    let tmp_ty = tcx.mk_array(tcx.types.usize, num_variants as u64);
+                    let tmp_ty = tcx.mk().array(tcx.types.usize, num_variants as u64);
 
                     let size_array_local = local_decls.push(LocalDecl::new(tmp_ty, span));
                     let store_live = Statement {
@@ -209,7 +209,7 @@ impl EnumSizeOpt {
                     };
 
                     let dst =
-                        Place::from(local_decls.push(LocalDecl::new(tcx.mk_mut_ptr(ty), span)));
+                        Place::from(local_decls.push(LocalDecl::new(tcx.mk().mut_ptr(ty), span)));
 
                     let dst_ptr = Statement {
                         source_info,
@@ -219,7 +219,7 @@ impl EnumSizeOpt {
                         ))),
                     };
 
-                    let dst_cast_ty = tcx.mk_mut_ptr(tcx.types.u8);
+                    let dst_cast_ty = tcx.mk().mut_ptr(tcx.types.u8);
                     let dst_cast_place =
                         Place::from(local_decls.push(LocalDecl::new(dst_cast_ty, span)));
 
@@ -232,7 +232,7 @@ impl EnumSizeOpt {
                     };
 
                     let src =
-                        Place::from(local_decls.push(LocalDecl::new(tcx.mk_imm_ptr(ty), span)));
+                        Place::from(local_decls.push(LocalDecl::new(tcx.mk().imm_ptr(ty), span)));
 
                     let src_ptr = Statement {
                         source_info,
@@ -242,7 +242,7 @@ impl EnumSizeOpt {
                         ))),
                     };
 
-                    let src_cast_ty = tcx.mk_imm_ptr(tcx.types.u8);
+                    let src_cast_ty = tcx.mk().imm_ptr(tcx.types.u8);
                     let src_cast_place =
                         Place::from(local_decls.push(LocalDecl::new(src_cast_ty, span)));
 

@@ -206,7 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
                 let trait_type = self
                     .tcx
-                    .mk_ref(*region, ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() });
+                    .mk()
+                    .ref_(*region, ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() });
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
                     segment.ident,
@@ -317,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(cause.span, param)
         });
 
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
+        let trait_ref = self.tcx.mk().trait_ref(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
@@ -443,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = tcx.mk_fn_ptr(ty::Binder::dummy(fn_sig));
+        let method_ty = tcx.mk().fn_ptr(ty::Binder::dummy(fn_sig));
         debug!(
             "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation

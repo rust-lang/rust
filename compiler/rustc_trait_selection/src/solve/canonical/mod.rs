@@ -160,8 +160,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        let var_values = self.tcx().mk_substs_from_iter(response.variables.iter().enumerate().map(
-            |(index, info)| {
+        let var_values = self.tcx().mk().substs_from_iter(
+            response.variables.iter().enumerate().map(|(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
@@ -187,8 +187,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     // universal bound variable back the placeholder of the input.
                     original_values[info.expect_anon_placeholder() as usize]
                 }
-            },
-        ));
+            }),
+        );
 
         CanonicalVarValues { var_values }
     }

@@ -95,11 +95,11 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
+                    ty::Array(inner, _) if !from_end => tcx.mk().array(*inner, (to - from) as u64),
                     ty::Array(inner, size) if from_end => {
                         let size = size.eval_target_usize(tcx, param_env);
                         let len = size - (from as u64) - (to as u64);
-                        tcx.mk_array(*inner, len)
+                        tcx.mk().array(*inner, len)
                     }
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
                 })
@@ -162,26 +162,26 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array_with_const_len(operand.ty(local_decls, tcx), count)
+                tcx.mk().array_with_const_len(operand.ty(local_decls, tcx), count)
             }
             Rvalue::ThreadLocalRef(did) => {
                 let static_ty = tcx.type_of(did).subst_identity();
                 if tcx.is_mutable_static(did) {
-                    tcx.mk_mut_ptr(static_ty)
+                    tcx.mk().mut_ptr(static_ty)
                 } else if tcx.is_foreign_item(did) {
-                    tcx.mk_imm_ptr(static_ty)
+                    tcx.mk().imm_ptr(static_ty)
                 } else {
                     // FIXME: These things don't *really* have 'static lifetime.
-                    tcx.mk_imm_ref(tcx.lifetimes.re_static, static_ty)
+                    tcx.mk().imm_ref(tcx.lifetimes.re_static, static_ty)
                 }
             }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
+                tcx.mk().ref_(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
             }
             Rvalue::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                tcx.mk_ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability })
+                tcx.mk().ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability })
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
@@ -194,23 +194,23 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.mk_tup(&[ty, tcx.types.bool])
+                tcx.mk().tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
-                AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
+                AggregateKind::Array(ty) => tcx.mk().array(ty, ops.len() as u64),
                 AggregateKind::Tuple => {
-                    tcx.mk_tup_from_iter(ops.iter().map(|op| op.ty(local_decls, tcx)))
+                    tcx.mk().tup_from_iter(ops.iter().map(|op| op.ty(local_decls, tcx)))
                 }
                 AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
+                AggregateKind::Closure(did, substs) => tcx.mk().closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did, substs, movability)
+                    tcx.mk().generator(did, substs, movability)
                 }
             },
-            Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::ShallowInitBox(_, ty) => tcx.mk().box_(ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }

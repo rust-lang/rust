@@ -73,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
-                        let trait_ref = tcx.mk_trait_ref(
+                        let trait_ref = tcx.mk().trait_ref(
                             fn_once,
                             [
                                 ty,
@@ -206,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type = self.tcx.mk_ref(
+                        let trait_type = self.tcx.mk().ref_(
                             *region,
                             ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
@@ -595,13 +595,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
 
-                        let substs_with_infer_self = tcx.mk_substs_from_iter(
-                            iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
+                        let substs_with_infer_self = tcx.mk().substs_from_iter(
+                            iter::once(tcx.mk().ty_var(ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
 
                         let quiet_projection_ty =
-                            tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+                            tcx.mk().alias_ty(projection_ty.def_id, substs_with_infer_self);
 
                         let term = pred.skip_binder().term;
 
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, substs) = target_ty.kind() {
                 // If there are any inferred arguments, (`{integer}`), we should replace
                 // them with underscores to allow the compiler to infer them
-                let infer_substs = self.tcx.mk_substs_from_iter(substs.into_iter().map(|arg| {
+                let infer_substs = self.tcx.mk().substs_from_iter(substs.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
@@ -2342,8 +2342,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // just this list.
             for (rcvr_ty, post) in &[
                 (rcvr_ty, ""),
-                (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
-                (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
+                (self.tcx.mk().mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
+                (self.tcx.mk().imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
                 match self.lookup_probe_for_diagnostic(
                     item_name,
@@ -2378,10 +2378,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for (rcvr_ty, pre) in &[
-                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
-                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
-                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
-                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
+                    (self.tcx.mk().lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
+                    (self.tcx.mk().lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
+                    (self.tcx.mk().diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
+                    (self.tcx.mk().diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty
                         && let Ok(pick) = self.lookup_probe_for_diagnostic(

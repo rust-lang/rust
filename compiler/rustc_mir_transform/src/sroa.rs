@@ -325,7 +325,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     // Put the deaggregated statements *after* the original one.
                     let location = location.successor_within_block();
                     for (field, ty, new_local) in final_locals {
-                        let rplace = self.tcx.mk_place_field(place, field, ty);
+                        let rplace = self.tcx.mk().place_field(place, field, ty);
                         let rvalue = Rvalue::Use(Operand::Move(rplace));
                         self.patch.add_statement(
                             location,
@@ -352,7 +352,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 };
                 if let Some(final_locals) = self.replacements.place_fragments(lhs) {
                     for (field, ty, new_local) in final_locals {
-                        let rplace = self.tcx.mk_place_field(rplace, field, ty);
+                        let rplace = self.tcx.mk().place_field(rplace, field, ty);
                         debug!(?rplace);
                         let rplace = self
                             .replacements

@@ -86,7 +86,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
-        let trait_ref = tcx.mk_trait_ref(trait_did, [ty]);
+        let trait_ref = tcx.mk().trait_ref(trait_did, [ty]);
 
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
@@ -261,7 +261,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref: infcx.tcx.mk_trait_ref(trait_did, [ty]),
+            trait_ref: infcx.tcx.mk().trait_ref(trait_did, [ty]),
 
             constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
@@ -350,14 +350,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates_from_iter(normalized_preds),
+                tcx.mk().predicates_from_iter(normalized_preds),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_predicates_from_iter(user_computed_preds.into_iter()),
+            tcx.mk().predicates_from_iter(user_computed_preds.into_iter()),
             user_env.reveal(),
             user_env.constness(),
         );
@@ -794,7 +794,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 Some(obligation.cause.span),
                             ) {
-                                Ok(Some(valtree)) => Ok(selcx.tcx().mk_const(valtree, c.ty())),
+                                Ok(Some(valtree)) => Ok(selcx.tcx().mk().const_(valtree, c.ty())),
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let def_id = unevaluated.def.did;

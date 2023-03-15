@@ -271,7 +271,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     },
                     _ => mk_bound_region(None),
                 };
-                let r = fcx.tcx.mk_re_late_bound(current_depth, br);
+                let r = fcx.tcx.mk().re_late_bound(current_depth, br);
                 r
             });
             captured_tys.insert(ty).then(|| {
@@ -300,7 +300,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
-                    fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
+                    fcx.tcx.mk().re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
@@ -311,10 +311,10 @@ pub fn resolve_interior<'a, 'tcx>(
     };
 
     // Extract type components to build the witness type.
-    let type_list = fcx.tcx.mk_type_list_from_iter(type_causes.iter().map(|cause| cause.ty));
+    let type_list = fcx.tcx.mk().type_list_from_iter(type_causes.iter().map(|cause| cause.ty));
     let bound_vars = fcx.tcx.mk_bound_variable_kinds(&bound_vars);
     let witness =
-        fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
+        fcx.tcx.mk().generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
     drop(typeck_results);
     // Store the generator types and spans into the typeck results for this generator.
@@ -359,7 +359,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             let ty =
                                 self.interior_visitor.fcx.typeck_results.borrow().node_type(id);
                             let tcx = self.interior_visitor.fcx.tcx;
-                            let ty = tcx.mk_ref(
+                            let ty = tcx.mk().ref_(
                                 // Use `ReErased` as `resolve_interior` is going to replace all the
                                 // regions anyway.
                                 tcx.lifetimes.re_erased,

@@ -507,7 +507,7 @@ impl<'tcx> Collector<'tcx> {
                 .subst_identity()
                 .fn_sig(self.tcx)
                 .inputs()
-                .map_bound(|slice| self.tcx.mk_type_list(slice)),
+                .map_bound(|slice| self.tcx.mk().type_list(slice)),
         );
 
         argument_types

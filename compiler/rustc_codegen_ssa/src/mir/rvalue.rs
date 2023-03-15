@@ -350,7 +350,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    tcx.mk_ref(
+                    tcx.mk().ref_(
                         tcx.lifetimes.re_erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() },
                     )
@@ -361,7 +361,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => self.codegen_operand(bx, &Operand::Copy(place)),
             mir::Rvalue::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
+                    tcx.mk().ptr(ty::TypeAndMut { ty, mutbl: mutability })
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
@@ -413,7 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs.layout.ty,
                 );
                 let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().mk_tup(&[val_ty, bx.tcx().types.bool]);
+                let operand_ty = bx.tcx().mk().tup(&[val_ty, bx.tcx().types.bool]);
                 OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
             }
 
@@ -478,7 +478,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let lloperand = operand.immediate();
 
                 let content_ty = self.monomorphize(content_ty);
-                let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
+                let box_layout = bx.cx().layout_of(bx.tcx().mk().box_(content_ty));
                 let llty_ptr = bx.cx().backend_type(box_layout);
 
                 let val = bx.pointercast(lloperand, llty_ptr);

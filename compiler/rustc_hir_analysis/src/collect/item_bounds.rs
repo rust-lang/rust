@@ -20,10 +20,9 @@ fn associated_type_bounds<'tcx>(
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-    let item_ty = tcx.mk_projection(
-        assoc_item_def_id,
-        InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
-    );
+    let item_ty = tcx
+        .mk()
+        .projection(assoc_item_def_id, InternalSubsts::identity_for_item(tcx, assoc_item_def_id));
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
     let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds);
@@ -101,9 +100,9 @@ pub(super) fn explicit_item_bounds(
         }) => {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             let item_ty = if *in_trait || rpitit_info.is_some() {
-                tcx.mk_projection(def_id, substs)
+                tcx.mk().projection(def_id, substs)
             } else {
-                tcx.mk_opaque(def_id, substs)
+                tcx.mk().opaque(def_id, substs)
             };
             opaque_type_bounds(tcx, bounds_def_id, bounds, item_ty, *span)
         }
@@ -115,7 +114,7 @@ pub(super) fn item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
-    let bounds = tcx.mk_predicates_from_iter(
+    let bounds = tcx.mk().predicates_from_iter(
         util::elaborate_predicates(
             tcx,
             tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
