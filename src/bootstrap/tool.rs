@@ -124,7 +124,7 @@ impl Step for ToolBuild {
         let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
-                "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
+                "rls" | "clippy-driver" | "miri" | "rustfmt" => {}
 
                 _ => return,
             }
@@ -300,6 +300,9 @@ pub fn prepare_tool_cargo(
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
             features.push("rustc-workspace-hack/all-static".to_string());
+        }
+        if path.ends_with("cargo") {
+            features.push("all-static".to_string());
         }
     }
 
