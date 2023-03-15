@@ -89,13 +89,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
       run: ./y.rs prepare
 
@@ -136,13 +129,6 @@ jobs:
       with:
         path: ~/.cargo/bin
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
-
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
 
     - name: Install hyperfine
       run: cargo install hyperfine || true
@@ -205,13 +191,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
-
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
 
     - name: Prepare dependencies
       run: ./y.rs prepare
