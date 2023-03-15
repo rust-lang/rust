@@ -855,10 +855,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow().undo_log.opaque_types_in_snapshot(&snapshot.undo_snapshot)
     }
 
-    pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
-        self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
-    }
-
     pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,

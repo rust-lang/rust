@@ -1,9 +1,9 @@
 use crate::infer::free_regions::FreeRegionMap;
-use crate::infer::{GenericKind, InferCtxt};
+use crate::infer::GenericKind;
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
-use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
+use rustc_middle::ty::{self, Region};
 
 use super::explicit_outlives_bounds;
 
@@ -75,7 +75,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
             region_bound_pairs: Default::default(),
         };
 
-        builder.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
+        builder.add_outlives_bounds(explicit_outlives_bounds(param_env));
 
         builder
     }
@@ -89,11 +89,10 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a new `OutlivesEnvironment` with extra outlives bounds.
     pub fn with_bounds(
         param_env: ty::ParamEnv<'tcx>,
-        infcx: Option<&InferCtxt<'tcx>>,
         extra_bounds: impl IntoIterator<Item = OutlivesBound<'tcx>>,
     ) -> Self {
         let mut builder = Self::builder(param_env);
-        builder.add_outlives_bounds(infcx, extra_bounds);
+        builder.add_outlives_bounds(extra_bounds);
         builder.build()
     }
 
@@ -120,12 +119,7 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
     }
 
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
-    ///
-    /// The `infcx` parameter is optional; if the implied bounds may
-    /// contain inference variables, it must be supplied, in which
-    /// case we will register "givens" on the inference context. (See
-    /// `RegionConstraintData`.)
-    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'tcx>>, outlives_bounds: I)
+    fn add_outlives_bounds<I>(&mut self, outlives_bounds: I)
     where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
@@ -142,27 +136,14 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
-                OutlivesBound::RegionSubRegion(r_a, r_b) => {
-                    if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {
-                        infcx
-                            .expect("no infcx provided but region vars found")
-                            .add_given(r_a, vid_b);
-                    } else {
-                        // In principle, we could record (and take
-                        // advantage of) every relationship here, but
-                        // we are also free not to -- it simply means
-                        // strictly less that we can successfully type
-                        // check. Right now we only look for things
-                        // relationships between free regions. (It may
-                        // also be that we should revise our inference
-                        // system to be more general and to make use
-                        // of *every* relationship that arises here,
-                        // but presently we do not.)
-                        if r_a.is_free_or_static() && r_b.is_free() {
-                            self.region_relation.add(r_a, r_b)
-                        }
-                    }
-                }
+                OutlivesBound::RegionSubRegion(r_a, r_b) => match (*r_a, *r_b) {
+                    (
+                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
+                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
+                    ) => self.region_relation.add(r_a, r_b),
+                    (ty::ReError(_), _) | (_, ty::ReError(_)) => {}
+                    _ => bug!("add_outlives_bounds: unexpected regions"),
+                },
             }
         }
     }

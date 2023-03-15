@@ -636,11 +636,9 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
-    let RegionConstraintData { constraints, verifys, givens, member_constraints } =
-        region_constraints;
+    let RegionConstraintData { constraints, verifys, member_constraints } = region_constraints;
 
     assert!(verifys.is_empty());
-    assert!(givens.is_empty());
 
     debug!(?constraints);
 
