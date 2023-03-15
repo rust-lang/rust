@@ -31,7 +31,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, sym, BytePos, Span};
+use rustc_span::{self, sym, BytePos, ExpnKind, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -1211,6 +1211,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Call out where the function is defined
         self.label_fn_like(&mut err, fn_def_id, callee_ty, None, is_method);
 
+        if !suggestions.iter().all(|(sp, _)| {
+            sp.macro_backtrace().all(|data| !matches!(data.kind, ExpnKind::Macro(..)))
+        }) {
+            // We don't want to provide structured suggestions if macros are involved at all.
+            err.emit();
+            return;
+        }
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
             SuggestionText::None => None,
