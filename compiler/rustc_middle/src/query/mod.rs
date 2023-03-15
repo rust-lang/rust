@@ -2215,7 +2215,7 @@ rustc_queries! {
     }
 
     /// Used in `super_combine_consts` to ICE if the type of the two consts are definitely not going to end up being
-    /// equal to eachother. This might return `Ok` even if the types are unequal, but will never return `Err` if
+    /// equal to eachother. This might return `Ok` even if the types are not equal, but will never return `Err` if
     /// the types might be equal.
     query check_tys_might_be_eq(arg: Canonical<'tcx, (ty::ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>) -> Result<(), NoSolution> {
         desc { "check whether two const param are definitely not equal to eachother"}

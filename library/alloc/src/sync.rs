@@ -2475,10 +2475,10 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
 
     /// Inequality for two `Arc`s.
     ///
-    /// Two `Arc`s are unequal if their inner values are unequal.
+    /// Two `Arc`s are not equal if their inner values are not equal.
     ///
     /// If `T` also implements `Eq` (implying reflexivity of equality),
-    /// two `Arc`s that point to the same value are never unequal.
+    /// two `Arc`s that point to the same value are always equal.
     ///
     /// # Examples
     ///

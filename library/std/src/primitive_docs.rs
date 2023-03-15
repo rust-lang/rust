@@ -1110,7 +1110,7 @@ impl<T: Copy> Copy for (T,) {
 /// - [NaN (not a number)](#associatedconstant.NAN): this value results from
 ///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
 ///   behavior:
-///   - It is unequal to any float, including itself! This is the reason `f32`
+///   - It is not equal to any float, including itself! This is the reason `f32`
 ///     doesn't implement the `Eq` trait.
 ///   - It is also neither smaller nor greater than any float, making it
 ///     impossible to sort by the default comparison operation, which is the
