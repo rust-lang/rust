@@ -51,11 +51,11 @@ fn record_pattern_field_enum() {
     check(
         r#"
 //- minicore:result
-enum Baz { FOO, BAR }
+enum Baz { Foo, Bar }
 
 fn foo(baz: Baz) {
     match baz {
-        Baz::FOO => (),
+        Baz::Foo => (),
         $0
     }
 }
@@ -66,7 +66,7 @@ fn foo(baz: Baz) {
             md core
             ev Err
             ev Ok
-            bn Baz::BAR Baz::BAR$0
+            bn Baz::Bar Baz::Bar$0
             bn Err(…)   Err($1)$0
             bn Ok(…)    Ok($1)$0
             kw mut
@@ -77,11 +77,11 @@ fn foo(baz: Baz) {
     check(
         r#"
 //- minicore:result
-enum Baz { FOO, BAR }
+enum Baz { Foo, Bar }
 
 fn foo(baz: Baz) {
     match baz {
-        FOO => (),
+        Foo => (),
         $0
     }
 }
@@ -92,7 +92,7 @@ fn foo(baz: Baz) {
          md core
          ev Err
          ev Ok
-         bn Baz::BAR Baz::BAR$0
+         bn Baz::Bar Baz::Bar$0
          bn Err(…)   Err($1)$0
          bn Ok(…)    Ok($1)$0
          kw mut
