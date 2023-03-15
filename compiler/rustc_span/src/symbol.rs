@@ -1043,6 +1043,7 @@ symbols! {
         optin_builtin_traits,
         option,
         option_env,
+        option_payload_ptr,
         options,
         or,
         or_patterns,
