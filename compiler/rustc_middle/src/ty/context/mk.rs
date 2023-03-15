@@ -692,12 +692,12 @@ impl<'tcx> MkCtxt<'tcx> {
 
     #[inline]
     pub fn const_list(self, v: &[Const<'tcx>]) -> &'tcx List<Const<'tcx>> {
-        self.tcx.mk_const_list(v)
+        self.tcx.intern_const_list(v)
     }
 
     #[inline]
     pub fn substs(self, v: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
-        self.tcx.mk_substs(v)
+        self.tcx.intern_substs(v)
     }
 
     #[inline]
@@ -705,17 +705,17 @@ impl<'tcx> MkCtxt<'tcx> {
         self,
         v: &[CanonicalVarInfo<'tcx>],
     ) -> &'tcx List<CanonicalVarInfo<'tcx>> {
-        self.tcx.mk_canonical_var_infos(v)
+        self.tcx.intern_canonical_var_infos(v)
     }
 
     #[inline]
     pub fn projs(self, v: &[ProjectionKind]) -> &'tcx List<ProjectionKind> {
-        self.tcx.mk_projs(v)
+        self.tcx.intern_projs(v)
     }
 
     #[inline]
     pub fn place_elems(self, v: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
-        self.tcx.mk_place_elems(v)
+        self.tcx.intern_place_elems(v)
     }
 
     #[inline]
@@ -723,22 +723,22 @@ impl<'tcx> MkCtxt<'tcx> {
         self,
         v: &[ty::BoundVariableKind],
     ) -> &'tcx List<ty::BoundVariableKind> {
-        self.tcx.mk_bound_variable_kinds(v)
+        self.tcx.intern_bound_variable_kinds(v)
     }
 
     #[inline]
     pub fn const_alloc(self, v: Allocation) -> ConstAllocation<'tcx> {
-        self.tcx.mk_const_alloc(v)
+        self.tcx.intern_const_alloc(v)
     }
 
     #[inline]
     pub fn layout(self, v: LayoutS) -> Layout<'tcx> {
-        self.tcx.mk_layout(v)
+        self.tcx.intern_layout(v)
     }
 
     #[inline]
     pub fn adt_def_from_data(self, v: AdtDefData) -> AdtDef<'tcx> {
-        self.tcx.mk_adt_def_from_data(v)
+        self.tcx.intern_adt_def_from_data(v)
     }
 
     #[inline]
@@ -746,6 +746,6 @@ impl<'tcx> MkCtxt<'tcx> {
         self,
         v: ExternalConstraintsData<'tcx>,
     ) -> ExternalConstraints<'tcx> {
-        self.tcx.mk_external_constraints(v)
+        self.tcx.intern_external_constraints(v)
     }
 }

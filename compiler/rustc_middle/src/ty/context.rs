@@ -1524,15 +1524,13 @@ macro_rules! direct_interners {
 // Functions with a `mk_` prefix are intended for use outside this file and
 // crate. Functions with an `intern_` prefix are intended for use within this
 // file only, and have a corresponding `mk_` function.
-//
-// TODO(waffle): pub mk_* -> intern_*
 direct_interners! {
     region: intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
-    const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
-    adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
-    external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
+    const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    layout: intern_layout(LayoutS): Layout -> Layout<'tcx>,
+    adt_def: intern_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
+    external_constraints: intern_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
 }
 
@@ -1555,16 +1553,15 @@ macro_rules! slice_interners {
 // These functions intern slices. They all have a corresponding
 // `mk_foo_from_iter` function that interns an iterator. The slice version
 // should be used when possible, because it's faster.
-// TODO: deprecate/make into private `intern_*`/etc all `mk_*` methods here
 slice_interners!(
-    const_lists: pub mk_const_list(Const<'tcx>),
-    substs: pub mk_substs(GenericArg<'tcx>),
-    canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    const_lists: intern_const_list(Const<'tcx>),
+    substs: intern_substs(GenericArg<'tcx>),
+    canonical_var_infos: intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     predicates: intern_predicates(Predicate<'tcx>),
-    projs: pub mk_projs(ProjectionKind),
-    place_elems: pub mk_place_elems(PlaceElem<'tcx>),
-    bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
+    projs: intern_projs(ProjectionKind),
+    place_elems: intern_place_elems(PlaceElem<'tcx>),
+    bound_variable_kinds: intern_bound_variable_kinds(ty::BoundVariableKind),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
