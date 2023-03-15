@@ -8,7 +8,10 @@
 
 #![crate_type = "lib"]
 
-pub fn replace_byte(dst: &mut u8, src: u8) -> u8 {
+#[repr(C, align(8))]
+pub struct Big([u64; 7]);
+pub fn replace_big(dst: &mut Big, src: Big) -> Big {
+    // Before the `read_via_copy` intrinsic, this emitted six `memcpy`s.
     std::mem::replace(dst, src)
 }
 
@@ -17,17 +20,17 @@ pub fn replace_byte(dst: &mut u8, src: u8) -> u8 {
 
 // CHECK-NOT: call void @llvm.memcpy
 
-// For a small type, we expect one each of `load`/`store`/`memcpy` instead
-// CHECK-LABEL: define internal noundef i8 @{{.+}}mem{{.+}}replace
+// For a large type, we expect exactly three `memcpy`s
+// CHECK-LABEL: define internal void @{{.+}}mem{{.+}}replace{{.+}}sret(%Big)
     // CHECK-NOT: alloca
-    // CHECK: alloca i8
+    // CHECK: alloca %Big
     // CHECK-NOT: alloca
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: load i8
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: store i8
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
     // CHECK-NOT: call void @llvm.memcpy
 
 // CHECK-NOT: call void @llvm.memcpy
