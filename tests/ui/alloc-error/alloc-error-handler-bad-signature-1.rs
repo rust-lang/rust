@@ -6,10 +6,10 @@
 
 use core::alloc::Layout;
 
-#[alloc_error_handler] //~ ERROR mismatched types
-fn oom( //~ ERROR mismatched types
-    info: &Layout,
-) -> ()
+#[alloc_error_handler]
+fn oom(
+    info: &Layout, //~ ERROR mismatched types
+) -> () //~ ERROR mismatched types
 {
     loop {}
 }
