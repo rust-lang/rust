@@ -60,22 +60,13 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
-fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
-    let (int, signed) = match *ty.kind() {
-        ty::Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
-        ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
-        _ => bug!("non integer discriminant"),
-    };
-    (int.size(), signed)
-}
-
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
     pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (size, signed) = int_size_and_signed(tcx, self.ty);
+        let (size, signed) = self.ty.int_size_and_signed(tcx);
         let (val, oflo) = if signed {
             let min = size.signed_int_min();
             let max = size.signed_int_max();
@@ -929,12 +920,21 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
+    pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
+        let (int, signed) = match *self.kind() {
+            ty::Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
+            ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
+            _ => bug!("non integer discriminant"),
+        };
+        (int.size(), signed)
+    }
+
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = int_size_and_signed(tcx, self);
+                let (size, signed) = self.int_size_and_signed(tcx);
                 let val =
                     if signed { size.signed_int_max() as u128 } else { size.unsigned_int_max() };
                 Some(val)
@@ -955,7 +955,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = int_size_and_signed(tcx, self);
+                let (size, signed) = self.int_size_and_signed(tcx);
                 let val = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
                 Some(val)
             }
