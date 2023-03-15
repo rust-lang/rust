@@ -118,6 +118,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
+    #[inline(always)]
     pub fn for_each_relevant_impl(
         self,
         trait_def_id: DefId,
@@ -132,6 +133,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    #[inline(always)]
     pub fn for_each_relevant_impl_treating_projections(
         self,
         trait_def_id: DefId,
