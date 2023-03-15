@@ -77,11 +77,13 @@ pub use core::slice::{SplitInclusive, SplitInclusiveMut};
 // HACK(japaric) needed for the implementation of `vec!` macro during testing
 // N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
+#[allow(missing_docs)]
 pub use hack::into_vec;
 
 // HACK(japaric) needed for the implementation of `Vec::clone` during testing
 // N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
+#[allow(missing_docs)]
 pub use hack::to_vec;
 
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
