@@ -11,7 +11,6 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use crate::visit::DocVisitor;
-use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
@@ -95,7 +94,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     }
 
     if cx.tcx.is_doc_hidden(def_id.to_def_id())
-        || inherits_doc_hidden(cx.tcx, def_id)
+        || cx.tcx.inherits_doc_hidden(def_id)
         || cx.tcx.def_span(def_id.to_def_id()).in_derive_expansion()
     {
         return false;

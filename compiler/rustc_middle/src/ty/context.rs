@@ -931,6 +931,31 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
+
+    /// Returns `true` if the provided `def_id` has any ancestor with the `#[doc(hidden)]`
+    /// attribute.
+    ///
+    /// It doesn't check if `def_id` itself has this attribute though. You will need to use
+    /// [`TyCtxt::is_doc_hidden`] to get this information.
+    pub fn inherits_doc_hidden(self, mut def_id: LocalDefId) -> bool {
+        let hir = self.hir();
+        while let Some(id) = self.opt_local_parent(def_id) {
+            def_id = id;
+            if self.is_doc_hidden(def_id.to_def_id()) {
+                return true;
+            } else if let Some(node) = hir.find_by_def_id(def_id) &&
+                matches!(
+                    node,
+                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
+                )
+            {
+                // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+                // on them, they don't inherit it from the parent context.
+                return false;
+            }
+        }
+        false
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

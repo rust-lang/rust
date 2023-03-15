@@ -59,26 +59,6 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: LocalDefId) -> bool {
-    let hir = tcx.hir();
-    while let Some(id) = tcx.opt_local_parent(def_id) {
-        def_id = id;
-        if tcx.is_doc_hidden(def_id.to_def_id()) {
-            return true;
-        } else if let Some(node) = hir.find_by_def_id(def_id) &&
-            matches!(
-                node,
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
-            )
-        {
-            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
-            // on them, they don't inherit it from the parent context.
-            return false;
-        }
-    }
-    false
-}
-
 pub(crate) struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
     view_item_stack: LocalDefIdSet,
@@ -258,7 +238,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let is_private =
             !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, ori_res_did);
-        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did);
+        let is_hidden = self.cx.tcx.inherits_doc_hidden(res_did);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -279,7 +259,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .cache
                 .effective_visibilities
                 .is_directly_public(self.cx.tcx, item_def_id.to_def_id()) &&
-            !inherits_doc_hidden(self.cx.tcx, item_def_id)
+            !self.cx.tcx.inherits_doc_hidden(item_def_id)
         {
             // The imported item is public and not `doc(hidden)` so no need to inline it.
             return false;

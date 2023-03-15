@@ -9,7 +9,6 @@ use crate::clean::{Item, ItemIdSet, NestedAttributesExt};
 use crate::core::DocContext;
 use crate::fold::{strip_item, DocFolder};
 use crate::passes::{ImplStripper, Pass};
-use crate::visit_ast::inherits_doc_hidden;
 
 pub(crate) const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
@@ -92,7 +91,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
                     .item_id
                     .as_def_id()
                     .and_then(|def_id| def_id.as_local())
-                    .map(|def_id| inherits_doc_hidden(self.tcx, def_id))
+                    .map(|def_id| self.tcx.inherits_doc_hidden(def_id))
                     .unwrap_or(false);
             }
         }
