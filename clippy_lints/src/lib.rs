@@ -67,7 +67,7 @@ mod declared_lints;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
-mod allow_attribute;
+mod allow_attributes;
 mod almost_complete_range;
 mod approx_const;
 mod as_conversions;
@@ -934,7 +934,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
     store.register_early_pass(|| Box::new(redundant_async_block::RedundantAsyncBlock));
     store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
-    store.register_late_pass(|_| Box::new(allow_attribute::AllowAttribute));
+    store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

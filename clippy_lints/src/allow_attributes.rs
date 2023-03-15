@@ -40,12 +40,12 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.69.0"]
-    pub ALLOW_ATTRIBUTE,
+    pub ALLOW_ATTRIBUTES,
     restriction,
     "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
 }
 
-declare_lint_pass!(AllowAttribute => [ALLOW_ATTRIBUTE]);
+declare_lint_pass!(AllowAttribute => [ALLOW_ATTRIBUTES]);
 
 impl LateLintPass<'_> for AllowAttribute {
     // Separate each crate's features.
@@ -58,7 +58,7 @@ impl LateLintPass<'_> for AllowAttribute {
             then {
                 span_lint_and_sugg(
                     cx,
-                    ALLOW_ATTRIBUTE,
+                    ALLOW_ATTRIBUTES,
                     ident.span,
                     "#[allow] attribute found",
                     "replace it with", "expect".into()
