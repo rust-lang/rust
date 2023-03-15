@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
@@ -144,7 +144,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .eq(lhs, rhs)
+            .eq(DefineOpaqueTypes::No, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 obligations.into_iter().map(|o| o.into()).collect()
             })

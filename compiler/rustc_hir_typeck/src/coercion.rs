@@ -45,7 +45,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
@@ -143,11 +143,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
-            let at = self.at(&self.cause, self.fcx.param_env).define_opaque_types(true);
+            let at = self.at(&self.cause, self.fcx.param_env);
             if self.use_lub {
-                at.lub(b, a)
+                at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
-                at.sup(b, a)
+                at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
             }
         })
@@ -175,7 +175,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // so this will have the side-effect of making sure we have no ambiguities
             // due to `[type error]` and `_` not coercing together.
             let _ = self.commit_if_ok(|_| {
-                self.at(&self.cause, self.param_env).define_opaque_types(true).eq(a, b)
+                self.at(&self.cause, self.param_env).eq(DefineOpaqueTypes::Yes, a, b)
             });
             return success(vec![], self.fcx.tcx.ty_error(guar), vec![]);
         }
@@ -1101,9 +1101,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self
-                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        {
+                        match self.commit_if_ok(|_| {
+                            self.at(cause, self.param_env).lub(
+                                DefineOpaqueTypes::No,
+                                prev_ty,
+                                new_ty,
+                            )
+                        }) {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
@@ -1153,7 +1157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
-                .lub(a_sig, b_sig)
+                .lub(DefineOpaqueTypes::No, a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1237,7 +1241,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return self
-                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                    .commit_if_ok(|_| {
+                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::No, prev_ty, new_ty)
+                    })
                     .map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
@@ -1248,8 +1254,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(e) = first_error {
                     Err(e)
                 } else {
-                    self.commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        .map(|ok| self.register_infer_ok_obligations(ok))
+                    self.commit_if_ok(|_| {
+                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::No, prev_ty, new_ty)
+                    })
+                    .map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
             Ok(ok) => {
@@ -1487,8 +1495,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
                 // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                .define_opaque_types(true)
-                .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
+                .eq_exp(
+                    DefineOpaqueTypes::Yes,
+                    label_expression_as_expected,
+                    expression_ty,
+                    self.merged_ty(),
+                )
                 .map(|infer_ok| {
                     fcx.register_infer_ok_obligations(infer_ok);
                     expression_ty

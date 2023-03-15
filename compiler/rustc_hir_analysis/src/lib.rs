@@ -102,7 +102,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_macros::fluent_messages;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
@@ -165,7 +165,7 @@ fn require_same_types<'tcx>(
 ) -> bool {
     let infcx = &tcx.infer_ctxt().build();
     let param_env = ty::ParamEnv::empty();
-    let errors = match infcx.at(cause, param_env).eq(expected, actual) {
+    let errors = match infcx.at(cause, param_env).eq(DefineOpaqueTypes::No, expected, actual) {
         Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
         Err(err) => {
             infcx.err_ctxt().report_mismatched_types(cause, expected, actual, err).emit();
