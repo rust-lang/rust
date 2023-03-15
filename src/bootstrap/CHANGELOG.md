@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   from the default rust toolchain. [#78513](https://github.com/rust-lang/rust/pull/78513)
 - Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
 - Add llvm option `enable-warnings` to have control on llvm compilation warnings. Default to false.
+- Add a `RUSTC_EMIT` environment variable which passes on `--emit` to `rustc`. [#108365](https://github.com/rust-lang/rust/pull/108365)
 
 
 ## [Version 2] - 2020-09-25
