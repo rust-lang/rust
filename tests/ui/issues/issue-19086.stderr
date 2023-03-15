@@ -5,7 +5,7 @@ LL |     FooB { x: i32, y: i32 }
    |     ----------------------- `FooB` defined here
 ...
 LL |         FooB(a, b) => println!("{} {}", a, b),
-   |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x, y }`
+   |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: b }`
 
 error: aborting due to previous error
 
