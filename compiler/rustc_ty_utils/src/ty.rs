@@ -268,8 +268,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) need to project to the opaque, could
-            // get it via type_of + subst.
             && self.tcx.is_impl_trait_in_trait(alias_ty.def_id)
             && self.tcx.impl_trait_in_trait_parent_fn(alias_ty.def_id) == self.fn_def_id
             && self.seen.insert(alias_ty.def_id)
@@ -284,11 +282,24 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                     re
                 }
             });
+
+            // If we're lowering to associated item, install the opaque type which is just
+            // the `type_of` of the trait's associated item. If we're using the old lowering
+            // strategy, then just reinterpret the associated type like an opaque :^)
+            let default_ty = if self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
+                self
+                    .tcx
+                    .type_of(alias_ty.def_id)
+                    .subst(self.tcx, alias_ty.substs)
+            } else {
+                self.tcx.mk_alias(ty::Opaque, alias_ty)
+            };
+
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: alias_ty,
-                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
+                        term: default_ty.into(),
                     },
                     self.bound_vars,
                 )
