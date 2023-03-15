@@ -28,9 +28,7 @@ pub(crate) fn unsized_info<'tcx>(
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
             &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) => {
-            assert_eq!(src_dyn_kind, target_dyn_kind);
-
+        ) if src_dyn_kind == target_dyn_kind => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -55,7 +53,7 @@ pub(crate) fn unsized_info<'tcx>(
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
+        (_, ty::Dynamic(data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }

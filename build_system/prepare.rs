@@ -6,6 +6,7 @@ use std::process::Command;
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_default_sysroot, get_rustc_version};
+use super::tests::LIBCORE_TESTS_SRC;
 use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
@@ -13,8 +14,10 @@ pub(crate) fn prepare(dirs: &Dirs) {
 
     spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", "rustc", dirs));
 
-    prepare_sysroot(dirs);
+    prepare_stdlib(dirs);
     spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", "rustc", dirs));
+
+    prepare_coretests(dirs);
     spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", "rustc", dirs));
 
     super::tests::RAND_REPO.fetch(dirs);
@@ -25,11 +28,11 @@ pub(crate) fn prepare(dirs: &Dirs) {
     spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", "rustc", dirs));
 }
 
-fn prepare_sysroot(dirs: &Dirs) {
+fn prepare_stdlib(dirs: &Dirs) {
     let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    eprintln!("[COPY] sysroot src");
+    eprintln!("[COPY] stdlib src");
 
     // FIXME ensure builds error out or update the copy if any of the files copied here change
     BUILD_SYSROOT.ensure_fresh(dirs);
@@ -47,7 +50,25 @@ fn prepare_sysroot(dirs: &Dirs) {
     eprintln!("[GIT] init");
     init_git_repo(&SYSROOT_SRC.to_path(dirs));
 
-    apply_patches(dirs, "sysroot", &SYSROOT_SRC.to_path(dirs));
+    apply_patches(dirs, "stdlib", &SYSROOT_SRC.to_path(dirs));
+}
+
+fn prepare_coretests(dirs: &Dirs) {
+    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
+    assert!(sysroot_src_orig.exists());
+
+    eprintln!("[COPY] coretests src");
+
+    fs::create_dir_all(LIBCORE_TESTS_SRC.to_path(dirs)).unwrap();
+    copy_dir_recursively(
+        &sysroot_src_orig.join("library/core/tests"),
+        &LIBCORE_TESTS_SRC.to_path(dirs),
+    );
+
+    eprintln!("[GIT] init");
+    init_git_repo(&LIBCORE_TESTS_SRC.to_path(dirs));
+
+    apply_patches(dirs, "coretests", &LIBCORE_TESTS_SRC.to_path(dirs));
 }
 
 pub(crate) struct GitRepo {

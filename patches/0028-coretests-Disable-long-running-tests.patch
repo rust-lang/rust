@@ -7,10 +7,10 @@ Subject: [PATCH] Disable long running tests
  library/core/tests/slice.rs | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
+diff --git a/slice.rs b/slice.rs
 index 8402833..84592e0 100644
---- a/library/core/tests/slice.rs
-+++ b/library/core/tests/slice.rs
+--- a/slice.rs
++++ b/slice.rs
 @@ -1809,6 +1809,7 @@ fn sort_unstable() {
      assert!(v == [0xDEADBEEF]);
  }

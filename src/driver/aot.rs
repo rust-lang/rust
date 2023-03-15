@@ -377,7 +377,7 @@ pub(crate) fn run_aot(
     };
 
     if tcx.dep_graph.is_fully_enabled() {
-        for cgu in &*cgus {
+        for cgu in cgus {
             tcx.ensure().codegen_unit(cgu.name());
         }
     }
@@ -417,7 +417,7 @@ pub(crate) fn run_aot(
                     CguReuse::PreLto => unreachable!(),
                     CguReuse::PostLto => {
                         concurrency_limiter.job_already_done();
-                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, &*cgu))
+                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
                     }
                 }
             })

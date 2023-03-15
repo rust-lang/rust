@@ -19,8 +19,8 @@ index 217899e..9cedeb7 100644
 +    // This is broken on x86_64-pc-windows-gnu presumably due to a broken powf implementation
 +    #[cfg_attr(all(target_os = "windows", target_env = "gnu"), ignore)]
      fn value_stability() {
-         fn test_samples<F: Float + core::fmt::Debug, D: Distribution<F>>(
-             distr: D, zero: F, expected: &[F],
+         fn test_samples<F: Float + Debug + Display + LowerExp, D: Distribution<F>>(
+             distr: D, thresh: F, expected: &[F],
 diff --git a/rand_distr/tests/value_stability.rs b/rand_distr/tests/value_stability.rs
 index 192ba74..0101ace 100644
 --- a/rand_distr/tests/value_stability.rs

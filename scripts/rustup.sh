@@ -2,10 +2,24 @@
 
 set -e
 
+TOOLCHAIN=${TOOLCHAIN:-$(date +%Y-%m-%d)}
+
+function check_git_fixed_subtree() {
+    if [[ ! -e ./git-fixed-subtree.sh ]]; then
+        echo "Missing git-fixed-subtree.sh. Please run the following commands to download it:"
+        echo "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/bjorn3/git/tqc-subtree-portable/contrib/subtree/git-subtree.sh -o git-fixed-subtree.sh"
+        echo "chmod u+x git-fixed-subtree.sh"
+        exit 1
+    fi
+    if [[ ! -x ./git-fixed-subtree.sh ]]; then
+        echo "git-fixed-subtree.sh is not executable. Please run the following command to make it executable:"
+        echo "chmod u+x git-fixed-subtree.sh"
+        exit 1
+    fi
+}
+
 case $1 in
     "prepare")
-        TOOLCHAIN=$(date +%Y-%m-%d)
-
         echo "=> Installing new nightly"
         rustup toolchain install --profile minimal "nightly-${TOOLCHAIN}" # Sanity check to see if the nightly exists
         sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain
@@ -27,28 +41,35 @@ case $1 in
         git commit -m "Rustup to $(rustc -V)"
         ;;
     "push")
+        check_git_fixed_subtree
+
         cg_clif=$(pwd)
         pushd ../rust
         git pull origin master
         branch=sync_cg_clif-$(date +%Y-%m-%d)
         git checkout -b "$branch"
-        git subtree pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/bjorn3/rustc_codegen_cranelift.git master
+        "$cg_clif/git-fixed-subtree.sh" pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/bjorn3/rustc_codegen_cranelift.git master
         git push -u my "$branch"
 
         # immediately merge the merge commit into cg_clif to prevent merge conflicts when syncing
         # from rust-lang/rust later
-        git subtree push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
+        "$cg_clif/git-fixed-subtree.sh" push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
         popd
         git merge sync_from_rust
 	;;
     "pull")
+        check_git_fixed_subtree
+
+        RUST_VERS=$(curl "https://static.rust-lang.org/dist/$TOOLCHAIN/channel-rust-nightly-git-commit-hash.txt")
+        echo "Pulling $RUST_VERS ($TOOLCHAIN)"
+
         cg_clif=$(pwd)
         pushd ../rust
-        git pull origin master
-        rust_vers="$(git rev-parse HEAD)"
-        git subtree push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
+        git fetch origin master
+        git checkout "$RUST_VERS"
+        "$cg_clif/git-fixed-subtree.sh" push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
         popd
-        git merge sync_from_rust -m "Sync from rust $rust_vers"
+        git merge sync_from_rust -m "Sync from rust $RUST_VERS"
         git branch -d sync_from_rust
         ;;
     *)

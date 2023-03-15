@@ -50,9 +50,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.86"
+version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dae98c88e576098d7ab13ebcb40cc43e5114b2beafe61a87cda9200649ff205"
+checksum = "9fc9c2080d347a2c316518840ac9194644a9993dfa1e9778ef38979a339f5d8b"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -117,21 +117,20 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.2.6"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
+checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 dependencies = [
  "compiler_builtins",
- "libc",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
 
 [[package]]
 name = "libc"
-version = "0.2.139"
+version = "0.2.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -282,10 +281,8 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "core",
  "getopts",
- "libc",
  "panic_abort",
  "panic_unwind",
  "proc_macro",
