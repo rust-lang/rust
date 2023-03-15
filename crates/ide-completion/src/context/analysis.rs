@@ -353,7 +353,7 @@ fn expected_type_and_name(
         _ => ty,
     };
 
-    loop {
+    let (ty, name) = loop {
         break match_ast! {
             match node {
                 ast::LetStmt(it) => {
@@ -385,9 +385,7 @@ fn expected_type_and_name(
                        token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
-
-                        let ty = strip_refs(ap.ty);
-                        (Some(ty), name)
+                        (Some(ap.ty), name)
                     })
                     .unwrap_or((None, None))
                 },
@@ -489,7 +487,8 @@ fn expected_type_and_name(
                 },
             }
         };
-    }
+    };
+    (ty.map(strip_refs), name)
 }
 
 fn classify_lifetime(
