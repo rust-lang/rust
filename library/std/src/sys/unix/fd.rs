@@ -44,6 +44,7 @@ const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
@@ -69,6 +70,7 @@ const fn max_iov() -> usize {
     target_os = "emscripten",
     target_os = "freebsd",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "linux",
     target_os = "macos",
     target_os = "netbsd",
@@ -181,6 +183,7 @@ impl FileDesc {
         target_os = "fuchsia",
         target_os = "illumos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "linux",
         target_os = "macos",
         target_os = "netbsd",
@@ -222,6 +225,7 @@ impl FileDesc {
     #[cfg(any(
         all(target_os = "android", target_pointer_width = "32"),
         target_os = "ios",
+        target_os = "tvos",
         target_os = "macos",
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -320,6 +324,7 @@ impl FileDesc {
         target_os = "fuchsia",
         target_os = "illumos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "linux",
         target_os = "macos",
         target_os = "netbsd",
@@ -361,6 +366,7 @@ impl FileDesc {
     #[cfg(any(
         all(target_os = "android", target_pointer_width = "32"),
         target_os = "ios",
+        target_os = "tvos",
         target_os = "macos",
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {

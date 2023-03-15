@@ -87,6 +87,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             // The poll on Darwin doesn't set POLLNVAL for closed fds.
             target_os = "macos",
             target_os = "ios",
+            target_os = "tvos",
             target_os = "watchos",
             target_os = "redox",
             target_os = "l4re",
