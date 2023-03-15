@@ -275,7 +275,23 @@ impl<'a> InferenceContext<'a> {
                     Some(type_ref) => self.make_ty(type_ref),
                     None => self.table.new_type_var(),
                 };
-                sig_tys.push(ret_ty.clone());
+                if let ClosureKind::Async = closure_kind {
+                    // Use the first type parameter as the output type of future.
+                    // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
+                    let impl_trait_id =
+                        crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
+                    let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
+                    sig_tys.push(
+                        TyKind::OpaqueType(
+                            opaque_ty_id,
+                            Substitution::from1(Interner, ret_ty.clone()),
+                        )
+                        .intern(Interner),
+                    );
+                } else {
+                    sig_tys.push(ret_ty.clone());
+                }
+
                 let sig_ty = TyKind::Function(FnPointer {
                     num_binders: 0,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
@@ -286,7 +302,7 @@ impl<'a> InferenceContext<'a> {
                 })
                 .intern(Interner);
 
-                let (closure_id, ty, resume_yield_tys) = match closure_kind {
+                let (ty, resume_yield_tys) = match closure_kind {
                     ClosureKind::Generator(_) => {
                         // FIXME: report error when there are more than 1 parameter.
                         let resume_ty = match sig_tys.first() {
@@ -306,9 +322,9 @@ impl<'a> InferenceContext<'a> {
                         let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
                         let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
 
-                        (None, generator_ty, Some((resume_ty, yield_ty)))
+                        (generator_ty, Some((resume_ty, yield_ty)))
                     }
-                    ClosureKind::Async | ClosureKind::Closure => {
+                    ClosureKind::Closure | ClosureKind::Async => {
                         let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                         let closure_ty = TyKind::Closure(
                             closure_id,
@@ -316,7 +332,7 @@ impl<'a> InferenceContext<'a> {
                         )
                         .intern(Interner);
 
-                        (Some(closure_id), closure_ty, None)
+                        (closure_ty, None)
                     }
                 };
 
@@ -338,47 +354,16 @@ impl<'a> InferenceContext<'a> {
                 let prev_resume_yield_tys =
                     mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
-                let (breaks, ()) =
-                    self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                        this.infer_return(*body);
-                    });
-
-                let inner_ty = if matches!(closure_kind, ClosureKind::Async) {
-                    // Use the first type parameter as the output type of future.
-                    // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
-                    let impl_trait_id =
-                        crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
-                    let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-                    TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, ret_ty.clone()))
-                        .intern(Interner)
-                } else {
-                    ret_ty.clone()
-                };
+                self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
+                    this.infer_return(*body);
+                });
 
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
                 self.return_coercion = prev_ret_coercion;
                 self.resume_yield_tys = prev_resume_yield_tys;
 
-                sig_tys.pop();
-                sig_tys.push(inner_ty);
-
-                let sig_ty = TyKind::Function(FnPointer {
-                    num_binders: 0,
-                    sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
-                    substitution: FnSubst(
-                        Substitution::from_iter(Interner, sig_tys.clone()).shifted_in(Interner),
-                    ),
-                })
-                .intern(Interner);
-
-                match closure_id {
-                    Some(closure_id) => {
-                        TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
-                            .intern(Interner)
-                    }
-                    None => ty,
-                }
+                ty
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());

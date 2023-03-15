@@ -360,8 +360,14 @@ impl<'a> Printer<'a> {
                 w!(self, "]");
             }
             Expr::Closure { args, arg_types, ret_type, body, closure_kind } => {
-                if let ClosureKind::Generator(Movability::Static) = closure_kind {
-                    w!(self, "static ");
+                match closure_kind {
+                    ClosureKind::Generator(Movability::Static) => {
+                        w!(self, "static ");
+                    }
+                    ClosureKind::Async => {
+                        w!(self, "async ");
+                    }
+                    _ => (),
                 }
                 w!(self, "|");
                 for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
@@ -375,20 +381,9 @@ impl<'a> Printer<'a> {
                     }
                 }
                 w!(self, "|");
-                match (ret_type, closure_kind) {
-                    (Some(ret_ty), ClosureKind::Async) => {
-                        w!(self, " -> impl Future<Output = ");
-                        self.print_type_ref(ret_ty);
-                        w!(self, ">");
-                    }
-                    (Some(ret_ty), _) => {
-                        w!(self, " -> ");
-                        self.print_type_ref(ret_ty);
-                    }
-                    (None, ClosureKind::Async) => {
-                        w!(self, " -> impl Future<Output = {{unknown}}>");
-                    }
-                    (None, _) => {}
+                if let Some(ret_ty) = ret_type {
+                    w!(self, " -> ");
+                    self.print_type_ref(ret_ty);
                 }
                 self.whitespace();
                 self.print_expr(*body);
