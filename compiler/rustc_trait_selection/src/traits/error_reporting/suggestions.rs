@@ -956,7 +956,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .join(", ");
 
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
-            && match obligation.cause.span.ctxt().outer_expn_data().kind {
+            && match obligation.cause.span.peel_ctxt().ctxt().outer_expn_data().kind {
                 ExpnKind::Root
                 | ExpnKind::AstPass(_)
                 | ExpnKind::Desugaring(_)
@@ -1248,7 +1248,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             obligation.cause.code()
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
-            span.ctxt().outer_expn_data().kind
+            span.peel_ctxt().ctxt().outer_expn_data().kind
         {
             obligation.cause.code()
         } else {
@@ -1323,7 +1323,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // }
                     // ```
                     if !matches!(
-                        span.ctxt().outer_expn_data().kind,
+                        span.peel_ctxt().ctxt().outer_expn_data().kind,
                         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
                     ) {
                         return false;
