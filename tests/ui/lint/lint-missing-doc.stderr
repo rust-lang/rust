@@ -117,18 +117,36 @@ error: missing documentation for a function
    |
 LL |     pub fn undocumented1() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because it is re-exported here
+  --> $DIR/lint-missing-doc.rs:183:5
+   |
+LL |     pub use internal_impl::undocumented1 as bar;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:170:5
    |
 LL |     pub fn undocumented2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because it is re-exported here
+  --> $DIR/lint-missing-doc.rs:184:41
+   |
+LL |     pub use internal_impl::{documented, undocumented2};
+   |                                         ^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:176:9
    |
 LL |         pub fn also_undocumented1() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because it is re-exported here
+  --> $DIR/lint-missing-doc.rs:185:5
+   |
+LL |     pub use internal_impl::globbed::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:191:5

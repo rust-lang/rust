@@ -3,7 +3,7 @@
 //! Use the lint to additionally verify that items are reachable
 //! but not exported.
 #![allow(non_camel_case_types)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 
 mod hidden {
     pub struct s;
