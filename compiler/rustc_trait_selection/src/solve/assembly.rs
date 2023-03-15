@@ -2,11 +2,13 @@
 
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::EvalCtxt;
 use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
+use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
@@ -247,7 +249,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
     /// self type to the list of candidates in case that succeeds. Note that we can't just eagerly return in
-    /// this case as projections as self types add `
+    /// this case as projections as self types add
+    // FIXME complete the unfinished sentence above
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -297,9 +300,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        tcx.for_each_relevant_impl(
+        tcx.for_each_relevant_impl_treating_projections(
             goal.predicate.trait_def_id(tcx),
             goal.predicate.self_ty(),
+            TreatProjections::NextSolverLookup,
             |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(result) => candidates
                     .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),

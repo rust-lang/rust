@@ -960,6 +960,7 @@ impl AtomicBool {
     /// ```ignore (extern-declaration)
     /// # fn main() {
     /// use std::sync::atomic::AtomicBool;
+    ///
     /// extern "C" {
     ///     fn my_atomic_op(arg: *mut bool);
     /// }
@@ -971,7 +972,8 @@ impl AtomicBool {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
+    #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_ptr(&self) -> *mut bool {
         self.v.get().cast()
     }
@@ -1890,7 +1892,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// #![feature(atomic_mut_ptr)]
     /// use std::sync::atomic::AtomicPtr;
     ///
     /// extern "C" {
@@ -1906,7 +1907,8 @@ impl<T> AtomicPtr<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
+    #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_ptr(&self) -> *mut *mut T {
         self.p.get()
     }
@@ -2859,9 +2861,8 @@ macro_rules! atomic_int {
             /// # }
             /// ```
             #[inline]
-            #[unstable(feature = "atomic_mut_ptr",
-                   reason = "recently added",
-                   issue = "66893")]
+            #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
             pub const fn as_ptr(&self) -> *mut $int_type {
                 self.v.get()
             }

@@ -13,7 +13,7 @@ pub(crate) enum Node<L> {
     Root { childs: Vec<Node<L>> },
     Directory { name: PathBuf, childs: Vec<Node<L>>, license: Option<L> },
     File { name: PathBuf, license: L },
-    FileGroup { names: Vec<PathBuf>, license: L },
+    Group { files: Vec<PathBuf>, directories: Vec<PathBuf>, license: L },
     Empty,
 }
 
@@ -22,7 +22,7 @@ impl Node<LicenseId> {
         self.merge_directories();
         self.collapse_in_licensed_directories();
         self.merge_directory_licenses();
-        self.merge_file_groups();
+        self.merge_groups();
         self.remove_empty();
     }
 
@@ -64,8 +64,8 @@ impl Node<LicenseId> {
                         Node::Root { .. } => {
                             panic!("can't have a root inside another element");
                         }
-                        Node::FileGroup { .. } => {
-                            panic!("FileGroup should not be present at this stage");
+                        Node::Group { .. } => {
+                            panic!("Group should not be present at this stage");
                         }
                         Node::Directory { license: Some(_), .. } => {
                             panic!("license should not be set at this stage");
@@ -86,8 +86,8 @@ impl Node<LicenseId> {
             }
             Node::Empty => {}
             Node::File { .. } => {}
-            Node::FileGroup { .. } => {
-                panic!("FileGroup should not be present at this stage");
+            Node::Group { .. } => {
+                panic!("Group should not be present at this stage");
             }
             Node::Directory { license: Some(_), .. } => {
                 panic!("license should not be set at this stage");
@@ -132,7 +132,7 @@ impl Node<LicenseId> {
                 }
             }
             Node::File { .. } => {}
-            Node::FileGroup { .. } => {}
+            Node::Group { .. } => panic!("group should not be present at this stage"),
             Node::Empty => {}
         }
     }
@@ -165,8 +165,8 @@ impl Node<LicenseId> {
                             Node::Root { .. } => {
                                 panic!("can't have a root inside another element");
                             }
-                            Node::FileGroup { .. } => {
-                                panic!("FileGroup should not be present at this stage");
+                            Node::Group { .. } => {
+                                panic!("Group should not be present at this stage");
                             }
                             Node::Directory { name: child_child_name, .. } => {
                                 *child_child_name = child_name.join(&child_child_name);
@@ -185,38 +185,74 @@ impl Node<LicenseId> {
             }
             Node::Empty => {}
             Node::File { .. } => {}
-            Node::FileGroup { .. } => {}
+            Node::Group { .. } => panic!("Group should not be present at this stage"),
         }
     }
 
     /// This pass groups multiple files in a directory with the same license into a single
-    /// "FileGroup", so that the license of all those files can be reported as a group.
+    /// "Group", so that the license of all those files can be reported as a group.
+    ///
+    /// This also merges directories *without exceptions*.
     ///
     /// Crucially this pass runs after collapse_in_licensed_directories, so the most common license
     /// will already be marked as the directory's license and won't be turned into a group.
-    fn merge_file_groups(&mut self) {
+    fn merge_groups(&mut self) {
+        #[derive(Default)]
+        struct Grouped {
+            files: Vec<PathBuf>,
+            directories: Vec<PathBuf>,
+        }
         match self {
             Node::Root { childs } | Node::Directory { childs, .. } => {
-                let mut grouped = BTreeMap::new();
+                let mut grouped: BTreeMap<LicenseId, Grouped> = BTreeMap::new();
 
                 for child in &mut *childs {
-                    child.merge_file_groups();
-                    if let Node::File { name, license } = child {
-                        grouped.entry(*license).or_insert_with(Vec::new).push(name.clone());
-                        *child = Node::Empty;
+                    child.merge_groups();
+                    match child {
+                        Node::Directory { name, childs, license: Some(license) } => {
+                            if childs.is_empty() {
+                                grouped
+                                    .entry(*license)
+                                    .or_insert_with(Grouped::default)
+                                    .directories
+                                    .push(name.clone());
+                                *child = Node::Empty;
+                            }
+                        }
+                        Node::File { name, license } => {
+                            grouped
+                                .entry(*license)
+                                .or_insert_with(Grouped::default)
+                                .files
+                                .push(name.clone());
+                            *child = Node::Empty;
+                        }
+                        _ => {}
                     }
                 }
 
-                for (license, mut names) in grouped.into_iter() {
-                    if names.len() == 1 {
-                        childs.push(Node::File { license, name: names.pop().unwrap() });
+                for (license, mut grouped) in grouped.into_iter() {
+                    if grouped.files.len() + grouped.directories.len() <= 1 {
+                        if let Some(name) = grouped.files.pop() {
+                            childs.push(Node::File { license, name });
+                        } else if let Some(name) = grouped.directories.pop() {
+                            childs.push(Node::Directory {
+                                name,
+                                childs: Vec::new(),
+                                license: Some(license),
+                            });
+                        }
                     } else {
-                        childs.push(Node::FileGroup { license, names });
+                        childs.push(Node::Group {
+                            license,
+                            files: grouped.files,
+                            directories: grouped.directories,
+                        });
                     }
                 }
             }
             Node::File { .. } => {}
-            Node::FileGroup { .. } => panic!("FileGroup should not be present at this stage"),
+            Node::Group { .. } => panic!("FileGroup should not be present at this stage"),
             Node::Empty => {}
         }
     }
@@ -231,7 +267,7 @@ impl Node<LicenseId> {
                 }
                 childs.retain(|child| !matches!(child, Node::Empty));
             }
-            Node::FileGroup { .. } => {}
+            Node::Group { .. } => {}
             Node::File { .. } => {}
             Node::Empty => {}
         }
@@ -278,16 +314,22 @@ pub(crate) fn expand_interned_licenses(
 ) -> Node<&License> {
     match node {
         Node::Root { childs } => Node::Root {
-            childs: childs.into_iter().map(|child| strip_interning(child, interner)).collect(),
+            childs: childs
+                .into_iter()
+                .map(|child| expand_interned_licenses(child, interner))
+                .collect(),
         },
         Node::Directory { name, childs, license } => Node::Directory {
-            childs: childs.into_iter().map(|child| strip_interning(child, interner)).collect(),
+            childs: childs
+                .into_iter()
+                .map(|child| expand_interned_licenses(child, interner))
+                .collect(),
             license: license.map(|license| interner.resolve(license)),
             name,
         },
         Node::File { name, license } => Node::File { name, license: interner.resolve(license) },
-        Node::FileGroup { names, license } => {
-            Node::FileGroup { names, license: interner.resolve(license) }
+        Node::Group { files, directories, license } => {
+            Node::Group { files, directories, license: interner.resolve(license) }
         }
         Node::Empty => Node::Empty,
     }

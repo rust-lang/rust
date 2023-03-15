@@ -36,8 +36,8 @@ fn render_recursive(node: &Node, buffer: &mut Vec<u8>, depth: usize) -> Result<(
                 }
             }
         }
-        Node::FileGroup { names, license } => {
-            render_license(&prefix, names.iter(), license, buffer)?;
+        Node::Group { files, directories, license } => {
+            render_license(&prefix, directories.iter().chain(files.iter()), license, buffer)?;
         }
         Node::File { name, license } => {
             render_license(&prefix, std::iter::once(name), license, buffer)?;
@@ -76,7 +76,7 @@ pub(crate) enum Node {
     Root { childs: Vec<Node> },
     Directory { name: String, childs: Vec<Node>, license: License },
     File { name: String, license: License },
-    FileGroup { names: Vec<String>, license: License },
+    Group { files: Vec<String>, directories: Vec<String>, license: License },
 }
 
 #[derive(serde::Deserialize)]

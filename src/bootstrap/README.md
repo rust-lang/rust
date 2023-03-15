@@ -185,7 +185,7 @@ Some general areas that you may be interested in modifying are:
 If you make a major change, please remember to:
 
 + Update `VERSION` in `src/bootstrap/main.rs`.
-* Update `changelog-seen = N` in `config.toml.example`.
+* Update `changelog-seen = N` in `config.example.toml`.
 * Add an entry in `src/bootstrap/CHANGELOG.md`.
 
 A 'major change' includes

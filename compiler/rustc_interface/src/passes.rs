@@ -11,7 +11,7 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
-use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
+use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
@@ -26,7 +26,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, Untracked};
+use rustc_session::cstore::{MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -178,7 +178,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
+    pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -302,6 +302,16 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
     // Done with macro expansion!
 
+    resolver.resolve_crate(&krate);
+
+    krate
+}
+
+fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
+    let sess = tcx.sess;
+    let (resolver, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let mut lint_buffer = resolver.lint_buffer.steal();
+
     if sess.opts.unstable_opts.input_stats {
         eprintln!("Post-expansion node count: {}", count_nodes(&krate));
     }
@@ -309,8 +319,6 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     if sess.opts.unstable_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
-
-    resolver.resolve_crate(&krate);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
@@ -321,7 +329,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for early_lint in buffered_lints.drain(..) {
-            resolver.lint_buffer().add_early_lint(early_lint);
+            lint_buffer.add_early_lint(early_lint);
         }
     });
 
@@ -340,20 +348,16 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         }
     });
 
-    sess.time("early_lint_checks", || {
-        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
-        rustc_lint::check_ast_node(
-            sess,
-            false,
-            lint_store,
-            resolver.registered_tools(),
-            lint_buffer,
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-            &krate,
-        )
-    });
-
-    krate
+    let lint_store = unerased_lint_store(tcx);
+    rustc_lint::check_ast_node(
+        sess,
+        false,
+        lint_store,
+        tcx.registered_tools(()),
+        Some(lint_buffer),
+        rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+        &**krate,
+    )
 }
 
 // Returns all the paths that correspond to generated files.
@@ -438,13 +442,9 @@ fn escape_dep_env(symbol: Symbol) -> String {
     escaped
 }
 
-fn write_out_deps(
-    sess: &Session,
-    cstore: &CrateStoreDyn,
-    outputs: &OutputFilenames,
-    out_filenames: &[PathBuf],
-) {
+fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     // Write out dependency rules to the dep-info file if requested
+    let sess = tcx.sess;
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
@@ -492,9 +492,8 @@ fn write_out_deps(
                 }
             }
 
-            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
-            for cnum in cstore.crates_untracked() {
-                let source = cstore.crate_source_untracked(cnum);
+            for &cnum in tcx.crates(()) {
+                let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
                     files.push(escape_dep_filename(&path.display().to_string()));
                 }
@@ -557,6 +556,7 @@ fn resolver_for_lowering<'tcx>(
     (): (),
 ) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
     let arenas = Resolver::arenas();
+    let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let krate = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(tcx, &krate, &arenas);
     let krate = configure_and_expand(krate, &mut resolver);
@@ -607,7 +607,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, &*tcx.cstore_untracked(), &outputs, &output_paths);
+    write_out_deps(tcx, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -629,6 +629,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
     providers.resolver_for_lowering = resolver_for_lowering;
+    providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -637,6 +638,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
+    rustc_resolve::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);

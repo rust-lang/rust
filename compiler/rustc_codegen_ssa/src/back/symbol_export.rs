@@ -1,3 +1,5 @@
+use crate::base::allocator_kind_for_codegen;
+
 use std::collections::hash_map::Entry::*;
 
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
@@ -200,7 +202,8 @@ fn exported_symbols_provider_local(
         ));
     }
 
-    if tcx.allocator_kind(()).is_some() {
+    // Mark allocator shim symbols as exported only if they were generated.
+    if allocator_kind_for_codegen(tcx).is_some() {
         for symbol_name in ALLOCATOR_METHODS
             .iter()
             .map(|method| format!("__rust_{}", method.name))

@@ -14,7 +14,7 @@ use syntax::{
     SyntaxNode, SyntaxToken, TextRange, T,
 };
 
-use crate::{references, NavigationTarget, TryToNav};
+use crate::{navigation_target::ToNav, references, NavigationTarget, TryToNav};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
@@ -98,32 +98,39 @@ fn highlight_references(
             category: access,
         });
     let mut res = FxHashSet::default();
-
-    let mut def_to_hl_range = |def| {
-        let hl_range = match def {
-            Definition::Module(module) => {
-                Some(NavigationTarget::from_module_to_decl(sema.db, module))
-            }
-            def => def.try_to_nav(sema.db),
-        }
-        .filter(|decl| decl.file_id == file_id)
-        .and_then(|decl| decl.focus_range)
-        .map(|range| {
-            let category =
-                references::decl_mutability(&def, node, range).then_some(ReferenceCategory::Write);
-            HighlightedRange { range, category }
-        });
-        if let Some(hl_range) = hl_range {
-            res.insert(hl_range);
-        }
-    };
     for &def in &defs {
         match def {
-            Definition::Local(local) => local
-                .associated_locals(sema.db)
-                .iter()
-                .for_each(|&local| def_to_hl_range(Definition::Local(local))),
-            def => def_to_hl_range(def),
+            Definition::Local(local) => {
+                let category = local.is_mut(sema.db).then_some(ReferenceCategory::Write);
+                local
+                    .sources(sema.db)
+                    .into_iter()
+                    .map(|x| x.to_nav(sema.db))
+                    .filter(|decl| decl.file_id == file_id)
+                    .filter_map(|decl| decl.focus_range)
+                    .map(|range| HighlightedRange { range, category })
+                    .for_each(|x| {
+                        res.insert(x);
+                    });
+            }
+            def => {
+                let hl_range = match def {
+                    Definition::Module(module) => {
+                        Some(NavigationTarget::from_module_to_decl(sema.db, module))
+                    }
+                    def => def.try_to_nav(sema.db),
+                }
+                .filter(|decl| decl.file_id == file_id)
+                .and_then(|decl| decl.focus_range)
+                .map(|range| {
+                    let category = references::decl_mutability(&def, node, range)
+                        .then_some(ReferenceCategory::Write);
+                    HighlightedRange { range, category }
+                });
+                if let Some(hl_range) = hl_range {
+                    res.insert(hl_range);
+                }
+            }
         }
     }
 

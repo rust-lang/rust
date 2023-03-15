@@ -118,4 +118,42 @@ fn main(s: module::Struct) {
 "#,
         );
     }
+
+    #[test]
+    fn can_see_through_top_level_anonymous_const() {
+        // regression test for #14046.
+        check_diagnostics(
+            r#"
+struct S;
+mod m {
+    const _: () = {
+        impl crate::S {
+            pub(crate) fn method(self) {}
+            pub(crate) const A: usize = 42;
+        }
+    };
+    mod inner {
+        const _: () = {
+            impl crate::S {
+                pub(crate) fn method2(self) {}
+                pub(crate) const B: usize = 42;
+                pub(super) fn private(self) {}
+                pub(super) const PRIVATE: usize = 42;
+            }
+        };
+    }
+}
+fn main() {
+    S.method();
+    S::A;
+    S.method2();
+    S::B;
+    S.private();
+  //^^^^^^^^^^^ error: function `private` is private
+    S::PRIVATE;
+  //^^^^^^^^^^ error: const `PRIVATE` is private
+}
+"#,
+        );
+    }
 }

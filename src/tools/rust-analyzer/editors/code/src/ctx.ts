@@ -282,18 +282,18 @@ export class Ctx {
     setServerStatus(status: ServerStatusParams | { health: "stopped" }) {
         let icon = "";
         const statusBar = this.statusBar;
+        statusBar.tooltip = new vscode.MarkdownString("", true);
+        statusBar.tooltip.isTrusted = true;
         switch (status.health) {
             case "ok":
-                statusBar.tooltip = (status.message ?? "Ready") + "\nClick to stop server.";
-                statusBar.command = "rust-analyzer.stopServer";
+                statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 break;
             case "warning":
-                statusBar.tooltip =
-                    (status.message ? status.message + "\n" : "") + "Click to reload.";
-
-                statusBar.command = "rust-analyzer.reloadWorkspace";
+                if (status.message) {
+                    statusBar.tooltip.appendText(status.message);
+                }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor(
                     "statusBarItem.warningBackground"
@@ -301,22 +301,32 @@ export class Ctx {
                 icon = "$(warning) ";
                 break;
             case "error":
-                statusBar.tooltip =
-                    (status.message ? status.message + "\n" : "") + "Click to reload.";
-
-                statusBar.command = "rust-analyzer.reloadWorkspace";
+                if (status.message) {
+                    statusBar.tooltip.appendText(status.message);
+                }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.errorForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
                 icon = "$(error) ";
                 break;
             case "stopped":
-                statusBar.tooltip = "Server is stopped.\nClick to start.";
-                statusBar.command = "rust-analyzer.startServer";
+                statusBar.tooltip.appendText("Server is stopped");
+                statusBar.tooltip.appendMarkdown(
+                    "\n\n[Start server](command:rust-analyzer.startServer)"
+                );
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 statusBar.text = `$(stop-circle) rust-analyzer`;
                 return;
         }
+        if (statusBar.tooltip.value) {
+            statusBar.tooltip.appendText("\n\n");
+        }
+        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
+        statusBar.tooltip.appendMarkdown(
+            "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)"
+        );
+        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
+        statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }

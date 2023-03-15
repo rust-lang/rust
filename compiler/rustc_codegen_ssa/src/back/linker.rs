@@ -720,6 +720,7 @@ impl<'a> Linker for GccLinker<'a> {
                 let mut arg = OsString::from("--version-script=");
                 arg.push(path);
                 self.linker_arg(arg);
+                self.linker_arg("--no-undefined-version");
             }
         }
     }

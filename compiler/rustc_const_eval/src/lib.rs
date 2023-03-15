@@ -39,7 +39,7 @@ use rustc_macros::fluent_messages;
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);

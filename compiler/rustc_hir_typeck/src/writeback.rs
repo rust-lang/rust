@@ -748,7 +748,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                 .infcx
                 .err_ctxt()
                 .emit_inference_failure_err(
-                    Some(self.body.id()),
+                    self.tcx.hir().body_owner_def_id(self.body.id()),
                     self.span.to_span(self.tcx),
                     p.into(),
                     E0282,

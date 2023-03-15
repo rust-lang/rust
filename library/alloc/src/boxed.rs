@@ -214,6 +214,7 @@ impl<T> Box<T> {
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
+    #[rustc_diagnostic_item = "box_new"]
     pub fn new(x: T) -> Self {
         #[rustc_box]
         Box::new(x)

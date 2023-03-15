@@ -68,6 +68,7 @@ pub enum FileSymbolKind {
     Static,
     Struct,
     Trait,
+    TraitAlias,
     TypeAlias,
     Union,
 }
@@ -152,6 +153,9 @@ impl<'a> SymbolCollector<'a> {
                 ModuleDefId::TraitId(id) => {
                     self.push_decl(id, FileSymbolKind::Trait);
                     self.collect_from_trait(id);
+                }
+                ModuleDefId::TraitAliasId(id) => {
+                    self.push_decl(id, FileSymbolKind::TraitAlias);
                 }
                 ModuleDefId::TypeAliasId(id) => {
                     self.push_decl_assoc(id, FileSymbolKind::TypeAlias);

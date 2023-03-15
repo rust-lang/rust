@@ -9,7 +9,8 @@
     clippy::unnecessary_operation,
     clippy::branches_sharing_code,
     clippy::match_single_binding,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::let_with_type_underscore
 )]
 
 #[macro_use]

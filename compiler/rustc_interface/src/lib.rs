@@ -31,4 +31,4 @@ pub use queries::Queries;
 #[cfg(test)]
 mod tests;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

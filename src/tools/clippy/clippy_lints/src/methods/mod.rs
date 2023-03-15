@@ -340,8 +340,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for methods with certain name prefixes and which
-    /// doesn't match how self is taken. The actual rules are:
+    /// Checks for methods with certain name prefixes or suffixes, and which
+    /// do not adhere to standard conventions regarding how `self` is taken.
+    /// The actual rules are:
     ///
     /// |Prefix |Postfix     |`self` taken                   | `self` type  |
     /// |-------|------------|-------------------------------|--------------|

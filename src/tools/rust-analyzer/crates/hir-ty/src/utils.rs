@@ -5,6 +5,7 @@ use std::iter;
 
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
+use either::Either;
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -19,7 +20,6 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
-use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 
@@ -315,7 +315,10 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
         GenericDefId::ConstId(it) => it.lookup(db).container,
         GenericDefId::EnumVariantId(it) => return Some(it.parent.into()),
-        GenericDefId::AdtId(_) | GenericDefId::TraitId(_) | GenericDefId::ImplId(_) => return None,
+        GenericDefId::AdtId(_)
+        | GenericDefId::TraitId(_)
+        | GenericDefId::ImplId(_)
+        | GenericDefId::TraitAliasId(_) => return None,
     };
 
     match container {

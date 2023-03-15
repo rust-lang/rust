@@ -3,21 +3,21 @@
 fn move_out_from_end() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/uniform_array_move_out.rs:+0:24: +0:24
     let _1: [std::boxed::Box<i32>; 2];   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-    let mut _2: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-    let mut _3: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-    let mut _4: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-    let mut _5: *mut u8;                 // in scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-    let mut _6: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-    let mut _7: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-    let mut _8: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-    let mut _9: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-    let mut _10: *mut u8;                // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-    let mut _11: std::boxed::Box<i32>;   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
+    let mut _2: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+    let mut _3: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+    let mut _4: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+    let mut _5: *mut u8;                 // in scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+    let mut _6: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+    let mut _7: std::boxed::Box<i32>;    // in scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+    let mut _8: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+    let mut _9: usize;                   // in scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+    let mut _10: *mut u8;                // in scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+    let mut _11: std::boxed::Box<i32>;   // in scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
     scope 1 {
         debug a => _1;                   // in scope 1 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-        let _12: std::boxed::Box<i32>;   // in scope 1 at $DIR/uniform_array_move_out.rs:+2:14: +2:16
+        let _12: std::boxed::Box<i32>;   // in scope 1 at $DIR/uniform_array_move_out.rs:+7:14: +7:16
         scope 4 {
-            debug _y => _12;             // in scope 4 at $DIR/uniform_array_move_out.rs:+2:14: +2:16
+            debug _y => _12;             // in scope 4 at $DIR/uniform_array_move_out.rs:+7:14: +7:16
         }
     }
     scope 2 {
@@ -27,86 +27,86 @@ fn move_out_from_end() -> () {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-        StorageLive(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        _3 = SizeOf(i32);                // scope 2 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        _4 = AlignOf(i32);               // scope 2 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb12]; // scope 2 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
+        StorageLive(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        _3 = SizeOf(i32);                // scope 2 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        _4 = AlignOf(i32);               // scope 2 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb12]; // scope 2 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
                                          // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:5:14: 5:19
+                                         // + span: $DIR/uniform_array_move_out.rs:7:9: 7:20
                                          // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb1: {
-        StorageLive(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        _6 = ShallowInitBox(move _5, i32); // scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        (*_6) = const 1_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:+1:18: +1:19
-        _2 = move _6;                    // scope 0 at $DIR/uniform_array_move_out.rs:+1:14: +1:19
-        drop(_6) -> [return: bb2, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:+1:18: +1:19
+        StorageLive(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        _6 = ShallowInitBox(move _5, i32); // scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        (*_6) = const 1_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:+3:18: +3:19
+        _2 = move _6;                    // scope 0 at $DIR/uniform_array_move_out.rs:+3:9: +3:20
+        drop(_6) -> [return: bb2, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:+3:19: +3:20
     }
 
     bb2: {
-        StorageDead(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:18: +1:19
-        StorageLive(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        _8 = SizeOf(i32);                // scope 3 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        _9 = AlignOf(i32);               // scope 3 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb11]; // scope 3 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
+        StorageDead(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:+3:19: +3:20
+        StorageLive(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        _8 = SizeOf(i32);                // scope 3 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        _9 = AlignOf(i32);               // scope 3 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb11]; // scope 3 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
                                          // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:5:21: 5:26
+                                         // + span: $DIR/uniform_array_move_out.rs:9:9: 9:20
                                          // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb3: {
-        StorageLive(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        _11 = ShallowInitBox(move _10, i32); // scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        (*_11) = const 2_i32;            // scope 0 at $DIR/uniform_array_move_out.rs:+1:25: +1:26
-        _7 = move _11;                   // scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
-        drop(_11) -> [return: bb4, unwind: bb10]; // scope 0 at $DIR/uniform_array_move_out.rs:+1:25: +1:26
+        StorageLive(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        _11 = ShallowInitBox(move _10, i32); // scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        (*_11) = const 2_i32;            // scope 0 at $DIR/uniform_array_move_out.rs:+5:18: +5:19
+        _7 = move _11;                   // scope 0 at $DIR/uniform_array_move_out.rs:+5:9: +5:20
+        drop(_11) -> [return: bb4, unwind: bb10]; // scope 0 at $DIR/uniform_array_move_out.rs:+5:19: +5:20
     }
 
     bb4: {
-        StorageDead(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:+1:25: +1:26
-        _1 = [move _2, move _7];         // scope 0 at $DIR/uniform_array_move_out.rs:+1:13: +1:27
-        drop(_7) -> [return: bb5, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
+        StorageDead(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:+5:19: +5:20
+        _1 = [move _2, move _7];         // scope 0 at $DIR/uniform_array_move_out.rs:+1:13: +6:6
+        drop(_7) -> [return: bb5, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb5: {
-        StorageDead(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
-        drop(_2) -> [return: bb6, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
+        StorageDead(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
+        drop(_2) -> [return: bb6, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb6: {
-        StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
+        StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-        PlaceMention(_1);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:20: +2:21
-        StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:14: +2:16
-        _12 = move _1[1 of 2];           // scope 1 at $DIR/uniform_array_move_out.rs:+2:14: +2:16
-        _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:+0:24: +3:2
-        drop(_12) -> [return: bb7, unwind: bb9]; // scope 1 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
+        PlaceMention(_1);                // scope 1 at $DIR/uniform_array_move_out.rs:+7:20: +7:21
+        StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+7:14: +7:16
+        _12 = move _1[1 of 2];           // scope 1 at $DIR/uniform_array_move_out.rs:+7:14: +7:16
+        _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:+0:24: +8:2
+        drop(_12) -> [return: bb7, unwind: bb9]; // scope 1 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
     }
 
     bb7: {
-        StorageDead(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
-        drop(_1) -> [return: bb8, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
+        StorageDead(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
+        drop(_1) -> [return: bb8, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
     }
 
     bb8: {
-        StorageDead(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
-        return;                          // scope 0 at $DIR/uniform_array_move_out.rs:+3:2: +3:2
+        StorageDead(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
+        return;                          // scope 0 at $DIR/uniform_array_move_out.rs:+8:2: +8:2
     }
 
     bb9 (cleanup): {
-        drop(_1) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
+        drop(_1) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
     }
 
     bb10 (cleanup): {
-        drop(_7) -> bb11;                // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
+        drop(_7) -> bb11;                // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb11 (cleanup): {
-        drop(_2) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
+        drop(_2) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb12 (cleanup): {
-        resume;                          // scope 0 at $DIR/uniform_array_move_out.rs:+0:1: +3:2
+        resume;                          // scope 0 at $DIR/uniform_array_move_out.rs:+0:1: +8:2
     }
 }

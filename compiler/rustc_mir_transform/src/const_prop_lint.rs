@@ -1,24 +1,17 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use std::cell::Cell;
-
 use either::{Left, Right};
 
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
-    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
+    self, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, Local, LocalDecl, Location, Operand, Place, Rvalue,
-    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
-    UnOp, RETURN_PLACE,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{
@@ -185,17 +178,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
-        for (l, mode) in can_const_prop.iter_enumerated() {
-            if *mode == ConstPropMode::OnlyInsideOwnBlock {
-                only_propagate_inside_block_locals.insert(l);
-            }
-        }
         let mut ecx = InterpCx::new(
             tcx,
             tcx.def_span(def_id),
             param_env,
-            ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
+            ConstPropMachine::new(can_const_prop),
         );
 
         let ret_layout = ecx
@@ -258,10 +245,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local] = LocalState {
-            value: LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit)),
-            layout: Cell::new(None),
-        };
+        ecx.frame_mut().locals[local].value =
+            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
@@ -420,12 +405,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn const_prop(
-        &mut self,
-        rvalue: &Rvalue<'tcx>,
-        source_info: SourceInfo,
-        place: Place<'tcx>,
-    ) -> Option<()> {
+    fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>, source_info: SourceInfo) -> Option<()> {
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -501,7 +481,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, place))
+        Some(())
+    }
+
+    fn ensure_not_propagated(&mut self, local: Local) {
+        if cfg!(debug_assertions) {
+            assert!(
+                self.get_const(local.into()).is_none()
+                    || self
+                        .layout_of(self.local_decls[local].ty)
+                        .map_or(true, |layout| layout.is_zst()),
+                "failed to remove values for `{local:?}`, value={:?}",
+                self.get_const(local.into()),
+            )
+        }
     }
 }
 
@@ -522,82 +515,78 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.eval_constant(constant, self.source_info.unwrap());
     }
 
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_assign(place, rvalue, location);
+
+        let source_info = self.source_info.unwrap();
+        let Some(()) = self.check_rvalue(rvalue, source_info) else { return };
+
+        match self.ecx.machine.can_const_prop[place.local] {
+            // Do nothing if the place is indirect.
+            _ if place.is_indirect() => {}
+            ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
+            ConstPropMode::OnlyInsideOwnBlock | ConstPropMode::FullConstProp => {
+                if self
+                    .use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, *place))
+                    .is_none()
+                {
+                    // Const prop failed, so erase the destination, ensuring that whatever happens
+                    // from here on, does not know about the previous value.
+                    // This is important in case we have
+                    // ```rust
+                    // let mut x = 42;
+                    // x = SOME_MUTABLE_STATIC;
+                    // // x must now be uninit
+                    // ```
+                    // FIXME: we overzealously erase the entire local, because that's easier to
+                    // implement.
+                    trace!(
+                        "propagation into {:?} failed.
+                        Nuking the entire site from orbit, it's the only way to be sure",
+                        place,
+                    );
+                    Self::remove_const(&mut self.ecx, place.local);
+                }
+            }
+        }
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
-        if let StatementKind::Assign(box (place, ref rval)) = statement.kind {
-            let can_const_prop = self.ecx.machine.can_const_prop[place.local];
-            if let Some(()) = self.const_prop(rval, source_info, place) {
-                match can_const_prop {
-                    ConstPropMode::OnlyInsideOwnBlock => {
-                        trace!(
-                            "found local restricted to its block. \
-                                Will remove it from const-prop after block is finished. Local: {:?}",
-                            place.local
-                        );
-                    }
-                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
-                        trace!("can't propagate into {:?}", place);
-                        if place.local != RETURN_PLACE {
-                            Self::remove_const(&mut self.ecx, place.local);
-                        }
-                    }
-                    ConstPropMode::FullConstProp => {}
-                }
-            } else {
-                // Const prop failed, so erase the destination, ensuring that whatever happens
-                // from here on, does not know about the previous value.
-                // This is important in case we have
-                // ```rust
-                // let mut x = 42;
-                // x = SOME_MUTABLE_STATIC;
-                // // x must now be uninit
-                // ```
-                // FIXME: we overzealously erase the entire local, because that's easier to
-                // implement.
-                trace!(
-                    "propagation into {:?} failed.
-                        Nuking the entire site from orbit, it's the only way to be sure",
-                    place,
-                );
-                Self::remove_const(&mut self.ecx, place.local);
-            }
-        } else {
-            match statement.kind {
-                StatementKind::SetDiscriminant { ref place, .. } => {
-                    match self.ecx.machine.can_const_prop[place.local] {
-                        ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
-                            if self
-                                .use_ecx(source_info, |this| this.ecx.statement(statement))
-                                .is_some()
-                            {
-                                trace!("propped discriminant into {:?}", place);
-                            } else {
-                                Self::remove_const(&mut self.ecx, place.local);
-                            }
-                        }
-                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
-                            Self::remove_const(&mut self.ecx, place.local);
-                        }
-                    }
-                }
-                StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                    let frame = self.ecx.frame_mut();
-                    frame.locals[local].value =
-                        if let StatementKind::StorageLive(_) = statement.kind {
-                            LocalValue::Live(interpret::Operand::Immediate(
-                                interpret::Immediate::Uninit,
-                            ))
-                        } else {
-                            LocalValue::Dead
-                        };
-                }
-                _ => {}
-            }
-        }
 
+        // We want to evaluate operands before any change to the assigned-to value,
+        // so we recurse first.
         self.super_statement(statement, location);
+
+        match statement.kind {
+            StatementKind::SetDiscriminant { ref place, .. } => {
+                match self.ecx.machine.can_const_prop[place.local] {
+                    // Do nothing if the place is indirect.
+                    _ if place.is_indirect() => {}
+                    ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
+                    ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
+                        if self.use_ecx(source_info, |this| this.ecx.statement(statement)).is_some()
+                        {
+                            trace!("propped discriminant into {:?}", place);
+                        } else {
+                            Self::remove_const(&mut self.ecx, place.local);
+                        }
+                    }
+                }
+            }
+            StatementKind::StorageLive(local) => {
+                let frame = self.ecx.frame_mut();
+                frame.locals[local].value =
+                    LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+            }
+            StatementKind::StorageDead(local) => {
+                let frame = self.ecx.frame_mut();
+                frame.locals[local].value = LocalValue::Dead;
+            }
+            _ => {}
+        }
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
@@ -694,27 +683,25 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
+        self.super_basic_block_data(block, data);
 
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
         // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
-        let mut locals = std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
-        for &local in locals.iter() {
-            Self::remove_const(&mut self.ecx, local);
-        }
-        locals.clear();
-        // Put it back so we reuse the heap of the storage
-        self.ecx.machine.written_only_inside_own_block_locals = locals;
-        if cfg!(debug_assertions) {
-            // Ensure we are correctly erasing locals with the non-debug-assert logic.
-            for local in self.ecx.machine.only_propagate_inside_block_locals.iter() {
-                assert!(
-                    self.get_const(local.into()).is_none()
-                        || self
-                            .layout_of(self.local_decls[local].ty)
-                            .map_or(true, |layout| layout.is_zst())
-                )
+        let can_const_prop = std::mem::take(&mut self.ecx.machine.can_const_prop);
+        for (local, &mode) in can_const_prop.iter_enumerated() {
+            match mode {
+                ConstPropMode::FullConstProp => {}
+                ConstPropMode::NoPropagation => self.ensure_not_propagated(local),
+                ConstPropMode::OnlyInsideOwnBlock => {
+                    Self::remove_const(&mut self.ecx, local);
+                    self.ensure_not_propagated(local);
+                }
             }
         }
+        self.ecx.machine.can_const_prop = can_const_prop;
     }
 }

@@ -22,7 +22,7 @@
 -         switchInt(move _4) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
 +         _3 = const Option::<bool>::Some(true); // scope 2 at $DIR/discriminant.rs:+1:34: +1:44
 +                                          // mir::Constant
-+                                          // + span: $DIR/discriminant.rs:12:34: 12:44
++                                          // + span: no-location
 +                                          // + literal: Const { ty: Option<bool>, val: Value(Scalar(0x01)) }
 +         _4 = const 1_isize;              // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
 +         switchInt(const 1_isize) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:+1:21: +1:31

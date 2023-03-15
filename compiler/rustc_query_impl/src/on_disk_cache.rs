@@ -388,6 +388,12 @@ impl<'sess> OnDiskCache<'sess> {
         debug_assert!(prev.is_none());
     }
 
+    /// Return whether the cached query result can be decoded.
+    pub fn loadable_from_disk(&self, dep_node_index: SerializedDepNodeIndex) -> bool {
+        self.query_result_index.contains_key(&dep_node_index)
+        // with_decoder is infallible, so we can stop here
+    }
+
     /// Returns the cached query result if there is something in the cache for
     /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
     pub fn try_load_query_result<'tcx, T>(
@@ -398,7 +404,9 @@ impl<'sess> OnDiskCache<'sess> {
     where
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
-        self.load_indexed(tcx, dep_node_index, &self.query_result_index)
+        let opt_value = self.load_indexed(tcx, dep_node_index, &self.query_result_index);
+        debug_assert_eq!(opt_value.is_some(), self.loadable_from_disk(dep_node_index));
+        opt_value
     }
 
     /// Stores side effect emitted during computation of an anonymous query.
@@ -428,8 +436,8 @@ impl<'sess> OnDiskCache<'sess> {
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
         let pos = index.get(&dep_node_index).cloned()?;
-
-        self.with_decoder(tcx, pos, |decoder| Some(decode_tagged(decoder, dep_node_index)))
+        let value = self.with_decoder(tcx, pos, |decoder| decode_tagged(decoder, dep_node_index));
+        Some(value)
     }
 
     fn with_decoder<'a, 'tcx, T, F: for<'s> FnOnce(&mut CacheDecoder<'s, 'tcx>) -> T>(

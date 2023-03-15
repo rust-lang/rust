@@ -17,6 +17,12 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL | impl Fn(&isize) for Error {
    |      ^^^^^^^^^^ associated type not allowed here
+   |
+help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
+  --> $DIR/issue-87558.rs:3:6
+   |
+LL | impl Fn(&isize) for Error {
+   |      ^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

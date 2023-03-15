@@ -119,7 +119,7 @@ pub mod errors;
 pub mod test;
 pub mod typeid;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is

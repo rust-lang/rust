@@ -120,7 +120,7 @@ use std::ops::Not;
 use astconv::AstConv;
 use bounds::Bounds;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";
@@ -176,7 +176,7 @@ fn require_same_types<'tcx>(
     match &errors[..] {
         [] => true,
         errors => {
-            infcx.err_ctxt().report_fulfillment_errors(errors, None);
+            infcx.err_ctxt().report_fulfillment_errors(errors);
             false
         }
     }
@@ -283,6 +283,15 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
+    if !tcx.codegen_fn_attrs(main_def_id).target_features.is_empty()
+        // Calling functions with `#[target_feature]` is not unsafe on WASM, see #84988
+        && !tcx.sess.target.is_like_wasm
+        && !tcx.sess.opts.actually_rustdoc
+    {
+        tcx.sess.emit_err(errors::TargetFeatureOnMain { main: main_span });
+        error = true;
+    }
+
     if error {
         return;
     }
@@ -309,7 +318,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            infcx.err_ctxt().report_fulfillment_errors(&errors);
             error = true;
         }
         // now we can take the return type of the given main function
@@ -368,6 +377,18 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     for attr in attrs {
                         if attr.has_name(sym::track_caller) {
                             tcx.sess.emit_err(errors::StartTrackCaller {
+                                span: attr.span,
+                                start: start_span,
+                            });
+                            error = true;
+                        }
+                        if attr.has_name(sym::target_feature)
+                            // Calling functions with `#[target_feature]` is
+                            // not unsafe on WASM, see #84988
+                            && !tcx.sess.target.is_like_wasm
+                            && !tcx.sess.opts.actually_rustdoc
+                        {
+                            tcx.sess.emit_err(errors::StartTargetFeature {
                                 span: attr.span,
                                 start: start_span,
                             });

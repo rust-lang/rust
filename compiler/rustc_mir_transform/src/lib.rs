@@ -1,7 +1,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(box_syntax)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -30,9 +29,9 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, ConstQualifs, Constant, LocalDecl, MirPass, MirPhase, Operand,
-    Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo, Statement, StatementKind,
-    TerminatorKind,
+    traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -278,14 +277,14 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
     // Unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         if let Some(param_did) = def.const_param_did {
-            tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
+            tcx.ensure_with_value().unsafety_check_result_for_const_arg((def.did, param_did));
         } else {
-            tcx.ensure().unsafety_check_result(def.did);
+            tcx.ensure_with_value().unsafety_check_result(def.did);
         }
     }
 
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure().has_ffi_unwind_calls(def.did);
+    tcx.ensure_with_value().has_ffi_unwind_calls(def.did);
 
     let mut body = tcx.mir_built(def).steal();
 
@@ -433,7 +432,7 @@ fn mir_drops_elaborated_and_const_checked(
     if tcx.sess.opts.unstable_opts.drop_tracking_mir
         && let DefKind::Generator = tcx.def_kind(def.did)
     {
-        tcx.ensure().mir_generator_witnesses(def.did);
+        tcx.ensure_with_value().mir_generator_witnesses(def.did);
     }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
@@ -444,7 +443,7 @@ fn mir_drops_elaborated_and_const_checked(
 
         // Do not compute the mir call graph without said call graph actually being used.
         if inline::Inline.is_enabled(&tcx.sess) {
-            let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def));
         }
     }
 
@@ -533,6 +532,12 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::new("elaborate-drops")];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
+
+    // Clear this by anticipation. Optimizations and runtime MIR have no reason to look
+    // into this information, which is meant for borrowck diagnostics.
+    for decl in &mut body.local_decls {
+        decl.local_info = ClearCrossCrate::Clear;
+    }
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -613,7 +618,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
         // computes and caches its result.
-        Some(hir::ConstContext::ConstFn) => tcx.ensure().mir_for_ctfe(did),
+        Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }

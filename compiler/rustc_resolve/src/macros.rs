@@ -8,7 +8,6 @@ use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment};
 use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
@@ -20,11 +19,11 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -111,15 +110,17 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-pub(crate) fn registered_tools(sess: &Session, attrs: &[ast::Attribute]) -> FxHashSet<Ident> {
-    let mut registered_tools = FxHashSet::default();
-    for attr in sess.filter_by_name(attrs, sym::register_tool) {
+pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+    let mut registered_tools = RegisteredTools::default();
+    let krate = tcx.crate_for_resolver(()).borrow();
+    for attr in tcx.sess.filter_by_name(&krate.attrs, sym::register_tool) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {
                     if let Some(old_ident) = registered_tools.replace(ident) {
                         let msg = format!("{} `{}` was already registered", "tool", ident);
-                        sess.struct_span_err(ident.span, &msg)
+                        tcx.sess
+                            .struct_span_err(ident.span, &msg)
                             .span_label(old_ident.span, "already registered here")
                             .emit();
                     }
@@ -127,7 +128,10 @@ pub(crate) fn registered_tools(sess: &Session, attrs: &[ast::Attribute]) -> FxHa
                 None => {
                     let msg = format!("`{}` only accepts identifiers", sym::register_tool);
                     let span = nested_meta.span();
-                    sess.struct_span_err(span, &msg).span_label(span, "not an identifier").emit();
+                    tcx.sess
+                        .struct_span_err(span, &msg)
+                        .span_label(span, "not an identifier")
+                        .emit();
                 }
             }
         }

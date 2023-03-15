@@ -100,24 +100,23 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
         // the body satisfies the condition of two nodes being different have different
         // `hash_stable` results.
-        let OwnerNodes { hash_including_bodies, hash_without_bodies: _, nodes: _, bodies: _ } =
-            *self;
-        hash_including_bodies.hash_stable(hcx, hasher);
+        let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
+        opt_hash_including_bodies.unwrap().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        // We ignore the `map` since it refers to information included in `hash` which is hashed in
-        // the collector and used for the crate hash.
-        let AttributeMap { hash, map: _ } = *self;
-        hash.hash_stable(hcx, hasher);
+        // We ignore the `map` since it refers to information included in `opt_hash` which is
+        // hashed in the collector and used for the crate hash.
+        let AttributeMap { opt_hash, map: _ } = *self;
+        opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Crate { owners: _, hir_hash } = self;
-        hir_hash.hash_stable(hcx, hasher)
+        let Crate { owners: _, opt_hir_hash } = self;
+        opt_hir_hash.unwrap().hash_stable(hcx, hasher)
     }
 }

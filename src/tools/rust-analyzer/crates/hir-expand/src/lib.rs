@@ -771,6 +771,15 @@ impl<T> InFile<Option<T>> {
     }
 }
 
+impl<L, R> InFile<Either<L, R>> {
+    pub fn transpose(self) -> Either<InFile<L>, InFile<R>> {
+        match self.value {
+            Either::Left(l) => Either::Left(InFile::new(self.file_id, l)),
+            Either::Right(r) => Either::Right(InFile::new(self.file_id, r)),
+        }
+    }
+}
+
 impl<'a> InFile<&'a SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
@@ -806,7 +815,7 @@ impl<'a> InFile<&'a SyntaxNode> {
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     ///
     /// For attributes and derives, this will point back to the attribute only.
-    /// For the entire item `InFile::use original_file_range_full`.
+    /// For the entire item use [`InFile::original_file_range_full`].
     pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
@@ -817,6 +826,21 @@ impl<'a> InFile<&'a SyntaxNode> {
                 // Fall back to whole macro call.
                 let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
                 loc.kind.original_call_range(db)
+            }
+        }
+    }
+
+    /// Falls back to the macro call range if the node cannot be mapped up fully.
+    pub fn original_file_range_full(self, db: &dyn db::AstDatabase) -> FileRange {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
+            HirFileIdRepr::MacroFile(mac_file) => {
+                if let Some(res) = self.original_file_range_opt(db) {
+                    return res;
+                }
+                // Fall back to whole macro call.
+                let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
+                loc.kind.original_call_range_with_body(db)
             }
         }
     }

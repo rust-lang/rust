@@ -208,6 +208,9 @@ pub(crate) fn def_to_moniker(
         Definition::Trait(trait_) => {
             MonikerDescriptor { name: trait_.name(db), desc: MonikerDescriptorKind::Type }
         }
+        Definition::TraitAlias(ta) => {
+            MonikerDescriptor { name: ta.name(db), desc: MonikerDescriptorKind::Type }
+        }
         Definition::TypeAlias(ta) => {
             MonikerDescriptor { name: ta.name(db), desc: MonikerDescriptorKind::TypeParameter }
         }

@@ -14,7 +14,7 @@ use crate::{
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
         ConstData, FunctionData, ImplData, Macro2Data, MacroRulesData, ProcMacroData, StaticData,
-        TraitData, TypeAliasData,
+        TraitAliasData, TraitData, TypeAliasData,
     },
     generics::GenericParams,
     import_map::ImportMap,
@@ -25,8 +25,8 @@ use crate::{
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
     ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId,
     LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
-    StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
-    UnionId, UnionLoc, VariantId,
+    StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc,
+    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -45,6 +45,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_static(&self, loc: StaticLoc) -> StaticId;
     #[salsa::interned]
     fn intern_trait(&self, loc: TraitLoc) -> TraitId;
+    #[salsa::interned]
+    fn intern_trait_alias(&self, loc: TraitAliasLoc) -> TraitAliasId;
     #[salsa::interned]
     fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
     #[salsa::interned]
@@ -124,6 +126,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(TraitData::trait_data_with_diagnostics_query)]
     fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, Arc<[DefDiagnostic]>);
+
+    #[salsa::invoke(TraitAliasData::trait_alias_query)]
+    fn trait_alias_data(&self, e: TraitAliasId) -> Arc<TraitAliasData>;
 
     #[salsa::invoke(TypeAliasData::type_alias_data_query)]
     fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;

@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, box_syntax)]
+#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types)]
 
@@ -178,7 +178,7 @@ fn main() {
         let ptr: *const i8 = hello as *const [u8] as *const i8;
         puts(ptr);
 
-        let world: Box<&str> = box "World!\0";
+        let world: Box<&str> = Box::new("World!\0");
         puts(*world as *const str as *const i8);
         world as Box<dyn SomeTrait>;
 
@@ -238,10 +238,10 @@ fn main() {
         }
     }
 
-    let _ = box NoisyDrop {
+    let _ = Box::new(NoisyDrop {
         text: "Boxed outer got dropped!\0",
         inner: NoisyDropInner,
-    } as Box<dyn SomeTrait>;
+    }) as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
     match FUNC_REF {

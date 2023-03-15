@@ -43,6 +43,8 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
 
     fn try_load_from_disk(self, qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self::Value>;
 
+    fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
+
     fn anon(self) -> bool;
     fn eval_always(self) -> bool;
     fn depth_limit(self) -> bool;

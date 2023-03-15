@@ -32,7 +32,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
             match &e.kind {
-                // Paranthesis expression does not have a HirId and is handled specially.
+                // Parenthesis expression does not have a HirId and is handled specially.
                 ExprKind::Paren(ex) => {
                     let mut ex = self.lower_expr_mut(ex);
                     // Include parens in span, but only if it is a super-span.
@@ -63,6 +63,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::ForLoop(pat, head, body, opt_label) => {
                     return self.lower_expr_for(e, pat, head, body, *opt_label);
                 }
+                // Similarly, async blocks do not use `e.id` but rather `closure_node_id`.
+                ExprKind::Async(capture_clause, closure_node_id, block) => {
+                    let hir_id = self.lower_node_id(*closure_node_id);
+                    self.lower_attrs(hir_id, &e.attrs);
+                    return self.make_async_expr(
+                        *capture_clause,
+                        hir_id,
+                        *closure_node_id,
+                        None,
+                        e.span,
+                        hir::AsyncGeneratorKind::Block,
+                        |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                    );
+                }
                 _ => (),
             }
 
@@ -70,7 +84,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(hir_id, &e.attrs);
 
             let kind = match &e.kind {
-                ExprKind::Box(inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(anon_const) => {
                     let anon_const = self.lower_anon_const(anon_const);
@@ -173,15 +186,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr(expr),
                     self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
                     hir::MatchSource::Normal,
-                ),
-                ExprKind::Async(capture_clause, closure_node_id, block) => self.make_async_expr(
-                    *capture_clause,
-                    hir_id,
-                    *closure_node_id,
-                    None,
-                    e.span,
-                    hir::AsyncGeneratorKind::Block,
-                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Await(expr) => {
                     let dot_await_span = if expr.span.hi() < e.span.hi() {
@@ -316,7 +320,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop(..) => unreachable!("already handled"),
+                ExprKind::Paren(_) | ExprKind::ForLoop(..) | ExprKind::Async(..) => {
+                    unreachable!("already handled")
+                }
 
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
@@ -578,9 +584,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// This results in:
     ///
     /// ```text
-    /// std::future::identity_future(static move? |_task_context| -> <ret_ty> {
+    /// static move? |_task_context| -> <ret_ty> {
     ///     <body>
-    /// })
+    /// }
     /// ```
     pub(super) fn make_async_expr(
         &mut self,
@@ -591,7 +597,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
-    ) -> hir::ExprKind<'hir> {
+    ) -> hir::Expr<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
         // Resume argument type: `ResumeTy`
@@ -656,13 +662,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let hir_id = self.lower_node_id(closure_node_id);
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
-
         if self.tcx.features().closure_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
+            let unstable_span =
+                self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
             self.lower_attrs(
                 hir_id,
                 &[Attribute {
@@ -681,22 +686,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
         }
 
-        let generator = hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) };
-
-        // FIXME(swatinem):
-        // For some reason, the async block needs to flow through *any*
-        // call (like the identity function), as otherwise type and lifetime
-        // inference have a hard time figuring things out.
-        // Without this, we would get:
-        // E0720 in tests/ui/impl-trait/in-trait/default-body-with-rpit.rs
-        // E0700 in tests/ui/self/self_lifetime-async.rs
-
-        // `future::identity_future`:
-        let identity_future =
-            self.expr_lang_item_path(unstable_span, hir::LangItem::IdentityFuture, None);
-
-        // `future::identity_future(generator)`:
-        hir::ExprKind::Call(self.arena.alloc(identity_future), arena_vec![self; generator])
+        hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) }
     }
 
     /// Desugar `<expr>.await` into:
@@ -1002,7 +992,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             // Transform `async |x: u8| -> X { ... }` into
-            // `|x: u8| identity_future(|| -> X { ... })`.
+            // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_fn_body(&outer_decl, |this| {
                 let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
                     let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
@@ -1011,7 +1001,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None
                 };
 
-                let async_body = this.make_async_expr(
+                this.make_async_expr(
                     capture_clause,
                     closure_hir_id,
                     inner_closure_id,
@@ -1019,8 +1009,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body.span,
                     hir::AsyncGeneratorKind::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
-                );
-                this.expr(fn_decl_span, async_body)
+                )
             });
             body_id
         });

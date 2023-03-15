@@ -10,7 +10,7 @@
 // compile-flags: -Zmir-opt-level=0
 
 fn main() {
-    let x = async { //~ ERROR large_assignments
+    let x = async {
         let y = [0; 9999];
         dbg!(y);
         thing(&y).await;

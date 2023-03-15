@@ -9,6 +9,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
+use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::spec::abi::Abi;
 
@@ -783,6 +784,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let relevant_impl = self.tcx().find_map_relevant_impl(
                     self.tcx().require_lang_item(LangItem::Drop, None),
                     obligation.predicate.skip_binder().trait_ref.self_ty(),
+                    TreatProjections::ForLookup,
                     Some,
                 );
 

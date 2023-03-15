@@ -2300,3 +2300,16 @@ impl HelpUseLatestEdition {
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_box_syntax_removed)]
+pub struct BoxSyntaxRemoved<'a> {
+    #[primary_span]
+    #[suggestion(
+        code = "Box::new({code})",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub span: Span,
+    pub code: &'a str,
+}

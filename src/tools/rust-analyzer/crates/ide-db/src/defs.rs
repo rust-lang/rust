@@ -9,7 +9,8 @@ use arrayvec::ArrayVec;
 use hir::{
     Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, Field,
     Function, GenericParam, HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef,
-    Name, PathResolution, Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
+    Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant,
+    Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -31,6 +32,7 @@ pub enum Definition {
     Const(Const),
     Static(Static),
     Trait(Trait),
+    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
     SelfType(Impl),
@@ -64,6 +66,7 @@ impl Definition {
             Definition::Const(it) => it.module(db),
             Definition::Static(it) => it.module(db),
             Definition::Trait(it) => it.module(db),
+            Definition::TraitAlias(it) => it.module(db),
             Definition::TypeAlias(it) => it.module(db),
             Definition::Variant(it) => it.module(db),
             Definition::SelfType(it) => it.module(db),
@@ -87,6 +90,7 @@ impl Definition {
             Definition::Const(it) => it.visibility(db),
             Definition::Static(it) => it.visibility(db),
             Definition::Trait(it) => it.visibility(db),
+            Definition::TraitAlias(it) => it.visibility(db),
             Definition::TypeAlias(it) => it.visibility(db),
             Definition::Variant(it) => it.visibility(db),
             Definition::BuiltinType(_) => Visibility::Public,
@@ -113,6 +117,7 @@ impl Definition {
             Definition::Const(it) => it.name(db)?,
             Definition::Static(it) => it.name(db),
             Definition::Trait(it) => it.name(db),
+            Definition::TraitAlias(it) => it.name(db),
             Definition::TypeAlias(it) => it.name(db),
             Definition::BuiltinType(it) => it.name(),
             Definition::SelfType(_) => return None,
@@ -300,6 +305,7 @@ impl NameClass {
                 ast::Item::Module(it) => Definition::Module(sema.to_def(&it)?),
                 ast::Item::Static(it) => Definition::Static(sema.to_def(&it)?),
                 ast::Item::Trait(it) => Definition::Trait(sema.to_def(&it)?),
+                ast::Item::TraitAlias(it) => Definition::TraitAlias(sema.to_def(&it)?),
                 ast::Item::TypeAlias(it) => Definition::TypeAlias(sema.to_def(&it)?),
                 ast::Item::Enum(it) => Definition::Adt(hir::Adt::Enum(sema.to_def(&it)?)),
                 ast::Item::Struct(it) => Definition::Adt(hir::Adt::Struct(sema.to_def(&it)?)),
@@ -463,9 +469,12 @@ impl NameRefClass {
         match_ast! {
             match parent {
                 ast::MethodCallExpr(method_call) => {
-                    sema.resolve_method_call(&method_call)
-                        .map(Definition::Function)
-                        .map(NameRefClass::Definition)
+                    sema.resolve_method_call_field_fallback(&method_call)
+                        .map(|it| {
+                            it.map_left(Definition::Function)
+                                .map_right(Definition::Field)
+                                .either(NameRefClass::Definition, NameRefClass::Definition)
+                        })
                 },
                 ast::FieldExpr(field_expr) => {
                     sema.resolve_field(&field_expr)
@@ -542,7 +551,7 @@ impl NameRefClass {
 }
 
 impl_from!(
-    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
+    Field, Module, Function, Adt, Variant, Const, Static, Trait, TraitAlias, TypeAlias, BuiltinType, Local,
     GenericParam, Label, Macro
     for Definition
 );
@@ -599,6 +608,7 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Const(it) => Definition::Const(it),
             ModuleDef::Static(it) => Definition::Static(it),
             ModuleDef::Trait(it) => Definition::Trait(it),
+            ModuleDef::TraitAlias(it) => Definition::TraitAlias(it),
             ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
             ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
@@ -616,6 +626,7 @@ impl From<Definition> for Option<ItemInNs> {
             Definition::Const(it) => ModuleDef::Const(it),
             Definition::Static(it) => ModuleDef::Static(it),
             Definition::Trait(it) => ModuleDef::Trait(it),
+            Definition::TraitAlias(it) => ModuleDef::TraitAlias(it),
             Definition::TypeAlias(it) => ModuleDef::TypeAlias(it),
             Definition::BuiltinType(it) => ModuleDef::BuiltinType(it),
             _ => return None,

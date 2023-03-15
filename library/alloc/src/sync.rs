@@ -51,7 +51,15 @@ mod tests;
 ///
 /// Going above this limit will abort your program (although not
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
+/// Trying to go above it might call a `panic` (if not actually going above it).
+///
+/// This is a global invariant, and also applies when using a compare-exchange loop.
+///
+/// See comment in `Arc::clone`.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
+
+/// The error in case either counter reaches above `MAX_REFCOUNT`, and we can `panic` safely.
+const INTERNAL_OVERFLOW_ERROR: &str = "Arc counter overflow";
 
 #[cfg(not(sanitize = "thread"))]
 macro_rules! acquire {
@@ -1104,6 +1112,9 @@ impl<T: ?Sized> Arc<T> {
                 continue;
             }
 
+            // We can't allow the refcount to increase much past `MAX_REFCOUNT`.
+            assert!(cur <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
+
             // NOTE: this code currently ignores the possibility of overflow
             // into usize::MAX; in general both Rc and Arc need to be adjusted
             // to deal with overflow.
@@ -1519,6 +1530,11 @@ impl<T: ?Sized> Clone for Arc<T> {
         // the worst already happened and we actually do overflow the `usize` counter. However, that
         // requires the counter to grow from `isize::MAX` to `usize::MAX` between the increment
         // above and the `abort` below, which seems exceedingly unlikely.
+        //
+        // This is a global invariant, and also applies when using a compare-exchange loop to increment
+        // counters in other methods.
+        // Otherwise, the counter could be brought to an almost-overflow using a compare-exchange loop,
+        // and then overflow using a few `fetch_add`s.
         if old_size > MAX_REFCOUNT {
             abort();
         }
@@ -2180,9 +2196,7 @@ impl<T: ?Sized> Weak<T> {
                     return None;
                 }
                 // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-                if n > MAX_REFCOUNT {
-                    abort();
-                }
+                assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
                 Some(n + 1)
             })
             .ok()

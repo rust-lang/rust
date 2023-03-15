@@ -1,9 +1,8 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, GenericArgPosition,
+    errors::prohibit_assoc_ty_binding, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
@@ -433,7 +432,7 @@ pub(crate) fn check_generic_arg_count(
         (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
-            prohibit_assoc_ty_binding(tcx, b.span);
+             prohibit_assoc_ty_binding(tcx, b.span, None);
         }
 
     let explicit_late_bound =
@@ -587,11 +586,6 @@ pub(crate) fn check_generic_arg_count(
             .and(args_correct)
             .map_err(|reported| GenericArgCountMismatch { reported: Some(reported), invalid_args }),
     }
-}
-
-/// Emits an error regarding forbidden type binding associations
-pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
-    tcx.sess.emit_err(AssocTypeBindingNotAllowed { span });
 }
 
 /// Prohibits explicit lifetime arguments if late-bound lifetime parameters

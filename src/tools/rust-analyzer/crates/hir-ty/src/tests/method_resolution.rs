@@ -1167,7 +1167,6 @@ fn test() {
             123..167 '{     ...o(); }': ()
             133..134 's': &S
             137..151 'unsafe { f() }': &S
-            137..151 'unsafe { f() }': &S
             146..147 'f': fn f() -> &S
             146..149 'f()': &S
             157..158 's': &S
@@ -1253,6 +1252,7 @@ fn foo<T: Trait>(a: &T) {
 
 #[test]
 fn autoderef_visibility_field() {
+    // FIXME: We should know mutability in overloaded deref
     check(
         r#"
 //- minicore: deref
@@ -1274,7 +1274,7 @@ mod a {
 mod b {
     fn foo() {
         let x = super::a::Bar::new().0;
-             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not)))
+             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(None)))
              // ^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
 }

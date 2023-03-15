@@ -337,9 +337,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
             }
-            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
-                gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)
@@ -395,14 +392,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Box(_) => {
-                gate_feature_post!(
-                    &self,
-                    box_syntax,
-                    e.span,
-                    "box expression syntax is experimental; you can call `Box::new` instead"
-                );
-            }
             ast::ExprKind::Type(..) => {
                 if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
                     // To avoid noise about type ascription in common syntax errors,
@@ -424,14 +413,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::Closure(box ast::Closure { constness: ast::Const::Yes(_), .. }) => {
-                gate_feature_post!(
-                    &self,
-                    const_closures,
-                    e.span,
-                    "const closures are experimental"
-                );
             }
             _ => {}
         }
@@ -594,6 +575,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
+    gate_all!(dyn_star, "`dyn*` trait objects are experimental");
+    gate_all!(const_closures, "const closures are experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
@@ -613,7 +596,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
     gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);

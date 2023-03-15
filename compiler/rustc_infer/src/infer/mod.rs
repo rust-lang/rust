@@ -1363,6 +1363,28 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().const_unification_table().find(var)
     }
 
+    /// Resolves an int var to a rigid int type, if it was constrained to one,
+    /// or else the root int var in the unification table.
+    pub fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(value) = inner.int_unification_table().probe_value(vid) {
+            value.to_type(self.tcx)
+        } else {
+            self.tcx.mk_int_var(inner.int_unification_table().find(vid))
+        }
+    }
+
+    /// Resolves a float var to a rigid int type, if it was constrained to one,
+    /// or else the root float var in the unification table.
+    pub fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(value) = inner.float_unification_table().probe_value(vid) {
+            value.to_type(self.tcx)
+        } else {
+            self.tcx.mk_float_var(inner.float_unification_table().find(vid))
+        }
+    }
+
     /// Where possible, replaces type/const variables in
     /// `value` with their final value. Note that region variables
     /// are unaffected. If a type/const variable has not been unified, it

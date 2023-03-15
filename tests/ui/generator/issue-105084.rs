@@ -9,7 +9,7 @@
 #![feature(generators)]
 #![feature(generator_clone)]
 #![feature(generator_trait)]
-#![feature(box_syntax)]
+#![feature(rustc_attrs, stmt_expr_attributes)]
 
 use std::ops::Generator;
 use std::pin::Pin;
@@ -25,7 +25,8 @@ fn main() {
         // - create a Box that is ignored for trait computations;
         // - compute fields (and yields);
         // - assign to `t`.
-        let t = box (5, yield);
+        let t = #[rustc_box]
+        Box::new((5, yield));
         drop(t);
     };
 

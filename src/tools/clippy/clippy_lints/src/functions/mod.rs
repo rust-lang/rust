@@ -185,7 +185,7 @@ declare_clippy_lint! {
     /// ### Examples
     /// ```rust
     /// // this could be annotated with `#[must_use]`.
-    /// fn id<T>(t: T) -> T { t }
+    /// pub fn id<T>(t: T) -> T { t }
     /// ```
     #[clippy::version = "1.40.0"]
     pub MUST_USE_CANDIDATE,

@@ -192,7 +192,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("fxsr", None),
     ("gfni", Some(sym::avx512_target_feature)),
     ("lzcnt", None),
-    ("movbe", Some(sym::movbe_target_feature)),
+    ("movbe", None),
     ("pclmulqdq", None),
     ("popcnt", None),
     ("rdrand", None),
@@ -394,7 +394,6 @@ pub fn from_target_feature(
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
@@ -442,7 +441,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
 pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
-        if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
+        if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
             tcx.sess
                 .struct_span_err(
                     attr_span,

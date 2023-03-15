@@ -55,7 +55,7 @@ pub enum DryRun {
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
 /// each field, see the corresponding fields in
-/// `config.toml.example`.
+/// `config.example.toml`.
 #[derive(Default)]
 #[cfg_attr(test, derive(Clone))]
 pub struct Config {
@@ -325,7 +325,7 @@ impl std::str::FromStr for SplitDebuginfo {
 
 impl SplitDebuginfo {
     /// Returns the default `-Csplit-debuginfo` value for the current target. See the comment for
-    /// `rust.split-debuginfo` in `config.toml.example`.
+    /// `rust.split-debuginfo` in `config.example.toml`.
     fn default_for_platform(target: &str) -> Self {
         if target.contains("apple") {
             SplitDebuginfo::Unpacked

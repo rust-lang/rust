@@ -8,7 +8,6 @@ pub mod place;
 
 use crate::ty::query::Providers;
 use crate::ty::{ImplSubject, TyCtxt};
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -24,14 +23,15 @@ use rustc_span::{ExpnId, DUMMY_SP};
 #[derive(Copy, Clone, Debug)]
 pub struct Owner<'tcx> {
     node: OwnerNode<'tcx>,
-    hash_without_bodies: Fingerprint,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { node: _, hash_without_bodies } = self;
-        hash_without_bodies.hash_stable(hcx, hasher)
+        // Perform a shallow hash instead using the deep hash saved in `OwnerNodes`. This lets us
+        // differentiate queries that depend on the full HIR tree from those that only depend on
+        // the item signature.
+        hcx.without_hir_bodies(|hcx| self.node.hash_stable(hcx, hasher));
     }
 }
 
@@ -123,7 +123,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_owner = |tcx, id| {
         let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
         let node = owner.node();
-        Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
+        Some(Owner { node })
     };
     providers.opt_local_def_id_to_hir_id = |tcx, id| {
         let owner = tcx.hir_crate(()).owners[id].map(|_| ());
@@ -177,7 +177,6 @@ pub fn provide(providers: &mut Providers) {
         }
     };
     providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
-    providers.opt_rpitit_info = |_, _| None;
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined = |tcx, id| {
         let id = id.expect_local();

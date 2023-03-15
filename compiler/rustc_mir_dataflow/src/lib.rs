@@ -46,7 +46,7 @@ pub mod storage;
 pub mod un_derefer;
 pub mod value_analysis;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub(crate) mod indexes {
     pub(crate) use super::move_paths::MovePathIndex;

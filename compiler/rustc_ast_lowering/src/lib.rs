@@ -92,7 +92,7 @@ mod lifetime_collector;
 mod pat;
 mod path;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
@@ -435,7 +435,9 @@ fn compute_hir_hash(
 
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
-    tcx.ensure().output_filenames(());
+    // Queries that borrow `resolver_for_lowering`.
+    tcx.ensure_with_value().output_filenames(());
+    tcx.ensure_with_value().early_lint_checks(());
     let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
 
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
@@ -463,8 +465,10 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
-    let hir_hash = compute_hir_hash(tcx, &owners);
-    hir::Crate { owners, hir_hash }
+    // Don't hash unless necessary, because it's expensive.
+    let opt_hir_hash =
+        if tcx.sess.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
+    hir::Crate { owners, opt_hir_hash }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -657,40 +661,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
-        let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
-        let (nodes, parenting) =
-            index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
-        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
-        let attrs = {
-            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+
+        // Don't hash unless necessary, because it's expensive.
+        let (opt_hash_including_bodies, attrs_hash) = if self.tcx.sess.needs_crate_hash() {
+            self.tcx.with_stable_hashing_context(|mut hcx| {
+                let mut stable_hasher = StableHasher::new();
+                hcx.with_hir_bodies(node.def_id(), &bodies, |hcx| {
+                    node.hash_stable(hcx, &mut stable_hasher)
+                });
+                let h1 = stable_hasher.finish();
+
                 let mut stable_hasher = StableHasher::new();
                 attrs.hash_stable(&mut hcx, &mut stable_hasher);
-                stable_hasher.finish()
-            });
-            hir::AttributeMap { map: attrs, hash }
+                let h2 = stable_hasher.finish();
+
+                (Some(h1), Some(h2))
+            })
+        } else {
+            (None, None)
         };
+        let (nodes, parenting) =
+            index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
+        let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
+        let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
-    }
-
-    /// Hash the HIR node twice, one deep and one shallow hash. This allows to differentiate
-    /// queries which depend on the full HIR tree and those which only depend on the item signature.
-    fn hash_owner(
-        &mut self,
-        node: hir::OwnerNode<'hir>,
-        bodies: &SortedMap<hir::ItemLocalId, &'hir hir::Body<'hir>>,
-    ) -> (Fingerprint, Fingerprint) {
-        self.tcx.with_stable_hashing_context(|mut hcx| {
-            let mut stable_hasher = StableHasher::new();
-            hcx.with_hir_bodies(node.def_id(), bodies, |hcx| {
-                node.hash_stable(hcx, &mut stable_hasher)
-            });
-            let hash_including_bodies = stable_hasher.finish();
-            let mut stable_hasher = StableHasher::new();
-            hcx.without_hir_bodies(|hcx| node.hash_stable(hcx, &mut stable_hasher));
-            let hash_without_bodies = stable_hasher.finish();
-            (hash_including_bodies, hash_without_bodies)
-        })
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in

@@ -1,0 +1,28 @@
+error: this async expression only awaits a single future
+  --> $DIR/redundant_async_block.rs:13:13
+   |
+LL |     let x = async { f.await };
+   |             ^^^^^^^^^^^^^^^^^ help: you can reduce it to: `f`
+   |
+   = note: `-D clippy::redundant-async-block` implied by `-D warnings`
+
+error: this async expression only awaits a single future
+  --> $DIR/redundant_async_block.rs:46:16
+   |
+LL |     let fut2 = async { fut1.await };
+   |                ^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut1`
+
+error: this async expression only awaits a single future
+  --> $DIR/redundant_async_block.rs:49:16
+   |
+LL |     let fut2 = async move { fut1.await };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut1`
+
+error: this async expression only awaits a single future
+  --> $DIR/redundant_async_block.rs:51:15
+   |
+LL |     let fut = async { async { 42 }.await };
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { 42 }`
+
+error: aborting due to 4 previous errors
+

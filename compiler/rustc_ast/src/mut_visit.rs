@@ -1316,7 +1316,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
     vis: &mut T,
 ) {
     match kind {
-        ExprKind::Box(expr) => vis.visit_expr(expr),
         ExprKind::Array(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::ConstBlock(anon_const) => {
             vis.visit_anon_const(anon_const);

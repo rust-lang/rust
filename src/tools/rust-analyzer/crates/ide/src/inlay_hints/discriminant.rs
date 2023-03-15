@@ -59,8 +59,14 @@ fn variant_hints(
         },
         kind: InlayKind::Discriminant,
         label: InlayHintLabel::simple(
-            match &d {
-                Ok(v) => format!("{}", v),
+            match d {
+                Ok(x) => {
+                    if x >= 10 {
+                        format!("{x} ({x:#X})")
+                    } else {
+                        format!("{x}")
+                    }
+                }
                 Err(_) => "?".into(),
             },
             Some(InlayTooltip::String(match &d {

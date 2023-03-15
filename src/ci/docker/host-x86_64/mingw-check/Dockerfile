@@ -52,4 +52,6 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            reuse lint && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
            es-check es6 ../src/librustdoc/html/static/js/*.js && \
-           eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js
+           eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \
+           eslint -c ../src/tools/rustdoc-js/.eslintrc.js ../src/tools/rustdoc-js/tester.js && \
+           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js

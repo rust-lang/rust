@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 struct Fat<T: ?Sized> {
     f1: isize,
     f2: &'static str,
@@ -109,7 +107,7 @@ pub fn main() {
     assert_eq!((*f2)[1], 2);
 
     // Nested Box.
-    let f1: Box<Fat<[isize; 3]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+    let f1: Box<Fat<[isize; 3]>> = Box::new(Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] });
     foo(&*f1);
     let f2: Box<Fat<[isize]>> = f1;
     foo(&*f2);
@@ -117,6 +115,6 @@ pub fn main() {
     let f3: Box<Fat<[isize]>> =
         Box::<Fat<[_; 3]>>::new(Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] });
     foo(&*f3);
-    let f4: Box<Fat<[isize]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+    let f4: Box<Fat<[isize]>> = Box::new(Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] });
     foo(&*f4);
 }

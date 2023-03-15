@@ -2,8 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::HasDepContext;
 use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepGraphData, HasDepContext};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
@@ -17,7 +17,7 @@ use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -178,16 +178,13 @@ where
     fn try_start<'b, Qcx>(
         qcx: &'b Qcx,
         state: &'b QueryState<K, Qcx::DepKind>,
+        mut state_lock: LockGuard<'b, FxHashMap<K, QueryResult<Qcx::DepKind>>>,
         span: Span,
         key: K,
     ) -> TryGetJob<'b, K, D>
     where
         Qcx: QueryContext + HasDepContext<DepKind = D>,
     {
-        #[cfg(parallel_compiler)]
-        let mut state_lock = state.active.get_shard_by_value(&key).lock();
-        #[cfg(not(parallel_compiler))]
-        let mut state_lock = state.active.lock();
         let lock = &mut *state_lock;
         let current_job_id = qcx.current_query_job();
 
@@ -362,7 +359,25 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key) {
+    #[cfg(parallel_compiler)]
+    let state_lock = state.active.get_shard_by_value(&key).lock();
+    #[cfg(not(parallel_compiler))]
+    let state_lock = state.active.lock();
+
+    // For the parallel compiler we need to check both the query cache and query state structures
+    // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
+    // query is not still executing. Without checking the query cache here, we can end up
+    // re-executing the query since `try_start` only checks that the query is not currently
+    // executing, but another thread may have already completed the query and stores it result
+    // in the query cache.
+    if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
+        if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
+            qcx.dep_context().profiler().query_cache_hit(index.into());
+            return (value, Some(index));
+        }
+    }
+
+    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, state_lock, span, key) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(query, qcx, key.clone(), dep_node, job.id);
             let cache = query.query_cache(qcx);
@@ -411,32 +426,34 @@ where
     Qcx: QueryContext,
 {
     let dep_graph = qcx.dep_context().dep_graph();
+    let dep_graph_data = match dep_graph.data() {
+        // Fast path for when incr. comp. is off.
+        None => {
+            // Fingerprint the key, just to assert that it doesn't
+            // have anything we don't consider hashable
+            if cfg!(debug_assertions) {
+                let _ = key.to_fingerprint(*qcx.dep_context());
+            }
 
-    // Fast path for when incr. comp. is off.
-    if !dep_graph.is_fully_enabled() {
-        // Fingerprint the key, just to assert that it doesn't
-        // have anything we don't consider hashable
-        if cfg!(debug_assertions) {
-            let _ = key.to_fingerprint(*qcx.dep_context());
+            let prof_timer = qcx.dep_context().profiler().query_provider();
+            let result =
+                qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+            let dep_node_index = dep_graph.next_virtual_depnode_index();
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            // Similarly, fingerprint the result to assert that
+            // it doesn't have anything not considered hashable.
+            if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result()
+            {
+                qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                    hash_result(&mut hcx, &result);
+                });
+            }
+
+            return (result, dep_node_index);
         }
-
-        let prof_timer = qcx.dep_context().profiler().query_provider();
-        let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
-        let dep_node_index = dep_graph.next_virtual_depnode_index();
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        // Similarly, fingerprint the result to assert that
-        // it doesn't have anything not considered hashable.
-        if cfg!(debug_assertions)
-            && let Some(hash_result) = query.hash_result()
-        {
-            qcx.dep_context().with_stable_hashing_context(|mut hcx| {
-                hash_result(&mut hcx, &result);
-            });
-        }
-
-        return (result, dep_node_index);
-    }
+        Some(data) => data,
+    };
 
     if !query.anon() && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
@@ -446,7 +463,7 @@ where
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory(query, qcx, &key, &dep_node)
+            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, &dep_node)
         }) {
             return ret;
         }
@@ -458,7 +475,7 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
-                return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
+                return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
                     query.compute(qcx, key)
                 });
             }
@@ -467,7 +484,7 @@ where
             let dep_node =
                 dep_node_opt.unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
-            dep_graph.with_task(
+            dep_graph_data.with_task(
                 dep_node,
                 (qcx, query),
                 key,
@@ -495,6 +512,7 @@ where
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     query: Q,
+    dep_graph_data: &DepGraphData<Qcx::DepKind>,
     qcx: Qcx,
     key: &Q::Key,
     dep_node: &DepNode<Qcx::DepKind>,
@@ -506,10 +524,9 @@ where
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let dep_graph = qcx.dep_context().dep_graph();
-    let (prev_dep_node_index, dep_node_index) = dep_graph.try_mark_green(qcx, &dep_node)?;
+    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, &dep_node)?;
 
-    debug_assert!(dep_graph.is_green(dep_node));
+    debug_assert!(dep_graph_data.is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
@@ -519,8 +536,10 @@ where
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result =
-            dep_graph.with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
+        let result = qcx
+            .dep_context()
+            .dep_graph()
+            .with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -528,14 +547,11 @@ where
             if std::intrinsics::unlikely(
                 qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
-                dep_graph.mark_debug_loaded_from_disk(*dep_node)
+                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
             }
 
-            let prev_fingerprint = qcx
-                .dep_context()
-                .dep_graph()
-                .prev_fingerprint_of(dep_node)
-                .unwrap_or(Fingerprint::ZERO);
+            let prev_fingerprint =
+                dep_graph_data.prev_fingerprint_of(dep_node).unwrap_or(Fingerprint::ZERO);
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
             //
@@ -547,7 +563,13 @@ where
             if std::intrinsics::unlikely(
                 try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
-                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
+                incremental_verify_ich(
+                    *qcx.dep_context(),
+                    dep_graph_data,
+                    &result,
+                    dep_node,
+                    query.hash_result(),
+                );
             }
 
             return Some((result, dep_node_index));
@@ -557,16 +579,23 @@ where
         // can be forced from `DepNode`.
         debug_assert!(
             !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for {dep_node:?}"
+            "missing on-disk cache entry for reconstructible {dep_node:?}"
         );
     }
+
+    // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
+    // we should actually be able to load it.
+    debug_assert!(
+        !query.loadable_from_disk(qcx, &key, prev_dep_node_index),
+        "missing on-disk cache entry for loadable {dep_node:?}"
+    );
 
     // We could not load a result from the on-disk cache, so
     // recompute.
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| query.compute(qcx, *key));
+    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -579,15 +608,22 @@ where
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
+    incremental_verify_ich(
+        *qcx.dep_context(),
+        dep_graph_data,
+        &result,
+        dep_node,
+        query.hash_result(),
+    );
 
     Some((result, dep_node_index))
 }
 
 #[inline]
-#[instrument(skip(tcx, result, hash_result), level = "debug")]
+#[instrument(skip(tcx, dep_graph_data, result, hash_result), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     tcx: Tcx,
+    dep_graph_data: &DepGraphData<Tcx::DepKind>,
     result: &V,
     dep_node: &DepNode<Tcx::DepKind>,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
@@ -596,7 +632,7 @@ where
     Tcx: DepContext,
 {
     assert!(
-        tcx.dep_graph().is_green(dep_node),
+        dep_graph_data.is_green(dep_node),
         "fingerprint for green query instance not loaded from cache: {dep_node:?}",
     );
 
@@ -604,7 +640,7 @@ where
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
 
-    let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
+    let old_hash = dep_graph_data.prev_fingerprint_of(dep_node);
 
     if Some(new_hash) != old_hash {
         incremental_verify_ich_failed(
@@ -704,6 +740,7 @@ fn ensure_must_run<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     key: &Q::Key,
+    check_cache: bool,
 ) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
     Q: QueryConfig<Qcx>,
@@ -719,7 +756,7 @@ where
     let dep_node = query.construct_dep_node(*qcx.dep_context(), key);
 
     let dep_graph = qcx.dep_context().dep_graph();
-    match dep_graph.try_mark_green(qcx, &dep_node) {
+    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -727,20 +764,28 @@ where
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            (true, Some(dep_node))
+            return (true, Some(dep_node));
         }
-        Some((_, dep_node_index)) => {
+        Some((serialized_dep_node_index, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
             qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
-            (false, None)
+            serialized_dep_node_index
         }
+    };
+
+    // We do not need the value at all, so do not check the cache.
+    if !check_cache {
+        return (false, None);
     }
+
+    let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
+    (!loadable, Some(dep_node))
 }
 
 #[derive(Debug)]
 pub enum QueryMode {
     Get,
-    Ensure,
+    Ensure { check_cache: bool },
 }
 
 #[inline(always)]
@@ -755,8 +800,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run(query, qcx, &key);
+    let dep_node = if let QueryMode::Ensure { check_cache } = mode {
+        let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
         if !must_run {
             return None;
         }

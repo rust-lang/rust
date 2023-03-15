@@ -6,7 +6,8 @@ mod serialized;
 
 pub use dep_node::{DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub use graph::{
-    hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct,
+    hash_result, DepGraph, DepGraphData, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef,
+    WorkProduct,
 };
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};

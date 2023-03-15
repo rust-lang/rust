@@ -152,6 +152,15 @@ impl TyBuilder<()> {
         TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner)
     }
 
+    // FIXME: rustc's ty is dependent on the adt type, maybe we need to do that as well
+    pub fn discr_ty() -> Ty {
+        TyKind::Scalar(chalk_ir::Scalar::Int(chalk_ir::IntTy::I128)).intern(Interner)
+    }
+
+    pub fn bool() -> Ty {
+        TyKind::Scalar(chalk_ir::Scalar::Bool).intern(Interner)
+    }
+
     pub fn usize() -> Ty {
         TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner)
     }

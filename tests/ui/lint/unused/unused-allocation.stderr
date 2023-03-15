@@ -1,0 +1,20 @@
+error: unnecessary allocation, use `&` instead
+  --> $DIR/unused-allocation.rs:5:9
+   |
+LL |     _ = (#[rustc_box] Box::new([1])).len();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-allocation.rs:2:9
+   |
+LL | #![deny(unused_allocation)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unnecessary allocation, use `&` instead
+  --> $DIR/unused-allocation.rs:6:9
+   |
+LL |     _ = Box::new([1]).len();
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

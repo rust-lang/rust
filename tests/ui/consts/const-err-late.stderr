@@ -10,12 +10,6 @@ note: erroneous constant used
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                ^^^^^^^^^^^^^
 
-note: erroneous constant used
-  --> $DIR/const-err-late.rs:19:16
-   |
-LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
-   |                ^^^^^^^^^^^^^
-
 error[E0080]: evaluation of `S::<u32>::FOO` failed
   --> $DIR/const-err-late.rs:13:21
    |
@@ -27,6 +21,12 @@ note: erroneous constant used
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                               ^^^^^^^^^^^^^
+
+note: erroneous constant used
+  --> $DIR/const-err-late.rs:19:16
+   |
+LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
+   |                ^^^^^^^^^^^^^
 
 note: erroneous constant used
   --> $DIR/const-err-late.rs:19:16

@@ -342,7 +342,7 @@ impl DefMap {
     }
 
     pub(crate) fn block_id(&self) -> Option<BlockId> {
-        self.block.as_ref().map(|block| block.block)
+        self.block.map(|block| block.block)
     }
 
     pub(crate) fn prelude(&self) -> Option<ModuleId> {
@@ -354,7 +354,7 @@ impl DefMap {
     }
 
     pub fn module_id(&self, local_id: LocalModuleId) -> ModuleId {
-        let block = self.block.as_ref().map(|b| b.block);
+        let block = self.block.map(|b| b.block);
         ModuleId { krate: self.krate, local_id, block }
     }
 
@@ -428,9 +428,9 @@ impl DefMap {
     /// Returns the module containing `local_mod`, either the parent `mod`, or the module containing
     /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(&self, local_mod: LocalModuleId) -> Option<ModuleId> {
-        match &self[local_mod].parent {
-            Some(parent) => Some(self.module_id(*parent)),
-            None => self.block.as_ref().map(|block| block.parent),
+        match self[local_mod].parent {
+            Some(parent) => Some(self.module_id(parent)),
+            None => self.block.map(|block| block.parent),
         }
     }
 
@@ -440,11 +440,11 @@ impl DefMap {
         let mut buf = String::new();
         let mut arc;
         let mut current_map = self;
-        while let Some(block) = &current_map.block {
+        while let Some(block) = current_map.block {
             go(&mut buf, current_map, "block scope", current_map.root);
             buf.push('\n');
             arc = block.parent.def_map(db);
-            current_map = &*arc;
+            current_map = &arc;
         }
         go(&mut buf, current_map, "crate", current_map.root);
         return buf;
@@ -468,10 +468,10 @@ impl DefMap {
         let mut buf = String::new();
         let mut arc;
         let mut current_map = self;
-        while let Some(block) = &current_map.block {
+        while let Some(block) = current_map.block {
             format_to!(buf, "{:?} in {:?}\n", block.block, block.parent);
             arc = block.parent.def_map(db);
-            current_map = &*arc;
+            current_map = &arc;
         }
 
         format_to!(buf, "crate scope\n");

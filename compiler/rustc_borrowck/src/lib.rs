@@ -100,7 +100,7 @@ use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
 use renumber::RegionCtxt;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]

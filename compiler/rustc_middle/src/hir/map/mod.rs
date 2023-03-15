@@ -1134,7 +1134,7 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     debug_assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.hir_hash;
+    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
 
     let upstream_crates = upstream_crates(tcx);
 

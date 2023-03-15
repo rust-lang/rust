@@ -1,4 +1,4 @@
-#![feature(start, core_intrinsics, alloc_error_handler, box_syntax)]
+#![feature(start, core_intrinsics, alloc_error_handler)]
 #![no_std]
 
 extern crate alloc;
@@ -29,7 +29,7 @@ fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let world: Box<&str> = box "Hello World!\0";
+    let world: Box<&str> = Box::new("Hello World!\0");
     unsafe {
         puts(*world as *const str as *const u8);
     }

@@ -33,7 +33,7 @@ pub mod representability;
 mod structural_match;
 mod ty;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     abi::provide(providers);

@@ -2,7 +2,7 @@ use crate::traits::{specialization_graph, translate_substs};
 
 use super::assembly;
 use super::trait_goals::structural_traits;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::EvalCtxt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -11,6 +11,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -183,7 +184,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
+        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         if iter::zip(goal_trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
         {
@@ -512,7 +513,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     fn consider_builtin_dyn_upcast_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> Vec<super::CanonicalResponse<'tcx>> {
+    ) -> Vec<CanonicalResponse<'tcx>> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 

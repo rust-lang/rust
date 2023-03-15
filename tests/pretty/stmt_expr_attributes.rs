@@ -1,6 +1,5 @@
 // pp-exact
 
-#![feature(box_syntax)]
 #![feature(inline_const)]
 #![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
@@ -140,7 +139,6 @@ fn _10() {
 }
 
 fn _11() {
-    let _ = #[rustc_dummy] box 0;
     let _: [(); 0] = #[rustc_dummy] [];
     let _ = #[rustc_dummy] [0, 0];
     let _ = #[rustc_dummy] [0; 0];

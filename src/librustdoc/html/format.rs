@@ -1,13 +1,15 @@
 //! HTML formatting module
 //!
 //! This module contains a large number of `fmt::Display` implementations for
-//! various types in `rustdoc::clean`. These implementations all currently
-//! assume that HTML output is desired, although it may be possible to redesign
-//! them in the future to instead emit any format desired.
+//! various types in `rustdoc::clean`.
+//!
+//! These implementations all emit HTML. As an internal implementation detail,
+//! some of them support an alternate format that emits text, but that should
+//! not be used external to this module.
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::iter::{self, once};
 
 use rustc_ast as ast;
@@ -126,7 +128,6 @@ impl Buffer {
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
     pub(crate) fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
-        use fmt::Write;
         self.buffer.write_fmt(v).unwrap();
     }
 
@@ -279,8 +280,6 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     indent: usize,
     ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    use fmt::Write;
-
     display_fn(move |f| {
         let mut where_predicates = gens.where_predicates.iter().filter(|pred| {
             !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
@@ -1306,6 +1305,28 @@ impl clean::BareFunctionDecl {
     }
 }
 
+// Implements Write but only counts the bytes "written".
+struct WriteCounter(usize);
+
+impl std::fmt::Write for WriteCounter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0 += s.len();
+        Ok(())
+    }
+}
+
+// Implements Display by emitting the given number of spaces.
+struct Indent(usize);
+
+impl fmt::Display for Indent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (0..self.0).for_each(|_| {
+            f.write_char(' ').unwrap();
+        });
+        Ok(())
+    }
+}
+
 impl clean::FnDecl {
     pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
@@ -1345,95 +1366,80 @@ impl clean::FnDecl {
         indent: usize,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| self.inner_full_print(header_len, indent, f, cx))
+        display_fn(move |f| {
+            // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
+            let mut counter = WriteCounter(0);
+            write!(&mut counter, "{:#}", display_fn(|f| { self.inner_full_print(None, f, cx) }))
+                .unwrap();
+            // If the text form was over 80 characters wide, we will line-wrap our output.
+            let line_wrapping_indent =
+                if header_len + counter.0 > 80 { Some(indent) } else { None };
+            // Generate the final output. This happens to accept `{:#}` formatting to get textual
+            // output but in practice it is only formatted with `{}` to get HTML output.
+            self.inner_full_print(line_wrapping_indent, f, cx)
+        })
     }
 
     fn inner_full_print(
         &self,
-        header_len: usize,
-        indent: usize,
+        // For None, the declaration will not be line-wrapped. For Some(n),
+        // the declaration will be line-wrapped, with an indent of n spaces.
+        line_wrapping_indent: Option<usize>,
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
-        let mut args = Buffer::html();
-        let mut args_plain = Buffer::new();
+
+        write!(f, "(")?;
+        if let Some(n) = line_wrapping_indent {
+            write!(f, "\n{}", Indent(n + 4))?;
+        }
         for (i, input) in self.inputs.values.iter().enumerate() {
+            if i > 0 {
+                match line_wrapping_indent {
+                    None => write!(f, ", ")?,
+                    Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
+                };
+            }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
-                        args.push_str("self");
-                        args_plain.push_str("self");
+                        write!(f, "self")?;
                     }
                     clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                        write!(args, "{}{} {}self", amp, lt.print(), mtbl.print_with_space());
-                        write!(args_plain, "&{} {}self", lt.print(), mtbl.print_with_space());
+                        write!(f, "{}{} {}self", amp, lt.print(), mtbl.print_with_space())?;
                     }
                     clean::SelfBorrowed(None, mtbl) => {
-                        write!(args, "{}{}self", amp, mtbl.print_with_space());
-                        write!(args_plain, "&{}self", mtbl.print_with_space());
+                        write!(f, "{}{}self", amp, mtbl.print_with_space())?;
                     }
                     clean::SelfExplicit(ref typ) => {
-                        if f.alternate() {
-                            write!(args, "self: {:#}", typ.print(cx));
-                        } else {
-                            write!(args, "self: {}", typ.print(cx));
-                        }
-                        write!(args_plain, "self: {:#}", typ.print(cx));
+                        write!(f, "self: ")?;
+                        fmt::Display::fmt(&typ.print(cx), f)?;
                     }
                 }
             } else {
-                if i > 0 {
-                    args.push_str("\n");
-                }
                 if input.is_const {
-                    args.push_str("const ");
-                    args_plain.push_str("const ");
+                    write!(f, "const ")?;
                 }
-                write!(args, "{}: ", input.name);
-                write!(args_plain, "{}: ", input.name);
-
-                if f.alternate() {
-                    write!(args, "{:#}", input.type_.print(cx));
-                } else {
-                    write!(args, "{}", input.type_.print(cx));
-                }
-                write!(args_plain, "{:#}", input.type_.print(cx));
-            }
-            if i + 1 < self.inputs.values.len() {
-                args.push_str(",");
-                args_plain.push_str(",");
+                write!(f, "{}: ", input.name)?;
+                fmt::Display::fmt(&input.type_.print(cx), f)?;
             }
         }
-
-        let mut args_plain = format!("({})", args_plain.into_inner());
-        let mut args = args.into_inner();
 
         if self.c_variadic {
-            args.push_str(",\n ...");
-            args_plain.push_str(", ...");
+            match line_wrapping_indent {
+                None => write!(f, ", ...")?,
+                Some(n) => write!(f, "\n{}...", Indent(n + 4))?,
+            };
         }
 
-        let arrow_plain = format!("{:#}", self.output.print(cx));
-        let arrow =
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) };
-
-        let declaration_len = header_len + args_plain.len() + arrow_plain.len();
-        let output = if declaration_len > 80 {
-            let full_pad = format!("\n{}", " ".repeat(indent + 4));
-            let close_pad = format!("\n{}", " ".repeat(indent));
-            format!(
-                "({pad}{args}{close}){arrow}",
-                pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
-                args = args.replace('\n', &full_pad),
-                close = close_pad,
-                arrow = arrow
-            )
-        } else {
-            format!("({args}){arrow}", args = args.replace('\n', " "), arrow = arrow)
+        match line_wrapping_indent {
+            None => write!(f, ")")?,
+            Some(n) => write!(f, "\n{})", Indent(n))?,
         };
 
-        write!(f, "{}", output)
+        fmt::Display::fmt(&self.output.print(cx), f)?;
+        Ok(())
     }
 }
 

@@ -925,7 +925,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.66.0"]
     pub MANUAL_FILTER,
     complexity,
-    "reimplentation of `filter`"
+    "reimplementation of `filter`"
 }
 
 #[derive(Default)]

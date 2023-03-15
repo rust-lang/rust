@@ -30,7 +30,6 @@ use rustc_session::cstore::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnIndex;
-use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
@@ -311,8 +310,11 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
-        debug_assert!(self.tcx.is_some(), "missing TyCtxt in DecodeContext");
-        self.tcx.unwrap()
+        let Some(tcx) = self.tcx else {
+            bug!("No TyCtxt found for decoding. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
+        tcx
     }
 
     #[inline]
@@ -454,7 +456,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
         let cdata = decoder.cdata();
-        let sess = decoder.sess.unwrap();
+
+        let Some(sess) = decoder.sess else {
+            bug!("Cannot decode SyntaxContext without Session.\
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
+
         let cname = cdata.root.name;
         rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
@@ -471,7 +478,11 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> ExpnId {
         let local_cdata = decoder.cdata();
-        let sess = decoder.sess.unwrap();
+
+        let Some(sess) = decoder.sess else {
+            bug!("Cannot decode ExpnId without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+        };
 
         let cnum = CrateNum::decode(decoder);
         let index = u32::decode(decoder);
@@ -520,7 +531,8 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
-            bug!("Cannot decode Span without Session.")
+            bug!("Cannot decode Span without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.")
         };
 
         // Index of the file in the corresponding crate's list of encoded files.
@@ -917,7 +929,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
     }
 
-    fn get_visibility(self, id: DefIndex) -> ty::Visibility<DefId> {
+    fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
         self.root
             .tables
             .visibility
@@ -1083,6 +1095,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
             fn_has_self_parameter: has_self,
+            // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): We need to encode this
+            opt_rpitit_info: None,
         }
     }
 
@@ -1119,33 +1133,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     .expect("no encoded attributes for a structure or variant")
             })
             .decode((self, sess))
-    }
-
-    fn get_struct_field_names(
-        self,
-        id: DefIndex,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .expect("fields not encoded for a struct")
-            .decode(self)
-            .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
-    }
-
-    fn get_struct_field_visibilities(
-        self,
-        id: DefIndex,
-    ) -> impl Iterator<Item = Visibility<DefId>> + 'a {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .expect("fields not encoded for a struct")
-            .decode(self)
-            .map(move |field_index| self.get_visibility(field_index))
     }
 
     fn get_inherent_implementations_for_type(

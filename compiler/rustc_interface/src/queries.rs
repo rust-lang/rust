@@ -284,7 +284,11 @@ impl<'tcx> Queries<'tcx> {
         let codegen_backend = self.codegen_backend().clone();
 
         let (crate_hash, prepare_outputs, dep_graph) = self.global_ctxt()?.enter(|tcx| {
-            (tcx.crate_hash(LOCAL_CRATE), tcx.output_filenames(()).clone(), tcx.dep_graph.clone())
+            (
+                if tcx.sess.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
+                tcx.output_filenames(()).clone(),
+                tcx.dep_graph.clone(),
+            )
         });
         let ongoing_codegen = self.ongoing_codegen()?.steal();
 
@@ -308,7 +312,8 @@ pub struct Linker {
     // compilation outputs
     dep_graph: DepGraph,
     prepare_outputs: Arc<OutputFilenames>,
-    crate_hash: Svh,
+    // Only present when incr. comp. is enabled.
+    crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
 }
 

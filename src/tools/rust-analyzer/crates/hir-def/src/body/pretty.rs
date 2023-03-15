@@ -5,7 +5,7 @@ use std::fmt::{self, Write};
 use syntax::ast::HasName;
 
 use crate::{
-    expr::{Array, BindingAnnotation, ClosureKind, Literal, Movability, Statement},
+    expr::{Array, BindingAnnotation, BindingId, ClosureKind, Literal, Movability, Statement},
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
 };
@@ -292,18 +292,6 @@ impl<'a> Printer<'a> {
                 self.print_expr(*expr);
                 w!(self, "?");
             }
-            Expr::TryBlock { body } => {
-                w!(self, "try ");
-                self.print_expr(*body);
-            }
-            Expr::Async { body } => {
-                w!(self, "async ");
-                self.print_expr(*body);
-            }
-            Expr::Const { body } => {
-                w!(self, "const ");
-                self.print_expr(*body);
-            }
             Expr::Cast { expr, type_ref } => {
                 self.print_expr(*expr);
                 w!(self, " as ");
@@ -402,10 +390,6 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, ")");
             }
-            Expr::Unsafe { body } => {
-                w!(self, "unsafe ");
-                self.print_expr(*body);
-            }
             Expr::Array(arr) => {
                 w!(self, "[");
                 if !matches!(arr, Array::ElementList { elements, .. } if elements.is_empty()) {
@@ -428,25 +412,47 @@ impl<'a> Printer<'a> {
             }
             Expr::Literal(lit) => self.print_literal(lit),
             Expr::Block { id: _, statements, tail, label } => {
-                self.whitespace();
-                if let Some(lbl) = label {
-                    w!(self, "{}: ", self.body[*lbl].name);
-                }
-                w!(self, "{{");
-                if !statements.is_empty() || tail.is_some() {
-                    self.indented(|p| {
-                        for stmt in &**statements {
-                            p.print_stmt(stmt);
-                        }
-                        if let Some(tail) = tail {
-                            p.print_expr(*tail);
-                        }
-                        p.newline();
-                    });
-                }
-                w!(self, "}}");
+                let label = label.map(|lbl| format!("{}: ", self.body[lbl].name));
+                self.print_block(label.as_deref(), statements, tail);
+            }
+            Expr::Unsafe { id: _, statements, tail } => {
+                self.print_block(Some("unsafe "), statements, tail);
+            }
+            Expr::TryBlock { id: _, statements, tail } => {
+                self.print_block(Some("try "), statements, tail);
+            }
+            Expr::Async { id: _, statements, tail } => {
+                self.print_block(Some("async "), statements, tail);
+            }
+            Expr::Const { id: _, statements, tail } => {
+                self.print_block(Some("const "), statements, tail);
             }
         }
+    }
+
+    fn print_block(
+        &mut self,
+        label: Option<&str>,
+        statements: &Box<[Statement]>,
+        tail: &Option<la_arena::Idx<Expr>>,
+    ) {
+        self.whitespace();
+        if let Some(lbl) = label {
+            w!(self, "{}", lbl);
+        }
+        w!(self, "{{");
+        if !statements.is_empty() || tail.is_some() {
+            self.indented(|p| {
+                for stmt in &**statements {
+                    p.print_stmt(stmt);
+                }
+                if let Some(tail) = tail {
+                    p.print_expr(*tail);
+                }
+                p.newline();
+            });
+        }
+        w!(self, "}}");
     }
 
     fn print_pat(&mut self, pat: PatId) {
@@ -518,14 +524,8 @@ impl<'a> Printer<'a> {
             }
             Pat::Path(path) => self.print_path(path),
             Pat::Lit(expr) => self.print_expr(*expr),
-            Pat::Bind { mode, name, subpat } => {
-                let mode = match mode {
-                    BindingAnnotation::Unannotated => "",
-                    BindingAnnotation::Mutable => "mut ",
-                    BindingAnnotation::Ref => "ref ",
-                    BindingAnnotation::RefMut => "ref mut ",
-                };
-                w!(self, "{}{}", mode, name);
+            Pat::Bind { id, subpat } => {
+                self.print_binding(*id);
                 if let Some(pat) = subpat {
                     self.whitespace();
                     self.print_pat(*pat);
@@ -628,5 +628,16 @@ impl<'a> Printer<'a> {
 
     fn print_path(&mut self, path: &Path) {
         print_path(path, self).unwrap();
+    }
+
+    fn print_binding(&mut self, id: BindingId) {
+        let Binding { name, mode, .. } = &self.body.bindings[id];
+        let mode = match mode {
+            BindingAnnotation::Unannotated => "",
+            BindingAnnotation::Mutable => "mut ",
+            BindingAnnotation::Ref => "ref ",
+            BindingAnnotation::RefMut => "ref mut ",
+        };
+        w!(self, "{}{}", mode, name);
     }
 }
