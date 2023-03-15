@@ -1,25 +1,22 @@
 use crate::{fmt_list, UnicodeData};
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> String {
     let mut file = String::new();
 
     file.push_str(HEADER.trim_start());
-
-    let decl_type = "&[(char, [char; 3])]";
-
-    file.push_str(&format!(
-        "static LOWERCASE_TABLE: {} = &[{}];",
-        decl_type,
-        fmt_list(data.to_lower.iter().map(to_mapping))
-    ));
+    file.push_str(&generate_table("LOWER", &data.to_lower));
     file.push_str("\n\n");
-    file.push_str(&format!(
-        "static UPPERCASE_TABLE: {} = &[{}];",
-        decl_type,
-        fmt_list(data.to_upper.iter().map(to_mapping))
-    ));
+    file.push_str(&generate_table("UPPER", &data.to_upper));
     file
+}
+
+fn generate_table(case: &str, data: &BTreeMap<u32, (u32, u32, u32)>) -> String {
+    format!(
+        "static {}CASE_TABLE: &[(char, [char; 3])] = &[{}];",
+        case,
+        fmt_list(data.iter().map(to_mapping).filter(|(k, _)| !k.0.is_ascii()))
+    )
 }
 
 fn to_mapping((key, (a, b, c)): (&u32, &(u32, u32, u32))) -> (CharEscape, [CharEscape; 3]) {
