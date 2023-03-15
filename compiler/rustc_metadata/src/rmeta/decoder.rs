@@ -1087,6 +1087,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
+        let opt_rpitit_info =
+            self.root.tables.opt_rpitit_info.get(self, id).map(|d| d.decode(self));
 
         ty::AssocItem {
             name,
@@ -1095,8 +1097,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
             fn_has_self_parameter: has_self,
-            // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): We need to encode this
-            opt_rpitit_info: None,
+            opt_rpitit_info,
         }
     }
 

@@ -1350,6 +1350,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
+        if let Some(rpitit_info) = trait_item.opt_rpitit_info {
+            let rpitit_info = self.lazy(rpitit_info);
+            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
+        }
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
@@ -1383,6 +1387,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
+        }
+        if let Some(rpitit_info) = impl_item.opt_rpitit_info {
+            let rpitit_info = self.lazy(rpitit_info);
+            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
         }
     }
 
