@@ -148,8 +148,7 @@ fn suggest_question_mark<'tcx>(
 
     ocx.register_bound(
         cause,
-        // FIXME: using the empty param env is wrong, should use the one from `body_id`.
-        ty::ParamEnv::empty(),
+        cx.param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,
