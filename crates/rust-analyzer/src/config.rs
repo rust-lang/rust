@@ -22,7 +22,7 @@ use ide_db::{
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
-    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
     UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1137,16 +1137,16 @@ impl Config {
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustc_source.as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
-                RustcSource::Discover
+                RustLibSource::Discover
             } else {
-                RustcSource::Path(self.root_path.join(rustc_src))
+                RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
         let sysroot = self.data.cargo_sysroot.as_ref().map(|sysroot| {
             if sysroot == "discover" {
-                RustcSource::Discover
+                RustLibSource::Discover
             } else {
-                RustcSource::Path(self.root_path.join(sysroot))
+                RustLibSource::Path(self.root_path.join(sysroot))
             }
         });
         let sysroot_src =

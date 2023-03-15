@@ -36,11 +36,41 @@ impl Progress {
 }
 
 impl GlobalState {
-    pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
-        let message = message;
-        self.send_notification::<lsp_types::notification::ShowMessage>(
-            lsp_types::ShowMessageParams { typ, message },
-        )
+    pub(crate) fn show_message(
+        &mut self,
+        typ: lsp_types::MessageType,
+        message: String,
+        show_open_log_button: bool,
+    ) {
+        match self.config.open_server_logs() && show_open_log_button  {
+            true => self.send_request::<lsp_types::request::ShowMessageRequest>(
+                lsp_types::ShowMessageRequestParams {
+                    typ,
+                    message,
+                    actions: Some(vec![lsp_types::MessageActionItem {
+                        title: "Open server logs".to_owned(),
+                        properties: Default::default(),
+                    }]),
+                },
+                |this, resp| {
+                    let lsp_server::Response { error: None, result: Some(result), .. } = resp
+                    else { return };
+                    if let Ok(Some(_item)) = crate::from_json::<
+                        <lsp_types::request::ShowMessageRequest as lsp_types::request::Request>::Result,
+                    >(
+                        lsp_types::request::ShowMessageRequest::METHOD, &result
+                    ) {
+                        this.send_notification::<lsp_ext::OpenServerLogs>(());
+                    }
+                },
+            ),
+            false => self.send_notification::<lsp_types::notification::ShowMessage>(
+                lsp_types::ShowMessageParams {
+                    typ,
+                    message,
+                },
+            ),
+        }
     }
 
     /// Sends a notification to the client containing the error `message`.
