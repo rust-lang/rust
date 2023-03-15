@@ -42,7 +42,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// ```rust,no_run
     /// # rustc_middle::ty::TyCtxt;
-    /// let tcx: TyCtxt = todo!();
+    /// # let tcx: TyCtxt = todo!();
     /// let unit_ty = tcx.mk().unit();
     /// ```
     #[inline]
