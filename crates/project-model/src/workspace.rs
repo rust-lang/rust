@@ -254,7 +254,10 @@ impl ProjectWorkspace {
                         match CargoWorkspace::fetch_metadata(
                             &rustc_dir,
                             cargo_toml.parent(),
-                            config,
+                            &CargoConfig {
+                                features: crate::CargoFeatures::default(),
+                                ..config.clone()
+                            },
                             progress,
                         ) {
                             Ok(meta) => {
