@@ -105,7 +105,7 @@ impl GlobalState {
             && self.fetch_workspaces_queue.op_requested()
         {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Auto-reloading is disabled, a workspace reload required.\n\n");
+            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
         }
         if self.config.linked_projects().is_empty()
             && self.config.detached_files().is_empty()
@@ -115,9 +115,25 @@ impl GlobalState {
             message.push_str("Failed to discover workspace.\n\n");
         }
 
+        for ws in self.workspaces.iter() {
+            let (ProjectWorkspace::Cargo { sysroot, .. }
+            | ProjectWorkspace::Json { sysroot, .. }
+            | ProjectWorkspace::DetachedFiles { sysroot, .. }) = ws;
+            if let Err(Some(e)) = sysroot {
+                status.health = lsp_ext::Health::Warning;
+                message.push_str(e);
+                message.push_str("\n\n");
+            }
+            if let ProjectWorkspace::Cargo { rustc: Err(Some(e)), .. } = ws {
+                status.health = lsp_ext::Health::Warning;
+                message.push_str(e);
+                message.push_str("\n\n");
+            }
+        }
+
         if let Err(_) = self.fetch_workspace_error() {
             status.health = lsp_ext::Health::Error;
-            message.push_str("Failed to load workspaces\n\n");
+            message.push_str("Failed to load workspaces.\n\n");
         }
 
         if !message.is_empty() {
