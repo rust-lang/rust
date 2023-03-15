@@ -7,7 +7,7 @@ use super::{
     InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
 };
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
@@ -104,6 +104,26 @@ pub struct RegionConstraintData<'tcx> {
     /// An example is a `A <= B` where neither `A` nor `B` are
     /// inference variables.
     pub verifys: Vec<Verify<'tcx>>,
+
+    /// A "given" is a relationship that is known to hold. In
+    /// particular, we often know from closure fn signatures that a
+    /// particular free region must be a subregion of a region
+    /// variable:
+    ///
+    ///    foo.iter().filter(<'a> |x: &'a &'b T| ...)
+    ///
+    /// In situations like this, `'b` is in fact a region variable
+    /// introduced by the call to `iter()`, and `'a` is a bound region
+    /// on the closure (as indicated by the `<'a>` prefix). If we are
+    /// naive, we wind up inferring that `'b` must be `'static`,
+    /// because we require that it be greater than `'a` and we do not
+    /// know what `'a` is precisely.
+    ///
+    /// This hashmap is used to avoid that naive scenario. Basically
+    /// we record the fact that `'a <= 'b` is implied by the fn
+    /// signature, and then ignore the constraint when solving
+    /// equations. This is a bit of a hack but seems to work.
+    pub givens: FxIndexSet<(Region<'tcx>, ty::RegionVid)>,
 }
 
 /// Represents a constraint that influences the inference process.
@@ -277,6 +297,9 @@ pub(crate) enum UndoLog<'tcx> {
     /// We added the given `verify`.
     AddVerify(usize),
 
+    /// We added the given `given`.
+    AddGiven(Region<'tcx>, ty::RegionVid),
+
     /// We added a GLB/LUB "combination variable".
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 }
@@ -324,6 +347,9 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
             AddVerify(index) => {
                 self.data.verifys.pop();
                 assert_eq!(self.data.verifys.len(), index);
+            }
+            AddGiven(sub, sup) => {
+                self.data.givens.remove(&(sub, sup));
             }
             AddCombination(Glb, ref regions) => {
                 self.glbs.remove(regions);
@@ -464,6 +490,15 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let index = self.data.verifys.len();
         self.data.verifys.push(verify);
         self.undo_log.push(AddVerify(index));
+    }
+
+    pub(super) fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
+        // cannot add givens once regions are resolved
+        if self.data.givens.insert((sub, sup)) {
+            debug!("add_given({:?} <= {:?})", sub, sup);
+
+            self.undo_log.push(AddGiven(sub, sup));
+        }
     }
 
     pub(super) fn make_eqregion(
@@ -769,8 +804,11 @@ impl<'tcx> RegionConstraintData<'tcx> {
     /// Returns `true` if this region constraint data contains no constraints, and `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
-        let RegionConstraintData { constraints, member_constraints, verifys } = self;
-        constraints.is_empty() && member_constraints.is_empty() && verifys.is_empty()
+        let RegionConstraintData { constraints, member_constraints, verifys, givens } = self;
+        constraints.is_empty()
+            && member_constraints.is_empty()
+            && verifys.is_empty()
+            && givens.is_empty()
     }
 }
 
