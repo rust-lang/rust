@@ -166,6 +166,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 let cast_kind = mir_cast_kind(source_ty, expr.ty);
                 Ok(Rvalue::Cast(cast_kind, source, expr.ty))
             },
+            ExprKind::Use { source } => Ok(
+                Rvalue::Use(self.parse_operand(*source)?)
+            ),
             _ => self.parse_operand(expr_id).map(Rvalue::Use),
         )
     }

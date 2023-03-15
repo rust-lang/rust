@@ -1,0 +1,10 @@
+// MIR for `identity` after built
+
+fn identity(_1: i32) -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at $DIR/as_cast.rs:+0:24: +0:27
+
+    bb0: {
+        _0 = _1;                         // scope 0 at $DIR/as_cast.rs:+3:13: +3:27
+        return;                          // scope 0 at $DIR/as_cast.rs:+4:13: +4:21
+    }
+}

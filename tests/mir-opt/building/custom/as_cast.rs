@@ -36,8 +36,20 @@ fn int_to_ptr(x: usize) -> *const i32 {
     )
 }
 
+// EMIT_MIR as_cast.identity.built.after.mir
+#[custom_mir(dialect = "built")]
+fn identity(x: i32) -> i32 {
+    mir!(
+        {
+            RET = x as i32;
+            Return()
+        }
+    )
+}
+
 fn main() {
     assert_eq!(int_to_int(5), 5);
     assert_eq!(float_to_int(5.), 5);
     assert_eq!(int_to_ptr(0), std::ptr::null());
+    assert_eq!(identity(5), 5);
 }
