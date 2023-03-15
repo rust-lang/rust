@@ -19,7 +19,7 @@ use rustc_hir_analysis::astconv::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_infer::infer::InferResult;
+use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let span = self.tcx.hir().body(body_id).value.span;
             let ok = self
                 .at(&self.misc(span), self.param_env)
-                .eq(interior, witness)
+                .eq(DefineOpaqueTypes::No, interior, witness)
                 .expect("Failed to unify generator interior type");
             let mut obligations = ok.obligations;
 
@@ -1341,7 +1341,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).subst(tcx, substs));
             let self_ty = self.normalize(span, self_ty);
-            match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
+            match self.at(&self.misc(span), self.param_env).eq(
+                DefineOpaqueTypes::No,
+                impl_ty,
+                self_ty,
+            ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     self.tcx.sess.delay_span_bug(

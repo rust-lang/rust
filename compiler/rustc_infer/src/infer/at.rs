@@ -30,16 +30,20 @@ use super::*;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
+/// Whether we should define opaque types or just treat them opaquely.
+///
+/// Currently only used to prevent predicate matching from matching anything
+/// against opaque types.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum DefineOpaqueTypes {
+    Yes,
+    No,
+}
+
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    /// Whether we should define opaque types
-    /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -55,7 +59,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: false }
+        At { infcx: self, cause, param_env }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -92,33 +96,21 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
-        Self { define_opaque_types, ..self }
-    }
-
-    /// Hacky routine for equating two impl headers in coherence.
-    pub fn eq_impl_headers(
-        self,
-        expected: &ty::ImplHeader<'tcx>,
-        actual: &ty::ImplHeader<'tcx>,
-    ) -> InferResult<'tcx, ()> {
-        debug!("eq_impl_header({:?} = {:?})", expected, actual);
-        match (expected.trait_ref, actual.trait_ref) {
-            (Some(a_ref), Some(b_ref)) => self.eq(a_ref, b_ref),
-            (None, None) => self.eq(expected.self_ty, actual.self_ty),
-            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
-        }
-    }
-
     /// Makes `a <: b`, where `a` may or may not be expected.
     ///
     /// See [`At::trace_exp`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sub_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn sub_exp<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).sub(a, b)
+        self.trace_exp(a_is_expected, a, b).sub(define_opaque_types, a, b)
     }
 
     /// Makes `actual <: expected`. For example, if type-checking a
@@ -128,54 +120,81 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sup<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn sup<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(false, actual, expected)
+        self.sub_exp(define_opaque_types, false, actual, expected)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sub<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn sub<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(true, expected, actual)
+        self.sub_exp(define_opaque_types, true, expected, actual)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn eq_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn eq_exp<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).eq(a, b)
+        self.trace_exp(a_is_expected, a, b).eq(define_opaque_types, a, b)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn eq<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn eq<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).eq(expected, actual)
+        self.trace(expected, actual).eq(define_opaque_types, expected, actual)
     }
 
-    pub fn relate<T>(self, expected: T, variance: ty::Variance, actual: T) -> InferResult<'tcx, ()>
+    pub fn relate<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Variance::Covariant => self.sub(expected, actual),
-            ty::Variance::Invariant => self.eq(expected, actual),
-            ty::Variance::Contravariant => self.sup(expected, actual),
+            ty::Variance::Covariant => self.sub(define_opaque_types, expected, actual),
+            ty::Variance::Invariant => self.eq(define_opaque_types, expected, actual),
+            ty::Variance::Contravariant => self.sup(define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
@@ -194,11 +213,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::lub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
+    pub fn lub<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).lub(expected, actual)
+        self.trace(expected, actual).lub(define_opaque_types, expected, actual)
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
@@ -207,11 +231,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::glb`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
+    pub fn glb<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).glb(expected, actual)
+        self.trace(expected, actual).glb(define_opaque_types, expected, actual)
     }
 
     /// Sets the "trace" values that will be used for
@@ -241,13 +270,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
     #[instrument(skip(self), level = "debug")]
-    pub fn sub<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .sub(a_is_expected)
                 .relate(a, b)
@@ -258,13 +287,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a == b`; the expectation is set by the call to
     /// `trace()`.
     #[instrument(skip(self), level = "debug")]
-    pub fn eq<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .equate(a_is_expected)
                 .relate(a, b)
@@ -273,13 +302,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn lub<T>(self, a: T, b: T) -> InferResult<'tcx, T>
+    pub fn lub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .lub(a_is_expected)
                 .relate(a, b)
@@ -288,13 +317,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn glb<T>(self, a: T, b: T) -> InferResult<'tcx, T>
+    pub fn glb<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .glb(a_is_expected)
                 .relate(a, b)

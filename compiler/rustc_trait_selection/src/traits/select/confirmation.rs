@@ -8,8 +8,8 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
     TraitRef, Ty, TyCtxt, TypeVisitableExt,
@@ -177,7 +177,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligations.extend(self.infcx.commit_if_ok(|_| {
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
-                .sup(placeholder_trait_predicate, candidate)
+                .sup(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)
         })?);
@@ -462,7 +462,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         nested.extend(self.infcx.commit_if_ok(|_| {
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
-                .sup(obligation_trait_ref, upcast_trait_ref)
+                .sup(DefineOpaqueTypes::No, obligation_trait_ref, upcast_trait_ref)
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)
         })?);
@@ -827,11 +827,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 )
             });
 
+        // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
-            .define_opaque_types(true)
-            .sup(obligation_trait_ref, expected_trait_ref)
+            .sup(DefineOpaqueTypes::Yes, obligation_trait_ref, expected_trait_ref)
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);
                 obligations
@@ -896,7 +895,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(target, source_trait)
+                    .sup(DefineOpaqueTypes::No, target, source_trait)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -995,7 +994,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(target, source_trait)
+                    .sup(DefineOpaqueTypes::No, target, source_trait)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -1066,7 +1065,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(b, a)
+                    .eq(DefineOpaqueTypes::No, b, a)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
             }
@@ -1114,7 +1113,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(target, new_struct)
+                    .eq(DefineOpaqueTypes::No, target, new_struct)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -1144,7 +1143,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(target, new_tuple)
+                    .eq(DefineOpaqueTypes::No, target, new_tuple)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 

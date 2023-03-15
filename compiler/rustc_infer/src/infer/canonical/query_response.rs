@@ -14,7 +14,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
@@ -510,7 +510,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let b = substitute_value(self.tcx, &result_subst, b);
             debug!(?a, ?b, "constrain opaque type");
             obligations
-                .extend(self.at(cause, param_env).define_opaque_types(true).eq(a, b)?.obligations);
+                .extend(self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -603,8 +603,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 match (value1.unpack(), value2.unpack()) {
                     (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env)
+                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                         if re1.is_erased() && re2.is_erased() =>
@@ -612,11 +615,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         // no action needed
                     }
                     (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env)
+                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }
                     _ => {
