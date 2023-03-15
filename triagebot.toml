@@ -185,7 +185,7 @@ trigger_files = [
     "src/tools/x",
     "configure",
     "Cargo.toml",
-    "config.toml.example",
+    "config.example.toml",
     "src/stage0.json"
 ]
 
@@ -430,7 +430,7 @@ message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rust-analyzer"]
-cc = ["@rust-lang/wg-rls-2"]
+cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
@@ -501,6 +501,7 @@ compiler-team-contributors = [
     "@TaKO8Ki",
     "@Nilstrieb",
     "@WaffleLapkin",
+    "@b-naber",
 ]
 compiler = [
     "compiler-team",

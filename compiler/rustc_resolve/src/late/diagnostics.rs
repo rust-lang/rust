@@ -19,7 +19,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -166,13 +166,6 @@ impl TypoCandidate {
 }
 
 impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
-    fn def_span(&self, def_id: DefId) -> Option<Span> {
-        match def_id.krate {
-            LOCAL_CRATE => self.r.opt_span(def_id),
-            _ => Some(self.r.cstore().get_span_untracked(def_id, self.r.tcx.sess)),
-        }
-    }
-
     fn make_base_error(
         &mut self,
         path: &[Segment],
@@ -191,7 +184,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 span,
                 span_label: match res {
                     Res::Def(kind, def_id) if kind == DefKind::TyParam => {
-                        self.def_span(def_id).map(|span| (span, "found this type parameter"))
+                        Some((self.r.def_span(def_id), "found this type parameter"))
                     }
                     _ => None,
                 },
@@ -1295,28 +1288,30 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
-                    if let Some(span) = self.def_span(def_id) {
-                        err.span_label(span, &format!("`{}` defined here", path_str));
-                    }
+                    err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
                     let (tail, descr, applicability) = match source {
                         PathSource::Pat | PathSource::TupleStruct(..) => {
                             ("", "pattern", Applicability::MachineApplicable)
                         }
                         _ => (": val", "literal", Applicability::HasPlaceholders),
                     };
-                    let (fields, applicability) = match self.r.field_names.get(&def_id) {
-                        Some(fields) => (
-                            fields
+
+                    let field_ids = self.r.field_def_ids(def_id);
+                    let (fields, applicability) = match field_ids {
+                        Some(field_ids) => (
+                            field_ids
                                 .iter()
-                                .map(|f| format!("{}{}", f.node, tail))
+                                .map(|&field_id| {
+                                    format!("{}{tail}", self.r.tcx.item_name(field_id))
+                                })
                                 .collect::<Vec<String>>()
                                 .join(", "),
                             applicability,
                         ),
                         None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
                     };
-                    let pad = match self.r.field_names.get(&def_id) {
-                        Some(fields) if fields.is_empty() => "",
+                    let pad = match field_ids {
+                        Some(field_ids) if field_ids.is_empty() => "",
                         _ => " ",
                     };
                     err.span_suggestion(
@@ -1359,17 +1354,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if self.r.tcx.sess.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
-                    if let Some(span) = self.def_span(def_id) {
-                        if let Ok(snip) = self.r.tcx.sess.source_map().span_to_snippet(span) {
-                            // The span contains a type alias so we should be able to
-                            // replace `type` with `trait`.
-                            let snip = snip.replacen("type", "trait", 1);
-                            err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
-                        } else {
-                            err.span_help(span, msg);
-                        }
+                    let span = self.r.def_span(def_id);
+                    if let Ok(snip) = self.r.tcx.sess.source_map().span_to_snippet(span) {
+                        // The span contains a type alias so we should be able to
+                        // replace `type` with `trait`.
+                        let snip = snip.replacen("type", "trait", 1);
+                        err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
                     } else {
-                        err.help(msg);
+                        err.span_help(span, msg);
                     }
                 }
             }
@@ -1408,19 +1400,38 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
-                let (ctor_def, ctor_vis, fields) =
-                    if let Some(struct_ctor) = self.r.struct_constructors.get(&def_id).cloned() {
-                        if let PathSource::Expr(Some(parent)) = source {
-                            if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
-                                bad_struct_syntax_suggestion(def_id);
-                                return true;
-                            }
+                let struct_ctor = match def_id.as_local() {
+                    Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
+                    None => {
+                        let ctor = self.r.cstore().ctor_untracked(def_id);
+                        ctor.map(|(ctor_kind, ctor_def_id)| {
+                            let ctor_res =
+                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                            let ctor_vis = self.r.tcx.visibility(ctor_def_id);
+                            let field_visibilities = self
+                                .r
+                                .tcx
+                                .associated_item_def_ids(def_id)
+                                .iter()
+                                .map(|field_id| self.r.tcx.visibility(field_id))
+                                .collect();
+                            (ctor_res, ctor_vis, field_visibilities)
+                        })
+                    }
+                };
+
+                let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
+                    if let PathSource::Expr(Some(parent)) = source {
+                        if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
+                            bad_struct_syntax_suggestion(def_id);
+                            return true;
                         }
-                        struct_ctor
-                    } else {
-                        bad_struct_syntax_suggestion(def_id);
-                        return true;
-                    };
+                    }
+                    struct_ctor
+                } else {
+                    bad_struct_syntax_suggestion(def_id);
+                    return true;
+                };
 
                 let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                 if !is_expected(ctor_def) || is_accessible {
@@ -1444,10 +1455,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         );
 
                         // Use spans of the tuple struct definition.
-                        self.r
-                            .field_names
-                            .get(&def_id)
-                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+                        self.r.field_def_ids(def_id).map(|field_ids| {
+                            field_ids
+                                .iter()
+                                .map(|&field_id| self.r.def_span(field_id))
+                                .collect::<Vec<_>>()
+                        })
                     }
                     _ => None,
                 };
@@ -1493,9 +1506,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 match source {
                     PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                         let span = find_span(&source, err);
-                        if let Some(span) = self.def_span(def_id) {
-                            err.span_label(span, &format!("`{}` defined here", path_str));
-                        }
+                        err.span_label(
+                            self.r.def_span(def_id),
+                            &format!("`{path_str}` defined here"),
+                        );
                         err.span_suggestion(
                             span,
                             "use this syntax instead",
@@ -1508,12 +1522,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
-                if let Some(span) = self.def_span(def_id) {
-                    err.span_label(span, &format!("`{}` defined here", path_str));
-                }
-                let fields = self.r.field_names.get(&def_id).map_or_else(
+                err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
+                let fields = self.r.field_def_ids(def_id).map_or_else(
                     || "/* fields */".to_string(),
-                    |fields| vec!["_"; fields.len()].join(", "),
+                    |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
                 err.span_suggestion(
                     span,
@@ -1594,8 +1606,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     if let Some(Res::Def(DefKind::Struct | DefKind::Union, did)) =
                         resolution.full_res()
                     {
-                        if let Some(field_names) = self.r.field_names.get(&did) {
-                            if field_names.iter().any(|&field_name| ident.name == field_name.node) {
+                        if let Some(field_ids) = self.r.field_def_ids(did) {
+                            if field_ids
+                                .iter()
+                                .any(|&field_id| ident.name == self.r.tcx.item_name(field_id))
+                            {
                                 return Some(AssocSuggestion::Field);
                             }
                         }
@@ -1630,7 +1645,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    if self.r.has_self.contains(&res.def_id()) {
+                    let def_id = res.def_id();
+                    let has_self = match def_id.as_local() {
+                        Some(def_id) => self.r.has_self.contains(&def_id),
+                        None => self
+                            .r
+                            .tcx
+                            .fn_arg_names(def_id)
+                            .first()
+                            .map_or(false, |ident| ident.name == kw::SelfLower),
+                    };
+                    if has_self {
                         return Some(AssocSuggestion::MethodWithSelf { called });
                     } else {
                         match res {
@@ -1999,11 +2024,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         } else {
             let needs_placeholder = |ctor_def_id: DefId, kind: CtorKind| {
                 let def_id = self.r.tcx.parent(ctor_def_id);
-                let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,
-                    CtorKind::Fn if has_no_fields => false,
-                    _ => true,
+                    CtorKind::Fn => !self
+                        .r
+                        .field_def_ids(def_id)
+                        .map_or(false, |field_ids| field_ids.is_empty()),
                 }
             };
 
@@ -2064,9 +2090,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         };
 
         if def_id.is_local() {
-            if let Some(span) = self.def_span(def_id) {
-                err.span_note(span, "the enum is defined here");
-            }
+            err.span_note(self.r.def_span(def_id), "the enum is defined here");
         }
     }
 

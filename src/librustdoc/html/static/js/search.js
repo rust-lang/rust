@@ -76,39 +76,111 @@ function printTab(nb) {
 }
 
 /**
- * A function to compute the Levenshtein distance between two strings
- * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
- * Full License can be found at http://creativecommons.org/licenses/by-sa/3.0/legalcode
- * This code is an unmodified version of the code written by Marco de Wit
- * and was found at https://stackoverflow.com/a/18514751/745719
+ * The [edit distance] is a metric for measuring the difference between two strings.
+ *
+ * [edit distance]: https://en.wikipedia.org/wiki/Edit_distance
  */
-const levenshtein_row2 = [];
-function levenshtein(s1, s2) {
-    if (s1 === s2) {
-        return 0;
-    }
-    const s1_len = s1.length, s2_len = s2.length;
-    if (s1_len && s2_len) {
-        let i1 = 0, i2 = 0, a, b, c, c2;
-        const row = levenshtein_row2;
-        while (i1 < s1_len) {
-            row[i1] = ++i1;
+
+/*
+ * This function was translated, mostly line-for-line, from
+ * https://github.com/rust-lang/rust/blob/ff4b772f805ec1e/compiler/rustc_span/src/edit_distance.rs
+ *
+ * The current implementation is the restricted Damerau-Levenshtein algorithm. It is restricted
+ * because it does not permit modifying characters that have already been transposed. The specific
+ * algorithm should not matter to the caller of the methods, which is why it is not noted in the
+ * documentation.
+ */
+const editDistanceState = {
+    current: [],
+    prev: [],
+    prevPrev: [],
+    calculate: function calculate(a, b, limit) {
+        // Ensure that `b` is the shorter string, minimizing memory use.
+        if (a.length < b.length) {
+            const aTmp = a;
+            a = b;
+            b = aTmp;
         }
-        while (i2 < s2_len) {
-            c2 = s2.charCodeAt(i2);
-            a = i2;
-            ++i2;
-            b = i2;
-            for (i1 = 0; i1 < s1_len; ++i1) {
-                c = a + (s1.charCodeAt(i1) !== c2 ? 1 : 0);
-                a = row[i1];
-                b = b < a ? (b < c ? b + 1 : c) : (a < c ? a + 1 : c);
-                row[i1] = b;
+
+        const minDist = a.length - b.length;
+        // If we know the limit will be exceeded, we can return early.
+        if (minDist > limit) {
+            return limit + 1;
+        }
+
+        // Strip common prefix.
+        // We know that `b` is the shorter string, so we don't need to check
+        // `a.length`.
+        while (b.length > 0 && b[0] === a[0]) {
+            a = a.substring(1);
+            b = b.substring(1);
+        }
+        // Strip common suffix.
+        while (b.length > 0 && b[b.length - 1] === a[a.length - 1]) {
+            a = a.substring(0, a.length - 1);
+            b = b.substring(0, b.length - 1);
+        }
+
+        // If either string is empty, the distance is the length of the other.
+        // We know that `b` is the shorter string, so we don't need to check `a`.
+        if (b.length === 0) {
+            return minDist;
+        }
+
+        const aLength = a.length;
+        const bLength = b.length;
+
+        for (let i = 0; i <= bLength; ++i) {
+            this.current[i] = 0;
+            this.prev[i] = i;
+            this.prevPrev[i] = Number.MAX_VALUE;
+        }
+
+        // row by row
+        for (let i = 1; i <= aLength; ++i) {
+            this.current[0] = i;
+            const aIdx = i - 1;
+
+            // column by column
+            for (let j = 1; j <= bLength; ++j) {
+                const bIdx = j - 1;
+
+                // There is no cost to substitute a character with itself.
+                const substitutionCost = a[aIdx] === b[bIdx] ? 0 : 1;
+
+                this.current[j] = Math.min(
+                    // deletion
+                    this.prev[j] + 1,
+                    // insertion
+                    this.current[j - 1] + 1,
+                    // substitution
+                    this.prev[j - 1] + substitutionCost
+                );
+
+                if ((i > 1) && (j > 1) && (a[aIdx] === b[bIdx - 1]) && (a[aIdx - 1] === b[bIdx])) {
+                    // transposition
+                    this.current[j] = Math.min(
+                        this.current[j],
+                        this.prevPrev[j - 2] + 1
+                    );
+                }
             }
+
+            // Rotate the buffers, reusing the memory
+            const prevPrevTmp = this.prevPrev;
+            this.prevPrev = this.prev;
+            this.prev = this.current;
+            this.current = prevPrevTmp;
         }
-        return b;
-    }
-    return s1_len + s2_len;
+
+        // `prev` because we already rotated the buffers.
+        const distance = this.prev[bLength];
+        return distance <= limit ? distance : (limit + 1);
+    },
+};
+
+function editDistance(a, b, limit) {
+    return editDistanceState.calculate(a, b, limit);
 }
 
 function initSearch(rawSearchIndex) {
@@ -802,7 +874,7 @@ function initSearch(rawSearchIndex) {
             for (const result of results) {
                 if (result.id > -1) {
                     const obj = searchIndex[result.id];
-                    obj.lev = result.lev;
+                    obj.dist = result.dist;
                     const res = buildHrefAndPath(obj);
                     obj.displayPath = pathSplitter(res[0]);
                     obj.fullPath = obj.displayPath + obj.name;
@@ -860,8 +932,8 @@ function initSearch(rawSearchIndex) {
 
                 // Sort by distance in the path part, if specified
                 // (less changes required to match means higher rankings)
-                a = aaa.path_lev;
-                b = bbb.path_lev;
+                a = aaa.path_dist;
+                b = bbb.path_dist;
                 if (a !== b) {
                     return a - b;
                 }
@@ -875,8 +947,15 @@ function initSearch(rawSearchIndex) {
 
                 // Sort by distance in the name part, the last part of the path
                 // (less changes required to match means higher rankings)
-                a = (aaa.lev);
-                b = (bbb.lev);
+                a = (aaa.dist);
+                b = (bbb.dist);
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // sort deprecated items later
+                a = aaa.item.deprecated;
+                b = bbb.item.deprecated;
                 if (a !== b) {
                     return a - b;
                 }
@@ -961,19 +1040,20 @@ function initSearch(rawSearchIndex) {
 
         /**
          * This function checks if the object (`row`) generics match the given type (`elem`)
-         * generics. If there are no generics on `row`, `defaultLev` is returned.
+         * generics. If there are no generics on `row`, `defaultDistance` is returned.
          *
-         * @param {Row} row            - The object to check.
-         * @param {QueryElement} elem  - The element from the parsed query.
-         * @param {integer} defaultLev - This is the value to return in case there are no generics.
+         * @param {Row} row                 - The object to check.
+         * @param {QueryElement} elem       - The element from the parsed query.
+         * @param {integer} defaultDistance - This is the value to return in case there are no
+         *                                    generics.
          *
-         * @return {integer}           - Returns the best match (if any) or `maxLevDistance + 1`.
+         * @return {integer}           - Returns the best match (if any) or `maxEditDistance + 1`.
          */
-        function checkGenerics(row, elem, defaultLev, maxLevDistance) {
+        function checkGenerics(row, elem, defaultDistance, maxEditDistance) {
             if (row.generics.length === 0) {
-                return elem.generics.length === 0 ? defaultLev : maxLevDistance + 1;
+                return elem.generics.length === 0 ? defaultDistance : maxEditDistance + 1;
             } else if (row.generics.length > 0 && row.generics[0].name === null) {
-                return checkGenerics(row.generics[0], elem, defaultLev, maxLevDistance);
+                return checkGenerics(row.generics[0], elem, defaultDistance, maxEditDistance);
             }
             // The names match, but we need to be sure that all generics kinda
             // match as well.
@@ -984,8 +1064,9 @@ function initSearch(rawSearchIndex) {
                     elem_name = entry.name;
                     if (elem_name === "") {
                         // Pure generic, needs to check into it.
-                        if (checkGenerics(entry, elem, maxLevDistance + 1, maxLevDistance) !== 0) {
-                            return maxLevDistance + 1;
+                        if (checkGenerics(entry, elem, maxEditDistance + 1, maxEditDistance)
+                            !== 0) {
+                            return maxEditDistance + 1;
                         }
                         continue;
                     }
@@ -1012,7 +1093,7 @@ function initSearch(rawSearchIndex) {
                         }
                     }
                     if (match === null) {
-                        return maxLevDistance + 1;
+                        return maxEditDistance + 1;
                     }
                     elems[match] -= 1;
                     if (elems[match] === 0) {
@@ -1021,7 +1102,7 @@ function initSearch(rawSearchIndex) {
                 }
                 return 0;
             }
-            return maxLevDistance + 1;
+            return maxEditDistance + 1;
         }
 
         /**
@@ -1031,17 +1112,17 @@ function initSearch(rawSearchIndex) {
           * @param {Row} row
           * @param {QueryElement} elem    - The element from the parsed query.
           *
-          * @return {integer} - Returns a Levenshtein distance to the best match.
+          * @return {integer} - Returns an edit distance to the best match.
           */
-        function checkIfInGenerics(row, elem, maxLevDistance) {
-            let lev = maxLevDistance + 1;
+        function checkIfInGenerics(row, elem, maxEditDistance) {
+            let dist = maxEditDistance + 1;
             for (const entry of row.generics) {
-                lev = Math.min(checkType(entry, elem, true, maxLevDistance), lev);
-                if (lev === 0) {
+                dist = Math.min(checkType(entry, elem, true, maxEditDistance), dist);
+                if (dist === 0) {
                     break;
                 }
             }
-            return lev;
+            return dist;
         }
 
         /**
@@ -1052,21 +1133,21 @@ function initSearch(rawSearchIndex) {
           * @param {QueryElement} elem      - The element from the parsed query.
           * @param {boolean} literalSearch
           *
-          * @return {integer} - Returns a Levenshtein distance to the best match. If there is
-          *                     no match, returns `maxLevDistance + 1`.
+          * @return {integer} - Returns an edit distance to the best match. If there is
+          *                     no match, returns `maxEditDistance + 1`.
           */
-        function checkType(row, elem, literalSearch, maxLevDistance) {
+        function checkType(row, elem, literalSearch, maxEditDistance) {
             if (row.name === null) {
                 // This is a pure "generic" search, no need to run other checks.
                 if (row.generics.length > 0) {
-                    return checkIfInGenerics(row, elem, maxLevDistance);
+                    return checkIfInGenerics(row, elem, maxEditDistance);
                 }
-                return maxLevDistance + 1;
+                return maxEditDistance + 1;
             }
 
-            let lev = levenshtein(row.name, elem.name);
+            let dist = editDistance(row.name, elem.name, maxEditDistance);
             if (literalSearch) {
-                if (lev !== 0) {
+                if (dist !== 0) {
                     // The name didn't match, let's try to check if the generics do.
                     if (elem.generics.length === 0) {
                         const checkGeneric = row.generics.length > 0;
@@ -1075,44 +1156,44 @@ function initSearch(rawSearchIndex) {
                             return 0;
                         }
                     }
-                    return maxLevDistance + 1;
+                    return maxEditDistance + 1;
                 } else if (elem.generics.length > 0) {
-                    return checkGenerics(row, elem, maxLevDistance + 1, maxLevDistance);
+                    return checkGenerics(row, elem, maxEditDistance + 1, maxEditDistance);
                 }
                 return 0;
             } else if (row.generics.length > 0) {
                 if (elem.generics.length === 0) {
-                    if (lev === 0) {
+                    if (dist === 0) {
                         return 0;
                     }
                     // The name didn't match so we now check if the type we're looking for is inside
                     // the generics!
-                    lev = Math.min(lev, checkIfInGenerics(row, elem, maxLevDistance));
-                    return lev;
-                } else if (lev > maxLevDistance) {
+                    dist = Math.min(dist, checkIfInGenerics(row, elem, maxEditDistance));
+                    return dist;
+                } else if (dist > maxEditDistance) {
                     // So our item's name doesn't match at all and has generics.
                     //
                     // Maybe it's present in a sub generic? For example "f<A<B<C>>>()", if we're
                     // looking for "B<C>", we'll need to go down.
-                    return checkIfInGenerics(row, elem, maxLevDistance);
+                    return checkIfInGenerics(row, elem, maxEditDistance);
                 } else {
                     // At this point, the name kinda match and we have generics to check, so
                     // let's go!
-                    const tmp_lev = checkGenerics(row, elem, lev, maxLevDistance);
-                    if (tmp_lev > maxLevDistance) {
-                        return maxLevDistance + 1;
+                    const tmp_dist = checkGenerics(row, elem, dist, maxEditDistance);
+                    if (tmp_dist > maxEditDistance) {
+                        return maxEditDistance + 1;
                     }
                     // We compute the median value of both checks and return it.
-                    return (tmp_lev + lev) / 2;
+                    return (tmp_dist + dist) / 2;
                 }
             } else if (elem.generics.length > 0) {
                 // In this case, we were expecting generics but there isn't so we simply reject this
                 // one.
-                return maxLevDistance + 1;
+                return maxEditDistance + 1;
             }
             // No generics on our query or on the target type so we can return without doing
             // anything else.
-            return lev;
+            return dist;
         }
 
         /**
@@ -1122,27 +1203,27 @@ function initSearch(rawSearchIndex) {
          * @param {QueryElement} elem    - The element from the parsed query.
          * @param {integer} typeFilter
          *
-         * @return {integer} - Returns a Levenshtein distance to the best match. If there is no
-         *                      match, returns `maxLevDistance + 1`.
+         * @return {integer} - Returns an edit distance to the best match. If there is no
+         *                      match, returns `maxEditDistance + 1`.
          */
-        function findArg(row, elem, typeFilter, maxLevDistance) {
-            let lev = maxLevDistance + 1;
+        function findArg(row, elem, typeFilter, maxEditDistance) {
+            let dist = maxEditDistance + 1;
 
             if (row && row.type && row.type.inputs && row.type.inputs.length > 0) {
                 for (const input of row.type.inputs) {
                     if (!typePassesFilter(typeFilter, input.ty)) {
                         continue;
                     }
-                    lev = Math.min(
-                        lev,
-                        checkType(input, elem, parsedQuery.literalSearch, maxLevDistance)
+                    dist = Math.min(
+                        dist,
+                        checkType(input, elem, parsedQuery.literalSearch, maxEditDistance)
                     );
-                    if (lev === 0) {
+                    if (dist === 0) {
                         return 0;
                     }
                 }
             }
-            return parsedQuery.literalSearch ? maxLevDistance + 1 : lev;
+            return parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
         }
 
         /**
@@ -1152,11 +1233,11 @@ function initSearch(rawSearchIndex) {
          * @param {QueryElement} elem   - The element from the parsed query.
          * @param {integer} typeFilter
          *
-         * @return {integer} - Returns a Levenshtein distance to the best match. If there is no
-         *                      match, returns `maxLevDistance + 1`.
+         * @return {integer} - Returns an edit distance to the best match. If there is no
+         *                      match, returns `maxEditDistance + 1`.
          */
-        function checkReturned(row, elem, typeFilter, maxLevDistance) {
-            let lev = maxLevDistance + 1;
+        function checkReturned(row, elem, typeFilter, maxEditDistance) {
+            let dist = maxEditDistance + 1;
 
             if (row && row.type && row.type.output.length > 0) {
                 const ret = row.type.output;
@@ -1164,23 +1245,23 @@ function initSearch(rawSearchIndex) {
                     if (!typePassesFilter(typeFilter, ret_ty.ty)) {
                         continue;
                     }
-                    lev = Math.min(
-                        lev,
-                        checkType(ret_ty, elem, parsedQuery.literalSearch, maxLevDistance)
+                    dist = Math.min(
+                        dist,
+                        checkType(ret_ty, elem, parsedQuery.literalSearch, maxEditDistance)
                     );
-                    if (lev === 0) {
+                    if (dist === 0) {
                         return 0;
                     }
                 }
             }
-            return parsedQuery.literalSearch ? maxLevDistance + 1 : lev;
+            return parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
         }
 
-        function checkPath(contains, ty, maxLevDistance) {
+        function checkPath(contains, ty, maxEditDistance) {
             if (contains.length === 0) {
                 return 0;
             }
-            let ret_lev = maxLevDistance + 1;
+            let ret_dist = maxEditDistance + 1;
             const path = ty.path.split("::");
 
             if (ty.parent && ty.parent.name) {
@@ -1190,27 +1271,27 @@ function initSearch(rawSearchIndex) {
             const length = path.length;
             const clength = contains.length;
             if (clength > length) {
-                return maxLevDistance + 1;
+                return maxEditDistance + 1;
             }
             for (let i = 0; i < length; ++i) {
                 if (i + clength > length) {
                     break;
                 }
-                let lev_total = 0;
+                let dist_total = 0;
                 let aborted = false;
                 for (let x = 0; x < clength; ++x) {
-                    const lev = levenshtein(path[i + x], contains[x]);
-                    if (lev > maxLevDistance) {
+                    const dist = editDistance(path[i + x], contains[x], maxEditDistance);
+                    if (dist > maxEditDistance) {
                         aborted = true;
                         break;
                     }
-                    lev_total += lev;
+                    dist_total += dist;
                 }
                 if (!aborted) {
-                    ret_lev = Math.min(ret_lev, Math.round(lev_total / clength));
+                    ret_dist = Math.min(ret_dist, Math.round(dist_total / clength));
                 }
             }
-            return ret_lev;
+            return ret_dist;
         }
 
         function typePassesFilter(filter, type) {
@@ -1244,6 +1325,7 @@ function initSearch(rawSearchIndex) {
                 parent: item.parent,
                 type: item.type,
                 is_alias: true,
+                deprecated: item.deprecated,
             };
         }
 
@@ -1304,31 +1386,31 @@ function initSearch(rawSearchIndex) {
          * This function adds the given result into the provided `results` map if it matches the
          * following condition:
          *
-         * * If it is a "literal search" (`parsedQuery.literalSearch`), then `lev` must be 0.
-         * * If it is not a "literal search", `lev` must be <= `maxLevDistance`.
+         * * If it is a "literal search" (`parsedQuery.literalSearch`), then `dist` must be 0.
+         * * If it is not a "literal search", `dist` must be <= `maxEditDistance`.
          *
          * The `results` map contains information which will be used to sort the search results:
          *
          * * `fullId` is a `string`` used as the key of the object we use for the `results` map.
          * * `id` is the index in both `searchWords` and `searchIndex` arrays for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
-         * * `lev` is the main metric used to sort the search results.
-         * * `path_lev` is zero if a single-component search query is used, otherwise it's the
+         * * `dist` is the main metric used to sort the search results.
+         * * `path_dist` is zero if a single-component search query is used, otherwise it's the
          *   distance computed for everything other than the last path component.
          *
          * @param {Results} results
          * @param {string} fullId
          * @param {integer} id
          * @param {integer} index
-         * @param {integer} lev
-         * @param {integer} path_lev
+         * @param {integer} dist
+         * @param {integer} path_dist
          */
-        function addIntoResults(results, fullId, id, index, lev, path_lev, maxLevDistance) {
-            const inBounds = lev <= maxLevDistance || index !== -1;
-            if (lev === 0 || (!parsedQuery.literalSearch && inBounds)) {
+        function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
+            const inBounds = dist <= maxEditDistance || index !== -1;
+            if (dist === 0 || (!parsedQuery.literalSearch && inBounds)) {
                 if (results[fullId] !== undefined) {
                     const result = results[fullId];
-                    if (result.dontValidate || result.lev <= lev) {
+                    if (result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
@@ -1336,8 +1418,8 @@ function initSearch(rawSearchIndex) {
                     id: id,
                     index: index,
                     dontValidate: parsedQuery.literalSearch,
-                    lev: lev,
-                    path_lev: path_lev,
+                    dist: dist,
+                    path_dist: path_dist,
                 };
             }
         }
@@ -1346,7 +1428,7 @@ function initSearch(rawSearchIndex) {
          * This function is called in case the query is only one element (with or without generics).
          * This element will be compared to arguments' and returned values' items and also to items.
          *
-         * Other important thing to note: since there is only one element, we use levenshtein
+         * Other important thing to note: since there is only one element, we use edit
          * distance for name comparisons.
          *
          * @param {Row} row
@@ -1364,22 +1446,22 @@ function initSearch(rawSearchIndex) {
             results_others,
             results_in_args,
             results_returned,
-            maxLevDistance
+            maxEditDistance
         ) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-            let lev, index = -1, path_lev = 0;
+            let dist, index = -1, path_dist = 0;
             const fullId = row.id;
             const searchWord = searchWords[pos];
 
-            const in_args = findArg(row, elem, parsedQuery.typeFilter, maxLevDistance);
-            const returned = checkReturned(row, elem, parsedQuery.typeFilter, maxLevDistance);
+            const in_args = findArg(row, elem, parsedQuery.typeFilter, maxEditDistance);
+            const returned = checkReturned(row, elem, parsedQuery.typeFilter, maxEditDistance);
 
-            // path_lev is 0 because no parent path information is currently stored
+            // path_dist is 0 because no parent path information is currently stored
             // in the search index
-            addIntoResults(results_in_args, fullId, pos, -1, in_args, 0, maxLevDistance);
-            addIntoResults(results_returned, fullId, pos, -1, returned, 0, maxLevDistance);
+            addIntoResults(results_in_args, fullId, pos, -1, in_args, 0, maxEditDistance);
+            addIntoResults(results_returned, fullId, pos, -1, returned, 0, maxEditDistance);
 
             if (!typePassesFilter(parsedQuery.typeFilter, row.ty)) {
                 return;
@@ -1403,34 +1485,34 @@ function initSearch(rawSearchIndex) {
             // No need to check anything else if it's a "pure" generics search.
             if (elem.name.length === 0) {
                 if (row.type !== null) {
-                    lev = checkGenerics(row.type, elem, maxLevDistance + 1, maxLevDistance);
-                    // path_lev is 0 because we know it's empty
-                    addIntoResults(results_others, fullId, pos, index, lev, 0, maxLevDistance);
+                    dist = checkGenerics(row.type, elem, maxEditDistance + 1, maxEditDistance);
+                    // path_dist is 0 because we know it's empty
+                    addIntoResults(results_others, fullId, pos, index, dist, 0, maxEditDistance);
                 }
                 return;
             }
 
             if (elem.fullPath.length > 1) {
-                path_lev = checkPath(elem.pathWithoutLast, row, maxLevDistance);
-                if (path_lev > maxLevDistance) {
+                path_dist = checkPath(elem.pathWithoutLast, row, maxEditDistance);
+                if (path_dist > maxEditDistance) {
                     return;
                 }
             }
 
             if (parsedQuery.literalSearch) {
                 if (searchWord === elem.name) {
-                    addIntoResults(results_others, fullId, pos, index, 0, path_lev);
+                    addIntoResults(results_others, fullId, pos, index, 0, path_dist);
                 }
                 return;
             }
 
-            lev = levenshtein(searchWord, elem.pathLast);
+            dist = editDistance(searchWord, elem.pathLast, maxEditDistance);
 
-            if (index === -1 && lev + path_lev > maxLevDistance) {
+            if (index === -1 && dist + path_dist > maxEditDistance) {
                 return;
             }
 
-            addIntoResults(results_others, fullId, pos, index, lev, path_lev, maxLevDistance);
+            addIntoResults(results_others, fullId, pos, index, dist, path_dist, maxEditDistance);
         }
 
         /**
@@ -1442,22 +1524,22 @@ function initSearch(rawSearchIndex) {
          * @param {integer} pos      - Position in the `searchIndex`.
          * @param {Object} results
          */
-        function handleArgs(row, pos, results, maxLevDistance) {
+        function handleArgs(row, pos, results, maxEditDistance) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
 
-            let totalLev = 0;
-            let nbLev = 0;
+            let totalDist = 0;
+            let nbDist = 0;
 
             // If the result is too "bad", we return false and it ends this search.
             function checkArgs(elems, callback) {
                 for (const elem of elems) {
                     // There is more than one parameter to the query so all checks should be "exact"
-                    const lev = callback(row, elem, NO_TYPE_FILTER, maxLevDistance);
-                    if (lev <= 1) {
-                        nbLev += 1;
-                        totalLev += lev;
+                    const dist = callback(row, elem, NO_TYPE_FILTER, maxEditDistance);
+                    if (dist <= 1) {
+                        nbDist += 1;
+                        totalDist += dist;
                     } else {
                         return false;
                     }
@@ -1471,11 +1553,11 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            if (nbLev === 0) {
+            if (nbDist === 0) {
                 return;
             }
-            const lev = Math.round(totalLev / nbLev);
-            addIntoResults(results, row.id, pos, 0, lev, 0, maxLevDistance);
+            const dist = Math.round(totalDist / nbDist);
+            addIntoResults(results, row.id, pos, 0, dist, 0, maxEditDistance);
         }
 
         function innerRunQuery() {
@@ -1488,7 +1570,7 @@ function initSearch(rawSearchIndex) {
             for (const elem of parsedQuery.returned) {
                 queryLen += elem.name.length;
             }
-            const maxLevDistance = Math.floor(queryLen / 3);
+            const maxEditDistance = Math.floor(queryLen / 3);
 
             if (parsedQuery.foundElems === 1) {
                 if (parsedQuery.elems.length === 1) {
@@ -1503,7 +1585,7 @@ function initSearch(rawSearchIndex) {
                             results_others,
                             results_in_args,
                             results_returned,
-                            maxLevDistance
+                            maxEditDistance
                         );
                     }
                 } else if (parsedQuery.returned.length === 1) {
@@ -1515,14 +1597,14 @@ function initSearch(rawSearchIndex) {
                             row,
                             elem,
                             parsedQuery.typeFilter,
-                            maxLevDistance
+                            maxEditDistance
                         );
-                        addIntoResults(results_others, row.id, i, -1, in_returned, maxLevDistance);
+                        addIntoResults(results_others, row.id, i, -1, in_returned, maxEditDistance);
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
                 for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
-                    handleArgs(searchIndex[i], i, results_others, maxLevDistance);
+                    handleArgs(searchIndex[i], i, results_others, maxEditDistance);
                 }
             }
         }
@@ -1560,7 +1642,7 @@ function initSearch(rawSearchIndex) {
      *
      * @return {boolean}       - Whether the result is valid or not
      */
-    function validateResult(name, path, keys, parent, maxLevDistance) {
+    function validateResult(name, path, keys, parent, maxEditDistance) {
         if (!keys || !keys.length) {
             return true;
         }
@@ -1574,8 +1656,8 @@ function initSearch(rawSearchIndex) {
                 // next if there is a parent, check for exact parent match
                 (parent !== undefined && parent.name !== undefined &&
                     parent.name.toLowerCase().indexOf(key) > -1) ||
-                // lastly check to see if the name was a levenshtein match
-                levenshtein(name, key) <= maxLevDistance)) {
+                // lastly check to see if the name was an editDistance match
+                editDistance(name, key, maxEditDistance) <= maxEditDistance)) {
                 return false;
             }
         }
@@ -2064,10 +2146,11 @@ function initSearch(rawSearchIndex) {
              *   n: Array<string>,
              *   t: String,
              *   d: Array<string>,
-             *   q: Array<string>,
+             *   q: Array<[Number, string]>,
              *   i: Array<Number>,
              *   f: Array<RawFunctionSearchType>,
              *   p: Array<Object>,
+             *   c: Array<Number>
              * }}
              */
             const crateCorpus = rawSearchIndex[crate];
@@ -2086,6 +2169,7 @@ function initSearch(rawSearchIndex) {
                 type: null,
                 id: id,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
+                deprecated: null,
             };
             id += 1;
             searchIndex.push(crateRow);
@@ -2095,14 +2179,20 @@ function initSearch(rawSearchIndex) {
             const itemTypes = crateCorpus.t;
             // an array of (String) item names
             const itemNames = crateCorpus.n;
-            // an array of (String) full paths (or empty string for previous path)
-            const itemPaths = crateCorpus.q;
+            // an array of [(Number) item index,
+            //              (String) full path]
+            // an item whose index is not present will fall back to the previous present path
+            // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
+            // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
+            const itemPaths = new Map(crateCorpus.q);
             // an array of (String) descriptions
             const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
             // an array of (Object | null) the type of the function, if any
             const itemFunctionSearchTypes = crateCorpus.f;
+            // an array of (Number) indices for the deprecated items
+            const deprecatedItems = new Set(crateCorpus.c);
             // an array of [(Number) item type,
             //              (String) name]
             const paths = crateCorpus.p;
@@ -2142,12 +2232,13 @@ function initSearch(rawSearchIndex) {
                     crate: crate,
                     ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
-                    path: itemPaths[i] ? itemPaths[i] : lastPath,
+                    path: itemPaths.has(i) ? itemPaths.get(i) : lastPath,
                     desc: itemDescs[i],
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: buildFunctionSearchType(itemFunctionSearchTypes[i], lowercasePaths),
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
+                    deprecated: deprecatedItems.has(i),
                 };
                 id += 1;
                 searchIndex.push(row);

@@ -882,6 +882,7 @@ tool_doc!(
         // "cargo-credential-wincred",
     ]
 );
+tool_doc!(Tidy, "tidy", "src/tools/tidy", ["tidy"]);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {

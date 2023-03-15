@@ -3,58 +3,42 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/derefer_inline_test.rs:+0:11: +0:11
-      let _1: std::boxed::Box<std::boxed::Box<u32>>; // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-      let mut _2: usize;                   // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-      let mut _3: usize;                   // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-      let mut _4: *mut u8;                 // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-      let mut _5: std::boxed::Box<std::boxed::Box<u32>>; // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-      scope 1 {
-      }
+      let _1: std::boxed::Box<std::boxed::Box<u32>>; // in scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:18
+      let mut _2: std::boxed::Box<u32>;    // in scope 0 at $DIR/derefer_inline_test.rs:+1:14: +1:17
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          _2 = SizeOf(std::boxed::Box<u32>); // scope 1 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          _3 = AlignOf(std::boxed::Box<u32>); // scope 1 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 1 at $DIR/derefer_inline_test.rs:+1:5: +1:12
+          StorageLive(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:18
+          StorageLive(_2);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:14: +1:17
+          _2 = f() -> bb1;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:14: +1:17
                                            // mir::Constant
-                                           // + span: $DIR/derefer_inline_test.rs:11:5: 11:12
-                                           // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
-      }
-  
-      bb1: {
-          StorageLive(_5);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          _5 = ShallowInitBox(move _4, std::boxed::Box<u32>); // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          (*_5) = f() -> [return: bb2, unwind: bb6]; // scope 0 at $DIR/derefer_inline_test.rs:+1:9: +1:12
-                                           // mir::Constant
-                                           // + span: $DIR/derefer_inline_test.rs:11:9: 11:10
+                                           // + span: $DIR/derefer_inline_test.rs:10:14: 10:15
                                            // + literal: Const { ty: fn() -> Box<u32> {f}, val: Value(<ZST>) }
       }
   
+      bb1: {
+          _1 = Box::<Box<u32>>::new(move _2) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:18
+                                           // mir::Constant
+                                           // + span: $DIR/derefer_inline_test.rs:10:5: 10:13
+                                           // + user_ty: UserType(0)
+                                           // + literal: Const { ty: fn(Box<u32>) -> Box<Box<u32>> {Box::<Box<u32>>::new}, val: Value(<ZST>) }
+      }
+  
       bb2: {
-          _1 = move _5;                    // scope 0 at $DIR/derefer_inline_test.rs:+1:5: +1:12
-          drop(_5) -> [return: bb3, unwind: bb5]; // scope 0 at $DIR/derefer_inline_test.rs:+1:11: +1:12
+          StorageDead(_2);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:17: +1:18
+          drop(_1) -> bb3;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:18: +1:19
       }
   
       bb3: {
-          StorageDead(_5);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:11: +1:12
-          drop(_1) -> bb4;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:12: +1:13
-      }
-  
-      bb4: {
-          StorageDead(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:12: +1:13
+          StorageDead(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:+1:18: +1:19
           _0 = const ();                   // scope 0 at $DIR/derefer_inline_test.rs:+0:11: +2:2
           return;                          // scope 0 at $DIR/derefer_inline_test.rs:+2:2: +2:2
       }
   
+      bb4 (cleanup): {
+          drop(_2) -> bb5;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:17: +1:18
+      }
+  
       bb5 (cleanup): {
-          drop(_1) -> bb7;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:12: +1:13
-      }
-  
-      bb6 (cleanup): {
-          drop(_5) -> bb7;                 // scope 0 at $DIR/derefer_inline_test.rs:+1:11: +1:12
-      }
-  
-      bb7 (cleanup): {
           resume;                          // scope 0 at $DIR/derefer_inline_test.rs:+0:1: +2:2
       }
   }

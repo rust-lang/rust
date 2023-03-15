@@ -210,7 +210,7 @@ fn do_normalize_predicates<'tcx>(
     let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
         Ok(predicates) => predicates,
         Err(errors) => {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
             return Err(reported);
         }
     };

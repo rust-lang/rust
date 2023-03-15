@@ -124,7 +124,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.69.0"]
     pub LET_UNDERSCORE_UNTYPED,
-    pedantic,
+    restriction,
     "non-binding `let` without a type annotation"
 }
 

@@ -2,6 +2,7 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::manual_rem_euclid)]
+#![allow(clippy::let_with_type_underscore)]
 
 #[macro_use]
 extern crate macro_rules;

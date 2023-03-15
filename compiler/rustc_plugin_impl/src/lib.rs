@@ -18,7 +18,7 @@ use rustc_macros::fluent_messages;
 mod errors;
 pub mod load;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 /// Structure used to register plugins.
 ///

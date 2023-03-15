@@ -738,7 +738,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.69"
+version = "0.1.70"
 dependencies = [
  "clap 4.1.4",
  "clippy_lints",
@@ -781,7 +781,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.69"
+version = "0.1.70"
 dependencies = [
  "cargo_metadata 0.15.3",
  "clippy_utils",
@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.69"
+version = "0.1.70"
 dependencies = [
  "arrayvec 0.7.0",
  "if_chain",
@@ -1150,7 +1150,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.69"
+version = "0.1.70"
 dependencies = [
  "itertools",
  "quote",

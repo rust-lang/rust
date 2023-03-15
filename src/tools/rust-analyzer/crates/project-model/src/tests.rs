@@ -1547,6 +1547,15 @@ fn rust_project_hello_world_project_model() {
                                 ),
                                 prelude: true,
                             },
+                            Dependency {
+                                crate_id: CrateId(
+                                    1,
+                                ),
+                                name: CrateName(
+                                    "core",
+                                ),
+                                prelude: true,
+                            },
                         ],
                         proc_macro: Err(
                             "no proc macro loaded for sysroot crate",

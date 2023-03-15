@@ -8,6 +8,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
+use ast::{Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -29,6 +30,7 @@ use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Span, Spanned};
+use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use thin_vec::{thin_vec, ThinVec};
@@ -636,11 +638,27 @@ impl<'a> Parser<'a> {
         self.parse_expr_unary(lo, UnOp::Not)
     }
 
-    /// Parse `box expr`.
+    /// Parse `box expr` - this syntax has been removed, but we still parse this
+    /// for now to provide an automated way to fix usages of it
     fn parse_expr_box(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         let (span, expr) = self.parse_expr_prefix_common(lo)?;
-        self.sess.gated_spans.gate(sym::box_syntax, span);
-        Ok((span, ExprKind::Box(expr)))
+        let code = self.sess.source_map().span_to_snippet(span.with_lo(lo.hi())).unwrap();
+        self.sess.emit_err(errors::BoxSyntaxRemoved { span, code: code.trim() });
+        // So typechecking works, parse `box <expr>` as `::std::boxed::Box::new(expr)`
+        let path = Path {
+            span,
+            segments: [
+                PathSegment::from_ident(Ident::with_dummy_span(PathRoot)),
+                PathSegment::from_ident(Ident::with_dummy_span(sym::std)),
+                PathSegment::from_ident(Ident::from_str("boxed")),
+                PathSegment::from_ident(Ident::from_str("Box")),
+                PathSegment::from_ident(Ident::with_dummy_span(sym::new)),
+            ]
+            .into(),
+            tokens: None,
+        };
+        let path = self.mk_expr(span, ExprKind::Path(None, path));
+        Ok((span, self.mk_call(path, ThinVec::from([expr]))))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -2105,7 +2123,7 @@ impl<'a> Parser<'a> {
             ClosureBinder::NotPresent
         };
 
-        let constness = self.parse_closure_constness(Case::Sensitive);
+        let constness = self.parse_closure_constness();
 
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };

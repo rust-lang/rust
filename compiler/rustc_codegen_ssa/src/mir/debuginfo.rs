@@ -241,12 +241,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
 
-        // FIXME(eddyb) maybe name the return place as `_0` or `return`?
-        if local == mir::RETURN_PLACE && !self.mir.local_decls[mir::RETURN_PLACE].is_user_variable()
-        {
-            return;
-        }
-
         let vars = match &self.per_local_var_debug_info {
             Some(per_local) => &per_local[local],
             None => return,
@@ -303,7 +297,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let local_ref = &self.locals[local];
 
-        let name = if bx.sess().fewer_names() {
+        // FIXME Should the return place be named?
+        let name = if bx.sess().fewer_names() || local == mir::RETURN_PLACE {
             None
         } else {
             Some(match whole_local_var.or(fallback_var.clone()) {

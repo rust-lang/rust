@@ -311,9 +311,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let fn_decl_span = if hir.body(body).generator_kind
                 == Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure))
             {
-                // Actually need to unwrap a few more layers of HIR to get to
+                // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...
-                let async_closure = hir.parent_id(hir.parent_id(parent_hir_id));
+                let async_closure = hir.parent_id(parent_hir_id);
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                     ..

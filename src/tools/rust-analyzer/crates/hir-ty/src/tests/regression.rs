@@ -270,7 +270,7 @@ fn infer_std_crash_5() {
             61..320 '{     ...     }': ()
             75..79 'name': &{unknown}
             82..166 'if doe...     }': &{unknown}
-            85..98 'doesnt_matter': bool
+            85..98 'doesnt_matter': {unknown}
             99..128 '{     ...     }': &{unknown}
             113..118 'first': &{unknown}
             134..166 '{     ...     }': &{unknown}
@@ -279,7 +279,7 @@ fn infer_std_crash_5() {
             181..188 'content': &{unknown}
             191..313 'if ICE...     }': &{unknown}
             194..231 'ICE_RE..._VALUE': {unknown}
-            194..247 'ICE_RE...&name)': bool
+            194..247 'ICE_RE...&name)': {unknown}
             241..246 '&name': &&{unknown}
             242..246 'name': &{unknown}
             248..276 '{     ...     }': &{unknown}
@@ -1015,9 +1015,9 @@ fn cfg_tail() {
             20..31 '{ "first" }': ()
             22..29 '"first"': &str
             72..190 '{     ...] 13 }': ()
-            78..88 '{ "fake" }': &str
+            78..88 '{ "fake" }': ()
             80..86 '"fake"': &str
-            93..103 '{ "fake" }': &str
+            93..103 '{ "fake" }': ()
             95..101 '"fake"': &str
             108..120 '{ "second" }': ()
             110..118 '"second"': &str
@@ -1741,6 +1741,18 @@ struct Bar<'a, B: Gats, A> {
 fn foo(b: Bar) {
     let _ = b.field;
 }
+"#,
+    );
+}
+
+#[test]
+fn regression_14305() {
+    check_no_mismatches(
+        r#"
+//- minicore: add
+trait Tr {}
+impl Tr for [u8; C] {}
+const C: usize = 2 + 2;
 "#,
     );
 }

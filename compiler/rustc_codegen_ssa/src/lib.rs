@@ -56,7 +56,7 @@ pub mod mono_item;
 pub mod target_features;
 pub mod traits;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between

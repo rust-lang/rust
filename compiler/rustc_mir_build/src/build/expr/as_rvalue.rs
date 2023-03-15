@@ -63,7 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             scope,
                             &this.thir[value],
-                            None,
+                            LocalInfo::Boring,
                             NeedsTemporary::No
                         )
                     );
@@ -73,18 +73,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
                     block =
-                        this.as_operand(block, scope, &this.thir[lhs], None, NeedsTemporary::Maybe)
+                        this.as_operand(block, scope, &this.thir[lhs], LocalInfo::Boring, NeedsTemporary::Maybe)
                 );
                 let rhs = unpack!(
                     block =
-                        this.as_operand(block, scope, &this.thir[rhs], None, NeedsTemporary::No)
+                        this.as_operand(block, scope, &this.thir[rhs], LocalInfo::Boring, NeedsTemporary::No)
                 );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
                     block =
-                        this.as_operand(block, scope, &this.thir[arg], None, NeedsTemporary::No)
+                        this.as_operand(block, scope, &this.thir[arg], LocalInfo::Boring, NeedsTemporary::No)
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
@@ -259,7 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let ty = source.ty;
                     let source = unpack!(
-                        block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
+                        block = this.as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
                     );
                     (source, ty)
                 };
@@ -272,7 +272,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(
                     block =
-                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                        this.as_operand(block, scope, &this.thir[source], LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
@@ -314,7 +314,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -335,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -423,7 +423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 block,
                                                 scope,
                                                 upvar,
-                                                None,
+                                                LocalInfo::Boring,
                                                 NeedsTemporary::Maybe
                                             )
                                         )
@@ -502,7 +502,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
                 let operand =
-                    unpack!(block = this.as_operand(block, scope, expr, None, NeedsTemporary::No));
+                    unpack!(block = this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No));
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -622,7 +622,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
             let value_operand =
-                unpack!(block = this.as_operand(block, scope, value, None, NeedsTemporary::No));
+                unpack!(block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No));
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(

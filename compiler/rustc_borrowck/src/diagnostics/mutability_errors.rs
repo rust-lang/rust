@@ -7,7 +7,7 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{self, BindingForm, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
+    mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
@@ -105,8 +105,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     reason = String::new();
                 } else {
                     item_msg = access_place_desc;
-                    let local_info = &self.body.local_decls[local].local_info;
-                    if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
+                    let local_info = self.body.local_decls[local].local_info();
+                    if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
                         reason = format!(", as `{static_name}` is an immutable static item");
                     } else {
@@ -305,15 +305,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ..
                 }) = &self.body[location.block].statements.get(location.statement_index)
                 {
-                    match decl.local_info {
-                        Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                            mir::VarBindingForm {
-                                binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
-                                opt_ty_info: Some(sp),
-                                opt_match_place: _,
-                                pat_span: _,
-                            },
-                        )))) => {
+                    match *decl.local_info() {
+                        LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
+                            binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+                            opt_ty_info: Some(sp),
+                            opt_match_place: _,
+                            pat_span: _,
+                        })) => {
                             if suggest {
                                 err.span_note(sp, "the binding is already a mutable borrow");
                             }
@@ -346,10 +344,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 } else if decl.mutability.is_not() {
                     if matches!(
-                        decl.local_info,
-                        Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                            hir::ImplicitSelfKind::MutRef
-                        ),)))
+                        decl.local_info(),
+                        LocalInfo::User(BindingForm::ImplicitSelf(hir::ImplicitSelfKind::MutRef))
                     ) {
                         err.note(
                             "as `Self` may be unsized, this call attempts to take `&mut &mut self`",
@@ -482,22 +478,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
-                        let label = match local_decl.local_info.as_deref().unwrap() {
-                            LocalInfo::User(ClearCrossCrate::Set(
-                                mir::BindingForm::ImplicitSelf(_),
-                            )) => {
+                        let label = match *local_decl.local_info() {
+                            LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
                                 let (span, suggestion) =
                                     suggest_ampmut_self(self.infcx.tcx, local_decl);
                                 Some((true, span, suggestion))
                             }
 
-                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
-                                mir::VarBindingForm {
-                                    binding_mode: ty::BindingMode::BindByValue(_),
-                                    opt_ty_info,
-                                    ..
-                                },
-                            ))) => {
+                            LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
+                                binding_mode: ty::BindingMode::BindByValue(_),
+                                opt_ty_info,
+                                ..
+                            })) => {
                                 // check if the RHS is from desugaring
                                 let opt_assignment_rhs_span =
                                     self.body.find_assignments(local).first().map(|&location| {
@@ -534,16 +526,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                 self.infcx.tcx,
                                                 local_decl,
                                                 opt_assignment_rhs_span,
-                                                *opt_ty_info,
+                                                opt_ty_info,
                                             )
                                         } else {
-                                            match local_decl.local_info.as_deref() {
-                                                Some(LocalInfo::User(ClearCrossCrate::Set(
-                                                    mir::BindingForm::Var(mir::VarBindingForm {
-                                                        opt_ty_info: None,
-                                                        ..
-                                                    }),
-                                                ))) => {
+                                            match local_decl.local_info() {
+                                                LocalInfo::User(mir::BindingForm::Var(
+                                                    mir::VarBindingForm {
+                                                        opt_ty_info: None, ..
+                                                    },
+                                                )) => {
                                                     let (span, sugg) = suggest_ampmut_self(
                                                         self.infcx.tcx,
                                                         local_decl,
@@ -555,7 +546,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                     self.infcx.tcx,
                                                     local_decl,
                                                     opt_assignment_rhs_span,
-                                                    *opt_ty_info,
+                                                    opt_ty_info,
                                                 ),
                                             }
                                         };
@@ -564,19 +555,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                             }
 
-                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
-                                mir::VarBindingForm {
-                                    binding_mode: ty::BindingMode::BindByReference(_),
-                                    ..
-                                },
-                            ))) => {
+                            LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
+                                binding_mode: ty::BindingMode::BindByReference(_),
+                                ..
+                            })) => {
                                 let pattern_span = local_decl.source_info.span;
                                 suggest_ref_mut(self.infcx.tcx, pattern_span)
                                     .map(|replacement| (true, pattern_span, replacement))
-                            }
-
-                            LocalInfo::User(ClearCrossCrate::Clear) => {
-                                bug!("saw cleared local state")
                             }
 
                             _ => unreachable!(),
@@ -1151,20 +1136,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
     debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
 
-    match local_decl.local_info.as_deref() {
+    match *local_decl.local_info() {
         // Check if mutably borrowing a mutable reference.
-        Some(LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
-            mir::VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(Mutability::Not), ..
-            },
-        )))) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
-        Some(LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(kind)))) => {
+        LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
+            binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+            ..
+        })) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
+        LocalInfo::User(mir::BindingForm::ImplicitSelf(kind)) => {
             // Check if the user variable is a `&mut self` and we can therefore
             // suggest removing the `&mut`.
             //
             // Deliberately fall into this case for all implicit self types,
             // so that we don't fall in to the next case with them.
-            *kind == hir::ImplicitSelfKind::MutRef
+            kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
             // Otherwise, check if the name is the `self` keyword - in which case

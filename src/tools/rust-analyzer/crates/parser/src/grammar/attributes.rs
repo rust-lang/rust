@@ -43,7 +43,7 @@ pub(super) fn meta(p: &mut Parser<'_>) {
     match p.current() {
         T![=] => {
             p.bump(T![=]);
-            if !expressions::expr(p) {
+            if expressions::expr(p).is_none() {
                 p.error("expected expression");
             }
         }

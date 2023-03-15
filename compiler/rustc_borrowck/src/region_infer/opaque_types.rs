@@ -325,7 +325,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         if errors.is_empty() {
             definition_ty
         } else {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
             self.tcx.ty_error(reported)
         }
     }

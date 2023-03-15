@@ -45,24 +45,32 @@ impl_arith!(
     Div, Custom, Custom, div;
     Mul, Custom, Custom, mul;
     Rem, Custom, Custom, rem;
+    Shl, Custom, Custom, shl;
+    Shr, Custom, Custom, shr;
     Sub, Custom, Custom, sub;
 
     Add, Custom, &Custom, add;
     Div, Custom, &Custom, div;
     Mul, Custom, &Custom, mul;
     Rem, Custom, &Custom, rem;
+    Shl, Custom, &Custom, shl;
+    Shr, Custom, &Custom, shr;
     Sub, Custom, &Custom, sub;
 
     Add, &Custom, Custom, add;
     Div, &Custom, Custom, div;
     Mul, &Custom, Custom, mul;
     Rem, &Custom, Custom, rem;
+    Shl, &Custom, Custom, shl;
+    Shr, &Custom, Custom, shr;
     Sub, &Custom, Custom, sub;
 
     Add, &Custom, &Custom, add;
     Div, &Custom, &Custom, div;
     Mul, &Custom, &Custom, mul;
     Rem, &Custom, &Custom, rem;
+    Shl, &Custom, &Custom, shl;
+    Shr, &Custom, &Custom, shr;
     Sub, &Custom, &Custom, sub;
 );
 
@@ -71,24 +79,32 @@ impl_assign_arith!(
     DivAssign, Custom, Custom, div_assign;
     MulAssign, Custom, Custom, mul_assign;
     RemAssign, Custom, Custom, rem_assign;
+    ShlAssign, Custom, Custom, shl_assign;
+    ShrAssign, Custom, Custom, shr_assign;
     SubAssign, Custom, Custom, sub_assign;
 
     AddAssign, Custom, &Custom, add_assign;
     DivAssign, Custom, &Custom, div_assign;
     MulAssign, Custom, &Custom, mul_assign;
     RemAssign, Custom, &Custom, rem_assign;
+    ShlAssign, Custom, &Custom, shl_assign;
+    ShrAssign, Custom, &Custom, shr_assign;
     SubAssign, Custom, &Custom, sub_assign;
 
     AddAssign, &Custom, Custom, add_assign;
     DivAssign, &Custom, Custom, div_assign;
     MulAssign, &Custom, Custom, mul_assign;
     RemAssign, &Custom, Custom, rem_assign;
+    ShlAssign, &Custom, Custom, shl_assign;
+    ShrAssign, &Custom, Custom, shr_assign;
     SubAssign, &Custom, Custom, sub_assign;
 
     AddAssign, &Custom, &Custom, add_assign;
     DivAssign, &Custom, &Custom, div_assign;
     MulAssign, &Custom, &Custom, mul_assign;
     RemAssign, &Custom, &Custom, rem_assign;
+    ShlAssign, &Custom, &Custom, shl_assign;
+    ShrAssign, &Custom, &Custom, shr_assign;
     SubAssign, &Custom, &Custom, sub_assign;
 );
 
@@ -297,6 +313,10 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _custom %= &Custom;
     _custom *= Custom;
     _custom *= &Custom;
+    _custom >>= Custom;
+    _custom >>= &Custom;
+    _custom <<= Custom;
+    _custom <<= &Custom;
     _custom += -Custom;
     _custom += &-Custom;
     _custom -= -Custom;
@@ -307,6 +327,10 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _custom %= &-Custom;
     _custom *= -Custom;
     _custom *= &-Custom;
+    _custom >>= -Custom;
+    _custom >>= &-Custom;
+    _custom <<= -Custom;
+    _custom <<= &-Custom;
 
     // Binary
     _n = _n + 1;
@@ -347,6 +371,10 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _custom = Custom + &Custom;
     _custom = &Custom + Custom;
     _custom = &Custom + &Custom;
+    _custom = _custom >> _custom;
+    _custom = _custom >> &_custom;
+    _custom = Custom << _custom;
+    _custom = &Custom << _custom;
 
     // Unary
     _n = -_n;

@@ -155,7 +155,6 @@ struct TupleStructReprC(i32, [usize; 0]);
 
 type NamedTuple = (i32, [usize; 0]);
 
-#[rustfmt::skip] // [rustfmt#4995](https://github.com/rust-lang/rustfmt/issues/4995)
 struct ConstParamZeroDefault<const N: usize = 0> {
     field: i32,
     last: [usize; N],
@@ -166,7 +165,6 @@ struct ConstParamNoDefault<const N: usize> {
     last: [usize; N],
 }
 
-#[rustfmt::skip] 
 struct ConstParamNonZeroDefault<const N: usize = 1> {
     field: i32,
     last: [usize; N],

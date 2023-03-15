@@ -1,0 +1,13 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/values-target-json.rs:13:7
+   |
+LL | #[cfg(target_os = "linuz")]
+   |       ^^^^^^^^^^^^-------
+   |                   |
+   |                   help: did you mean: `"linux"`
+   |
+   = note: expected values for `target_os` are: aix, android, cuda, dragonfly, emscripten, ericos, espidf, freebsd, fuchsia, haiku, hermit, horizon, illumos, ios, l4re, linux, macos, netbsd, none, nto, openbsd, psp, redox, solaris, solid_asp3, tvos, uefi, unknown, vita, vxworks, wasi, watchos, windows, xous
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

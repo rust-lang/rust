@@ -24,7 +24,7 @@ struct ConstMutationChecker<'a, 'tcx> {
 
 impl<'tcx> ConstMutationChecker<'_, 'tcx> {
     fn is_const_item(&self, local: Local) -> Option<DefId> {
-        if let Some(box LocalInfo::ConstRef { def_id }) = self.body.local_decls[local].local_info {
+        if let LocalInfo::ConstRef { def_id } = *self.body.local_decls[local].local_info() {
             Some(def_id)
         } else {
             None

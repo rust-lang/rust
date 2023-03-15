@@ -364,6 +364,14 @@ where
     }
 }
 
+pub(crate) fn loadable_from_disk<'tcx>(tcx: QueryCtxt<'tcx>, id: SerializedDepNodeIndex) -> bool {
+    if let Some(cache) = tcx.on_disk_cache().as_ref() {
+        cache.loadable_from_disk(id)
+    } else {
+        false
+    }
+}
+
 pub(crate) fn try_load_from_disk<'tcx, V>(
     tcx: QueryCtxt<'tcx>,
     id: SerializedDepNodeIndex,
@@ -532,6 +540,21 @@ macro_rules! define_queries {
                     }
                 } {
                     None
+                })
+            }
+
+            #[inline]
+            fn loadable_from_disk(
+                self,
+                _qcx: QueryCtxt<'tcx>,
+                _key: &Self::Key,
+                _index: SerializedDepNodeIndex,
+            ) -> bool {
+                should_ever_cache_on_disk!([$($modifiers)*] {
+                    self.cache_on_disk(_qcx.tcx, _key) &&
+                        $crate::plumbing::loadable_from_disk(_qcx, _index)
+                } {
+                    false
                 })
             }
 

@@ -5,8 +5,9 @@
 use std::fmt::{self, Debug};
 
 use base_db::CrateId;
-use chalk_ir::BoundVar;
+use chalk_ir::{BoundVar, TyKind};
 use hir_def::{
+    adt::VariantData,
     body,
     db::DefDatabase,
     find_path,
@@ -14,9 +15,9 @@ use hir_def::{
     item_scope::ItemInNs,
     lang_item::{LangItem, LangItemTarget},
     path::{Path, PathKind},
-    type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
+    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use intern::{Internable, Interned};
@@ -25,14 +26,17 @@ use smallvec::SmallVec;
 
 use crate::{
     db::HirDatabase,
-    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
+    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
+    layout::layout_of_ty,
+    lt_from_placeholder_idx,
     mapping::from_chalk,
+    mir::pad16,
     primitive, to_assoc_type_id,
     utils::{self, generics},
-    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstValue, DomainGoal,
-    GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability,
-    OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, Substitution, TraitRef,
-    TraitRefExt, Ty, TyExt, TyKind, WhereClause,
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
+    DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
+    MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
+    Substitution, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
 };
 
 pub trait HirWrite: fmt::Write {
@@ -362,17 +366,173 @@ impl HirDisplay for GenericArg {
 impl HirDisplay for Const {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         let data = self.interned();
-        match data.value {
+        match &data.value {
             ConstValue::BoundVar(idx) => idx.hir_fmt(f),
             ConstValue::InferenceVar(..) => write!(f, "#c#"),
             ConstValue::Placeholder(idx) => {
-                let id = from_placeholder_idx(f.db, idx);
+                let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
                 let param_data = &generics.params.type_or_consts[id.local_id];
                 write!(f, "{}", param_data.name().unwrap())
             }
-            ConstValue::Concrete(c) => write!(f, "{}", c.interned),
+            ConstValue::Concrete(c) => match &c.interned {
+                ConstScalar::Bytes(b, m) => render_const_scalar(f, &b, m, &data.ty),
+                ConstScalar::Unknown => f.write_char('_'),
+            },
         }
+    }
+}
+
+pub struct HexifiedConst(pub Const);
+
+impl HirDisplay for HexifiedConst {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        let data = &self.0.data(Interner);
+        if let TyKind::Scalar(s) = data.ty.kind(Interner) {
+            if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
+                if let ConstValue::Concrete(c) = &data.value {
+                    if let ConstScalar::Bytes(b, m) = &c.interned {
+                        let value = u128::from_le_bytes(pad16(b, false));
+                        if value >= 10 {
+                            render_const_scalar(f, &b, m, &data.ty)?;
+                            return write!(f, " ({:#X})", value);
+                        }
+                    }
+                }
+            }
+        }
+        self.0.hir_fmt(f)
+    }
+}
+
+fn render_const_scalar(
+    f: &mut HirFormatter<'_>,
+    b: &[u8],
+    memory_map: &MemoryMap,
+    ty: &Ty,
+) -> Result<(), HirDisplayError> {
+    match ty.kind(Interner) {
+        chalk_ir::TyKind::Scalar(s) => match s {
+            Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
+            Scalar::Char => {
+                let x = u128::from_le_bytes(pad16(b, false)) as u32;
+                let Ok(c) = char::try_from(x) else {
+                    return f.write_str("<unicode-error>");
+                };
+                write!(f, "{c:?}")
+            }
+            Scalar::Int(_) => {
+                let x = i128::from_le_bytes(pad16(b, true));
+                write!(f, "{x}")
+            }
+            Scalar::Uint(_) => {
+                let x = u128::from_le_bytes(pad16(b, false));
+                write!(f, "{x}")
+            }
+            Scalar::Float(fl) => match fl {
+                chalk_ir::FloatTy::F32 => {
+                    let x = f32::from_le_bytes(b.try_into().unwrap());
+                    write!(f, "{x:?}")
+                }
+                chalk_ir::FloatTy::F64 => {
+                    let x = f64::from_le_bytes(b.try_into().unwrap());
+                    write!(f, "{x:?}")
+                }
+            },
+        },
+        chalk_ir::TyKind::Ref(_, _, t) => match t.kind(Interner) {
+            chalk_ir::TyKind::Str => {
+                let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
+                let bytes = memory_map.0.get(&addr).map(|x| &**x).unwrap_or(&[]);
+                let s = std::str::from_utf8(bytes).unwrap_or("<utf8-error>");
+                write!(f, "{s:?}")
+            }
+            _ => f.write_str("<ref-not-supported>"),
+        },
+        chalk_ir::TyKind::Tuple(_, subst) => {
+            // FIXME: Remove this line. If the target data layout is independent
+            // of the krate, the `db.target_data_layout` and its callers like `layout_of_ty` don't need
+            // to get krate. Otherwise, we need to get krate from the final callers of the hir display
+            // infrastructure and have it here as a field on `f`.
+            let krate = *f.db.crate_graph().crates_in_topological_order().last().unwrap();
+            let Ok(layout) = layout_of_ty(f.db, ty, krate) else {
+                return f.write_str("<layout-error>");
+            };
+            f.write_str("(")?;
+            let mut first = true;
+            for (id, ty) in subst.iter(Interner).enumerate() {
+                if first {
+                    first = false;
+                } else {
+                    f.write_str(", ")?;
+                }
+                let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
+                let offset = layout.fields.offset(id).bytes_usize();
+                let Ok(layout) = layout_of_ty(f.db, &ty, krate) else {
+                    f.write_str("<layout-error>")?;
+                    continue;
+                };
+                let size = layout.size.bytes_usize();
+                render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)?;
+            }
+            f.write_str(")")
+        }
+        chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
+            hir_def::AdtId::StructId(s) => {
+                let data = f.db.struct_data(s);
+                let Ok(layout) = f.db.layout_of_adt(adt.0, subst.clone()) else {
+                    return f.write_str("<layout-error>");
+                };
+                match data.variant_data.as_ref() {
+                    VariantData::Record(fields) | VariantData::Tuple(fields) => {
+                        let field_types = f.db.field_types(s.into());
+                        let krate = adt.0.module(f.db.upcast()).krate();
+                        let render_field = |f: &mut HirFormatter<'_>, id: LocalFieldId| {
+                            let offset = layout
+                                .fields
+                                .offset(u32::from(id.into_raw()) as usize)
+                                .bytes_usize();
+                            let ty = field_types[id].clone().substitute(Interner, subst);
+                            let Ok(layout) = layout_of_ty(f.db, &ty, krate) else {
+                                return f.write_str("<layout-error>");
+                            };
+                            let size = layout.size.bytes_usize();
+                            render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)
+                        };
+                        let mut it = fields.iter();
+                        if matches!(data.variant_data.as_ref(), VariantData::Record(_)) {
+                            write!(f, "{} {{", data.name)?;
+                            if let Some((id, data)) = it.next() {
+                                write!(f, " {}: ", data.name)?;
+                                render_field(f, id)?;
+                            }
+                            for (id, data) in it {
+                                write!(f, ", {}: ", data.name)?;
+                                render_field(f, id)?;
+                            }
+                            write!(f, " }}")?;
+                        } else {
+                            let mut it = it.map(|x| x.0);
+                            write!(f, "{}(", data.name)?;
+                            if let Some(id) = it.next() {
+                                render_field(f, id)?;
+                            }
+                            for id in it {
+                                write!(f, ", ")?;
+                                render_field(f, id)?;
+                            }
+                            write!(f, ")")?;
+                        }
+                        return Ok(());
+                    }
+                    VariantData::Unit => write!(f, "{}", data.name),
+                }
+            }
+            hir_def::AdtId::UnionId(u) => write!(f, "{}", f.db.union_data(u).name),
+            hir_def::AdtId::EnumId(_) => f.write_str("<enum-not-supported>"),
+        },
+        chalk_ir::TyKind::FnDef(..) => ty.hir_fmt(f),
+        _ => f.write_str("<not-supported>"),
     }
 }
 
@@ -614,8 +774,9 @@ impl HirDisplay for Ty {
                                     {
                                         return true;
                                     }
-                                    if let Some(ConstValue::Concrete(c)) =
-                                        parameter.constant(Interner).map(|x| x.data(Interner).value)
+                                    if let Some(ConstValue::Concrete(c)) = parameter
+                                        .constant(Interner)
+                                        .map(|x| &x.data(Interner).value)
                                     {
                                         if c.interned == ConstScalar::Unknown {
                                             return true;

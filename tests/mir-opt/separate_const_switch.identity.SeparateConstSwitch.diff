@@ -12,7 +12,6 @@
       let mut _7: !;                       // in scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
       let mut _8: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
       let _9: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
-      let mut _16: i32;                    // in scope 0 at $SRC_DIR/core/src/result.rs:LL:COL
       scope 1 {
           debug residual => _6;            // in scope 1 at $DIR/separate_const_switch.rs:+1:9: +1:10
           scope 2 {
@@ -23,7 +22,7 @@
                   scope 9 {
                       debug e => _14;      // in scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
                       scope 10 (inlined <i32 as From<i32>>::from) { // at $SRC_DIR/core/src/result.rs:LL:COL
-                          debug t => _16;  // in scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                          debug t => _14;  // in scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
                       }
                   }
               }
@@ -90,10 +89,7 @@
           StorageLive(_14);                // scope 2 at $DIR/separate_const_switch.rs:+1:8: +1:10
           _14 = move ((_8 as Err).0: i32); // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageLive(_15);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageLive(_16);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          _16 = move _14;                  // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          _15 = move _16;                  // scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-          StorageDead(_16);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          _15 = move _14;                  // scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
           _0 = Result::<i32, i32>::Err(move _15); // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_15);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_14);                // scope 2 at $DIR/separate_const_switch.rs:+1:8: +1:10

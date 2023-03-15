@@ -561,7 +561,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                             .sema
                             .resolve_method_call_as_callable(code)
                             .and_then(|callable| callable.receiver_param(self.sema.db))
-                            .map(|self_param| self_param.kind())
+                            .map(|(self_param, _)| self_param.kind())
                             .unwrap_or(ast::SelfParamKind::Owned);
                     }
                 }

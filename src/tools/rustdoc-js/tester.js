@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 function loadContent(content) {
     const Module = module.constructor;
@@ -15,7 +15,7 @@ function loadContent(content) {
 }
 
 function readFile(filePath) {
-    return fs.readFileSync(filePath, 'utf8');
+    return fs.readFileSync(filePath, "utf8");
 }
 
 function contentToDiffLine(key, value) {
@@ -25,41 +25,41 @@ function contentToDiffLine(key, value) {
 // This function is only called when no matching result was found and therefore will only display
 // the diff between the two items.
 function betterLookingDiff(entry, data) {
-    let output = ' {\n';
-    const spaces = '     ';
+    let output = " {\n";
+    const spaces = "     ";
     for (const key in entry) {
-        if (!entry.hasOwnProperty(key)) {
+        if (!Object.prototype.hasOwnProperty.call(entry, key)) {
             continue;
         }
-        if (!data || !data.hasOwnProperty(key)) {
-            output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
+        if (!data || !Object.prototype.hasOwnProperty.call(data, key)) {
+            output += "-" + spaces + contentToDiffLine(key, entry[key]) + "\n";
             continue;
         }
         const value = data[key];
         if (value !== entry[key]) {
-            output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
-            output += '+' + spaces + contentToDiffLine(key, value) + '\n';
+            output += "-" + spaces + contentToDiffLine(key, entry[key]) + "\n";
+            output += "+" + spaces + contentToDiffLine(key, value) + "\n";
         } else {
-            output += spaces + contentToDiffLine(key, value) + '\n';
+            output += spaces + contentToDiffLine(key, value) + "\n";
         }
     }
-    return output + ' }';
+    return output + " }";
 }
 
 function lookForEntry(entry, data) {
     return data.findIndex(data_entry => {
         let allGood = true;
         for (const key in entry) {
-            if (!entry.hasOwnProperty(key)) {
+            if (!Object.prototype.hasOwnProperty.call(entry, key)) {
                 continue;
             }
             let value = data_entry[key];
             // To make our life easier, if there is a "parent" type, we add it to the path.
-            if (key === 'path' && data_entry['parent'] !== undefined) {
+            if (key === "path" && data_entry["parent"] !== undefined) {
                 if (value.length > 0) {
-                    value += '::' + data_entry['parent']['name'];
+                    value += "::" + data_entry["parent"]["name"];
                 } else {
-                    value = data_entry['parent']['name'];
+                    value = data_entry["parent"]["name"];
                 }
             }
             if (value !== entry[key]) {
@@ -95,7 +95,7 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
         fieldsToCheck = [];
     }
     for (const field of fieldsToCheck) {
-        if (!expected.hasOwnProperty(field)) {
+        if (!Object.prototype.hasOwnProperty.call(expected, field)) {
             let text = `${queryName}==> Mandatory key \`${field}\` is not present`;
             if (fullPath.length > 0) {
                 text += ` in field \`${fullPath}\``;
@@ -117,22 +117,22 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                 error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
                     `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``);
             } else {
-                valueCheck(fullPath + '[' + i + ']', expected[i], result[i], error_text, queryName);
+                valueCheck(fullPath + "[" + i + "]", expected[i], result[i], error_text, queryName);
             }
         }
         for (; i < result.length; ++i) {
             error_text.push(`${queryName}==> RESULT has extra value in array from field ` +
                 `\`${fullPath}\` (position ${i}): \`${JSON.stringify(result[i])}\` ` +
-                'compared to EXPECTED');
+                "compared to EXPECTED");
         }
     } else if (expected !== null && typeof expected !== "undefined" &&
-               expected.constructor == Object) {
+               expected.constructor == Object) { // eslint-disable-line eqeqeq
         for (const key in expected) {
-            if (!expected.hasOwnProperty(key)) {
+            if (!Object.prototype.hasOwnProperty.call(expected, key)) {
                 continue;
             }
-            if (!result.hasOwnProperty(key)) {
-                error_text.push('==> Unknown key "' + key + '"');
+            if (!Object.prototype.hasOwnProperty.call(result, key)) {
+                error_text.push("==> Unknown key \"" + key + "\"");
                 break;
             }
             let result_v = result[key];
@@ -147,13 +147,13 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                 });
                 result_v = result_v.join("");
             }
-            const obj_path = fullPath + (fullPath.length > 0 ? '.' : '') + key;
+            const obj_path = fullPath + (fullPath.length > 0 ? "." : "") + key;
             valueCheck(obj_path, expected[key], result_v, error_text, queryName);
         }
     } else {
         const expectedValue = JSON.stringify(expected);
         const resultValue = JSON.stringify(result);
-        if (expectedValue != resultValue) {
+        if (expectedValue !== resultValue) {
             error_text.push(`${queryName}==> Different values for field \`${fullPath}\`:\n` +
                 `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``);
         }
@@ -164,7 +164,7 @@ function runParser(query, expected, parseQuery, queryName) {
     const error_text = [];
     checkNeededFields("", expected, error_text, queryName, null);
     if (error_text.length === 0) {
-        valueCheck('', expected, parseQuery(query), error_text, queryName);
+        valueCheck("", expected, parseQuery(query), error_text, queryName);
     }
     return error_text;
 }
@@ -177,16 +177,16 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const error_text = [];
 
     for (const key in expected) {
-        if (!expected.hasOwnProperty(key)) {
+        if (!Object.prototype.hasOwnProperty.call(expected, key)) {
             continue;
         }
-        if (!results.hasOwnProperty(key)) {
-            error_text.push('==> Unknown key "' + key + '"');
+        if (!Object.prototype.hasOwnProperty.call(results, key)) {
+            error_text.push("==> Unknown key \"" + key + "\"");
             break;
         }
         const entry = expected[key];
 
-        if (exact_check == true && entry.length !== results[key].length) {
+        if (exact_check && entry.length !== results[key].length) {
             error_text.push(queryName + "==> Expected exactly " + entry.length +
                             " results but found " + results[key].length + " in '" + key + "'");
         }
@@ -268,7 +268,7 @@ function runCheck(loadedFile, key, callback) {
 function runChecks(testFile, doSearch, parseQuery) {
     let checkExpected = false;
     let checkParsed = false;
-    let testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;';
+    let testFileContent = readFile(testFile) + "exports.QUERY = QUERY;";
 
     if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
         testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
@@ -277,11 +277,11 @@ function runChecks(testFile, doSearch, parseQuery) {
     }
 
     if (testFileContent.indexOf("\nconst EXPECTED") !== -1) {
-        testFileContent += 'exports.EXPECTED = EXPECTED;';
+        testFileContent += "exports.EXPECTED = EXPECTED;";
         checkExpected = true;
     }
     if (testFileContent.indexOf("\nconst PARSED") !== -1) {
-        testFileContent += 'exports.PARSED = PARSED;';
+        testFileContent += "exports.PARSED = PARSED;";
         checkParsed = true;
     }
     if (!checkParsed && !checkExpected) {
@@ -325,7 +325,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
     const searchWords = searchModule.initSearch(searchIndex.searchIndex);
 
     return {
-        doSearch: function (queryStr, filterCrate, currentCrate) {
+        doSearch: function(queryStr, filterCrate, currentCrate) {
             return searchModule.execQuery(searchModule.parseQuery(queryStr), searchWords,
                 filterCrate, currentCrate);
         },
@@ -361,22 +361,24 @@ function parseOptions(args) {
     };
 
     for (let i = 0; i < args.length; ++i) {
-        if (correspondences.hasOwnProperty(args[i])) {
+        const arg = args[i];
+        if (Object.prototype.hasOwnProperty.call(correspondences, arg)) {
             i += 1;
             if (i >= args.length) {
-                console.log("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + arg + "` option.");
                 return null;
             }
-            if (args[i - 1] !== "--test-file") {
-                opts[correspondences[args[i - 1]]] = args[i];
+            const arg_value = args[i];
+            if (arg !== "--test-file") {
+                opts[correspondences[arg]] = arg_value;
             } else {
-                opts[correspondences[args[i - 1]]].push(args[i]);
+                opts[correspondences[arg]].push(arg_value);
             }
-        } else if (args[i] === "--help") {
+        } else if (arg === "--help") {
             showHelp();
             process.exit(0);
         } else {
-            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
             return null;
         }
@@ -405,17 +407,17 @@ function main(argv) {
     );
     let errors = 0;
 
-    const doSearch = function (queryStr, filterCrate) {
+    const doSearch = function(queryStr, filterCrate) {
         return parseAndSearch.doSearch(queryStr, filterCrate, opts["crate_name"]);
     };
 
     if (opts["test_file"].length !== 0) {
-        opts["test_file"].forEach(function (file) {
+        opts["test_file"].forEach(file => {
             process.stdout.write(`Testing ${file} ... `);
             errors += runChecks(file, doSearch, parseAndSearch.parseQuery);
         });
     } else if (opts["test_folder"].length !== 0) {
-        fs.readdirSync(opts["test_folder"]).forEach(function (file) {
+        fs.readdirSync(opts["test_folder"]).forEach(file => {
             if (!file.endsWith(".js")) {
                 return;
             }

@@ -1,9 +1,9 @@
+use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
 use rustc_middle::ty;
-use rustc_session::config::TraitSolver;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::solve::{Certainty, Goal, InferCtxtEvalExt, MaybeCause};
+use crate::solve::InferCtxtEvalExt;
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
@@ -79,13 +79,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             _ => obligation.param_env.without_const(),
         };
 
-        if self.tcx.sess.opts.unstable_opts.trait_solver != TraitSolver::Next {
-            let c_pred = self.canonicalize_query_keep_static(
-                param_env.and(obligation.predicate),
-                &mut _orig_values,
-            );
-            self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
-        } else {
+        if self.tcx.trait_solver_next() {
             self.probe(|snapshot| {
                 if let Ok((_, certainty)) =
                     self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
@@ -110,6 +104,12 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     Ok(EvaluationResult::EvaluatedToErr)
                 }
             })
+        } else {
+            let c_pred = self.canonicalize_query_keep_static(
+                param_env.and(obligation.predicate),
+                &mut _orig_values,
+            );
+            self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
         }
     }
 

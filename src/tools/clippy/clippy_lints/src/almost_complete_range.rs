@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let _ = 'a'..='z';
     /// ```
-    #[clippy::version = "1.63.0"]
+    #[clippy::version = "1.68.0"]
     pub ALMOST_COMPLETE_RANGE,
     suspicious,
     "almost complete range"

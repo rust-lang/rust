@@ -2,13 +2,13 @@
 
 use std::iter;
 
-use super::assembly;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
+use super::{assembly, EvalCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
@@ -36,7 +36,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
+        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         if iter::zip(goal.predicate.trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
         {
@@ -135,9 +135,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // currently instead lint patterns which can be used to
         // exploit this unsoundness on stable, see #93367 for
         // more details.
+        //
+        // Using `TreatProjections::NextSolverLookup` is fine here because
+        // `instantiate_constituent_tys_for_auto_trait` returns nothing for
+        // projection types anyways. So it doesn't really matter what we do
+        // here, and this is faster.
         if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
             goal.predicate.def_id(),
             goal.predicate.self_ty(),
+            TreatProjections::NextSolverLookup,
             Some,
         ) {
             debug!(?def_id, ?goal, "disqualified auto-trait implementation");

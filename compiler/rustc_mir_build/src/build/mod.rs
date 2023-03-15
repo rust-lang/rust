@@ -48,17 +48,14 @@ pub(crate) fn mir_built(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
-    // We can't use `ensure()` for `thir_abstract_const` as it doesn't compute the query
-    // if inputs are green. This can cause ICEs when calling `thir_abstract_const` after
-    // THIR has been stolen if we haven't computed this query yet.
     match def {
         ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
-            tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did));
-            drop(tcx.thir_abstract_const_of_const_arg((did, const_param_did)));
+            tcx.ensure_with_value().thir_check_unsafety_for_const_arg((did, const_param_did));
+            tcx.ensure_with_value().thir_abstract_const_of_const_arg((did, const_param_did));
         }
         ty::WithOptConstParam { did, const_param_did: None } => {
-            tcx.ensure().thir_check_unsafety(did);
-            drop(tcx.thir_abstract_const(did));
+            tcx.ensure_with_value().thir_check_unsafety(did);
+            tcx.ensure_with_value().thir_abstract_const(did);
         }
     }
 
@@ -879,20 +876,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    self.local_decls[local].local_info = if let Some(kind) = param.self_kind {
-                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
+                    **self.local_decls[local].local_info.as_mut().assert_crate_local() = if let Some(kind) = param.self_kind {
+                        LocalInfo::User(
                             BindingForm::ImplicitSelf(kind),
-                        ))))
+                        )
                     } else {
                         let binding_mode = ty::BindingMode::BindByValue(mutability);
-                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                        LocalInfo::User(BindingForm::Var(
                             VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
                                 opt_match_place: Some((None, span)),
                                 pat_span: span,
                             },
-                        )))))
+                        ))
                     };
                     self.var_indices.insert(var, LocalsForNode::One(local));
                 }

@@ -1,11 +1,103 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::intern::Interned;
+use rustc_query_system::cache::Cache;
 
-use crate::infer::canonical::QueryRegionConstraints;
+use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
+use crate::traits::query::NoSolution;
+use crate::traits::Canonical;
 use crate::ty::{
-    FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
+    TypeVisitor,
 };
+
+pub type EvaluationCache<'tcx> = Cache<CanonicalGoal<'tcx>, QueryResult<'tcx>>;
+
+/// A goal is a statement, i.e. `predicate`, we want to prove
+/// given some assumptions, i.e. `param_env`.
+///
+/// Most of the time the `param_env` contains the `where`-bounds of the function
+/// we're currently typechecking while the `predicate` is some trait bound.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub struct Goal<'tcx, P> {
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub predicate: P,
+}
+
+impl<'tcx, P> Goal<'tcx, P> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        predicate: impl ToPredicate<'tcx, P>,
+    ) -> Goal<'tcx, P> {
+        Goal { param_env, predicate: predicate.to_predicate(tcx) }
+    }
+
+    /// Updates the goal to one with a different `predicate` but the same `param_env`.
+    pub fn with<Q>(self, tcx: TyCtxt<'tcx>, predicate: impl ToPredicate<'tcx, Q>) -> Goal<'tcx, Q> {
+        Goal { param_env: self.param_env, predicate: predicate.to_predicate(tcx) }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub struct Response<'tcx> {
+    pub var_values: CanonicalVarValues<'tcx>,
+    /// Additional constraints returned by this query.
+    pub external_constraints: ExternalConstraints<'tcx>,
+    pub certainty: Certainty,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub enum Certainty {
+    Yes,
+    Maybe(MaybeCause),
+}
+
+impl Certainty {
+    pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
+
+    /// When proving multiple goals using **AND**, e.g. nested obligations for an impl,
+    /// use this function to unify the certainty of these goals
+    pub fn unify_and(self, other: Certainty) -> Certainty {
+        match (self, other) {
+            (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
+            (Certainty::Yes, Certainty::Maybe(_)) => other,
+            (Certainty::Maybe(_), Certainty::Yes) => self,
+            (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
+                Certainty::Maybe(MaybeCause::Overflow)
+            }
+            // If at least one of the goals is ambiguous, hide the overflow as the ambiguous goal
+            // may still result in failure.
+            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(_))
+            | (Certainty::Maybe(_), Certainty::Maybe(MaybeCause::Ambiguity)) => {
+                Certainty::Maybe(MaybeCause::Ambiguity)
+            }
+        }
+    }
+}
+
+/// Why we failed to evaluate a goal.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub enum MaybeCause {
+    /// We failed due to ambiguity. This ambiguity can either
+    /// be a true ambiguity, i.e. there are multiple different answers,
+    /// or we hit a case where we just don't bother, e.g. `?x: Trait` goals.
+    Ambiguity,
+    /// We gave up due to an overflow, most often by hitting the recursion limit.
+    Overflow,
+}
+
+pub type CanonicalGoal<'tcx, T = ty::Predicate<'tcx>> = Canonical<'tcx, Goal<'tcx, T>>;
+
+pub type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
+
+/// The result of evaluating a canonical query.
+///
+/// FIXME: We use a different type than the existing canonical queries. This is because
+/// we need to add a `Certainty` for `overflow` and may want to restructure this code without
+/// having to worry about changes to currently used code. Once we've made progress on this
+/// solver, merge the two responses again.
+pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);

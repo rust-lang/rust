@@ -1349,9 +1349,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(box_syntax)]
     /// fn main() {
-    ///     let a = (box [1, 2, 3]).len();
+    ///     let a = Box::new([1, 2, 3]).len();
     /// }
     /// ```
     ///
@@ -1372,7 +1371,11 @@ declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         match e.kind {
-            hir::ExprKind::Box(_) => {}
+            hir::ExprKind::Call(path_expr, [_])
+                if let hir::ExprKind::Path(qpath) = &path_expr.kind
+                && let Some(did) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()
+                && cx.tcx.is_diagnostic_item(sym::box_new, did)
+                => {}
             _ => return,
         }
 

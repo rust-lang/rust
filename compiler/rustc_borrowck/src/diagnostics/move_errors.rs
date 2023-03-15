@@ -102,14 +102,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         //
                         // opt_match_place is None for let [mut] x = ... statements,
                         // whether or not the right-hand side is a place expression
-                        if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                            VarBindingForm {
-                                opt_match_place: Some((opt_match_place, match_span)),
-                                binding_mode: _,
-                                opt_ty_info: _,
-                                pat_span: _,
-                            },
-                        )))) = local_decl.local_info
+                        if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((opt_match_place, match_span)),
+                            binding_mode: _,
+                            opt_ty_info: _,
+                            pat_span: _,
+                        })) = *local_decl.local_info()
                         {
                             let stmt_source_info = self.body.source_info(location);
                             self.append_binding_error(
@@ -478,9 +476,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut suggestions: Vec<(Span, String, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
-            if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                VarBindingForm { pat_span, .. },
-            )))) = bind_to.local_info
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span, .. })) =
+                *bind_to.local_info()
             {
                 let Ok(pat_snippet) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };

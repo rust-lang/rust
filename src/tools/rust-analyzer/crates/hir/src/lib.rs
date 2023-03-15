@@ -41,34 +41,34 @@ use either::Either;
 use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
-    expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
-    generics::{TypeOrConstParamData, TypeParamProvenance},
+    expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
+    generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
-    nameres::{self, diagnostics::DefDiagnostic},
+    nameres::{self, diagnostics::DefDiagnostic, ModuleOrigin},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    type_ref::ConstScalar,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef,
-    consteval::{unknown_const_as_generic, ComputedExpr, ConstEvalError, ConstExt},
+    consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
+    display::HexifiedConst,
     layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
+    mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
-    ConcreteConst, ConstValue, GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
-    WhereClause,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -77,7 +77,7 @@ use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
-    AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
+    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 
 use crate::db::{DefDatabase, HirDatabase};
@@ -85,12 +85,12 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
-        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
+        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
+        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-        UnresolvedProcMacro,
+        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -130,6 +130,7 @@ pub use {
     },
     hir_ty::{
         display::{HirDisplay, HirDisplayError, HirWrite},
+        mir::MirEvalError,
         PointerCast, Safety,
     },
 };
@@ -272,6 +273,7 @@ pub enum ModuleDef {
     Const(Const),
     Static(Static),
     Trait(Trait),
+    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
     Macro(Macro),
@@ -284,6 +286,7 @@ impl_from!(
     Const,
     Static,
     Trait,
+    TraitAlias,
     TypeAlias,
     BuiltinType,
     Macro
@@ -310,6 +313,7 @@ impl ModuleDef {
             ModuleDef::Const(it) => Some(it.module(db)),
             ModuleDef::Static(it) => Some(it.module(db)),
             ModuleDef::Trait(it) => Some(it.module(db)),
+            ModuleDef::TraitAlias(it) => Some(it.module(db)),
             ModuleDef::TypeAlias(it) => Some(it.module(db)),
             ModuleDef::Macro(it) => Some(it.module(db)),
             ModuleDef::BuiltinType(_) => None,
@@ -338,6 +342,7 @@ impl ModuleDef {
             ModuleDef::Const(it) => it.name(db)?,
             ModuleDef::Adt(it) => it.name(db),
             ModuleDef::Trait(it) => it.name(db),
+            ModuleDef::TraitAlias(it) => it.name(db),
             ModuleDef::Function(it) => it.name(db),
             ModuleDef::Variant(it) => it.name(db),
             ModuleDef::TypeAlias(it) => it.name(db),
@@ -356,6 +361,7 @@ impl ModuleDef {
                 Adt::Union(it) => it.id.into(),
             },
             ModuleDef::Trait(it) => it.id.into(),
+            ModuleDef::TraitAlias(it) => it.id.into(),
             ModuleDef::Function(it) => it.id.into(),
             ModuleDef::TypeAlias(it) => it.id.into(),
             ModuleDef::Module(it) => it.id.into(),
@@ -398,6 +404,7 @@ impl ModuleDef {
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
             | ModuleDef::Trait(_)
+            | ModuleDef::TraitAlias(_)
             | ModuleDef::TypeAlias(_)
             | ModuleDef::Macro(_)
             | ModuleDef::BuiltinType(_) => None,
@@ -413,6 +420,7 @@ impl ModuleDef {
             ModuleDef::Const(it) => it.attrs(db),
             ModuleDef::Static(it) => it.attrs(db),
             ModuleDef::Trait(it) => it.attrs(db),
+            ModuleDef::TraitAlias(it) => it.attrs(db),
             ModuleDef::TypeAlias(it) => it.attrs(db),
             ModuleDef::Macro(it) => it.attrs(db),
             ModuleDef::BuiltinType(_) => return None,
@@ -429,6 +437,7 @@ impl HasVisibility for ModuleDef {
             ModuleDef::Const(it) => it.visibility(db),
             ModuleDef::Static(it) => it.visibility(db),
             ModuleDef::Trait(it) => it.visibility(db),
+            ModuleDef::TraitAlias(it) => it.visibility(db),
             ModuleDef::TypeAlias(it) => it.visibility(db),
             ModuleDef::Variant(it) => it.visibility(db),
             ModuleDef::Macro(it) => it.visibility(db),
@@ -486,6 +495,20 @@ impl Module {
         let def_map = self.id.def_map(db.upcast());
         let parent_id = def_map[self.id.local_id].parent?;
         Some(Module { id: def_map.module_id(parent_id) })
+    }
+
+    /// Finds nearest non-block ancestor `Module` (`self` included).
+    pub fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
+        let mut id = self.id;
+        loop {
+            let def_map = id.def_map(db.upcast());
+            let origin = def_map[id.local_id].origin;
+            if matches!(origin, ModuleOrigin::BlockExpr { .. }) {
+                id = id.containing_module(db.upcast()).expect("block without parent module")
+            } else {
+                return Module { id };
+            }
+        }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -1092,8 +1115,8 @@ impl Variant {
         self.source(db)?.value.expr()
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
-        db.const_eval_variant(self.into())
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
+        db.const_eval_discriminant(self.into())
     }
 }
 
@@ -1168,6 +1191,25 @@ impl Adt {
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
         }
+    }
+
+    /// Returns the lifetime of the DataType
+    pub fn lifetime(&self, db: &dyn HirDatabase) -> Option<LifetimeParamData> {
+        let resolver = match self {
+            Adt::Struct(s) => s.id.resolver(db.upcast()),
+            Adt::Union(u) => u.id.resolver(db.upcast()),
+            Adt::Enum(e) => e.id.resolver(db.upcast()),
+        };
+        resolver
+            .generic_params()
+            .and_then(|gp| {
+                (&gp.lifetimes)
+                    .iter()
+                    // there should only be a single lifetime
+                    // but `Arena` requires to use an iterator
+                    .nth(0)
+            })
+            .map(|arena| arena.1.clone())
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
@@ -1285,6 +1327,15 @@ impl DefWithBody {
         body.pretty_print(db.upcast(), self.id())
     }
 
+    /// A textual representation of the MIR of this def's body for debugging purposes.
+    pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
+        let body = db.mir_body(self.id());
+        match body {
+            Ok(body) => body.pretty_print(db),
+            Err(e) => format!("error:\n{e:?}"),
+        }
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
@@ -1334,42 +1385,35 @@ impl DefWithBody {
 
         let infer = db.infer(self.into());
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
+        let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
         for d in &infer.diagnostics {
             match d {
-                hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
-                    let field = source_map.field_syntax(*expr);
+                &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                    let field = source_map.field_syntax(expr);
                     acc.push(NoSuchField { field }.into())
                 }
-                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break } => {
-                    let expr = source_map
-                        .expr_syntax(expr)
-                        .expect("break outside of loop in synthetic syntax");
-                    acc.push(BreakOutsideOfLoop { expr, is_break }.into())
+                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
+                    expr,
+                    is_break,
+                    bad_value_break,
+                } => {
+                    let expr = expr_syntax(expr);
+                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
-                hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    match source_map.expr_syntax(*call_expr) {
-                        Ok(source_ptr) => acc.push(
-                            MismatchedArgCount {
-                                call_expr: source_ptr,
-                                expected: *expected,
-                                found: *found,
-                            }
+                &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    acc.push(
+                        MismatchedArgCount { call_expr: expr_syntax(call_expr), expected, found }
                             .into(),
-                        ),
-                        Err(SyntheticSyntax) => (),
-                    }
+                    )
                 }
                 &hir_ty::InferenceDiagnostic::PrivateField { expr, field } => {
-                    let expr = source_map.expr_syntax(expr).expect("unexpected synthetic");
+                    let expr = expr_syntax(expr);
                     let field = field.into();
                     acc.push(PrivateField { expr, field }.into())
                 }
                 &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
-                        ExprOrPatId::ExprId(expr) => source_map
-                            .expr_syntax(expr)
-                            .expect("unexpected synthetic")
-                            .map(Either::Left),
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
                         ExprOrPatId::PatId(pat) => source_map
                             .pat_syntax(pat)
                             .expect("unexpected synthetic")
@@ -1378,16 +1422,76 @@ impl DefWithBody {
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
                 }
+                hir_ty::InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
+                    let call_expr = expr_syntax(*call_expr);
+
+                    acc.push(
+                        ExpectedFunction {
+                            call: call_expr,
+                            found: Type::new(db, DefWithBodyId::from(self), found.clone()),
+                        }
+                        .into(),
+                    )
+                }
+                hir_ty::InferenceDiagnostic::UnresolvedField {
+                    expr,
+                    receiver,
+                    name,
+                    method_with_same_name_exists,
+                } => {
+                    let expr = expr_syntax(*expr);
+
+                    acc.push(
+                        UnresolvedField {
+                            expr,
+                            name: name.clone(),
+                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                            method_with_same_name_exists: *method_with_same_name_exists,
+                        }
+                        .into(),
+                    )
+                }
+                hir_ty::InferenceDiagnostic::UnresolvedMethodCall {
+                    expr,
+                    receiver,
+                    name,
+                    field_with_same_name,
+                } => {
+                    let expr = expr_syntax(*expr);
+
+                    acc.push(
+                        UnresolvedMethodCall {
+                            expr,
+                            name: name.clone(),
+                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                            field_with_same_name: field_with_same_name
+                                .clone()
+                                .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
+                        }
+                        .into(),
+                    )
+                }
             }
         }
-        for (expr, mismatch) in infer.expr_type_mismatches() {
-            let expr = match source_map.expr_syntax(expr) {
-                Ok(expr) => expr,
-                Err(SyntheticSyntax) => continue,
+        for (pat_or_expr, mismatch) in infer.type_mismatches() {
+            let expr_or_pat = match pat_or_expr {
+                ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),
+                // FIXME: Re-enable these once we have less false positives
+                ExprOrPatId::PatId(_pat) => continue,
+                #[allow(unreachable_patterns)]
+                ExprOrPatId::PatId(pat) => source_map.pat_syntax(pat).map(Either::Right),
             };
+            let expr_or_pat = match expr_or_pat {
+                Ok(Either::Left(expr)) => Either::Left(expr),
+                Ok(Either::Right(InFile { file_id, value: Either::Left(pat) })) => {
+                    Either::Right(InFile { file_id, value: pat })
+                }
+                Ok(Either::Right(_)) | Err(SyntheticSyntax) => continue,
+            };
+
             acc.push(
                 TypeMismatch {
-                    expr,
+                    expr_or_pat,
                     expected: Type::new(db, DefWithBodyId::from(self), mismatch.expected.clone()),
                     actual: Type::new(db, DefWithBodyId::from(self), mismatch.actual.clone()),
                 }
@@ -1401,6 +1505,41 @@ impl DefWithBody {
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and eslwhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
+                }
+            }
+        }
+
+        let hir_body = db.body(self.into());
+
+        if let Ok(borrowck_result) = db.borrowck(self.into()) {
+            let mir_body = &borrowck_result.mir_body;
+            let mol = &borrowck_result.mutability_of_locals;
+            for (binding_id, _) in hir_body.bindings.iter() {
+                let need_mut = &mol[mir_body.binding_locals[binding_id]];
+                let local = Local { parent: self.into(), binding_id };
+                match (need_mut, local.is_mut(db)) {
+                    (mir::MutabilityReason::Mut { .. }, true)
+                    | (mir::MutabilityReason::Not, false) => (),
+                    (mir::MutabilityReason::Mut { spans }, false) => {
+                        for span in spans {
+                            let span: InFile<SyntaxNodePtr> = match span {
+                                mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                    Ok(s) => s.map(|x| x.into()),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                    Ok(s) => s.map(|x| match x {
+                                        Either::Left(e) => e.into(),
+                                        Either::Right(e) => e.into(),
+                                    }),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::Unknown => continue,
+                            };
+                            acc.push(NeedMut { local, span }.into());
+                        }
+                    }
+                    (mir::MutabilityReason::Not, true) => acc.push(UnusedMut { local }.into()),
                 }
             }
         }
@@ -1489,11 +1628,13 @@ impl DefWithBody {
                             if let ast::Expr::MatchExpr(match_expr) =
                                 &source_ptr.value.to_node(&root)
                             {
-                                if let Some(match_expr) = match_expr.expr() {
+                                if let Some(scrut_expr) = match_expr.expr() {
                                     acc.push(
                                         MissingMatchArms {
-                                            file: source_ptr.file_id,
-                                            match_expr: AstPtr::new(&match_expr),
+                                            scrutinee_expr: InFile::new(
+                                                source_ptr.file_id,
+                                                AstPtr::new(&scrut_expr),
+                                            ),
                                             uncovered_patterns,
                                         }
                                         .into(),
@@ -1582,6 +1723,10 @@ impl Function {
             .collect()
     }
 
+    pub fn num_params(self, db: &dyn HirDatabase) -> usize {
+        db.function_data(self.id).params.len()
+    }
+
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
         if self.self_param(db).is_none() {
             return None;
@@ -1639,6 +1784,14 @@ impl Function {
         let def_map = db.crate_def_map(loc.krate(db).into());
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<(), MirEvalError> {
+        let body = db
+            .mir_body(self.id.into())
+            .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))?;
+        interpret_mir(db, &body, false)?;
+        Ok(())
+    }
 }
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
@@ -1679,8 +1832,8 @@ impl Param {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
         let pat_id = body.params[self.idx];
-        if let Pat::Bind { .. } = &body[pat_id] {
-            Some(Local { parent, pat_id: body.params[self.idx] })
+        if let Pat::Bind { id, .. } = &body[pat_id] {
+            Some(Local { parent, binding_id: *id })
         } else {
             None
         }
@@ -1781,8 +1934,18 @@ impl Const {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
-        db.const_eval(self.id)
+    pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id)?;
+        let r = format!("{}", HexifiedConst(c).display(db));
+        // We want to see things like `<utf8-error>` and `<layout-error>` as they are probably bug in our
+        // implementation, but there is no need to show things like `<enum-not-supported>` or `<ref-not-supported>` to
+        // the user.
+        if r.contains("not-supported>") {
+            return Err(ConstEvalError::MirEvalError(MirEvalError::NotSupported(
+                "rendering complex constants".to_string(),
+            )));
+        }
+        return Ok(r);
     }
 }
 
@@ -1890,6 +2053,27 @@ impl Trait {
 impl HasVisibility for Trait {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.trait_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TraitAlias {
+    pub(crate) id: TraitAliasId,
+}
+
+impl TraitAlias {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: self.id.lookup(db.upcast()).container }
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        db.trait_alias_data(self.id).name.clone()
+    }
+}
+
+impl HasVisibility for TraitAlias {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.trait_alias_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
@@ -2265,6 +2449,7 @@ pub enum GenericDef {
     Function(Function),
     Adt(Adt),
     Trait(Trait),
+    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Impl(Impl),
     // enum variants cannot have generics themselves, but their parent enums
@@ -2277,6 +2462,7 @@ impl_from!(
     Function,
     Adt(Struct, Enum, Union),
     Trait,
+    TraitAlias,
     TypeAlias,
     Impl,
     Variant,
@@ -2317,20 +2503,53 @@ impl GenericDef {
 }
 
 /// A single local definition.
-///
-/// If the definition of this is part of a "MultiLocal", that is a local that has multiple declarations due to or-patterns
-/// then this only references a single one of those.
-/// To retrieve the other locals you should use [`Local::associated_locals`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBodyId,
-    pub(crate) pat_id: PatId,
+    pub(crate) binding_id: BindingId,
+}
+
+pub struct LocalSource {
+    pub local: Local,
+    pub source: InFile<Either<ast::IdentPat, ast::SelfParam>>,
+}
+
+impl LocalSource {
+    pub fn as_ident_pat(&self) -> Option<&ast::IdentPat> {
+        match &self.source.value {
+            Either::Left(x) => Some(x),
+            Either::Right(_) => None,
+        }
+    }
+
+    pub fn into_ident_pat(self) -> Option<ast::IdentPat> {
+        match self.source.value {
+            Either::Left(x) => Some(x),
+            Either::Right(_) => None,
+        }
+    }
+
+    pub fn original_file(&self, db: &dyn HirDatabase) -> FileId {
+        self.source.file_id.original_file(db.upcast())
+    }
+
+    pub fn name(&self) -> Option<ast::Name> {
+        self.source.value.name()
+    }
+
+    pub fn syntax(&self) -> &SyntaxNode {
+        self.source.value.syntax()
+    }
+
+    pub fn syntax_ptr(self) -> InFile<SyntaxNodePtr> {
+        self.source.map(|x| SyntaxNodePtr::new(x.syntax()))
+    }
 }
 
 impl Local {
     pub fn is_param(self, db: &dyn HirDatabase) -> bool {
-        let src = self.source(db);
-        match src.value {
+        let src = self.primary_source(db);
+        match src.source.value {
             Either::Left(pat) => pat
                 .syntax()
                 .ancestors()
@@ -2350,13 +2569,7 @@ impl Local {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let body = db.body(self.parent);
-        match &body[self.pat_id] {
-            Pat::Bind { name, .. } => name.clone(),
-            _ => {
-                stdx::never!("hir::Local is missing a name!");
-                Name::missing()
-            }
-        }
+        body[self.binding_id].name.clone()
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
@@ -2365,15 +2578,12 @@ impl Local {
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent);
-        matches!(&body[self.pat_id], Pat::Bind { mode: BindingAnnotation::Mutable, .. })
+        body[self.binding_id].mode == BindingAnnotation::Mutable
     }
 
     pub fn is_ref(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent);
-        matches!(
-            &body[self.pat_id],
-            Pat::Bind { mode: BindingAnnotation::Ref | BindingAnnotation::RefMut, .. }
-        )
+        matches!(body[self.binding_id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
@@ -2387,34 +2597,33 @@ impl Local {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let def = self.parent;
         let infer = db.infer(def);
-        let ty = infer[self.pat_id].clone();
+        let ty = infer[self.binding_id].clone();
         Type::new(db, def, ty)
     }
 
-    pub fn associated_locals(self, db: &dyn HirDatabase) -> Box<[Local]> {
-        let body = db.body(self.parent);
-        body.ident_patterns_for(&self.pat_id)
+    /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = x;`
+    pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
+        let (body, source_map) = db.body_with_source_map(self.parent);
+        body[self.binding_id]
+            .definitions
             .iter()
-            .map(|&pat_id| Local { parent: self.parent, pat_id })
+            .map(|&definition| {
+                let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                let root = src.file_syntax(db.upcast());
+                src.map(|ast| match ast {
+                    // Suspicious unwrap
+                    Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
+                    Either::Right(it) => Either::Right(it.to_node(&root)),
+                })
+            })
+            .map(|source| LocalSource { local: self, source })
             .collect()
     }
 
-    /// If this local is part of a multi-local, retrieve the representative local.
-    /// That is the local that references are being resolved to.
-    pub fn representative(self, db: &dyn HirDatabase) -> Local {
-        let body = db.body(self.parent);
-        Local { pat_id: body.pattern_representative(self.pat_id), ..self }
-    }
-
-    pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::IdentPat, ast::SelfParam>> {
-        let (_body, source_map) = db.body_with_source_map(self.parent);
-        let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
-        let root = src.file_syntax(db.upcast());
-        src.map(|ast| match ast {
-            // Suspicious unwrap
-            Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
-            Either::Right(it) => Either::Right(it.to_node(&root)),
-        })
+    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
+    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
+        let all_sources = self.sources(db);
+        all_sources.into_iter().next().unwrap()
     }
 }
 
@@ -3190,6 +3399,14 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
+    pub fn remove_raw_ptr(&self) -> Option<Type> {
+        if let TyKind::Raw(_, ty) = self.ty.kind(Interner) {
+            Some(self.derived(ty.clone()))
+        } else {
+            None
+        }
+    }
+
     pub fn contains_unknown(&self) -> bool {
         // FIXME: When we get rid of `ConstScalar::Unknown`, we can just look at precomputed
         // `TypeFlags` in `TyData`.
@@ -3260,12 +3477,7 @@ impl Type {
 
     pub fn as_array(&self, _db: &dyn HirDatabase) -> Option<(Type, usize)> {
         if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
-            match len.data(Interner).value {
-                ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(len) }) => {
-                    Some((self.derived(ty.clone()), len as usize))
-                }
-                _ => None,
-            }
+            try_const_usize(len).map(|x| (self.derived(ty.clone()), x as usize))
         } else {
             None
         }
@@ -3321,6 +3533,24 @@ impl Type {
         }
     }
 
+    /// Iterates its type arguments
+    ///
+    /// It iterates the actual type arguments when concrete types are used
+    /// and otherwise the generic names.
+    /// It does not include `const` arguments.
+    ///
+    /// For code, such as:
+    /// ```text
+    /// struct Foo<T, U>
+    ///
+    /// impl<U> Foo<String, U>
+    /// ```
+    ///
+    /// It iterates:
+    /// ```text
+    /// - "String"
+    /// - "U"
+    /// ```
     pub fn type_arguments(&self) -> impl Iterator<Item = Type> + '_ {
         self.ty
             .strip_references()
@@ -3331,12 +3561,62 @@ impl Type {
             .map(move |ty| self.derived(ty))
     }
 
-    pub fn iterate_method_candidates<T>(
+    /// Iterates its type and const arguments
+    ///
+    /// It iterates the actual type and const arguments when concrete types
+    /// are used and otherwise the generic names.
+    ///
+    /// For code, such as:
+    /// ```text
+    /// struct Foo<T, const U: usize, const X: usize>
+    ///
+    /// impl<U> Foo<String, U, 12>
+    /// ```
+    ///
+    /// It iterates:
+    /// ```text
+    /// - "String"
+    /// - "U"
+    /// - "12"
+    /// ```
+    pub fn type_and_const_arguments<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = SmolStr> + 'a {
+        self.ty
+            .strip_references()
+            .as_adt()
+            .into_iter()
+            .flat_map(|(_, substs)| substs.iter(Interner))
+            .filter_map(|arg| {
+                // arg can be either a `Ty` or `constant`
+                if let Some(ty) = arg.ty(Interner) {
+                    Some(SmolStr::new(ty.display(db).to_string()))
+                } else if let Some(const_) = arg.constant(Interner) {
+                    Some(SmolStr::new_inline(&const_.display(db).to_string()))
+                } else {
+                    None
+                }
+            })
+    }
+
+    /// Combines lifetime indicators, type and constant parameters into a single `Iterator`
+    pub fn generic_parameters<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = SmolStr> + 'a {
+        // iterate the lifetime
+        self.as_adt()
+            .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
+            .into_iter()
+            // add the type and const paramaters
+            .chain(self.type_and_const_arguments(db))
+    }
+
+    pub fn iterate_method_candidates_with_traits<T>(
         &self,
         db: &dyn HirDatabase,
         scope: &SemanticsScope<'_>,
-        // FIXME this can be retrieved from `scope`, except autoimport uses this
-        // to specify a different set, so the method needs to be split
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
@@ -3362,6 +3642,24 @@ impl Type {
             },
         );
         slot
+    }
+
+    pub fn iterate_method_candidates<T>(
+        &self,
+        db: &dyn HirDatabase,
+        scope: &SemanticsScope<'_>,
+        with_local_impls: Option<Module>,
+        name: Option<&Name>,
+        callback: impl FnMut(Function) -> Option<T>,
+    ) -> Option<T> {
+        self.iterate_method_candidates_with_traits(
+            db,
+            scope,
+            &scope.visible_traits().0,
+            with_local_impls,
+            name,
+            callback,
+        )
     }
 
     fn iterate_method_candidates_dyn(
@@ -3632,11 +3930,13 @@ impl Type {
     }
 }
 
+// FIXME: Document this
 #[derive(Debug)]
 pub struct Callable {
     ty: Type,
     sig: CallableSig,
     callee: Callee,
+    /// Whether this is a method that was called with method call syntax.
     pub(crate) is_bound_method: bool,
 }
 
@@ -3670,14 +3970,14 @@ impl Callable {
             Other => CallableKind::Other,
         }
     }
-    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {
+    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(ast::SelfParam, Type)> {
         let func = match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
         let src = func.lookup(db.upcast()).source(db.upcast());
         let param_list = src.value.param_list()?;
-        param_list.self_param()
+        Some((param_list.self_param()?, self.ty.derived(self.sig.params()[0].clone())))
     }
     pub fn n_params(&self) -> usize {
         self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }
@@ -3931,6 +4231,12 @@ impl HasCrate for Macro {
 }
 
 impl HasCrate for Trait {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
+impl HasCrate for TraitAlias {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         self.module(db).krate()
     }

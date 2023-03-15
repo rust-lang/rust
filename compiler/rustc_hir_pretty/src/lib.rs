@@ -1367,8 +1367,8 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
             hir::ExprKind::Box(expr) => {
-                self.word_space("box");
-                self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
+                self.word_space("Box::new");
+                self.print_call_post(std::slice::from_ref(expr));
             }
             hir::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);

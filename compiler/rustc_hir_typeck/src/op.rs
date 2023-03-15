@@ -148,10 +148,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rhs_ty,
                         op,
                     );
-                    self.demand_suptype(expr.span, builtin_return_ty, return_ty);
+                    self.demand_eqtype(expr.span, builtin_return_ty, return_ty);
+                    builtin_return_ty
+                } else {
+                    return_ty
                 }
-
-                return_ty
             }
         }
     }

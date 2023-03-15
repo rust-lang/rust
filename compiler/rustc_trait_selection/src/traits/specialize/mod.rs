@@ -99,10 +99,10 @@ pub fn translate_substs<'tcx>(
             }
 
             fulfill_implication(infcx, param_env, source_trait_ref, target_impl).unwrap_or_else(
-                |_| {
+                |()| {
                     bug!(
-                        "When translating substitutions for specialization, the expected \
-                         specialization failed to hold"
+                        "When translating substitutions from {source_impl:?} to {target_impl:?}, \
+                        the expected specialization failed to hold"
                     )
                 },
             )

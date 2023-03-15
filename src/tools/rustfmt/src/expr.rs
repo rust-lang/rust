@@ -236,7 +236,6 @@ pub(crate) fn format_expr(
         ast::ExprKind::Yeet(Some(ref expr)) => {
             rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
         }
-        ast::ExprKind::Box(ref expr) => rewrite_unary_prefix(context, "box ", &**expr, shape),
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
             rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape)
         }
@@ -1299,7 +1298,6 @@ pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
@@ -1361,7 +1359,6 @@ pub(crate) fn can_be_overflowed_expr(
 
         // Handle unary-like expressions
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
@@ -1373,7 +1370,6 @@ pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::Call(..) | ast::ExprKind::MacCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_nested_call(expr),
@@ -2133,7 +2129,6 @@ pub(crate) fn is_method_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::MethodCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr) => is_method_call(expr),

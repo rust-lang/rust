@@ -224,6 +224,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
 
+        if renamed == Some(kw::Underscore) {
+            // We never inline `_` reexports.
+            return false;
+        }
+
         if self.cx.output_format.is_json() {
             return false;
         }
@@ -346,8 +351,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.visit_foreign_item_inner(item, None);
                 }
             }
-            // If we're inlining, skip private items or item reexported as "_".
-            _ if self.inlining && (!is_pub || renamed == Some(kw::Underscore)) => {}
+            // If we're inlining, skip private items.
+            _ if self.inlining && !is_pub => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {

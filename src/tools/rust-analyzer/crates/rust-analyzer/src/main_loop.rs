@@ -111,12 +111,7 @@ impl fmt::Debug for Event {
 
 impl GlobalState {
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
-        if self.config.linked_projects().is_empty()
-            && self.config.detached_files().is_empty()
-            && self.config.notifications().cargo_toml_not_found
-        {
-            self.show_and_log_error("rust-analyzer failed to discover workspace".to_string(), None);
-        };
+        self.update_status_or_notify();
 
         if self.config.did_save_text_document_dynamic_registration() {
             let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
@@ -323,17 +318,6 @@ impl GlobalState {
 
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             for file_id in diagnostic_changes {
-                let db = self.analysis_host.raw_database();
-                let source_root = db.file_source_root(file_id);
-                if db.source_root(source_root).is_library {
-                    // Only publish diagnostics for files in the workspace, not from crates.io deps
-                    // or the sysroot.
-                    // While theoretically these should never have errors, we have quite a few false
-                    // positives particularly in the stdlib, and those diagnostics would stay around
-                    // forever if we emitted them here.
-                    continue;
-                }
-
                 let uri = file_id_to_url(&self.vfs.read().0, file_id);
                 let mut diagnostics =
                     self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
@@ -405,18 +389,7 @@ impl GlobalState {
             });
         }
 
-        let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
-
-            if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
-                self.show_message(lsp_types::MessageType::ERROR, message.clone());
-            }
-
-            if self.config.server_status_notification() {
-                self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            }
-        }
+        self.update_status_or_notify();
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
@@ -424,6 +397,20 @@ impl GlobalState {
             self.poke_rust_analyzer_developer(format!("overly long loop turn: {loop_duration:?}"));
         }
         Ok(())
+    }
+
+    fn update_status_or_notify(&mut self) {
+        let status = self.current_status();
+        if self.last_reported_status.as_ref() != Some(&status) {
+            self.last_reported_status = Some(status.clone());
+
+            if self.config.server_status_notification() {
+                self.send_notification::<lsp_ext::ServerStatusNotification>(status);
+            } else if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message)
+            {
+                self.show_and_log_error(message.clone(), None);
+            }
+        }
     }
 
     fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
@@ -456,6 +443,9 @@ impl GlobalState {
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
                     ProjectWorkspaceProgress::End(workspaces) => {
                         self.fetch_workspaces_queue.op_completed(Some(workspaces));
+                        if let Err(e) = self.fetch_workspace_error() {
+                            tracing::error!("FetchWorkspaceError:\n{e}");
+                        }
 
                         let old = Arc::clone(&self.workspaces);
                         self.switch_workspaces("fetched workspace".to_string());
@@ -477,6 +467,9 @@ impl GlobalState {
                     BuildDataProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
                     BuildDataProgress::End(build_data_result) => {
                         self.fetch_build_data_queue.op_completed(build_data_result);
+                        if let Err(e) = self.fetch_build_data_error() {
+                            tracing::error!("FetchBuildDataError:\n{e}");
+                        }
 
                         self.switch_workspaces("fetched build data".to_string());
 
@@ -509,6 +502,7 @@ impl GlobalState {
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
+                // if n_total != 0 {
                 let state = if n_done == 0 {
                     Progress::Begin
                 } else if n_done < n_total {
@@ -523,7 +517,8 @@ impl GlobalState {
                     Some(format!("{n_done}/{n_total}")),
                     Some(Progress::fraction(n_done, n_total)),
                     None,
-                )
+                );
+                // }
             }
         }
     }
@@ -565,7 +560,10 @@ impl GlobalState {
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => (Progress::End, None),
                     flycheck::Progress::DidFailToRestart(err) => {
-                        self.show_and_log_error("cargo check failed".to_string(), Some(err));
+                        self.show_and_log_error(
+                            "cargo check failed to start".to_string(),
+                            Some(err),
+                        );
                         return;
                     }
                     flycheck::Progress::DidFinish(result) => {
@@ -634,6 +632,7 @@ impl GlobalState {
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
+            .on::<lsp_ext::ViewMir>(handlers::handle_view_mir)
             .on::<lsp_ext::ViewFileText>(handlers::handle_view_file_text)
             .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
             .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
@@ -971,10 +970,20 @@ impl GlobalState {
     }
 
     fn update_diagnostics(&mut self) {
+        let db = self.analysis_host.raw_database();
         let subscriptions = self
             .mem_docs
             .iter()
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter(|&file_id| {
+                let source_root = db.file_source_root(file_id);
+                // Only publish diagnostics for files in the workspace, not from crates.io deps
+                // or the sysroot.
+                // While theoretically these should never have errors, we have quite a few false
+                // positives particularly in the stdlib, and those diagnostics would stay around
+                // forever if we emitted them here.
+                !db.source_root(source_root).is_library
+            })
             .collect::<Vec<_>>();
 
         tracing::trace!("updating notifications for {:?}", subscriptions);

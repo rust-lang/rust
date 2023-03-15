@@ -33,7 +33,9 @@ pub(crate) fn complete_type_path(
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),
             // Type things are fine
-            ScopeDef::ModuleDef(BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TypeAlias(_))
+            ScopeDef::ModuleDef(
+                BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TraitAlias(_) | TypeAlias(_),
+            )
             | ScopeDef::AdtSelfType(_)
             | ScopeDef::Unknown
             | ScopeDef::GenericParam(TypeParam(_)) => true,

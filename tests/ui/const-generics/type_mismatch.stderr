@@ -1,3 +1,15 @@
+error: the constant `N` is not of type `u8`
+  --> $DIR/type_mismatch.rs:2:5
+   |
+LL |     bar::<N>()
+   |     ^^^^^^^^
+   |
+note: required by a bound in `bar`
+  --> $DIR/type_mismatch.rs:6:8
+   |
+LL | fn bar<const N: u8>() -> [u8; N] {}
+   |        ^^^^^^^^^^^ required by this bound in `bar`
+
 error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:2:11
    |
@@ -5,7 +17,7 @@ LL |     bar::<N>()
    |           ^ expected `u8`, found `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:5:26
+  --> $DIR/type_mismatch.rs:6:26
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |    ---                   ^^^^^^^ expected `[u8; N]`, found `()`
@@ -13,11 +25,11 @@ LL | fn bar<const N: u8>() -> [u8; N] {}
    |    implicitly returns `()` as its body has no tail or `return` expression
 
 error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:5:31
+  --> $DIR/type_mismatch.rs:6:31
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |                               ^ expected `usize`, found `u8`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
