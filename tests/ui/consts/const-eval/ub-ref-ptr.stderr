@@ -148,11 +148,11 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
                HEX_DUMP
            }
 
-error: accessing memory with alignment 1, but alignment 4 is required
+error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/104616>
+   = note: accessing memory with alignment 1, but alignment 4 is required
+   |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `ptr::const_ptr::<impl *const u32>::read`
@@ -162,25 +162,7 @@ note: inside `UNALIGNED_READ`
    |
 LL |     ptr.read();
    |     ^^^^^^^^^^
-   = note: `#[deny(invalid_alignment)]` on by default
 
 error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: accessing memory with alignment 1, but alignment 4 is required
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/104616>
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `ptr::const_ptr::<impl *const u32>::read`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `UNALIGNED_READ`
-  --> $DIR/ub-ref-ptr.rs:67:5
-   |
-LL |     ptr.read();
-   |     ^^^^^^^^^^
-   = note: `#[deny(invalid_alignment)]` on by default
-
