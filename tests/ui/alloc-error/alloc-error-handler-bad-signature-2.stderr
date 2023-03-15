@@ -1,11 +1,14 @@
 error[E0308]: mismatched types
-  --> $DIR/alloc-error-handler-bad-signature-2.rs:9:1
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:11:5
    |
 LL |   #[alloc_error_handler]
-   |   ^^^^^^^^^^^^^^^^^^^^^^ expected `Layout`, found `core::alloc::Layout`
+   |   ---------------------- in this procedural macro expansion
 LL | / fn oom(
 LL | |     info: Layout,
+   | |     ^^^^^^^^^^^^ expected `Layout`, found `core::alloc::Layout`
 LL | | ) {
+LL | |     loop {}
+LL | | }
    | |_- arguments to this function are incorrect
    |
    = note: `core::alloc::Layout` and `Layout` have similar names, but are actually distinct types
@@ -26,17 +29,17 @@ LL |     info: Layout,
    = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
-  --> $DIR/alloc-error-handler-bad-signature-2.rs:10:1
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:12:3
    |
 LL |   #[alloc_error_handler]
-   |   ----------------------
-   |   |
-   |   expected `!` because of return type
-   |   in this procedural macro expansion
+   |   ---------------------- in this procedural macro expansion
 LL | / fn oom(
 LL | |     info: Layout,
 LL | | ) {
-   | |_^ expected `!`, found `()`
+   | |   ^ expected `!`, found `()`
+LL | |     loop {}
+LL | | }
+   | |_- expected `!` because of return type
    |
    = note:   expected type `!`
            found unit type `()`
