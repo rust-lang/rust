@@ -594,7 +594,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         match self.angle_brackets {
             AngleBrackets::Missing => {
-                let span = self.path_segment.ident.span;
+                let span = self.tcx.mark_span_for_resize(self.path_segment.ident.span);
 
                 // insert a suggestion of the form "Y<'a, 'b>"
                 let sugg = format!("<{}>", suggested_args);
@@ -618,6 +618,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     let last_lt = &self.gen_args.args[self.num_provided_lifetime_args() - 1];
                     (self.tcx.mark_span_for_resize(last_lt.span()).shrink_to_hi(), false)
                 };
+                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                if !self.gen_args.args.iter().all(|arg| {
+                    arg.span().can_be_used_for_suggestions()
+                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                }) || !path_sp.can_be_used_for_suggestions()
+                {
+                    // Do not suggest syntax when macros are involved. (#90557)
+                    return;
+                }
                 let has_non_lt_args = self.num_provided_type_or_const_args() != 0;
                 let has_bindings = !self.gen_args.bindings.is_empty();
 
@@ -647,7 +656,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         match self.angle_brackets {
             AngleBrackets::Missing | AngleBrackets::Implied => {
-                let span = self.path_segment.ident.span;
+                let span = self.tcx.mark_span_for_resize(self.path_segment.ident.span);
 
                 // insert a suggestion of the form "Y<T, U>"
                 let sugg = format!("<{}>", suggested_args);
@@ -661,6 +670,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 );
             }
             AngleBrackets::Available => {
+                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                if !self.gen_args.args.iter().all(|arg| {
+                    arg.span().can_be_used_for_suggestions()
+                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                }) || !path_sp.can_be_used_for_suggestions()
+                {
+                    // Do not suggest syntax when macros are involved. (#90557)
+                    return;
+                }
                 let gen_args_span = self.tcx.mark_span_for_resize(self.gen_args.span().unwrap());
                 let sugg_offset =
                     self.get_lifetime_args_offset() + self.num_provided_type_or_const_args();

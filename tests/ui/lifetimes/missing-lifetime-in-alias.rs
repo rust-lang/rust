@@ -27,5 +27,6 @@ type C<'a, 'b> = <A<'a> as Trait>::Bar;
 //~| NOTE expected named lifetime parameter
 //~| NOTE these named lifetimes are available to use
 //~| NOTE expected 1 lifetime argument
+//~| NOTE in this expansion of desugaring of a resized `Span`
 
 fn main() {}
