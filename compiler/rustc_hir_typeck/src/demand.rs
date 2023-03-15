@@ -648,7 +648,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                     match &args[..] {
                         [] => (
-                            self.tcx.adjust_span(base.span).shrink_to_hi().with_hi(deref.span.hi()),
+                            self.tcx
+                                .mark_span_for_resize(base.span)
+                                .shrink_to_hi()
+                                .with_hi(deref.span.hi()),
                             ")".to_string(),
                         ),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
@@ -774,8 +777,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "use `?` to coerce and return an appropriate `Err`, and wrap the resulting value \
                  in `Ok` so the expression remains of type `Result`",
                 vec![
-                    (self.tcx.adjust_span(expr.span).shrink_to_lo(), "Ok(".to_string()),
-                    (self.tcx.adjust_span(expr.span).shrink_to_hi(), "?)".to_string()),
+                    (self.tcx.mark_span_for_resize(expr.span).shrink_to_lo(), "Ok(".to_string()),
+                    (self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(), "?)".to_string()),
                 ],
                 Applicability::MaybeIncorrect,
             );
@@ -846,12 +849,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 return false;
                             };
-                            if let Some(indent) = self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .indentation_before(self.tcx.adjust_span(span).shrink_to_lo())
-                            {
+                            if let Some(indent) = self.tcx.sess.source_map().indentation_before(
+                                self.tcx.mark_span_for_resize(span).shrink_to_lo(),
+                            ) {
                                 // Add a semicolon, except after `}`.
                                 let semicolon =
                                     match self.tcx.sess.source_map().span_to_snippet(span) {
@@ -859,7 +859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => ";",
                                     };
                                 err.span_suggestions(
-                                    self.tcx.adjust_span(span).shrink_to_hi(),
+                                    self.tcx.mark_span_for_resize(span).shrink_to_hi(),
                                     "try adding an expression at the end of the block",
                                     return_suggestions
                                         .into_iter()
@@ -938,10 +938,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 vec![
                     (
-                        self.tcx.adjust_span(expr.span).shrink_to_lo(),
+                        self.tcx.mark_span_for_resize(expr.span).shrink_to_lo(),
                         format!("{prefix}{variant}{open}"),
                     ),
-                    (self.tcx.adjust_span(expr.span).shrink_to_hi(), close.to_owned()),
+                    (self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(), close.to_owned()),
                 ]
             };
 
@@ -1025,8 +1025,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.multipart_suggestion(
             format!("consider calling `{s}::new`"),
             vec![
-                (self.tcx.adjust_span(expr.span).shrink_to_lo(), format!("{path}::new(")),
-                (self.tcx.adjust_span(expr.span).shrink_to_hi(), format!("){unwrap}")),
+                (self.tcx.mark_span_for_resize(expr.span).shrink_to_lo(), format!("{path}::new(")),
+                (self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(), format!("){unwrap}")),
             ],
             Applicability::MaybeIncorrect,
         );
@@ -1280,7 +1280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && replace_prefix(&src, "\"", "b\"").is_some()
                     {
                                 return Some((
-                                    self.tcx.adjust_span(sp).shrink_to_lo(),
+                                    self.tcx.mark_span_for_resize(sp).shrink_to_lo(),
                                     "consider adding a leading `b`".to_string(),
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if sp == expr.span => {
                 if let Some(mut steps) = self.deref_steps(checked_ty, expected) {
                     let mut expr = expr.peel_blocks();
-                    let mut prefix_span = self.tcx.adjust_span(expr.span).shrink_to_lo();
+                    let mut prefix_span = self.tcx.mark_span_for_resize(expr.span).shrink_to_lo();
                     let mut remove = String::new();
 
                     // Try peeling off any existing `&` and `&mut` to reach our target type
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         } else if let Some(expr) = self.maybe_get_block_expr(expr) {
                             // prefix should be empty here..
-                            (self.tcx.adjust_span(expr.span).shrink_to_lo(), "*".to_string())
+                            (self.tcx.mark_span_for_resize(expr.span).shrink_to_lo(), "*".to_string())
                         } else {
                             (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
                         };
@@ -1606,7 +1606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if field.is_shorthand {
                 // This is a field literal
                 sugg.push((
-                    self.tcx.adjust_span(field.ident.span).shrink_to_lo(),
+                    self.tcx.mark_span_for_resize(field.ident.span).shrink_to_lo(),
                     format!("{}: ", field.ident),
                 ));
             } else {
@@ -1664,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let close_paren = if expr.precedence().order() < PREC_POSTFIX {
-            sugg.push((self.tcx.adjust_span(expr.span).shrink_to_lo(), "(".to_string()));
+            sugg.push((self.tcx.mark_span_for_resize(expr.span).shrink_to_lo(), "(".to_string()));
             ")"
         } else {
             ""
@@ -1672,12 +1672,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut cast_suggestion = sugg.clone();
         cast_suggestion.push((
-            self.tcx.adjust_span(expr.span).shrink_to_hi(),
+            self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(),
             format!("{close_paren} as {expected_ty}"),
         ));
         let mut into_suggestion = sugg.clone();
         into_suggestion.push((
-            self.tcx.adjust_span(expr.span).shrink_to_hi(),
+            self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(),
             format!("{close_paren}.into()"),
         ));
         let mut suffix_suggestion = sugg.clone();
@@ -1734,17 +1734,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     let suggestion = vec![
                         (
-                            self.tcx.adjust_span(lhs_expr.span).shrink_to_lo(),
+                            self.tcx.mark_span_for_resize(lhs_expr.span).shrink_to_lo(),
                             format!("{checked_ty}::from("),
                         ),
-                        (self.tcx.adjust_span(lhs_expr.span).shrink_to_hi(), ")".to_string()),
+                        (
+                            self.tcx.mark_span_for_resize(lhs_expr.span).shrink_to_hi(),
+                            ")".to_string(),
+                        ),
                     ];
                     (msg, suggestion)
                 } else {
                     let msg = format!("{msg} and panic if the converted value doesn't fit");
                     let mut suggestion = sugg.clone();
                     suggestion.push((
-                        self.tcx.adjust_span(expr.span).shrink_to_hi(),
+                        self.tcx.mark_span_for_resize(expr.span).shrink_to_hi(),
                         format!("{close_paren}.try_into().unwrap()"),
                     ));
                     (msg, suggestion)

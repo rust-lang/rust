@@ -256,13 +256,15 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                                     {
                                         let rhs_pos =
                                             span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                        let rhs_span =
-                                            tcx.adjust_span(span).with_lo(rhs_pos).with_hi(rhs_pos);
+                                        let rhs_span = tcx
+                                            .mark_span_for_resize(span)
+                                            .with_lo(rhs_pos)
+                                            .with_hi(rhs_pos);
                                         err.multipart_suggestion(
                                             "consider dereferencing here",
                                             vec![
                                                 (
-                                                    tcx.adjust_span(span).shrink_to_lo(),
+                                                    tcx.mark_span_for_resize(span).shrink_to_lo(),
                                                     deref.clone(),
                                                 ),
                                                 (rhs_span, deref),

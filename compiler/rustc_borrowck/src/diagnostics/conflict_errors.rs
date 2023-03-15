@@ -2250,12 +2250,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Ok(string) => {
                 if string.starts_with("async ") {
                     let pos = args_span.lo() + BytePos(6);
-                    (self.infcx.tcx.adjust_span(args_span).with_lo(pos).with_hi(pos), "move ")
+                    (
+                        self.infcx.tcx.mark_span_for_resize(args_span).with_lo(pos).with_hi(pos),
+                        "move ",
+                    )
                 } else if string.starts_with("async|") {
                     let pos = args_span.lo() + BytePos(5);
-                    (self.infcx.tcx.adjust_span(args_span).with_lo(pos).with_hi(pos), " move")
+                    (
+                        self.infcx.tcx.mark_span_for_resize(args_span).with_lo(pos).with_hi(pos),
+                        " move",
+                    )
                 } else {
-                    (self.infcx.tcx.adjust_span(args_span).shrink_to_lo(), "move ")
+                    (self.infcx.tcx.mark_span_for_resize(args_span).shrink_to_lo(), "move ")
                 }
             }
             Err(_) => (args_span, "move |<args>| <body>"),

@@ -2395,7 +2395,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
-    pub fn adjust_span(self, span: Span) -> Span {
+    /// This returns a copy of `span` that has a `DesugaringKind::Resize` mark reason. This mark is
+    /// used to identify `Span`s that have been modified, while also keeping a link to the original
+    /// `Span` before it was changed. This is used today only to be able to identify `Span`s coming
+    /// from a proc-macro even when it was modified, to avoid giving spurious suggestions when the
+    /// `Span` points at an attribute and not user code.
+    pub fn mark_span_for_resize(self, span: Span) -> Span {
         self.with_stable_hashing_context(|hcx| {
             span.mark_with_reason(None, rustc_span::DesugaringKind::Resize, span.edition(), hcx)
         })

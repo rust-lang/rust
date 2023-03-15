@@ -470,7 +470,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
                 err.span_suggestion_verbose(
-                    self.infcx.tcx.adjust_span(span).with_hi(span.lo() + BytePos(1)),
+                    self.infcx.tcx.mark_span_for_resize(span).with_hi(span.lo() + BytePos(1)),
                     "consider removing the dereference here",
                     String::new(),
                     Applicability::MaybeIncorrect,
@@ -478,7 +478,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             _ => {
                 err.span_suggestion_verbose(
-                    self.infcx.tcx.adjust_span(span).shrink_to_lo(),
+                    self.infcx.tcx.mark_span_for_resize(span).shrink_to_lo(),
                     "consider borrowing here",
                     '&',
                     Applicability::MaybeIncorrect,
