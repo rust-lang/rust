@@ -120,6 +120,8 @@ pub enum BuiltinUnsafe {
 pub struct BuiltinMissingDoc<'a> {
     pub article: &'a str,
     pub desc: &'a str,
+    #[note]
+    pub reexport: Option<Span>,
 }
 
 #[derive(LintDiagnostic)]

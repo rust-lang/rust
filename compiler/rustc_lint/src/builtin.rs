@@ -66,6 +66,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
@@ -450,6 +451,8 @@ declare_lint! {
 pub struct MissingDoc {
     /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
+    /// Set of types being re-exported while not directly public.
+    reexported_items: FxHashSet<DefId>,
 }
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
@@ -480,11 +483,16 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false] }
+        MissingDoc { doc_hidden_stack: vec![false], reexported_items: FxHashSet::default() }
     }
 
     fn doc_hidden(&self) -> bool {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
+    }
+
+    fn has_docs(&self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        let attrs = cx.tcx.get_attrs_unchecked(def_id);
+        attrs.iter().any(has_doc)
     }
 
     fn check_missing_docs_attrs(
@@ -509,18 +517,21 @@ impl MissingDoc {
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).
         if def_id != CRATE_DEF_ID {
-            if !cx.effective_visibilities.is_exported(def_id) {
+            // We will check re-exported items at a later stage.
+            if matches!(cx.tcx.def_kind(def_id), DefKind::Macro(MacroKind::Bang)) {
+                if !cx.effective_visibilities.is_exported(def_id) {
+                    return;
+                }
+            } else if !cx.effective_visibilities.is_directly_public(def_id) {
                 return;
             }
         }
 
-        let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
-        let has_doc = attrs.iter().any(has_doc);
-        if !has_doc {
+        if !self.has_docs(cx, def_id.to_def_id()) {
             cx.emit_spanned_lint(
                 MISSING_DOCS,
                 cx.tcx.def_span(def_id),
-                BuiltinMissingDoc { article, desc },
+                BuiltinMissingDoc { article, desc, reexport: None },
             );
         }
     }
@@ -569,6 +580,100 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Union(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Static(..) => {}
+
+            hir::ItemKind::Use(ref use_path, hir::UseKind::Single) => {
+                let use_def_id = it.owner_id.def_id;
+                if !cx.tcx.is_doc_hidden(use_def_id) &&
+                    // If the re-export is `#[doc(hidden)]` or has an ancestor with this attribute,
+                    // we ignore it.
+                    !cx.tcx.inherits_doc_hidden(use_def_id) &&
+                    let Some(last_res) = use_path.res.last() &&
+                    let Some(res_def_id) = last_res.opt_def_id() &&
+                    // If the original item has `#[doc(hidden)]`, we don't consider it because it
+                    // won't appear into the documentation, unless it's a macro.
+                    (!cx.tcx.is_doc_hidden(res_def_id) || matches!(cx.tcx.def_kind(res_def_id), DefKind::Macro(_))) &&
+                    // We use this to differentiate betweeen `pub use` and `use` since we're only
+                    // interested about re-exports.
+                    match cx.tcx.local_visibility(use_def_id) {
+                        ty::Visibility::Public => true,
+                        ty::Visibility::Restricted(level) => {
+                            level != cx.tcx.parent_module_from_def_id(use_def_id)
+                        }
+                    } &&
+                    // If the re-exported item is not local, it'll be inlined in the documentation
+                    // so it needs to be checked. If it's local and the re-export is the "top one",
+                    // then we check it.
+                    (!res_def_id.is_local() || cx.effective_visibilities.is_directly_public(use_def_id)) &&
+                    !self.has_docs(cx, use_def_id.to_def_id()) &&
+                    !self.has_docs(cx, res_def_id) &&
+                    self.reexported_items.insert(res_def_id)
+                {
+                    let (article, desc) = cx.tcx.article_and_description(res_def_id);
+
+                    cx.emit_spanned_lint(
+                        MISSING_DOCS,
+                        cx.tcx.def_span(res_def_id),
+                        BuiltinMissingDoc { article, desc, reexport: Some(it.span) },
+                    );
+                }
+                return;
+            }
+            hir::ItemKind::Use(ref use_path, hir::UseKind::Glob) => {
+                let use_def_id = it.owner_id.def_id;
+                if cx.effective_visibilities.is_directly_public(use_def_id) &&
+                    !cx.tcx.is_doc_hidden(use_def_id) &&
+                    // If the re-export is `#[doc(hidden)]` or has an ancestor with this attribute,
+                    // we ignore it.
+                    !cx.tcx.inherits_doc_hidden(use_def_id) &&
+                    // We use this to differentiate betweeen `pub use` and `use` since we're only
+                    // interested about re-exports.
+                    match cx.tcx.local_visibility(use_def_id) {
+                        ty::Visibility::Public => true,
+                        ty::Visibility::Restricted(level) => {
+                            level != cx.tcx.parent_module_from_def_id(use_def_id)
+                        }
+                    } &&
+                    let Some(last_res) = use_path.res.last() &&
+                    let Some(res_def_id) = last_res.opt_def_id() &&
+                    let Some(res_def_id) = res_def_id.as_local() &&
+                    // We only check check glob re-exports of modules.
+                    cx.tcx.def_kind(res_def_id) == DefKind::Mod
+                {
+                    for child in cx.tcx.hir().module_items(res_def_id) {
+                        let child_def_id = child.owner_id.to_def_id();
+                        // With glob re-exports, only public items are re-exported.
+                        if cx.effective_visibilities.is_exported(child.owner_id.def_id) &&
+                            // If the original item has `#[doc(hidden)]`, we don't consider it because it
+                            // won't appear into the documentation.
+                            !cx.tcx.is_doc_hidden(child_def_id) &&
+                            !self.has_docs(cx, child_def_id) &&
+                            self.reexported_items.insert(child_def_id) &&
+                            matches!(
+                                cx.tcx.def_kind(child_def_id),
+                                DefKind::TyAlias
+                                | DefKind::Trait
+                                | DefKind::Fn
+                                | DefKind::Macro(..)
+                                | DefKind::Mod
+                                | DefKind::Enum
+                                | DefKind::Struct
+                                | DefKind::Union
+                                | DefKind::Const
+                                | DefKind::Static(..)
+                            )
+                        {
+                            let (article, desc) = cx.tcx.article_and_description(child_def_id);
+
+                            cx.emit_spanned_lint(
+                                MISSING_DOCS,
+                                cx.tcx.def_span(child_def_id),
+                                BuiltinMissingDoc { article, desc, reexport: Some(it.span) },
+                            );
+                        }
+                    }
+                }
+                return;
+            }
 
             _ => return,
         };

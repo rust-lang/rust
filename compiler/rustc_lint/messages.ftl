@@ -370,6 +370,7 @@ lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
 lint_builtin_impl_unsafe_method = implementation of an `unsafe` method
 
 lint_builtin_missing_doc = missing documentation for {$article} {$desc}
+    .note = because it is re-exported here
 
 lint_builtin_missing_copy_impl = type could implement `Copy`; consider adding `impl Copy`
 
