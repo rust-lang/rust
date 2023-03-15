@@ -1,6 +1,5 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::cmp::Ordering;
 use std::iter;
 
 use rustc_error_messages::MultiSpan;
@@ -547,9 +546,7 @@ impl<'tcx> MkCtxt<'tcx> {
     ) -> &'tcx List<PolyExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
         assert!(
-            eps.array_windows()
-                .all(|[a, b]| a.skip_binder().stable_cmp(self.tcx, &b.skip_binder())
-                    != Ordering::Greater)
+            eps.is_sorted_by(|a, b| Some(a.skip_binder().stable_cmp(self.tcx, &b.skip_binder())))
         );
         self.tcx.intern_poly_existential_predicates(eps)
     }
