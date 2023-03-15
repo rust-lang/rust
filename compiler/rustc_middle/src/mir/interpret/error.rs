@@ -140,7 +140,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
-            TooGeneric => write!(f, "encountered overly generic constant"),
+            TooGeneric => f.write_str("encountered overly generic constant"),
             AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(
                     f,
@@ -288,15 +288,15 @@ impl fmt::Display for UndefinedBehaviorInfo {
         use UndefinedBehaviorInfo::*;
         match self {
             Ub(msg) => write!(f, "{msg}"),
-            Unreachable => write!(f, "entering unreachable code"),
+            Unreachable => f.write_str("entering unreachable code"),
             BoundsCheckFailed { ref len, ref index } => {
                 write!(f, "indexing out of bounds: the len is {len} but the index is {index}")
             }
-            DivisionByZero => write!(f, "dividing by zero"),
-            RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
-            DivisionOverflow => write!(f, "overflow in signed division (dividing MIN by -1)"),
-            RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
-            PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
+            DivisionByZero => f.write_str("dividing by zero"),
+            RemainderByZero => f.write_str("calculating the remainder with a divisor of zero"),
+            DivisionOverflow => f.write_str("overflow in signed division (dividing MIN by -1)"),
+            RemainderOverflow => f.write_str("overflow in signed remainder (dividing MIN by -1)"),
+            PointerArithOverflow => f.write_str("overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {msg}"),
             UnterminatedCString(p) => write!(
                 f,
@@ -367,13 +367,13 @@ impl fmt::Display for UndefinedBehaviorInfo {
                 f,
                 "using uninitialized data, but this operation requires initialized memory"
             ),
-            DeadLocal => write!(f, "accessing a dead local variable"),
+            DeadLocal => f.write_str("accessing a dead local variable"),
             ScalarSizeMismatch(self::ScalarSizeMismatch { target_size, data_size }) => write!(
                 f,
                 "scalar size mismatch: expected {target_size} bytes but got {data_size} bytes instead",
             ),
             UninhabitedEnumVariantWritten => {
-                write!(f, "writing discriminant of an uninhabited enum")
+                f.write_str("writing discriminant of an uninhabited enum")
             }
         }
     }
@@ -414,7 +414,7 @@ impl fmt::Display for UnsupportedOpInfo {
             PartialPointerCopy(ptr) => {
                 write!(f, "unable to copy parts of a pointer from memory at {ptr:?}")
             }
-            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
+            ReadPointerAsBytes => f.write_str("unable to turn pointer into raw bytes"),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({did:?})"),
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({did:?})"),
         }
@@ -441,16 +441,16 @@ impl fmt::Display for ResourceExhaustionInfo {
         use ResourceExhaustionInfo::*;
         match self {
             StackFrameLimitReached => {
-                write!(f, "reached the configured maximum number of stack frames")
+                f.write_str("reached the configured maximum number of stack frames")
             }
             StepLimitReached => {
-                write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
+                f.write_str("exceeded interpreter step limit (see `#[const_eval_limit]`)")
             }
             MemoryExhausted => {
-                write!(f, "tried to allocate more memory than available to compiler")
+                f.write_str("tried to allocate more memory than available to compiler")
             }
             AddressSpaceFull => {
-                write!(f, "there are no more free addresses in the address space")
+                f.write_str("there are no more free addresses in the address space")
             }
         }
     }

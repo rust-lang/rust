@@ -210,7 +210,7 @@ impl fmt::Display for LitKind {
             LitKind::Err => {
                 // This only shows up in places like `-Zunpretty=hir` output, so we
                 // don't bother to produce something useful.
-                write!(f, "<bad-literal>")?;
+                f.write_str("<bad-literal>")?;
             }
         }
 

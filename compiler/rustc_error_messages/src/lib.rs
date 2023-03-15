@@ -74,7 +74,7 @@ impl fmt::Display for TranslationBundleError {
                 write!(f, "could not parse ftl file: {}", e)
             }
             TranslationBundleError::AddResource(e) => write!(f, "failed to add resource: {}", e),
-            TranslationBundleError::MissingLocale => write!(f, "missing locale directory"),
+            TranslationBundleError::MissingLocale => f.write_str("missing locale directory"),
             TranslationBundleError::ReadLocalesDir(e) => {
                 write!(f, "could not read locales dir: {}", e)
             }
@@ -82,7 +82,7 @@ impl fmt::Display for TranslationBundleError {
                 write!(f, "could not read locales dir entry: {}", e)
             }
             TranslationBundleError::LocaleIsNotDir => {
-                write!(f, "`$sysroot/share/locales/$locale` is not a directory")
+                f.write_str("`$sysroot/share/locales/$locale` is not a directory")
             }
         }
     }

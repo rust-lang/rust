@@ -46,7 +46,7 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
             super::CodeConstEquateError(ref a, ref b) => {
                 write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
             }
-            super::CodeAmbiguity => write!(f, "Ambiguity"),
+            super::CodeAmbiguity => f.write_str("Ambiguity"),
             super::CodeCycle(ref cycle) => write!(f, "Cycle({:?})", cycle),
         }
     }

@@ -970,7 +970,7 @@ impl fmt::Display for FromVecWithNulError {
                 write!(f, "data provided contains an interior nul byte at pos {pos}")
             }
             FromBytesWithNulErrorKind::NotNulTerminated => {
-                write!(f, "data provided is not nul terminated")
+                f.write_str("data provided is not nul terminated")
             }
         }
     }

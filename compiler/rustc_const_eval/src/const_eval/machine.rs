@@ -147,7 +147,7 @@ pub enum MemoryKind {
 impl fmt::Display for MemoryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemoryKind::Heap => write!(f, "heap allocation"),
+            MemoryKind::Heap => f.write_str("heap allocation"),
         }
     }
 }

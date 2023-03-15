@@ -1063,7 +1063,7 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
                 for f in fragments.iter() {
                     write!(fmt, "{:?}, ", f)?;
                 }
-                write!(fmt, "}}")
+                fmt.write_str("}")
             }
         }
     }
@@ -1464,8 +1464,8 @@ impl Debug for Statement<'_> {
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
-            ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
-            Nop => write!(fmt, "nop"),
+            ConstEvalCounter => fmt.write_str("ConstEvalCounter"),
+            Nop => fmt.write_str("nop"),
         }
     }
 }
@@ -1703,10 +1703,10 @@ impl Debug for Place<'_> {
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::Field(_, _) => {
-                    write!(fmt, "(").unwrap();
+                    fmt.write_str("(").unwrap();
                 }
                 ProjectionElem::Deref => {
-                    write!(fmt, "(*").unwrap();
+                    fmt.write_str("(*").unwrap();
                 }
                 ProjectionElem::Index(_)
                 | ProjectionElem::ConstantIndex { .. }
@@ -1728,7 +1728,7 @@ impl Debug for Place<'_> {
                     write!(fmt, " as variant#{:?})", index)?;
                 }
                 ProjectionElem::Deref => {
-                    write!(fmt, ")")?;
+                    fmt.write_str(")")?;
                 }
                 ProjectionElem::Field(field, ty) => {
                     write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
@@ -2017,7 +2017,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Repeat(ref a, b) => {
                 write!(fmt, "[{:?}; ", a)?;
                 pretty_print_const(b, fmt, false)?;
-                write!(fmt, "]")
+                fmt.write_str("]")
             }
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref place, ref ty) => {
@@ -2083,7 +2083,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Tuple => {
                         if places.is_empty() {
-                            write!(fmt, "()")
+                            fmt.write_str("()")
                         } else {
                             fmt_tuple(fmt, "")
                         }
@@ -2799,7 +2799,7 @@ impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self.ty().kind() {
             ty::FnDef(..) => {}
-            _ => write!(fmt, "const ")?,
+            _ => fmt.write_str("const ")?,
         }
         Display::fmt(&self.literal, fmt)
     }
@@ -2971,7 +2971,7 @@ fn pretty_print_const_value<'tcx>(
                                         fmt.write_str(&format!("{}: {}", field_def.name, field))?;
                                         first = false;
                                     }
-                                    fmt.write_str(" }}")?;
+                                    fmt.write_str(" }")?;
                                 }
                             }
                         }

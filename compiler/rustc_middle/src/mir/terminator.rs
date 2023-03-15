@@ -274,14 +274,14 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
             1 => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
 
             _ => {
-                write!(fmt, " -> [")?;
+                fmt.write_str(" -> [")?;
                 for (i, target) in self.successors().enumerate() {
                     if i > 0 {
-                        write!(fmt, ", ")?;
+                        fmt.write_str(", ")?;
                     }
                     write!(fmt, "{}: {:?}", labels[i], target)?;
                 }
-                write!(fmt, "]")
+                fmt.write_str("]")
             }
         }
     }
@@ -294,41 +294,41 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
         use self::TerminatorKind::*;
         match self {
-            Goto { .. } => write!(fmt, "goto"),
+            Goto { .. } => fmt.write_str("goto"),
             SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
-            Return => write!(fmt, "return"),
-            GeneratorDrop => write!(fmt, "generator_drop"),
-            Resume => write!(fmt, "resume"),
-            Abort => write!(fmt, "abort"),
+            Return => fmt.write_str("return"),
+            GeneratorDrop => fmt.write_str("generator_drop"),
+            Resume => fmt.write_str("resume"),
+            Abort => fmt.write_str("abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
-            Unreachable => write!(fmt, "unreachable"),
+            Unreachable => fmt.write_str("unreachable"),
             Drop { place, .. } => write!(fmt, "drop({:?})", place),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{:?} = ", destination)?;
                 write!(fmt, "{:?}(", func)?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
-                        write!(fmt, ", ")?;
+                        fmt.write_str(", ")?;
                     }
                     write!(fmt, "{:?}", arg)?;
                 }
-                write!(fmt, ")")
+                fmt.write_str(")")
             }
             Assert { cond, expected, msg, .. } => {
-                write!(fmt, "assert(")?;
+                fmt.write_str("assert(")?;
                 if !expected {
-                    write!(fmt, "!")?;
+                    fmt.write_str("!")?;
                 }
                 write!(fmt, "{:?}, ", cond)?;
                 msg.fmt_assert_args(fmt)?;
-                write!(fmt, ")")
+                fmt.write_str(")")
             }
-            FalseEdge { .. } => write!(fmt, "falseEdge"),
-            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
+            FalseEdge { .. } => fmt.write_str("falseEdge"),
+            FalseUnwind { .. } => fmt.write_str("falseUnwind"),
             InlineAsm { template, ref operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
                 for op in operands {
-                    write!(fmt, ", ")?;
+                    fmt.write_str(", ")?;
                     let print_late = |&late| if late { "late" } else { "" };
                     match op {
                         InlineAsmOperand::In { reg, value } => {

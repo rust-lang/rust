@@ -293,13 +293,13 @@ fn fmt_instance(
 
     match instance.def {
         InstanceDef::Item(_) => Ok(()),
-        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
-        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+        InstanceDef::VTableShim(_) => f.write_str(" - shim(vtable)"),
+        InstanceDef::ReifyShim(_) => f.write_str(" - shim(reify)"),
+        InstanceDef::Intrinsic(_) => f.write_str(" - intrinsic"),
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
-        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::ClosureOnceShim { .. } => f.write_str(" - shim"),
+        InstanceDef::DropGlue(_, None) => f.write_str(" - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
     }

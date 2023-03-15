@@ -39,11 +39,11 @@ impl FromStr for ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ErrorKind::Help => write!(f, "help message"),
-            ErrorKind::Error => write!(f, "error"),
-            ErrorKind::Note => write!(f, "note"),
-            ErrorKind::Suggestion => write!(f, "suggestion"),
-            ErrorKind::Warning => write!(f, "warning"),
+            ErrorKind::Help => f.write_str("help message"),
+            ErrorKind::Error => f.write_str("error"),
+            ErrorKind::Note => f.write_str("note"),
+            ErrorKind::Suggestion => f.write_str("suggestion"),
+            ErrorKind::Warning => f.write_str("warning"),
         }
     }
 }

@@ -192,8 +192,8 @@ impl IncOrDec {
 impl std::fmt::Display for UnaryFixity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Pre => write!(f, "prefix"),
-            Self::Post => write!(f, "postfix"),
+            Self::Pre => f.write_str("prefix"),
+            Self::Post => f.write_str("postfix"),
         }
     }
 }

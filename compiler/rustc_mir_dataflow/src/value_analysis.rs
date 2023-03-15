@@ -1006,7 +1006,7 @@ where
     fn fmt_with(&self, ctxt: &ValueAnalysisWrapper<T>, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
             StateData::Reachable(values) => debug_with_context(values, None, ctxt.0.map(), f),
-            StateData::Unreachable => write!(f, "unreachable"),
+            StateData::Unreachable => f.write_str("unreachable"),
         }
     }
 

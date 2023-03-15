@@ -76,7 +76,7 @@ impl fmt::Debug for ty::BoundRegionKind {
                     write!(f, "BrNamed({:?}, {})", did, name)
                 }
             }
-            ty::BrEnv => write!(f, "BrEnv"),
+            ty::BrEnv => f.write_str("BrEnv"),
         }
     }
 }
@@ -126,7 +126,7 @@ impl fmt::Debug for ty::ParamConst {
 impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let ty::BoundConstness::ConstIfConst = self.constness {
-            write!(f, "~const ")?;
+            f.write_str("~const ")?;
         }
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
@@ -176,7 +176,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
-            ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
+            ty::PredicateKind::Ambiguous => f.write_str("Ambiguous"),
             ty::PredicateKind::AliasEq(t1, t2) => write!(f, "AliasEq({t1:?}, {t2:?})"),
         }
     }

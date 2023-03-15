@@ -50,8 +50,8 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemoryKind::Stack => write!(f, "stack variable"),
-            MemoryKind::CallerLocation => write!(f, "caller location"),
+            MemoryKind::Stack => f.write_str("stack variable"),
+            MemoryKind::CallerLocation => f.write_str("caller location"),
             MemoryKind::Machine(m) => write!(f, "{}", m),
         }
     }
@@ -893,7 +893,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                     // global alloc
                     match self.ecx.tcx.try_get_global_alloc(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            write!(fmt, " (unchanged global, ")?;
+                            fmt.write_str(" (unchanged global, ")?;
                             write_allocation_track_relocs(
                                 &mut *fmt,
                                 *self.ecx.tcx,
@@ -914,7 +914,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;
                         }
                         None => {
-                            write!(fmt, " (deallocated)")?;
+                            fmt.write_str(" (deallocated)")?;
                         }
                     }
                 }

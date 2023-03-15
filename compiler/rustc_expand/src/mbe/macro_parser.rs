@@ -157,7 +157,7 @@ impl Display for MatcherLoc {
                 if let Some(kind) = kind {
                     write!(f, ":{}", kind)?;
                 }
-                write!(f, "`")?;
+                f.write_str("`")?;
                 Ok(())
             }
             MatcherLoc::Eof => f.write_str("end of macro"),

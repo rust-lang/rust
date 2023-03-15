@@ -265,7 +265,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data
                 == DefPathData::ClosureExpr
             {
-                write!(f, "inside closure")
+                f.write_str("inside closure")
             } else {
                 // Note: this triggers a `good_path_bug` state, which means that if we ever get here
                 // we must emit a diagnostic. We should never display a `FrameInfo` unless we
@@ -987,12 +987,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                 if frame != self.ecx.frame_idx() {
                     write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
                 }
-                write!(fmt, ":")?;
+                fmt.write_str(":")?;
 
                 match self.ecx.stack()[frame].locals[local].value {
-                    LocalValue::Dead => write!(fmt, " is dead")?,
+                    LocalValue::Dead => fmt.write_str(" is dead")?,
                     LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
-                        write!(fmt, " is uninitialized")?
+                        fmt.write_str(" is uninitialized")?
                     }
                     LocalValue::Live(Operand::Indirect(mplace)) => {
                         write!(

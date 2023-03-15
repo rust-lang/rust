@@ -25,10 +25,10 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
         // We want to call `Display` on `Instance` and `PolyTraitRef`,
         // so we implement this manually.
         match self {
-            VtblEntry::MetadataDropInPlace => write!(f, "MetadataDropInPlace"),
-            VtblEntry::MetadataSize => write!(f, "MetadataSize"),
-            VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
-            VtblEntry::Vacant => write!(f, "Vacant"),
+            VtblEntry::MetadataDropInPlace => f.write_str("MetadataDropInPlace"),
+            VtblEntry::MetadataSize => f.write_str("MetadataSize"),
+            VtblEntry::MetadataAlign => f.write_str("MetadataAlign"),
+            VtblEntry::Vacant => f.write_str("Vacant"),
             VtblEntry::Method(instance) => write!(f, "Method({})", instance),
             VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({})", trait_ref),
         }

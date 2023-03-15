@@ -516,11 +516,11 @@ impl FromStr for SuggestionKind {
 impl fmt::Display for SuggestionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SuggestionKind::Normal => write!(f, "normal"),
-            SuggestionKind::Short => write!(f, "short"),
-            SuggestionKind::Hidden => write!(f, "hidden"),
-            SuggestionKind::Verbose => write!(f, "verbose"),
-            SuggestionKind::ToolOnly => write!(f, "tool-only"),
+            SuggestionKind::Normal => f.write_str("normal"),
+            SuggestionKind::Short => f.write_str("short"),
+            SuggestionKind::Hidden => f.write_str("hidden"),
+            SuggestionKind::Verbose => f.write_str("verbose"),
+            SuggestionKind::ToolOnly => f.write_str("tool-only"),
         }
     }
 }
@@ -822,13 +822,13 @@ impl SubdiagnosticKind {
 impl quote::IdentFragment for SubdiagnosticKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SubdiagnosticKind::Label => write!(f, "label"),
-            SubdiagnosticKind::Note => write!(f, "note"),
-            SubdiagnosticKind::Help => write!(f, "help"),
-            SubdiagnosticKind::Warn => write!(f, "warn"),
-            SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestions_with_style"),
+            SubdiagnosticKind::Label => f.write_str("label"),
+            SubdiagnosticKind::Note => f.write_str("note"),
+            SubdiagnosticKind::Help => f.write_str("help"),
+            SubdiagnosticKind::Warn => f.write_str("warn"),
+            SubdiagnosticKind::Suggestion { .. } => f.write_str("suggestions_with_style"),
             SubdiagnosticKind::MultipartSuggestion { .. } => {
-                write!(f, "multipart_suggestion_with_style")
+                f.write_str("multipart_suggestion_with_style")
             }
         }
     }

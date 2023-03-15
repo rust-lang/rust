@@ -184,7 +184,7 @@ impl fmt::Debug for Backtrace {
 
         let frames = &capture.frames[capture.actual_start..];
 
-        write!(fmt, "Backtrace ")?;
+        fmt.write_str("Backtrace ")?;
 
         let mut dbg = fmt.debug_list();
 
@@ -215,12 +215,12 @@ impl fmt::Debug for BacktraceSymbol {
         // FIXME: Also, include column numbers into the debug format as Display already has them.
         // Until there are stable per-frame accessors, the format shouldn't be changed:
         // https://github.com/rust-lang/rust/issues/65280#issuecomment-638966585
-        write!(fmt, "{{ ")?;
+        fmt.write_str("{ ")?;
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace_rs::SymbolName::new(b)) {
             write!(fmt, "fn: \"{:#}\"", fn_name)?;
         } else {
-            write!(fmt, "fn: <unknown>")?;
+            fmt.write_str("fn: <unknown>")?;
         }
 
         if let Some(fname) = self.filename.as_ref() {
@@ -231,7 +231,7 @@ impl fmt::Debug for BacktraceSymbol {
             write!(fmt, ", line: {:?}", line)?;
         }
 
-        write!(fmt, " }}")
+        fmt.write_str(" }")
     }
 }
 

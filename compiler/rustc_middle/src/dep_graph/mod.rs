@@ -45,7 +45,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             Ok(())
         })?;
 
-        write!(f, ")")
+        f.write_str(")")
     }
 
     fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R

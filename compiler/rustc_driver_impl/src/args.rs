@@ -41,7 +41,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Utf8Error(None) => write!(fmt, "Utf8 error"),
+            Error::Utf8Error(None) => fmt.write_str("Utf8 error"),
             Error::Utf8Error(Some(path)) => write!(fmt, "Utf8 error in {path}"),
             Error::IOError(path, err) => write!(fmt, "IO Error: {path}: {err}"),
         }

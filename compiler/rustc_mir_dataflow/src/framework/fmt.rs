@@ -27,9 +27,9 @@ pub trait DebugWithContext<C>: Eq + fmt::Debug {
         self.fmt_with(ctxt, f)?;
 
         if f.alternate() {
-            write!(f, "\n")?;
+            f.write_str("\n")?;
         } else {
-            write!(f, "\t")?;
+            f.write_str("\t")?;
         }
 
         write!(f, "\u{001f}-")?;
@@ -151,7 +151,7 @@ where
     if !f.alternate() {
         first = true;
         if !inserted.is_empty() && !removed.is_empty() {
-            write!(f, "\t")?;
+            f.write_str("\t")?;
         }
     }
 

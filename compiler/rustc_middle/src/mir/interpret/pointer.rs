@@ -204,7 +204,7 @@ impl<Prov: Provenance> fmt::Debug for Pointer<Option<Prov>> {
 impl<Prov: Provenance> fmt::Display for Pointer<Option<Prov>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.provenance.is_none() && self.offset.bytes() == 0 {
-            write!(f, "null pointer")
+            f.write_str("null pointer")
         } else {
             fmt::Debug::fmt(self, f)
         }

@@ -867,7 +867,7 @@ impl fmt::Display for ExitStatus {
             let signal_string = signal_string(signal);
             write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
         } else if self.continued() {
-            write!(f, "continued (WIFCONTINUED)")
+            f.write_str("continued (WIFCONTINUED)")
         } else {
             write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
         }

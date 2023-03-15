@@ -727,18 +727,18 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         let mut start_or_comma = || start_or_continue(", ");
 
         match self.kind {
-            PatKind::Wild => write!(f, "_"),
+            PatKind::Wild => f.write_str("_"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{}: _", subpattern),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(bk) => {
-                        write!(f, "ref ")?;
+                        f.write_str("ref ")?;
                         matches!(bk, BorrowKind::Mut { .. })
                     }
                 };
                 if is_mut {
-                    write!(f, "mut ")?;
+                    f.write_str("mut ")?;
                 }
                 write!(f, "{}", name)?;
                 if let Some(ref subpattern) = *subpattern {
@@ -777,7 +777,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
                     if variant.ctor.is_none() {
-                        write!(f, " {{ ")?;
+                        f.write_str(" { ")?;
 
                         let mut printed = 0;
                         for p in subpatterns {
@@ -793,14 +793,14 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             write!(f, "{}..", start_or_comma())?;
                         }
 
-                        return write!(f, " }}");
+                        return f.write_str(" }");
                     }
                 }
 
                 let num_fields =
                     variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields.len());
                 if num_fields != 0 || variant_and_name.is_none() {
-                    write!(f, "(")?;
+                    f.write_str("(")?;
                     for i in 0..num_fields {
                         write!(f, "{}", start_or_comma())?;
 
@@ -816,17 +816,17 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         if let Some(p) = subpatterns.iter().find(|p| p.field.index() == i) {
                             write!(f, "{}", p.pattern)?;
                         } else {
-                            write!(f, "_")?;
+                            f.write_str("_")?;
                         }
                     }
-                    write!(f, ")")?;
+                    f.write_str(")")?;
                 }
 
                 Ok(())
             }
             PatKind::Deref { ref subpattern } => {
                 match self.ty.kind() {
-                    ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
+                    ty::Adt(def, _) if def.is_box() => f.write_str("box ")?,
                     ty::Ref(_, _, mutbl) => {
                         write!(f, "&{}", mutbl.prefix_str())?;
                     }
@@ -842,7 +842,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                write!(f, "[")?;
+                f.write_str("[")?;
                 for p in prefix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
@@ -852,12 +852,12 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         PatKind::Wild => {}
                         _ => write!(f, "{}", slice)?,
                     }
-                    write!(f, "..")?;
+                    f.write_str("..")?;
                 }
                 for p in suffix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
-                write!(f, "]")
+                f.write_str("]")
             }
             PatKind::Or { ref pats } => {
                 for pat in pats.iter() {

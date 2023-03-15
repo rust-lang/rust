@@ -141,7 +141,7 @@ impl Debug for CoverageKind {
                 },
                 rhs.index(),
             ),
-            Unreachable => write!(fmt, "Unreachable"),
+            Unreachable => fmt.write_str("Unreachable"),
         }
     }
 }

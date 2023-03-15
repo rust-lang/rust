@@ -490,7 +490,7 @@ where
         write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
-            write!(f, "\n\nCaused by:")?;
+            f.write_str("\n\nCaused by:")?;
 
             let multiple = cause.source().is_some();
 

@@ -37,9 +37,9 @@ impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalErrKind::*;
         match self {
-            ConstAccessesStatic => write!(f, "constant accesses static"),
+            ConstAccessesStatic => f.write_str("constant accesses static"),
             ModifiedGlobal => {
-                write!(f, "modifying a static's initial value from another static's initializer")
+                f.write_str("modifying a static's initial value from another static's initializer")
             }
             AssertFailure(msg) => write!(f, "{:?}", msg),
             Panic { msg, line, col, file } => {

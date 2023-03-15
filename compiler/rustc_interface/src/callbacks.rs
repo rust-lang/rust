@@ -56,7 +56,7 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
         }
         Ok(())
     })?;
-    write!(f, ")")
+    f.write_str(")")
 }
 
 /// Sets up the callbacks in prior crates which we want to refer to the

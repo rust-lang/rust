@@ -50,7 +50,7 @@ impl<'tcx> Eq for RustInterner<'tcx> {}
 
 impl fmt::Debug for RustInterner<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RustInterner")
+        f.write_str("RustInterner")
     }
 }
 
@@ -94,7 +94,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
                 return Ok(());
             }
 
-            write!(fmt, " :- ")?;
+            fmt.write_str(" :- ")?;
 
             if conds != 0 {
                 for cond in &conditions[..conds - 1] {
@@ -104,7 +104,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
             }
 
             if conds != 0 && consts != 0 {
-                write!(fmt, " ; ")?;
+                fmt.write_str(" ; ")?;
             }
 
             if consts != 0 {
@@ -161,7 +161,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
             chalk_ir::TyKind::Slice(ty) => Some(write!(fmt, "[{:?}]", ty)),
             chalk_ir::TyKind::Tuple(len, substs) => Some(
                 try {
-                    write!(fmt, "(")?;
+                    fmt.write_str("(")?;
                     for (idx, substitution) in substs.interned().iter().enumerate() {
                         if idx == *len && *len != 1 {
                             // Don't add a trailing comma if the tuple has more than one element
@@ -170,7 +170,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
                             write!(fmt, "{:?},", substitution)?;
                         }
                     }
-                    write!(fmt, ")")?;
+                    fmt.write_str(")")?;
                 },
             ),
             _ => None,

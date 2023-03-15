@@ -72,7 +72,7 @@ impl std::fmt::Debug for AttributeGate {
             Self::Gated(ref stab, name, expl, _) => {
                 write!(fmt, "Gated({stab:?}, {name}, {expl})")
             }
-            Self::Ungated => write!(fmt, "Ungated"),
+            Self::Ungated => fmt.write_str("Ungated"),
         }
     }
 }

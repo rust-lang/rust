@@ -677,7 +677,7 @@ impl Error for SystemTimeError {
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Display for SystemTimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "second time provided was later than self")
+        f.write_str("second time provided was later than self")
     }
 }
 

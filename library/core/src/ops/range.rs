@@ -45,7 +45,7 @@ pub struct RangeFull;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for RangeFull {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "..")
+        fmt.write_str("..")
     }
 }
 
@@ -90,7 +90,7 @@ pub struct Range<Idx> {
 impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.start.fmt(fmt)?;
-        write!(fmt, "..")?;
+        fmt.write_str("..")?;
         self.end.fmt(fmt)?;
         Ok(())
     }
@@ -196,7 +196,7 @@ pub struct RangeFrom<Idx> {
 impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.start.fmt(fmt)?;
-        write!(fmt, "..")?;
+        fmt.write_str("..")?;
         Ok(())
     }
 }
@@ -277,7 +277,7 @@ pub struct RangeTo<Idx> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "..")?;
+        fmt.write_str("..")?;
         self.end.fmt(fmt)?;
         Ok(())
     }
@@ -465,10 +465,10 @@ impl RangeInclusive<usize> {
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.start.fmt(fmt)?;
-        write!(fmt, "..=")?;
+        fmt.write_str("..=")?;
         self.end.fmt(fmt)?;
         if self.exhausted {
-            write!(fmt, " (exhausted)")?;
+            fmt.write_str(" (exhausted)")?;
         }
         Ok(())
     }
@@ -599,7 +599,7 @@ pub struct RangeToInclusive<Idx> {
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "..=")?;
+        fmt.write_str("..=")?;
         self.end.fmt(fmt)?;
         Ok(())
     }

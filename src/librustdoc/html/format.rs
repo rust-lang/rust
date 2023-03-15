@@ -889,7 +889,7 @@ fn primitive_link_fragment(
     }
     write!(f, "{}", name)?;
     if needs_termination {
-        write!(f, "</a>")?;
+        f.write_str("</a>")?;
     }
     Ok(())
 }
@@ -903,14 +903,14 @@ fn tybounds<'a, 'tcx: 'a>(
     display_fn(move |f| {
         for (i, bound) in bounds.iter().enumerate() {
             if i > 0 {
-                write!(f, " + ")?;
+                f.write_str(" + ")?;
             }
 
             fmt::Display::fmt(&bound.print(cx), f)?;
         }
 
         if let Some(lt) = lt {
-            write!(f, " + ")?;
+            f.write_str(" + ")?;
             fmt::Display::fmt(&lt.print(), f)?;
         }
         Ok(())
@@ -959,7 +959,7 @@ fn fmt_type<'cx>(
             f.write_str("dyn ")?;
             fmt::Display::fmt(&tybounds(bounds, lt, cx), f)
         }
-        clean::Infer => write!(f, "_"),
+        clean::Infer => f.write_str("_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, "!", cx)
         }
@@ -993,10 +993,10 @@ fn fmt_type<'cx>(
                     if let clean::Generic(name) = one {
                         primitive_link(f, PrimitiveType::Tuple, &format!("({name},)"), cx)
                     } else {
-                        write!(f, "(")?;
+                        f.write_str("(")?;
                         // Carry `f.alternate()` into this display w/o branching manually.
                         fmt::Display::fmt(&one.print(cx), f)?;
-                        write!(f, ",)")
+                        f.write_str(",)")
                     }
                 }
                 many => {
@@ -1016,15 +1016,15 @@ fn fmt_type<'cx>(
                             cx,
                         )
                     } else {
-                        write!(f, "(")?;
+                        f.write_str("(")?;
                         for (i, item) in many.iter().enumerate() {
                             if i != 0 {
-                                write!(f, ", ")?;
+                                f.write_str(", ")?;
                             }
                             // Carry `f.alternate()` into this display w/o branching manually.
                             fmt::Display::fmt(&item.print(cx), f)?;
                         }
-                        write!(f, ")")
+                        f.write_str(")")
                     }
                 }
             }
@@ -1034,9 +1034,9 @@ fn fmt_type<'cx>(
                 primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
             }
             _ => {
-                write!(f, "[")?;
+                f.write_str("[")?;
                 fmt::Display::fmt(&t.print(cx), f)?;
-                write!(f, "]")
+                f.write_str("]")
             }
         },
         clean::Array(ref t, ref n) => match **t {
@@ -1047,15 +1047,15 @@ fn fmt_type<'cx>(
                 cx,
             ),
             _ => {
-                write!(f, "[")?;
+                f.write_str("[")?;
                 fmt::Display::fmt(&t.print(cx), f)?;
                 if f.alternate() {
                     write!(f, "; {n}")?;
                 } else {
-                    write!(f, "; ")?;
+                    f.write_str("; ")?;
                     primitive_link(f, PrimitiveType::Array, &format!("{n}", n = Escape(n)), cx)?;
                 }
-                write!(f, "]")
+                f.write_str("]")
             }
         },
         clean::RawPointer(m, ref t) => {
@@ -1089,7 +1089,7 @@ fn fmt_type<'cx>(
                 {
                     write!(f, "{}{}{}(", amp, lt, m)?;
                     fmt_type(ty, f, use_absolute, cx)?;
-                    write!(f, ")")
+                    f.write_str(")")
                 }
                 clean::Generic(name) => {
                     primitive_link(f, PrimitiveType::Reference, &format!("{amp}{lt}{m}{name}"), cx)
@@ -1190,10 +1190,10 @@ impl clean::Impl {
             if let Some(ref ty) = self.trait_ {
                 match self.polarity {
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {}
-                    ty::ImplPolarity::Negative => write!(f, "!")?,
+                    ty::ImplPolarity::Negative => f.write_str("!")?,
                 }
                 fmt::Display::fmt(&ty.print(cx), f)?;
-                write!(f, " for ")?;
+                f.write_str(" for ")?;
             }
 
             if let clean::Type::Tuple(types) = &self.for_ &&
@@ -1232,7 +1232,7 @@ impl clean::Impl {
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
                 // Write output.
                 if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
-                    write!(f, " -> ")?;
+                    f.write_str(" -> ")?;
                     fmt_type(ty, f, use_absolute, cx)?;
                 }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
@@ -1262,7 +1262,7 @@ impl clean::Arguments {
                     write!(f, "{}", input.type_.print(cx))?;
                 }
                 if i + 1 < self.values.len() {
-                    write!(f, ", ")?;
+                    f.write_str(", ")?;
                 }
             }
             Ok(())
@@ -1390,21 +1390,21 @@ impl clean::FnDecl {
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
 
-        write!(f, "(")?;
+        f.write_str("(")?;
         if let Some(n) = line_wrapping_indent {
             write!(f, "\n{}", Indent(n + 4))?;
         }
         for (i, input) in self.inputs.values.iter().enumerate() {
             if i > 0 {
                 match line_wrapping_indent {
-                    None => write!(f, ", ")?,
+                    None => f.write_str(", ")?,
                     Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
                 };
             }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
-                        write!(f, "self")?;
+                        f.write_str("self")?;
                     }
                     clean::SelfBorrowed(Some(ref lt), mtbl) => {
                         write!(f, "{}{} {}self", amp, lt.print(), mtbl.print_with_space())?;
@@ -1413,13 +1413,13 @@ impl clean::FnDecl {
                         write!(f, "{}{}self", amp, mtbl.print_with_space())?;
                     }
                     clean::SelfExplicit(ref typ) => {
-                        write!(f, "self: ")?;
+                        f.write_str("self: ")?;
                         fmt::Display::fmt(&typ.print(cx), f)?;
                     }
                 }
             } else {
                 if input.is_const {
-                    write!(f, "const ")?;
+                    f.write_str("const ")?;
                 }
                 write!(f, "{}: ", input.name)?;
                 fmt::Display::fmt(&input.type_.print(cx), f)?;
@@ -1428,13 +1428,13 @@ impl clean::FnDecl {
 
         if self.c_variadic {
             match line_wrapping_indent {
-                None => write!(f, ", ...")?,
+                None => f.write_str(", ...")?,
                 Some(n) => write!(f, "\n{}...", Indent(n + 4))?,
             };
         }
 
         match line_wrapping_indent {
-            None => write!(f, ")")?,
+            None => f.write_str(")")?,
             Some(n) => write!(f, "\n{})", Indent(n))?,
         };
 
@@ -1585,7 +1585,7 @@ impl clean::Import {
             }
             clean::ImportKind::Glob => {
                 if self.source.path.segments.is_empty() {
-                    write!(f, "use *;")
+                    f.write_str("use *;")
                 } else {
                     write!(f, "use {}::*;", self.source.print(cx))
                 }

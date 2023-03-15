@@ -9,12 +9,12 @@ struct B;
 
 impl fmt::Display for A {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "A")
+        f.write_str("A")
     }
 }
 impl fmt::Display for B {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "B")
+        f.write_str("B")
     }
 }
 
@@ -368,7 +368,7 @@ fn errors_with_string_interpolation_formats_correctly() {
     impl fmt::Display for MyMessage {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "Got an error code: ({}). ", self.0)?;
-            write!(f, "What would you like to do in response?")
+            f.write_str("What would you like to do in response?")
         }
     }
 

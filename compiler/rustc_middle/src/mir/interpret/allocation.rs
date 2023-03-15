@@ -150,7 +150,7 @@ impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The debug representation of this is very verbose and basically useless,
         // so don't print it.
-        write!(f, "ConstAllocation {{ .. }}")
+        f.write_str("ConstAllocation { .. }")
     }
 }
 

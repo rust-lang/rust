@@ -1620,9 +1620,9 @@ impl ConstContext {
 impl fmt::Display for ConstContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::Const => write!(f, "constant"),
-            Self::Static(_) => write!(f, "static"),
-            Self::ConstFn => write!(f, "constant function"),
+            Self::Const => f.write_str("constant"),
+            Self::Static(_) => f.write_str("static"),
+            Self::ConstFn => f.write_str("constant function"),
         }
     }
 }

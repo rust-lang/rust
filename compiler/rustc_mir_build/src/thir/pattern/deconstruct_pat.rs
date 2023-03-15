@@ -1645,12 +1645,12 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     // Without `cx`, we can't know which field corresponds to which, so we can't
                     // get the names of the fields. Instead we just display everything as a tuple
                     // struct, which should be good enough.
-                    write!(f, "(")?;
+                    f.write_str("(")?;
                     for p in self.iter_fields() {
                         write!(f, "{}", start_or_comma())?;
                         write!(f, "{:?}", p)?;
                     }
-                    write!(f, ")")
+                    f.write_str(")")
                 }
                 // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
                 // be careful to detect strings here. However a string literal pattern will never
@@ -1659,11 +1659,11 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     let subpattern = self.iter_fields().next().unwrap();
                     write!(f, "&{}{:?}", mutbl.prefix_str(), subpattern)
                 }
-                _ => write!(f, "_"),
+                _ => f.write_str("_"),
             },
             Slice(slice) => {
                 let mut subpatterns = self.fields.iter_patterns();
-                write!(f, "[")?;
+                f.write_str("[")?;
                 match slice.kind {
                     FixedLen(_) => {
                         for p in subpatterns {
@@ -1675,13 +1675,13 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                             write!(f, "{}{:?}", start_or_comma(), p)?;
                         }
                         write!(f, "{}", start_or_comma())?;
-                        write!(f, "..")?;
+                        f.write_str("..")?;
                         for p in subpatterns {
                             write!(f, "{}{:?}", start_or_comma(), p)?;
                         }
                     }
                 }
-                write!(f, "]")
+                f.write_str("]")
             }
             &FloatRange(lo, hi, end) => {
                 write!(f, "{}", lo)?;
@@ -1697,7 +1697,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 Ok(())
             }
             Str(value) => write!(f, "{}", value),
-            Opaque => write!(f, "<constant pattern>"),
+            Opaque => f.write_str("<constant pattern>"),
         }
     }
 }

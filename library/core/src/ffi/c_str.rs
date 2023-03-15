@@ -159,7 +159,7 @@ pub struct FromBytesUntilNulError(());
 #[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Display for FromBytesUntilNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "data provided does not contain a nul")
+        f.write_str("data provided does not contain a nul")
     }
 }
 

@@ -38,10 +38,10 @@ pub enum State {
 impl fmt::Debug for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            State::Accepted { .. } => write!(f, "accepted"),
-            State::Active { .. } => write!(f, "active"),
-            State::Removed { .. } => write!(f, "removed"),
-            State::Stabilized { .. } => write!(f, "stabilized"),
+            State::Accepted { .. } => f.write_str("accepted"),
+            State::Active { .. } => f.write_str("active"),
+            State::Removed { .. } => f.write_str("removed"),
+            State::Stabilized { .. } => f.write_str("stabilized"),
         }
     }
 }

@@ -324,15 +324,15 @@ impl fmt::Display for FileNameDisplay<'_> {
             Real(ref name) => {
                 write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
-            QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
-            MacroExpansion(_) => write!(fmt, "<macro expansion>"),
-            Anon(_) => write!(fmt, "<anon>"),
-            ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
-            CfgSpec(_) => write!(fmt, "<cfgspec>"),
-            CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
+            QuoteExpansion(_) => fmt.write_str("<quote expansion>"),
+            MacroExpansion(_) => fmt.write_str("<macro expansion>"),
+            Anon(_) => fmt.write_str("<anon>"),
+            ProcMacroSourceCode(_) => fmt.write_str("<proc-macro source code>"),
+            CfgSpec(_) => fmt.write_str("<cfgspec>"),
+            CliCrateAttr(_) => fmt.write_str("<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{s}>"),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
-            InlineAsm(_) => write!(fmt, "<inline asm>"),
+            InlineAsm(_) => fmt.write_str("<inline asm>"),
         }
     }
 }

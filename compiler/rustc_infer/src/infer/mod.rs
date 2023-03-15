@@ -531,8 +531,8 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
                 "cannot determine the type of this number; \
                  add a suffix to specify the type explicitly"
             ),
-            UnresolvedTy(_) => write!(f, "unconstrained type"),
-            UnresolvedConst(_) => write!(f, "unconstrained const value"),
+            UnresolvedTy(_) => f.write_str("unconstrained type"),
+            UnresolvedConst(_) => f.write_str("unconstrained const value"),
         }
     }
 }

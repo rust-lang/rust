@@ -702,7 +702,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
 impl fmt::Debug for RegionSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RegionSnapshot")
+        f.write_str("RegionSnapshot")
     }
 }
 

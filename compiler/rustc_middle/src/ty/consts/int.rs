@@ -35,22 +35,22 @@ impl std::fmt::Debug for ConstInt {
             let max = min - 1;
             if raw == min {
                 match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "isize::MIN"),
-                    (1, _) => write!(fmt, "i8::MIN"),
-                    (2, _) => write!(fmt, "i16::MIN"),
-                    (4, _) => write!(fmt, "i32::MIN"),
-                    (8, _) => write!(fmt, "i64::MIN"),
-                    (16, _) => write!(fmt, "i128::MIN"),
+                    (_, true) => fmt.write_str("isize::MIN"),
+                    (1, _) => fmt.write_str("i8::MIN"),
+                    (2, _) => fmt.write_str("i16::MIN"),
+                    (4, _) => fmt.write_str("i32::MIN"),
+                    (8, _) => fmt.write_str("i64::MIN"),
+                    (16, _) => fmt.write_str("i128::MIN"),
                     _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
                 }
             } else if raw == max {
                 match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "isize::MAX"),
-                    (1, _) => write!(fmt, "i8::MAX"),
-                    (2, _) => write!(fmt, "i16::MAX"),
-                    (4, _) => write!(fmt, "i32::MAX"),
-                    (8, _) => write!(fmt, "i64::MAX"),
-                    (16, _) => write!(fmt, "i128::MAX"),
+                    (_, true) => fmt.write_str("isize::MAX"),
+                    (1, _) => fmt.write_str("i8::MAX"),
+                    (2, _) => fmt.write_str("i16::MAX"),
+                    (4, _) => fmt.write_str("i32::MAX"),
+                    (8, _) => fmt.write_str("i64::MAX"),
+                    (16, _) => fmt.write_str("i128::MAX"),
                     _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
                 }
             } else {
@@ -64,12 +64,12 @@ impl std::fmt::Debug for ConstInt {
                 }
                 if fmt.alternate() {
                     match (size, is_ptr_sized_integral) {
-                        (_, true) => write!(fmt, "_isize")?,
-                        (1, _) => write!(fmt, "_i8")?,
-                        (2, _) => write!(fmt, "_i16")?,
-                        (4, _) => write!(fmt, "_i32")?,
-                        (8, _) => write!(fmt, "_i64")?,
-                        (16, _) => write!(fmt, "_i128")?,
+                        (_, true) => fmt.write_str("_isize")?,
+                        (1, _) => fmt.write_str("_i8")?,
+                        (2, _) => fmt.write_str("_i16")?,
+                        (4, _) => fmt.write_str("_i32")?,
+                        (8, _) => fmt.write_str("_i64")?,
+                        (16, _) => fmt.write_str("_i128")?,
                         _ => bug!(),
                     }
                 }
@@ -79,12 +79,12 @@ impl std::fmt::Debug for ConstInt {
             let max = Size::from_bytes(size).truncate(u128::MAX);
             if raw == max {
                 match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "usize::MAX"),
-                    (1, _) => write!(fmt, "u8::MAX"),
-                    (2, _) => write!(fmt, "u16::MAX"),
-                    (4, _) => write!(fmt, "u32::MAX"),
-                    (8, _) => write!(fmt, "u64::MAX"),
-                    (16, _) => write!(fmt, "u128::MAX"),
+                    (_, true) => fmt.write_str("usize::MAX"),
+                    (1, _) => fmt.write_str("u8::MAX"),
+                    (2, _) => fmt.write_str("u16::MAX"),
+                    (4, _) => fmt.write_str("u32::MAX"),
+                    (8, _) => fmt.write_str("u64::MAX"),
+                    (16, _) => fmt.write_str("u128::MAX"),
                     _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
                 }
             } else {
@@ -98,12 +98,12 @@ impl std::fmt::Debug for ConstInt {
                 }
                 if fmt.alternate() {
                     match (size, is_ptr_sized_integral) {
-                        (_, true) => write!(fmt, "_usize")?,
-                        (1, _) => write!(fmt, "_u8")?,
-                        (2, _) => write!(fmt, "_u16")?,
-                        (4, _) => write!(fmt, "_u32")?,
-                        (8, _) => write!(fmt, "_u64")?,
-                        (16, _) => write!(fmt, "_u128")?,
+                        (_, true) => fmt.write_str("_usize")?,
+                        (1, _) => fmt.write_str("_u8")?,
+                        (2, _) => fmt.write_str("_u16")?,
+                        (4, _) => fmt.write_str("_u32")?,
+                        (8, _) => fmt.write_str("_u64")?,
+                        (16, _) => fmt.write_str("_u128")?,
                         _ => bug!(),
                     }
                 }
@@ -459,7 +459,7 @@ impl fmt::LowerHex for ScalarInt {
         self.check_data();
         if f.alternate() {
             // Like regular ints, alternate flag adds leading `0x`.
-            write!(f, "0x")?;
+            f.write_str("0x")?;
         }
         // Format as hex number wide enough to fit any value of the given `size`.
         // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".

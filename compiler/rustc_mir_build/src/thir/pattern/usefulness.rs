@@ -439,7 +439,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
 /// Pretty-printing for matrix row.
 impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "+")?;
+        f.write_str("+")?;
         for pat in self.iter() {
             write!(f, " {:?} +", pat)?;
         }
@@ -508,7 +508,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\n")?;
+        f.write_str("\n")?;
 
         let Matrix { patterns: m, .. } = self;
         let pretty_printed_matrix: Vec<Vec<String>> =
@@ -521,13 +521,13 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
             .collect();
 
         for row in pretty_printed_matrix {
-            write!(f, "+")?;
+            f.write_str("+")?;
             for (column, pat_str) in row.into_iter().enumerate() {
-                write!(f, " ")?;
+                f.write_str(" ")?;
                 write!(f, "{:1$}", pat_str, column_widths[column])?;
-                write!(f, " +")?;
+                f.write_str(" +")?;
             }
-            write!(f, "\n")?;
+            f.write_str("\n")?;
         }
         Ok(())
     }

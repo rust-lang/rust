@@ -21,9 +21,9 @@ pub enum CguReuse {
 impl fmt::Display for CguReuse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            CguReuse::No => write!(f, "No"),
-            CguReuse::PreLto => write!(f, "PreLto "),
-            CguReuse::PostLto => write!(f, "PostLto "),
+            CguReuse::No => f.write_str("No"),
+            CguReuse::PreLto => f.write_str("PreLto "),
+            CguReuse::PostLto => f.write_str("PostLto "),
         }
     }
 }

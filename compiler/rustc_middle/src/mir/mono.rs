@@ -218,7 +218,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
             MonoItem::Static(def_id) => {
                 write!(f, "static {}", Instance::new(def_id, InternalSubsts::empty()))
             }
-            MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
+            MonoItem::GlobalAsm(..) => f.write_str("global_asm"),
         }
     }
 }

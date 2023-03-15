@@ -287,7 +287,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
 impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.address() {
-            AddressKind::Unnamed => write!(fmt, "(unnamed)"),
+            AddressKind::Unnamed => fmt.write_str("(unnamed)"),
             AddressKind::Abstract(name) => write!(fmt, "\"{}\" (abstract)", name.escape_ascii()),
             AddressKind::Pathname(path) => write!(fmt, "{path:?} (pathname)"),
         }

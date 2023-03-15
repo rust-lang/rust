@@ -322,7 +322,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(Weak)")
+        f.write_str("(Weak)")
     }
 }
 

@@ -121,9 +121,9 @@ impl AssocKind {
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AssocKind::Fn => write!(f, "method"),
-            AssocKind::Const => write!(f, "associated const"),
-            AssocKind::Type => write!(f, "associated type"),
+            AssocKind::Fn => f.write_str("method"),
+            AssocKind::Const => f.write_str("associated const"),
+            AssocKind::Type => f.write_str("associated type"),
         }
     }
 }
