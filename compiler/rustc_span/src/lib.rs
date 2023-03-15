@@ -610,7 +610,7 @@ impl Span {
             {
                 true
             }
-            ExpnKind::Desugaring(DesugaringKind::Resize) | ExpnKind::Desugaring(_) => {
+            ExpnKind::Desugaring(_) => {
                 self.parent_callsite().unwrap().can_be_used_for_suggestions()
             }
             ExpnKind::Macro(..) => false,
@@ -761,7 +761,7 @@ impl Span {
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
     pub fn is_desugaring(self, kind: DesugaringKind) -> bool {
-        match self.ctxt().outer_expn_data().kind {
+        match self.peel_ctxt().ctxt().outer_expn_data().kind {
             ExpnKind::Desugaring(k) => k == kind,
             _ => false,
         }
@@ -770,7 +770,7 @@ impl Span {
     /// Returns the compiler desugaring that created this span, or `None`
     /// if this span is not from a desugaring.
     pub fn desugaring_kind(self) -> Option<DesugaringKind> {
-        match self.ctxt().outer_expn_data().kind {
+        match self.peel_ctxt().ctxt().outer_expn_data().kind {
             ExpnKind::Desugaring(k) => Some(k),
             _ => None,
         }
