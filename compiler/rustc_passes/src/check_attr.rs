@@ -19,9 +19,10 @@ use rustc_hir::{
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
     UNUSED_ATTRIBUTES,
@@ -30,6 +31,9 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
@@ -2188,100 +2192,99 @@ impl CheckAttrVisitor<'_> {
     ///
     /// If this best effort goes wrong, it will just emit a worse error later (see #102923)
     fn check_proc_macro(&self, hir_id: HirId, target: Target, kind: ProcMacroKind) {
-        let expected_input_count = match kind {
-            ProcMacroKind::Attribute => 2,
-            ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
-        };
-
-        let expected_signature = match kind {
-            ProcMacroKind::Attribute => "fn(TokenStream, TokenStream) -> TokenStream",
-            ProcMacroKind::Derive | ProcMacroKind::FunctionLike => "fn(TokenStream) -> TokenStream",
-        };
+        if target != Target::Fn {
+            return;
+        }
 
         let tcx = self.tcx;
-        if target == Target::Fn {
-            let Some(tokenstream) = tcx.get_diagnostic_item(sym::TokenStream) else {return};
-            let tokenstream = tcx.type_of(tokenstream).subst_identity();
+        let Some(token_stream_def_id) = tcx.get_diagnostic_item(sym::TokenStream) else { return; };
+        let Some(token_stream) = tcx.type_of(token_stream_def_id).no_bound_vars() else { return; };
 
-            let id = hir_id.expect_owner();
-            let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();
+        let def_id = hir_id.expect_owner().def_id;
+        let param_env = ty::ParamEnv::empty();
 
-            let sig =
-                tcx.liberate_late_bound_regions(id.to_def_id(), tcx.fn_sig(id).subst_identity());
-            let sig = tcx.normalize_erasing_regions(ParamEnv::empty(), sig);
+        let infcx = tcx.infer_ctxt().build();
+        let ocx = ObligationCtxt::new(&infcx);
 
-            // We don't currently require that the function signature is equal to
-            // `fn(TokenStream) -> TokenStream`, but instead monomorphizes to
-            // `fn(TokenStream) -> TokenStream` after some substitution of generic arguments.
-            //
-            // Properly checking this means pulling in additional `rustc` crates, so we don't.
-            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey };
+        let span = tcx.def_span(def_id);
+        let fresh_substs = infcx.fresh_substs_for_item(span, def_id.to_def_id());
+        let sig = tcx.liberate_late_bound_regions(
+            def_id.to_def_id(),
+            tcx.fn_sig(def_id).subst(tcx, fresh_substs),
+        );
 
-            if sig.abi != Abi::Rust {
-                tcx.sess.emit_err(errors::ProcMacroInvalidAbi {
-                    span: hir_sig.span,
-                    abi: sig.abi.name(),
-                });
-                self.abort.set(true);
-            }
+        let mut cause = ObligationCause::misc(span, def_id);
+        let sig = ocx.normalize(&cause, param_env, sig);
 
-            if sig.unsafety == Unsafety::Unsafe {
-                tcx.sess.emit_err(errors::ProcMacroUnsafe { span: hir_sig.span });
-                self.abort.set(true);
-            }
+        // proc macro is not WF.
+        let errors = ocx.select_where_possible();
+        if !errors.is_empty() {
+            return;
+        }
 
-            let output = sig.output();
+        let expected_sig = tcx.mk_fn_sig(
+            std::iter::repeat(token_stream).take(match kind {
+                ProcMacroKind::Attribute => 2,
+                ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
+            }),
+            token_stream,
+            false,
+            Unsafety::Normal,
+            Abi::Rust,
+        );
 
-            // Typecheck the output
-            if !drcx.types_may_unify(output, tokenstream) {
-                tcx.sess.emit_err(errors::ProcMacroTypeError {
-                    span: hir_sig.decl.output.span(),
-                    found: output,
-                    kind,
-                    expected_signature,
-                });
-                self.abort.set(true);
-            }
+        if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {
+            let mut diag = tcx.sess.create_err(errors::ProcMacroBadSig { span, kind });
 
-            if sig.inputs().len() < expected_input_count {
-                tcx.sess.emit_err(errors::ProcMacroMissingArguments {
-                    expected_input_count,
-                    span: hir_sig.span,
-                    kind,
-                    expected_signature,
-                });
-                self.abort.set(true);
-            }
-
-            // Check that the inputs are correct, if there are enough.
-            if sig.inputs().len() >= expected_input_count {
-                for (arg, input) in
-                    sig.inputs().iter().zip(hir_sig.decl.inputs).take(expected_input_count)
-                {
-                    if !drcx.types_may_unify(*arg, tokenstream) {
-                        tcx.sess.emit_err(errors::ProcMacroTypeError {
-                            span: input.span,
-                            found: *arg,
-                            kind,
-                            expected_signature,
-                        });
-                        self.abort.set(true);
+            let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id);
+            if let Some(hir_sig) = hir_sig {
+                match terr {
+                    TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
+                        if let Some(ty) = hir_sig.decl.inputs.get(idx) {
+                            diag.set_span(ty.span);
+                            cause.span = ty.span;
+                        } else if idx == hir_sig.decl.inputs.len() {
+                            let span = hir_sig.decl.output.span();
+                            diag.set_span(span);
+                            cause.span = span;
+                        }
                     }
+                    TypeError::ArgCount => {
+                        if let Some(ty) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
+                            diag.set_span(ty.span);
+                            cause.span = ty.span;
+                        }
+                    }
+                    TypeError::UnsafetyMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    TypeError::AbiMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    TypeError::VariadicMismatch(_) => {
+                        // FIXME: Would be nice if we had a span here..
+                    }
+                    _ => {}
                 }
             }
 
-            // Check that there are not too many arguments
-            let body_id = tcx.hir().body_owned_by(id.def_id);
-            let excess = tcx.hir().body(body_id).params.get(expected_input_count..);
-            if let Some(excess @ [begin @ end] | excess @ [begin, .., end]) = excess {
-                tcx.sess.emit_err(errors::ProcMacroDiffArguments {
-                    span: begin.span.to(end.span),
-                    count: excess.len(),
-                    kind,
-                    expected_signature,
-                });
-                self.abort.set(true);
-            }
+            infcx.err_ctxt().note_type_err(
+                &mut diag,
+                &cause,
+                None,
+                Some(ValuePairs::Sigs(ExpectedFound { expected: expected_sig, found: sig })),
+                terr,
+                false,
+                false,
+            );
+            diag.emit();
+            self.abort.set(true);
+        }
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            infcx.err_ctxt().report_fulfillment_errors(&errors);
+            self.abort.set(true);
         }
     }
 }

@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.70.0"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -1001,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.35.1"
+version = "0.36.0"
 dependencies = [
  "anyhow",
  "curl",
@@ -5139,6 +5139,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "tracing",
 ]
 

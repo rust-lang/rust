@@ -492,7 +492,6 @@ compiler-team = [
     "@oli-obk",
     "@lcnr",
     "@wesleywiser",
-    "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@compiler-errors",

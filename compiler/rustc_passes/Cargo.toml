@@ -22,3 +22,4 @@ rustc_span = { path = "../rustc_span" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
