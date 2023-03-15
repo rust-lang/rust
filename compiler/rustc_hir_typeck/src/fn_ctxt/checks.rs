@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
-                    self.tcx.adjust_span(ident_span).with_hi(args.span_ext.hi())
+                    self.tcx.mark_span_for_resize(ident_span).with_hi(args.span_ext.hi())
                 } else {
                     ident_span
                 };
@@ -702,8 +702,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
-                                (tcx.adjust_span(*lo).shrink_to_lo(), "(".to_string()),
-                                (tcx.adjust_span(*hi).shrink_to_hi(), ")".to_string()),
+                                (tcx.mark_span_for_resize(*lo).shrink_to_lo(), "(".to_string()),
+                                (tcx.mark_span_for_resize(*hi).shrink_to_hi(), ")".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
@@ -939,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .get(ProvidedIdx::from_usize(arg_idx.index() - 1))
                         {
                             // Include previous comma
-                            span = self.tcx.adjust_span(*prev).shrink_to_hi().to(self.tcx.adjust_span(span));
+                            span = self.tcx.mark_span_for_resize(*prev).shrink_to_hi().to(self.tcx.mark_span_for_resize(span));
                         }
                         suggestions.push((span, String::new()));
 
@@ -1213,9 +1213,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
                     (
                         "(".to_string(),
-                        tcx.adjust_span(call_span)
+                        tcx.mark_span_for_resize(call_span)
                             .shrink_to_hi()
-                            .to(tcx.adjust_span(error_span).shrink_to_hi()),
+                            .to(tcx.mark_span_for_resize(error_span).shrink_to_hi()),
                     )
                 } else {
                     (
