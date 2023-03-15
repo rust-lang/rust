@@ -330,10 +330,7 @@ impl ParseSess {
     pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> + '_ {
         // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
         // AppendOnlyVec, so we resort to this scheme.
-        (0..)
-            .map(|i| (i, self.proc_macro_quoted_spans.get(i)))
-            .take_while(|(_, o)| o.is_some())
-            .filter_map(|(i, o)| Some((i, o?)))
+        self.proc_macro_quoted_spans.iter_enumerated()
     }
 
     #[track_caller]
