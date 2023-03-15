@@ -2,7 +2,6 @@
 //!
 //! On Windows this indirects IO into threads to work around performance issues
 //! with Defender (and other similar virus scanners that do blocking operations).
-//! On other platforms this is a thin shim to fs.
 //!
 //! Only calls needed to permit this workaround have been abstracted: thus
 //! fs::read is still done directly via the fs module; if in future rustdoc
