@@ -6,8 +6,8 @@ USAGE=$(cat <<"EOF"
 ./miri install <flags>:
 Installs the miri driver and cargo-miri. <flags> are passed to `cargo
 install`. Sets up the rpath such that the installed binary should work in any
-working directory. However, the rustup toolchain when invoking `cargo miri`
-needs to be the same one used for `./miri install`.
+working directory. Note that the binaries are placed in the `miri` toolchain
+sysroot, to prevent conflicts with other toolchains.
 
 ./miri build <flags>:
 Just build miri. <flags> are passed to `cargo build`.
@@ -281,8 +281,9 @@ find_sysroot() {
 case "$COMMAND" in
 install)
     # "--locked" to respect the Cargo.lock file if it exists.
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked "$@"
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked "$@"
+    # Install binaries to the miri toolchain's sysroot so they do not interact with other toolchains.
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked --root "$SYSROOT" "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --root "$SYSROOT" "$@"
     ;;
 check)
     # Check, and let caller control flags.

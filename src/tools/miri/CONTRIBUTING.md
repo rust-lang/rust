@@ -129,17 +129,14 @@ development version of Miri using
 ./miri install
 ```
 
-and then you can use it as if it was installed by `rustup`.  Make sure you use
-the same toolchain when calling `cargo miri` that you used when installing Miri!
-Usually this means you have to write `cargo +miri miri ...` to select the `miri`
-toolchain that was installed by `./miri toolchain`.
+and then you can use it as if it was installed by `rustup` as a component of the
+`miri` toolchain. Note that the `miri` and `cargo-miri` executables are placed
+in the `miri` toolchain's sysroot to prevent conflicts with other toolchains.
+The Miri binaries in the `cargo` bin directory (usually `~/.cargo/bin`) are managed by rustup.
 
 There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
-
-Note that installing Miri like this will "take away" Miri management from `rustup`.
-If you want to later go back to a rustup-installed Miri, run `rustup update`.
 
 ### Using a modified standard library
 

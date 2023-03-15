@@ -54,8 +54,8 @@ jobs:
             # contains package information of crates installed via `cargo install`.
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo
+          key: ${{ runner.os }}-cargo-reset20230315-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-reset20230315
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -106,8 +106,8 @@ jobs:
             # contains package information of crates installed via `cargo install`.
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo
+          key: ${{ runner.os }}-cargo-reset20230315-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-reset20230315
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
