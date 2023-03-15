@@ -486,7 +486,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
     }
 
     // First, check if it's "Self".
-    let arg = if let Some(self_) = self_ {
+    let mut arg = if let Some(self_) = self_ {
         match &*arg {
             Type::BorrowedRef { type_, .. } if type_.is_self_type() => self_,
             type_ if type_.is_self_type() => self_,
@@ -496,11 +496,16 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
         arg
     };
 
+    // strip references from the argument type
+    while let Type::BorrowedRef { type_, .. } = &*arg {
+        arg = &*type_;
+    }
+
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
-        if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
+        for where_pred in generics.where_predicates.iter().filter(|g| match g {
             WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
             _ => false,
         }) {
