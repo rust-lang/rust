@@ -1623,7 +1623,7 @@ impl<'tcx> Place<'tcx> {
             &v
         };
 
-        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+        Place { local: self.local, projection: tcx.mk().place_elems(new_projections) }
     }
 }
 

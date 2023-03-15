@@ -632,7 +632,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!(),
                 };
-                tcx.mk_layout(LayoutS {
+                tcx.mk().layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -645,7 +645,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
+            Variants::Multiple { ref variants, .. } => cx.tcx().mk().layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -667,7 +667,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk().layout(LayoutS::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };

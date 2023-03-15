@@ -119,7 +119,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     report.def_id,
-                    tcx.mk_substs(&[GenericArg::from(main_ret_ty)]),
+                    tcx.mk().substs(&[GenericArg::from(main_ret_ty)]),
                 )
                 .unwrap()
                 .unwrap()
@@ -146,7 +146,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     start_def_id,
-                    tcx.mk_substs(&[main_ret_ty.into()]),
+                    tcx.mk().substs(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap()

@@ -381,7 +381,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // here and so associated type bindings will be handled regardless of whether there are any
         // non-`Self` generic parameters.
         if generics.params.is_empty() {
-            return (tcx.mk_substs(parent_substs), arg_count);
+            return (tcx.mk().substs(parent_substs), arg_count);
         }
 
         struct SubstsForAstPathCtxt<'a, 'tcx> {
@@ -1528,7 +1528,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         arg
                     })
                     .collect();
-                let substs = tcx.mk_substs(&substs);
+                let substs = tcx.mk().substs(&substs);
 
                 let span = i.bottom().1;
                 let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
@@ -1590,7 +1590,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             arg
                         })
                         .collect();
-                    b.projection_ty.substs = tcx.mk_substs(&substs);
+                    b.projection_ty.substs = tcx.mk().substs(&substs);
                 }
 
                 ty::ExistentialProjection::erase_self_ty(tcx, b)

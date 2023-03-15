@@ -440,7 +440,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk().const_list(v))
     }
 }
 
@@ -449,7 +449,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_projs(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk().projs(v))
     }
 }
 

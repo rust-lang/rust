@@ -105,7 +105,7 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
                     .max()
                     .unwrap_or(ty::UniverseIndex::ROOT);
 
-                let var_infos = self.infcx.tcx.mk_canonical_var_infos(&var_infos);
+                let var_infos = self.infcx.tcx.mk().canonical_var_infos(&var_infos);
                 return (max_universe, var_infos);
             }
         }
@@ -187,7 +187,7 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
             }
         }
 
-        let var_infos = self.infcx.tcx.mk_canonical_var_infos(&var_infos);
+        let var_infos = self.infcx.tcx.mk().canonical_var_infos(&var_infos);
         (curr_compressed_uv, var_infos)
     }
 }

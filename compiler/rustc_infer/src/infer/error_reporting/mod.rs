@@ -924,7 +924,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<()> {
         // FIXME/HACK: Go back to `SubstsRef` to use its inherent methods,
         // ideally that shouldn't be necessary.
-        let sub = self.tcx.mk_substs(sub);
+        let sub = self.tcx.mk().substs(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);

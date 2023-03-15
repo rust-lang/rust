@@ -345,13 +345,13 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [ty::ValTre
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_const_alloc(Decodable::decode(decoder))
+        decoder.interner().mk().const_alloc(Decodable::decode(decoder))
     }
 }
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AdtDef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_adt_def_from_data(Decodable::decode(decoder))
+        decoder.interner().mk().adt_def_from_data(Decodable::decode(decoder))
     }
 }
 

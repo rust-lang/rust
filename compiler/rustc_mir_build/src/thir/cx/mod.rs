@@ -138,7 +138,7 @@ impl<'tcx> Cx<'tcx> {
                 };
 
                 let bound_vars =
-                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
+                    self.tcx.mk().bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,

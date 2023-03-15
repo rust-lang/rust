@@ -99,7 +99,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
-            let pin_substs = tcx.mk_substs(&[env_ty.into()]);
+            let pin_substs = tcx.mk().substs(&[env_ty.into()]);
             let env_ty = tcx.mk().adt(pin_adt_ref, pin_substs);
 
             let sig = sig.skip_binder();
@@ -111,7 +111,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
-                let poll_substs = tcx.mk_substs(&[sig.return_ty.into()]);
+                let poll_substs = tcx.mk().substs(&[sig.return_ty.into()]);
                 let ret_ty = tcx.mk().adt(poll_adt_ref, poll_substs);
 
                 // We have to replace the `ResumeTy` that is used for type and borrow checking
@@ -133,7 +133,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let state_substs = tcx.mk().substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = tcx.mk().adt(state_adt_ref, state_substs);
 
                 (sig.resume_ty, ret_ty)

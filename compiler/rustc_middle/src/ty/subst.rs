@@ -319,7 +319,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         let count = defs.count();
         let mut substs = SmallVec::with_capacity(count);
         Self::fill_item(&mut substs, tcx, defs, &mut mk_kind);
-        tcx.mk_substs(&substs)
+        tcx.mk().substs(&substs)
     }
 
     pub fn extend_to<F>(&self, tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> SubstsRef<'tcx>
@@ -493,7 +493,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
                 if param0 == self[0] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().mk_substs(&[param0]))
+                    Ok(folder.interner().mk().substs(&[param0]))
                 }
             }
             2 => {
@@ -502,11 +502,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().mk_substs(&[param0, param1]))
+                    Ok(folder.interner().mk().substs(&[param0, param1]))
                 }
             }
             0 => Ok(self),
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_substs(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk().substs(v)),
         }
     }
 }

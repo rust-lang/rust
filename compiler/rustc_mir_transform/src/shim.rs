@@ -147,7 +147,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     assert!(!matches!(ty, Some(ty) if ty.is_generator()));
 
     let substs = if let Some(ty) = ty {
-        tcx.mk_substs(&[ty.into()])
+        tcx.mk().substs(&[ty.into()])
     } else {
         InternalSubsts::identity_for_item(tcx, def_id)
     };

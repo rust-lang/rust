@@ -1297,7 +1297,7 @@ impl<'v> RootCollector<'_, 'v> {
             self.tcx,
             ty::ParamEnv::reveal_all(),
             start_def_id,
-            self.tcx.mk_substs(&[main_ret_ty.into()]),
+            self.tcx.mk().substs(&[main_ret_ty.into()]),
         )
         .unwrap()
         .unwrap();

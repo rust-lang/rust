@@ -1038,7 +1038,7 @@ macro_rules! visit_place_fns {
             self.visit_local(&mut place.local, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection, location) {
-                place.projection = self.tcx().mk_place_elems(&new_projection);
+                place.projection = self.tcx().mk().place_elems(&new_projection);
             }
         }
 

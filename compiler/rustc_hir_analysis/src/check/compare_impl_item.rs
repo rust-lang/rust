@@ -1947,8 +1947,8 @@ pub(super) fn check_type_bounds<'tcx>(
                 .into()
         }
     });
-    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-    let impl_ty_substs = tcx.mk_substs(&substs);
+    let bound_vars = tcx.mk().bound_variable_kinds(&bound_vars);
+    let impl_ty_substs = tcx.mk().substs(&substs);
     let container_id = impl_ty.container_id(tcx);
 
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);

@@ -636,7 +636,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
-        let alloc = self.mk_const_alloc(alloc);
+        let alloc = self.mk().const_alloc(alloc);
         self.create_memory_alloc(alloc)
     }
 
@@ -1204,7 +1204,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk().imm_ref(
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
+                .subst(self, self.mk().substs(&[self.lifetimes.re_static.into()])),
         )
     }
 
@@ -2472,7 +2472,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
-        self.mk_bound_variable_kinds(
+        self.mk().bound_variable_kinds(
             &self
                 .late_bound_vars_map(id.owner)
                 .and_then(|map| map.get(&id.local_id).cloned())

@@ -47,7 +47,7 @@ impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_canonical_var_infos(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk().canonical_var_infos(v))
     }
 }
 

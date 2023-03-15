@@ -78,7 +78,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let opaque_types = self.infcx.clone_opaque_types_for_query_response();
         Ok(self
             .tcx()
-            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
+            .mk()
+            .external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
     }
 
     /// After calling a canonical query, we apply the constraints returned

@@ -487,7 +487,7 @@ pub(super) fn response_no_constraints<'tcx>(
             var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
-            external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
+            external_constraints: tcx.mk().external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
     })

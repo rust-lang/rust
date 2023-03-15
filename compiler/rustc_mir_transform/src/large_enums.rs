@@ -114,7 +114,7 @@ impl EnumSizeOpt {
             tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
             Mutability::Not,
         );
-        let alloc = tcx.create_memory_alloc(tcx.mk_const_alloc(alloc));
+        let alloc = tcx.create_memory_alloc(tcx.mk().const_alloc(alloc));
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -203,7 +203,8 @@ impl EnumSizeOpt {
                             Rvalue::Use(Operand::Copy(Place {
                                 local: size_array_local,
                                 projection: tcx
-                                    .mk_place_elems(&[PlaceElem::Index(discr_cast_place.local)]),
+                                    .mk()
+                                    .place_elems(&[PlaceElem::Index(discr_cast_place.local)]),
                             })),
                         ))),
                     };

@@ -137,7 +137,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 
-    let bound_vars = tcx.mk_bound_variable_kinds(&[
+    let bound_vars = tcx.mk().bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BrAnon(0, None)),
         ty::BoundVariableKind::Region(ty::BrEnv),
     ]);
@@ -376,7 +376,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     1,
                     vec![tcx.mk().imm_ref(tcx.mk().re_late_bound(ty::INNERMOST, br), param(0))],
-                    tcx.mk().projection(discriminant_def_id, tcx.mk_substs(&[param(0).into()])),
+                    tcx.mk().projection(discriminant_def_id, tcx.mk().substs(&[param(0).into()])),
                 )
             }
 
