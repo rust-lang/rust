@@ -771,6 +771,12 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         .or_else(|| cache.external_paths.get(&did))
         else { return String::new() };
     let mut buf = Buffer::new();
+    let fqp = if *shortty == ItemType::Primitive {
+        // primitives are documented in a crate, but not actually part of it
+        &fqp[fqp.len() - 1..]
+    } else {
+        &fqp
+    };
     if let &Some(UrlFragment::Item(id)) = fragment {
         write!(buf, "{} ", cx.tcx().def_descr(id));
         for component in fqp {
