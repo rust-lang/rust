@@ -10,7 +10,7 @@ git fetch
 git checkout -- .
 git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
-git -c user.name=Dummy -c user.email=dummy@example.com am ../patches/*-sysroot-*.patch
+git -c user.name=Dummy -c user.email=dummy@example.com am ../patches/*-stdlib-*.patch
 
 git apply - <<EOF
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
@@ -36,7 +36,7 @@ changelog-seen = 2
 ninja = false
 
 [build]
-rustc = "$(pwd)/../dist/rustc-clif"
+rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true

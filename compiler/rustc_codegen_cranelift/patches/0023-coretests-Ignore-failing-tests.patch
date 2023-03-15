@@ -10,10 +10,10 @@ Subject: [PATCH] [core] Ignore failing tests
  library/core/tests/time.rs       |  1 +
  4 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/library/core/tests/array.rs b/library/core/tests/array.rs
+diff --git a/array.rs b/array.rs
 index 4bc44e9..8e3c7a4 100644
---- a/library/core/tests/array.rs
-+++ b/library/core/tests/array.rs
+--- a/array.rs
++++ b/array.rs
 @@ -242,6 +242,7 @@ fn iterator_drops() {
      assert_eq!(i.get(), 5);
  }
@@ -46,10 +46,10 @@ index 4bc44e9..8e3c7a4 100644
  
  #[test]
  fn cell_allows_array_cycle() {
-diff --git a/library/core/tests/atomic.rs b/library/core/tests/atomic.rs
+diff --git a/atomic.rs b/atomic.rs
 index 13b12db..96fe4b9 100644
---- a/library/core/tests/atomic.rs
-+++ b/library/core/tests/atomic.rs
+--- a/atomic.rs
++++ b/atomic.rs
 @@ -185,6 +185,7 @@ fn ptr_bitops() {
  }
  
