@@ -258,7 +258,6 @@ LL |   foo!(1);
    |   -------
    |   |    |
    |   |    unexpected argument of type `{integer}`
-   |   |    help: remove the extra argument
    |   in this macro invocation
    |
 note: function defined here

@@ -1,0 +1,783 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:23:16
+   |
+LL |         x_u8 > x_u16;
+   |         ----   ^^^^^ expected `u8`, found `u16`
+   |         |
+   |         expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `u16`, matching the type of `x_u16`
+   |
+LL |         u16::from(x_u8) > x_u16;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:25:16
+   |
+LL |         x_u8 > x_u32;
+   |         ----   ^^^^^ expected `u8`, found `u32`
+   |         |
+   |         expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `u32`, matching the type of `x_u32`
+   |
+LL |         u32::from(x_u8) > x_u32;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:27:16
+   |
+LL |         x_u8 > x_u64;
+   |         ----   ^^^^^ expected `u8`, found `u64`
+   |         |
+   |         expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `u64`, matching the type of `x_u64`
+   |
+LL |         u64::from(x_u8) > x_u64;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:29:16
+   |
+LL |         x_u8 > x_u128;
+   |         ----   ^^^^^^ expected `u8`, found `u128`
+   |         |
+   |         expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `u128`, matching the type of `x_u128`
+   |
+LL |         u128::from(x_u8) > x_u128;
+   |         +++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:31:16
+   |
+LL |         x_u8 > x_usize;
+   |         ----   ^^^^^^^ expected `u8`, found `usize`
+   |         |
+   |         expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `usize`, matching the type of `x_usize`
+   |
+LL |         usize::from(x_u8) > x_usize;
+   |         ++++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:34:17
+   |
+LL |         x_u16 > x_u8;
+   |         -----   ^^^^ expected `u16`, found `u8`
+   |         |
+   |         expected because this is `u16`
+   |
+help: you can convert a `u8` to a `u16`
+   |
+LL |         x_u16 > x_u8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:36:17
+   |
+LL |         x_u16 > x_u32;
+   |         -----   ^^^^^ expected `u16`, found `u32`
+   |         |
+   |         expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `u32`, matching the type of `x_u32`
+   |
+LL |         u32::from(x_u16) > x_u32;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:38:17
+   |
+LL |         x_u16 > x_u64;
+   |         -----   ^^^^^ expected `u16`, found `u64`
+   |         |
+   |         expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `u64`, matching the type of `x_u64`
+   |
+LL |         u64::from(x_u16) > x_u64;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:40:17
+   |
+LL |         x_u16 > x_u128;
+   |         -----   ^^^^^^ expected `u16`, found `u128`
+   |         |
+   |         expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `u128`, matching the type of `x_u128`
+   |
+LL |         u128::from(x_u16) > x_u128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:42:17
+   |
+LL |         x_u16 > x_usize;
+   |         -----   ^^^^^^^ expected `u16`, found `usize`
+   |         |
+   |         expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `usize`, matching the type of `x_usize`
+   |
+LL |         usize::from(x_u16) > x_usize;
+   |         ++++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:45:17
+   |
+LL |         x_u32 > x_u8;
+   |         -----   ^^^^ expected `u32`, found `u8`
+   |         |
+   |         expected because this is `u32`
+   |
+help: you can convert a `u8` to a `u32`
+   |
+LL |         x_u32 > x_u8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:47:17
+   |
+LL |         x_u32 > x_u16;
+   |         -----   ^^^^^ expected `u32`, found `u16`
+   |         |
+   |         expected because this is `u32`
+   |
+help: you can convert a `u16` to a `u32`
+   |
+LL |         x_u32 > x_u16.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:49:17
+   |
+LL |         x_u32 > x_u64;
+   |         -----   ^^^^^ expected `u32`, found `u64`
+   |         |
+   |         expected because this is `u32`
+   |
+help: you can convert `x_u32` from `u32` to `u64`, matching the type of `x_u64`
+   |
+LL |         u64::from(x_u32) > x_u64;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:51:17
+   |
+LL |         x_u32 > x_u128;
+   |         -----   ^^^^^^ expected `u32`, found `u128`
+   |         |
+   |         expected because this is `u32`
+   |
+help: you can convert `x_u32` from `u32` to `u128`, matching the type of `x_u128`
+   |
+LL |         u128::from(x_u32) > x_u128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:53:17
+   |
+LL |         x_u32 > x_usize;
+   |         -----   ^^^^^^^ expected `u32`, found `usize`
+   |         |
+   |         expected because this is `u32`
+   |
+help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |         x_u32 > x_usize.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:56:17
+   |
+LL |         x_u64 > x_u8;
+   |         -----   ^^^^ expected `u64`, found `u8`
+   |         |
+   |         expected because this is `u64`
+   |
+help: you can convert a `u8` to a `u64`
+   |
+LL |         x_u64 > x_u8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:58:17
+   |
+LL |         x_u64 > x_u16;
+   |         -----   ^^^^^ expected `u64`, found `u16`
+   |         |
+   |         expected because this is `u64`
+   |
+help: you can convert a `u16` to a `u64`
+   |
+LL |         x_u64 > x_u16.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:60:17
+   |
+LL |         x_u64 > x_u32;
+   |         -----   ^^^^^ expected `u64`, found `u32`
+   |         |
+   |         expected because this is `u64`
+   |
+help: you can convert a `u32` to a `u64`
+   |
+LL |         x_u64 > x_u32.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:62:17
+   |
+LL |         x_u64 > x_u128;
+   |         -----   ^^^^^^ expected `u64`, found `u128`
+   |         |
+   |         expected because this is `u64`
+   |
+help: you can convert `x_u64` from `u64` to `u128`, matching the type of `x_u128`
+   |
+LL |         u128::from(x_u64) > x_u128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:64:17
+   |
+LL |         x_u64 > x_usize;
+   |         -----   ^^^^^^^ expected `u64`, found `usize`
+   |         |
+   |         expected because this is `u64`
+   |
+help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |         x_u64 > x_usize.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:67:18
+   |
+LL |         x_u128 > x_u8;
+   |         ------   ^^^^ expected `u128`, found `u8`
+   |         |
+   |         expected because this is `u128`
+   |
+help: you can convert a `u8` to a `u128`
+   |
+LL |         x_u128 > x_u8.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:69:18
+   |
+LL |         x_u128 > x_u16;
+   |         ------   ^^^^^ expected `u128`, found `u16`
+   |         |
+   |         expected because this is `u128`
+   |
+help: you can convert a `u16` to a `u128`
+   |
+LL |         x_u128 > x_u16.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:71:18
+   |
+LL |         x_u128 > x_u32;
+   |         ------   ^^^^^ expected `u128`, found `u32`
+   |         |
+   |         expected because this is `u128`
+   |
+help: you can convert a `u32` to a `u128`
+   |
+LL |         x_u128 > x_u32.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:73:18
+   |
+LL |         x_u128 > x_u64;
+   |         ------   ^^^^^ expected `u128`, found `u64`
+   |         |
+   |         expected because this is `u128`
+   |
+help: you can convert a `u64` to a `u128`
+   |
+LL |         x_u128 > x_u64.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:75:18
+   |
+LL |         x_u128 > x_usize;
+   |         ------   ^^^^^^^ expected `u128`, found `usize`
+   |         |
+   |         expected because this is `u128`
+   |
+help: you can convert a `usize` to a `u128` and panic if the converted value doesn't fit
+   |
+LL |         x_u128 > x_usize.try_into().unwrap();
+   |                         ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:78:19
+   |
+LL |         x_usize > x_u8;
+   |         -------   ^^^^ expected `usize`, found `u8`
+   |         |
+   |         expected because this is `usize`
+   |
+help: you can convert a `u8` to a `usize`
+   |
+LL |         x_usize > x_u8.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:80:19
+   |
+LL |         x_usize > x_u16;
+   |         -------   ^^^^^ expected `usize`, found `u16`
+   |         |
+   |         expected because this is `usize`
+   |
+help: you can convert a `u16` to a `usize`
+   |
+LL |         x_usize > x_u16.into();
+   |                        +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:82:19
+   |
+LL |         x_usize > x_u32;
+   |         -------   ^^^^^ expected `usize`, found `u32`
+   |         |
+   |         expected because this is `usize`
+   |
+help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |         x_usize > x_u32.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:84:19
+   |
+LL |         x_usize > x_u64;
+   |         -------   ^^^^^ expected `usize`, found `u64`
+   |         |
+   |         expected because this is `usize`
+   |
+help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |         x_usize > x_u64.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:86:19
+   |
+LL |         x_usize > x_u128;
+   |         -------   ^^^^^^ expected `usize`, found `u128`
+   |         |
+   |         expected because this is `usize`
+   |
+help: you can convert a `u128` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |         x_usize > x_u128.try_into().unwrap();
+   |                         ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:92:16
+   |
+LL |         x_i8 > x_i16;
+   |         ----   ^^^^^ expected `i8`, found `i16`
+   |         |
+   |         expected because this is `i8`
+   |
+help: you can convert `x_i8` from `i8` to `i16`, matching the type of `x_i16`
+   |
+LL |         i16::from(x_i8) > x_i16;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:94:16
+   |
+LL |         x_i8 > x_i32;
+   |         ----   ^^^^^ expected `i8`, found `i32`
+   |         |
+   |         expected because this is `i8`
+   |
+help: you can convert `x_i8` from `i8` to `i32`, matching the type of `x_i32`
+   |
+LL |         i32::from(x_i8) > x_i32;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:96:16
+   |
+LL |         x_i8 > x_i64;
+   |         ----   ^^^^^ expected `i8`, found `i64`
+   |         |
+   |         expected because this is `i8`
+   |
+help: you can convert `x_i8` from `i8` to `i64`, matching the type of `x_i64`
+   |
+LL |         i64::from(x_i8) > x_i64;
+   |         ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:98:16
+   |
+LL |         x_i8 > x_i128;
+   |         ----   ^^^^^^ expected `i8`, found `i128`
+   |         |
+   |         expected because this is `i8`
+   |
+help: you can convert `x_i8` from `i8` to `i128`, matching the type of `x_i128`
+   |
+LL |         i128::from(x_i8) > x_i128;
+   |         +++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:100:16
+   |
+LL |         x_i8 > x_isize;
+   |         ----   ^^^^^^^ expected `i8`, found `isize`
+   |         |
+   |         expected because this is `i8`
+   |
+help: you can convert `x_i8` from `i8` to `isize`, matching the type of `x_isize`
+   |
+LL |         isize::from(x_i8) > x_isize;
+   |         ++++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:103:17
+   |
+LL |         x_i16 > x_i8;
+   |         -----   ^^^^ expected `i16`, found `i8`
+   |         |
+   |         expected because this is `i16`
+   |
+help: you can convert an `i8` to an `i16`
+   |
+LL |         x_i16 > x_i8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:105:17
+   |
+LL |         x_i16 > x_i32;
+   |         -----   ^^^^^ expected `i16`, found `i32`
+   |         |
+   |         expected because this is `i16`
+   |
+help: you can convert `x_i16` from `i16` to `i32`, matching the type of `x_i32`
+   |
+LL |         i32::from(x_i16) > x_i32;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:107:17
+   |
+LL |         x_i16 > x_i64;
+   |         -----   ^^^^^ expected `i16`, found `i64`
+   |         |
+   |         expected because this is `i16`
+   |
+help: you can convert `x_i16` from `i16` to `i64`, matching the type of `x_i64`
+   |
+LL |         i64::from(x_i16) > x_i64;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:109:17
+   |
+LL |         x_i16 > x_i128;
+   |         -----   ^^^^^^ expected `i16`, found `i128`
+   |         |
+   |         expected because this is `i16`
+   |
+help: you can convert `x_i16` from `i16` to `i128`, matching the type of `x_i128`
+   |
+LL |         i128::from(x_i16) > x_i128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:111:17
+   |
+LL |         x_i16 > x_isize;
+   |         -----   ^^^^^^^ expected `i16`, found `isize`
+   |         |
+   |         expected because this is `i16`
+   |
+help: you can convert `x_i16` from `i16` to `isize`, matching the type of `x_isize`
+   |
+LL |         isize::from(x_i16) > x_isize;
+   |         ++++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:114:17
+   |
+LL |         x_i32 > x_i8;
+   |         -----   ^^^^ expected `i32`, found `i8`
+   |         |
+   |         expected because this is `i32`
+   |
+help: you can convert an `i8` to an `i32`
+   |
+LL |         x_i32 > x_i8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:116:17
+   |
+LL |         x_i32 > x_i16;
+   |         -----   ^^^^^ expected `i32`, found `i16`
+   |         |
+   |         expected because this is `i32`
+   |
+help: you can convert an `i16` to an `i32`
+   |
+LL |         x_i32 > x_i16.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:118:17
+   |
+LL |         x_i32 > x_i64;
+   |         -----   ^^^^^ expected `i32`, found `i64`
+   |         |
+   |         expected because this is `i32`
+   |
+help: you can convert `x_i32` from `i32` to `i64`, matching the type of `x_i64`
+   |
+LL |         i64::from(x_i32) > x_i64;
+   |         ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:120:17
+   |
+LL |         x_i32 > x_i128;
+   |         -----   ^^^^^^ expected `i32`, found `i128`
+   |         |
+   |         expected because this is `i32`
+   |
+help: you can convert `x_i32` from `i32` to `i128`, matching the type of `x_i128`
+   |
+LL |         i128::from(x_i32) > x_i128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:122:17
+   |
+LL |         x_i32 > x_isize;
+   |         -----   ^^^^^^^ expected `i32`, found `isize`
+   |         |
+   |         expected because this is `i32`
+   |
+help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |         x_i32 > x_isize.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:125:17
+   |
+LL |         x_i64 > x_i8;
+   |         -----   ^^^^ expected `i64`, found `i8`
+   |         |
+   |         expected because this is `i64`
+   |
+help: you can convert an `i8` to an `i64`
+   |
+LL |         x_i64 > x_i8.into();
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:127:17
+   |
+LL |         x_i64 > x_i16;
+   |         -----   ^^^^^ expected `i64`, found `i16`
+   |         |
+   |         expected because this is `i64`
+   |
+help: you can convert an `i16` to an `i64`
+   |
+LL |         x_i64 > x_i16.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:129:17
+   |
+LL |         x_i64 > x_i32;
+   |         -----   ^^^^^ expected `i64`, found `i32`
+   |         |
+   |         expected because this is `i64`
+   |
+help: you can convert an `i32` to an `i64`
+   |
+LL |         x_i64 > x_i32.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:131:17
+   |
+LL |         x_i64 > x_i128;
+   |         -----   ^^^^^^ expected `i64`, found `i128`
+   |         |
+   |         expected because this is `i64`
+   |
+help: you can convert `x_i64` from `i64` to `i128`, matching the type of `x_i128`
+   |
+LL |         i128::from(x_i64) > x_i128;
+   |         +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:133:17
+   |
+LL |         x_i64 > x_isize;
+   |         -----   ^^^^^^^ expected `i64`, found `isize`
+   |         |
+   |         expected because this is `i64`
+   |
+help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
+   |
+LL |         x_i64 > x_isize.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:136:18
+   |
+LL |         x_i128 > x_i8;
+   |         ------   ^^^^ expected `i128`, found `i8`
+   |         |
+   |         expected because this is `i128`
+   |
+help: you can convert an `i8` to an `i128`
+   |
+LL |         x_i128 > x_i8.into();
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:138:18
+   |
+LL |         x_i128 > x_i16;
+   |         ------   ^^^^^ expected `i128`, found `i16`
+   |         |
+   |         expected because this is `i128`
+   |
+help: you can convert an `i16` to an `i128`
+   |
+LL |         x_i128 > x_i16.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:140:18
+   |
+LL |         x_i128 > x_i32;
+   |         ------   ^^^^^ expected `i128`, found `i32`
+   |         |
+   |         expected because this is `i128`
+   |
+help: you can convert an `i32` to an `i128`
+   |
+LL |         x_i128 > x_i32.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:142:18
+   |
+LL |         x_i128 > x_i64;
+   |         ------   ^^^^^ expected `i128`, found `i64`
+   |         |
+   |         expected because this is `i128`
+   |
+help: you can convert an `i64` to an `i128`
+   |
+LL |         x_i128 > x_i64.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:144:18
+   |
+LL |         x_i128 > x_isize;
+   |         ------   ^^^^^^^ expected `i128`, found `isize`
+   |         |
+   |         expected because this is `i128`
+   |
+help: you can convert an `isize` to an `i128` and panic if the converted value doesn't fit
+   |
+LL |         x_i128 > x_isize.try_into().unwrap();
+   |                         ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:147:19
+   |
+LL |         x_isize > x_i8;
+   |         -------   ^^^^ expected `isize`, found `i8`
+   |         |
+   |         expected because this is `isize`
+   |
+help: you can convert an `i8` to an `isize`
+   |
+LL |         x_isize > x_i8.into();
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:149:19
+   |
+LL |         x_isize > x_i16;
+   |         -------   ^^^^^ expected `isize`, found `i16`
+   |         |
+   |         expected because this is `isize`
+   |
+help: you can convert an `i16` to an `isize`
+   |
+LL |         x_isize > x_i16.into();
+   |                        +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:151:19
+   |
+LL |         x_isize > x_i32;
+   |         -------   ^^^^^ expected `isize`, found `i32`
+   |         |
+   |         expected because this is `isize`
+   |
+help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |         x_isize > x_i32.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:153:19
+   |
+LL |         x_isize > x_i64;
+   |         -------   ^^^^^ expected `isize`, found `i64`
+   |         |
+   |         expected because this is `isize`
+   |
+help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |         x_isize > x_i64.try_into().unwrap();
+   |                        ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-binop-2.rs:155:19
+   |
+LL |         x_isize > x_i128;
+   |         -------   ^^^^^^ expected `isize`, found `i128`
+   |         |
+   |         expected because this is `isize`
+   |
+help: you can convert an `i128` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |         x_isize > x_i128.try_into().unwrap();
+   |                         ++++++++++++++++++++
+
+error: aborting due to 60 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

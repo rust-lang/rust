@@ -956,7 +956,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .join(", ");
 
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
-            && obligation.cause.span.can_be_used_for_suggestions()
+            && match obligation.cause.span.peel_ctxt().ctxt().outer_expn_data().kind {
+                ExpnKind::Root
+                | ExpnKind::AstPass(_)
+                | ExpnKind::Desugaring(_)
+                | ExpnKind::Inlined => true,
+                // When a macro is involved, we don't want to provide a structured suggestion.
+                ExpnKind::Macro(..) => false,
+            }
         {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
@@ -1242,7 +1249,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             obligation.cause.code()
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
-            span.ctxt().outer_expn_data().kind
+            span.peel_ctxt().ctxt().outer_expn_data().kind
         {
             obligation.cause.code()
         } else {
@@ -1317,7 +1324,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // }
                     // ```
                     if !matches!(
-                        span.ctxt().outer_expn_data().kind,
+                        span.peel_ctxt().ctxt().outer_expn_data().kind,
                         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
                     ) {
                         return false;
