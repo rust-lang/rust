@@ -338,6 +338,7 @@ pub struct InferCtxt<'tcx> {
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
+    Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
     Sigs(ExpectedFound<ty::FnSig<'tcx>>),

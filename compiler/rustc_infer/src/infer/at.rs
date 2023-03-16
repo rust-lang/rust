@@ -84,7 +84,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
 pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -233,7 +232,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let trace = ToTrace::to_trace(self.infcx.tcx, self.cause, a_is_expected, a, b);
+        let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
         Trace { at: self, trace, a_is_expected }
     }
 }
@@ -306,7 +305,6 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -314,10 +312,10 @@ impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
     ) -> TypeTrace<'tcx> {
         match (a, b) {
             (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, trait_ref_a, trait_ref_b)
+                ToTrace::to_trace(cause, a_is_expected, trait_ref_a, trait_ref_b)
             }
             (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, ty_a, ty_b)
+                ToTrace::to_trace(cause, a_is_expected, ty_a, ty_b)
             }
             (ImplSubject::Trait(_), ImplSubject::Inherent(_))
             | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
@@ -329,7 +327,6 @@ impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -344,7 +341,6 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -356,7 +352,6 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -371,7 +366,6 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -399,7 +393,6 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -411,7 +404,6 @@ impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -426,7 +418,6 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -441,24 +432,17 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        let a_ty = tcx.mk_projection(a.def_id, a.substs);
-        let b_ty = tcx.mk_projection(b.def_id, b.substs);
-        TypeTrace {
-            cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),
-        }
+        TypeTrace { cause: cause.clone(), values: Aliases(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
