@@ -1,13 +1,19 @@
 use crate::{fmt_list, UnicodeData};
 use std::{
+    char,
     collections::BTreeMap,
     fmt::{self, Write},
 };
 
+const INDEX_MASK: u32 = 1 << 22;
+
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> String {
     let mut file = String::new();
 
+    write!(file, "const INDEX_MASK: u32 = {};", INDEX_MASK).unwrap();
+    file.push_str("\n\n");
     file.push_str(HEADER.trim_start());
+    file.push('\n');
     file.push_str(&generate_tables("LOWER", &data.to_lower));
     file.push_str("\n\n");
     file.push_str(&generate_tables("UPPER", &data.to_upper));
@@ -15,44 +21,42 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> String {
 }
 
 fn generate_tables(case: &str, data: &BTreeMap<u32, (u32, u32, u32)>) -> String {
-    let (single, multi): (Vec<_>, Vec<_>) = data
-        .iter()
-        .map(to_mapping)
-        .filter(|(k, _)| !k.0.is_ascii())
-        .partition(|(_, [_, s, t])| s.0 == '\0' && t.0 == '\0');
+    let mut mappings = Vec::with_capacity(data.len());
+    let mut multis = Vec::new();
+
+    for (&key, &(a, b, c)) in data.iter() {
+        let key = char::from_u32(key).unwrap();
+
+        if key.is_ascii() {
+            continue;
+        }
+
+        let value = if b == 0 && c == 0 {
+            a
+        } else {
+            multis.push([
+                CharEscape(char::from_u32(a).unwrap()),
+                CharEscape(char::from_u32(b).unwrap()),
+                CharEscape(char::from_u32(c).unwrap()),
+            ]);
+
+            INDEX_MASK | (u32::try_from(multis.len()).unwrap() - 1)
+        };
+
+        mappings.push((CharEscape(key), value));
+    }
 
     let mut tables = String::new();
 
-    write!(
-        tables,
-        "static {}CASE_TABLE_SINGLE: &[(char, char)] = &[{}];",
-        case,
-        fmt_list(single.into_iter().map(|(k, [v, _, _])| (k, v)))
-    )
-    .unwrap();
+    write!(tables, "static {}CASE_TABLE: &[(char, u32)] = &[{}];", case, fmt_list(mappings))
+        .unwrap();
 
     tables.push_str("\n\n");
 
-    write!(
-        tables,
-        "static {}CASE_TABLE_MULTI: &[(char, [char; 3])] = &[{}];",
-        case,
-        fmt_list(multi)
-    )
-    .unwrap();
+    write!(tables, "static {}CASE_TABLE_MULTI: &[[char; 3]] = &[{}];", case, fmt_list(multis))
+        .unwrap();
 
     tables
-}
-
-fn to_mapping((key, (a, b, c)): (&u32, &(u32, u32, u32))) -> (CharEscape, [CharEscape; 3]) {
-    (
-        CharEscape(std::char::from_u32(*key).unwrap()),
-        [
-            CharEscape(std::char::from_u32(*a).unwrap()),
-            CharEscape(std::char::from_u32(*b).unwrap()),
-            CharEscape(std::char::from_u32(*c).unwrap()),
-        ],
-    )
 }
 
 struct CharEscape(char);
@@ -68,10 +72,16 @@ pub fn to_lower(c: char) -> [char; 3] {
     if c.is_ascii() {
         [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
     } else {
-        match bsearch_case_tables(c, LOWERCASE_TABLE_SINGLE, LOWERCASE_TABLE_MULTI) {
-            Some(replacement) => replacement,
-            None => [c, '\0', '\0'],
-        }
+        LOWERCASE_TABLE
+            .binary_search_by(|&(key, _)| key.cmp(&c))
+            .map(|i| {
+                let u = LOWERCASE_TABLE[i].1;
+                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
+                    // SAFETY: Index comes from statically generated table
+                    unsafe { *LOWERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
+                })
+            })
+            .unwrap_or([c, '\0', '\0'])
     }
 }
 
@@ -79,21 +89,16 @@ pub fn to_upper(c: char) -> [char; 3] {
     if c.is_ascii() {
         [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
     } else {
-        match bsearch_case_tables(c, UPPERCASE_TABLE_SINGLE, UPPERCASE_TABLE_MULTI) {
-            Some(replacement) => replacement,
-            None => [c, '\0', '\0'],
-        }
-    }
-}
-
-fn bsearch_case_tables(
-    c: char,
-    single: &[(char, char)],
-    multi: &[(char, [char; 3])],
-) -> Option<[char; 3]> {
-    match single.binary_search_by(|&(key, _)| key.cmp(&c)) {
-        Ok(i) => Some([single[i].1, '\0', '\0']),
-        Err(_) => multi.binary_search_by(|&(key, _)| key.cmp(&c)).map(|i| multi[i].1).ok(),
+        UPPERCASE_TABLE
+            .binary_search_by(|&(key, _)| key.cmp(&c))
+            .map(|i| {
+                let u = UPPERCASE_TABLE[i].1;
+                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
+                    // SAFETY: Index comes from statically generated table
+                    unsafe { *UPPERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
+                })
+            })
+            .unwrap_or([c, '\0', '\0'])
     }
 }
 ";
