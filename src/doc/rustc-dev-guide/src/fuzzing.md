@@ -110,8 +110,8 @@ these tools, post both the complete and minimized test cases. Generally,
 When fuzzing rustc, you may want to avoid generating code, since this is mostly
 done by LLVM. Try `--emit=mir` instead.
 
-A variety of compiler flags can uncover different issues. `-Zmir-opt=4` will
-turn on MIR optimization passes that are not run by default, potentially
+A variety of compiler flags can uncover different issues. `-Zmir-opt-level=4`
+will turn on MIR optimization passes that are not run by default, potentially
 uncovering interesting bugs.
 
 If you're fuzzing a compiler you built, you may want to build it with `-C
