@@ -7,6 +7,7 @@ use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
+use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -344,13 +345,24 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            let normalized_preds = elaborate_predicates(
+            let elaborated_preds = elaborate_predicates(
                 tcx,
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
             )
-            .map(|o| o.predicate);
+            .map(|obligation| obligation.predicate);
+
+            // FIXME(generic_const_exprs):
+            // This deduplication is required only when generic_const_exprs is not active
+            // see #108397 for more information.
+            let mut seen_preds = PredicateSet::new(tcx);
+            let obctx = ObligationCtxt::new(infcx);
+            let deduped_preds = elaborated_preds
+                .into_iter()
+                .map(|pred| obctx.normalize(&dummy_cause, param_env, pred))
+                .filter(|normalized_pred| seen_preds.insert(*normalized_pred));
+
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates_from_iter(normalized_preds),
+                tcx.mk_predicates_from_iter(deduped_preds),
                 param_env.reveal(),
                 param_env.constness(),
             );
