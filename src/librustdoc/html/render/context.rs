@@ -352,7 +352,7 @@ impl<'tcx> Context<'tcx> {
                 },
             );
 
-            path = href.into_inner().to_string_lossy().to_string();
+            path = href.into_inner().to_string_lossy().into_owned();
 
             if let Some(c) = path.as_bytes().last() && *c != b'/' {
                 path.push('/');
