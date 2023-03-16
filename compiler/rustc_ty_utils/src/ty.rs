@@ -117,15 +117,21 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    // When computing the param_env of an RPITIT, copy param_env of the containing function. The
-    // synthesized associated type doesn't have extra predicates to assume.
-    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
-        return tcx.param_env(fn_def_id);
-    }
-
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
+
+    // When computing the param_env of an RPITIT, use predicates of the containing function,
+    // *except* for the additional assumption that the RPITIT normalizes to the trait method's
+    // default opaque type. This is needed to properly check the item bounds of the assoc
+    // type hold (`check_type_bounds`), since that method already installs a similar projection
+    // bound, so they will conflict.
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): I don't like this, we should
+    // at least be making sure that the generics in RPITITs and their parent fn don't
+    // get out of alignment, or else we do actually need to substitute these predicates.
+    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+        predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
+    }
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -160,7 +166,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
 
     let local_did = def_id.as_local();
-    let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): This isn't correct for
+    // RPITITs in const trait fn.
+    let hir_id = local_did.and_then(|def_id| tcx.opt_local_def_id_to_hir_id(def_id));
 
     // FIXME(consts): This is not exactly in line with the constness query.
     let constness = match hir_id {

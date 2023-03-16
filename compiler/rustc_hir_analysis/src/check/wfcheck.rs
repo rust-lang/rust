@@ -1545,21 +1545,27 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
     if let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id())
         && assoc_item.container == ty::AssocItemContainer::TraitContainer
     {
+        // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
+        // strategy, we can't just call `check_associated_item` on the new RPITITs,
+        // because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
+        // That's because we need to check that the bounds of the RPITIT hold using
+        // the special substs that we create during opaque type lowering, otherwise we're
+        // getting a bunch of early bound and free regions mixed up... Haven't looked too
+        // deep into this, though.
         for arg in fn_output.walk() {
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                && let ty::Alias(ty::Opaque, proj) = ty.kind()
-                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) we should just check
-                // `tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder`. Right now
-                // `check_associated_type_bounds` is not called for RPITITs synthesized as
-                // associated types. See `check_mod_type_wf` to see how synthesized associated
-                // types are missed due to iterating over HIR.
-                && tcx.is_impl_trait_in_trait(proj.def_id)
-                && tcx.impl_trait_in_trait_parent_fn(proj.def_id) == fn_def_id.to_def_id()
+                // RPITITs are always eagerly normalized into opaques, so always look for an
+                // opaque here.
+                && let ty::Alias(ty::Opaque, opaque_ty) = ty.kind()
+                && let Some(opaque_def_id) = opaque_ty.def_id.as_local()
+                && let opaque = tcx.hir().expect_item(opaque_def_id).expect_opaque_ty()
+                && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
+                && source == fn_def_id
             {
-                let span = tcx.def_span(proj.def_id);
-                let bounds = wfcx.tcx().explicit_item_bounds(proj.def_id);
+                let span = tcx.def_span(opaque_ty.def_id);
+                let bounds = wfcx.tcx().explicit_item_bounds(opaque_ty.def_id);
                 let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
-                    let bound = ty::EarlyBinder(bound).subst(tcx, proj.substs);
+                    let bound = ty::EarlyBinder(bound).subst(tcx, opaque_ty.substs);
                     let normalized_bound = wfcx.normalize(span, None, bound);
                     traits::wf::predicate_obligations(
                         wfcx.infcx,
