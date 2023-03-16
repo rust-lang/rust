@@ -1366,10 +1366,6 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
-            hir::ExprKind::Box(expr) => {
-                self.word_space("Box::new");
-                self.print_call_post(std::slice::from_ref(expr));
-            }
             hir::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
