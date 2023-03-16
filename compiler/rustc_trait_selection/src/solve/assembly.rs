@@ -224,7 +224,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
                 source: CandidateSource::BuiltinImpl,
-                result: self.make_canonical_response(Certainty::AMBIGUOUS).unwrap(),
+                result: self
+                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    .unwrap(),
             }];
         }
 
@@ -261,8 +263,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let &ty::Alias(ty::Projection, projection_ty) = goal.predicate.self_ty().kind() else {
             return
         };
-        self.probe(|this| {
-            let normalized_ty = this.next_ty_infer();
+
+        self.probe(|ecx| {
+            let normalized_ty = ecx.next_ty_infer();
             let normalizes_to_goal = goal.with(
                 tcx,
                 ty::Binder::dummy(ty::ProjectionPredicate {
@@ -270,28 +273,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     term: normalized_ty.into(),
                 }),
             );
-            let normalization_certainty = match this.evaluate_goal(normalizes_to_goal) {
-                Ok((_, certainty)) => certainty,
-                Err(NoSolution) => return,
-            };
-            let normalized_ty = this.resolve_vars_if_possible(normalized_ty);
+            ecx.add_goal(normalizes_to_goal);
+            if let Ok(_) = ecx.try_evaluate_added_goals() {
+                let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
 
-            // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
-            // This doesn't work as long as we use `CandidateSource` in winnowing.
-            let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            let normalized_candidates = this.assemble_and_evaluate_candidates(goal);
-            for mut normalized_candidate in normalized_candidates {
-                normalized_candidate.result =
-                    normalized_candidate.result.unchecked_map(|mut response| {
-                        // FIXME: This currently hides overflow in the normalization step of the self type
-                        // which is probably wrong. Maybe `unify_and` should actually keep overflow as
-                        // we treat it as non-fatal anyways.
-                        response.certainty = response.certainty.unify_and(normalization_certainty);
-                        response
-                    });
-                candidates.push(normalized_candidate);
+                // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
+                // This doesn't work as long as we use `CandidateSource` in winnowing.
+                let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
+                candidates.extend(ecx.assemble_and_evaluate_candidates(goal));
             }
-        })
+        });
     }
 
     fn assemble_impl_candidates<G: GoalKind<'tcx>>(
@@ -516,7 +507,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 } else {
                     Certainty::AMBIGUOUS
                 };
-                return self.make_canonical_response(certainty);
+                return self.evaluate_added_goals_and_make_canonical_response(certainty);
             }
         }
 
@@ -538,14 +529,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    fn discard_reservation_impl(&self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
+    fn discard_reservation_impl(&mut self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
         if let CandidateSource::Impl(def_id) = candidate.source {
             if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
                 debug!("Selected reservation impl");
                 // We assemble all candidates inside of a probe so by
                 // making a new canonical response here our result will
                 // have no constraints.
-                candidate.result = self.make_canonical_response(Certainty::AMBIGUOUS).unwrap();
+                candidate.result = self
+                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    .unwrap();
             }
         }
 

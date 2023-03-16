@@ -45,6 +45,8 @@ mod trait_goals;
 pub use eval_ctxt::EvalCtxt;
 pub use fulfill::FulfillmentCtxt;
 
+use self::eval_ctxt::NestedGoals;
+
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
 }
@@ -69,6 +71,7 @@ pub trait InferCtxtEvalExt<'tcx> {
 }
 
 impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -81,9 +84,9 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             // Only relevant when canonicalizing the response.
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
-            in_projection_eq_hack: false,
+            nested_goals: NestedGoals::new(),
         }
-        .evaluate_goal(goal);
+        .evaluate_goal(false, goal);
 
         assert!(search_graph.is_empty());
         result
@@ -117,7 +120,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 var_values,
                 max_input_universe: canonical_goal.max_universe,
                 search_graph,
-                in_projection_eq_hack: false,
+                nested_goals: NestedGoals::new(),
             };
             ecx.compute_goal(goal)
         })
@@ -127,6 +130,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// been constrained and the certainty of the result.
     fn evaluate_goal(
         &mut self,
+        is_projection_eq_hack_goal: bool,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
@@ -149,10 +153,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // solver cycle.
         if cfg!(debug_assertions)
             && has_changed
-            && !self.in_projection_eq_hack
+            && !is_projection_eq_hack_goal
             && !self.search_graph.in_cycle()
-            && false
         {
+            debug!("rerunning goal to check result is stable");
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
             let canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
@@ -202,10 +206,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::WellFormed(arg) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })
                 }
-                ty::PredicateKind::Ambiguous => self.make_canonical_response(Certainty::AMBIGUOUS),
+                ty::PredicateKind::Ambiguous => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
                 // FIXME: implement these predicates :)
                 ty::PredicateKind::ConstEvaluatable(_) | ty::PredicateKind::ConstEquate(_, _) => {
-                    self.make_canonical_response(Certainty::Yes)
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
@@ -217,20 +223,25 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
             let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
-            let (_, certainty) = self.evaluate_goal(goal)?;
-            self.make_canonical_response(certainty)
+            // `false` is fine to use as if this were a projection goal from the hack there would not be
+            // a binder as the real projection goal that is the parent of the hack goal would have already
+            // had its binder replaced with placeholders.
+            let (_, certainty) = self.evaluate_goal(false, goal)?;
+            self.evaluate_added_goals_and_make_canonical_response(certainty)
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
         goal: Goal<'tcx, TypeOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
         self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
-        self.make_canonical_response(Certainty::Yes)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_region_outlives_goal(
         &mut self,
         goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
@@ -239,9 +250,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             &ObligationCause::dummy(),
             ty::Binder::dummy(goal.predicate),
         );
-        self.make_canonical_response(Certainty::Yes)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_coerce_goal(
         &mut self,
         goal: Goal<'tcx, CoercePredicate<'tcx>>,
@@ -256,6 +268,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_subtype_goal(
         &mut self,
         goal: Goal<'tcx, SubtypePredicate<'tcx>>,
@@ -263,18 +276,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
             // FIXME: Do we want to register a subtype relation between these vars?
             // That won't actually reflect in the query response, so it seems moot.
-            self.make_canonical_response(Certainty::AMBIGUOUS)
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
             let InferOk { value: (), obligations } = self
                 .infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .sub(DefineOpaqueTypes::No, goal.predicate.a, goal.predicate.b)?;
-            self.evaluate_all_and_make_canonical_response(
-                obligations.into_iter().map(|pred| pred.into()).collect(),
-            )
+            self.add_goals(obligations.into_iter().map(|pred| pred.into()));
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_closure_kind_goal(
         &mut self,
         goal: Goal<'tcx, (DefId, ty::SubstsRef<'tcx>, ty::ClosureKind)>,
@@ -283,23 +296,25 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let found_kind = substs.as_closure().kind_ty().to_opt_closure_kind();
 
         let Some(found_kind) = found_kind else {
-            return self.make_canonical_response(Certainty::AMBIGUOUS);
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         };
         if found_kind.extends(expected_kind) {
-            self.make_canonical_response(Certainty::Yes)
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
         if self.tcx().check_is_object_safe(trait_def_id) {
-            self.make_canonical_response(Certainty::Yes)
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn compute_well_formed_goal(
         &mut self,
         goal: Goal<'tcx, ty::GenericArg<'tcx>>,
@@ -309,10 +324,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             goal.param_env,
             goal.predicate,
         ) {
-            Some(obligations) => self.evaluate_all_and_make_canonical_response(
-                obligations.into_iter().map(|o| o.into()).collect(),
-            ),
-            None => self.make_canonical_response(Certainty::AMBIGUOUS),
+            Some(obligations) => {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
         }
     }
 
@@ -326,14 +342,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let evaluate_normalizes_to = |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other| {
             debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
             let r = ecx.probe(|ecx| {
-                let (_, certainty) = ecx.evaluate_goal(goal.with(
+                ecx.add_goal(goal.with(
                     tcx,
                     ty::Binder::dummy(ty::ProjectionPredicate {
                         projection_ty: alias,
                         term: other,
                     }),
-                ))?;
-                ecx.make_canonical_response(certainty)
+                ));
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             });
             debug!("evaluate_normalizes_to(..) -> {:?}", r);
             r
@@ -360,10 +376,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 // Evaluate all 3 potential candidates for the alias' being equal
                 candidates.push(evaluate_normalizes_to(self, alias_lhs, goal.predicate.1));
                 candidates.push(evaluate_normalizes_to(self, alias_rhs, goal.predicate.0));
-                candidates.push(self.probe(|this| {
+                candidates.push(self.probe(|ecx| {
                     debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
-                    let nested_goals = this.eq(goal.param_env, alias_lhs, alias_rhs)?;
-                    this.evaluate_all_and_make_canonical_response(nested_goals)
+                    ecx.eq(goal.param_env, alias_lhs, alias_rhs)?;
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }));
 
                 debug!(?candidates);
@@ -379,25 +395,92 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, (ty::Const<'tcx>, Ty<'tcx>)>,
     ) -> QueryResult<'tcx> {
         let (ct, ty) = goal.predicate;
-        let nested_goals = self.eq(goal.param_env, ct.ty(), ty)?;
-        self.evaluate_all_and_make_canonical_response(nested_goals)
+        self.eq(goal.param_env, ct.ty(), ty)?;
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    // Recursively evaluates a list of goals to completion, returning the certainty
-    // of all of the goals.
-    fn evaluate_all(
-        &mut self,
-        mut goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> Result<Certainty, NoSolution> {
-        let mut new_goals = Vec::new();
-        self.repeat_while_none(
+    #[instrument(level = "debug", skip(self))]
+    fn set_projection_eq_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
+        assert!(
+            self.nested_goals.projection_eq_hack_goal.is_none(),
+            "attempted to set the projection eq hack goal when one already exists"
+        );
+        self.nested_goals.projection_eq_hack_goal = Some(goal);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        self.nested_goals.goals.push(goal);
+    }
+
+    #[instrument(level = "debug", skip(self, goals))]
+    fn add_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
+        let current_len = self.nested_goals.goals.len();
+        self.nested_goals.goals.extend(goals);
+        debug!("added_goals={:?}", &self.nested_goals.goals[current_len..]);
+    }
+
+    // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
+    // the certainty of all the goals.
+    #[instrument(level = "debug", skip(self))]
+    fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
+        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
+        let mut new_goals = NestedGoals::new();
+
+        let response = self.repeat_while_none(
             |_| Ok(Certainty::Maybe(MaybeCause::Overflow)),
             |this| {
                 let mut has_changed = Err(Certainty::Yes);
-                for goal in goals.drain(..) {
-                    let (changed, certainty) = match this.evaluate_goal(goal) {
+
+                if let Some(goal) = goals.projection_eq_hack_goal.take() {
+                    let (_, certainty) = match this.evaluate_goal(
+                        true,
+                        goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
+                    ) {
+                        Ok(r) => r,
+                        Err(NoSolution) => return Some(Err(NoSolution)),
+                    };
+
+                    if goal.predicate.projection_ty
+                        != this.resolve_vars_if_possible(goal.predicate.projection_ty)
+                    {
+                        has_changed = Ok(())
+                    }
+
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            let goal = this.resolve_vars_if_possible(goal);
+
+                            // The rhs of this `normalizes-to` must always be an unconstrained infer var as it is
+                            // the hack used by `normalizes-to` to ensure that every `normalizes-to` behaves the same
+                            // regardless of the rhs.
+                            //
+                            // However it is important not to unconditionally replace the rhs with a new infer var
+                            // as otherwise we may replace the original unconstrained infer var with a new infer var
+                            // and never propagate any constraints on the new var back to the original var.
+                            let term = this
+                                .term_is_fully_unconstrained(goal)
+                                .then_some(goal.predicate.term)
+                                .unwrap_or_else(|| {
+                                    this.next_term_infer_of_kind(goal.predicate.term)
+                                });
+                            let projection_pred = ty::ProjectionPredicate {
+                                term,
+                                projection_ty: goal.predicate.projection_ty,
+                            };
+                            new_goals.projection_eq_hack_goal =
+                                Some(goal.with(this.tcx(), projection_pred));
+
+                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                        }
+                    }
+                }
+
+                for nested_goal in goals.goals.drain(..) {
+                    let (changed, certainty) = match this.evaluate_goal(false, nested_goal) {
                         Ok(result) => result,
                         Err(NoSolution) => return Some(Err(NoSolution)),
                     };
@@ -409,32 +492,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     match certainty {
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
-                            new_goals.push(goal);
+                            new_goals.goals.push(nested_goal);
                             has_changed = has_changed.map_err(|c| c.unify_and(certainty));
                         }
                     }
                 }
 
+                mem::swap(&mut new_goals, &mut goals);
                 match has_changed {
-                    Ok(()) => {
-                        mem::swap(&mut new_goals, &mut goals);
-                        None
-                    }
+                    Ok(()) => None,
                     Err(certainty) => Some(Ok(certainty)),
                 }
             },
-        )
-    }
+        );
 
-    // Recursively evaluates a list of goals to completion, making a query response.
-    //
-    // This is just a convenient way of calling [`EvalCtxt::evaluate_all`],
-    // then [`EvalCtxt::make_canonical_response`].
-    fn evaluate_all_and_make_canonical_response(
-        &mut self,
-        goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> QueryResult<'tcx> {
-        self.evaluate_all(goals).and_then(|certainty| self.make_canonical_response(certainty))
+        self.nested_goals = goals;
+        response
     }
 
     fn try_merge_responses(
@@ -466,7 +539,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         });
         // FIXME(-Ztrait-solver=next): We should take the intersection of the constraints on all the
         // responses and use that for the constraints of this ambiguous response.
-        let response = self.make_canonical_response(certainty);
+        let response = self.evaluate_added_goals_and_make_canonical_response(certainty);
         if let Ok(response) = &response {
             assert!(response.has_no_inference_or_external_constraints());
         }

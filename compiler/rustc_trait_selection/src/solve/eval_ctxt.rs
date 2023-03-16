@@ -13,8 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
-use super::search_graph::SearchGraph;
-use super::Goal;
+use super::{search_graph::SearchGraph, Goal};
 
 pub struct EvalCtxt<'a, 'tcx> {
     // FIXME: should be private.
@@ -33,14 +32,35 @@ pub struct EvalCtxt<'a, 'tcx> {
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
-    /// This field is used by a debug assertion in [`EvalCtxt::evaluate_goal`],
-    /// see the comment in that method for more details.
-    pub in_projection_eq_hack: bool,
+    pub(super) nested_goals: NestedGoals<'tcx>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct NestedGoals<'tcx> {
+    pub(super) projection_eq_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
+    pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+}
+
+impl NestedGoals<'_> {
+    pub(super) fn new() -> Self {
+        Self { projection_eq_hack_goal: None, goals: Vec::new() }
+    }
+
+    pub(super) fn is_empty(&self) -> bool {
+        self.projection_eq_hack_goal.is_none() && self.goals.is_empty()
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn probe<T>(&mut self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {
-        self.infcx.probe(|_| f(self))
+        let mut ecx = EvalCtxt {
+            infcx: self.infcx,
+            var_values: self.var_values,
+            max_input_universe: self.max_input_universe,
+            search_graph: self.search_graph,
+            nested_goals: self.nested_goals.clone(),
+        };
+        self.infcx.probe(|_| f(&mut ecx))
     }
 
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
@@ -59,6 +79,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty,
             ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span: DUMMY_SP },
         )
+    }
+
+    /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
+    /// If `kind` is an integer inference variable this will still return a ty infer var.
+    pub(super) fn next_term_infer_of_kind(&self, kind: ty::Term<'tcx>) -> ty::Term<'tcx> {
+        match kind.unpack() {
+            ty::TermKind::Ty(_) => self.next_ty_infer().into(),
+            ty::TermKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
+        }
     }
 
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
@@ -137,6 +166,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self, param_env), ret)]
     pub(super) fn eq<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to equate");
+                NoSolution
+            })
+    }
+
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn eq_and_get_goals<T: ToTrace<'tcx>>(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         lhs: T,
