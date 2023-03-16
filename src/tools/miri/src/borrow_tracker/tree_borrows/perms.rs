@@ -1,6 +1,9 @@
 use std::cmp::{Ordering, PartialOrd};
 use std::fmt;
 
+use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
+use crate::borrow_tracker::AccessKind;
+
 /// The activation states of a pointer
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PermissionPriv {
@@ -92,6 +95,21 @@ mod transition {
             _ => Disabled,
         })
     }
+
+    /// Dispatch handler depending on the kind of access and its position.
+    pub(super) fn perform_access(
+        kind: AccessKind,
+        rel_pos: AccessRelatedness,
+        child: PermissionPriv,
+        protected: bool,
+    ) -> Option<PermissionPriv> {
+        match (kind, rel_pos.is_foreign()) {
+            (AccessKind::Write, true) => foreign_write(child, protected),
+            (AccessKind::Read, true) => foreign_read(child, protected),
+            (AccessKind::Write, false) => child_write(child, protected),
+            (AccessKind::Read, false) => child_read(child, protected),
+        }
+    }
 }
 
 impl PermissionPriv {
@@ -114,6 +132,81 @@ impl PermissionPriv {
             (Active, Frozen) => false,
             _ => unreachable!("Transition from {self:?} to {new:?} should never be possible"),
         }
+    }
+}
+
+/// Public interface to the state machine that controls read-write permissions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Permission(PermissionPriv);
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self.0 {
+                PermissionPriv::Reserved { .. } => "Reserved",
+                PermissionPriv::Active => "Active",
+                PermissionPriv::Frozen => "Frozen",
+                PermissionPriv::Disabled => "Disabled",
+            }
+        )
+    }
+}
+
+impl Permission {
+    /// Default initial permission of the root of a new tree.
+    pub fn new_root() -> Self {
+        Self(Active)
+    }
+
+    /// Default initial permission of a reborrowed mutable reference.
+    pub fn new_unique_2phase(ty_is_freeze: bool) -> Self {
+        Self(Reserved { ty_is_freeze })
+    }
+
+    /// Default initial permission of a reborrowed shared reference
+    pub fn new_frozen() -> Self {
+        Self(Frozen)
+    }
+
+    /// Pretty-printing. Needs to be here and not in diagnostics.rs
+    /// because `Self` is private.
+    pub fn short_name(self) -> &'static str {
+        // Make sure there are all of the same length as each other
+        // and also as `diagnostics::DisplayFmtPermission.uninit` otherwise
+        // alignment will be incorrect.
+        match self.0 {
+            Reserved { ty_is_freeze: true } => "Res",
+            Reserved { ty_is_freeze: false } => "Re*",
+            Active => "Act",
+            Frozen => "Frz",
+            Disabled => "Dis",
+        }
+    }
+
+    /// Check that there are no complaints from a possible protector.
+    ///
+    /// Note: this is not in charge of checking that there *is* a protector,
+    /// it should be used as
+    /// ```
+    /// let no_protector_error = if is_protected(tag) {
+    ///     old_perm.protector_allows_transition(new_perm)
+    /// };
+    /// ```
+    pub fn protector_allows_transition(self, new: Self) -> bool {
+        self.0.protector_allows_transition(new.0)
+    }
+
+    /// Apply the transition to the inner PermissionPriv.
+    pub fn perform_access(
+        kind: AccessKind,
+        rel_pos: AccessRelatedness,
+        old_perm: Self,
+        protected: bool,
+    ) -> Option<Self> {
+        let old_state = old_perm.0;
+        transition::perform_access(kind, rel_pos, old_state, protected).map(Self)
     }
 }
 
