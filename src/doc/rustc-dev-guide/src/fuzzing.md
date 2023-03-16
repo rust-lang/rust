@@ -26,9 +26,10 @@ project, please read this guide before reporting fuzzer-generated bugs!
 
 *Please don't:*
 
-- Report lots of bugs that use internal features, including but not limited to
-  `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
-- Seed your fuzzer with inputs that are known to crash rustc (details below).
+- Don't report lots of bugs that use internal features, including but not
+  limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
+- Don't seed your fuzzer with inputs that are known to crash rustc (details
+  below).
 
 ### Discussion
 
@@ -107,16 +108,17 @@ these tools, post both the complete and minimized test cases. Generally,
 
 ## Effective fuzzing
 
-When fuzzing rustc, you may want to avoid generating code, since this is mostly
-done by LLVM. Try `--emit=mir` instead.
+When fuzzing rustc, you may want to avoid generating machine code, since this
+is mostly done by LLVM. Try `--emit=mir` instead.
 
 A variety of compiler flags can uncover different issues. `-Zmir-opt-level=4`
 will turn on MIR optimization passes that are not run by default, potentially
-uncovering interesting bugs.
+uncovering interesting bugs. `-Zvalidate-mir` can help uncover such bugs.
 
 If you're fuzzing a compiler you built, you may want to build it with `-C
 target-cpu=native` or even PGO/BOLT to squeeze out a few more executions per
-second.
+second. Of course, it's best to try multiple build configurations and see
+what actually results in superior throughput.
 
 ## Existing projects
 
