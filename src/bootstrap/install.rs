@@ -209,7 +209,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmTools, alias = "llvm-tools", Self::should_build(_config), only_hosts: true, {
+    LlvmTools, alias = "llvm-tools", should_build_llvm(_config), only_hosts: true, {
         let tarball = builder
             .ensure(dist::LlvmTools { target: self.target })
             .expect("missing llvm-tools");
@@ -250,6 +250,11 @@ install!((self, builder, _config),
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
 );
+
+fn should_build_llvm(config: &Config) -> bool {
+    // additionaly check that llvm is not externally provided
+    LlvmTools::should_build(config) && config.is_rust_llvm(config.build)
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Src {
