@@ -2,8 +2,8 @@
 
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
-use super::InferCtxt;
 use super::Subtype;
+use super::{DefineOpaqueTypes, InferCtxt};
 
 use crate::traits::{ObligationCause, PredicateObligations};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
@@ -142,7 +142,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
         Ok(())
     }
 
-    fn define_opaque_types(&self) -> bool {
+    fn define_opaque_types(&self) -> DefineOpaqueTypes {
         self.fields.define_opaque_types
     }
 }

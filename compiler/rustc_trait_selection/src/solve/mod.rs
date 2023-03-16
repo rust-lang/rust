@@ -19,7 +19,7 @@ use std::mem;
 
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     CanonicalGoal, CanonicalResponse, Certainty, ExternalConstraints, ExternalConstraintsData,
@@ -268,7 +268,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             let InferOk { value: (), obligations } = self
                 .infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
-                .sub(goal.predicate.a, goal.predicate.b)?;
+                .sub(DefineOpaqueTypes::No, goal.predicate.a, goal.predicate.b)?;
             self.evaluate_all_and_make_canonical_response(
                 obligations.into_iter().map(|pred| pred.into()).collect(),
             )
