@@ -22,11 +22,12 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Include all of the information requested in the bug report template
 - Search for existing reports with the same message and query stack
 - Format the test case with `rustfmt`, if it maintains the bug
+- Indicate that the bug was found by fuzzing
 
 *Please don't:*
 
 - Report lots of bugs that use internal features, including but not limited to
-  `custom_mir`, `lang_items`, `no_std`, and `rustc_attrs`.
+  `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
 - Seed your fuzzer with inputs that are known to crash rustc (details below).
 
 ### Discussion
@@ -34,7 +35,30 @@ project, please read this guide before reporting fuzzer-generated bugs!
 If you're not sure whether or not an ICE is a duplicate of one that's already
 been reported, please go ahead and report it and link to issues you think might
 be related. In general, ICEs on the same line but with different *query stacks*
-are usually distinct bugs.
+are usually distinct bugs. For example, [#109020][#109202] and [#109129][#109129]
+had similar error messages:
+
+```
+error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <[closure@src/main.rs:36:25: 36:28] as std::ops::FnOnce<(Emplacable<()>,)>>::Output, maybe try to call `try_normalize_erasing_regions` instead
+```
+```
+error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <() as Project>::Assoc, maybe try to call `try_normalize_erasing_regions` instead
+```
+but different query stacks:
+```
+query stack during panic:
+#0 [fn_abi_of_instance] computing call ABI of `<[closure@src/main.rs:36:25: 36:28] as core::ops::function::FnOnce<(Emplacable<()>,)>>::call_once - shim(vtable)`
+end of query stack
+```
+```
+query stack during panic:
+#0 [check_mod_attrs] checking attributes in top-level module
+#1 [analysis] running analysis passes on this crate
+end of query stack
+```
+
+[#109020]: https://github.com/rust-lang/rust/issues/109020
+[#109129]: https://github.com/rust-lang/rust/issues/109129
 
 ## Building a corpus
 
@@ -56,19 +80,19 @@ To build a corpus, you may want to use:
 
 Here are a few things you can do to help the Rust project after filing an ICE.
 
-- Add the minimal test case to [Glacier][glacier]
 - [Bisect][bisect] the bug to figure out when it was introduced 
 - Fix unrelated problems with the test case (things like syntax errors or
   borrow-checking errors)
 - Minimize the test case (see below)
+- Add the minimal test case to [Glacier][glacier]
 
 [bisect]: https://github.com/rust-lang/cargo-bisect-rustc/blob/master/TUTORIAL.md
 
 ## Minimization
 
-It can be helpful to *minimize* the fuzzer-generated input. When minimizing, be
-careful to preserve the original error, and avoid introducing distracting
-problems such as syntax, type-checking, or borrow-checking errors.
+It is helpful to carefully *minimize* the fuzzer-generated input. When
+minimizing, be careful to preserve the original error, and avoid introducing
+distracting problems such as syntax, type-checking, or borrow-checking errors.
 
 There are some tools that can help with minimization. If you're not sure how
 to avoid introducing syntax, type-, and borrow-checking errors while using
@@ -86,10 +110,13 @@ these tools, post both the complete and minimized test cases. Generally,
 When fuzzing rustc, you may want to avoid generating code, since this is mostly
 done by LLVM. Try `--emit=mir` instead.
 
-A variety of compiler flags can uncover different issues.
+A variety of compiler flags can uncover different issues. `-Zmir-opt=4` will
+turn on MIR optimization passes that are not run by default, potentially
+uncovering interesting bugs.
 
 If you're fuzzing a compiler you built, you may want to build it with `-C
-target-cpu=native` to squeeze out a few more executions per second.
+target-cpu=native` or even PGO/BOLT to squeeze out a few more executions per
+second.
 
 ## Existing projects
 
