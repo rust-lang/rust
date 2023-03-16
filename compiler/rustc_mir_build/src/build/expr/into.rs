@@ -328,7 +328,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
                     .map(|f| {
-                        let local_info = Box::new(LocalInfo::AggregateTemp);
                         (
                             f.name,
                             unpack!(
@@ -336,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     block,
                                     Some(scope),
                                     &this.thir[f.expr],
-                                    Some(local_info),
+                                    LocalInfo::AggregateTemp,
                                     NeedsTemporary::Maybe,
                                 )
                             ),
@@ -526,7 +525,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Some(scope),
                         &this.thir[value],
-                        None,
+                        LocalInfo::Boring,
                         NeedsTemporary::No
                     )
                 );

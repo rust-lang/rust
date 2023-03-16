@@ -876,20 +876,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    self.local_decls[local].local_info = if let Some(kind) = param.self_kind {
-                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
+                    **self.local_decls[local].local_info.as_mut().assert_crate_local() = if let Some(kind) = param.self_kind {
+                        LocalInfo::User(
                             BindingForm::ImplicitSelf(kind),
-                        ))))
+                        )
                     } else {
                         let binding_mode = ty::BindingMode::BindByValue(mutability);
-                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                        LocalInfo::User(BindingForm::Var(
                             VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
                                 opt_match_place: Some((None, span)),
                                 pat_span: span,
                             },
-                        )))))
+                        ))
                     };
                     self.var_indices.insert(var, LocalsForNode::One(local));
                 }

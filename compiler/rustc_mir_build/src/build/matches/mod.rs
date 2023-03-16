@@ -607,9 +607,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // };
                     // ```
                     if let Some(place) = initializer.try_to_place(self) {
-                        let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                        let LocalInfo::User(BindingForm::Var(
                             VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                        )))) = self.local_decls[local].local_info else {
+                        )) = **self.local_decls[local].local_info.as_mut().assert_crate_local() else {
                             bug!("Let binding to non-user variable.")
                         };
                         *match_place = Some(place);
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
                 fake_borrow_temp.internal = self.local_decls[matched_place.local].internal;
-                fake_borrow_temp.local_info = Some(Box::new(LocalInfo::FakeBorrow));
+                fake_borrow_temp.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::FakeBorrow));
                 let fake_borrow_temp = self.local_decls.push(fake_borrow_temp);
 
                 (matched_place, fake_borrow_temp)
@@ -2224,8 +2224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,
             internal: false,
-            is_block_tail: None,
-            local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+            local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::Var(
                 VarBindingForm {
                     binding_mode,
                     // hypothetically, `visit_primary_bindings` could try to unzip
@@ -2236,7 +2235,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_match_place,
                     pat_span,
                 },
-            ))))),
+            )))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -2253,10 +2252,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 internal: false,
-                is_block_tail: None,
-                local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
-                    BindingForm::RefForGuard,
-                )))),
+                local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::RefForGuard))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

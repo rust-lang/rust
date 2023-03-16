@@ -196,10 +196,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if self.body.local_decls[local].is_ref_for_guard() {
                             continue;
                         }
-                        if let Some(box LocalInfo::StaticRef { def_id, .. }) =
-                            &self.body.local_decls[local].local_info
+                        if let LocalInfo::StaticRef { def_id, .. } =
+                            *self.body.local_decls[local].local_info()
                         {
-                            buf.push_str(self.infcx.tcx.item_name(*def_id).as_str());
+                            buf.push_str(self.infcx.tcx.item_name(def_id).as_str());
                             ok = Ok(());
                             continue;
                         }

@@ -643,7 +643,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if base_ty.is_unsafe_ptr() {
                     if proj_base.is_empty() {
                         let decl = &self.body.local_decls[place_local];
-                        if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
+                        if let LocalInfo::StaticRef { def_id, .. } = *decl.local_info() {
                             let span = decl.source_info.span;
                             self.check_static(def_id, span);
                             return;
