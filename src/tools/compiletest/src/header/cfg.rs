@@ -187,6 +187,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         if name == "llvm-version" {
             outcome = MatchOutcome::External;
         }
+
+        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
+        // elsewhere.
+        if name == "gdb-version" {
+            outcome = MatchOutcome::External;
+        }
     }
 
     ParsedNameDirective {
