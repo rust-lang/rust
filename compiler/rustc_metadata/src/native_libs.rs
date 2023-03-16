@@ -53,12 +53,13 @@ fn find_bundled_library(
     sess: &Session,
 ) -> Option<Symbol> {
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive } = kind
+        && let Some(name) = name
         && sess.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::Staticlib))
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
         let search_paths = &sess.target_filesearch(PathKind::Native).search_path_dirs();
-        return find_native_static_library(name.unwrap().as_str(), verbatim, search_paths, sess)
+        return find_native_static_library(name.as_str(), verbatim, search_paths, sess)
             .file_name()
             .and_then(|s| s.to_str())
             .map(Symbol::intern);
