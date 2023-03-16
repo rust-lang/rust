@@ -990,7 +990,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
         let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
-        let mut exn = self.const_undef(ty);
+        let mut exn = self.const_poison(ty);
         exn = self.insert_value(exn, exn0, 0);
         exn = self.insert_value(exn, exn1, 1);
         unsafe {
