@@ -4,6 +4,7 @@
 // ignore-stage-1
 // ignore-cross-compile
 // ignore-remote
+// edition: 2021
 
 #![feature(rustc_private)]
 
@@ -43,11 +44,11 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     assert_eq!(block.statements.len(), 1);
     match &block.statements[0] {
         stable_mir::mir::Statement::Assign(..) => {}
-        _ => panic!(),
+        other => panic!("{other:?}"),
     }
     match &block.terminator {
         stable_mir::mir::Terminator::Return => {}
-        _ => panic!(),
+        other => panic!("{other:?}"),
     }
 }
 
