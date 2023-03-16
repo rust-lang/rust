@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
-use rustc_infer::infer::RegionVariableOrigin;
+use rustc_infer::infer::{DefineOpaqueTypes, RegionVariableOrigin};
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitableExt};
@@ -327,7 +327,11 @@ pub fn resolve_interior<'a, 'tcx>(
     );
 
     // Unify the type variable inside the generator with the new witness
-    match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
+    match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(
+        DefineOpaqueTypes::No,
+        interior,
+        witness,
+    ) {
         Ok(ok) => fcx.register_infer_ok_obligations(ok),
         _ => bug!("failed to relate {interior} and {witness}"),
     }

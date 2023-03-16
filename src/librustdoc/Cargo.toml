@@ -20,14 +20,12 @@ smallvec = "1.8.1"
 tempfile = "3"
 tracing = "0.1"
 tracing-tree = "0.2.0"
+threadpool = "1.8.1"
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"
 default-features = false
 features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
-
-[target.'cfg(windows)'.dependencies]
-rayon = "1.5.1"
 
 [dev-dependencies]
 expect-test = "1.4.0"

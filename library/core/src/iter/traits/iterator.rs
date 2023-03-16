@@ -3721,7 +3721,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this [`Iterator`] are unequal to those of
+    /// Determines if the elements of this [`Iterator`] are not equal to those of
     /// another.
     ///
     /// # Examples

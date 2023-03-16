@@ -1,3 +1,4 @@
+pub use self::at::DefineOpaqueTypes;
 pub use self::freshen::TypeFreshener;
 pub use self::lexical_region_resolve::RegionResolutionError;
 pub use self::LateBoundRegionConversionTime::*;
@@ -338,6 +339,7 @@ pub struct InferCtxt<'tcx> {
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
+    Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
     Sigs(ExpectedFound<ty::FnSig<'tcx>>),
@@ -729,7 +731,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: bool,
+        define_opaque_types: DefineOpaqueTypes,
     ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
@@ -864,7 +866,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| self.at(origin, param_env).sub(a, b).is_ok())
+        self.probe(|_| self.at(origin, param_env).sub(DefineOpaqueTypes::No, a, b).is_ok())
     }
 
     pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
@@ -872,7 +874,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| self.at(origin, param_env).eq(a, b).is_ok())
+        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::No, a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -967,7 +969,8 @@ impl<'tcx> InferCtxt<'tcx> {
             let ty::SubtypePredicate { a_is_expected, a, b } =
                 self.instantiate_binder_with_placeholders(predicate);
 
-            let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
+            let ok =
+                self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b)?;
 
             Ok(ok.unit())
         }))
