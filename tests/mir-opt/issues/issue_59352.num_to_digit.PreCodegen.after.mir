@@ -66,7 +66,6 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb6: {
-        StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
         _8 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value"); // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/option.rs:LL:COL

@@ -34,7 +34,7 @@
       bb2: {
           StorageLive(_6);                 // scope 0 at $DIR/inline_diverging.rs:+4:9: +4:16
 -         _6 = panic();                    // scope 0 at $DIR/inline_diverging.rs:+4:9: +4:16
-+         StorageLive(_7);                 // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
++         StorageLive(_7);                 // scope 0 at $DIR/inline_diverging.rs:+4:9: +4:16
 +         _7 = begin_panic::<&str>(const "explicit panic"); // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/inline_diverging.rs:16:9: 16:14
