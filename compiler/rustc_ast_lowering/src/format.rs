@@ -16,8 +16,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
         // format_args!() had any arguments _before_ flattening/inlining.
         let allow_const = fmt.arguments.all_args().is_empty();
-        let fmt = flatten_format_args(Cow::Borrowed(fmt));
-        let fmt = inline_literals(fmt);
+        let mut fmt = Cow::Borrowed(fmt);
+        if self.tcx.sess.opts.unstable_opts.flatten_format_args {
+            fmt = flatten_format_args(fmt);
+            fmt = inline_literals(fmt);
+        }
         expand_format_args(self, sp, &fmt, allow_const)
     }
 }
