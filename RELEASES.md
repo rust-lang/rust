@@ -125,12 +125,13 @@ Compiler
 - [Optimize field ordering by grouping m\*2^n-sized fields with equivalently aligned ones.](https://github.com/rust-lang/rust/pull/102750/)
 - [Stabilize native library modifier `verbatim`.](https://github.com/rust-lang/rust/pull/104360/)
 
-Added and removed targets:
+Added, updated, and removed targets:
 
 - [Add a tier 3 target for PowerPC on AIX](https://github.com/rust-lang/rust/pull/102293/), `powerpc64-ibm-aix`.
 - [Add a tier 3 target for the Sony PlayStation 1](https://github.com/rust-lang/rust/pull/102689/), `mipsel-sony-psx`.
 - [Add tier 3 `no_std` targets for the QNX Neutrino RTOS](https://github.com/rust-lang/rust/pull/102701/),
   `aarch64-unknown-nto-qnx710` and `x86_64-pc-nto-qnx710`.
+- [Promote UEFI targets to tier 2](https://github.com/rust-lang/rust/pull/103933/), `aarch64-unknown-uefi`, `i686-unknown-uefi`, and `x86_64-unknown-uefi`.
 - [Remove tier 3 `linuxkernel` targets](https://github.com/rust-lang/rust/pull/104015/) (not used by the actual kernel).
 
 Refer to Rust's [platform support page][platform-support-doc]
