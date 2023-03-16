@@ -130,6 +130,11 @@ to `config.toml` when compiling rustc:
 debug-assertions = true
 ```
 
+ICEs that require debug assertions to reproduce should be tagged 
+[`requires-debug-assertions`][requires-debug-assertions].
+
+[requires-debug-assertions]: https://github.com/rust-lang/rust/labels/requires-debug-assertions
+
 ## Existing projects
 
 - [fuzz-rustc][fuzz-rustc] demonstrates how to fuzz rustc with libfuzzer
