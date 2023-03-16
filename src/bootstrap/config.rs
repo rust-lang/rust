@@ -1606,6 +1606,21 @@ impl Config {
             })
     }
 
+    /// Returns `true` if no custom `llvm-config` is set for the specified target.
+    ///
+    /// If no custom `llvm-config` was specified then Rust's llvm will be used.
+    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            Some(Target { llvm_config, .. }) => {
+                // If the user set llvm-config we assume Rust is not patched,
+                // but first check to see if it was configured by llvm-from-ci.
+                (self.llvm_from_ci && target == self.build) || llvm_config.is_none()
+            }
+            None => true,
+        }
+    }
+
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }

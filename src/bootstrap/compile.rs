@@ -872,7 +872,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         && (builder.kind != Kind::Check
             || crate::native::prebuilt_llvm_config(builder, target).is_ok())
     {
-        if builder.is_rust_llvm(target) {
+        if builder.config.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
         let native::LlvmResult { llvm_config, .. } = builder.ensure(native::Llvm { target });

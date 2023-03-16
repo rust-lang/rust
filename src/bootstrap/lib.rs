@@ -28,7 +28,7 @@ use std::str;
 
 use build_helper::ci::CiEnv;
 use channel::GitInfo;
-use config::{DryRun, Target};
+use config::DryRun;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -829,21 +829,6 @@ impl Build {
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: TargetSelection) -> Interned<PathBuf> {
         INTERNER.intern_path(self.out.join(&*target.triple).join("md-doc"))
-    }
-
-    /// Returns `true` if no custom `llvm-config` is set for the specified target.
-    ///
-    /// If no custom `llvm-config` was specified then Rust's llvm will be used.
-    fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        match self.config.target_config.get(&target) {
-            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
-            Some(Target { llvm_config, .. }) => {
-                // If the user set llvm-config we assume Rust is not patched,
-                // but first check to see if it was configured by llvm-from-ci.
-                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
-            }
-            None => true,
-        }
     }
 
     /// Returns the path to `FileCheck` binary for the specified target

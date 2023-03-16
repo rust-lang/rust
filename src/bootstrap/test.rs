@@ -1635,7 +1635,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                     .arg(llvm_components.trim());
                 llvm_components_passed = true;
             }
-            if !builder.is_rust_llvm(target) {
+            if !builder.config.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
             }
 
