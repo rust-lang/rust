@@ -192,7 +192,7 @@ pub(crate) fn compile_fn(
                         let pass_times = cranelift_codegen::timing::take_current();
                         // Replace newlines with | as measureme doesn't allow control characters like
                         // newlines inside strings.
-                        recorder.record_arg(format!("{}", pass_times).replace("\n", " | "));
+                        recorder.record_arg(format!("{}", pass_times).replace('\n', " | "));
                         recording_args = true;
                     },
                 )
@@ -365,11 +365,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 fx.bcx.set_cold_block(failure);
 
                 if *expected {
-                    fx.bcx.ins().brz(cond, failure, &[]);
+                    fx.bcx.ins().brif(cond, target, &[], failure, &[]);
                 } else {
-                    fx.bcx.ins().brnz(cond, failure, &[]);
+                    fx.bcx.ins().brif(cond, failure, &[], target, &[]);
                 };
-                fx.bcx.ins().jump(target, &[]);
 
                 fx.bcx.switch_to_block(failure);
                 fx.bcx.ins().nop();
@@ -425,11 +424,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         }
                     } else {
                         if test_zero {
-                            fx.bcx.ins().brz(discr, then_block, &[]);
-                            fx.bcx.ins().jump(else_block, &[]);
+                            fx.bcx.ins().brif(discr, else_block, &[], then_block, &[]);
                         } else {
-                            fx.bcx.ins().brnz(discr, then_block, &[]);
-                            fx.bcx.ins().jump(else_block, &[]);
+                            fx.bcx.ins().brif(discr, then_block, &[], else_block, &[]);
                         }
                     }
                 } else {
@@ -750,8 +747,7 @@ fn codegen_stmt<'tcx>(
 
                         fx.bcx.switch_to_block(loop_block);
                         let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
-                        fx.bcx.ins().brnz(done, done_block, &[]);
-                        fx.bcx.ins().jump(loop_block2, &[]);
+                        fx.bcx.ins().brif(done, done_block, &[], loop_block2, &[]);
 
                         fx.bcx.switch_to_block(loop_block2);
                         let to = lval.place_index(fx, index);
@@ -997,7 +993,7 @@ fn codegen_panic_inner<'tcx>(
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
     fx.lib_call(
-        &*symbol_name,
+        symbol_name,
         args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
         vec![],
         args,

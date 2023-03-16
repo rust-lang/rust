@@ -63,6 +63,7 @@ trivially_parameterized_over_tcx! {
     ty::DeducedParamAttrs,
     ty::Generics,
     ty::ImplPolarity,
+    ty::ImplTraitInTraitData,
     ty::ReprOptions,
     ty::TraitDef,
     ty::UnusedGenericParams,

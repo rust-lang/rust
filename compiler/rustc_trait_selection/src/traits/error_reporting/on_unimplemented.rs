@@ -144,6 +144,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
+        if self.tcx.opt_rpitit_info(obligation.cause.body_id.to_def_id()).is_some() {
+            return OnUnimplementedNote::default();
+        }
+
         let (def_id, substs) = self
             .impl_similar_to(trait_ref, obligation)
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));

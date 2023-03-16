@@ -1,42 +1,38 @@
-error: mismatched attribute proc macro signature
+error: attribute proc macro has incorrect signature
   --> $DIR/signature-proc-macro-attribute.rs:10:1
    |
 LL | pub fn bad_input(input: String) -> TokenStream {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attribute proc macro must have two arguments of type `proc_macro::TokenStream`
-
-error: mismatched attribute proc macro signature
-  --> $DIR/signature-proc-macro-attribute.rs:16:42
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-LL | pub fn bad_output(input: TokenStream) -> String {
-   |                                          ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
-   |
-   = note: attribute proc macros must have a signature of `fn(TokenStream, TokenStream) -> TokenStream`
+   = note: expected signature `fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(std::string::String) -> proc_macro::TokenStream`
 
-error: mismatched attribute proc macro signature
+error: attribute proc macro has incorrect signature
   --> $DIR/signature-proc-macro-attribute.rs:16:1
    |
 LL | pub fn bad_output(input: TokenStream) -> String {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attribute proc macro must have two arguments of type `proc_macro::TokenStream`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(proc_macro::TokenStream) -> std::string::String`
 
-error: mismatched attribute proc macro signature
-  --> $DIR/signature-proc-macro-attribute.rs:23:41
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:22:1
    |
 LL | pub fn bad_everything(input: String) -> String {
-   |                                         ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: attribute proc macros must have a signature of `fn(TokenStream, TokenStream) -> TokenStream`
+   = note: expected signature `fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(std::string::String) -> std::string::String`
 
-error: mismatched attribute proc macro signature
-  --> $DIR/signature-proc-macro-attribute.rs:23:1
-   |
-LL | pub fn bad_everything(input: String) -> String {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attribute proc macro must have two arguments of type `proc_macro::TokenStream`
-
-error: mismatched attribute proc macro signature
-  --> $DIR/signature-proc-macro-attribute.rs:30:49
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:28:52
    |
 LL | pub fn too_many(a: TokenStream, b: TokenStream, c: String) -> TokenStream {
-   |                                                 ^^^^^^^^^ found unexpected argument
+   |                                                    ^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(proc_macro::TokenStream, proc_macro::TokenStream, std::string::String) -> proc_macro::TokenStream`
 
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 

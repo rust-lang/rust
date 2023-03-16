@@ -1,15 +1,14 @@
+use super::NormalizeExt;
+use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diagnostic;
+use rustc_hir::def_id::DefId;
+use rustc_infer::infer::InferOk;
+use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArg, SubstsRef};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, SubstsRef};
-
-use super::NormalizeExt;
-use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
-use rustc_infer::infer::InferOk;
 pub use rustc_infer::traits::{self, util::*};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -201,6 +200,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().bound_impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
+
     let InferOk { value: subject, obligations: normalization_obligations1 } =
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
 

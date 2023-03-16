@@ -1350,19 +1350,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
+        if let Some(rpitit_info) = trait_item.opt_rpitit_info {
+            let rpitit_info = self.lazy(rpitit_info);
+            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
+        }
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
-        self.tables.impl_defaultness.set_some(def_id.index, ast_item.defaultness);
+        let defaultness = self.tcx.impl_defaultness(def_id.expect_local());
+        self.tables.impl_defaultness.set_some(def_id.index, defaultness);
         let impl_item = self.tcx.associated_item(def_id);
         self.tables.assoc_container.set_some(def_id.index, impl_item.container);
 
         match impl_item.kind {
             ty::AssocKind::Fn => {
+                let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
                 self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
@@ -1382,6 +1387,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
+        }
+        if let Some(rpitit_info) = impl_item.opt_rpitit_info {
+            let rpitit_info = self.lazy(rpitit_info);
+            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
         }
     }
 

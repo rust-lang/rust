@@ -564,15 +564,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    Shl | Shr => {
-                        for x in [a, b] {
-                            check_kinds!(
-                                x,
-                                "Cannot perform checked shift on non-integer type {:?}",
-                                ty::Uint(..) | ty::Int(..)
-                            )
-                        }
-                    }
                     _ => self.fail(location, format!("There is no checked version of {:?}", op)),
                 }
             }

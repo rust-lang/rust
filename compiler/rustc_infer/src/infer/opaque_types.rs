@@ -1,3 +1,5 @@
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
@@ -16,17 +18,12 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
-
 use std::ops::ControlFlow;
-
-pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 
 mod table;
 
+pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use super::InferResult;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -547,8 +544,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(prev) = prev {
             obligations = self
                 .at(&cause, param_env)
-                .define_opaque_types(true)
-                .eq_exp(a_is_expected, prev, hidden_ty)?
+                .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                 .obligations;
         }
 

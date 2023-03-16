@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): Project` is not satisfied
+  --> $DIR/bad-projection.rs:14:17
+   |
+LL | pub fn uwu() -> <() as Project>::Assoc {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ the trait `Project` is not implemented for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

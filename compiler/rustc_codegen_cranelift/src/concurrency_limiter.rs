@@ -32,7 +32,7 @@ impl ConcurrencyLimiter {
         ConcurrencyLimiter {
             helper_thread: Some(helper_thread),
             state,
-            available_token_condvar: Arc::new(Condvar::new()),
+            available_token_condvar,
             finished: false,
         }
     }

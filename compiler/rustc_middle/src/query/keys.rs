@@ -63,7 +63,7 @@ impl<'tcx> Key for ty::InstanceDef<'tcx> {
 
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
-        true
+        self.def_id().is_local()
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -76,7 +76,7 @@ impl<'tcx> Key for ty::Instance<'tcx> {
 
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
-        true
+        self.def_id().is_local()
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {

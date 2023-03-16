@@ -11,6 +11,7 @@ enum E { A, B, C }
 #[derive(Copy, Clone)]
 enum Empty {}
 
+// EMIT_MIR invalid_constant.main.RemoveZsts.diff
 // EMIT_MIR invalid_constant.main.ConstProp.diff
 fn main() {
     // An invalid char.

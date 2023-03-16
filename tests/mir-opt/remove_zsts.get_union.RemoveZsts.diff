@@ -6,11 +6,14 @@
       let mut _1: ();                      // in scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
+-         StorageLive(_1);                 // scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
 -         _1 = ();                         // scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
+-         _0 = Foo { x: move _1 };         // scope 0 at $DIR/remove_zsts.rs:+1:5: +1:18
+-         StorageDead(_1);                 // scope 0 at $DIR/remove_zsts.rs:+1:17: +1:18
 +         nop;                             // scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
-          _0 = Foo { x: move _1 };         // scope 0 at $DIR/remove_zsts.rs:+1:5: +1:18
-          StorageDead(_1);                 // scope 0 at $DIR/remove_zsts.rs:+1:17: +1:18
++         nop;                             // scope 0 at $DIR/remove_zsts.rs:+1:14: +1:16
++         _0 = Foo { x: const () };        // scope 0 at $DIR/remove_zsts.rs:+1:5: +1:18
++         nop;                             // scope 0 at $DIR/remove_zsts.rs:+1:17: +1:18
           return;                          // scope 0 at $DIR/remove_zsts.rs:+2:2: +2:2
       }
   }

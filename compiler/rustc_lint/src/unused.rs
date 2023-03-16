@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let must_use_result = is_ty_must_use(cx, ty, &expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
-                emit_must_use_untranslated(cx, &path, "", "", 1);
+                emit_must_use_untranslated(cx, &path, "", "", 1, false);
                 true
             }
             None => false,
@@ -358,6 +358,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         descr_pre_path,
                         descr_post_path,
                         1,
+                        false,
                     )
                 })
                 .is_some()
@@ -370,6 +371,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_pre: &str,
             descr_post: &str,
             plural_len: usize,
+            is_inner: bool,
         ) {
             let plural_suffix = pluralize!(plural_len);
 
@@ -377,20 +379,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
                     let descr_pre = &format!("{}boxed ", descr_pre);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len);
+                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
                 }
                 MustUsePath::Opaque(path) => {
                     let descr_pre = &format!("{}implementer{} of ", descr_pre, plural_suffix);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len);
+                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
                 }
                 MustUsePath::TraitObject(path) => {
                     let descr_post = &format!(" trait object{}{}", plural_suffix, descr_post);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len);
+                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
                 }
                 MustUsePath::TupleElement(elems) => {
                     for (index, path) in elems {
                         let descr_post = &format!(" in tuple element {}", index);
-                        emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len);
+                        emit_must_use_untranslated(
+                            cx, path, descr_pre, descr_post, plural_len, true,
+                        );
                     }
                 }
                 MustUsePath::Array(path, len) => {
@@ -401,6 +405,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         descr_pre,
                         descr_post,
                         plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
+                        true,
                     );
                 }
                 MustUsePath::Closure(span) => {
@@ -418,19 +423,6 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    let suggestion = if matches!(
-                        cx.tcx.get_diagnostic_name(*def_id),
-                        Some(sym::add)
-                            | Some(sym::sub)
-                            | Some(sym::mul)
-                            | Some(sym::div)
-                            | Some(sym::rem)
-                            | Some(sym::neg),
-                    ) {
-                        Some(UnusedDefSuggestion::Default { span: span.shrink_to_lo() })
-                    } else {
-                        None
-                    };
                     cx.emit_spanned_lint(
                         UNUSED_MUST_USE,
                         *span,
@@ -440,7 +432,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             cx,
                             def_id: *def_id,
                             note: *reason,
-                            suggestion,
+                            suggestion: (!is_inner)
+                                .then_some(UnusedDefSuggestion { span: span.shrink_to_lo() }),
                         },
                     );
                 }

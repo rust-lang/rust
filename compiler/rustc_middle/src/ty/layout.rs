@@ -730,7 +730,11 @@ where
                         */
                     };
 
-                    let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+                    let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
+                        // Projection eagerly bails out when the pointee references errors,
+                        // fall back to structurally deducing metadata.
+                        && !pointee.references_error()
+                    {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
                             tcx.mk_projection(metadata_def_id, [pointee]),

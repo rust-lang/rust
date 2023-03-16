@@ -14,3 +14,17 @@ pub trait T2<'a, T> {
 }
 
 pub fn presto<A, B>(_: A, _: B) where A: T1, B: for <'b> T2<'b, Nested> {}
+
+pub trait Shazam {}
+
+pub fn bippety<X>() -> &'static X where X: Shazam {
+    panic!()
+}
+
+pub struct Drizzel<T>(T);
+
+impl<T> Drizzel<T> {
+    pub fn boppety(&self) -> &T where T: Shazam {
+        panic!();
+    }
+}

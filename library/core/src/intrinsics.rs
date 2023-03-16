@@ -2020,6 +2020,16 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
+    /// This is an implementation detail of [`crate::ptr::read`] and should
+    /// not be used anywhere else.  See its comments for why this exists.
+    ///
+    /// This intrinsic can *only* be called where the argument is a local without
+    /// projections (`read_via_copy(p)`, not `read_via_copy(*p)`) so that it
+    /// trivially obeys runtime-MIR rules about derefs in operands.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    pub fn read_via_copy<T>(p: *const T) -> T;
+
     /// Returns the value of the discriminant for the variant in 'v';
     /// if `T` has no discriminant, returns `0`.
     ///

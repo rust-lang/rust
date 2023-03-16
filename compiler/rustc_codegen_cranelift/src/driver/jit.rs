@@ -311,7 +311,11 @@ fn dep_symbol_lookup_fn(
         .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
         .unwrap()
         .1;
-    for &cnum in &crate_info.used_crates {
+    // `used_crates` is in reverse postorder in terms of dependencies. Reverse the order here to
+    // get a postorder which ensures that all dependencies of a dylib are loaded before the dylib
+    // itself. This helps the dynamic linker to find dylibs not in the regular dynamic library
+    // search path.
+    for &cnum in crate_info.used_crates.iter().rev() {
         let src = &crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}

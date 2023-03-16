@@ -518,6 +518,17 @@ pub struct Box<T: ?Sized>(Unique<T>, ());
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
+impl<T> Box<T> {
+    pub fn new(val: T) -> Box<T> {
+        unsafe {
+            let size = intrinsics::size_of::<T>();
+            let ptr = libc::malloc(size);
+            intrinsics::copy(&val as *const T as *const u8, ptr, size);
+            Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, ())
+        }
+    }
+}
+
 impl<T: ?Sized> Drop for Box<T> {
     fn drop(&mut self) {
         // drop is currently performed by compiler.

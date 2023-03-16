@@ -39,19 +39,19 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:53:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, start_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc18 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc17 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:62:14
    |
 LL |     unsafe { ptr_offset_from(start_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc21 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc20 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:70:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc24 has size 4, so pointer at offset 10 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc23 has size 4, so pointer at offset 10 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:79:14

@@ -1289,25 +1289,41 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
                     err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
-                    let (tail, descr, applicability) = match source {
-                        PathSource::Pat | PathSource::TupleStruct(..) => {
-                            ("", "pattern", Applicability::MachineApplicable)
-                        }
-                        _ => (": val", "literal", Applicability::HasPlaceholders),
-                    };
 
+                    let (tail, descr, applicability, old_fields) = match source {
+                        PathSource::Pat => ("", "pattern", Applicability::MachineApplicable, None),
+                        PathSource::TupleStruct(_, args) => (
+                            "",
+                            "pattern",
+                            Applicability::MachineApplicable,
+                            Some(
+                                args.iter()
+                                    .map(|a| self.r.tcx.sess.source_map().span_to_snippet(*a).ok())
+                                    .collect::<Vec<Option<String>>>(),
+                            ),
+                        ),
+                        _ => (": val", "literal", Applicability::HasPlaceholders, None),
+                    };
                     let field_ids = self.r.field_def_ids(def_id);
                     let (fields, applicability) = match field_ids {
-                        Some(field_ids) => (
-                            field_ids
-                                .iter()
-                                .map(|&field_id| {
-                                    format!("{}{tail}", self.r.tcx.item_name(field_id))
-                                })
-                                .collect::<Vec<String>>()
-                                .join(", "),
-                            applicability,
-                        ),
+                        Some(field_ids) => {
+                            let fields = field_ids.iter().map(|&id| self.r.tcx.item_name(id));
+
+                            let fields = if let Some(old_fields) = old_fields {
+                                fields
+                                    .enumerate()
+                                    .map(|(idx, new)| (new, old_fields.get(idx)))
+                                    .map(|(new, old)| {
+                                        let new = new.to_ident_string();
+                                        if let Some(Some(old)) = old && new != *old { format!("{}: {}", new, old) } else { new }
+                                    })
+                                    .collect::<Vec<String>>()
+                            } else {
+                                fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
+                            };
+
+                            (fields.join(", "), applicability)
+                        }
                         None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
                     };
                     let pad = match field_ids {
