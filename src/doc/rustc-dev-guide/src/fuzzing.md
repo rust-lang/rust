@@ -120,6 +120,16 @@ target-cpu=native` or even PGO/BOLT to squeeze out a few more executions per
 second. Of course, it's best to try multiple build configurations and see
 what actually results in superior throughput.
 
+You may want to build rustc from source with debug assertions to find
+additional bugs, though this is a trade-off: it can slow down fuzzing by
+requiring extra work for every execution. To enable debug assertions, add this
+to `config.toml` when compiling rustc:
+
+```toml
+[rust]
+debug-assertions = true
+```
+
 ## Existing projects
 
 - [fuzz-rustc][fuzz-rustc] demonstrates how to fuzz rustc with libfuzzer
