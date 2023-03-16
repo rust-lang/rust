@@ -1087,7 +1087,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let return_type_notation =
-            binding.gen_args.parenthesized && tcx.features().return_type_notation;
+            binding.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation;
 
         let candidate = if return_type_notation {
             if self.trait_defines_associated_item_named(

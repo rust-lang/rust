@@ -1461,7 +1461,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         depth: usize,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
     ) {
-        if generic_args.parenthesized {
+        if generic_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
             self.visit_fn_like_elision(
                 generic_args.inputs(),
                 Some(generic_args.bindings[0].ty()),
@@ -1653,7 +1653,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             //    `for<'a> T::Trait<'a, x(): for<'b> Other<'b>>`
             // this is going to expand to something like:
             //    `for<'a> for<'r, T> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: for<'b> Other<'b>`.
-            if binding.gen_args.parenthesized {
+            if binding.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation {
                 let bound_vars = if let Some(type_def_id) = type_def_id
                     && self.tcx.def_kind(type_def_id) == DefKind::Trait
                     // FIXME(return_type_notation): We could bound supertrait methods.

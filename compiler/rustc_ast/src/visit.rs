@@ -481,6 +481,7 @@ where
             walk_list!(visitor, visit_ty, &data.inputs);
             walk_fn_ret_ty(visitor, &data.output);
         }
+        GenericArgs::ReturnTypeNotation(_span) => {}
     }
 }
 

@@ -3,7 +3,7 @@ use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
+use rustc_hir::{GenericArg, GenericArgsParentheses, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
 
             if cx.tcx.is_diagnostic_item(sym::Option, def_id);
             if let Some(params) = last_path_segment(qpath).args ;
-            if !params.parenthesized;
+            if params.parenthesized == GenericArgsParentheses::No;
             if let Some(inner_ty) = params.args.iter().find_map(|arg| match arg {
                 GenericArg::Type(inner_ty) => Some(inner_ty),
                 _ => None,

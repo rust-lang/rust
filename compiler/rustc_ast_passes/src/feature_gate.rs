@@ -482,13 +482,20 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
         if let AssocConstraintKind::Bound { .. } = constraint.kind {
-            if constraint.gen_args.as_ref().map_or(false, |args| args.is_parenthesized()) {
-                gate_feature_post!(
-                    &self,
-                    return_type_notation,
-                    constraint.span,
-                    "return type notation is unstable"
+            if let Some(args) = constraint.gen_args.as_ref()
+                && matches!(
+                    args,
+                    ast::GenericArgs::ReturnTypeNotation(..) | ast::GenericArgs::Parenthesized(..)
                 )
+            {
+                // RTN is gated elsewhere, and parenthesized args will turn into
+                // another error.
+                if matches!(args, ast::GenericArgs::Parenthesized(..)) {
+                    self.sess.delay_span_bug(
+                        constraint.span,
+                        "should have emitted a parenthesized generics error",
+                    );
+                }
             } else {
                 gate_feature_post!(
                     &self,
@@ -586,6 +593,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
+    gate_all!(return_type_notation, "return type notation is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

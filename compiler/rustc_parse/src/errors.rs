@@ -2316,3 +2316,11 @@ pub struct BoxSyntaxRemoved<'a> {
     pub span: Span,
     pub code: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_bad_return_type_notation_output)]
+pub(crate) struct BadReturnTypeNotationOutput {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+}

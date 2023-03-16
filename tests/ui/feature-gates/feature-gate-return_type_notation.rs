@@ -1,4 +1,5 @@
 // edition: 2021
+// revisions: cfg no
 
 #![feature(async_fn_in_trait)]
 //~^ WARN the feature `async_fn_in_trait` is incomplete
@@ -7,9 +8,8 @@ trait Trait {
     async fn m();
 }
 
-fn foo<T: Trait<m(): Send>>() {}
-//~^ ERROR parenthesized generic arguments cannot be used in associated type constraints
-//~| ERROR associated type `m` not found for `Trait`
-//~| ERROR return type notation is unstable
+#[cfg(cfg)]
+fn foo<T: Trait<m(..): Send>>() {}
+//~^ ERROR return type notation is experimental
 
 fn main() {}
