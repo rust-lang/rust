@@ -103,9 +103,8 @@ The hash includes a variety of elements:
 * Hashes of the HIR nodes.
 * All of the upstream crate hashes.
 * All of the source filenames.
-* Hashes of certain command-line flags (like `-C metadata` via the [Crate
-  Disambiguator](#crate-disambiguator), and all CLI options marked with
-  `[TRACKED]`).
+* Hashes of certain command-line flags (like `-C metadata` via the [Stable
+  Crate Id](#stable-crate-id), and all CLI options marked with `[TRACKED]`).
 
 See [`compute_hir_hash`] for where the hash is actually computed.
 
