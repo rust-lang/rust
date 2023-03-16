@@ -67,6 +67,7 @@ fn foo(baz: Baz) {
             ev Err
             ev Ok
             bn Baz::Bar Baz::Bar$0
+            bn Baz::Foo Baz::Foo$0
             bn Err(…)   Err($1)$0
             bn Ok(…)    Ok($1)$0
             kw mut
@@ -93,6 +94,7 @@ fn foo(baz: Baz) {
          ev Err
          ev Ok
          bn Baz::Bar Baz::Bar$0
+         bn Baz::Foo Baz::Foo$0
          bn Err(…)   Err($1)$0
          bn Ok(…)    Ok($1)$0
          kw mut

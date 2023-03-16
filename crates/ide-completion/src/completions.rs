@@ -536,7 +536,6 @@ fn enum_variants_with_paths(
     enum_: hir::Enum,
     impl_: &Option<ast::Impl>,
     cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::Variant, hir::ModPath),
-    missing_variants: Option<Vec<Variant>>,
 ) {
     let mut process_variant = |variant: Variant| {
         let self_path = hir::ModPath::from_segments(
@@ -547,10 +546,7 @@ fn enum_variants_with_paths(
         cb(acc, ctx, variant, self_path);
     };
 
-    let variants = match missing_variants {
-        Some(missing_variants) => missing_variants,
-        None => enum_.variants(ctx.db),
-    };
+    let variants = enum_.variants(ctx.db);
 
     if let Some(impl_) = impl_.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
         if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {

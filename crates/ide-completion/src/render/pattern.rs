@@ -43,7 +43,7 @@ pub(crate) fn render_struct_pat(
 }
 
 pub(crate) fn render_variant_pat(
-    ctx: RenderContext<'_>,
+    mut ctx: RenderContext<'_>,
     pattern_ctx: &PatternContext,
     path_ctx: Option<&PathCompletionCtx>,
     variant: hir::Variant,
@@ -55,6 +55,11 @@ pub(crate) fn render_variant_pat(
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
     let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
+
+    // Missing in context of match statement completions
+    if pattern_ctx.missing_variants.contains(&variant) {
+        ctx.is_variant_missing = Some(true);
+    }
 
     let (name, escaped_name) = match path {
         Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
@@ -97,7 +102,9 @@ fn build_completion(
 ) -> CompletionItem {
     let mut relevance = ctx.completion_relevance();
 
-    relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
+    if let Some(true) = ctx.is_variant_missing {
+        relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
+    }
 
     let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
     item.set_documentation(ctx.docs(def))
