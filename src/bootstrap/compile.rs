@@ -339,6 +339,12 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         ""
     };
 
+    // `libtest` uses this to know whether or not to support
+    // `-Zunstable-options`.
+    if !builder.unstable_features() {
+        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
+    }
+
     let mut features = String::new();
 
     // Cranelift doesn't support `asm`.
