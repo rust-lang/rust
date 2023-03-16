@@ -213,7 +213,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example
 
-```text
+```rust
 #![feature(naked_functions)]
 
 use std::arch::asm;
@@ -223,6 +223,8 @@ fn add_one(x: i32) -> i32 {
     x + 1
 }
 
+# // Only define this function if the assembly works
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[naked]
 pub extern "C" fn add_two(x: i32) {
     // x + 2 preceded by a landing pad/nop block
@@ -238,7 +240,7 @@ pub extern "C" fn add_two(x: i32) {
              nop
              nop
              nop
-             lea rax, [rdi+2]
+             lea eax, [edi+2]
              ret
         ",
             options(noreturn)
@@ -250,6 +252,10 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
     f(arg) + f(arg)
 }
 
+# // Can only call add_two on x86/64
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+# fn main() { println!("this test does not work on this target") }
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn main() {
     let answer = do_twice(add_one, 5);
 
