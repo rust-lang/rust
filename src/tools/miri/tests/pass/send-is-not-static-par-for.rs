@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 use std::sync::Mutex;
 
 fn par_for<I, F>(iter: I, f: F)

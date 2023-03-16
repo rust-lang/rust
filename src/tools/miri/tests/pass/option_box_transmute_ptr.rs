@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 // This tests that the size of Option<Box<i32>> is the same as *const i32.
 fn option_box_deref() -> i32 {
     let val = Some(Box::new(42));

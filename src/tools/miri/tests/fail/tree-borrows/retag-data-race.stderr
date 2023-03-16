@@ -1,0 +1,25 @@
+error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+  --> $DIR/retag-data-race.rs:LL:CC
+   |
+LL |     *p = 5;
+   |     ^^^^^^ Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> $DIR/retag-data-race.rs:LL:CC
+   |
+LL |     let _r = &*p;
+   |              ^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span):
+   = note: inside `thread_2` at $DIR/retag-data-race.rs:LL:CC
+note: inside closure
+  --> $DIR/retag-data-race.rs:LL:CC
+   |
+LL |     let t2 = std::thread::spawn(move || unsafe { thread_2(p) });
+   |                                                  ^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

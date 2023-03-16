@@ -1,0 +1,19 @@
+error: Undefined Behavior: write access through <TAG> is forbidden because it is a foreign tag for <TAG>, which would hence change from Reserved to Disabled, but <TAG> is protected
+  --> $DIR/outside-range.rs:LL:CC
+   |
+LL |     *y.add(3) = 42;
+   |     ^^^^^^^^^^^^^^ write access through <TAG> is forbidden because it is a foreign tag for <TAG>, which would hence change from Reserved to Disabled, but <TAG> is protected
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = note: BACKTRACE:
+   = note: inside `stuff` at $DIR/outside-range.rs:LL:CC
+note: inside `main`
+  --> $DIR/outside-range.rs:LL:CC
+   |
+LL |         stuff(&mut *raw, raw);
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
