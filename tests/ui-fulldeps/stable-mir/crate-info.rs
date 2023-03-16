@@ -1,7 +1,7 @@
 // run-pass
 // Test that users are able to use stable mir APIs to retrieve information of the current crate
 
-// ignore-stage-1
+// ignore-stage1
 // ignore-cross-compile
 // ignore-remote
 // edition: 2021
