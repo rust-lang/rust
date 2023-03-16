@@ -306,7 +306,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
 
         // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
-        // pair of array indices are unequal, so that when `places_conflict` returns true, we
+        // pair of array indices are not equal, so that when `places_conflict` returns true, we
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
         let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {

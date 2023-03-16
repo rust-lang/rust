@@ -1081,7 +1081,7 @@ pub enum Rvalue<'tcx> {
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
     /// For addition, subtraction, and multiplication on integers the error condition is set when
-    /// the infinite precision result would be unequal to the actual result.
+    /// the infinite precision result would not be equal to the actual result.
     ///
     /// Other combinations of types and operators are unsupported.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
