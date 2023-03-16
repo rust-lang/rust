@@ -346,17 +346,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 crate::abi::codegen_return(fx);
             }
             TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
-                if !fx.tcx.sess.overflow_checks() {
-                    let overflow_not_to_check = match msg {
-                        AssertKind::OverflowNeg(..) => true,
-                        AssertKind::Overflow(op, ..) => op.is_checkable(),
-                        _ => false,
-                    };
-                    if overflow_not_to_check {
-                        let target = fx.get_block(*target);
-                        fx.bcx.ins().jump(target, &[]);
-                        continue;
-                    }
+                if !fx.tcx.sess.overflow_checks() && msg.is_optional_overflow_check() {
+                    let target = fx.get_block(*target);
+                    fx.bcx.ins().jump(target, &[]);
+                    continue;
                 }
                 let cond = codegen_operand(fx, cond).load_scalar(fx);
 
