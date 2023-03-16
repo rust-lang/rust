@@ -82,6 +82,7 @@ export class Ctx {
     private state: PersistentState;
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
+    private unlinkedFiles: vscode.Uri[];
 
     get client() {
         return this._client;
@@ -99,6 +100,7 @@ export class Ctx {
         this.clientSubscriptions = [];
         this.commandDisposables = [];
         this.commandFactories = commandFactories;
+        this.unlinkedFiles = [];
 
         this.state = new PersistentState(extCtx.globalState);
         this.config = new Config(extCtx);
@@ -218,7 +220,8 @@ export class Ctx {
                 this.outputChannel,
                 initializationOptions,
                 serverOptions,
-                this.config
+                this.config,
+                this.unlinkedFiles
             );
             this.pushClientCleanup(
                 this._client.onNotification(ra.serverStatus, (params) =>

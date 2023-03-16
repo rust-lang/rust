@@ -331,7 +331,7 @@ impl GlobalState {
     }
 
     pub(crate) fn send_notification<N: lsp_types::notification::Notification>(
-        &mut self,
+        &self,
         params: N::Params,
     ) {
         let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
@@ -372,7 +372,7 @@ impl GlobalState {
         self.req_queue.incoming.is_completed(&request.id)
     }
 
-    fn send(&mut self, message: lsp_server::Message) {
+    fn send(&self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }
 }

@@ -8,6 +8,7 @@ import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
 import { Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
+import { sep as pathSeparator } from "path";
 
 export interface Env {
     [name: string]: string;
@@ -69,7 +70,8 @@ export async function createClient(
     outputChannel: vscode.OutputChannel,
     initializationOptions: vscode.WorkspaceConfiguration,
     serverOptions: lc.ServerOptions,
-    config: Config
+    config: Config,
+    unlinkedFiles: vscode.Uri[]
 ): Promise<lc.LanguageClient> {
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
@@ -119,6 +121,65 @@ export async function createClient(
                 const preview = config.previewRustcOutput;
                 const errorCode = config.useRustcErrorCode;
                 diagnosticList.forEach((diag, idx) => {
+                    let value =
+                        typeof diag.code === "string" || typeof diag.code === "number"
+                            ? diag.code
+                            : diag.code?.value;
+                    if (value === "unlinked-file" && !unlinkedFiles.includes(uri)) {
+                        let config = vscode.workspace.getConfiguration("rust-analyzer");
+                        if (config.get("showUnlinkedFileNotification")) {
+                            unlinkedFiles.push(uri);
+                            let folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+                            if (folder) {
+                                let parent_backslash = uri.fsPath.lastIndexOf(
+                                    pathSeparator + "src"
+                                );
+                                let parent = uri.fsPath.substring(0, parent_backslash);
+
+                                if (parent.startsWith(folder)) {
+                                    let path = vscode.Uri.file(
+                                        parent + pathSeparator + "Cargo.toml"
+                                    );
+                                    void vscode.workspace.fs.stat(path).then(() => {
+                                        vscode.window
+                                            .showInformationMessage(
+                                                `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path}, do you want to add it to the linked Projects?`,
+                                                "Yes",
+                                                "No",
+                                                "Don't show this again"
+                                            )
+                                            .then((choice) => {
+                                                switch (choice) {
+                                                    case "Yes":
+                                                        break;
+                                                    case "No":
+                                                        config.update(
+                                                            "linkedProjects",
+                                                            config
+                                                                .get<any[]>("linkedProjects")
+                                                                ?.concat(
+                                                                    path.fsPath.substring(
+                                                                        folder!.length
+                                                                    )
+                                                                ),
+                                                            false
+                                                        );
+                                                        break;
+                                                    case "Don't show this again":
+                                                        config.update(
+                                                            "showUnlinkedFileNotification",
+                                                            false,
+                                                            false
+                                                        );
+                                                        break;
+                                                }
+                                            });
+                                    });
+                                }
+                            }
+                        }
+                    }
+
                     // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
                     // Diagnostic class, if they ever break this we are out of luck and have to go
                     // back to the worst diagnostics experience ever:)
@@ -138,14 +199,6 @@ export async function createClient(
                                 .substring(0, index)
                                 .replace(/^ -->[^\n]+\n/m, "");
                         }
-                        let value;
-                        if (errorCode) {
-                            if (typeof diag.code === "string" || typeof diag.code === "number") {
-                                value = diag.code;
-                            } else {
-                                value = diag.code?.value;
-                            }
-                        }
                         diag.code = {
                             target: vscode.Uri.from({
                                 scheme: diagnostics.URI_SCHEME,
@@ -153,7 +206,8 @@ export async function createClient(
                                 fragment: uri.toString(),
                                 query: idx.toString(),
                             }),
-                            value: value ?? "Click for full compiler diagnostic",
+                            value:
+                                errorCode && value ? value : "Click for full compiler diagnostic",
                         };
                     }
                 });

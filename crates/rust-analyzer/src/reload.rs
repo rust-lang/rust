@@ -112,7 +112,8 @@ impl GlobalState {
             && self.config.notifications().cargo_toml_not_found
         {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Failed to discover workspace.\n\n");
+            message.push_str("Failed to discover workspace.\n");
+            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
         }
 
         for ws in self.workspaces.iter() {

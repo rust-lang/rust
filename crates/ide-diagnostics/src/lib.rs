@@ -74,6 +74,7 @@ use ide_db::{
 };
 use syntax::{algo::find_node_at_range, ast::AstNode, SyntaxNodePtr, TextRange};
 
+// FIXME: Make this an enum
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
 

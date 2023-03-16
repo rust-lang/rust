@@ -444,6 +444,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.showUnlinkedFileNotification": {
+                    "markdownDescription": "Whether to show a notification for unlinked files asking the user to add the corresponding Cargo.toml to the linked projects setting.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
