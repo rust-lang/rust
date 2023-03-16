@@ -1,5 +1,5 @@
 warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/async-default-fn-overridden.rs:4:12
+  --> $DIR/async-default-fn-overridden.rs:6:12
    |
 LL | #![feature(async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^
