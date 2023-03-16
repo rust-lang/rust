@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-permissive-provenance
 #![feature(strict_provenance)]
 

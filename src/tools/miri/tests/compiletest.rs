@@ -139,8 +139,9 @@ regexes! {
     STDOUT:
     // Windows file paths
     r"\\"                           => "/",
-    // erase Stacked Borrows tags
+    // erase borrow tags
     "<[0-9]+>"                      => "<TAG>",
+    "<[0-9]+="                      => "<TAG=",
 }
 
 regexes! {
@@ -149,8 +150,9 @@ regexes! {
     r"\.rs:[0-9]+:[0-9]+(: [0-9]+:[0-9]+)?" => ".rs:LL:CC",
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
-    // erase Stacked Borrows tags
+    // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
+    "<[0-9]+="                       => "<TAG=",
     // erase whitespace that differs between platforms
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces

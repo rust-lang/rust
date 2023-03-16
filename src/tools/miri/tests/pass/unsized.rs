@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(unsized_tuple_coercion)]
 #![feature(unsized_fn_params)]
 

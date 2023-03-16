@@ -1,4 +1,4 @@
-//! Make sure that a retag acts like a write for the data race model.
+//! Make sure that a retag acts like a read for the data race model.
 //@compile-flags: -Zmiri-preemption-rate=0
 #[derive(Copy, Clone)]
 struct SendPtr(*mut u8);

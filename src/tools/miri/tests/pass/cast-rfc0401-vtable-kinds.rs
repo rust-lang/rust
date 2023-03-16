@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 // Check that you can cast between different pointers to trait objects
 // whose vtable have the same kind (both lengths, or both trait pointers).
 
