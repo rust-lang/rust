@@ -32,7 +32,7 @@ use rustc_middle::{
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
-use miri::{BacktraceStyle, ProvenanceMode, RetagFields};
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -317,6 +317,8 @@ fn main() {
             miri_config.validate = false;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
             miri_config.borrow_tracker = None;
+        } else if arg == "-Zmiri-tree-borrows" {
+            miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;

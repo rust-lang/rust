@@ -232,6 +232,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    /// Read bytes from a `(ptr, len)` argument
+    fn read_byte_slice<'i>(&'i self, bytes: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, &'i [u8]>
+    where
+        'mir: 'i,
+    {
+        let this = self.eval_context_ref();
+        let (ptr, len) = this.read_immediate(bytes)?.to_scalar_pair();
+        let ptr = ptr.to_pointer(this)?;
+        let len = len.to_target_usize(this)?;
+        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        Ok(bytes)
+    }
+
     /// Emulates calling a foreign item, failing if the item is not supported.
     /// This function will handle `goto_block` if needed.
     /// Returns Ok(None) if the foreign item was completely handled
@@ -427,12 +440,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
             }
-            "miri_print_borrow_stacks" => {
-                let [id] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+            "miri_print_borrow_state" => {
+                let [id, show_unnamed] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let id = this.read_scalar(id)?.to_u64()?;
+                let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
                 if let Some(id) = std::num::NonZeroU64::new(id) {
-                    this.print_stacks(AllocId(id))?;
+                    this.print_borrow_state(AllocId(id), show_unnamed)?;
                 }
+            }
+            "miri_pointer_name" => {
+                // This associates a name to a tag. Very useful for debugging, and also makes
+                // tests more strict.
+                let [ptr, nth_parent, name] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let nth_parent = this.read_scalar(nth_parent)?.to_u8()?;
+                let name = this.read_byte_slice(name)?;
+                // We must make `name` owned because we need to
+                // end the shared borrow from `read_byte_slice` before we can
+                // start the mutable borrow for `give_pointer_debug_name`.
+                let name = String::from_utf8_lossy(name).into_owned();
+                this.give_pointer_debug_name(ptr, nth_parent, &name)?;
             }
             "miri_static_root" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -487,12 +514,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Writes some bytes to the interpreter's stdout/stderr. See the
             // README for details.
             "miri_write_to_stdout" | "miri_write_to_stderr" => {
-                let [bytes] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let (ptr, len) = this.read_immediate(bytes)?.to_scalar_pair();
-                let ptr = ptr.to_pointer(this)?;
-                let len = len.to_target_usize(this)?;
-                let msg = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-
+                let [msg] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let msg = this.read_byte_slice(msg)?;
                 // Note: we're ignoring errors writing to host stdout/stderr.
                 let _ignore = match link_name.as_str() {
                     "miri_write_to_stdout" => std::io::stdout().write_all(msg),
