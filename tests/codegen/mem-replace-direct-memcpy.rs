@@ -13,12 +13,21 @@ pub fn replace_byte(dst: &mut u8, src: u8) -> u8 {
 }
 
 // NOTE(eddyb) the `CHECK-NOT`s ensure that the only calls of `@llvm.memcpy` in
-// the entire output, are the two direct calls we want, from `ptr::replace`.
+// the entire output, are the direct calls we want, from `ptr::replace`.
 
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: ; core::mem::replace
-// CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
-// CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
+
+// For a small type, we expect one each of `load`/`store`/`memcpy` instead
+// CHECK-LABEL: define internal noundef i8 @{{.+}}mem{{.+}}replace
+    // CHECK-NOT: alloca
+    // CHECK: alloca i8
+    // CHECK-NOT: alloca
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: load i8
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: store i8
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
+    // CHECK-NOT: call void @llvm.memcpy
+
 // CHECK-NOT: call void @llvm.memcpy

@@ -1026,12 +1026,13 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![feature(const_ptr_read)]
+    /// #![feature(const_mut_refs)]
     /// const FOO: () = unsafe {
     ///     let x = &[0_u8; 4];
     ///     let y = x.as_ptr().cast::<u32>();
-    ///     y.read(); // the address of a `u8` array is unknown and thus we don't know if
-    ///     // it is aligned enough for reading a `u32`.
+    ///     let mut z = 123;
+    ///     y.copy_to_nonoverlapping(&mut z, 1); // the address of a `u8` array is unknown
+    ///     // and thus we don't know if it is aligned enough for copying a `u32`.
     /// };
     /// ```
     ///

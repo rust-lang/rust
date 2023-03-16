@@ -149,6 +149,35 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::read_via_copy => {
+                        let [arg] = args.as_slice() else {
+                            span_bug!(terminator.source_info.span, "Wrong number of arguments");
+                        };
+                        let derefed_place =
+                            if let Some(place) = arg.place() && let Some(local) = place.as_local() {
+                                tcx.mk_place_deref(local.into())
+                            } else {
+                                span_bug!(terminator.source_info.span, "Only passing a local is supported");
+                            };
+                        terminator.kind = match *target {
+                            None => {
+                                // No target means this read something uninhabited,
+                                // so it must be unreachable, and we don't need to
+                                // preserve the assignment either.
+                                TerminatorKind::Unreachable
+                            }
+                            Some(target) => {
+                                block.statements.push(Statement {
+                                    source_info: terminator.source_info,
+                                    kind: StatementKind::Assign(Box::new((
+                                        *destination,
+                                        Rvalue::Use(Operand::Copy(derefed_place)),
+                                    ))),
+                                });
+                                TerminatorKind::Goto { target }
+                            }
+                        }
+                    }
                     sym::discriminant_value => {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let arg = tcx.mk_place_deref(arg);

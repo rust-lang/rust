@@ -156,7 +156,11 @@ fn layout_of_uncached<'tcx>(
 
             let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
 
-            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
+                // Projection eagerly bails out when the pointee references errors,
+                // fall back to structurally deducing metadata.
+                && !pointee.references_error()
+            {
                 let metadata_ty = tcx.normalize_erasing_regions(
                     param_env,
                     tcx.mk_projection(metadata_def_id, [pointee]),

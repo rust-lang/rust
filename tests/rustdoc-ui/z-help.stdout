@@ -44,6 +44,7 @@
     -Z             export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
     -Z                 extra-const-ub-checks=val -- turns on more checks to detect const UB, which can be slow (default: no)
     -Z                           fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
+    -Z                   flatten-format-args=val -- flatten nested format_args!() and literals into a simplified format_args!() call (default: no)
     -Z            force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
     -Z                                  fuel=val -- set the optimization fuel quota for a crate
     -Z                     function-sections=val -- whether each function should go in its own section

@@ -36,6 +36,8 @@ fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> UnusedGenericParams {
+    assert!(instance.def_id().is_local());
+
     if !tcx.sess.opts.unstable_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
         return UnusedGenericParams::new_all_used();
@@ -97,13 +99,6 @@ fn should_polymorphize<'tcx>(
 
     // Don't polymorphize intrinsics or virtual calls - calling `instance_mir` will panic.
     if matches!(instance, ty::InstanceDef::Intrinsic(..) | ty::InstanceDef::Virtual(..)) {
-        return false;
-    }
-
-    // Polymorphization results are stored in cross-crate metadata only when there are unused
-    // parameters, so assume that non-local items must have only used parameters (else this query
-    // would not be invoked, and the cross-crate metadata used instead).
-    if !def_id.is_local() {
         return false;
     }
 

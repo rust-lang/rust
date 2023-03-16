@@ -79,3 +79,15 @@ pub fn with_overflow(a: i32, b: i32) {
     let _y = core::intrinsics::sub_with_overflow(a, b);
     let _z = core::intrinsics::mul_with_overflow(a, b);
 }
+
+// EMIT_MIR lower_intrinsics.read_via_copy_primitive.LowerIntrinsics.diff
+pub fn read_via_copy_primitive(r: &i32) -> i32 {
+    unsafe { core::intrinsics::read_via_copy(r) }
+}
+
+// EMIT_MIR lower_intrinsics.read_via_copy_uninhabited.LowerIntrinsics.diff
+pub fn read_via_copy_uninhabited(r: &Never) -> Never {
+    unsafe { core::intrinsics::read_via_copy(r) }
+}
+
+pub enum Never {}

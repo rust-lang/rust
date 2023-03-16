@@ -495,6 +495,7 @@ impl Build {
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
         let build_triple = build.out.join(&build.build.triple);
+        t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
             if e.kind() != ErrorKind::AlreadyExists {

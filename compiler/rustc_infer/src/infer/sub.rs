@@ -1,5 +1,5 @@
 use super::combine::{CombineFields, RelationDir};
-use super::{ObligationEmittingRelation, SubregionOrigin};
+use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
@@ -138,7 +138,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.fields.define_opaque_types && def_id.is_local() =>
+                if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
+                    && def_id.is_local() =>
             {
                 self.fields.obligations.extend(
                     infcx

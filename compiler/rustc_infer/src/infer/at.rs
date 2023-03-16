@@ -30,16 +30,20 @@ use super::*;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
+/// Whether we should define opaque types or just treat them opaquely.
+///
+/// Currently only used to prevent predicate matching from matching anything
+/// against opaque types.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum DefineOpaqueTypes {
+    Yes,
+    No,
+}
+
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    /// Whether we should define opaque types
-    /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -55,7 +59,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: false }
+        At { infcx: self, cause, param_env }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -84,7 +88,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
 pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -93,33 +96,21 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
-        Self { define_opaque_types, ..self }
-    }
-
-    /// Hacky routine for equating two impl headers in coherence.
-    pub fn eq_impl_headers(
-        self,
-        expected: &ty::ImplHeader<'tcx>,
-        actual: &ty::ImplHeader<'tcx>,
-    ) -> InferResult<'tcx, ()> {
-        debug!("eq_impl_header({:?} = {:?})", expected, actual);
-        match (expected.trait_ref, actual.trait_ref) {
-            (Some(a_ref), Some(b_ref)) => self.eq(a_ref, b_ref),
-            (None, None) => self.eq(expected.self_ty, actual.self_ty),
-            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
-        }
-    }
-
     /// Makes `a <: b`, where `a` may or may not be expected.
     ///
     /// See [`At::trace_exp`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sub_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn sub_exp<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).sub(a, b)
+        self.trace_exp(a_is_expected, a, b).sub(define_opaque_types, a, b)
     }
 
     /// Makes `actual <: expected`. For example, if type-checking a
@@ -129,54 +120,81 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sup<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn sup<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(false, actual, expected)
+        self.sub_exp(define_opaque_types, false, actual, expected)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn sub<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn sub<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(true, expected, actual)
+        self.sub_exp(define_opaque_types, true, expected, actual)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn eq_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn eq_exp<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).eq(a, b)
+        self.trace_exp(a_is_expected, a, b).eq(define_opaque_types, a, b)
     }
 
     /// Makes `expected <: actual`.
     ///
     /// See [`At::trace`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn eq<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
+    pub fn eq<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).eq(expected, actual)
+        self.trace(expected, actual).eq(define_opaque_types, expected, actual)
     }
 
-    pub fn relate<T>(self, expected: T, variance: ty::Variance, actual: T) -> InferResult<'tcx, ()>
+    pub fn relate<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Variance::Covariant => self.sub(expected, actual),
-            ty::Variance::Invariant => self.eq(expected, actual),
-            ty::Variance::Contravariant => self.sup(expected, actual),
+            ty::Variance::Covariant => self.sub(define_opaque_types, expected, actual),
+            ty::Variance::Invariant => self.eq(define_opaque_types, expected, actual),
+            ty::Variance::Contravariant => self.sup(define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
@@ -195,11 +213,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::lub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
+    pub fn lub<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).lub(expected, actual)
+        self.trace(expected, actual).lub(define_opaque_types, expected, actual)
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
@@ -208,11 +231,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     ///
     /// See [`At::trace`] and [`Trace::glb`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
-    pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
+    pub fn glb<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).glb(expected, actual)
+        self.trace(expected, actual).glb(define_opaque_types, expected, actual)
     }
 
     /// Sets the "trace" values that will be used for
@@ -233,7 +261,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let trace = ToTrace::to_trace(self.infcx.tcx, self.cause, a_is_expected, a, b);
+        let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
         Trace { at: self, trace, a_is_expected }
     }
 }
@@ -242,13 +270,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
     #[instrument(skip(self), level = "debug")]
-    pub fn sub<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .sub(a_is_expected)
                 .relate(a, b)
@@ -259,13 +287,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a == b`; the expectation is set by the call to
     /// `trace()`.
     #[instrument(skip(self), level = "debug")]
-    pub fn eq<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+    pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .equate(a_is_expected)
                 .relate(a, b)
@@ -274,13 +302,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn lub<T>(self, a: T, b: T) -> InferResult<'tcx, T>
+    pub fn lub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .lub(a_is_expected)
                 .relate(a, b)
@@ -289,13 +317,13 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn glb<T>(self, a: T, b: T) -> InferResult<'tcx, T>
+    pub fn glb<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
             fields
                 .glb(a_is_expected)
                 .relate(a, b)
@@ -306,7 +334,6 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -314,10 +341,10 @@ impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
     ) -> TypeTrace<'tcx> {
         match (a, b) {
             (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, trait_ref_a, trait_ref_b)
+                ToTrace::to_trace(cause, a_is_expected, trait_ref_a, trait_ref_b)
             }
             (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, ty_a, ty_b)
+                ToTrace::to_trace(cause, a_is_expected, ty_a, ty_b)
             }
             (ImplSubject::Trait(_), ImplSubject::Inherent(_))
             | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
@@ -329,7 +356,6 @@ impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -344,7 +370,6 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -356,7 +381,6 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -371,7 +395,6 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -399,7 +422,6 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -411,7 +433,6 @@ impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -426,7 +447,6 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -441,24 +461,17 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        let a_ty = tcx.mk_projection(a.def_id, a.substs);
-        let b_ty = tcx.mk_projection(b.def_id, b.substs);
-        TypeTrace {
-            cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),
-        }
+        TypeTrace { cause: cause.clone(), values: Aliases(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
     fn to_trace(
-        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,

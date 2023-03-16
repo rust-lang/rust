@@ -8,7 +8,7 @@
       let _3: ();                          // in scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:60
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:46
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:46
           _1 = assert_inhabited::<T>() -> bb1; // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:46
                                            // mir::Constant
                                            // + span: $DIR/intrinsic_asserts.rs:25:5: 25:44
@@ -16,8 +16,8 @@
       }
   
       bb1: {
-          StorageDead(_1);                 // scope 0 at $DIR/intrinsic_asserts.rs:+1:46: +1:47
-          StorageLive(_2);                 // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:47
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:46: +1:47
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:47
           _2 = assert_zero_valid::<T>() -> bb2; // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:47
                                            // mir::Constant
                                            // + span: $DIR/intrinsic_asserts.rs:26:5: 26:45
@@ -25,8 +25,8 @@
       }
   
       bb2: {
-          StorageDead(_2);                 // scope 0 at $DIR/intrinsic_asserts.rs:+2:47: +2:48
-          StorageLive(_3);                 // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:60
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:47: +2:48
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:60
           _3 = assert_mem_uninitialized_valid::<T>() -> bb3; // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:60
                                            // mir::Constant
                                            // + span: $DIR/intrinsic_asserts.rs:27:5: 27:58
@@ -34,7 +34,7 @@
       }
   
       bb3: {
-          StorageDead(_3);                 // scope 0 at $DIR/intrinsic_asserts.rs:+3:60: +3:61
+          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:60: +3:61
           nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+0:21: +4:2
           return;                          // scope 0 at $DIR/intrinsic_asserts.rs:+4:2: +4:2
       }

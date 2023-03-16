@@ -71,6 +71,7 @@ use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, DynKind, Interner, TypeFlags};
 
 use std::any::Any;
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -2049,6 +2050,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        debug_assert_matches!(
+            (kind, self.def_kind(alias_ty.def_id)),
+            (ty::Opaque, DefKind::OpaqueTy)
+                | (ty::Projection, DefKind::AssocTy)
+                | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
+        );
         self.mk_ty_from_kind(Alias(kind, alias_ty))
     }
 

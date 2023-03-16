@@ -355,6 +355,7 @@ define_tables! {
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_items_for_impl_trait_in_trait: Table<DefIndex, LazyArray<DefId>>,
+    opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

@@ -5,19 +5,18 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/inline_diverging.rs:+0:12: +0:12
       let _1: (!, !);                      // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
 +     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
++     let mut _8: ();                      // in scope 0 at $DIR/inline_diverging.rs:27:13: 27:16
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) { // at $DIR/inline_diverging.rs:22:5: 22:22
 +         debug f => _2;                   // in scope 1 at $DIR/inline_diverging.rs:26:36: 26:37
 +         let _3: !;                       // in scope 1 at $DIR/inline_diverging.rs:27:9: 27:10
 +         let mut _4: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
-+         let mut _5: ();                  // in scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
-+         let mut _6: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:28:13: 28:14
-+         let mut _7: ();                  // in scope 1 at $DIR/inline_diverging.rs:28:13: 28:16
-+         let mut _8: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:6: 29:7
-+         let mut _9: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:9: 29:10
++         let mut _5: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:28:13: 28:14
++         let mut _6: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:6: 29:7
++         let mut _7: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:9: 29:10
 +         scope 2 {
 +             debug a => _3;               // in scope 2 at $DIR/inline_diverging.rs:27:9: 27:10
 +             scope 3 {
-+                 debug b => _9;           // in scope 3 at $DIR/inline_diverging.rs:28:9: 28:10
++                 debug b => _7;           // in scope 3 at $DIR/inline_diverging.rs:28:9: 28:10
 +             }
 +         }
 +         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) { // at $DIR/inline_diverging.rs:27:13: 27:16
@@ -35,21 +34,21 @@
 -                                          // mir::Constant
                                            // + span: $DIR/inline_diverging.rs:22:16: 22:21
                                            // + literal: Const { ty: fn() -> ! {sleep}, val: Value(<ZST>) }
-+         StorageLive(_9);                 // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
++         StorageLive(_7);                 // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
 +         StorageLive(_3);                 // scope 1 at $DIR/inline_diverging.rs:27:9: 27:10
 +         StorageLive(_4);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
 +         _4 = &_2;                        // scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
-+         StorageLive(_5);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
++         StorageLive(_8);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
++         _8 = const ();                   // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
 +         _3 = move (*_4)() -> [return: bb6, unwind: bb4]; // scope 4 at $SRC_DIR/core/src/ops/function.rs:LL:COL
 +     }
 + 
 +     bb1: {
-+         StorageDead(_7);                 // scope 2 at $DIR/inline_diverging.rs:28:15: 28:16
-+         StorageDead(_6);                 // scope 2 at $DIR/inline_diverging.rs:28:15: 28:16
-+         StorageLive(_8);                 // scope 3 at $DIR/inline_diverging.rs:29:6: 29:7
-+         _8 = move _3;                    // scope 3 at $DIR/inline_diverging.rs:29:6: 29:7
-+         _1 = (move _8, move _9);         // scope 3 at $DIR/inline_diverging.rs:29:5: 29:11
-+         StorageDead(_8);                 // scope 3 at $DIR/inline_diverging.rs:29:10: 29:11
++         StorageDead(_5);                 // scope 2 at $DIR/inline_diverging.rs:28:15: 28:16
++         StorageLive(_6);                 // scope 3 at $DIR/inline_diverging.rs:29:6: 29:7
++         _6 = move _3;                    // scope 3 at $DIR/inline_diverging.rs:29:6: 29:7
++         _1 = (move _6, move _7);         // scope 3 at $DIR/inline_diverging.rs:29:5: 29:11
++         StorageDead(_6);                 // scope 3 at $DIR/inline_diverging.rs:29:10: 29:11
 +         StorageDead(_3);                 // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
 +         drop(_2) -> bb2;                 // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
 +     }
@@ -71,12 +70,11 @@
 +     }
 + 
 +     bb6: {
-+         StorageDead(_5);                 // scope 1 at $DIR/inline_diverging.rs:27:15: 27:16
++         StorageDead(_8);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
 +         StorageDead(_4);                 // scope 1 at $DIR/inline_diverging.rs:27:15: 27:16
-+         StorageLive(_6);                 // scope 2 at $DIR/inline_diverging.rs:28:13: 28:14
-+         _6 = &_2;                        // scope 2 at $DIR/inline_diverging.rs:28:13: 28:14
-+         StorageLive(_7);                 // scope 2 at $DIR/inline_diverging.rs:28:13: 28:16
-+         _9 = <fn() -> ! {sleep} as Fn<()>>::call(move _6, move _7) -> [return: bb1, unwind: bb3]; // scope 2 at $DIR/inline_diverging.rs:28:13: 28:16
++         StorageLive(_5);                 // scope 2 at $DIR/inline_diverging.rs:28:13: 28:14
++         _5 = &_2;                        // scope 2 at $DIR/inline_diverging.rs:28:13: 28:14
++         _7 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb1, unwind: bb3]; // scope 2 at $DIR/inline_diverging.rs:28:13: 28:16
 +                                          // mir::Constant
 +                                          // + span: $DIR/inline_diverging.rs:28:13: 28:14
 +                                          // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a fn() -> ! {sleep}, ()) -> <fn() -> ! {sleep} as FnOnce<()>>::Output {<fn() -> ! {sleep} as Fn<()>>::call}, val: Value(<ZST>) }

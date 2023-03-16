@@ -9,6 +9,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
@@ -519,30 +520,68 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
-        if self.check_overflow && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
-            let result_value = self.temp(result_tup, span);
+        let rvalue = match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
+                let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
+                let result_value = self.temp(result_tup, span);
 
-            self.cfg.push_assign(
-                block,
-                source_info,
-                result_value,
-                Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
-            );
-            let val_fld = Field::new(0);
-            let of_fld = Field::new(1);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    result_value,
+                    Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
+                );
+                let val_fld = Field::new(0);
+                let of_fld = Field::new(1);
 
-            let tcx = self.tcx;
-            let val = tcx.mk_place_field(result_value, val_fld, ty);
-            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
+                let tcx = self.tcx;
+                let val = tcx.mk_place_field(result_value, val_fld, ty);
+                let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
-            let err = AssertKind::Overflow(op, lhs, rhs);
+                let err = AssertKind::Overflow(op, lhs, rhs);
+                block = self.assert(block, Operand::Move(of), false, err, span);
 
-            block = self.assert(block, Operand::Move(of), false, err, span);
+                Rvalue::Use(Operand::Move(val))
+            }
+            BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
+                // Consider that the shift overflows if `rhs < 0` or `rhs >= bits`.
+                // This can be encoded as a single operation as `(rhs & -bits) != 0`.
+                let (size, _) = ty.int_size_and_signed(self.tcx);
+                let bits = size.bits();
+                debug_assert!(bits.is_power_of_two());
+                let mask = !((bits - 1) as u128);
 
-            block.and(Rvalue::Use(Operand::Move(val)))
-        } else {
-            if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
+                let rhs_ty = rhs.ty(&self.local_decls, self.tcx);
+                let (rhs_size, _) = rhs_ty.int_size_and_signed(self.tcx);
+                let mask = Operand::const_from_scalar(
+                    self.tcx,
+                    rhs_ty,
+                    Scalar::from_uint(rhs_size.truncate(mask), rhs_size),
+                    span,
+                );
+
+                let outer_bits = self.temp(rhs_ty, span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    outer_bits,
+                    Rvalue::BinaryOp(BinOp::BitAnd, Box::new((rhs.to_copy(), mask))),
+                );
+
+                let overflows = self.temp(bool_ty, span);
+                let zero = self.zero_literal(span, rhs_ty);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    overflows,
+                    Rvalue::BinaryOp(BinOp::Ne, Box::new((Operand::Move(outer_bits), zero))),
+                );
+
+                let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
+                block = self.assert(block, Operand::Move(overflows), false, overflow_err, span);
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            BinOp::Div | BinOp::Rem if ty.is_integral() => {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
@@ -601,10 +640,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
-            }
 
-            block.and(Rvalue::BinaryOp(op, Box::new((lhs, rhs))))
-        }
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            _ => Rvalue::BinaryOp(op, Box::new((lhs, rhs))),
+        };
+        block.and(rvalue)
     }
 
     fn build_zero_repeat(

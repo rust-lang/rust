@@ -1,0 +1,11 @@
+error: method `foo` should be async because the method from the trait is async
+  --> $DIR/async-example-desugared-manual.rs:25:5
+   |
+LL |     async fn foo(&self) -> i32;
+   |     --------------------------- required because the trait method is async
+...
+LL |     fn foo(&self) -> MyFuture {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -42,7 +42,6 @@
       }
   
       bb1: {
-          StorageLive(_15);                // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
           _15 = core::panicking::panic(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/panic.rs:LL:COL

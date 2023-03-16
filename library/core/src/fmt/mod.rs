@@ -392,8 +392,31 @@ enum FlagV1 {
 }
 
 impl<'a> Arguments<'a> {
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_const(pieces: &'a [&'static str]) -> Self {
+        if pieces.len() > 1 {
+            panic!("invalid args");
+        }
+        Arguments { pieces, fmt: None, args: &[] }
+    }
+
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
+    #[cfg(not(bootstrap))]
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
+            panic!("invalid args");
+        }
+        Arguments { pieces, fmt: None, args }
+    }
+
+    #[cfg(bootstrap)]
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -417,8 +440,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1_formatted(
+    pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
         fmt: &'a [rt::v1::Argument],

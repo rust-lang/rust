@@ -1390,7 +1390,7 @@ pub struct UnusedOp<'a> {
     pub op: &'a str,
     #[label]
     pub label: Span,
-    #[suggestion(style = "verbose", code = "let _ = ", applicability = "machine-applicable")]
+    #[suggestion(style = "verbose", code = "let _ = ", applicability = "maybe-incorrect")]
     pub suggestion: Span,
 }
 
@@ -1434,17 +1434,15 @@ pub struct UnusedDef<'a, 'b> {
 }
 
 #[derive(Subdiagnostic)]
-pub enum UnusedDefSuggestion {
-    #[suggestion(
-        lint_suggestion,
-        style = "verbose",
-        code = "let _ = ",
-        applicability = "machine-applicable"
-    )]
-    Default {
-        #[primary_span]
-        span: Span,
-    },
+#[suggestion(
+    lint_suggestion,
+    style = "verbose",
+    code = "let _ = ",
+    applicability = "maybe-incorrect"
+)]
+pub struct UnusedDefSuggestion {
+    #[primary_span]
+    pub span: Span,
 }
 
 // Needed because of def_path_str

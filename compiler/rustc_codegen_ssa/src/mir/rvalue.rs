@@ -663,17 +663,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 bx.checked_binop(oop, input_ty, lhs, rhs)
             }
-            mir::BinOp::Shl | mir::BinOp::Shr => {
-                let lhs_llty = bx.cx().val_ty(lhs);
-                let rhs_llty = bx.cx().val_ty(rhs);
-                let invert_mask = common::shift_mask_val(bx, lhs_llty, rhs_llty, true);
-                let outer_bits = bx.and(rhs, invert_mask);
-
-                let of = bx.icmp(IntPredicate::IntNE, outer_bits, bx.cx().const_null(rhs_llty));
-                let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-
-                (val, of)
-            }
             _ => bug!("Operator `{:?}` is not a checkable operator", op),
         };
 

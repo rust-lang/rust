@@ -7,6 +7,8 @@ compiler-docs = true
 # This enables debug-assertions in LLVM,
 # catching logic errors in codegen much earlier in the process.
 assertions = true
+# enable warnings during the llvm compilation
+enable-warnings = true
 
 [rust]
 # This enables `RUSTC_LOG=debug`, avoiding confusing situations

@@ -328,6 +328,9 @@ fn impl_associated_item_for_impl_trait_in_trait(
     // `opt_local_def_id_to_hir_id` with `None`.
     impl_assoc_ty.opt_local_def_id_to_hir_id(None);
 
+    // Copy span of the opaque.
+    impl_assoc_ty.def_ident_span(Some(span));
+
     impl_assoc_ty.associated_item(ty::AssocItem {
         name: kw::Empty,
         kind: ty::AssocKind::Type,
@@ -341,6 +344,9 @@ fn impl_associated_item_for_impl_trait_in_trait(
     // Copy param_env of the containing function. The synthesized associated type doesn't have
     // extra predicates to assume.
     impl_assoc_ty.param_env(tcx.param_env(impl_fn_def_id));
+
+    // Copy visility of the containing function.
+    impl_assoc_ty.visibility(tcx.visibility(impl_fn_def_id));
 
     // Copy impl_defaultness of the containing function.
     impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
