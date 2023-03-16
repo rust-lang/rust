@@ -11,6 +11,8 @@
 //! There shouldn't be any direct references to internal compiler constructs in this module.
 //! If you need an internal construct, consider using `rustc_internal` or `rustc_smir`.
 
+pub mod mir;
+
 /// Use String for now but we should replace it.
 pub type Symbol = String;
 
@@ -36,6 +38,12 @@ pub struct Crate {
 /// use this item.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CrateItem(pub(crate) DefId);
+
+impl CrateItem {
+    pub fn body(&self) -> mir::Body {
+        crate::rustc_smir::mir_body(self)
+    }
+}
 
 /// Access to the local crate.
 pub fn local_crate() -> Crate {
