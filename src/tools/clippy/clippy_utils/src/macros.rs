@@ -533,6 +533,14 @@ struct FormatArgsValues<'tcx> {
 }
 
 impl<'tcx> FormatArgsValues<'tcx> {
+    fn new_empty(format_string_span: SpanData) -> Self {
+        Self {
+            value_args: Vec::new(),
+            pos_to_value_index: Vec::new(),
+            format_string_span,
+        }
+    }
+
     fn new(args: &'tcx Expr<'tcx>, format_string_span: SpanData) -> Self {
         let mut pos_to_value_index = Vec::new();
         let mut value_args = Vec::new();
@@ -997,12 +1005,13 @@ impl<'tcx> FormatArgsExpn<'tcx> {
             .find(|&name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))?;
         let newline = macro_name == sym::format_args_nl;
 
+        // ::core::fmt::Arguments::new_const(pieces)
         // ::core::fmt::Arguments::new_v1(pieces, args)
         // ::core::fmt::Arguments::new_v1_formatted(pieces, args, fmt, _unsafe_arg)
-        if let ExprKind::Call(callee, [pieces, args, rest @ ..]) = expr.kind
+        if let ExprKind::Call(callee, [pieces, rest @ ..]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind
             && let TyKind::Path(QPath::LangItem(LangItem::FormatArguments, _, _)) = ty.kind
-            && matches!(seg.ident.as_str(), "new_v1" | "new_v1_formatted")
+            && matches!(seg.ident.as_str(), "new_const" | "new_v1" | "new_v1_formatted")
         {
             let format_string = FormatString::new(cx, pieces)?;
 
@@ -1026,7 +1035,7 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                 return None;
             }
 
-            let positions = if let Some(fmt_arg) = rest.first() {
+            let positions = if let Some(fmt_arg) = rest.get(1) {
                 // If the argument contains format specs, `new_v1_formatted(_, _, fmt, _)`, parse
                 // them.
 
@@ -1042,7 +1051,11 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                 }))
             };
 
-            let values = FormatArgsValues::new(args, format_string.span.data());
+            let values = if let Some(args) = rest.first() {
+                FormatArgsValues::new(args, format_string.span.data())
+            } else {
+                FormatArgsValues::new_empty(format_string.span.data())
+            };
 
             let args = izip!(positions, parsed_args, parser.arg_places)
                 .map(|(position, parsed_arg, arg_span)| {
