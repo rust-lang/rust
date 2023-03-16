@@ -7,7 +7,10 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::stable_mir::{self};
+use crate::{
+    rustc_internal::crate_item,
+    stable_mir::{self},
+};
 use rustc_middle::ty::{tls::with, TyCtxt};
 use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
 use tracing::debug;
@@ -34,9 +37,7 @@ pub fn find_crate(name: &str) -> Option<stable_mir::Crate> {
 
 /// Retrieve all items of the local crate that have a MIR associated with them.
 pub fn all_local_items() -> stable_mir::CrateItems {
-    with(|tcx| {
-        tcx.mir_keys(()).iter().map(|item| stable_mir::CrateItem(item.to_def_id())).collect()
-    })
+    with(|tcx| tcx.mir_keys(()).iter().map(|item| crate_item(item.to_def_id())).collect())
 }
 
 /// Build a stable mir crate from a given crate number.
