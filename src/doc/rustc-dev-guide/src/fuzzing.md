@@ -82,8 +82,8 @@ To build a corpus, you may want to use:
 Here are a few things you can do to help the Rust project after filing an ICE.
 
 - [Bisect][bisect] the bug to figure out when it was introduced 
-- Fix unrelated problems with the test case (things like syntax errors or
-  borrow-checking errors)
+- Fix "distractions": problems with the test case that don't contribute to
+  triggering the ICE, such as syntax errors or borrow-checking errors
 - Minimize the test case (see below)
 - Add the minimal test case to [Glacier][glacier]
 
