@@ -238,8 +238,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Note that there are two tests to check that this remains true
         // (`regions-reassign-{match,let}-bound-pointer.rs`).
         //
-        // 2. An outdated issue related to the old HIR borrowck. See the test
+        // 2. Things go horribly wrong if we use subtype. The reason for
+        // THIS is a fairly subtle case involving bound regions. See the
+        // `givens` field in `region_constraints`, as well as the test
         // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
+        // for details. Short version is that we must sometimes detect
+        // relationships between specific region variables and regions
+        // bound in a closure signature, and that detection gets thrown
+        // off when we substitute fresh region variables here to enable
+        // subtyping.
     }
 
     /// Compute the new expected type and default binding mode from the old ones

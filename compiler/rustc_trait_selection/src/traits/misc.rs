@@ -111,6 +111,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             // Check regions assuming the self type of the impl is WF
             let outlives_env = OutlivesEnvironment::with_bounds(
                 param_env,
+                Some(&infcx),
                 infcx.implied_bounds_tys(
                     param_env,
                     parent_cause.body_id,

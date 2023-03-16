@@ -3,8 +3,7 @@ use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
 use crate::traits::ObligationCause;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
-use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
+use rustc_middle::ty::{self, ParamEnv, Ty};
 use rustc_span::def_id::LocalDefId;
 
 pub use rustc_middle::traits::query::OutlivesBound;
@@ -53,10 +52,6 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         body_id: LocalDefId,
         ty: Ty<'tcx>,
     ) -> Vec<OutlivesBound<'tcx>> {
-        let ty = self.resolve_vars_if_possible(ty);
-        let ty = OpportunisticRegionResolver::new(self).fold_ty(ty);
-        assert!(!ty.needs_infer());
-
         let span = self.tcx.def_span(body_id);
         let result = param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
@@ -110,7 +105,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
         tys.into_iter()
-            .map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
+            .map(move |ty| {
+                let ty = self.resolve_vars_if_possible(ty);
+                self.implied_outlives_bounds(param_env, body_id, ty)
+            })
             .flatten()
     }
 }
