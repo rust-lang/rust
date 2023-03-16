@@ -2,7 +2,7 @@ include ../tools.mk
 
 # ignore-freebsd
 # ignore-openbsd
-# ignore-sunos
+# ignore-solaris
 
 HOST := $(shell $(RUSTC) -vV | grep 'host:' | sed 's/host: //')
 ifeq ($(findstring i686,$(HOST)),i686)
