@@ -1,0 +1,16 @@
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+// compile-flags: -Zunpretty=hir -Zflatten-format-args=yes
+// check-pass
+
+fn main() {
+        let x = 1;
+        // Should flatten to println!("a 123 b {x} xyz\n"):
+        {
+                ::std::io::_print(<#[lang = "format_arguments"]>::new_v1(&["a 123 b ",
+                                    " xyz\n"],
+                        &[<#[lang = "format_argument"]>::new_display(&x)]));
+            };
+    }
