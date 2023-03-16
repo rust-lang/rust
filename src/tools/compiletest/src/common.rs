@@ -409,6 +409,7 @@ pub struct TargetCfgs {
     pub all_targets: HashSet<String>,
     pub all_archs: HashSet<String>,
     pub all_oses: HashSet<String>,
+    pub all_oses_and_envs: HashSet<String>,
     pub all_envs: HashSet<String>,
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
@@ -433,6 +434,7 @@ impl TargetCfgs {
         let mut all_targets = HashSet::new();
         let mut all_archs = HashSet::new();
         let mut all_oses = HashSet::new();
+        let mut all_oses_and_envs = HashSet::new();
         let mut all_envs = HashSet::new();
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
@@ -441,6 +443,7 @@ impl TargetCfgs {
         for (target, cfg) in targets.into_iter() {
             all_archs.insert(cfg.arch.clone());
             all_oses.insert(cfg.os.clone());
+            all_oses_and_envs.insert(cfg.os_and_env());
             all_envs.insert(cfg.env.clone());
             all_abis.insert(cfg.abi.clone());
             for family in &cfg.families {
@@ -459,6 +462,7 @@ impl TargetCfgs {
             all_targets,
             all_archs,
             all_oses,
+            all_oses_and_envs,
             all_envs,
             all_abis,
             all_families,
@@ -504,6 +508,12 @@ pub struct TargetCfg {
     endian: Endian,
     #[serde(rename = "panic-strategy", default)]
     panic: PanicStrategy,
+}
+
+impl TargetCfg {
+    pub(crate) fn os_and_env(&self) -> String {
+        format!("{}-{}", self.os, self.env)
+    }
 }
 
 fn default_os() -> String {

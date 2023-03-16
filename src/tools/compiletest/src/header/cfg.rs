@@ -85,6 +85,11 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the target environment is {name}"
     }
     condition! {
+        name: &target_cfg.os_and_env(),
+        allowed_names: &target_cfgs.all_oses_and_envs,
+        message: "when the operative system and target environment are {name}"
+    }
+    condition! {
         name: &target_cfg.abi,
         allowed_names: &target_cfgs.all_abis,
         message: "when the ABI is {name}"
