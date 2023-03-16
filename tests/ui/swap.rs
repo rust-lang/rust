@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build: macro_rules.rs
 
 #![warn(clippy::all)]
 #![allow(
@@ -217,13 +218,8 @@ const fn issue_9864(mut u: u32) -> u32 {
     u + v
 }
 
-macro_rules! issue_10421 {
-    () => {
-        let a = 1;
-        let b = a;
-        let b = b;
-    };
-}
+#[macro_use]
+extern crate macro_rules;
 
 const fn issue_10421(x: u32) -> u32 {
     issue_10421!();

@@ -76,9 +76,7 @@ declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         check_manual_swap(cx, block);
-        if !in_external_macro(cx.sess(), block.span) {
-            check_suspicious_swap(cx, block);
-        }
+        check_suspicious_swap(cx, block);
         check_xor_swap(cx, block);
     }
 }
@@ -191,6 +189,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
             && first.span.eq_ctxt(second.span)
+			&& !in_external_macro(&cx.sess(), first.span)
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
 			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
