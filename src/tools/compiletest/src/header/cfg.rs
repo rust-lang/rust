@@ -171,14 +171,22 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when comparing with {name}",
     }
 
-    // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
-    if prefix == "ignore" && name.starts_with("tidy-") && outcome == MatchOutcome::Invalid {
-        outcome = MatchOutcome::External;
-    }
+    if prefix == "ignore" && outcome == MatchOutcome::Invalid {
+        // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
+        if name.starts_with("tidy-") {
+            outcome = MatchOutcome::External;
+        }
 
-    // Don't error out for ignore-pass, as that is handled elsewhere.
-    if prefix == "ignore" && name == "pass" && outcome == MatchOutcome::Invalid {
-        outcome = MatchOutcome::External;
+        // Don't error out for ignore-pass, as that is handled elsewhere.
+        if name == "pass" {
+            outcome = MatchOutcome::External;
+        }
+
+        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
+        // elsewhere.
+        if name == "llvm-version" {
+            outcome = MatchOutcome::External;
+        }
     }
 
     ParsedNameDirective {
