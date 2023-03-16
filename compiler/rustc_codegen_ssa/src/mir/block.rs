@@ -563,15 +563,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow() {
-            let overflow_not_to_check = match msg {
-                AssertKind::OverflowNeg(..) => true,
-                AssertKind::Overflow(op, ..) => op.is_checkable(),
-                _ => false,
-            };
-            if overflow_not_to_check {
-                const_cond = Some(expected);
-            }
+        if !bx.cx().check_overflow() && msg.is_optional_overflow_check() {
+            const_cond = Some(expected);
         }
 
         // Don't codegen the panic block if success if known.
