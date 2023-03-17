@@ -213,8 +213,7 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
     }
     loop {
         expr = match expr.kind {
-            ExprKind::Box(e)
-            | ExprKind::AddrOf(_, _, e)
+            ExprKind::AddrOf(_, _, e)
             | ExprKind::Block(
                 &Block {
                     stmts: [],

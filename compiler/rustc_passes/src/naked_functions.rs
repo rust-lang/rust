@@ -179,8 +179,7 @@ enum ItemKind {
 impl<'tcx> CheckInlineAssembly<'tcx> {
     fn check_expr(&mut self, expr: &'tcx hir::Expr<'tcx>, span: Span) {
         match expr.kind {
-            ExprKind::Box(..)
-            | ExprKind::ConstBlock(..)
+            ExprKind::ConstBlock(..)
             | ExprKind::Array(..)
             | ExprKind::Call(..)
             | ExprKind::MethodCall(..)
