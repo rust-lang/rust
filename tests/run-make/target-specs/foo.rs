@@ -10,6 +10,9 @@ trait Sized {}
 #[lang = "freeze"]
 auto trait Freeze {}
 
+#[lang = "callable"]
+trait Callable<ARGS> {}
+
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
     0

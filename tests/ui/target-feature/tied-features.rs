@@ -4,8 +4,11 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
+#[lang = "sized"]
 trait Sized {}
+
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 // FIXME: this should not need to be public.
 pub fn main() {
@@ -24,7 +27,6 @@ pub fn main() {
 #[target_feature(enable = "paca")]
 //~^ ERROR must all be either enabled or disabled together
 unsafe fn foo() {}
-
 
 #[target_feature(enable = "paca,pacg")]
 unsafe fn bar() {}

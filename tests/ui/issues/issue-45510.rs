@@ -18,6 +18,8 @@ impl FnOnce<(Ishmael,)> for CallMe {
     }
 }
 
+impl std::ops::Callable<(Ishmael,)> for CallMe {}
+
 impl FnOnce<(Maybe,)> for CallMe {
     type Output = Maybe;
     extern "rust-call" fn call_once(self, _args: (Maybe,)) -> Maybe {
@@ -25,6 +27,8 @@ impl FnOnce<(Maybe,)> for CallMe {
         Maybe
     }
 }
+
+impl std::ops::Callable<(Maybe,)> for CallMe {}
 
 fn main() {
     assert_eq!(CallMe(Ishmael), Ishmael);

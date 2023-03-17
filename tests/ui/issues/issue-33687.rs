@@ -12,6 +12,8 @@ impl FnOnce<(u32, u32)> for Test {
     }
 }
 
+impl std::ops::Callable<(u32, u32)> for Test {}
+
 fn main() {
     assert_eq!(Test(1u32, 2u32), 3u32);
 }

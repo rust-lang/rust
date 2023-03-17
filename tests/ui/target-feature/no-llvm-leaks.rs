@@ -16,6 +16,9 @@ trait Sized {}
 trait Copy {}
 impl Copy for bool {}
 
+#[lang = "callable"]
+trait Callable<ARGS> {}
+
 extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "test", since = "1.0.0")]
     fn unreachable() -> !;
@@ -39,7 +42,6 @@ macro_rules! assert {
         const _: () = do_or_die($x);
     };
 }
-
 
 #[cfg(target_arch = "aarch64")]
 fn check_aarch64() {

@@ -108,9 +108,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // types have builtin support for `Clone`.
                     let clone_conditions = self.copy_clone_conditions(obligation);
                     self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
-                }
-
-                if lang_items.gen_trait() == Some(def_id) {
+                } else if lang_items.callable_trait() == Some(def_id) {
+                    // `Callable` is automatically implemented for all fn items and closures
+                    self.assemble_builtin_callable_candidates(obligation, &mut candidates);
+                } else if lang_items.gen_trait() == Some(def_id) {
                     self.assemble_generator_candidates(obligation, &mut candidates);
                 } else if lang_items.future_trait() == Some(def_id) {
                     self.assemble_future_candidates(obligation, &mut candidates);
@@ -326,6 +327,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
                 }
             }
+            _ => {}
+        }
+    }
+
+    /// Implements one of the `Fn()` family for a fn pointer.
+    #[instrument(skip(self, candidates), level = "debug")]
+    fn assemble_builtin_callable_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        trace!(substs = ?obligation.predicate.skip_binder().trait_ref.substs);
+        // Okay to skip binder because what we are inspecting doesn't involve bound regions.
+        let self_ty = obligation.self_ty().skip_binder();
+        trace!(?self_ty);
+        trace!(ty = ?self_ty.kind());
+        match *self_ty.kind() {
+            ty::Infer(ty::TyVar(_)) => {
+                debug!("assemble_builtin_callable_candidates: ambiguous self-type");
+                candidates.ambiguous = true; // Could wind up being a fn() type.
+            }
+            // Unsafe or extern functions do not necessarily implement FnOnce,
+            // but they do implement `Callable`
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..) => {
+                candidates.vec.push(BuiltinCandidate { has_nested: true })
+            }
+            // Everything else will have to implement `FnOnce` and thus
+            // implement `Callable` via the libcore blanket impl.
             _ => {}
         }
     }

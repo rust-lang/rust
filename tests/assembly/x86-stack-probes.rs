@@ -15,6 +15,8 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 impl Copy for u8 {}
 

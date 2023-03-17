@@ -239,6 +239,25 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
 #[const_trait]
+#[cfg(not(bootstrap))]
+pub trait FnOnce<Args: Tuple>: ~const Callable<Args> {
+    /// The returned type after the call operator is used.
+    #[lang = "fn_once_output"]
+    #[stable(feature = "fn_once_output", since = "1.12.0")]
+    type Output;
+
+    /// Performs the call operation.
+    #[unstable(feature = "fn_traits", issue = "29625")]
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+#[cfg(bootstrap)]
+#[const_trait]
+#[lang = "fn_once"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[fundamental] // so that regex can rely that `&str: !FnMut`
+/// remove with next bootstrap bump
 pub trait FnOnce<Args: Tuple> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
@@ -249,6 +268,14 @@ pub trait FnOnce<Args: Tuple> {
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
+
+#[cfg(not(bootstrap))]
+#[const_trait]
+#[lang = "callable"]
+#[unstable(feature = "fn_traits", issue = "29625")]
+/// This is an internal trait that, in contrast to `FnOnce` is also implemented
+/// for unsafe functions and intrinsics.
+pub trait Callable<Args> {}
 
 mod impls {
     use crate::marker::Tuple;
@@ -286,6 +313,11 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    #[cfg(not(bootstrap))]
+    impl<A: Tuple, F: ?Sized> const crate::ops::Callable<A> for &F where F: ~const Fn<A> {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: Tuple, F: ?Sized> FnMut<A> for &mut F
     where
         F: FnMut<A>,
@@ -294,6 +326,11 @@ mod impls {
             (*self).call_mut(args)
         }
     }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    #[cfg(not(bootstrap))]
+    impl<A: Tuple, F: ?Sized> const crate::ops::Callable<A> for &mut F where F: ~const FnMut<A> {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: Tuple, F: ?Sized> FnOnce<A> for &mut F

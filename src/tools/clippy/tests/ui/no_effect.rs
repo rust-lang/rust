@@ -69,6 +69,7 @@ impl FnOnce<(&str,)> for GreetStruct1 {
         println!("hello {}", who);
     }
 }
+impl std::ops::Callable<(&str,)> for GreetStruct1 {}
 
 struct GreetStruct2();
 
@@ -80,6 +81,8 @@ impl FnOnce<(&str,)> for GreetStruct2 {
     }
 }
 
+impl std::ops::Callable<(&str,)> for GreetStruct2 {}
+
 struct GreetStruct3;
 
 impl FnOnce<(&str,)> for GreetStruct3 {
@@ -89,6 +92,8 @@ impl FnOnce<(&str,)> for GreetStruct3 {
         println!("hello {}", who);
     }
 }
+
+impl std::ops::Callable<(&str,)> for GreetStruct3 {}
 
 fn main() {
     let s = get_struct();

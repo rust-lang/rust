@@ -3,7 +3,7 @@
 #![feature(fn_traits, unboxed_closures)]
 
 pub struct Prototype {
-    pub target: u32
+    pub target: u32,
 }
 
 trait Component {
@@ -29,5 +29,7 @@ impl<C: Component> FnOnce<(C,)> for Prototype {
         Fn::call(&self, (comp,))
     }
 }
+
+impl<C: Component> std::ops::Callable<(C,)> for Prototype {}
 
 fn main() {}

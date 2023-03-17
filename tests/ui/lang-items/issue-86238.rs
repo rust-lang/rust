@@ -2,7 +2,6 @@
 
 #![feature(lang_items)]
 #![feature(no_core)]
-
 #![no_core]
 fn main() {
     let one = || {};
@@ -14,3 +13,5 @@ fn main() {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}

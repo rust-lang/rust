@@ -28,10 +28,12 @@ extern "rust-intrinsic" {
     fn size_of<T>() -> usize;
 }
 
-#[lang="sized"]
+#[lang = "sized"]
 trait Sized {}
-#[lang="copy"]
+#[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 const EXPECTED: usize = 2;
 const ACTUAL: usize = size_of::<Foo>();

@@ -1,5 +1,6 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+use super::assembly::structural_traits::CallableMode;
 use super::assembly::{self, structural_traits};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
@@ -219,6 +220,31 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(ecx), ret)]
+    fn consider_builtin_callable_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+        let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
+                tcx,
+                goal.predicate.self_ty(),
+                CallableMode::Callable,
+        )? else {
+            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+        };
+
+        let pred = tupled_inputs_and_output
+            .map_bound(|(inputs, _)| {
+                ty::TraitRef::new(tcx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+            })
+            .to_predicate(tcx);
+        // `Callable<T>` is only implemented if its tupled inputs (`T`) match the ones from the function-like's signature.
+        Self::consider_implied_clause(ecx, goal, pred, [])
+    }
+
+    #[instrument(level = "trace", skip(ecx), ret)]
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -233,7 +259,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
                 goal.predicate.self_ty(),
-                goal_kind,
+                CallableMode::Fn(goal_kind),
             )? {
                 Some(a) => a,
                 None => {
@@ -731,7 +757,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,

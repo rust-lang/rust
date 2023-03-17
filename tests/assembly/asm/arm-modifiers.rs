@@ -26,6 +26,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 #[repr(simd)]
 pub struct f32x4(f32, f32, f32, f32);

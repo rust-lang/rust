@@ -12,6 +12,8 @@ impl FnOnce<(i32, i32)> for S3 {
     }
 }
 
+impl std::ops::Callable<(i32, i32)> for S3 {}
+
 fn main() {
     let s = S3 { x: 3, y: 3 };
     let ans = s(3, 1);

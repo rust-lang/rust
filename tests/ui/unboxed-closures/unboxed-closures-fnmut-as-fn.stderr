@@ -1,5 +1,5 @@
 error[E0277]: expected a `Fn<(isize,)>` closure, found `S`
-  --> $DIR/unboxed-closures-fnmut-as-fn.rs:27:21
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:31:21
    |
 LL |     let x = call_it(&S, 22);
    |             ------- ^^ expected an `Fn<(isize,)>` closure, found `S`
@@ -9,10 +9,10 @@ LL |     let x = call_it(&S, 22);
    = help: the trait `Fn<(isize,)>` is not implemented for `S`
    = note: `S` implements `FnMut`, but it must implement `Fn`, which is more general
 note: required by a bound in `call_it`
-  --> $DIR/unboxed-closures-fnmut-as-fn.rs:22:14
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:26:15
    |
-LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
-   |              ^^^^^^^^^^^^^^^^ required by this bound in `call_it`
+LL | fn call_it<F: Fn(isize) -> isize>(f: &F, x: isize) -> isize {
+   |               ^^^^^^^^^^^^^^^^^^ required by this bound in `call_it`
 
 error: aborting due to previous error
 

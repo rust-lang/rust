@@ -10,6 +10,9 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
+#[lang = "callable"]
+trait Callable<ARGS> {}
+
 fn g<T>(x: T) {}
 
 fn f(x: *mut u8) {

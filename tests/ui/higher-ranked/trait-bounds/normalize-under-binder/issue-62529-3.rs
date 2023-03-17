@@ -24,6 +24,7 @@ impl WithDefault for () {
         // Going through another generic function works fine.
         call(f, ());
         //~^ expected a
+        //~| ERROR: type mismatch in function arguments
     }
 }
 

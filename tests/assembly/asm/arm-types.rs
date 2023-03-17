@@ -25,6 +25,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 type ptr = *mut u8;
 

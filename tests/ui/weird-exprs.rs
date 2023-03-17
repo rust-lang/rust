@@ -1,7 +1,8 @@
 // run-pass
 
 #![feature(generators)]
-
+#![feature(custom_inner_attributes)]
+#![feature(fn_traits)]
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(redundant_semicolons)]
@@ -10,8 +11,9 @@
 #![allow(uncommon_codepoints, confusable_idents)]
 #![allow(unused_imports)]
 #![allow(unreachable_patterns)]
-
 #![recursion_limit = "256"]
+
+#![rustfmt::skip]
 
 extern crate core;
 use std::cell::Cell;
@@ -189,6 +191,7 @@ fn function() {
             &((|| foo) as _)
         }
     }
+    impl std::ops::Callable<()> for foo {}
     let foo = foo () ()() ()()() ()()()() ()()()()();
 }
 

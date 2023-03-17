@@ -4,7 +4,7 @@
 
 #![feature(unboxed_closures, fn_traits)]
 
-use std::ops::{Fn,FnMut,FnOnce};
+use std::ops::{Fn, FnMut, FnOnce};
 
 struct S;
 
@@ -15,23 +15,29 @@ impl Fn<(i32,)> for S {
 }
 
 impl FnMut<(i32,)> for S {
-    extern "rust-call" fn call_mut(&mut self, args: (i32,)) -> i32 { self.call(args) }
+    extern "rust-call" fn call_mut(&mut self, args: (i32,)) -> i32 {
+        self.call(args)
+    }
 }
 
 impl FnOnce<(i32,)> for S {
     type Output = i32;
-    extern "rust-call" fn call_once(self, args: (i32,)) -> i32 { self.call(args) }
+    extern "rust-call" fn call_once(self, args: (i32,)) -> i32 {
+        self.call(args)
+    }
 }
 
-fn call_it<F:Fn(i32)->i32>(f: &F, x: i32) -> i32 {
+impl std::ops::Callable<(i32,)> for S {}
+
+fn call_it<F: Fn(i32) -> i32>(f: &F, x: i32) -> i32 {
     f(x)
 }
 
-fn call_it_mut<F:FnMut(i32)->i32>(f: &mut F, x: i32) -> i32 {
+fn call_it_mut<F: FnMut(i32) -> i32>(f: &mut F, x: i32) -> i32 {
     f(x)
 }
 
-fn call_it_once<F:FnOnce(i32)->i32>(f: F, x: i32) -> i32 {
+fn call_it_once<F: FnOnce(i32) -> i32>(f: F, x: i32) -> i32 {
     f(x)
 }
 

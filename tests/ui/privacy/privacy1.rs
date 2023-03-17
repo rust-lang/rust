@@ -12,6 +12,9 @@ pub trait Deref {
     type Target;
 }
 
+#[lang = "callable"]
+trait Callable<ARGS> {}
+
 #[lang="receiver"]
 pub trait Receiver: Deref {}
 

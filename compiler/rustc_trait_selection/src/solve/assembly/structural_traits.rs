@@ -218,18 +218,29 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum CallableMode {
+    /// Check that the given type can implement a `Fn*` trait.
+    Fn(ty::ClosureKind),
+    /// Do not perform any signature checks, just extract the the tupled arguments and the output.
+    Callable,
+}
+
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
+#[instrument(level = "trace", skip(tcx), ret)]
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
-    goal_kind: ty::ClosureKind,
+    mode: CallableMode,
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
+    use CallableMode::*;
     match *self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, substs) => {
             let sig = tcx.fn_sig(def_id);
-            if sig.skip_binder().is_fn_trait_compatible()
-                && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+            if matches!(mode, Callable)
+                || sig.skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
             {
                 Ok(Some(
                     sig.subst(tcx, substs)
@@ -241,7 +252,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         }
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnPtr(sig) => {
-            if sig.is_fn_trait_compatible() {
+            if matches!(mode, Callable) || sig.is_fn_trait_compatible() {
                 Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output()))))
             } else {
                 Err(NoSolution)
@@ -249,21 +260,16 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         }
         ty::Closure(_, substs) => {
             let closure_substs = substs.as_closure();
-            match closure_substs.kind_ty().to_opt_closure_kind() {
+            match (mode, closure_substs.kind_ty().to_opt_closure_kind()) {
+                (Callable, _) => {}
                 // If the closure's kind doesn't extend the goal kind,
                 // then the closure doesn't implement the trait.
-                Some(closure_kind) => {
-                    if !closure_kind.extends(goal_kind) {
-                        return Err(NoSolution);
-                    }
-                }
+                (Fn(goal_kind), Some(closure_kind)) if closure_kind.extends(goal_kind) => {}
+                (Fn(_), Some(_)) => return Err(NoSolution),
                 // Closure kind is not yet determined, so we return ambiguity unless
                 // the expected kind is `FnOnce` as that is always implemented.
-                None => {
-                    if goal_kind != ty::ClosureKind::FnOnce {
-                        return Ok(None);
-                    }
-                }
+                (Fn(ty::ClosureKind::FnOnce), None) => {}
+                (Fn(_), None) => return Ok(None),
             }
             Ok(Some(closure_substs.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
         }

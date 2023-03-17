@@ -21,6 +21,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 impl Copy for i32 {}
 

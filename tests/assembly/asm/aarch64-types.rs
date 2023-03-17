@@ -22,6 +22,8 @@ macro_rules! stringify {
 
 #[lang = "sized"]
 trait Sized {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 #[lang = "copy"]
 trait Copy {}
 

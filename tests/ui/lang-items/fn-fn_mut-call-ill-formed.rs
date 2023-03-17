@@ -6,12 +6,16 @@
 
 #[lang = "sized"]
 trait Sized {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 #[cfg(any(fn_bad_item, fn_bad_sig))]
 #[lang = "fn"]
 trait MyFn<T> {
     #[cfg(fn_bad_sig)]
-    fn call(i: i32) -> i32 { 0 }
+    fn call(i: i32) -> i32 {
+        0
+    }
 
     #[cfg(fn_bad_item)]
     const call: i32 = 42;
@@ -21,7 +25,9 @@ trait MyFn<T> {
 #[lang = "fn_mut"]
 trait MyFnMut<T> {
     #[cfg(fn_mut_bad_sig)]
-    fn call_mut(i: i32) -> i32 { 0 }
+    fn call_mut(i: i32) -> i32 {
+        0
+    }
 
     #[cfg(fn_mut_bad_item)]
     const call_mut: i32 = 42;
@@ -31,7 +37,9 @@ trait MyFnMut<T> {
 #[lang = "fn_once"]
 trait MyFnOnce<T> {
     #[cfg(fn_once_bad_sig)]
-    fn call_once(i: i32) -> i32 { 0 }
+    fn call_once(i: i32) -> i32 {
+        0
+    }
 
     #[cfg(fn_once_bad_item)]
     const call_once: i32 = 42;
@@ -43,7 +51,7 @@ fn main() {
     //~^ ERROR failed to find an overloaded call trait for closure call
 
     let mut i = 0;
-    let mut b = || { };
+    let mut b = || {};
     b();
     //~^ ERROR failed to find an overloaded call trait for closure call
 }

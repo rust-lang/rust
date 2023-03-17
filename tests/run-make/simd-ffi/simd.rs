@@ -57,6 +57,9 @@ pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "callable"]
+trait Callable<ARGS> {}
+
 #[lang = "copy"]
 pub trait Copy {}
 

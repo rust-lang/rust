@@ -28,6 +28,8 @@ impl FnOnce<(isize, isize)> for Foo {
     }
 }
 
+impl std::ops::Callable<(isize, isize)> for Foo {}
+
 impl Fn<(isize, isize, isize)> for Foo {
     extern "rust-call" fn call(&self, args: (isize, isize, isize)) -> Self::Output {
         println!("{:?}", args);
@@ -48,6 +50,7 @@ impl FnOnce<(isize, isize, isize)> for Foo {
         (args.0 + 3, args.1 + 3, args.2 + 3)
     }
 }
+impl std::ops::Callable<(isize, isize, isize)> for Foo {}
 
 fn main() {
     let foo = Foo;

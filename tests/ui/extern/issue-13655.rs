@@ -6,9 +6,9 @@ struct Foo<T>(T);
 
 impl<T: Copy> Fn<()> for Foo<T> {
     extern "rust-call" fn call(&self, _: ()) -> T {
-      match *self {
-        Foo(t) => t
-      }
+        match *self {
+            Foo(t) => t,
+        }
     }
 }
 
@@ -26,7 +26,9 @@ impl<T: Copy> FnOnce<()> for Foo<T> {
     }
 }
 
+impl<T: Copy> std::ops::Callable<()> for Foo<T> {}
+
 fn main() {
-  let t: u8 = 1;
-  println!("{}", Foo(t)());
+    let t: u8 = 1;
+    println!("{}", Foo(t)());
 }

@@ -2008,6 +2008,10 @@ impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
     }
 }
 
+#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
+#[cfg(not(bootstrap))]
+impl<Args: Tuple, F: FnOnce<Args> + ?Sized, A: Allocator> core::ops::Callable<Args> for Box<F, A> {}
+
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 

@@ -11,6 +11,8 @@
 
 #[lang = "sized"]
 pub trait Sized {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 #[lang = "copy"]
 pub trait Copy {}
 impl Copy for f32 {}

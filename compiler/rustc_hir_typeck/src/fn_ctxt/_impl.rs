@@ -313,6 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
+    #[instrument(level = "trace", skip(self, span), ret)]
     pub(in super::super) fn normalize<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

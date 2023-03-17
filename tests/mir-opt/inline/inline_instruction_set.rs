@@ -59,3 +59,6 @@ pub fn default() {
     instruction_set_default();
     inline_always_and_using_inline_asm();
 }
+
+#[lang = "callable"]
+trait Callable<ARGS> {}

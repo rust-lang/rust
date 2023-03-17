@@ -3,11 +3,14 @@
 // needs-llvm-components: arm
 #![feature(abi_c_cmse_nonsecure_call, no_core, lang_items, intrinsics)]
 #![no_core]
-#[lang="sized"]
-pub trait Sized { }
-#[lang="copy"]
-pub trait Copy { }
+#[lang = "sized"]
+pub trait Sized {}
+#[lang = "copy"]
+pub trait Copy {}
 impl Copy for u32 {}
+
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 extern "rust-intrinsic" {
     pub fn transmute<T, U>(e: T) -> U;
@@ -16,10 +19,7 @@ extern "rust-intrinsic" {
 #[no_mangle]
 pub fn test(a: u32, b: u32, c: u32, d: u32, e: u32) -> u32 {
     let non_secure_function = unsafe {
-        transmute::<
-            usize,
-            extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32, u32) -> u32>
-        (
+        transmute::<usize, extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32, u32) -> u32>(
             0x10000004,
         )
     };

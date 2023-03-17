@@ -14,6 +14,8 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 extern "C" {
     fn peach() -> u32;

@@ -283,6 +283,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         bug!("`FnPtr` does not have an associated type: {:?}", goal);
     }
 
+    fn consider_builtin_callable_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Callable` does not have an associated type: {:?}", goal);
+    }
+
+    #[instrument(level = "trace", skip(ecx), ret)]
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -293,7 +301,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
                 goal.predicate.self_ty(),
-                goal_kind,
+                structural_traits::CallableMode::Fn(goal_kind),
             )? {
                 Some(tupled_inputs_and_output) => tupled_inputs_and_output,
                 None => {

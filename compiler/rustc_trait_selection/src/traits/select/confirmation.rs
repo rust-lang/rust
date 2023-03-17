@@ -20,7 +20,7 @@ use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
-use crate::traits::util::{self, closure_trait_ref_and_return_type};
+use crate::traits::util::{self, closure_trait_ref_and_return_type, TupleArgumentsFlag};
 use crate::traits::vtable::{
     count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
     VtblSegment,
@@ -49,7 +49,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         let mut impl_src = match candidate {
             BuiltinCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+                let data = self.confirm_builtin_candidate(obligation, has_nested)?;
                 ImplSource::Builtin(data)
             }
 
@@ -242,7 +242,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         has_nested: bool,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
         let lang_items = self.tcx().lang_items();
@@ -254,6 +254,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.copy_clone_conditions(obligation)
             } else if Some(trait_def) == lang_items.clone_trait() {
                 self.copy_clone_conditions(obligation)
+            } else if Some(trait_def) == lang_items.callable_trait() {
+                return self.confirm_callable_candidate(obligation);
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
@@ -275,7 +277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligations);
 
-        obligations
+        Ok(obligations)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -845,6 +847,40 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         Ok(nested)
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn confirm_callable_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        let tcx = self.tcx();
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let (sig, tuple_arguments) = match *self_ty.kind() {
+            ty::FnPtr(sig) => (sig, TupleArgumentsFlag::Yes),
+            ty::FnDef(def_id, substs) => {
+                (tcx.fn_sig(def_id).subst(tcx, substs), TupleArgumentsFlag::Yes)
+            }
+            ty::Closure(_, substs) => (substs.as_closure().sig(), TupleArgumentsFlag::No),
+            _ => span_bug!(obligation.cause.span, "invalid callable candidate: {self_ty:?}"),
+        };
+        if sig.has_escaping_bound_vars() {
+            // FIXME: Ideally we'd support `for<'a> fn(&'a ()): Callable(&'a ())`,
+            // but we do not currently. Luckily, such a bound is not
+            // particularly useful, so we don't expect users to write
+            // them often.
+            return Err(SelectionError::Unimplemented);
+        }
+        let trait_ref = closure_trait_ref_and_return_type(
+            tcx,
+            obligation.predicate.def_id(),
+            self_ty,
+            sig,
+            tuple_arguments,
+        )
+        .map_bound(|(trait_ref, _)| trait_ref);
+
+        self.confirm_poly_trait_refs(obligation, trait_ref)
     }
 
     /// In the case of closure types and fn pointers,

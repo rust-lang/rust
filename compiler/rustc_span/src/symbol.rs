@@ -450,6 +450,7 @@ symbols! {
         call,
         call_mut,
         call_once,
+        callable,
         caller_location,
         capture_disjoint_fields,
         cause,

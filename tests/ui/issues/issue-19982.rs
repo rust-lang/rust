@@ -19,4 +19,6 @@ impl FnOnce<(&(),)> for Foo {
     extern "rust-call" fn call_once(self, (_,): (&(),)) {}
 }
 
+impl std::ops::Callable<(&(),)> for Foo {}
+
 fn main() {}

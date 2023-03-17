@@ -9,8 +9,9 @@ fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
 }
 
 pub fn copy_any<T>(t: &T) -> T {
-    copy::<dyn Setup<From=T>>(t)
+    copy::<dyn Setup<From = T>>(t)
     //~^ ERROR the trait bound `dyn Setup<From = T>: Setup` is not satisfied
+    //~| ERROR: Callable<(&T,)>` is not satisfied
 }
 
 fn main() {

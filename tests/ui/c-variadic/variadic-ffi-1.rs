@@ -2,8 +2,11 @@
 // compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang="sized"]
-trait Sized { }
+#[lang = "sized"]
+trait Sized {}
+
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 extern "stdcall" {
     fn printf(_: *const u8, ...);

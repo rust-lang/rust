@@ -113,6 +113,9 @@ macro_rules! impl_fn_for_zst {
                     Fn::call(&self, ($( $arg, )*))
                 }
             }
+
+            #[cfg(not(bootstrap))]
+            impl $( <$( $lifetime ),+> )? crate::ops::Callable<($( $ArgTy, )*)> for $Name {}
         )+
     }
 }

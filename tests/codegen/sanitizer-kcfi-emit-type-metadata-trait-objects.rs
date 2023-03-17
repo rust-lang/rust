@@ -7,28 +7,30 @@
 // [x86_64] needs-llvm-components:
 // compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![feature(arbitrary_self_types, no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="copy"]
-trait Copy { }
-#[lang="receiver"]
-trait Receiver { }
-#[lang="dispatch_from_dyn"]
-trait DispatchFromDyn<T> { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
+#[lang = "receiver"]
+trait Receiver {}
+#[lang = "dispatch_from_dyn"]
+trait DispatchFromDyn<T> {}
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
 #[lang = "unsize"]
-trait Unsize<T: ?Sized> { }
+trait Unsize<T: ?Sized> {}
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> { }
+pub trait CoerceUnsized<T: ?Sized> {}
 impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-#[lang="freeze"]
-trait Freeze { }
-#[lang="drop_in_place"]
-fn drop_in_place_fn<T>() { }
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "drop_in_place"]
+fn drop_in_place_fn<T>() {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 pub trait Trait1 {
     fn foo(&self);
@@ -37,8 +39,7 @@ pub trait Trait1 {
 pub struct Type1;
 
 impl Trait1 for Type1 {
-    fn foo(&self) {
-    }
+    fn foo(&self) {}
 }
 
 pub trait Trait2<T> {
@@ -48,8 +49,7 @@ pub trait Trait2<T> {
 pub struct Type2;
 
 impl Trait2<i32> for Type2 {
-    fn bar(&self) {
-    }
+    fn bar(&self) {}
 }
 
 pub trait Trait3<T> {
@@ -59,8 +59,7 @@ pub trait Trait3<T> {
 pub struct Type3;
 
 impl<T, U> Trait3<U> for T {
-    fn baz(&self, _: &U) {
-    }
+    fn baz(&self, _: &U) {}
 }
 
 pub trait Trait4<'a, T> {

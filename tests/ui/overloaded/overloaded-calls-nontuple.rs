@@ -24,6 +24,8 @@ impl FnOnce<isize> for S {
     }
 }
 
+impl std::ops::Callable<isize> for S {}
+
 fn main() {
     let mut s = S { x: 1, y: 2 };
     drop(s(3))

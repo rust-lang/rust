@@ -14,6 +14,13 @@ where
     }
 }
 
+impl<T, F, G> std::ops::Callable<(T,)> for Compose<F, G>
+where
+    F: FnOnce<(T,)>,
+    G: FnOnce<(F::Output,)>,
+{
+}
+
 fn bad<T>(f: fn(&'static str) -> T) {
     test(Compose(f, |_| {}));
     //~^ ERROR: implementation of `FnOnce` is not general enough

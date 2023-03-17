@@ -18,6 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
+use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
@@ -33,7 +34,7 @@ pub fn provide(providers: &mut Providers) {
     probe::provide(providers);
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, TypeVisitable)]
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,

@@ -1,5 +1,5 @@
 error: failed to find an overloaded call trait for closure call
-  --> $DIR/issue-86238.rs:9:5
+  --> $DIR/issue-86238.rs:8:5
    |
 LL |     one()
    |     ^^^^^

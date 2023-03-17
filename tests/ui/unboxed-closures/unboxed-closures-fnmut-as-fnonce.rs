@@ -15,14 +15,18 @@ impl FnMut<(i32,)> for S {
 impl FnOnce<(i32,)> for S {
     type Output = i32;
 
-    extern "rust-call" fn call_once(mut self, args: (i32,)) -> i32 { self.call_mut(args) }
+    extern "rust-call" fn call_once(mut self, args: (i32,)) -> i32 {
+        self.call_mut(args)
+    }
 }
 
-fn call_it_mut<F:FnMut(i32)->i32>(f: &mut F, x: i32) -> i32 {
+impl std::ops::Callable<(i32,)> for S {}
+
+fn call_it_mut<F: FnMut(i32) -> i32>(f: &mut F, x: i32) -> i32 {
     f(x)
 }
 
-fn call_it_once<F:FnOnce(i32)->i32>(f: F, x: i32) -> i32 {
+fn call_it_once<F: FnOnce(i32) -> i32>(f: F, x: i32) -> i32 {
     f(x)
 }
 

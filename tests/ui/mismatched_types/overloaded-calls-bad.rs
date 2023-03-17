@@ -20,6 +20,8 @@ impl FnOnce<(isize,)> for S {
     }
 }
 
+impl std::ops::Callable<(isize,)> for S {}
+
 struct F;
 
 impl FnOnce<(i32,)> for F {
@@ -27,6 +29,8 @@ impl FnOnce<(i32,)> for F {
 
     extern "rust-call" fn call_once(self, args: (i32,)) -> Self::Output {}
 }
+
+impl std::ops::Callable<(i32,)> for F {}
 
 fn main() {
     let mut s = S { x: 3, y: 3 };

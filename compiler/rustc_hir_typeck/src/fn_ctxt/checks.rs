@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let method = method.ok().filter(|method| !method.references_error());
-        let Some(method) = method else  {
+        let Some(method) = method else {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
             let err_inputs = match tuple_arguments {
@@ -102,6 +102,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
             };
 
+            let err = self.tcx.ty_error_misc();
+            let callee_ty = method.map_or(err, |method| self.tcx.mk_fn_def(method.def_id, method.substs));
             self.check_argument_types(
                 sp,
                 expr,
@@ -110,9 +112,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args_no_rcvr,
                 false,
                 tuple_arguments,
-                method.map(|method| method.def_id),
+                callee_ty,
             );
-            return self.tcx.ty_error_misc();
+            self.check_callable(expr.hir_id, sp, callee_ty, std::iter::once(err).chain(err_inputs));
+            return err;
         };
 
         // HACK(eddyb) ignore self in the definition (see above).
@@ -122,6 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             &method.sig.inputs()[1..],
         );
+        let callee_ty = self.tcx.mk_fn_def(method.def_id, method.substs);
         self.check_argument_types(
             sp,
             expr,
@@ -130,14 +134,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             args_no_rcvr,
             method.sig.c_variadic,
             tuple_arguments,
-            Some(method.def_id),
+            callee_ty,
         );
+
+        self.check_callable(expr.hir_id, sp, callee_ty, method.sig.inputs().iter().copied());
 
         method.sig.output()
     }
 
     /// Generic function that factors out common logic from function calls,
     /// method calls and overloaded operators.
+    #[instrument(level = "trace", skip(self, call_expr, provided_args))]
     pub(in super::super) fn check_argument_types(
         &self,
         // Span enclosing the call site
@@ -154,8 +161,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c_variadic: bool,
         // Whether the arguments have been bundled in a tuple (ex: closures)
         tuple_arguments: TupleArgumentsFlag,
-        // The DefId for the function being called, for better error messages
-        fn_def_id: Option<DefId>,
+        // The callee type (e.g. function item ZST, function pointer or closure).
+        // Note that this may have surprising function definitions, like often just
+        // referring to `FnOnce::call_once`, but with an appropriate `Self` type.
+        callee_ty: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
 
@@ -230,7 +239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
 
-        let is_const_eval_select = matches!(fn_def_id, Some(def_id) if
+        let is_const_eval_select = matches!(*callee_ty.kind(), ty::FnDef(def_id, _) if
             self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
             && self.tcx.is_intrinsic(def_id)
             && self.tcx.item_name(def_id) == sym::const_eval_select);
@@ -456,7 +465,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 provided_args,
                 c_variadic,
                 err_code,
-                fn_def_id,
+                match *callee_ty.kind() {
+                    ty::Generator(did, ..) | ty::Closure(did, _) | ty::FnDef(did, _) => Some(did),
+                    ty::FnPtr(..) | ty::Error(_) => None,
+                    ref kind => span_bug!(call_span, "invalid call argument type: {kind:?}"),
+                },
                 call_span,
                 call_expr,
             );

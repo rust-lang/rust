@@ -43,6 +43,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.push(obligation);
     }
 
+    #[instrument(level = "trace", skip(self, infcx), ret)]
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         self.obligations
             .drain(..)
@@ -76,6 +77,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .collect()
     }
 
+    #[instrument(level = "trace", skip(self, infcx), ret)]
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let mut errors = Vec::new();
         for i in 0.. {

@@ -3,12 +3,14 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::type_error_struct;
+use hir::LangItem;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::autoderef::Autoderef;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -22,7 +24,6 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
@@ -66,7 +67,7 @@ pub fn check_legal_trait_for_method_call(
 #[derive(Debug)]
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
-    DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
+    DeferredClosure(Ty<'tcx>, ty::FnSig<'tcx>),
     /// E.g., enum variant constructors.
     Overloaded(MethodCallee<'tcx>),
 }
@@ -173,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             closure_substs: substs,
                         },
                     );
-                    return Some(CallStep::DeferredClosure(def_id, closure_sig));
+                    return Some(CallStep::DeferredClosure(adjusted_ty, closure_sig));
                 }
             }
 
@@ -375,7 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_id) = match *callee_ty.kind() {
+        let fn_sig = match *callee_ty.kind() {
             ty::FnDef(def_id, subst) => {
                 let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, subst);
 
@@ -403,9 +404,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .emit();
                     }
                 }
-                (fn_sig, Some(def_id))
+                fn_sig
             }
-            ty::FnPtr(sig) => (sig, None),
+            ty::FnPtr(sig) => sig,
             _ => {
                 for arg in arg_exprs {
                     self.check_expr(arg);
@@ -459,7 +460,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
-            def_id,
+            callee_ty,
+        );
+
+        self.check_callable(
+            call_expr.hir_id,
+            call_expr.span,
+            callee_ty,
+            fn_sig.inputs().iter().copied(),
         );
 
         if fn_sig.abi == abi::Abi::RustCall {
@@ -705,12 +713,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit()
     }
 
+    /// Enforces that things being called actually are callable
+    #[instrument(skip(self, arguments))]
+    pub(super) fn check_callable(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        callable_ty: Ty<'tcx>,
+        arguments: impl IntoIterator<Item = Ty<'tcx>>,
+    ) {
+        if callable_ty.references_error() {
+            return;
+        }
+
+        let cause = self.cause(span, ObligationCauseCode::MiscObligation);
+
+        let arguments_tuple = self.tcx.mk_tup_from_iter(arguments.into_iter());
+        let pred = ty::Binder::dummy(ty::TraitRef::from_lang_item(
+            self.tcx,
+            LangItem::Callable,
+            span,
+            [callable_ty, arguments_tuple],
+        ));
+        self.register_predicate(Obligation::new(self.tcx, cause, self.param_env, pred));
+    }
+
     fn confirm_deferred_closure_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
-        closure_def_id: LocalDefId,
+        closure_ty: Ty<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
         // `fn_sig` is the *signature* of the closure being called. We
@@ -733,7 +766,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
-            Some(closure_def_id.to_def_id()),
+            closure_ty,
+        );
+
+        self.check_callable(
+            call_expr.hir_id,
+            call_expr.span,
+            closure_ty,
+            fn_sig.inputs()[0].tuple_fields(),
         );
 
         fn_sig.output()
@@ -804,6 +844,12 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 let mut adjustments = self.adjustments;
                 adjustments.extend(autoref);
                 fcx.apply_adjustments(self.callee_expr, adjustments);
+                fcx.check_callable(
+                    self.callee_expr.hir_id,
+                    self.callee_expr.span,
+                    fcx.tcx.mk_fn_def(method_callee.def_id, method_callee.substs),
+                    method_sig.inputs().iter().copied(),
+                );
 
                 fcx.write_method_call(self.call_expr.hir_id, method_callee);
             }

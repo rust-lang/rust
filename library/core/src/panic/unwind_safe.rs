@@ -272,6 +272,10 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
     }
 }
 
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg(not(bootstrap))]
+impl<R, F: FnOnce() -> R> crate::ops::Callable<()> for AssertUnwindSafe<F> {}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

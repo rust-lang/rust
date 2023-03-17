@@ -18,6 +18,8 @@ impl Copy for i64 {}
 impl Copy for u64 {}
 impl Copy for f32 {}
 impl Copy for f64 {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 // CHECK: define void @f_void()
 #[no_mangle]

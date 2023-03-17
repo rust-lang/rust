@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `dyn Setup<From = T>: Setup` is not satisfied
   --> $DIR/object-unsafety.rs:12:12
    |
-LL |     copy::<dyn Setup<From=T>>(t)
-   |            ^^^^^^^^^^^^^^^^^ the trait `Setup` is not implemented for `dyn Setup<From = T>`
+LL |     copy::<dyn Setup<From = T>>(t)
+   |            ^^^^^^^^^^^^^^^^^^^ the trait `Setup` is not implemented for `dyn Setup<From = T>`
    |
 note: required by a bound in `copy`
   --> $DIR/object-unsafety.rs:7:12
@@ -14,6 +14,12 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | pub fn copy_any<T>(t: &T) -> T where dyn Setup<From = T>: Setup {
    |                                ++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error[E0277]: the trait bound `for<'a> fn(&'a <dyn Setup<From = T> as Setup>::From) -> <dyn Setup<From = T> as Setup>::From {copy::<dyn Setup<From = T>>}: Callable<(&T,)>` is not satisfied
+  --> $DIR/object-unsafety.rs:12:5
+   |
+LL |     copy::<dyn Setup<From = T>>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Callable<(&T,)>` is not implemented for fn item `for<'a> fn(&'a <dyn Setup<From = T> as Setup>::From) -> <dyn Setup<From = T> as Setup>::From {copy::<dyn Setup<From = T>>}`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

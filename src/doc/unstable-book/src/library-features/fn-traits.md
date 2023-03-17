@@ -27,6 +27,7 @@ impl FnOnce<(u32, )> for Adder {
         self.a + b.0
     }
 }
+impl std::ops::Callable<(u32,)> for Adder {}
 
 fn main() {
     let adder = Adder { a: 3 };

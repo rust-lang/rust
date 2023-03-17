@@ -430,7 +430,7 @@ fn report_unexpected_variant_res(
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,

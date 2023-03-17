@@ -17,14 +17,15 @@ impl FnMut<()> for S {
 
 impl FnOnce<()> for S {
     type Output = i32;
-    extern "rust-call" fn call_once(mut self, args: ()) -> i32 { self.call_mut(args) }
+    extern "rust-call" fn call_once(mut self, args: ()) -> i32 {
+        self.call_mut(args)
+    }
 }
 
+impl std::ops::Callable<()> for S {}
+
 fn main() {
-    let mut s = S {
-        x: 3,
-        y: 3,
-    };
+    let mut s = S { x: 3, y: 3 };
     let ans = s();
     assert_eq!(ans, 9);
 }

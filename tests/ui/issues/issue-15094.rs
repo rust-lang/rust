@@ -3,18 +3,20 @@
 use std::{fmt, ops};
 
 struct Debuger<T> {
-    x: T
+    x: T,
 }
 
-impl<T: fmt::Debug> ops::FnOnce<(),> for Debuger<T> {
+impl<T: fmt::Debug> ops::FnOnce<()> for Debuger<T> {
     type Output = ();
     fn call_once(self, _args: ()) {
-    //~^ ERROR `call_once` has an incompatible type for trait
-    //~| expected signature `extern "rust-call" fn
-    //~| found signature `fn
+        //~^ ERROR `call_once` has an incompatible type for trait
+        //~| expected signature `extern "rust-call" fn
+        //~| found signature `fn
         println!("{:?}", self.x);
     }
 }
+
+impl<T: fmt::Debug> ops::Callable<()> for Debuger<T> {}
 
 fn make_shower<T>(x: T) -> Debuger<T> {
     Debuger { x: x }

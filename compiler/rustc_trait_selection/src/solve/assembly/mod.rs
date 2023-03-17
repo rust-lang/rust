@@ -236,6 +236,12 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // `Callable` is implemented for all function items, function definitions and closures.
+    fn consider_builtin_callable_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     // A generator (that comes from an `async` desugaring) is known to implement
     // `Future<Output = O>`, where `O` is given by the generator's return type
     // that was computed during type-checking.
@@ -284,6 +290,7 @@ pub(super) trait GoalKind<'tcx>:
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn assemble_and_evaluate_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -430,6 +437,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_tuple_candidate(self, goal)
         } else if lang_items.pointee_trait() == Some(trait_def_id) {
             G::consider_builtin_pointee_candidate(self, goal)
+        } else if lang_items.callable_trait() == Some(trait_def_id) {
+            G::consider_builtin_callable_candidate(self, goal)
         } else if lang_items.future_trait() == Some(trait_def_id) {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.gen_trait() == Some(trait_def_id) {

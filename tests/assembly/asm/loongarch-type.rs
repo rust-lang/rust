@@ -25,6 +25,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "callable"]
+trait Callable<ARGS> {}
 
 type ptr = *const i32;
 
@@ -42,7 +44,7 @@ extern "C" {
 
 // Hack to avoid function merging
 extern "Rust" {
-   fn dont_merge(s: &str);
+    fn dont_merge(s: &str);
 }
 
 // CHECK-LABEL: sym_fn:

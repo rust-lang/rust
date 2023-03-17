@@ -86,6 +86,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         ConfirmContext { fcx, span, self_expr, call_expr, skip_record_for_diagnostics: false }
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn confirm(
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
@@ -99,7 +100,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
         let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
 
-        debug!("rcvr_substs={rcvr_substs:?}, all_substs={all_substs:?}");
+        debug!(?rcvr_substs);
+        debug!(?all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
@@ -125,11 +127,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
         let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
-        debug!(
-            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
-            self_ty, method_sig_rcvr, method_sig, method_predicates
-        );
+        debug!(?self_ty, ?method_sig_rcvr, ?pick);
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
+        let inputs = method_sig.inputs();
 
         let (method_sig, method_predicates) =
             self.normalize(self.span, (method_sig, method_predicates));
@@ -149,6 +149,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 pick.item.def_id,
             );
         }
+
+        self.check_callable(
+            self.call_expr.hir_id,
+            self.span,
+            self.tcx.mk_fn_def(pick.item.def_id, all_substs),
+            inputs.iter().copied(),
+        );
 
         // Create the final `MethodCallee`.
         let callee = MethodCallee {
