@@ -3,7 +3,7 @@ use std::{io, io::prelude::Write};
 use super::OutputFormatter;
 use crate::{
     bench::fmt_bench_samples,
-    console::{ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
     term,
     test_result::TestResult,
     time,
@@ -167,6 +167,18 @@ impl<T: Write> TerseFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for TerseFormatter<T> {
+    fn write_discovery_start(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()> {
+        self.write_plain(format!("{}: {test_type}\n", desc.name))
+    }
+
+    fn write_discovery_finish(&mut self, _state: &ConsoleTestDiscoveryState) -> io::Result<()> {
+        Ok(())
+    }
+
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         self.total_test_count = test_count;
         let noun = if test_count != 1 { "tests" } else { "test" };

@@ -1,0 +1,5 @@
+{ "type": "suite", "event": "discovery" }
+{ "type": "test", "event": "discovered", "name": "a_test", "ignore": false, "ignore_message": "", "source_path": "$DIR/tests-listing-format-json.rs", "start_line": 20, "start_col": 4, "end_line": 20, "end_col": 10 }
+{ "type": "test", "event": "discovered", "name": "m_test", "ignore": false, "ignore_message": "", "source_path": "$DIR/tests-listing-format-json.rs", "start_line": 13, "start_col": 4, "end_line": 13, "end_col": 10 }
+{ "type": "test", "event": "discovered", "name": "z_test", "ignore": true, "ignore_message": "not yet implemented", "source_path": "$DIR/tests-listing-format-json.rs", "start_line": 17, "start_col": 4, "end_line": 17, "end_col": 10 }
+{ "type": "suite", "event": "completed", "tests": 3, "benchmarks": 0, "total": 3, "ignored": 1 }

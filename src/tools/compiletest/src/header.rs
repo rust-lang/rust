@@ -1047,6 +1047,16 @@ pub fn make_test_description<R: Read>(
         name,
         ignore,
         ignore_message,
+        #[cfg(not(bootstrap))]
+        source_file: "",
+        #[cfg(not(bootstrap))]
+        start_line: 0,
+        #[cfg(not(bootstrap))]
+        start_col: 0,
+        #[cfg(not(bootstrap))]
+        end_line: 0,
+        #[cfg(not(bootstrap))]
+        end_col: 0,
         should_panic,
         compile_fail: false,
         no_run: false,

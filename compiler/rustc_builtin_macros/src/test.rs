@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_expand::base::*;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{FileNameDisplayPreference, Span};
 use std::iter;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -231,6 +231,8 @@ pub fn expand_test_or_bench(
         &item.ident,
     ));
 
+    let location_info = get_location_info(cx, &item);
+
     let mut test_const = cx.item(
         sp,
         Ident::new(item.ident.name, sp),
@@ -280,6 +282,16 @@ pub fn expand_test_or_bench(
                                             cx.expr_none(sp)
                                         },
                                     ),
+                                    // source_file: <relative_path_of_source_file>
+                                    field("source_file", cx.expr_str(sp, location_info.0)),
+                                    // start_line: start line of the test fn identifier.
+                                    field("start_line", cx.expr_usize(sp, location_info.1)),
+                                    // start_col: start column of the test fn identifier.
+                                    field("start_col", cx.expr_usize(sp, location_info.2)),
+                                    // end_line: end line of the test fn identifier.
+                                    field("end_line", cx.expr_usize(sp, location_info.3)),
+                                    // end_col: end column of the test fn identifier.
+                                    field("end_col", cx.expr_usize(sp, location_info.4)),
                                     // compile_fail: true | false
                                     field("compile_fail", cx.expr_bool(sp, false)),
                                     // no_run: true | false
@@ -362,6 +374,19 @@ pub fn expand_test_or_bench(
             Annotatable::Item(item),
         ]
     }
+}
+
+fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usize, usize, usize) {
+    let span = item.ident.span;
+    let (source_file, lo_line, lo_col, hi_line, hi_col) =
+        cx.sess.source_map().span_to_location_info(span);
+
+    let file_name = match source_file {
+        Some(sf) => sf.name.display(FileNameDisplayPreference::Remapped).to_string(),
+        None => "no-location".to_string(),
+    };
+
+    (Symbol::intern(&file_name), lo_line, lo_col, hi_line, hi_col)
 }
 
 fn item_path(mod_path: &[Ident], item_ident: &Ident) -> String {
