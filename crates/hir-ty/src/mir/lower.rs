@@ -14,7 +14,7 @@ use hir_def::{
     layout::LayoutError,
     path::Path,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, LocalFieldId, TraitId,
+    AdtId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, LocalFieldId, TraitId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -643,7 +643,7 @@ impl MirLowerCtx<'_> {
                                             },
                                         }
                                     }).collect(),
-                                    None => operands.into_iter().map(|x| x).collect::<Option<_>>().ok_or(
+                                    None => operands.into_iter().collect::<Option<_>>().ok_or(
                                         MirLowerError::TypeError("missing field in record literal"),
                                     )?,
                                 },
@@ -761,7 +761,49 @@ impl MirLowerCtx<'_> {
                 );
                 Ok(Some(current))
             }
-            Expr::Range { .. } => not_supported!("range"),
+            &Expr::Range { lhs, rhs, range_type: _ } => {
+                let ty = self.expr_ty(expr_id);
+                let Some((adt, subst)) = ty.as_adt() else {
+                    return Err(MirLowerError::TypeError("Range type is not adt"));
+                };
+                let AdtId::StructId(st) = adt else {
+                    return Err(MirLowerError::TypeError("Range type is not struct"));
+                };
+                let mut lp = None;
+                let mut rp = None;
+                if let Some(x) = lhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                        return Ok(None);
+                    };
+                    lp = Some(o);
+                    current = c;
+                }
+                if let Some(x) = rhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                        return Ok(None);
+                    };
+                    rp = Some(o);
+                    current = c;
+                }
+                self.push_assignment(
+                    current,
+                    place,
+                    Rvalue::Aggregate(
+                        AggregateKind::Adt(st.into(), subst.clone()),
+                        self.db.struct_data(st).variant_data.fields().iter().map(|x| {
+                            let o = match x.1.name.as_str() {
+                                Some("start") => lp.take(),
+                                Some("end") => rp.take(),
+                                Some("exhausted") => Some(Operand::from_bytes(vec![0], TyBuilder::bool())),
+                                _ => None,
+                            };
+                            o.ok_or(MirLowerError::UnresolvedField)
+                        }).collect::<Result<_>>()?,
+                    ),
+                    expr_id.into(),
+                );
+                Ok(Some(current))
+            },
             Expr::Closure { .. } => not_supported!("closure"),
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 let Some(values) = exprs

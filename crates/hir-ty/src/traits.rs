@@ -188,7 +188,7 @@ impl FnTrait {
         }
     }
 
-    pub fn method_name(&self) -> Name {
+    pub fn method_name(self) -> Name {
         match self {
             FnTrait::FnOnce => name!(call_once),
             FnTrait::FnMut => name!(call_mut),
@@ -196,7 +196,7 @@ impl FnTrait {
         }
     }
 
-    pub fn get_id(&self, db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
+    pub fn get_id(self, db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
         let target = db.lang_item(krate, self.lang_item())?;
         match target {
             LangItemTarget::Trait(t) => Some(t),

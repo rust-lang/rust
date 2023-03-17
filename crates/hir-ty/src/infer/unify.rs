@@ -633,7 +633,10 @@ impl<'a> InferenceTable<'a> {
     ) -> Option<(Option<FnTrait>, Vec<Ty>, Ty)> {
         match ty.callable_sig(self.db) {
             Some(sig) => Some((None, sig.params().to_vec(), sig.ret().clone())),
-            None => self.callable_sig_from_fn_trait(ty, num_args),
+            None => {
+                let (f, args_ty, return_ty) = self.callable_sig_from_fn_trait(ty, num_args)?;
+                Some((Some(f), args_ty, return_ty))
+            }
         }
     }
 
@@ -641,7 +644,7 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         ty: &Ty,
         num_args: usize,
-    ) -> Option<(Option<FnTrait>, Vec<Ty>, Ty)> {
+    ) -> Option<(FnTrait, Vec<Ty>, Ty)> {
         let krate = self.trait_env.krate;
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let trait_data = self.db.trait_data(fn_once_trait);
@@ -693,7 +696,7 @@ impl<'a> InferenceTable<'a> {
                 };
                 let canonical = self.canonicalize(obligation.clone());
                 if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
-                    return Some((Some(fn_x), arg_tys, return_ty));
+                    return Some((fn_x, arg_tys, return_ty));
                 }
             }
             unreachable!("It should at least implement FnOnce at this point");

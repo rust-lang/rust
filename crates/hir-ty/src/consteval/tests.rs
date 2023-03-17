@@ -562,6 +562,18 @@ fn for_loops() {
 }
 
 #[test]
+fn ranges() {
+    check_number(
+        r#"
+    //- minicore: range
+    const GOAL: i32 = (1..2).start + (20..10).end + (100..=200).start + (2000..=1000).end
+        + (10000..).start + (..100000).end + (..=1000000).end;
+        "#,
+        1111111,
+    );
+}
+
+#[test]
 fn recursion() {
     check_number(
         r#"
