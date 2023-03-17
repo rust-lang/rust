@@ -1406,7 +1406,7 @@ impl Permissions {
     /// On Unix-based platforms this checks if *any* of the owner, group or others
     /// write permission bits are set. It does not check if the current
     /// user is in the file's assigned group. It also does not check ACLs.
-    /// Therefore even if this returns true you may not be able to write to the
+    /// Therefore even if this returns false you may not be able to write to the
     /// file, and vice versa. The [`PermissionsExt`] trait gives direct access
     /// to the permission bits but also does not read ACLs. If you need to
     /// accurately know whether or not a file is writable use the `access()`
