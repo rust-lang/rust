@@ -45,7 +45,7 @@ mod trait_goals;
 pub use eval_ctxt::EvalCtxt;
 pub use fulfill::FulfillmentCtxt;
 
-use self::eval_ctxt::NestedGoals;
+use self::eval_ctxt::{IsNormalizesToHack, NestedGoals};
 
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
@@ -86,7 +86,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
         }
-        .evaluate_goal(false, goal);
+        .evaluate_goal(IsNormalizesToHack::No, goal);
 
         assert!(search_graph.is_empty());
         result
@@ -130,7 +130,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// been constrained and the certainty of the result.
     fn evaluate_goal(
         &mut self,
-        is_projection_eq_hack_goal: bool,
+        is_normalizes_to_hack: IsNormalizesToHack,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
@@ -153,7 +153,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // solver cycle.
         if cfg!(debug_assertions)
             && has_changed
-            && !is_projection_eq_hack_goal
+            && is_normalizes_to_hack == IsNormalizesToHack::No
             && !self.search_graph.in_cycle()
         {
             debug!("rerunning goal to check result is stable");
@@ -223,11 +223,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
             let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
-            // `false` is fine to use as if this were a projection goal from the hack there would not be
-            // a binder as the real projection goal that is the parent of the hack goal would have already
-            // had its binder replaced with placeholders.
-            let (_, certainty) = self.evaluate_goal(false, goal)?;
-            self.evaluate_added_goals_and_make_canonical_response(certainty)
+            self.add_goal(goal);
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
 
@@ -436,7 +433,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
                 if let Some(goal) = goals.projection_eq_hack_goal.take() {
                     let (_, certainty) = match this.evaluate_goal(
-                        true,
+                        IsNormalizesToHack::Yes,
                         goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
                     ) {
                         Ok(r) => r,
@@ -480,10 +477,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
 
                 for nested_goal in goals.goals.drain(..) {
-                    let (changed, certainty) = match this.evaluate_goal(false, nested_goal) {
-                        Ok(result) => result,
-                        Err(NoSolution) => return Some(Err(NoSolution)),
-                    };
+                    let (changed, certainty) =
+                        match this.evaluate_goal(IsNormalizesToHack::No, nested_goal) {
+                            Ok(result) => result,
+                            Err(NoSolution) => return Some(Err(NoSolution)),
+                        };
 
                     if changed {
                         has_changed = Ok(());

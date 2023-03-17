@@ -35,6 +35,12 @@ pub struct EvalCtxt<'a, 'tcx> {
     pub(super) nested_goals: NestedGoals<'tcx>,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(super) enum IsNormalizesToHack {
+    Yes,
+    No,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct NestedGoals<'tcx> {
     pub(super) projection_eq_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
