@@ -10,7 +10,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::{self, Write};
-use std::iter::{self, once};
+use std::iter::once;
 
 use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel};
@@ -23,7 +23,7 @@ use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use itertools::Itertools;
@@ -38,7 +38,6 @@ use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
 use super::url_parts_builder::estimate_item_path_byte_length;
-use super::url_parts_builder::UrlPartsBuilder;
 
 pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -570,11 +569,11 @@ pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
 
 /// This function is to get the external macro path because they are not in the cache used in
 /// `href_with_root_path`.
-fn generate_macro_def_id_path(
+fn generate_macro_def_id_path<'a>(
     def_id: DefId,
-    cx: &Context<'_>,
-    root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    cx: &'a Context<'_>,
+    root_path: Option<&'a str>,
+) -> Result<(Href<'a>, Vec<Symbol>), HrefError> {
     let tcx = cx.shared.tcx;
     let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
@@ -620,37 +619,46 @@ fn generate_macro_def_id_path(
         return Err(HrefError::NotInExternalCache);
     }
 
-    if let Some(last) = path.last_mut() {
-        *last = Symbol::intern(&format!("macro.{}.html", last.as_str()));
-    }
+    let filename_prefix = "macro";
+    let filename_base = path.pop().unwrap().to_string().into();
 
-    let url = match cache.extern_locations[&def_id.krate] {
-        ExternalLocation::Remote(ref s) => {
+    let href = match cache.extern_locations[&def_id.krate] {
+        ExternalLocation::Remote(ref remote) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{}{}", s, path.iter().map(|p| p.as_str()).join("/"))
+            Href {
+                root: remote.trim_end_matches('/'),
+                parent_directories: ParentDirectories(0),
+                path_components: path.clone().into(),
+                filename_prefix,
+                filename_base,
+                fragment: "",
+            }
         }
         ExternalLocation::Local => {
-            // `root_path` always end with a `/`.
-            format!(
-                "{}{}/{}",
-                root_path.unwrap_or(""),
-                crate_name,
-                path.iter().map(|p| p.as_str()).join("/")
-            )
+            let mut path = path.clone();
+            path.insert(0, crate_name);
+            Href {
+                root: root_path.unwrap_or_default().trim_end_matches('/'),
+                parent_directories: ParentDirectories(0),
+                path_components: path.into(),
+                filename_prefix,
+                filename_base,
+                fragment: "",
+            }
         }
         ExternalLocation::Unknown => {
             debug!("crate {} not in cache when linkifying macros", crate_name);
             return Err(HrefError::NotInExternalCache);
         }
     };
-    Ok((url, ItemType::Macro, fqp))
+    Ok((href, fqp))
 }
 
-pub(crate) fn href_with_root_path(
+pub(crate) fn href_with_root_path<'a, 'tcx: 'a>(
     did: DefId,
-    cx: &Context<'_>,
-    root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    cx: &'a Context<'tcx>,
+    root_path: Option<&'a str>,
+) -> Result<(Href<'a>, Vec<Symbol>), HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(did);
     let did = match def_kind {
@@ -674,33 +682,27 @@ pub(crate) fn href_with_root_path(
         return Err(HrefError::Private);
     }
 
-    let mut is_remote = false;
-    let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (fqp, shortty, {
+    let (fqp, shortty, extern_root, parent_levels, path_components) = match cache.paths.get(&did) {
+        Some(&(ref fqp, shortty)) => {
             let module_fqp = to_module_fqp(shortty, fqp.as_slice());
             debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
-        }),
+            let (parent_levels, path_components) = href_relative_parts(module_fqp, relative_to);
+            (fqp, shortty, "", parent_levels, path_components)
+        }
         None => {
             if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&did) {
                 let module_fqp = to_module_fqp(shortty, fqp);
-                (
-                    fqp,
-                    shortty,
-                    match cache.extern_locations[&did.krate] {
-                        ExternalLocation::Remote(ref s) => {
-                            is_remote = true;
-                            let s = s.trim_end_matches('/');
-                            let mut builder = UrlPartsBuilder::singleton(s);
-                            builder.extend(module_fqp.iter().copied());
-                            builder
-                        }
-                        ExternalLocation::Local => {
-                            href_relative_parts(module_fqp, relative_to).collect()
-                        }
-                        ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
-                    },
-                )
+                match cache.extern_locations[&did.krate] {
+                    ExternalLocation::Remote(ref root) => {
+                        (fqp, shortty, root.as_str(), 0, module_fqp)
+                    }
+                    ExternalLocation::Local => {
+                        let (parent_levels, path_components) =
+                            href_relative_parts(module_fqp, relative_to);
+                        (fqp, shortty, "", parent_levels, path_components)
+                    }
+                    ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
+                }
             } else if matches!(def_kind, DefKind::Macro(_)) {
                 return generate_macro_def_id_path(did, cx, root_path);
             } else {
@@ -708,28 +710,31 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    if !is_remote && let Some(root_path) = root_path {
-        let root = root_path.trim_end_matches('/');
-        url_parts.push_front(root);
-    }
-    debug!(?url_parts);
-    match shortty {
-        ItemType::Module => {
-            url_parts.push("index.html");
-        }
+    let (filename_prefix, filename_base) = match shortty {
+        ItemType::Module => ("", "index"),
         _ => {
             let prefix = shortty.as_str();
-            let last = fqp.last().unwrap();
-            url_parts.push_fmt(format_args!("{}.{}.html", prefix, last));
+            let last = fqp.last().unwrap().as_str();
+            (prefix, last)
         }
-    }
-    Ok((url_parts.finish(), shortty, fqp.to_vec()))
+    };
+    let root = if !extern_root.is_empty() { extern_root } else { root_path.unwrap_or_default() }
+        .trim_end_matches('/');
+    let href = Href {
+        root,
+        parent_directories: ParentDirectories(parent_levels),
+        path_components: path_components.into(),
+        filename_prefix,
+        filename_base: filename_base.into(),
+        fragment: "",
+    };
+    Ok((href, fqp.to_vec()))
 }
 
-pub(crate) fn href(
+pub(crate) fn href<'a, 'tcx: 'a>(
     did: DefId,
-    cx: &Context<'_>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    cx: &'a Context<'tcx>,
+) -> Result<(Href<'a>, Vec<Symbol>), HrefError> {
     href_with_root_path(did, cx, None)
 }
 
@@ -739,29 +744,25 @@ pub(crate) fn href(
 pub(crate) fn href_relative_parts<'fqp>(
     fqp: &'fqp [Symbol],
     relative_to_fqp: &[Symbol],
-) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
+) -> (usize, &'fqp [Symbol]) {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..fqp.len()];
-            return Box::new(
-                iter::repeat(sym::dotdot)
-                    .take(dissimilar_part_count)
-                    .chain(fqp_module.iter().copied()),
-            );
+            return (dissimilar_part_count, fqp_module);
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
     if relative_to_fqp.len() < fqp.len() {
-        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+        (0, &fqp[relative_to_fqp.len()..fqp.len()])
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+        (dissimilar_part_count, &fqp[0..0])
     // linking to the same module
     } else {
-        Box::new(iter::empty())
+        (0, &[])
     }
 }
 
@@ -812,20 +813,21 @@ fn resolved_path<'cx>(
     if w.alternate() {
         write!(w, "{}{:#}", &last.name, last.args.print(cx))?;
     } else {
-        let path = if use_absolute {
-            if let Ok((_, _, fqp)) = href(did, cx) {
-                format!(
+        if use_absolute {
+            if let Ok((_, fqp)) = href(did, cx) {
+                write!(
+                    w,
                     "{}::{}",
                     join_with_double_colon(&fqp[..fqp.len() - 1]),
-                    anchor(did, *fqp.last().unwrap(), cx)
-                )
+                    anchor(did, *fqp.last().unwrap(), cx),
+                )?;
             } else {
-                last.name.to_string()
+                write!(w, "{}", last.name)?;
             }
         } else {
-            anchor(did, last.name, cx).to_string()
+            write!(w, "{}", anchor(did, last.name, cx))?;
         };
-        write!(w, "{}{}", path, last.args.print(cx))?;
+        write!(w, "{}", last.args.print(cx))?;
     }
     Ok(())
 }
@@ -839,6 +841,83 @@ fn primitive_link(
     primitive_link_fragment(f, prim, name, "", cx)
 }
 
+// Implements Display, emitting "../" the specified number of times.
+struct ParentDirectories(usize);
+
+impl fmt::Display for ParentDirectories {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            0 => Ok(()),
+            1 => f.write_str("../"),
+            2 => f.write_str("../../"),
+            3 => f.write_str("../../../"),
+            4 => f.write_str("../../../../"),
+            5 => f.write_str("../../../../../"),
+            6 => f.write_str("../../../../../../"),
+            n => (0..n).map(|_| f.write_str("../")).collect(),
+        }
+    }
+}
+
+// Implements Display
+struct PathComponents<'a>(Cow<'a, [Symbol]>);
+
+impl<'a> PathComponents<'a> {
+    fn empty() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<'a> fmt::Display for PathComponents<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
+            .iter()
+            .map(|sym| {
+                f.write_str(sym.as_str())?;
+                f.write_char('/')
+            })
+            .collect()
+    }
+}
+
+impl<'a> From<Vec<Symbol>> for PathComponents<'a> {
+    fn from(value: Vec<Symbol>) -> Self {
+        Self(std::borrow::Cow::Owned(value))
+    }
+}
+
+impl<'a> From<&'a [Symbol]> for PathComponents<'a> {
+    fn from(value: &'a [Symbol]) -> Self {
+        Self(std::borrow::Cow::Borrowed(value))
+    }
+}
+
+use askama::Template;
+#[derive(Template)]
+#[template(path = "href.html")]
+pub(crate) struct Href<'a> {
+    /// An optional absolute URL, starting with http://, https://, or file://
+    root: &'a str,
+    /// Zero or more instances of `../`
+    parent_directories: ParentDirectories,
+    /// Zero or more
+    path_components: PathComponents<'a>,
+    /// Optional: an item type prefix, like `struct`. If present will have a `.` added.
+    filename_prefix: &'a str,
+    /// Required: the name of the page being documented. Does not include `.html`.
+    filename_base: Cow<'a, str>,
+    /// Optional: A fragment identifier, including the initial `#`.
+    fragment: &'a str,
+}
+
+impl<'a> Href<'a> {
+    pub fn render_string(&self) -> String {
+        let mut s = String::with_capacity(64);
+        self.render_into(&mut s).unwrap();
+        s
+    }
+}
+
 fn primitive_link_fragment(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
@@ -847,57 +926,62 @@ fn primitive_link_fragment(
     cx: &Context<'_>,
 ) -> fmt::Result {
     let m = &cx.cache();
-    let mut needs_termination = false;
-    if !f.alternate() {
-        match m.primitive_locations.get(&prim) {
-            Some(&def_id) if def_id.is_local() => {
-                let len = cx.current.len();
-                let len = if len == 0 { 0 } else { len - 1 };
-                write!(
-                    f,
-                    "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
-                    "../".repeat(len),
-                    prim.as_sym()
-                )?;
-                needs_termination = true;
-            }
-            Some(&def_id) => {
-                let loc = match m.extern_locations[&def_id.krate] {
-                    ExternalLocation::Remote(ref s) => {
-                        let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
-                        let builder: UrlPartsBuilder =
-                            [s.as_str().trim_end_matches('/'), cname_sym.as_str()]
-                                .into_iter()
-                                .collect();
-                        Some(builder)
-                    }
-                    ExternalLocation::Local => {
-                        let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
-                        Some(if cx.current.first() == Some(&cname_sym) {
-                            iter::repeat(sym::dotdot).take(cx.current.len() - 1).collect()
-                        } else {
-                            iter::repeat(sym::dotdot)
-                                .take(cx.current.len())
-                                .chain(iter::once(cname_sym))
-                                .collect()
-                        })
-                    }
-                    ExternalLocation::Unknown => None,
-                };
-                if let Some(mut loc) = loc {
-                    loc.push_fmt(format_args!("primitive.{}.html", prim.as_sym()));
-                    write!(f, "<a class=\"primitive\" href=\"{}{fragment}\">", loc.finish())?;
-                    needs_termination = true;
-                }
-            }
-            None => {}
+    if f.alternate() {
+        return write!(f, "{}", name);
+    }
+    let filename_prefix = "primitive";
+    let prim_sym = prim.as_sym();
+    let filename_base = prim_sym.as_str().into();
+    let cname_sym_array: [Symbol; 1];
+    let cname_path_components: PathComponents<'_>;
+    let href = match m.primitive_locations.get(&prim) {
+        Some(&def_id) if def_id.is_local() => {
+            let len = cx.current.len();
+            let len = if len == 0 { 0 } else { len - 1 };
+            Some(Href {
+                root: "",
+                parent_directories: ParentDirectories(len),
+                path_components: PathComponents::empty(),
+                filename_prefix,
+                filename_base,
+                fragment,
+            })
         }
+        Some(&def_id) => {
+            cname_sym_array = [ExternalCrate { crate_num: def_id.krate }.name(cx.tcx())];
+            cname_path_components = cname_sym_array.as_slice().into();
+            let (root, parent_levels) = match m.extern_locations[&def_id.krate] {
+                ExternalLocation::Remote(ref s) => (s.as_str().trim_end_matches('/'), 0),
+                ExternalLocation::Local => {
+                    if cx.current.first() == Some(&cname_sym_array[0]) {
+                        ("", cx.current.len() - 1)
+                    } else {
+                        ("", cx.current.len())
+                    }
+                }
+                ExternalLocation::Unknown => ("", 0),
+            };
+            if parent_levels > 0 || !root.is_empty() {
+                Some(Href {
+                    root,
+                    parent_directories: ParentDirectories(parent_levels),
+                    path_components: cname_path_components,
+                    filename_prefix,
+                    filename_base,
+                    fragment,
+                })
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+
+    if let Some(href) = href {
+        write!(f, "<a class=\"primitive\" href=\"{href}\">{name}</a>")
+    } else {
+        write!(f, "{}", name)
     }
-    write!(f, "{}", name)?;
-    if needs_termination {
-        write!(f, "</a>")?;
-    }
-    Ok(())
 }
 
 /// Helper to render type parameters
@@ -923,14 +1007,27 @@ fn tybounds<'a, 'tcx: 'a>(
     })
 }
 
-pub(crate) fn anchor<'a, 'cx: 'a>(
+pub(crate) fn anchor<'b, 'a: 'b, 'tcx: 'a>(
     did: DefId,
     text: Symbol,
-    cx: &'cx Context<'_>,
-) -> impl fmt::Display + 'a {
+    cx: &'b Context<'tcx>,
+) -> impl fmt::Display + 'b + Captures<'tcx> {
     let parts = href(did, cx);
+    let cache = cx.cache();
+    let tcx = cx.shared.tcx;
     display_fn(move |f| {
-        if let Ok((url, short_ty, fqp)) = parts {
+        let short_ty = match cache.paths.get(&did) {
+            Some(&(_, short_ty)) => short_ty,
+            None => match cache.external_paths.get(&did) {
+                Some(&(_, short_ty)) => short_ty,
+                None if matches!(tcx.def_kind(did), DefKind::Macro(_)) => ItemType::Macro,
+                None => {
+                    write!(f, "{}", text)?;
+                    return Ok(());
+                }
+            },
+        };
+        if let Ok((url, fqp)) = parts {
             write!(
                 f,
                 r#"<a class="{}" href="{}" title="{} {}">{}</a>"#,
@@ -1142,7 +1239,7 @@ fn fmt_type<'cx>(
             //        the ugliness comes from inlining across crates where
             //        everything comes in as a fully resolved QPath (hard to
             //        look at).
-            if !f.alternate() && let Ok((url, _, path)) = href(trait_.def_id(), cx) {
+            if !f.alternate() && let Ok((url, path)) = href(trait_.def_id(), cx) {
                 write!(
                     f,
                     "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
@@ -1453,8 +1550,6 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     item_did: ItemId,
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    use std::fmt::Write as _;
-
     let to_print: Cow<'static, str> = match visibility {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),

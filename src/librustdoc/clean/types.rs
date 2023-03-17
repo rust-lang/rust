@@ -461,7 +461,8 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
                 debug!(?id);
-                if let Ok((mut href, ..)) = href(*id, cx) {
+                if let Ok((href, ..)) = href(*id, cx) {
+                    let mut href = href.render_string();
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
                         fragment.render(&mut href, cx.tcx())
