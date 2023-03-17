@@ -133,7 +133,6 @@ impl<'a> Sugg<'a> {
 
         match expr.kind {
             hir::ExprKind::AddrOf(..)
-            | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
             | hir::ExprKind::Let(..)
             | hir::ExprKind::Closure { .. }

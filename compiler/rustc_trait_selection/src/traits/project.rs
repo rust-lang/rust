@@ -1298,7 +1298,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.def_id) == DefKind::ImplTraitPlaceholder {
-        let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.def_id);
+        let trait_fn_def_id = tcx.impl_trait_in_trait_parent_fn(obligation.predicate.def_id);
 
         let trait_def_id = tcx.parent(trait_fn_def_id);
         let trait_substs =
@@ -2200,7 +2200,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     let tcx = selcx.tcx();
     let mut obligations = data.nested;
 
-    let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.def_id);
+    let trait_fn_def_id = tcx.impl_trait_in_trait_parent_fn(obligation.predicate.def_id);
     let leaf_def = match specialization_graph::assoc_def(tcx, data.impl_def_id, trait_fn_def_id) {
         Ok(assoc_ty) => assoc_ty,
         Err(guar) => return Progress::error(tcx, guar),

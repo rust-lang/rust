@@ -1028,7 +1028,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::InlineConst => true,
 
         DefKind::ImplTraitPlaceholder => {
-            let parent_def_id = tcx.impl_trait_in_trait_parent(def_id.to_def_id());
+            let parent_def_id = tcx.impl_trait_in_trait_parent_fn(def_id.to_def_id());
             let assoc_item = tcx.associated_item(parent_def_id);
             match assoc_item.container {
                 // Always encode an RPIT in an impl fn, since it always has a body

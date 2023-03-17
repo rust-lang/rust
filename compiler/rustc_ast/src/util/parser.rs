@@ -259,7 +259,6 @@ pub enum ExprPrecedence {
     Assign,
     AssignOp,
 
-    Box,
     AddrOf,
     Let,
     Unary,
@@ -319,8 +318,7 @@ impl ExprPrecedence {
             ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
 
             // Unary, prefix
-            ExprPrecedence::Box
-            | ExprPrecedence::AddrOf
+            ExprPrecedence::AddrOf
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`

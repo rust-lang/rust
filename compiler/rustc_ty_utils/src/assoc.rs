@@ -244,7 +244,7 @@ fn associated_item_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
-    let fn_def_id = tcx.impl_trait_in_trait_parent(opaque_ty_def_id.to_def_id());
+    let fn_def_id = tcx.impl_trait_in_trait_parent_fn(opaque_ty_def_id.to_def_id());
     let trait_def_id = tcx.parent(fn_def_id);
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
@@ -289,8 +289,39 @@ fn associated_item_for_impl_trait_in_trait(
         InternalSubsts::identity_for_item(tcx, opaque_ty_def_id.to_def_id()),
     )));
 
-    // Copy generics_of of the opaque.
-    trait_assoc_ty.generics_of(tcx.generics_of(opaque_ty_def_id).clone());
+    trait_assoc_ty.is_type_alias_impl_trait(false);
+
+    // Copy generics_of of the opaque type item but the trait is the parent.
+    trait_assoc_ty.generics_of({
+        let opaque_ty_generics = tcx.generics_of(opaque_ty_def_id);
+        let opaque_ty_parent_count = opaque_ty_generics.parent_count;
+        let mut params = opaque_ty_generics.params.clone();
+
+        let parent_generics = tcx.generics_of(trait_def_id);
+        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+
+        let mut trait_fn_params = tcx.generics_of(fn_def_id).params.clone();
+
+        for param in &mut params {
+            param.index = param.index + parent_count as u32 + trait_fn_params.len() as u32
+                - opaque_ty_parent_count as u32;
+        }
+
+        trait_fn_params.extend(params);
+        params = trait_fn_params;
+
+        let param_def_id_to_index =
+            params.iter().map(|param| (param.def_id, param.index)).collect();
+
+        ty::Generics {
+            parent: Some(trait_def_id),
+            parent_count,
+            params,
+            param_def_id_to_index,
+            has_self: false,
+            has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
+        }
+    });
 
     // There are no predicates for the synthesized associated type.
     trait_assoc_ty.explicit_predicates_of(ty::GenericPredicates {

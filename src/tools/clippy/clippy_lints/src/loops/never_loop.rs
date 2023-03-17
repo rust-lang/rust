@@ -124,8 +124,7 @@ fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<(&'tcx Expr<'tcx>, Option<&'t
 #[allow(clippy::too_many_lines)]
 fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: HirId) -> NeverLoopResult {
     match expr.kind {
-        ExprKind::Box(e)
-        | ExprKind::Unary(_, e)
+        ExprKind::Unary(_, e)
         | ExprKind::Cast(e, _)
         | ExprKind::Type(e, _)
         | ExprKind::Field(e, _)

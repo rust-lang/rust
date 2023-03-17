@@ -199,8 +199,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 },
 
                 // Memory allocation, custom operator, loop, or call to an unknown function
-                ExprKind::Box(_)
-                | ExprKind::Unary(..)
+                ExprKind::Unary(..)
                 | ExprKind::Binary(..)
                 | ExprKind::Loop(..)
                 | ExprKind::Call(..) => self.eagerness = Lazy,
