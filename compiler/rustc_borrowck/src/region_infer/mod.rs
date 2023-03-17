@@ -255,7 +255,7 @@ fn sccs_info<'cx, 'tcx>(
     let var_to_origin = infcx.reg_var_to_origin.borrow();
 
     let mut var_to_origin_sorted = var_to_origin.clone().into_iter().collect::<Vec<_>>();
-    var_to_origin_sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    var_to_origin_sorted.sort_by_key(|vto| vto.0);
     let mut debug_str = "region variables to origins:\n".to_string();
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
         debug_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
@@ -2216,7 +2216,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // is in the same SCC or something. In that case, find what
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
-        categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
+        categorized_path.sort_by_key(|p| p.category);
         debug!("sorted_path={:#?}", categorized_path);
 
         (categorized_path.remove(0), extra_info)
