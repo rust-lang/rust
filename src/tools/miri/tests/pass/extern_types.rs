@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows -Zmiri-permissive-provenance
 #![feature(extern_types)]
 
 extern "C" {

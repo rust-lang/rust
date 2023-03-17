@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance
 
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};

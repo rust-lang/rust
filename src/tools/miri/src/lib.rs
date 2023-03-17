@@ -9,6 +9,7 @@
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
 #![feature(is_terminal)]
+#![feature(round_ties_even)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -94,6 +95,7 @@ pub use crate::shims::EvalContextExt as _;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
+pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
 };

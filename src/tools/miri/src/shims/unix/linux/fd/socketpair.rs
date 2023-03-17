@@ -19,10 +19,6 @@ impl FileDescriptor for SocketPair {
         Ok(Box::new(SocketPair))
     }
 
-    fn is_tty(&self) -> bool {
-        false
-    }
-
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,

@@ -1,5 +1,6 @@
 pub mod convert;
 
+use std::any::Any;
 use std::cmp;
 use std::iter;
 use std::num::NonZeroUsize;
@@ -23,7 +24,23 @@ use rand::RngCore;
 
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+/// A trait to work around not having trait object upcasting:
+/// Add `AsAny` as supertrait and your trait objects can be turned into `&dyn Any` on which you can
+/// then call `downcast`.
+pub trait AsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+impl<T: Any> AsAny for T {
+    #[inline(always)]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    #[inline(always)]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 // This mapping should match `decode_error_kind` in
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>.
@@ -119,6 +136,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
     }
 }
 
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Checks if the given crate/module exists.
     fn have_module(&self, path: &[&str]) -> bool {

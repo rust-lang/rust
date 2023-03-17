@@ -1,0 +1,14 @@
+error: Undefined Behavior: write access through <TAG> is forbidden because it is a child of <TAG> which is Frozen.
+  --> $DIR/read-to-local.rs:LL:CC
+   |
+LL |         *ptr = 0;
+   |         ^^^^^^^^ write access through <TAG> is forbidden because it is a child of <TAG> which is Frozen.
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/read-to-local.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

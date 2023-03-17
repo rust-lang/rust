@@ -1,3 +1,6 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
+
 use std::future::*;
 use std::marker::PhantomPinned;
 use std::pin::*;

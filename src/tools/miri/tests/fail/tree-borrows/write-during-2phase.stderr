@@ -1,0 +1,26 @@
+error: Undefined Behavior: read access through <TAG> is forbidden because it is a child of <TAG> which is Disabled.
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |     fn add(&mut self, n: u64) -> u64 {
+   |            ^^^^^^^^^ read access through <TAG> is forbidden because it is a child of <TAG> which is Disabled.
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = note: BACKTRACE:
+   = note: inside `Foo::add` at $DIR/write-during-2phase.rs:LL:CC
+note: inside `main`
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |       let _res = f.add(unsafe {
+   |  ________________^
+LL | |         let n = f.0;
+LL | |         // This is the access at fault, but it's not immediately apparent because
+LL | |         // the reference that got invalidated is not under a Protector.
+LL | |         *inner = 42;
+LL | |         n
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

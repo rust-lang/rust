@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
 #![feature(btree_drain_filter)]
 use std::collections::{BTreeMap, BTreeSet};

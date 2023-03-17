@@ -80,7 +80,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let event = EpollEvent { events, data };
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-                let epfd = epfd.as_epoll_handle()?;
+                let epfd = epfd
+                    .as_any_mut()
+                    .downcast_mut::<Epoll>()
+                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
                 epfd.file_descriptors.insert(fd, event);
                 Ok(Scalar::from_i32(0))
@@ -89,7 +92,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         } else if op == epoll_ctl_del {
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-                let epfd = epfd.as_epoll_handle()?;
+                let epfd = epfd
+                    .as_any_mut()
+                    .downcast_mut::<Epoll>()
+                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
                 epfd.file_descriptors.remove(&fd);
                 Ok(Scalar::from_i32(0))
@@ -148,7 +154,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let numevents = 0;
         if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-            let _epfd = epfd.as_epoll_handle()?;
+            let _epfd = epfd
+                .as_any_mut()
+                .downcast_mut::<Epoll>()
+                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
             // FIXME return number of events ready when scheme for marking events ready exists
             Ok(Scalar::from_i32(numevents))
