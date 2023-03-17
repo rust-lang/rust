@@ -1,5 +1,5 @@
 error[E0049]: method `bar` has 1 type parameter but its trait declaration has 0 type parameters
-  --> $DIR/generics-mismatch.rs:11:12
+  --> $DIR/generics-mismatch.rs:14:12
    |
 LL |     fn bar(&self) -> impl Sized;
    |           - expected 0 type parameters
