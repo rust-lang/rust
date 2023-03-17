@@ -9,6 +9,14 @@ help: consider introducing a named lifetime parameter
 LL | fn d<'a, const C: S<'a>>() {}
    |      +++           ++++
 
+error[E0771]: use of non-static lifetime `'a` in const generic
+  --> $DIR/unusual-rib-combinations.rs:29:22
+   |
+LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
+   |                      ^^
+   |
+   = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
+
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/unusual-rib-combinations.rs:7:16
    |
@@ -55,7 +63,16 @@ LL | fn d<const C: S>() {}
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
-error: aborting due to 7 previous errors
+error: `&dyn for<'a> Foo<'a>` is forbidden as the type of a const generic parameter
+  --> $DIR/unusual-rib-combinations.rs:29:21
+   |
+LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
 
-Some errors have detailed explanations: E0106, E0214, E0308.
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0106, E0214, E0308, E0771.
 For more information about an error, try `rustc --explain E0106`.
