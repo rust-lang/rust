@@ -43,7 +43,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 term: unconstrained_rhs,
             };
 
-            self.set_projection_eq_hack_goal(goal.with(self.tcx(), unconstrained_predicate));
+            self.set_normalizes_to_hack_goal(goal.with(self.tcx(), unconstrained_predicate));
             self.try_evaluate_added_goals()?;
             self.eq(goal.param_env, unconstrained_rhs, predicate.term)?;
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

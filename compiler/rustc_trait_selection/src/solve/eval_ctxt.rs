@@ -43,17 +43,17 @@ pub(super) enum IsNormalizesToHack {
 
 #[derive(Debug, Clone)]
 pub(super) struct NestedGoals<'tcx> {
-    pub(super) projection_eq_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
+    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
     pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 impl NestedGoals<'_> {
     pub(super) fn new() -> Self {
-        Self { projection_eq_hack_goal: None, goals: Vec::new() }
+        Self { normalizes_to_hack_goal: None, goals: Vec::new() }
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.projection_eq_hack_goal.is_none() && self.goals.is_empty()
+        self.normalizes_to_hack_goal.is_none() && self.goals.is_empty()
     }
 }
 

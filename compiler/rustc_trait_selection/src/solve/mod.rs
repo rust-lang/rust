@@ -406,12 +406,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn set_projection_eq_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
+    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
         assert!(
-            self.nested_goals.projection_eq_hack_goal.is_none(),
+            self.nested_goals.normalizes_to_hack_goal.is_none(),
             "attempted to set the projection eq hack goal when one already exists"
         );
-        self.nested_goals.projection_eq_hack_goal = Some(goal);
+        self.nested_goals.normalizes_to_hack_goal = Some(goal);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -438,7 +438,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             |this| {
                 let mut has_changed = Err(Certainty::Yes);
 
-                if let Some(goal) = goals.projection_eq_hack_goal.take() {
+                if let Some(goal) = goals.normalizes_to_hack_goal.take() {
                     let (_, certainty) = match this.evaluate_goal(
                         IsNormalizesToHack::Yes,
                         goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
@@ -475,7 +475,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                                 term,
                                 projection_ty: goal.predicate.projection_ty,
                             };
-                            new_goals.projection_eq_hack_goal =
+                            new_goals.normalizes_to_hack_goal =
                                 Some(goal.with(this.tcx(), projection_pred));
 
                             has_changed = has_changed.map_err(|c| c.unify_and(certainty));
