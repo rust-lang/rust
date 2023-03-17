@@ -6,14 +6,14 @@ use super::{
 use crate::errors::{
     AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
     IncorrectUseOfAwait, ParenthesesInForHead, ParenthesesInForHeadSugg,
     PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
     StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
-    StructLiteralNeedingParensSugg, SuggEscapeToUseAsIdentifier, SuggRemoveComma,
+    StructLiteralNeedingParensSugg, SuggEscapeIdentifier, SuggRemoveComma,
     UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
 };
@@ -268,7 +268,16 @@ impl<'a> Parser<'a> {
         self.sess.source_map().span_to_snippet(span)
     }
 
+    /// Emits an error with suggestions if an identifier was expected but not found.
     pub(super) fn expected_ident_found(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        if let TokenKind::DocComment(..) = self.prev_token.kind {
+            return DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
+            }
+            .into_diagnostic(&self.sess.span_diagnostic);
+        }
+
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -286,7 +295,7 @@ impl<'a> Parser<'a> {
                 if ident.is_raw_guess()
                     && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
             {
-                Some(SuggEscapeToUseAsIdentifier {
+                Some(SuggEscapeIdentifier {
                     span: ident.span.shrink_to_lo(),
                     // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
                     // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
