@@ -1,5 +1,5 @@
 error[E0277]: `()` doesn't implement `std::fmt::Display`
-  --> $DIR/doesnt-satisfy.rs:9:17
+  --> $DIR/doesnt-satisfy.rs:12:17
    |
 LL |     fn bar() -> () {}
    |                 ^^ `()` cannot be formatted with the default formatter
@@ -7,7 +7,7 @@ LL |     fn bar() -> () {}
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `Foo::bar::{opaque#0}`
-  --> $DIR/doesnt-satisfy.rs:5:22
+  --> $DIR/doesnt-satisfy.rs:8:22
    |
 LL |     fn bar() -> impl std::fmt::Display;
    |                      ^^^^^^^^^^^^^^^^^ required by this bound in `Foo::bar::{opaque#0}`

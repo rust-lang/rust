@@ -1,0 +1,23 @@
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/return-type-suggestion.rs:5:12
+   |
+LL | #![feature(async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/return-type-suggestion.rs:10:9
+   |
+LL |         Ok(())
+   |         ^^^^^^- help: consider using a semicolon here: `;`
+   |         |
+   |         expected `()`, found `Result<(), _>`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<(), _>`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.
