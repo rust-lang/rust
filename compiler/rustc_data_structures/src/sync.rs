@@ -40,10 +40,13 @@
 //! [^2] `MTLockRef` is a typedef.
 
 use crate::owned_slice::OwnedSlice;
-use std::cell::{RefCell, RefMut};
+use std::cell::{Cell, UnsafeCell};
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::hash::{BuildHasher, Hash};
-use std::mem::{transmute, MaybeUninit};
+use std::intrinsics::likely;
+use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -53,8 +56,8 @@ pub use std::sync::atomic::Ordering::SeqCst;
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
+use parking_lot::lock_api::RawMutex as _;
+use parking_lot::RawMutex;
 
 mod mode {
     use super::Ordering;
@@ -254,8 +257,6 @@ cfg_if! {
         pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
-
-        use std::cell::Cell;
 
         pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
@@ -577,77 +578,86 @@ impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> 
     }
 }
 
-#[derive(Debug)]
 pub struct Lock<T> {
     single_thread: bool,
-    inner: RefCell<T>,
-    mt_inner: Option<Mutex<T>>,
+    data: UnsafeCell<T>,
+    borrow: Cell<bool>,
+    mutex: RawMutex,
+}
+
+impl<T: Debug> Debug for Lock<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.try_lock() {
+            Some(guard) => f.debug_struct("Lock").field("data", &&*guard).finish(),
+            None => {
+                struct LockedPlaceholder;
+                impl Debug for LockedPlaceholder {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                        f.write_str("<locked>")
+                    }
+                }
+
+                f.debug_struct("Lock").field("data", &LockedPlaceholder).finish()
+            }
+        }
+    }
 }
 
 impl<T> Lock<T> {
     #[inline]
     pub fn new(val: T) -> Self {
-        if !active() {
-            Self { single_thread: true, inner: RefCell::new(val), mt_inner: None }
-        } else {
-            Self {
-                single_thread: false,
-                // SAFETY: `inner` will never be accessed in multiple thread
-                inner: unsafe { MaybeUninit::zeroed().assume_init() },
-                mt_inner: Some(Mutex::new(val)),
-            }
+        Lock {
+            single_thread: !active(),
+            data: UnsafeCell::new(val),
+            borrow: Cell::new(false),
+            mutex: RawMutex::INIT,
         }
     }
 
     #[inline]
     pub fn into_inner(self) -> T {
-        if self.single_thread {
-            self.inner.into_inner()
-        } else {
-            self.mt_inner.unwrap().into_inner().unwrap()
-        }
+        self.data.into_inner()
     }
 
     #[inline]
     pub fn get_mut(&mut self) -> &mut T {
-        if self.single_thread {
-            self.inner.get_mut()
-        } else {
-            // SAFETY: the `&mut T` is accessible as long as self exists.
-            self.mt_inner.as_mut().unwrap().get_mut().unwrap()
-        }
+        self.data.get_mut()
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         // SAFETY: the `&mut T` is accessible as long as self exists.
-        if self.single_thread {
-            let mut r = self.inner.try_borrow_mut().ok()?;
-            Some(LockGuard(unsafe { transmute(r.deref_mut()) }, Some(r), None))
+        if likely(self.single_thread) {
+            if self.borrow.get() {
+                None
+            } else {
+                self.borrow.set(true);
+                Some(LockGuard { lock: &self, marker: PhantomData })
+            }
         } else {
-            let mut l = self.mt_inner.as_ref().unwrap().try_lock().ok()?;
-            Some(LockGuard(unsafe { transmute(l.deref_mut()) }, None, Some(l)))
+            if !self.mutex.try_lock() {
+                None
+            } else {
+                Some(LockGuard { lock: &self, marker: PhantomData })
+            }
         }
     }
 
-    fn mt_lock(&self) -> MutexGuard<'_, T> {
-        self.mt_inner.as_ref().unwrap().lock().unwrap_or_else(|e| {
-            self.mt_inner.as_ref().unwrap().clear_poison();
-            e.into_inner()
-        })
+    #[inline(never)]
+    fn lock_raw(&self) {
+        if likely(self.single_thread) {
+            assert!(!self.borrow.get());
+            self.borrow.set(true);
+        } else {
+            self.mutex.lock();
+        }
     }
 
     #[inline(always)]
     #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
-        // SAFETY: the `&mut T` is accessible as long as self exists.
-        if self.single_thread {
-            let mut r = self.inner.borrow_mut();
-            LockGuard(unsafe { transmute(r.deref_mut()) }, Some(r), None)
-        } else {
-            let mut l = self.mt_lock();
-            LockGuard(unsafe { transmute(l.deref_mut()) }, None, Some(l))
-        }
+        self.lock_raw();
+        LockGuard { lock: &self, marker: PhantomData }
     }
 
     #[inline(always)]
@@ -680,19 +690,39 @@ impl<T: Default> Default for Lock<T> {
 unsafe impl<T: Send> std::marker::Send for Lock<T> {}
 unsafe impl<T: Send> std::marker::Sync for Lock<T> {}
 
-pub struct LockGuard<'a, T>(&'a mut T, Option<RefMut<'a, T>>, Option<MutexGuard<'a, T>>);
+pub struct LockGuard<'a, T> {
+    lock: &'a Lock<T>,
+    marker: PhantomData<&'a mut T>,
+}
 
 impl<T> const Deref for LockGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.0
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 impl<T> const DerefMut for LockGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.0
+        unsafe { &mut *self.lock.data.get() }
+    }
+}
+
+#[inline(never)]
+unsafe fn unlock_mt<T>(guard: &mut LockGuard<'_, T>) {
+    guard.lock.mutex.unlock()
+}
+
+impl<'a, T> Drop for LockGuard<'a, T> {
+    #[inline]
+    fn drop(&mut self) {
+        if likely(self.lock.single_thread) {
+            debug_assert!(self.lock.borrow.get());
+            self.lock.borrow.set(false);
+        } else {
+            unsafe { unlock_mt(self) }
+        }
     }
 }
 
