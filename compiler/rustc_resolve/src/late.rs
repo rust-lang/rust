@@ -1478,8 +1478,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                     } else {
                                         LifetimeUseSet::Many
                                     }),
-                                    LifetimeRibKind::Generics { .. } => None,
-                                    LifetimeRibKind::ConstGeneric | LifetimeRibKind::AnonConst => {
+                                    LifetimeRibKind::Generics { .. }
+                                    | LifetimeRibKind::ConstGeneric => None,
+                                    LifetimeRibKind::AnonConst => {
                                         span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
                                     }
                                 })
