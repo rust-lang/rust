@@ -276,6 +276,14 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         let parent_scope = &ParentScope { derives, ..parent_scope };
         let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = invoc.expansion_data.lint_node_id;
+        let sugg_span = match &invoc.kind {
+            InvocationKind::Attr { item: Annotatable::Item(item), .. }
+                if !item.span.from_expansion() =>
+            {
+                Some(item.span.shrink_to_lo())
+            }
+            _ => None,
+        };
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
@@ -285,6 +293,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             node_id,
             force,
             soft_custom_inner_attributes_gate(path, invoc),
+            sugg_span,
         )?;
 
         let span = invoc.span();
@@ -369,6 +378,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                         &parent_scope,
                         true,
                         force,
+                        None,
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
@@ -485,14 +495,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         node_id: NodeId,
         force: bool,
         soft_custom_inner_attributes_gate: bool,
+        sugg_span: Option<Span>,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope, true, force)
-        {
-            Ok((Some(ext), res)) => (ext, res),
-            Ok((None, res)) => (self.dummy_ext(kind), res),
-            Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
-            Err(Determinacy::Undetermined) => return Err(Indeterminate),
-        };
+        let (ext, res) =
+            match self.resolve_macro_path(path, Some(kind), parent_scope, true, force, sugg_span) {
+                Ok((Some(ext), res)) => (ext, res),
+                Ok((None, res)) => (self.dummy_ext(kind), res),
+                Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
+                Err(Determinacy::Undetermined) => return Err(Indeterminate),
+            };
 
         // Report errors for the resolved macro.
         for segment in &path.segments {
@@ -585,6 +596,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
+        sugg_span: Option<Span>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = path.span;
         let mut path = Segment::from_path(path);
@@ -616,6 +628,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     kind,
                     *parent_scope,
                     res.ok(),
+                    sugg_span,
                 ));
             }
 
@@ -642,6 +655,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     kind,
                     *parent_scope,
                     binding.ok(),
+                    sugg_span,
                 ));
             }
 
@@ -688,7 +702,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
 
         let macro_resolutions = mem::take(&mut self.multi_segment_macro_resolutions);
-        for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
+        for (mut path, path_span, kind, parent_scope, initial_res, _sugg_span) in macro_resolutions
+        {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
                 seg.id = None;
@@ -713,9 +728,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let exclamation_span = sm.next_point(span);
                             suggestion = Some((
                                 vec![(exclamation_span, "".to_string())],
-                                    format!("{} is not a macro, but a {}, try to remove `!`", Segment::names_to_string(&path), partial_res.base_res().descr()),
-                                    Applicability::MaybeIncorrect
-                                ));
+                                format!(
+                                    "{} is not a macro, but a {}, try to remove `!`",
+                                    Segment::names_to_string(&path),
+                                    partial_res.base_res().descr(),
+                                ),
+                                Applicability::MaybeIncorrect,
+                            ));
                         }
                         (span, label)
                     } else {
@@ -738,7 +757,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let macro_resolutions = mem::take(&mut self.single_segment_macro_resolutions);
-        for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
+        for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
             match self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::Macro(kind),
@@ -771,9 +790,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 Err(..) => {
                     let expected = kind.descr_expected();
-                    let msg = format!("cannot find {} `{}` in this scope", expected, ident);
+                    let msg = format!("cannot find {expected} `{ident}` in this scope");
                     let mut err = self.tcx.sess.struct_span_err(ident.span, &msg);
-                    self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
+                    self.unresolved_macro_suggestions(
+                        &mut err,
+                        kind,
+                        &parent_scope,
+                        ident,
+                        sugg_span,
+                    );
                     err.emit();
                 }
             }

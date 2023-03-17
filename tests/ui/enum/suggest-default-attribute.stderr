@@ -6,8 +6,7 @@ LL |     #[default]
    |
 help: consider adding a derive
    |
-LL + #[derive(Default)]
-LL ~ pub enum Test {
+LL | #[derive(Default)]
    |
 
 error: aborting due to previous error
