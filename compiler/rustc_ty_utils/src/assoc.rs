@@ -383,6 +383,8 @@ fn impl_associated_item_for_impl_trait_in_trait(
     impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
 
     // Copy generics_of the trait's associated item but the impl as the parent.
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) resolves to the trait instead of the impl
+    // generics.
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;
@@ -391,15 +393,9 @@ fn impl_associated_item_for_impl_trait_in_trait(
         let parent_generics = tcx.generics_of(impl_def_id);
         let parent_count = parent_generics.parent_count + parent_generics.params.len();
 
-        let mut impl_fn_params = tcx.generics_of(impl_fn_def_id).params.clone();
-
         for param in &mut params {
-            param.index = param.index + parent_count as u32 + impl_fn_params.len() as u32
-                - trait_assoc_parent_count as u32;
+            param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;
         }
-
-        impl_fn_params.extend(params);
-        params = impl_fn_params;
 
         let param_def_id_to_index =
             params.iter().map(|param| (param.def_id, param.index)).collect();
