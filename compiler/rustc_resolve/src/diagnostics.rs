@@ -1116,6 +1116,83 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
+    /// Visit every module reachable from `start_module` and bring any proc and derive macro
+    /// encountered into `self.macro_map` to be used for suggestions.
+    fn lookup_macros_from_module(&mut self) {
+        let parent_scope = ParentScope::module(self.graph_root, self);
+        let mut seen_modules = FxHashSet::default();
+        let mut worklist = vec![(self.graph_root, ThinVec::<ast::PathSegment>::new(), true)];
+        let mut worklist_via_import = vec![];
+
+        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+            None => worklist_via_import.pop(),
+            Some(x) => Some(x),
+        } {
+            let in_module_is_extern = !in_module.opt_def_id().map_or(false, |id| id.is_local());
+            // We have to visit module children in deterministic order to avoid
+            // instabilities in reported imports (#43552).
+            in_module.for_each_child(self, |this, ident, _ns, name_binding| {
+                if let Res::Def(DefKind::Macro(MacroKind::Derive | MacroKind::Attr), def_id) =
+                    name_binding.res()
+                {
+                    // By doing this all *imported* macros get added to the `macro_map` even if they
+                    // are *unused*, which makes the later suggestions find them and work.
+                    let _ = this.get_macro_by_def_id(def_id);
+                }
+                // avoid non-importable candidates
+                if !name_binding.is_importable() {
+                    return;
+                }
+
+                let child_accessible =
+                    accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
+
+                // do not venture inside inaccessible items of other crates
+                if in_module_is_extern && !child_accessible {
+                    return;
+                }
+
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+
+                // There is an assumption elsewhere that paths of variants are in the enum's
+                // declaration and not imported. With this assumption, the variant component is
+                // chopped and the rest of the path is assumed to be the enum's own path. For
+                // errors where a variant is used as the type instead of the enum, this causes
+                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
+                if via_import && name_binding.is_possibly_imported_variant() {
+                    return;
+                }
+
+                // #90113: Do not count an inaccessible reexported item as a candidate.
+                if let NameBindingKind::Import { binding, .. } = name_binding.kind {
+                    if this.is_accessible_from(binding.vis, parent_scope.module)
+                        && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                    {
+                        return;
+                    }
+                }
+
+                // collect submodules to explore
+                if let Some(module) = name_binding.module() {
+                    // form the path
+                    let mut path_segments = path_segments.clone();
+                    path_segments.push(ast::PathSegment::from_ident(ident));
+
+                    let is_extern_crate_that_also_appears_in_prelude =
+                        name_binding.is_extern_crate();
+
+                    if !is_extern_crate_that_also_appears_in_prelude {
+                        // add the module to the lookup
+                        if seen_modules.insert(module.def_id()) {
+                            if via_import { &mut worklist_via_import } else { &mut worklist }
+                                .push((module, path_segments, child_accessible));
+                        }
+                    }
+                }
+            })
+        }
+    }
+
     fn lookup_import_candidates_from_module<FilterFn>(
         &mut self,
         lookup_ident: Ident,
@@ -1336,6 +1413,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) {
         // Bring imported but unused `derive` macros into `macro_map` so we ensure they can be used
         // for suggestions.
+        self.lookup_macros_from_module();
         self.visit_scopes(
             ScopeSet::Macro(MacroKind::Derive),
             &parent_scope,
@@ -1364,8 +1442,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             is_expected,
         );
         if !self.add_typo_suggestion(err, suggestion, ident.span) {
-            // FIXME: this only works if the macro that has the helper_attr has already
-            // been imported.
+            // FIXME: this only works if the crate that owns the macro that has the helper_attr
+            // has already been imported.
             let mut derives = vec![];
             let mut all_attrs: FxHashMap<Symbol, Vec<_>> = FxHashMap::default();
             for (def_id, data) in &self.macro_map {
@@ -1373,7 +1451,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let item_name = self.tcx.item_name(*def_id);
                     all_attrs.entry(*helper_attr).or_default().push(item_name);
                     if helper_attr == &ident.name {
-                        // FIXME: we should also do Levenshtein distance checks here.
                         derives.push(item_name);
                     }
                 }
@@ -1401,11 +1478,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if span.from_expansion() {
                             None
                         } else {
-                            // For enum variants, `sugg_span` is empty, but we can get the `enum`'s `Span`.
+                            // For enum variants sugg_span is empty but we can get the enum's Span.
                             Some(span.shrink_to_lo())
                         }
                     } else {
-                        // For items, this `Span` will be populated, everything else it'll be `None`.
+                        // For items this `Span` will be populated, everything else it'll be None.
                         sugg_span
                     };
                 match sugg_span {
