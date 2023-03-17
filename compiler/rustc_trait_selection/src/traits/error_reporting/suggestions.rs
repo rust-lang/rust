@@ -2944,9 +2944,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a generator must have a statically known size");
             }
-            ObligationCauseCode::SizedBoxType => {
-                err.note("the type of a box expression must have a statically known size");
-            }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
             }
