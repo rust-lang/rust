@@ -342,23 +342,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
                         return Err(NoSolution);
                     };
+                    // Check that the type implements all of the predicates of the def-id.
+                    // (i.e. the principal, all of the associated types match, and any auto traits)
                     ecx.add_goals(
-                        data.iter()
-                            // Check that the type implements all of the predicates of the def-id.
-                            // (i.e. the principal, all of the associated types match, and any auto traits)
-                            .map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty)))
-                            .chain([
-                                // The type must be Sized to be unsized.
-                                goal.with(
-                                    tcx,
-                                    ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty])),
-                                ),
-                                // The type must outlive the lifetime of the `dyn` we're unsizing into.
-                                goal.with(
-                                    tcx,
-                                    ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region)),
-                                ),
-                            ]),
+                        data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
+                    );
+                    // The type must be Sized to be unsized.
+                    ecx.add_goal(
+                        goal.with(tcx, ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty]))),
+                    );
+                    // The type must outlive the lifetime of the `dyn` we're unsizing into.
+                    ecx.add_goal(
+                        goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
                     );
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
