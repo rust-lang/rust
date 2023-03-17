@@ -565,12 +565,6 @@ impl Error {
     /// other standard library functions may call platform functions that may
     /// (or may not) reset the error value even if they succeed.
     ///
-    /// If this is used in a case where no error has yet occurred in a program,
-    /// e.g. right after the beginning of `fn main`,
-    /// then in principle any possible Error may be returned.
-    /// The error code may have been set by a previous program (e.g. `execve`)
-    /// or the OS may have initialized it to an arbitrary, even random, value.
-    ///
     /// # Examples
     ///
     /// ```
@@ -877,9 +871,9 @@ impl Error {
 
     /// Returns the corresponding [`ErrorKind`] for this error.
     ///
-    /// In some cases, the ErrorKind variant may not make much sense,
-    /// either because the situation does not actually involve an error, or
-    /// because of a new error code the standard library has not been taught.
+    /// This may be a value set by Rust code constructing custom `io::Error`s,
+    /// or if this `io::Error` was sourced from the operating system,
+    /// it will be a value inferred from the system's error encoding.
     /// See [`last_os_error`] for more details.
     ///
     /// [`last_os_error`]: Error::last_os_error
@@ -894,7 +888,7 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // As no error has occurred, this may print anything!
+    ///     // As no error has (visibly) occurred, this may print anything!
     ///     // It likely prints a placeholder for unidentified (non-)errors.
     ///     print_error(Error::last_os_error());
     ///     // Will print "AddrInUse".
