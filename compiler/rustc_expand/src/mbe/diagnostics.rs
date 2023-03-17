@@ -245,12 +245,24 @@ pub(super) fn emit_frag_parse_err(
                 e.note(
                     "the macro call doesn't expand to an expression, but it can expand to a statement",
                 );
-                e.span_suggestion_verbose(
-                    site_span.shrink_to_hi(),
-                    "add `;` to interpret the expansion as a statement",
-                    ";",
-                    Applicability::MaybeIncorrect,
-                );
+
+                if parser.token == token::Semi {
+                    if let Ok(snippet) = parser.sess.source_map().span_to_snippet(site_span) {
+                        e.span_suggestion_verbose(
+                            site_span,
+                            "surround the macro invocation with `{}` to interpret the expansion as a statement",
+                            format!("{{ {}; }}", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                } else {
+                    e.span_suggestion_verbose(
+                        site_span.shrink_to_hi(),
+                        "add `;` to interpret the expansion as a statement",
+                        ";",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         },
         _ => annotate_err_with_kind(&mut e, kind, site_span),
