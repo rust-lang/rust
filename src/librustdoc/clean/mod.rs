@@ -39,6 +39,7 @@ use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
 
+use crate::clean::inline::merge_attrs;
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
@@ -2373,21 +2374,22 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => unreachable!("not yet converted"),
         };
 
-        let mut extra_attrs = Vec::new();
+        let mut import_attrs = Vec::new();
+        let mut target_attrs = Vec::new();
         if let Some(import_id) = import_id &&
             let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
             let is_inline = inline::load_attrs(cx, import_id.to_def_id()).lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
-            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);
+            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut import_attrs, is_inline);
+            add_without_unwanted_attributes(&mut target_attrs, inline::load_attrs(cx, def_id), is_inline);
         } else {
             // We only keep the item's attributes.
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
+            target_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
         }
 
-        let attrs = Attributes::from_ast(&extra_attrs);
-        let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+        let import_parent = import_id.map(|import_id| cx.tcx.local_parent(import_id).to_def_id());
+        let (attrs, cfg) =  merge_attrs(cx, import_parent, &target_attrs, Some(&import_attrs));
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
