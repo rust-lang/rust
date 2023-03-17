@@ -3328,10 +3328,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx,
             trait_ref.substs.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
         );
+        let fn_sig = tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), fn_sig);
 
-        let ty = if let Some(arg_idx) = arg_idx { fn_sig.input(arg_idx) } else { fn_sig.output() };
-
-        Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
+        Some(if let Some(arg_idx) = arg_idx {
+            *fn_sig.inputs().get(arg_idx)?
+        } else {
+            fn_sig.output()
+        })
     }
 
     #[instrument(level = "trace", skip(self, generate_err))]
