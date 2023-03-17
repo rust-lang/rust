@@ -600,7 +600,6 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 helper(typeck, false, e, f)?;
             },
             ExprKind::Block(&Block { expr: Some(e), .. }, _)
-            | ExprKind::Box(e)
             | ExprKind::Cast(e, _)
             | ExprKind::Unary(_, e) => {
                 helper(typeck, true, e, f)?;

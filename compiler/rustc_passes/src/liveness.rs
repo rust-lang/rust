@@ -473,7 +473,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
-            | hir::ExprKind::Box(..)
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
@@ -1059,8 +1058,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&l, r_succ)
             }
 
-            hir::ExprKind::Box(ref e)
-            | hir::ExprKind::AddrOf(_, _, ref e)
+            hir::ExprKind::AddrOf(_, _, ref e)
             | hir::ExprKind::Cast(ref e, _)
             | hir::ExprKind::Type(ref e, _)
             | hir::ExprKind::DropTemps(ref e)
@@ -1425,7 +1423,6 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Closure { .. }
         | hir::ExprKind::Path(_)
         | hir::ExprKind::Yield(..)
-        | hir::ExprKind::Box(..)
         | hir::ExprKind::Type(..)
         | hir::ExprKind::Err(_) => {}
     }
