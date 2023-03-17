@@ -144,18 +144,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
-        if self.tcx.opt_rpitit_info(obligation.cause.body_id.to_def_id()).is_some() {
-            return OnUnimplementedNote::default();
-        }
-
         let (def_id, substs) = self
             .impl_similar_to(trait_ref, obligation)
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
-        let body_hir = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
-        let mut flags =
-            vec![(sym::ItemContext, self.describe_enclosure(body_hir).map(|s| s.to_owned()))];
+        let mut flags = vec![];
+        // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
+        // but I guess we could synthesize one here. We don't see any errors that rely on
+        // that yet, though.
+        let enclosure =
+            if let Some(body_hir) = self.tcx.opt_local_def_id_to_hir_id(obligation.cause.body_id) {
+                self.describe_enclosure(body_hir).map(|s| s.to_owned())
+            } else {
+                None
+            };
+        flags.push((sym::ItemContext, enclosure));
 
         match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerivedObligation(..)

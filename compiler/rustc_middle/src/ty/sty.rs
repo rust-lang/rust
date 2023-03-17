@@ -1288,7 +1288,7 @@ impl<'tcx> AliasTy<'tcx> {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
             DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
+                tcx.parent(tcx.impl_trait_in_trait_parent_fn(self.def_id))
             }
             kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }

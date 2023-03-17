@@ -728,7 +728,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Alias(ty::Projection, ref data) => {
                 if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
-                    && self.tcx().def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
+                    && self.tcx().is_impl_trait_in_trait(data.def_id)
                 {
                     return self.pretty_print_opaque_impl_type(data.def_id, data.substs);
                 } else {

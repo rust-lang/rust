@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<&i32 as Deref>::Target == String`
-  --> $DIR/default-body-type-err.rs:7:22
+  --> $DIR/default-body-type-err.rs:10:22
    |
 LL |     fn lol(&self) -> impl Deref<Target = String> {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `String`
