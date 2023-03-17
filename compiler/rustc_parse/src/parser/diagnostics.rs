@@ -38,7 +38,7 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, Symbol, DUMMY_SP};
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
@@ -309,8 +309,11 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_ident()))
         .then_some(SuggRemoveComma { span: self.token.span });
 
-        let help_cannot_start_number =
-            self.is_lit_bad_ident().then_some(HelpIdentifierStartsWithNumber);
+        let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, _valid_portion)| {
+            let (invalid, _valid) = self.token.span.split_at(len as u32);
+
+            HelpIdentifierStartsWithNumber { num_span: invalid }
+        });
 
         let err = ExpectedIdentifier {
             span: self.token.span,
@@ -378,13 +381,24 @@ impl<'a> Parser<'a> {
 
     /// Checks if the current token is a integer or float literal and looks like
     /// it could be a invalid identifier with digits at the start.
-    pub(super) fn is_lit_bad_ident(&mut self) -> bool {
-        matches!(self.token.uninterpolate().kind, token::Literal(Lit { kind: token::LitKind::Integer | token::LitKind::Float, .. })
-            // ensure that the integer literal is followed by a *invalid*
-            // suffix: this is how we know that it is a identifier with an
-            // invalid beginning.
-            if rustc_ast::MetaItemLit::from_token(&self.token).is_none()
-        )
+    ///
+    /// Returns the number of characters (bytes) composing the invalid portion
+    /// of the identifier and the valid portion of the identifier.
+    pub(super) fn is_lit_bad_ident(&mut self) -> Option<(usize, Symbol)> {
+        // ensure that the integer literal is followed by a *invalid*
+        // suffix: this is how we know that it is a identifier with an
+        // invalid beginning.
+        if let token::Literal(Lit {
+            kind: token::LitKind::Integer | token::LitKind::Float,
+            symbol,
+            suffix,
+        }) = self.token.uninterpolate().kind
+            && rustc_ast::MetaItemLit::from_token(&self.token).is_none()
+        {
+            Some((symbol.as_str().len(), suffix.unwrap()))
+        } else {
+            None
+        }
     }
 
     pub(super) fn expected_one_of_not_found(

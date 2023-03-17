@@ -986,7 +986,10 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
 
 #[derive(Subdiagnostic)]
 #[help(parse_invalid_identifier_with_leading_number)]
-pub(crate) struct HelpIdentifierStartsWithNumber;
+pub(crate) struct HelpIdentifierStartsWithNumber {
+    #[primary_span]
+    pub num_span: Span,
+}
 
 pub(crate) struct ExpectedSemi {
     pub span: Span,
