@@ -189,6 +189,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
     }
 
+    /// Equates two values returning the nested goals without adding them
+    /// to the nested goals of the `EvalCtxt`.
+    ///
+    /// If possible, try using `eq` instead which automatically handles nested
+    /// goals correctly.
     #[instrument(level = "debug", skip(self, param_env), ret)]
     pub(super) fn eq_and_get_goals<T: ToTrace<'tcx>>(
         &self,
