@@ -46,14 +46,13 @@ pub fn find_native_static_library(
 }
 
 fn find_bundled_library(
-    name: Option<Symbol>,
+    name: Symbol,
     verbatim: Option<bool>,
     kind: NativeLibKind,
     has_cfg: bool,
     sess: &Session,
 ) -> Option<Symbol> {
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive } = kind
-        && let Some(name) = name
         && sess.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::Staticlib))
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
@@ -337,9 +336,15 @@ impl<'tcx> Collector<'tcx> {
                 if name.is_some() || kind.is_some() || modifiers.is_some() || cfg.is_some() {
                     sess.emit_err(errors::IncompatibleWasmLink { span });
                 }
-            } else if name.is_none() {
-                sess.emit_err(errors::LinkRequiresName { span: m.span });
             }
+
+            if wasm_import_module.is_some() {
+                (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
+            }
+            let Some((name, name_span)) = name else {
+                sess.emit_err(errors::LinkRequiresName { span: m.span });
+                continue;
+            };
 
             // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
             if let Some((_, span)) = import_name_type {
@@ -350,8 +355,8 @@ impl<'tcx> Collector<'tcx> {
 
             let dll_imports = match kind {
                 Some(NativeLibKind::RawDylib) => {
-                    if let Some((name, span)) = name && name.as_str().contains('\0') {
-                        sess.emit_err(errors::RawDylibNoNul { span });
+                    if name.as_str().contains('\0') {
+                        sess.emit_err(errors::RawDylibNoNul { span: name_span });
                     }
                     foreign_mod_items
                         .iter()
@@ -390,7 +395,6 @@ impl<'tcx> Collector<'tcx> {
                 }
             };
 
-            let name = name.map(|(name, _)| name);
             let kind = kind.unwrap_or(NativeLibKind::Unspecified);
             let filename = find_bundled_library(name, verbatim, kind, cfg.is_some(), sess);
             self.libs.push(NativeLib {
@@ -399,7 +403,6 @@ impl<'tcx> Collector<'tcx> {
                 kind,
                 cfg,
                 foreign_module: Some(it.owner_id.to_def_id()),
-                wasm_import_module: wasm_import_module.map(|(name, _)| name),
                 verbatim,
                 dll_imports,
             });
@@ -416,11 +419,7 @@ impl<'tcx> Collector<'tcx> {
                 self.tcx.sess.emit_err(errors::LibFrameworkApple);
             }
             if let Some(ref new_name) = lib.new_name {
-                let any_duplicate = self
-                    .libs
-                    .iter()
-                    .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n.as_str() == lib.name);
+                let any_duplicate = self.libs.iter().any(|n| n.name.as_str() == lib.name);
                 if new_name.is_empty() {
                     self.tcx.sess.emit_err(errors::EmptyRenamingTarget { lib_name: &lib.name });
                 } else if !any_duplicate {
@@ -445,33 +444,28 @@ impl<'tcx> Collector<'tcx> {
             let mut existing = self
                 .libs
                 .drain_filter(|lib| {
-                    if let Some(lib_name) = lib.name {
-                        if lib_name.as_str() == passed_lib.name {
-                            // FIXME: This whole logic is questionable, whether modifiers are
-                            // involved or not, library reordering and kind overriding without
-                            // explicit `:rename` in particular.
-                            if lib.has_modifiers() || passed_lib.has_modifiers() {
-                                match lib.foreign_module {
-                                    Some(def_id) => {
-                                        self.tcx.sess.emit_err(errors::NoLinkModOverride {
-                                            span: Some(self.tcx.def_span(def_id)),
-                                        })
-                                    }
-                                    None => self
-                                        .tcx
-                                        .sess
-                                        .emit_err(errors::NoLinkModOverride { span: None }),
-                                };
-                            }
-                            if passed_lib.kind != NativeLibKind::Unspecified {
-                                lib.kind = passed_lib.kind;
-                            }
-                            if let Some(new_name) = &passed_lib.new_name {
-                                lib.name = Some(Symbol::intern(new_name));
-                            }
-                            lib.verbatim = passed_lib.verbatim;
-                            return true;
+                    if lib.name.as_str() == passed_lib.name {
+                        // FIXME: This whole logic is questionable, whether modifiers are
+                        // involved or not, library reordering and kind overriding without
+                        // explicit `:rename` in particular.
+                        if lib.has_modifiers() || passed_lib.has_modifiers() {
+                            match lib.foreign_module {
+                                Some(def_id) => self.tcx.sess.emit_err(errors::NoLinkModOverride {
+                                    span: Some(self.tcx.def_span(def_id)),
+                                }),
+                                None => {
+                                    self.tcx.sess.emit_err(errors::NoLinkModOverride { span: None })
+                                }
+                            };
                         }
+                        if passed_lib.kind != NativeLibKind::Unspecified {
+                            lib.kind = passed_lib.kind;
+                        }
+                        if let Some(new_name) = &passed_lib.new_name {
+                            lib.name = Symbol::intern(new_name);
+                        }
+                        lib.verbatim = passed_lib.verbatim;
+                        return true;
                     }
                     false
                 })
@@ -479,7 +473,7 @@ impl<'tcx> Collector<'tcx> {
             if existing.is_empty() {
                 // Add if not found
                 let new_name: Option<&str> = passed_lib.new_name.as_deref();
-                let name = Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name)));
+                let name = Symbol::intern(new_name.unwrap_or(&passed_lib.name));
                 let sess = self.tcx.sess;
                 let filename =
                     find_bundled_library(name, passed_lib.verbatim, passed_lib.kind, false, sess);
@@ -489,7 +483,6 @@ impl<'tcx> Collector<'tcx> {
                     kind: passed_lib.kind,
                     cfg: None,
                     foreign_module: None,
-                    wasm_import_module: None,
                     verbatim: passed_lib.verbatim,
                     dll_imports: Vec::new(),
                 });
