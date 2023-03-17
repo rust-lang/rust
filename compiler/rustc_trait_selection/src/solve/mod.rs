@@ -78,15 +78,22 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     ) -> Result<(bool, Certainty), NoSolution> {
         let mut search_graph = search_graph::SearchGraph::new(self.tcx);
 
-        let result = EvalCtxt {
+        let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
             infcx: self,
             // Only relevant when canonicalizing the response.
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
+        };
+        let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
+
+        if let Ok((_, Certainty::Yes)) = result {
+            assert!(
+                ecx.nested_goals.is_empty(),
+                "Cannot be certain of query response if unevaluated goals exist"
+            );
         }
-        .evaluate_goal(IsNormalizesToHack::No, goal);
 
         assert!(search_graph.is_empty());
         result
