@@ -35,7 +35,7 @@ use rustc_errors::{
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
@@ -48,10 +48,8 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStore;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -881,11 +879,8 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    has_self: FxHashSet<DefId>,
-
-    /// Names of fields of an item `DefId` accessible with dot syntax.
-    /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Spanned<Symbol>>>,
+    has_self: LocalDefIdSet,
+    field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1009,7 +1004,7 @@ pub struct Resolver<'a, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: DefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
+    struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
@@ -1249,8 +1244,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            has_self: FxHashSet::default(),
-            field_names: FxHashMap::default(),
+            has_self: Default::default(),
+            field_def_ids: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -1436,9 +1431,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {
-        let mut cstore = self.tcx.untracked().cstore.write();
-        let cstore = cstore.untracked_as_any().downcast_mut().unwrap();
-        f(&mut CrateLoader::new(self.tcx, &mut *cstore, &mut self.used_extern_options))
+        f(&mut CrateLoader::new(
+            self.tcx,
+            &mut CStore::from_tcx_mut(self.tcx),
+            &mut self.used_extern_options,
+        ))
     }
 
     fn cstore(&self) -> MappedReadGuard<'_, CStore> {
@@ -1870,20 +1867,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
-    #[inline]
-    fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.tcx.source_span(def_id))
+    /// Retrieves definition span of the given `DefId`.
+    fn def_span(&self, def_id: DefId) -> Span {
+        match def_id.as_local() {
+            Some(def_id) => self.tcx.source_span(def_id),
+            None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+        }
     }
 
-    /// Retrieves the name of the given `DefId`.
-    #[inline]
-    fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
-        let def_key = match def_id.as_local() {
-            Some(def_id) => self.tcx.definitions_untracked().def_key(def_id),
-            None => self.cstore().def_key(def_id),
-        };
-        def_key.get_opt_name()
+    fn field_def_ids(&self, def_id: DefId) -> Option<&'tcx [DefId]> {
+        match def_id.as_local() {
+            Some(def_id) => self.field_def_ids.get(&def_id).copied(),
+            None => Some(self.tcx.associated_item_def_ids(def_id)),
+        }
     }
 
     /// Checks if an expression refers to a function marked with

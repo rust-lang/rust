@@ -3,30 +3,28 @@
 fn ezmap(_1: Option<i32>) -> Option<i32> {
     debug x => _1;                       // in scope 0 at $DIR/simple_option_map_e2e.rs:+0:14: +0:15
     let mut _0: std::option::Option<i32>; // return place in scope 0 at $DIR/simple_option_map_e2e.rs:+0:33: +0:44
-    let mut _2: [closure@$DIR/simple_option_map_e2e.rs:14:12: 14:15]; // in scope 0 at $DIR/simple_option_map_e2e.rs:+1:12: +1:21
     scope 1 (inlined map::<i32, i32, [closure@$DIR/simple_option_map_e2e.rs:14:12: 14:15]>) { // at $DIR/simple_option_map_e2e.rs:14:5: 14:22
         debug slf => _1;                 // in scope 1 at $DIR/simple_option_map_e2e.rs:2:17: 2:20
-        debug f => _2;                   // in scope 1 at $DIR/simple_option_map_e2e.rs:2:33: 2:34
-        let mut _3: isize;               // in scope 1 at $DIR/simple_option_map_e2e.rs:7:9: 7:16
-        let _4: i32;                     // in scope 1 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
-        let mut _5: i32;                 // in scope 1 at $DIR/simple_option_map_e2e.rs:7:25: 7:29
+        debug f => const ZeroSized: [closure@$DIR/simple_option_map_e2e.rs:14:12: 14:15]; // in scope 1 at $DIR/simple_option_map_e2e.rs:2:33: 2:34
+        let mut _2: isize;               // in scope 1 at $DIR/simple_option_map_e2e.rs:7:9: 7:16
+        let _3: i32;                     // in scope 1 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
+        let mut _4: i32;                 // in scope 1 at $DIR/simple_option_map_e2e.rs:7:25: 7:29
         scope 2 {
-            debug x => _4;               // in scope 2 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
+            debug x => _3;               // in scope 2 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
             scope 3 (inlined ezmap::{closure#0}) { // at $DIR/simple_option_map_e2e.rs:7:25: 7:29
-                debug n => _4;           // in scope 3 at $DIR/simple_option_map_e2e.rs:+1:13: +1:14
+                debug n => _3;           // in scope 3 at $DIR/simple_option_map_e2e.rs:+1:13: +1:14
             }
         }
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/simple_option_map_e2e.rs:+1:12: +1:21
-        _3 = discriminant(_1);           // scope 1 at $DIR/simple_option_map_e2e.rs:6:11: 6:14
-        switchInt(move _3) -> [0: bb1, 1: bb3, otherwise: bb2]; // scope 1 at $DIR/simple_option_map_e2e.rs:6:5: 6:14
+        _2 = discriminant(_1);           // scope 1 at $DIR/simple_option_map_e2e.rs:6:11: 6:14
+        switchInt(move _2) -> [0: bb1, 1: bb3, otherwise: bb2]; // scope 1 at $DIR/simple_option_map_e2e.rs:6:5: 6:14
     }
 
     bb1: {
         _0 = Option::<i32>::None;        // scope 1 at $DIR/simple_option_map_e2e.rs:8:17: 8:21
-        goto -> bb4;                     // scope 1 at $DIR/simple_option_map_e2e.rs:8:17: 8:21
+        return;                          // scope 1 at $DIR/simple_option_map_e2e.rs:8:17: 8:21
     }
 
     bb2: {
@@ -34,16 +32,11 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     }
 
     bb3: {
-        _4 = ((_1 as Some).0: i32);      // scope 1 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
-        StorageLive(_5);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:25: 7:29
-        _5 = Add(_4, const 1_i32);       // scope 3 at $DIR/simple_option_map_e2e.rs:+1:16: +1:21
-        _0 = Option::<i32>::Some(move _5); // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30
-        StorageDead(_5);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:29: 7:30
-        goto -> bb4;                     // scope 1 at $DIR/simple_option_map_e2e.rs:10:1: 10:2
-    }
-
-    bb4: {
-        StorageDead(_2);                 // scope 0 at $DIR/simple_option_map_e2e.rs:+1:21: +1:22
-        return;                          // scope 0 at $DIR/simple_option_map_e2e.rs:+2:2: +2:2
+        _3 = ((_1 as Some).0: i32);      // scope 1 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
+        StorageLive(_4);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:25: 7:29
+        _4 = Add(_3, const 1_i32);       // scope 3 at $DIR/simple_option_map_e2e.rs:+1:16: +1:21
+        _0 = Option::<i32>::Some(move _4); // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30
+        StorageDead(_4);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:29: 7:30
+        return;                          // scope 1 at $DIR/simple_option_map_e2e.rs:10:1: 10:2
     }
 }

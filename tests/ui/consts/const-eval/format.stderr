@@ -7,8 +7,17 @@ LL |     panic!("{:?}", 0);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1` in constant functions
+  --> $DIR/format.rs:2:5
+   |
+LL |     panic!("{:?}", 0);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0015]: cannot call non-const formatting macro in constant functions
-  --> $DIR/format.rs:7:22
+  --> $DIR/format.rs:8:22
    |
 LL |     println!("{:?}", 0);
    |                      ^
@@ -16,17 +25,17 @@ LL |     println!("{:?}", 0);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `Arguments::<'a>::new_v1` is not yet stable as a const fn
-  --> $DIR/format.rs:7:5
+error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1` in constant functions
+  --> $DIR/format.rs:8:5
    |
 LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = help: add `#![feature(const_fmt_arguments_new)]` to the crate attributes to enable
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `_print` in constant functions
-  --> $DIR/format.rs:7:5
+  --> $DIR/format.rs:8:5
    |
 LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -63,19 +72,19 @@ LL |     panic!("{:?}", 0);
    = note: this note originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used
-  --> $DIR/format.rs:7:14
+  --> $DIR/format.rs:8:14
    |
 LL |     println!("{:?}", 0);
    |              ^^^^^^
 
 note: erroneous constant used
-  --> $DIR/format.rs:7:14
+  --> $DIR/format.rs:8:14
    |
 LL |     println!("{:?}", 0);
    |              ^^^^^^
 
 note: erroneous constant used
-  --> $DIR/format.rs:7:22
+  --> $DIR/format.rs:8:22
    |
 LL |     println!("{:?}", 0);
    |                      ^
@@ -83,13 +92,13 @@ LL |     println!("{:?}", 0);
    = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used
-  --> $DIR/format.rs:7:22
+  --> $DIR/format.rs:8:22
    |
 LL |     println!("{:?}", 0);
    |                      ^
    |
    = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

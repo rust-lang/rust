@@ -12,7 +12,6 @@ fn f_u64() -> () {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics_e2e.rs:+1:5: +1:21
-        StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics_e2e.rs:23:9: 23:21
         _2 = f_non_zst::<u64>(const 0_u64) -> bb1; // scope 1 at $DIR/lower_intrinsics_e2e.rs:23:9: 23:21
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics_e2e.rs:23:9: 23:18
@@ -20,7 +19,6 @@ fn f_u64() -> () {
     }
 
     bb1: {
-        StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics_e2e.rs:23:21: 23:22
         StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics_e2e.rs:+1:5: +1:21
         return;                          // scope 0 at $DIR/lower_intrinsics_e2e.rs:+2:2: +2:2
     }

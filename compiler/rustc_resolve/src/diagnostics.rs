@@ -12,7 +12,7 @@ use rustc_errors::{struct_span_err, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -555,25 +555,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         return err;
                     }
                     Res::SelfTyAlias { alias_to: def_id, .. } => {
-                        if let Some(impl_span) = self.opt_span(def_id) {
-                            err.span_label(
-                                reduce_impl_span_to_impl_keyword(sm, impl_span),
-                                "`Self` type implicitly declared here, by this `impl`",
-                            );
-                        }
+                        err.span_label(
+                            reduce_impl_span_to_impl_keyword(sm, self.def_span(def_id)),
+                            "`Self` type implicitly declared here, by this `impl`",
+                        );
                         err.span_label(span, "use a type here instead");
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        if let Some(span) = self.opt_span(def_id) {
-                            err.span_label(span, "type parameter from outer function");
-                        }
+                        err.span_label(self.def_span(def_id), "type parameter from outer function");
                         def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        if let Some(span) = self.opt_span(def_id) {
-                            err.span_label(span, "const parameter from outer function");
-                        }
+                        err.span_label(
+                            self.def_span(def_id),
+                            "const parameter from outer function",
+                        );
                         def_id
                     }
                     _ => {
@@ -589,7 +586,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = "try using a local generic parameter instead";
-                    let name = self.opt_name(def_id).unwrap_or(sym::T);
+                    let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{}>", name);
                         (span, snippet)
@@ -1216,15 +1213,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // a note about editions
                             let note = if let Some(did) = did {
                                 let requires_note = !did.is_local()
-                                    && this.cstore().item_attrs_untracked(did, this.tcx.sess).any(
+                                    && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
                                         |attr| {
-                                            if attr.has_name(sym::rustc_diagnostic_item) {
-                                                [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                                    .map(|x| Some(x))
-                                                    .contains(&attr.value_str())
-                                            } else {
-                                                false
-                                            }
+                                            [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                                .map(|x| Some(x))
+                                                .contains(&attr.value_str())
                                         },
                                     );
 
@@ -1373,8 +1366,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
         if ident.name == kw::Default
             && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
-            && let Some(span) = self.opt_span(def_id)
         {
+            let span = self.def_span(def_id);
             let source_map = self.tcx.sess.source_map();
             let head_span = source_map.guess_head_span(span);
             if let Ok(head) = source_map.span_to_snippet(head_span) {
@@ -1450,11 +1443,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
             Some(suggestion) => suggestion,
         };
-        let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-            LOCAL_CRATE => self.opt_span(def_id),
-            _ => Some(self.cstore().get_span_untracked(def_id, self.tcx.sess)),
-        });
-        if let Some(def_span) = def_span {
+        if let Some(def_span) = suggestion.res.opt_def_id().map(|def_id| self.def_span(def_id)) {
             if span.overlaps(def_span) {
                 // Don't suggest typo suggestion for itself like in the following:
                 // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
@@ -1592,8 +1581,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         )) = binding.kind
         {
             let def_id = self.tcx.parent(ctor_def_id);
-            let fields = self.field_names.get(&def_id)?;
-            return fields.iter().map(|name| name.span).reduce(Span::to); // None for `struct Foo()`
+            return self
+                .field_def_ids(def_id)?
+                .iter()
+                .map(|&field_id| self.def_span(field_id))
+                .reduce(Span::to); // None for `struct Foo()`
         }
         None
     }

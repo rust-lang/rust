@@ -1115,6 +1115,7 @@ supported_targets! {
     // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
     ("aarch64-fuchsia", aarch64_fuchsia),
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
+    ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     // FIXME(#106649): Remove x86_64-fuchsia in favor of x86_64-unknown-fuchsia
     ("x86_64-fuchsia", x86_64_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),

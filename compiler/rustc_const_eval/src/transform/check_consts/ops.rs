@@ -704,7 +704,7 @@ pub mod ty {
 
         fn importance(&self) -> DiagnosticImportance {
             match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::Temp => DiagnosticImportance::Secondary,
                 mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
                     DiagnosticImportance::Primary
                 }

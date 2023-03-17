@@ -30,7 +30,6 @@ use rustc_session::cstore::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnIndex;
-use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
@@ -930,7 +929,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
     }
 
-    fn get_visibility(self, id: DefIndex) -> ty::Visibility<DefId> {
+    fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
         self.root
             .tables
             .visibility
@@ -1088,6 +1087,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
+        let opt_rpitit_info =
+            self.root.tables.opt_rpitit_info.get(self, id).map(|d| d.decode(self));
 
         ty::AssocItem {
             name,
@@ -1096,6 +1097,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
             fn_has_self_parameter: has_self,
+            opt_rpitit_info,
         }
     }
 
@@ -1132,33 +1134,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     .expect("no encoded attributes for a structure or variant")
             })
             .decode((self, sess))
-    }
-
-    fn get_struct_field_names(
-        self,
-        id: DefIndex,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .expect("fields not encoded for a struct")
-            .decode(self)
-            .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
-    }
-
-    fn get_struct_field_visibilities(
-        self,
-        id: DefIndex,
-    ) -> impl Iterator<Item = Visibility<DefId>> + 'a {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .expect("fields not encoded for a struct")
-            .decode(self)
-            .map(move |field_index| self.get_visibility(field_index))
     }
 
     fn get_inherent_implementations_for_type(

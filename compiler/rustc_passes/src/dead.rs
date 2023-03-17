@@ -244,7 +244,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
-            if self.tcx.opt_rpitit_info(id).is_some() {
+            if self.tcx.opt_rpitit_info(id.to_def_id()).is_some() {
                 self.live_symbols.insert(id);
                 continue;
             }

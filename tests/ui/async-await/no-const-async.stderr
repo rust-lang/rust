@@ -7,36 +7,5 @@ LL | pub const async fn x() {}
    |     |     `async` because of this
    |     `const` because of this
 
-error[E0391]: cycle detected when computing type of `x::{opaque#0}`
-  --> $DIR/no-const-async.rs:4:24
-   |
-LL | pub const async fn x() {}
-   |                        ^
-   |
-note: ...which requires borrow-checking `x`...
-  --> $DIR/no-const-async.rs:4:1
-   |
-LL | pub const async fn x() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing MIR for `x`...
-  --> $DIR/no-const-async.rs:4:1
-   |
-LL | pub const async fn x() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `x`...
-  --> $DIR/no-const-async.rs:4:1
-   |
-LL | pub const async fn x() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires computing whether `x::{opaque#0}` is freeze...
-   = note: ...which requires evaluating trait selection obligation `x::{opaque#0}: core::marker::Freeze`...
-   = note: ...which again requires computing type of `x::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in top-level module
-  --> $DIR/no-const-async.rs:4:1
-   |
-LL | pub const async fn x() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0391`.

@@ -15,12 +15,12 @@ use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_session::cstore::{CrateSource, CrateStore};
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
-use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, Symbol};
+use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -226,7 +226,15 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { table }
+    // FIXME: Could be defaulted, but `LazyValue<UnusedGenericParams>` is not `FixedSizeEncoding`..
+    unused_generic_params => {
+        cdata
+            .root
+            .tables
+            .unused_generic_params
+            .get(cdata, def_id.index)
+            .map_or_else(|| ty::UnusedGenericParams::new_all_used(), |lazy| lazy.decode((cdata, tcx)))
+    }
     opt_def_kind => { table_direct }
     impl_parent => { table }
     impl_polarity => { table_direct }
@@ -501,33 +509,16 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
-        crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
+        crates: |tcx, ()| {
+            tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
+        },
         ..*providers
     };
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked<'a>(
-        &'a self,
-        def: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
-    }
-
-    pub fn struct_field_visibilities_untracked(
-        &self,
-        def: DefId,
-    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
-        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
-    }
-
     pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
         self.get_crate_data(def.krate).get_ctor(def.index)
-    }
-
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
-        self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
     pub fn module_children_untracked<'a>(
@@ -566,24 +557,12 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
-    }
-
-    pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
-        self.get_crate_data(cnum).source.clone()
-    }
-
     pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
 
     pub fn def_kind(&self, def: DefId) -> DefKind {
         self.get_crate_data(def.krate).def_kind(def.index)
-    }
-
-    pub fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
-        self.iter_crate_data().map(|(cnum, _)| cnum)
     }
 
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {

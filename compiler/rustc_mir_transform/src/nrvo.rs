@@ -102,7 +102,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
             mir::LocalKind::Arg => return None,
 
             mir::LocalKind::ReturnPointer => bug!("Return place was assigned to itself?"),
-            mir::LocalKind::Var | mir::LocalKind::Temp => {}
+            mir::LocalKind::Temp => {}
         }
 
         // If multiple different locals are copied to the return place. We can't pick a

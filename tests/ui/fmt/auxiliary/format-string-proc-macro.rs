@@ -28,25 +28,41 @@ pub fn err_with_input_span(input: TokenStream) -> TokenStream {
     TokenStream::from(TokenTree::Literal(lit))
 }
 
+fn build_format(args: impl Into<TokenStream>) -> TokenStream {
+    TokenStream::from_iter([
+        TokenTree::from(Ident::new("format", Span::call_site())),
+        TokenTree::from(Punct::new('!', Spacing::Alone)),
+        TokenTree::from(Group::new(Delimiter::Parenthesis, args.into())),
+    ])
+}
 
 #[proc_macro]
 pub fn respan_to_invalid_format_literal(input: TokenStream) -> TokenStream {
     let mut s = Literal::string("{");
     s.set_span(input.into_iter().next().unwrap().span());
-    TokenStream::from_iter([
-        TokenTree::from(Ident::new("format", Span::call_site())),
-        TokenTree::from(Punct::new('!', Spacing::Alone)),
-        TokenTree::from(Group::new(Delimiter::Parenthesis, TokenTree::from(s).into())),
-    ])
+
+    build_format(TokenTree::from(s))
 }
 
 #[proc_macro]
 pub fn capture_a_with_prepended_space_preserve_span(input: TokenStream) -> TokenStream {
     let mut s = Literal::string(" {a}");
     s.set_span(input.into_iter().next().unwrap().span());
-    TokenStream::from_iter([
-        TokenTree::from(Ident::new("format", Span::call_site())),
-        TokenTree::from(Punct::new('!', Spacing::Alone)),
-        TokenTree::from(Group::new(Delimiter::Parenthesis, TokenTree::from(s).into())),
-    ])
+
+    build_format(TokenTree::from(s))
+}
+
+#[proc_macro]
+pub fn format_args_captures(_: TokenStream) -> TokenStream {
+    r#"{ let x = 5; format!("{x}") }"#.parse().unwrap()
+}
+
+#[proc_macro]
+pub fn bad_format_args_captures(_: TokenStream) -> TokenStream {
+    r#"{ let x = 5; format!(concat!("{x}")) }"#.parse().unwrap()
+}
+
+#[proc_macro]
+pub fn identity_pm(input: TokenStream) -> TokenStream {
+    input
 }

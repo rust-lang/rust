@@ -2070,7 +2070,9 @@ pub enum ImplOverlapKind {
     Issue33140,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+/// Useful source information about where a desugared associated type for an
+/// RPITIT originated from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
 pub enum ImplTraitInTraitData {
     Trait { fn_def_id: DefId, opaque_def_id: DefId },
     Impl { fn_def_id: DefId },
@@ -2208,6 +2210,17 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
+        } else {
+            None
+        }
+    }
+
+    /// If the def-id is an associated type that was desugared from a
+    /// return-position `impl Trait` from a trait, then provide the source info
+    /// about where that RPITIT came from.
+    pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
+        if let DefKind::AssocTy = self.def_kind(def_id) {
+            self.associated_item(def_id).opt_rpitit_info
         } else {
             None
         }

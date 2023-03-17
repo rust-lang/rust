@@ -10,6 +10,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
+use rustc_infer::infer::DefineOpaqueTypes;
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
@@ -193,7 +194,7 @@ fn fulfill_implication<'tcx>(
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
+        infcx.at(&ObligationCause::dummy(), param_env, ).eq(DefineOpaqueTypes::No,source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",

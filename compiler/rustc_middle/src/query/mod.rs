@@ -1161,14 +1161,6 @@ rustc_queries! {
         feedable
     }
 
-    /// The `opt_rpitit_info` query returns the pair of the def id of the function where the RPIT
-    /// is defined and the opaque def id if any.
-    query opt_rpitit_info(def_id: DefId) -> Option<ty::ImplTraitInTraitData> {
-        desc { |tcx| "opt_rpitit_info `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
-        feedable
-    }
-
     /// Gets the span for the definition.
     query def_span(def_id: DefId) -> Span {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
@@ -2223,7 +2215,7 @@ rustc_queries! {
     }
 
     /// Used in `super_combine_consts` to ICE if the type of the two consts are definitely not going to end up being
-    /// equal to eachother. This might return `Ok` even if the types are unequal, but will never return `Err` if
+    /// equal to eachother. This might return `Ok` even if the types are not equal, but will never return `Err` if
     /// the types might be equal.
     query check_tys_might_be_eq(arg: Canonical<'tcx, (ty::ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>) -> Result<(), NoSolution> {
         desc { "check whether two const param are definitely not equal to eachother"}

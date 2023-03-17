@@ -1568,6 +1568,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
                     }
+                    ValuePairs::Aliases(infer::ExpectedFound { expected, .. }) => {
+                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
+                    }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                 };
                 let Some(vals) = self.values_str(values) else {
@@ -2124,6 +2127,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match values {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            infer::Aliases(exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),

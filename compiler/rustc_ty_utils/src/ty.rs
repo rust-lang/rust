@@ -119,12 +119,9 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // When computing the param_env of an RPITIT, copy param_env of the containing function. The
     // synthesized associated type doesn't have extra predicates to assume.
-    let def_id =
-        if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
-            fn_def_id
-        } else {
-            def_id
-        };
+    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+        return tcx.param_env(fn_def_id);
+    }
 
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =

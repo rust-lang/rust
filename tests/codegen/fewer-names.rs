@@ -13,8 +13,8 @@ pub fn sum(x: u32, y: u32) -> u32 {
 
 // NO-LABEL: define{{.*}}i32 @sum(i32 noundef %x, i32 noundef %y)
 // NO-NEXT:  start:
-// NO-NEXT:    %z = add i32 %y, %x
-// NO-NEXT:    ret i32 %z
+// NO-NEXT:    %0 = add i32 %y, %x
+// NO-NEXT:    ret i32 %0
     let z = x + y;
     z
 }

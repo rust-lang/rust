@@ -1,6 +1,6 @@
 use crate::rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_hir as hir;
-use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::ToPredicate;
 use rustc_span::DUMMY_SP;
@@ -47,8 +47,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
                 // Require the type the impl is implemented on to match
                 // our type, and ignore the impl if there was a mismatch.
-                let cause = traits::ObligationCause::dummy();
-                let Ok(eq_result) = infcx.at(&cause, param_env).eq(impl_trait_ref.self_ty(), impl_ty) else {
+                let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, impl_trait_ref.self_ty(), impl_ty) else {
                         continue
                     };
                 let InferOk { value: (), obligations } = eq_result;

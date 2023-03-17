@@ -8,7 +8,6 @@
       let mut _3: (u8, u8);                // in scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/issue_67019.rs:+1:5: +1:20
           StorageLive(_2);                 // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
           StorageLive(_3);                 // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
 -         _3 = (const 1_u8, const 2_u8);   // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
@@ -23,7 +22,6 @@
   
       bb1: {
           StorageDead(_2);                 // scope 0 at $DIR/issue_67019.rs:+1:19: +1:20
-          StorageDead(_1);                 // scope 0 at $DIR/issue_67019.rs:+1:20: +1:21
           return;                          // scope 0 at $DIR/issue_67019.rs:+2:2: +2:2
       }
   }

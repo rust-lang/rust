@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::{DefineOpaqueTypes, LateBoundRegionConversionTime};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
@@ -563,10 +563,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check that E' = S'.
                 let cause = self.misc(hir_ty.span);
-                let InferOk { value: (), obligations } = self
-                    .at(&cause, self.param_env)
-                    .define_opaque_types(true)
-                    .eq(*expected_ty, supplied_ty)?;
+                let InferOk { value: (), obligations } = self.at(&cause, self.param_env).eq(
+                    DefineOpaqueTypes::Yes,
+                    *expected_ty,
+                    supplied_ty,
+                )?;
                 all_obligations.extend(obligations);
             }
 
@@ -576,10 +577,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_sig.output(),
             );
             let cause = &self.misc(decl.output.span());
-            let InferOk { value: (), obligations } = self
-                .at(cause, self.param_env)
-                .define_opaque_types(true)
-                .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
+            let InferOk { value: (), obligations } = self.at(cause, self.param_env).eq(
+                DefineOpaqueTypes::Yes,
+                expected_sigs.liberated_sig.output(),
+                supplied_output_ty,
+            )?;
             all_obligations.extend(obligations);
 
             let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));

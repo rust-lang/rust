@@ -8,7 +8,7 @@ use rustc_hir_analysis::astconv::generics::{
     check_generic_arg_count_for_call, create_substs_for_generic_args,
 };
 use rustc_hir_analysis::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
-use rustc_infer::infer::{self, InferOk};
+use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -478,7 +478,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 substs,
             })),
         );
-        match self.at(&cause, self.param_env).sup(method_self_ty, self_ty) {
+        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::No, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

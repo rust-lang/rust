@@ -8,7 +8,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::MappedReadGuard;
+use rustc_data_structures::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, WriteGuard};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -133,8 +133,14 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 
 impl CStore {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> MappedReadGuard<'_, CStore> {
-        MappedReadGuard::map(tcx.cstore_untracked(), |c| {
-            c.as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
+        ReadGuard::map(tcx.untracked().cstore.read(), |cstore| {
+            cstore.as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
+        })
+    }
+
+    pub fn from_tcx_mut(tcx: TyCtxt<'_>) -> MappedWriteGuard<'_, CStore> {
+        WriteGuard::map(tcx.untracked().cstore.write(), |cstore| {
+            cstore.untracked_as_any().downcast_mut().expect("`tcx.cstore` is not a `CStore`")
         })
     }
 
@@ -267,9 +273,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
         CrateLoader { tcx, cstore, used_extern_options }
-    }
-    pub fn cstore(&self) -> &CStore {
-        &self.cstore
     }
 
     fn existing_match(&self, name: Symbol, hash: Option<Svh>, kind: PathKind) -> Option<CrateNum> {

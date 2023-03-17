@@ -1427,25 +1427,25 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let ResolvedArg::LateBound(..) = def && crossed_anon_const {
                 let use_span = self.tcx.hir().span(hir_id);
                 let def_span = self.tcx.def_span(param_def_id);
-                match self.tcx.def_kind(param_def_id) {
+                let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
                         self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Const {
                             use_span,
                             def_span,
-                        });
+                        })
                     }
                     DefKind::TyParam => {
                         self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Type {
                             use_span,
                             def_span,
-                        });
+                        })
                     }
                     _ => unreachable!(),
-                }
-                return;
+                };
+                self.map.defs.insert(hir_id, ResolvedArg::Error(guar));
+            } else {
+                self.map.defs.insert(hir_id, def);
             }
-
-            self.map.defs.insert(hir_id, def);
             return;
         }
 

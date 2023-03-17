@@ -304,6 +304,7 @@ impl Step for Llvm {
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
         let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
+        let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
@@ -321,7 +322,8 @@ impl Step for Llvm {
             .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
-            .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native)
+            .define("LLVM_ENABLE_WARNINGS", enable_warnings);
 
         // Parts of our test suite rely on the `FileCheck` tool, which is built by default in
         // `build/$TARGET/llvm/build/bin` is but *not* then installed to `build/$TARGET/llvm/bin`.
@@ -482,11 +484,6 @@ impl Step for Llvm {
         for (key, val) in &builder.config.llvm_build_config {
             cfg.define(key, val);
         }
-
-        // FIXME: we don't actually need to build all LLVM tools and all LLVM
-        //        libraries here, e.g., we just want a few components and a few
-        //        tools. Figure out how to filter them down and only build the right
-        //        tools and libs on all platforms.
 
         if builder.config.dry_run() {
             return res;

@@ -1738,11 +1738,11 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
 
     /// Inequality for two `Rc`s.
     ///
-    /// Two `Rc`s are unequal if their inner values are unequal.
+    /// Two `Rc`s are not equal if their inner values are not equal.
     ///
     /// If `T` also implements `Eq` (implying reflexivity of equality),
     /// two `Rc`s that point to the same allocation are
-    /// never unequal.
+    /// always equal.
     ///
     /// # Examples
     ///

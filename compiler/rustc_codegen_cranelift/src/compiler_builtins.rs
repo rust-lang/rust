@@ -39,6 +39,7 @@ builtin_functions! {
 
     // integers
     fn __multi3(a: i128, b: i128) -> i128;
+    fn __muloti4(n: i128, d: i128, oflow: &mut i32) -> i128;
     fn __udivti3(n: u128, d: u128) -> u128;
     fn __divti3(n: i128, d: i128) -> i128;
     fn __umodti3(n: u128, d: u128) -> u128;

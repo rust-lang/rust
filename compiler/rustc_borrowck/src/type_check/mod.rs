@@ -1180,10 +1180,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     Some(l)
-                        if matches!(
-                            body.local_decls[l].local_info,
-                            Some(box LocalInfo::AggregateTemp)
-                        ) =>
+                        if matches!(body.local_decls[l].local_info(), LocalInfo::AggregateTemp) =>
                     {
                         ConstraintCategory::Usage
                     }
@@ -1684,7 +1681,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // - maybe we should make that a warning.
                 return;
             }
-            LocalKind::Var | LocalKind::Temp => {}
+            LocalKind::Temp => {}
         }
 
         // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls

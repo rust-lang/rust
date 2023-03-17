@@ -43,10 +43,29 @@ pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -
 
 pub(crate) fn get_ptr_and_method_ref<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    arg: CValue<'tcx>,
+    mut arg: CValue<'tcx>,
     idx: usize,
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
+        if let Abi::Scalar(_) = arg.layout().abi {
+            'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr()
+                && !arg.layout().ty.is_region_ptr()
+            {
+                for i in 0..arg.layout().fields.count() {
+                    let field = arg.value_field(fx, mir::Field::new(i));
+                    if !field.layout().is_zst() {
+                        // we found the one non-zero-sized field that is allowed
+                        // now find *its* non-zero-sized field, or stop if it's a
+                        // pointer
+                        arg = field;
+                        continue 'descend_newtypes;
+                    }
+                }
+
+                bug!("receiver has no non-zero-sized fields {:?}", arg);
+            }
+        }
+
         if let ty::Ref(_, ty, _) = arg.layout().ty.kind() {
             if ty.is_dyn_star() {
                 let inner_layout = fx.layout_of(arg.layout().ty.builtin_deref(true).unwrap().ty);

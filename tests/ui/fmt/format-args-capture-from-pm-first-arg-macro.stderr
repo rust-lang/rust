@@ -1,0 +1,12 @@
+error: there is no argument named `x`
+  --> $DIR/format-args-capture-from-pm-first-arg-macro.rs:6:5
+   |
+LL |     format_string_proc_macro::bad_format_args_captures!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `x` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

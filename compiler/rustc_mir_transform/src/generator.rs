@@ -924,13 +924,19 @@ fn compute_layout<'tcx>(
         debug!(?decl);
 
         let ignore_for_traits = if tcx.sess.opts.unstable_opts.drop_tracking_mir {
+            // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+            // the information. This is alright, since `ignore_for_traits` is only relevant when
+            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+            // default.
             match decl.local_info {
                 // Do not include raw pointers created from accessing `static` items, as those could
                 // well be re-created by another access to the same static.
-                Some(box LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
+                ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
+                    !is_thread_local
+                }
                 // Fake borrows are only read by fake reads, so do not have any reality in
                 // post-analysis MIR.
-                Some(box LocalInfo::FakeBorrow) => true,
+                ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
                 _ => false,
             }
         } else {
