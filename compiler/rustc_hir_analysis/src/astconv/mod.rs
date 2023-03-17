@@ -2396,13 +2396,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     tcx,
                                     infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
                                 );
+                                // I guess we don't need to make a universe unless we need it,
+                                // but also we're on the error path, so it doesn't matter here.
+                                let universe = infcx.create_next_universe();
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
                                         impl_.self_ty(),
-                                        // Must fold past escaping bound vars too,
-                                        // since we have those at this point in astconv.
-                                        tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased),
+                                        tcx.replace_escaping_bound_vars_uncached(qself_ty, ty::fold::FnMutDelegate {
+                                            regions: &mut |_| tcx.lifetimes.re_erased,
+                                            types: &mut |bv| tcx.mk_placeholder(ty::PlaceholderType {
+                                                universe,
+                                                name: bv.kind,
+                                            }),
+                                            consts: &mut |bv, ty| tcx.mk_const(ty::PlaceholderConst {
+                                                universe,
+                                                name: bv
+                                            }, ty),
+                                        })
                                     )
                             })
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
