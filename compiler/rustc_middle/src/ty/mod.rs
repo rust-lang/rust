@@ -2579,7 +2579,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
 
         if self.lower_impl_trait_in_trait_to_assoc_ty() {
-            return !self.associated_items_for_impl_trait_in_trait(trait_item_def_id).is_empty();
+            return !self
+                .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
+                .is_empty();
         }
 
         // FIXME(RPITIT): This does a somewhat manual walk through the signature

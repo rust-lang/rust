@@ -1198,8 +1198,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
             if should_encode_fn_impl_trait_in_trait(tcx, def_id) {
-                let table = tcx.associated_items_for_impl_trait_in_trait(def_id);
-                record_defaulted_array!(self.tables.associated_items_for_impl_trait_in_trait[def_id] <- table);
+                let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
+                record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
             }
         }
 
