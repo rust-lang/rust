@@ -3257,6 +3257,9 @@ impl<'hir> Item<'hir> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic, TypeFoldable, TypeVisitable)]
+#[skip_traversal(
+    but_impl_despite_trivial_because = "`Unsafety` impls `Relate`, which is a subtrait of `TypeFoldable`."
+)]
 pub enum Unsafety {
     Unsafe,
     Normal,

@@ -203,12 +203,41 @@ fn interesting_fields_are_constrained() {
 }
 
 #[test]
-fn skipping_trivial_type_is_superfluous() {
+fn skipping_trivial_type_requires_justification() {
     expect! {
+        {
+            struct NothingInteresting<'a>;
+        } => "Traversal of trivial types are no-ops by default"
+
         {
             #[skip_traversal()]
             struct NothingInteresting<'a>;
-        } => "trivially traversable types are always skipped, so this attribute is superfluous"
+        } => "Traversal of trivial types are no-ops by default"
+
+        {
+            #[skip_traversal(but_impl_despite_trivial_because = ".", despite_potential_miscompilation_because = ".")]
+            struct NothingInteresting<'a>;
+        } => {
+            impl<'a, I: Interner> TypeFoldable<I> for NothingInteresting<'a> {
+                fn try_fold_with<T: FallibleTypeFolder<I>>(self, folder: &mut T) -> Result<Self, T::Error> {
+                    Ok(self) // no attempt to fold
+                }
+            }
+        }
+
+        {
+            #[skip_traversal(but_impl_despite_trivial_because = ".")]
+            struct NothingInteresting<'a>;
+        } => {
+            impl<'a, I: Interner> TypeFoldable<I> for NothingInteresting<'a>
+            where
+                I: TriviallyTraverses<Self> // impl only applies when type actually contains nothing interesting
+            {
+                fn try_fold_with<T: FallibleTypeFolder<I>>(self, folder: &mut T) -> Result<Self, T::Error> {
+                    Ok(self) // no attempt to fold
+                }
+            }
+        }
     }
 }
 

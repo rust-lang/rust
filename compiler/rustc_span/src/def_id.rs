@@ -239,6 +239,9 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
 #[derive(Clone, PartialEq, Eq, Copy, TypeFoldable, TypeVisitable)]
+#[skip_traversal(
+    but_impl_despite_trivial_because = "traversed generically in `rustc_type_ir::PredicateKind<TyCtxt>`"
+)]
 // Don't derive order on 64-bit big-endian, so we can be consistent regardless of field order.
 #[cfg_attr(not(all(target_pointer_width = "64", target_endian = "big")), derive(PartialOrd, Ord))]
 // On below-64 bit systems we can simply use the derived `Hash` impl

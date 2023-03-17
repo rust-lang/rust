@@ -90,10 +90,21 @@ decl_derive!(
     /// only be applicable if `T` does not contain anything that may be of interest to folders
     /// (thus preventing fields from being so-skipped erroneously).
     ///
+    /// By default, `TypeFoldable` cannot be derived on types that contain nothing that may be of
+    /// interest to folders as such an implementation is wholly superfluous and probably in error.
+    /// However, on occasion it may nevertheless be necessary to implement `TypeFoldable` for such
+    /// types even though any such fold will always be a noop (e.g. so that instances can be used
+    /// in a generic context that is constrained to implementors of the trait); in such situations
+    /// one can add a `#[skip_traversal(but_impl_despite_trivial_because = "<reason>"]` attribute.
+    ///
     /// In some rare situations, it may be desirable to skip folding of an item or field (or
-    /// variant) that might otherwise be of interest to folders: **this is dangerous and could lead
-    /// to miscompilation if user expectations are not met!**  Nevertheless, such can be achieved
-    /// via a `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
+    /// variant) that might otherwise be of interest to folders. This can be achieved via a
+    /// `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
+    /// Whereas the preceding usages of the `#[skip_traversal]` attribute are guaranteed to be
+    /// sound by constraining the interner to implementors of the `TriviallyTraverses<T>` trait,
+    /// use of `despite_potential_miscompilation_because` does not add such constraint or provide
+    /// any such guarantee.  **It is therefore dangerous and could lead to miscompilation if user
+    /// expectations are not met!**
     ///
     /// The derived implementation will use `TyCtxt<'tcx>` as the interner iff the annotated type
     /// has a `'tcx` lifetime parameter; otherwise it will be generic over all interners. It
@@ -124,10 +135,21 @@ decl_derive!(
     /// only be applicable if `T` does not contain anything that may be of interest to visitors
     /// (thus preventing fields from being so-skipped erroneously).
     ///
+    /// By default, `TypeVisitable` cannot be derived on types that contain nothing that may be of
+    /// interest to visitors as such an implementation is wholly superfluous and probably in error.
+    /// However, on occasion it may nevertheless be necessary to implement `TypeVisitable` for such
+    /// types even though any such visit will always be a noop (e.g. so that instances can be used
+    /// in a generic context that is constrained to implementors of the trait); in such situations
+    /// one can add a `#[skip_traversal(but_impl_despite_trivial_because = "<reason>"]` attribute.
+    ///
     /// In some rare situations, it may be desirable to skip visiting of an item or field (or
-    /// variant) that might otherwise be of interest to visitors: **this is dangerous and could lead
-    /// to miscompilation if user expectations are not met!**  Nevertheless, such can be achieved
-    /// via a `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
+    /// variant) that might otherwise be of interest to visitors. This can be achieved via a
+    /// `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
+    /// Whereas the preceding usages of the `#[skip_traversal]` attribute are guaranteed to be
+    /// sound by constraining the interner to implementors of the `TriviallyTraverses<T>` trait,
+    /// use of `despite_potential_miscompilation_because` does not add such constraint or provide
+    /// any such guarantee.  **It is therefore dangerous and could lead to miscompilation if user
+    /// expectations are not met!**
     ///
     /// The derived implementation will use `TyCtxt<'tcx>` as the interner iff the annotated type
     /// has a `'tcx` lifetime parameter; otherwise it will be generic over all interners. It

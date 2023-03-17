@@ -78,6 +78,9 @@ pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[skip_traversal(
+    but_impl_despite_trivial_because = "traversed generically in `rustc_type_ir::PredicateKind<TyCtxt>`"
+)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
     // because the trait Fn is a subtrait of FnMut and so in turn, and
