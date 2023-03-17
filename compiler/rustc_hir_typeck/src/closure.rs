@@ -2,7 +2,6 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use hir::def::DefKind;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -715,14 +714,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .subst_iter_copied(self.tcx, substs)
                 .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
-            ty::Alias(ty::Projection, proj)
-                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
-            {
-                self.tcx
-                    .bound_explicit_item_bounds(proj.def_id)
-                    .subst_iter_copied(self.tcx, proj.substs)
-                    .find_map(|(p, s)| get_future_output(p, s))?
-            }
+            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
+                .tcx
+                .bound_explicit_item_bounds(proj.def_id)
+                .subst_iter_copied(self.tcx, proj.substs)
+                .find_map(|(p, s)| get_future_output(p, s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"

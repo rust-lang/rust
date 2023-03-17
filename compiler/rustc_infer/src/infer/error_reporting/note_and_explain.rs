@@ -1,7 +1,7 @@
 use super::TypeErrCtxt;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
-use rustc_hir::{self as hir, def::DefKind};
+use rustc_hir as hir;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::Printer;
@@ -75,7 +75,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         diag.note("an associated type was expected, but a different one was found");
                     }
                     (ty::Param(p), ty::Alias(ty::Projection, proj)) | (ty::Alias(ty::Projection, proj), ty::Param(p))
-                        if tcx.def_kind(proj.def_id) != DefKind::ImplTraitPlaceholder =>
+                        if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
                         let p_def_id = tcx
                             .generics_of(body_owner_def_id)
@@ -222,7 +222,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Alias(ty::Projection, proj_ty), _) if tcx.def_kind(proj_ty.def_id) != DefKind::ImplTraitPlaceholder => {
+                    (ty::Alias(ty::Projection, proj_ty), _) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -231,7 +231,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Alias(ty::Projection, proj_ty)) if tcx.def_kind(proj_ty.def_id) != DefKind::ImplTraitPlaceholder => {
+                    (_, ty::Alias(ty::Projection, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
