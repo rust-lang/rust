@@ -2,7 +2,8 @@ use base_db::fixture::WithFixture;
 use hir_def::db::DefDatabase;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, test_db::TestDB, Const, ConstScalar, Interner,
+    consteval::try_const_usize, db::HirDatabase, mir::pad16, test_db::TestDB, Const, ConstScalar,
+    Interner,
 };
 
 use super::{
@@ -30,7 +31,12 @@ fn check_number(ra_fixture: &str, answer: i128) {
     match &r.data(Interner).value {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(b, _) => {
-                assert_eq!(b, &answer.to_le_bytes()[0..b.len()]);
+                assert_eq!(
+                    b,
+                    &answer.to_le_bytes()[0..b.len()],
+                    "Bytes differ. In decimal form: actual = {}, expected = {answer}",
+                    i128::from_le_bytes(pad16(b, true))
+                );
             }
             x => panic!("Expected number but found {:?}", x),
         },
@@ -212,6 +218,42 @@ fn overloaded_deref_autoref() {
     const GOAL: i32 = Foo.method();
     "#,
         5,
+    );
+}
+
+#[test]
+fn overloaded_index() {
+    check_number(
+        r#"
+    //- minicore: index
+    struct Foo;
+
+    impl core::ops::Index<usize> for Foo {
+        type Output = i32;
+        fn index(&self, index: usize) -> &i32 {
+            if index == 7 {
+                &700
+            } else {
+                &1000
+            }
+        }
+    }
+
+    impl core::ops::IndexMut<usize> for Foo {
+        fn index_mut(&mut self, index: usize) -> &mut i32 {
+            if index == 7 {
+                &mut 7
+            } else {
+                &mut 10
+            }
+        }
+    }
+
+    const GOAL: i32 = {
+        (Foo[2]) + (Foo[7]) + (*&Foo[2]) + (*&Foo[7]) + (*&mut Foo[2]) + (*&mut Foo[7])
+    };
+    "#,
+        3417,
     );
 }
 

@@ -95,6 +95,21 @@ impl<'a> InferenceContext<'a> {
                 self.infer_mut_not_expr_iter(fields.iter().map(|x| x.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {
+                if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
+                    if mutability == Mutability::Mut {
+                        if let Some(index_trait) = self
+                            .db
+                            .lang_item(self.table.trait_env.krate, LangItem::IndexMut)
+                            .and_then(|l| l.as_trait())
+                        {
+                            if let Some(index_fn) =
+                                self.db.trait_data(index_trait).method_by_name(&name![index_mut])
+                            {
+                                *f = index_fn;
+                            }
+                        }
+                    }
+                }
                 self.infer_mut_expr(base, mutability);
                 self.infer_mut_expr(index, Mutability::Not);
             }

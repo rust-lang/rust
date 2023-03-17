@@ -565,6 +565,54 @@ fn f(x: [(i32, u8); 10]) {
     }
 
     #[test]
+    fn overloaded_index() {
+        check_diagnostics(
+            r#"
+//- minicore: index
+use core::ops::{Index, IndexMut};
+
+struct Foo;
+impl Index<usize> for Foo {
+    type Output = (i32, u8);
+    fn index(&self, index: usize) -> &(i32, u8) {
+        &(5, 2)
+    }
+}
+impl IndexMut<usize> for Foo {
+    fn index_mut(&mut self, index: usize) -> &mut (i32, u8) {
+        &mut (5, 2)
+    }
+}
+fn f() {
+    let mut x = Foo;
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    let y = &x[2];
+    let x = Foo;
+    let y = &mut x[2];
+               //^^^^ 💡 error: cannot mutate immutable variable `x`
+    let mut x = &mut Foo;
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    let y: &mut (i32, u8) = &mut x[2];
+    let x = Foo;
+    let ref mut y = x[7];
+                  //^^^^ 💡 error: cannot mutate immutable variable `x`
+    let (ref mut y, _) = x[3];
+                       //^^^^ 💡 error: cannot mutate immutable variable `x`
+    match x[10] {
+        //^^^^^ 💡 error: cannot mutate immutable variable `x`
+        (ref y, _) => (),
+        (_, ref mut y) => (),
+    }
+    let mut x = Foo;
+    let mut i = 5;
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    let y = &mut x[i];
+}
+"#,
+        );
+    }
+
+    #[test]
     fn overloaded_deref() {
         check_diagnostics(
             r#"
