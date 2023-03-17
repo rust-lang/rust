@@ -390,14 +390,28 @@ impl<'a> InferenceContext<'a> {
                         if let Some(fn_x) = func {
                             match fn_x {
                                 FnTrait::FnOnce => (),
-                                FnTrait::FnMut => adjustments.push(Adjustment::borrow(
-                                    Mutability::Mut,
-                                    derefed_callee.clone(),
-                                )),
-                                FnTrait::Fn => adjustments.push(Adjustment::borrow(
-                                    Mutability::Not,
-                                    derefed_callee.clone(),
-                                )),
+                                FnTrait::FnMut => {
+                                    if !matches!(
+                                        derefed_callee.kind(Interner),
+                                        TyKind::Ref(Mutability::Mut, _, _)
+                                    ) {
+                                        adjustments.push(Adjustment::borrow(
+                                            Mutability::Mut,
+                                            derefed_callee.clone(),
+                                        ));
+                                    }
+                                }
+                                FnTrait::Fn => {
+                                    if !matches!(
+                                        derefed_callee.kind(Interner),
+                                        TyKind::Ref(Mutability::Not, _, _)
+                                    ) {
+                                        adjustments.push(Adjustment::borrow(
+                                            Mutability::Not,
+                                            derefed_callee.clone(),
+                                        ));
+                                    }
+                                }
                             }
                             let trait_ = fn_x
                                 .get_id(self.db, self.trait_env.krate)
@@ -673,6 +687,23 @@ impl<'a> InferenceContext<'a> {
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
+                        if let Some(deref_trait) = self
+                            .db
+                            .lang_item(self.table.trait_env.krate, LangItem::Deref)
+                            .and_then(|l| l.as_trait())
+                        {
+                            if let Some(deref_fn) =
+                                self.db.trait_data(deref_trait).method_by_name(&name![deref])
+                            {
+                                // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
+                                // the mutability is not wrong, and will be fixed in `self.infer_mut`).
+                                self.write_method_resolution(
+                                    tgt_expr,
+                                    deref_fn,
+                                    Substitution::empty(Interner),
+                                );
+                            }
+                        }
                         autoderef::deref(&mut self.table, inner_ty).unwrap_or_else(|| self.err_ty())
                     }
                     UnaryOp::Neg => {

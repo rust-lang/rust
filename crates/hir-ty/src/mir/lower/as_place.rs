@@ -145,10 +145,32 @@ impl MirLowerCtx<'_> {
                         self.expr_ty(*expr).kind(Interner),
                         TyKind::Ref(..) | TyKind::Raw(..)
                     ) {
-                        let Some(_) = self.lower_expr_as_place(current, *expr, true)? else {
+                        let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                             return Ok(None);
                         };
-                        not_supported!("explicit overloaded deref");
+                        return self.lower_overloaded_deref(
+                            current,
+                            p,
+                            self.expr_ty_after_adjustments(*expr),
+                            self.expr_ty(expr_id),
+                            expr_id.into(),
+                            'b: {
+                                if let Some((f, _)) = self.infer.method_resolution(expr_id) {
+                                    if let Some(deref_trait) =
+                                        self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
+                                    {
+                                        if let Some(deref_fn) = self
+                                            .db
+                                            .trait_data(deref_trait)
+                                            .method_by_name(&name![deref_mut])
+                                        {
+                                            break 'b deref_fn == f;
+                                        }
+                                    }
+                                }
+                                false
+                            },
+                        );
                     }
                     let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                         return Ok(None);

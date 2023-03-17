@@ -566,7 +566,6 @@ fn f(x: [(i32, u8); 10]) {
 
     #[test]
     fn overloaded_deref() {
-        // FIXME: check for false negative
         check_diagnostics(
             r#"
 //- minicore: deref_mut
@@ -574,22 +573,36 @@ use core::ops::{Deref, DerefMut};
 
 struct Foo;
 impl Deref for Foo {
-    type Target = i32;
-    fn deref(&self) -> &i32 {
-        &5
+    type Target = (i32, u8);
+    fn deref(&self) -> &(i32, u8) {
+        &(5, 2)
     }
 }
 impl DerefMut for Foo {
-    fn deref_mut(&mut self) -> &mut i32 {
-        &mut 5
+    fn deref_mut(&mut self) -> &mut (i32, u8) {
+        &mut (5, 2)
     }
 }
 fn f() {
-    let x = Foo;
+    let mut x = Foo;
+      //^^^^^ 💡 weak: variable does not need to be mutable
     let y = &*x;
     let x = Foo;
-    let mut x = Foo;
-    let y: &mut i32 = &mut x;
+    let y = &mut *x;
+               //^^ 💡 error: cannot mutate immutable variable `x`
+    let x = Foo;
+    let x = Foo;
+    let y: &mut (i32, u8) = &mut x;
+                          //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let ref mut y = *x;
+                  //^^ 💡 error: cannot mutate immutable variable `x`
+    let (ref mut y, _) = *x;
+                       //^^ 💡 error: cannot mutate immutable variable `x`
+    match *x {
+        //^^ 💡 error: cannot mutate immutable variable `x`
+        (ref y, _) => (),
+        (_, ref mut y) => (),
+    }
 }
 "#,
         );

@@ -609,21 +609,12 @@ impl ExprCollector<'_> {
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
         let (try_branch, cf_continue, cf_break, try_from_residual) = 'if_chain: {
             if let Some(try_branch) = LangItem::TryTraitBranch.path(self.db, self.krate) {
-                if let Some(cf_continue) =
-                    LangItem::ControlFlowContinue.path(self.db, self.krate)
-                {
-                    if let Some(cf_break) =
-                        LangItem::ControlFlowBreak.path(self.db, self.krate)
-                    {
+                if let Some(cf_continue) = LangItem::ControlFlowContinue.path(self.db, self.krate) {
+                    if let Some(cf_break) = LangItem::ControlFlowBreak.path(self.db, self.krate) {
                         if let Some(try_from_residual) =
                             LangItem::TryTraitFromResidual.path(self.db, self.krate)
                         {
-                            break 'if_chain (
-                                try_branch,
-                                cf_continue,
-                                cf_break,
-                                try_from_residual,
-                            );
+                            break 'if_chain (try_branch, cf_continue, cf_break, try_from_residual);
                         }
                     }
                 }
@@ -634,15 +625,10 @@ impl ExprCollector<'_> {
         let operand = self.collect_expr_opt(e.expr());
         let try_branch = self.alloc_expr(Expr::Path(try_branch), syntax_ptr.clone());
         let expr = self.alloc_expr(
-            Expr::Call {
-                callee: try_branch,
-                args: Box::new([operand]),
-                is_assignee_expr: false,
-            },
+            Expr::Call { callee: try_branch, args: Box::new([operand]), is_assignee_expr: false },
             syntax_ptr.clone(),
         );
-        let continue_binding =
-            self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
+        let continue_binding = self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
         let continue_bpat =
             self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
         self.add_definition_to_binding(continue_binding, continue_bpat);
@@ -656,8 +642,7 @@ impl ExprCollector<'_> {
             expr: self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone()),
         };
         let break_binding = self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
-        let break_bpat =
-            self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
+        let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
         self.add_definition_to_binding(break_binding, break_bpat);
         let break_arm = MatchArm {
             pat: self.alloc_pat_desugared(Pat::TupleStruct {
@@ -667,10 +652,8 @@ impl ExprCollector<'_> {
             }),
             guard: None,
             expr: {
-                let x =
-                    self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone());
-                let callee =
-                    self.alloc_expr(Expr::Path(try_from_residual), syntax_ptr.clone());
+                let x = self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone());
+                let callee = self.alloc_expr(Expr::Path(try_from_residual), syntax_ptr.clone());
                 let result = self.alloc_expr(
                     Expr::Call { callee, args: Box::new([x]), is_assignee_expr: false },
                     syntax_ptr.clone(),
@@ -1030,8 +1013,9 @@ impl ExprCollector<'_> {
                         .collect(),
                 }
             }
-            ast::Pat::LiteralPat(lit) => 'b: {
-                if let Some(ast_lit) = lit.literal() {
+            // FIXME: rustfmt removes this label if it is a block and not a loop
+            ast::Pat::LiteralPat(lit) => 'b: loop {
+                break if let Some(ast_lit) = lit.literal() {
                     let mut hir_lit: Literal = ast_lit.kind().into();
                     if lit.minus_token().is_some() {
                         let Some(h) = hir_lit.negate() else {
@@ -1045,8 +1029,8 @@ impl ExprCollector<'_> {
                     Pat::Lit(expr_id)
                 } else {
                     Pat::Missing
-                }
-            }
+                };
+            },
             ast::Pat::RestPat(_) => {
                 // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for

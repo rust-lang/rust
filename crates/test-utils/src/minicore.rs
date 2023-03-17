@@ -375,6 +375,68 @@ pub mod ops {
             type Output;
             extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
         }
+
+        mod impls {
+            use crate::marker::Tuple;
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const Fn<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                extern "rust-call" fn call(&self, args: A) -> F::Output {
+                    (**self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    (**self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                type Output = F::Output;
+
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    (*self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
+            where
+                F: ~const FnMut<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    (*self).call_mut(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
+            where
+                F: ~const FnMut<A>,
+            {
+                type Output = F::Output;
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    (*self).call_mut(args)
+                }
+            }
+        }
     }
     pub use self::function::{Fn, FnMut, FnOnce};
     // endregion:fn

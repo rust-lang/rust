@@ -166,8 +166,7 @@ fn reference_autoderef() {
 
 #[test]
 fn overloaded_deref() {
-    // FIXME: We should support this.
-    check_fail(
+    check_number(
         r#"
     //- minicore: deref_mut
     struct Foo;
@@ -185,9 +184,7 @@ fn overloaded_deref() {
         *y + *x
     };
     "#,
-        ConstEvalError::MirLowerError(MirLowerError::NotSupported(
-            "explicit overloaded deref".into(),
-        )),
+        10,
     );
 }
 
@@ -698,7 +695,7 @@ fn pattern_matching_literal() {
     }
     const GOAL: i32 = f(-1) + f(1) + f(0) + f(-5);
         "#,
-        211
+        211,
     );
     check_number(
         r#"
@@ -711,7 +708,7 @@ fn pattern_matching_literal() {
     }
     const GOAL: u8 = f("foo") + f("bar");
         "#,
-        11
+        11,
     );
 }
 
@@ -1115,6 +1112,22 @@ fn function_traits() {
     const GOAL: u8 = call(add2, 3) + call_mut(add2, 3) + call_once(add2, 3);
         "#,
         15,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: &dyn Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(f: &mut dyn FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(&add2, 3) + call_mut(&mut add2, 3);
+        "#,
+        10,
     );
     check_number(
         r#"

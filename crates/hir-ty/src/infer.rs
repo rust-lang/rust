@@ -57,6 +57,7 @@ mod expr;
 mod pat;
 mod coerce;
 mod closure;
+mod mutability;
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
@@ -98,6 +99,8 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     }
 
     ctx.infer_body();
+
+    ctx.infer_mut_body();
 
     Arc::new(ctx.resolve_all())
 }

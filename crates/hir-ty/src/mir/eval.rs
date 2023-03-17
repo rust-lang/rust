@@ -1,6 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{borrow::Cow, collections::HashMap, iter, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, iter, ops::Range, sync::Arc};
 
 use base_db::CrateId;
 use chalk_ir::{
@@ -108,6 +108,10 @@ impl Interval {
 
     fn get<'a>(&self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
         memory.read_memory(self.addr, self.size)
+    }
+
+    fn slice(self, range: Range<usize>) -> Interval {
+        Interval { addr: self.addr.offset(range.start), size: range.len() }
     }
 }
 
@@ -423,7 +427,6 @@ impl Evaluator<'_> {
         args: impl Iterator<Item = Vec<u8>>,
         subst: Substitution,
     ) -> Result<Vec<u8>> {
-        dbg!(body.dbg(self.db));
         if let Some(x) = self.stack_depth_limit.checked_sub(1) {
             self.stack_depth_limit = x;
         } else {
@@ -1360,24 +1363,24 @@ impl Evaluator<'_> {
         locals: &Locals<'_>,
     ) -> Result<()> {
         let func = args.get(0).ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
-        let ref_func_ty = self.operand_ty(func, locals)?;
-        let func_ty = match ft {
-            FnTrait::FnOnce => ref_func_ty,
-            FnTrait::FnMut | FnTrait::Fn => match ref_func_ty.as_reference() {
-                Some(x) => x.0.clone(),
-                None => return Err(MirEvalError::TypeError("fn trait with non-reference arg")),
-            },
-        };
+        let mut func_ty = self.operand_ty(func, locals)?;
+        let mut func_data = self.eval_operand(func, locals)?;
+        while let TyKind::Ref(_, _, z) = func_ty.kind(Interner) {
+            func_ty = z.clone();
+            if matches!(func_ty.kind(Interner), TyKind::Dyn(_)) {
+                let id =
+                    from_bytes!(usize, &func_data.get(self)?[self.ptr_size()..self.ptr_size() * 2]);
+                func_data = func_data.slice(0..self.ptr_size());
+                func_ty = self.vtable_map.ty(id)?.clone();
+            }
+            let size = self.size_of_sized(&func_ty, locals, "self type of fn trait")?;
+            func_data = Interval { addr: Address::from_bytes(func_data.get(self)?)?, size };
+        }
         match &func_ty.data(Interner).kind {
             TyKind::FnDef(def, subst) => {
                 self.exec_fn_def(*def, subst, destination, &args[1..], locals)?;
             }
             TyKind::Function(_) => {
-                let mut func_data = self.eval_operand(func, locals)?;
-                if let FnTrait::FnMut | FnTrait::Fn = ft {
-                    let addr = Address::from_bytes(func_data.get(self)?)?;
-                    func_data = Interval { addr, size: self.ptr_size() };
-                }
                 self.exec_fn_pointer(func_data, destination, &args[1..], locals)?;
             }
             x => not_supported!("Call {ft:?} trait methods with type {x:?}"),
