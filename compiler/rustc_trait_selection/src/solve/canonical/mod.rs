@@ -55,13 +55,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let goals_certainty = self.try_evaluate_added_goals()?;
         let certainty = certainty.unify_and(goals_certainty);
 
-        if let Certainty::Yes = certainty {
-            assert!(
-                self.nested_goals.is_empty(),
-                "Cannot be certain of query response if unevaluated goals exist"
-            );
-        }
-
         let external_constraints = self.compute_external_query_constraints()?;
 
         let response = Response { var_values: self.var_values, external_constraints, certainty };

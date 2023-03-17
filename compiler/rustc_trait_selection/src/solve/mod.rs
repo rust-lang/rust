@@ -88,12 +88,10 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
-        if let Ok((_, Certainty::Yes)) = result {
-            assert!(
-                ecx.nested_goals.is_empty(),
-                "Cannot be certain of query response if unevaluated goals exist"
-            );
-        }
+        assert!(
+            ecx.nested_goals.is_empty(),
+            "root `EvalCtxt` should not have any goals added to it"
+        );
 
         assert!(search_graph.is_empty());
         result
