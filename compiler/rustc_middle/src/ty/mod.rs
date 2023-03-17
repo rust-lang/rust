@@ -249,6 +249,9 @@ pub enum ImplSubject<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
+#[skip_traversal(but_impl_because = "
+    `ImplPolarity` impls `Relate`, which is a subtrait of `TypeFoldable`.
+")]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -292,6 +295,9 @@ pub enum Visibility<Id = LocalDefId> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeFoldable, TypeVisitable)]
+#[skip_traversal(but_impl_because = "
+    `BoundConstness` impls `Relate`, which is a subtrait of `TypeFoldable`.
+")]
 pub enum BoundConstness {
     /// `T: Trait`
     NotConst,

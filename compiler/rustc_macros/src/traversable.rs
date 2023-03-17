@@ -1,7 +1,30 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
 use std::collections::HashMap;
-use syn::{parse_quote, spanned::Spanned, Attribute, Generics, Ident};
+use syn::{
+    parse::{Error, ParseStream},
+    parse_quote,
+    spanned::Spanned,
+    Attribute, Generics, Ident, LitStr, Token,
+};
+
+mod kw {
+    syn::custom_keyword!(but_impl_because);
+}
+
+fn parse_skip_reason(input: ParseStream<'_>) -> Result<(), Error> {
+    input.parse::<kw::but_impl_because>()?;
+    input.parse::<Token![=]>()?;
+    let reason = input.parse::<LitStr>()?;
+    if reason.value().trim().is_empty() {
+        Err(Error::new_spanned(
+            reason,
+            "the value of `but_impl_because` must be a non-empty string",
+        ))
+    } else {
+        Ok(())
+    }
+}
 
 /// Generate a type parameter with the given `suffix` that does not conflict with
 /// any of the `existing` generics.
@@ -31,9 +54,9 @@ fn gen_interner(structure: &mut synstructure::Structure<'_>) -> TokenStream {
         })
 }
 
-/// Returns the `Span` of the first `#[skip_traversal]` attribute in `attrs`.
-fn find_skip_traversal_attribute(attrs: &[Attribute]) -> Option<Span> {
-    attrs.iter().find(|&attr| *attr == parse_quote! { #[skip_traversal] }).map(Spanned::span)
+/// Returns the first `#[skip_traversal]` attribute in `attrs`.
+fn find_skip_traversal_attribute(attrs: &[Attribute]) -> Option<&Attribute> {
+    attrs.iter().find(|&attr| attr.path.is_ident("skip_traversal"))
 }
 
 pub struct Foldable;
@@ -160,15 +183,22 @@ pub fn traversable_derive<T: Traversable>(
         structure.add_where_predicate(parse_quote! { Self: #supertraits });
     }
 
-    let body = if let Some(_span) = find_skip_traversal_attribute(&ast.attrs) {
-        if !is_generic {
-            // FIXME: spanned error causes ICE: "suggestion must not have overlapping parts"
-            return quote!({
-                ::core::compile_error!("non-generic types are automatically skipped where possible");
-            });
+    let body = if let Some(attr) = find_skip_traversal_attribute(&ast.attrs) {
+        if let Err(err) = attr.parse_args_with(parse_skip_reason) {
+            return err.into_compile_error();
         }
+        // If `is_generic`, it's possible that this no-op impl may not be applicable; but that's fine as it
+        // will cause a compilation error forcing removal of the inappropriate `#[skip_traversal]` attribute.
         structure.add_where_predicate(parse_quote! { Self: #skip_traversal });
         T::traverse(quote! { self }, true)
+    } else if !is_generic {
+        quote_spanned!(ast.ident.span() => {
+            ::core::compile_error!("\
+                traversal of non-generic types are no-ops by default, so explicitly deriving the traversable traits for them is rarely necessary\n\
+                if the need has arisen to due the appearance of this type in an anonymous tuple, consider replacing that tuple with a named struct\n\
+                otherwise add `#[skip_traversal(but_impl_because = \"<reason for implementation>\")]` to this type\
+            ")
+        })
     } else {
         // We add predicates to each generic field type, rather than to our generic type parameters.
         // This results in a "perfect derive" that avoids having to propagate `#[skip_traversal]` annotations
@@ -176,7 +206,7 @@ pub fn traversable_derive<T: Traversable>(
         // in recursive type definitions; fortunately that is not the case (yet).
         let mut predicates = HashMap::new();
         let arms = structure.each_variant(|variant| {
-            let skipped_variant_span = find_skip_traversal_attribute(&variant.ast().attrs);
+            let skipped_variant_span = find_skip_traversal_attribute(&variant.ast().attrs).map(Spanned::span);
             if variant.referenced_ty_params().is_empty() {
                 if let Some(span) = skipped_variant_span {
                     return quote_spanned!(span => {
@@ -186,7 +216,7 @@ pub fn traversable_derive<T: Traversable>(
             }
             T::arm(variant, |bind| {
                 let ast = bind.ast();
-                let skipped_span = skipped_variant_span.or_else(|| find_skip_traversal_attribute(&ast.attrs));
+                let skipped_span = skipped_variant_span.or_else(|| find_skip_traversal_attribute(&ast.attrs).map(Spanned::span));
                 if bind.referenced_ty_params().is_empty() {
                     if skipped_variant_span.is_none() && let Some(span) = skipped_span {
                         return quote_spanned!(span => {

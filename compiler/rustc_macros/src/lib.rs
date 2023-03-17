@@ -139,7 +139,11 @@ decl_derive!(
     /// accomplished via method calls that might not get optimised away. One can therefore annotate
     /// the type itself with `#[skip_traversal]` to immediately return `self` instead; as above,
     /// such derived implementations are only applicable if the annotated type does not contain
-    /// anything that may be of interest to a folder.
+    /// anything that may be of interest to a folder. Moreover, since such implementations should
+    /// rarely be necessary, a descriptive reason for the implementation must also be provided:
+    /// e.g. `#[skip_traversal(but_impl_because = "<explanation here>")]`. If applied to a
+    /// non-generic type (which cannot ever contain anything that may be of interest to folders),
+    /// this attribute is mandatory.
     ///
     /// The derived implementation will use `TyCtxt<'tcx>` as the interner iff the annotated type
     /// has a `'tcx` lifetime parameter; otherwise it will be generic over all interners. It
@@ -173,7 +177,11 @@ decl_derive!(
     /// accomplished via method calls that might not get optimised away. One can therefore annotate
     /// the type itself with `#[skip_traversal]` to immediately return `Continue(())` instead; as
     /// above, such derived implementations are only applicable if the annotated type does not
-    /// contain anything that may be of interest to visitors.
+    /// contain anything that may be of interest to visitors. Moreover, since such implementations
+    /// should rarely be necessary, a descriptive reason for the implementation must also be
+    /// provided: e.g. `#[skip_traversal(but_impl_because = "<explanation here>")]`. If applied to
+    /// a non-generic type (which cannot ever contain anything that may be of interest to
+    /// visitors), this attribute is mandatory.
     ///
     /// The derived implementation will use `TyCtxt<'tcx>` as the interner iff the annotated type
     /// has a `'tcx` lifetime parameter; otherwise it will be generic over all interners. It
