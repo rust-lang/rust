@@ -251,7 +251,7 @@ def parse_args(args):
 
         if not found:
             unknown_args.append(arg)
-    
+
     # Note: here and a few other places, we use [-1] to apply the *last* value
     # passed.  But if option-checking is enabled, then the known_args loop will
     # also assert that options are only passed once.

@@ -91,8 +91,7 @@ class GenerateAndParseConfig(unittest.TestCase):
             # Verify this is actually valid TOML.
             tomllib.loads(build.config_toml)
         except ImportError:
-            # too old a version of python
-            pass
+            print("warning: skipping TOML validation, need at least python 3.11", file=sys.stderr)
         return build
 
     def test_no_args(self):
