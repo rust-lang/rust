@@ -90,6 +90,15 @@ impl WhenToSkip {
             if attr.path().is_ident("skip_traversal") {
                 found = Some(attr);
                 attr.parse_nested_meta(|meta| {
+                    if IS_TYPE
+                        && ty == Trivial
+                        && meta.path.is_ident("but_impl_despite_trivial_because")
+                    {
+                        parse_reason(&meta)?;
+                        *self |= Self::Always(meta.error("").span());
+                        return Ok(());
+                    }
+
                     if meta.path.is_ident("despite_potential_miscompilation_because") {
                         parse_reason(&meta)?;
                         *self |= Self::Forced;
@@ -111,9 +120,7 @@ impl WhenToSkip {
                 attr,
                 if IS_TYPE {
                     match ty {
-                        Trivial => {
-                            "trivially traversable types are always skipped, so this attribute is superfluous"
-                        }
+                        Trivial => return Ok(()), // triggers error in caller
                         _ => {
                             "\
                             Justification must be provided for skipping this potentially interesting type, by specifying\n\
@@ -358,6 +365,15 @@ pub fn traversable_derive<T: Traversable>(
             structure.add_where_predicate(skip_traversal(&<Token![Self]>::default()));
         }
         T::traverse(quote! { self }, true, &interner)
+    } else if ty == Trivial {
+        return Err(Error::new(
+            Span::call_site(),
+            "\
+            Traversal of trivial types are no-ops by default, so explicitly deriving the traversable traits for them is rarely necessary.\n\
+            If the need has arisen to due the appearance of this type in an anonymous tuple, consider replacing that tuple with a named struct;\n\
+            otherwise add `#[skip_traversal(but_impl_despite_trivial_because = \"<reason for implementation>\")]` to this type.\
+        ",
+        ));
     } else {
         // We add predicates to each generic field type, rather than to our generic type parameters.
         // This results in a "perfect derive" that avoids having to propagate `#[skip_traversal]` annotations
