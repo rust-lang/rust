@@ -396,6 +396,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                         true,
                         force,
                         None,
+                        None,
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
@@ -693,6 +694,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         trace: bool,
         force: bool,
         ignore_import: Option<Import<'ra>>,
+        suggestion_span: Option<Span>,
     ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
@@ -703,7 +705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None,
             None,
             ignore_import,
-            None,
+            suggestion_span,
         )
     }
 
