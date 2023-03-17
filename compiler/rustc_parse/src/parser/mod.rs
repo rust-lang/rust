@@ -553,8 +553,9 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
+
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found();
+            let mut err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -565,12 +566,16 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, _recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
-        let result = self.token.ident().ok_or_else(|| self.expected_ident_found());
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+        let result = self.token.ident().ok_or_else(|| self.expected_ident_found(recover));
 
         let (ident, is_raw) = match result {
             Ok(ident) => ident,
-            Err(err) => return Err(err),
+            Err(err) => match err {
+                // we recovered!
+                Ok(ident) => ident,
+                Err(err) => return Err(err),
+            },
         };
 
         Ok((ident, is_raw))

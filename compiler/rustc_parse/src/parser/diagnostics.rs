@@ -269,13 +269,18 @@ impl<'a> Parser<'a> {
     }
 
     /// Emits an error with suggestions if an identifier was expected but not found.
-    pub(super) fn expected_ident_found(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ///
+    /// Returns a possibly recovered identifier.
+    pub(super) fn expected_ident_found(
+        &mut self,
+        recover: bool,
+    ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
-            return DocCommentDoesNotDocumentAnything {
+            return Err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
                 missing_comma: None,
             }
-            .into_diagnostic(&self.sess.span_diagnostic);
+            .into_diagnostic(&self.sess.span_diagnostic));
         }
 
         let valid_follow = &[
@@ -290,34 +295,51 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
 
-        let suggest_raw = match self.token.ident() {
-            Some((ident, false))
-                if ident.is_raw_guess()
-                    && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
-            {
-                Some(SuggEscapeIdentifier {
-                    span: ident.span.shrink_to_lo(),
-                    // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
-                    // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
-                    ident_name: ident.name.to_string(),
-                })
-            }
-            _ => None,
-        };
+        let mut recovered_ident = None;
+        // we take this here so that the correct original token is retained in
+        // the diagnostic, regardless of eager recovery.
+        let bad_token = self.token.clone();
 
-        let suggest_remove_comma = (self.token == token::Comma
-            && self.look_ahead(1, |t| t.is_ident()))
-        .then_some(SuggRemoveComma { span: self.token.span });
+        // suggest prepending a keyword in identifier position with `r#`
+        let suggest_raw = if let Some((ident, false)) = self.token.ident()
+            && ident.is_raw_guess()
+            && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+        {
+            recovered_ident = Some((ident, true));
 
-        let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, _valid_portion)| {
-            let (invalid, _valid) = self.token.span.split_at(len as u32);
+            // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
+            // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
+            let ident_name = ident.name.to_string();
+
+            Some(SuggEscapeIdentifier {
+                span: ident.span.shrink_to_lo(),
+                ident_name
+            })
+        } else { None };
+
+        let suggest_remove_comma =
+            if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
+                if recover {
+                    self.bump();
+                    recovered_ident = self.ident_or_err(false).ok();
+                };
+
+                Some(SuggRemoveComma { span: bad_token.span })
+            } else {
+                None
+            };
+
+        let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
+            let (invalid, valid) = self.token.span.split_at(len as u32);
+
+            recovered_ident = Some((Ident::new(valid_portion, valid), false));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
 
         let err = ExpectedIdentifier {
-            span: self.token.span,
-            token: self.token.clone(),
+            span: bad_token.span,
+            token: bad_token,
             suggest_raw,
             suggest_remove_comma,
             help_cannot_start_number,
@@ -326,6 +348,7 @@ impl<'a> Parser<'a> {
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
+        // FIXME: could we recover with this?
         if self.token == token::Lt {
             // all keywords that could have generic applied
             let valid_prev_keywords =
@@ -376,7 +399,16 @@ impl<'a> Parser<'a> {
             }
         }
 
-        err
+        if let Some(recovered_ident) = recovered_ident && recover {
+            err.emit();
+            Ok(recovered_ident)
+        } else {
+            Err(err)
+        }
+    }
+
+    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.expected_ident_found(false).unwrap_err()
     }
 
     /// Checks if the current token is a integer or float literal and looks like
@@ -392,7 +424,7 @@ impl<'a> Parser<'a> {
             kind: token::LitKind::Integer | token::LitKind::Float,
             symbol,
             suffix,
-        }) = self.token.uninterpolate().kind
+        }) = self.token.kind
             && rustc_ast::MetaItemLit::from_token(&self.token).is_none()
         {
             Some((symbol.as_str().len(), suffix.unwrap()))
