@@ -1496,6 +1496,8 @@ impl Type {
     /// An owned type is also the same as its borrowed variants (this is commutative),
     /// but `&T` is not the same as `&mut T`.
     pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
+        // Strip the references so that it can compare the actual types, unless both are references.
+        // If both are references, leave them alone and compare the mutabilities later.
         let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
             (self.without_borrowed_ref(), other.without_borrowed_ref())
         } else {
@@ -1518,6 +1520,7 @@ impl Type {
             // Placeholders are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             // Generics match everything on the right, but not on the left.
+            // If both sides are generic, this returns true.
             (_, Type::Generic(_)) => true,
             (Type::Generic(_), _) => false,
             // Paths account for both the path itself and its generics.
