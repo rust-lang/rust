@@ -218,14 +218,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
-        let Some(tupled_inputs_and_output) =
-            structural_traits::extract_tupled_inputs_and_output_from_callable(
+        let tupled_inputs_and_output =
+            match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
                 goal.predicate.self_ty(),
                 goal_kind,
-            )? else {
-            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-        };
+            )? {
+                Some(a) => a,
+                None => {
+                    return ecx
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+            };
         let output_is_sized_pred = tupled_inputs_and_output
             .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
 
