@@ -253,7 +253,7 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
 
     fn try_from(slice: &[T]) -> Result<&[T; N], TryFromSliceError> {
         if slice.len() == N {
-            let ptr = slice.as_ptr() as *const [T; N];
+            let ptr = slice.as_ptr().cast::<[T; N]>();
             // SAFETY: ok because we just checked that the length fits
             unsafe { Ok(&*ptr) }
         } else {
@@ -280,7 +280,7 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 
     fn try_from(slice: &mut [T]) -> Result<&mut [T; N], TryFromSliceError> {
         if slice.len() == N {
-            let ptr = slice.as_mut_ptr() as *mut [T; N];
+            let ptr = slice.as_mut_ptr().cast::<[T; N]>();
             // SAFETY: ok because we just checked that the length fits
             unsafe { Ok(&mut *ptr) }
         } else {

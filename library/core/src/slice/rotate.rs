@@ -162,7 +162,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // Algorithm 2
             // The `[T; 0]` here is to ensure this is appropriately aligned for T
             let mut rawarray = MaybeUninit::<(BufType, [T; 0])>::uninit();
-            let buf = rawarray.as_mut_ptr() as *mut T;
+            let buf = rawarray.as_mut_ptr().cast::<T>();
             // SAFETY: `mid-left <= mid-left+right < mid+right`
             let dim = unsafe { mid.sub(left).add(right) };
             if left <= right {

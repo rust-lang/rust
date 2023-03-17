@@ -1800,7 +1800,7 @@ impl<T> [T] {
     pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
         let (a, b) = self.split_at(N);
         // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
+        unsafe { (&*a.as_ptr().cast::<[T; N]>(), b) }
     }
 
     /// Divides one mutable slice into an array and a remainder slice at an index.
@@ -1833,7 +1833,7 @@ impl<T> [T] {
     pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
         let (a, b) = self.split_at_mut(N);
         // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) }
+        unsafe { (&mut *a.as_mut_ptr().cast::<[T; N]>(), b) }
     }
 
     /// Divides one slice into an array and a remainder slice at an index from
@@ -1879,7 +1879,7 @@ impl<T> [T] {
         assert!(N <= self.len());
         let (a, b) = self.split_at(self.len() - N);
         // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (a, &*(b.as_ptr() as *const [T; N])) }
+        unsafe { (a, &*b.as_ptr().cast::<[T; N]>()) }
     }
 
     /// Divides one mutable slice into an array and a remainder slice at an
@@ -1913,7 +1913,7 @@ impl<T> [T] {
         assert!(N <= self.len());
         let (a, b) = self.split_at_mut(self.len() - N);
         // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (a, &mut *(b.as_mut_ptr() as *mut [T; N])) }
+        unsafe { (a, &mut *b.as_mut_ptr().cast::<[T; N]>()) }
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -3582,7 +3582,7 @@ impl<T> [T] {
             unsafe {
                 (
                     left,
-                    from_raw_parts(rest.as_ptr() as *const U, us_len),
+                    from_raw_parts(rest.as_ptr().cast::<U>(), us_len),
                     from_raw_parts(rest.as_ptr().add(rest.len() - ts_len), ts_len),
                 )
             }
@@ -3652,7 +3652,7 @@ impl<T> [T] {
             unsafe {
                 (
                     left,
-                    from_raw_parts_mut(mut_ptr as *mut U, us_len),
+                    from_raw_parts_mut(mut_ptr.cast::<U>(), us_len),
                     from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
                 )
             }

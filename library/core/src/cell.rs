@@ -624,7 +624,7 @@ impl<T, const N: usize> Cell<[T; N]> {
     #[unstable(feature = "as_array_of_cells", issue = "88248")]
     pub fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
-        unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
+        unsafe { &*ptr::from_ref(self).cast::<[Cell<T>; N]>() }
     }
 }
 

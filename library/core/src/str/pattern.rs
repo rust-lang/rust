@@ -1905,16 +1905,16 @@ unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
         let (mut px, mut py) = (x.as_ptr(), y.as_ptr());
         let (pxend, pyend) = (px.add(x.len() - 4), py.add(y.len() - 4));
         while px < pxend {
-            let vx = (px as *const u32).read_unaligned();
-            let vy = (py as *const u32).read_unaligned();
+            let vx = px.cast::<u32>().read_unaligned();
+            let vy = py.cast::<u32>().read_unaligned();
             if vx != vy {
                 return false;
             }
             px = px.add(4);
             py = py.add(4);
         }
-        let vx = (pxend as *const u32).read_unaligned();
-        let vy = (pyend as *const u32).read_unaligned();
+        let vx = pxend.cast::<u32>().read_unaligned();
+        let vy = pyend.cast::<u32>().read_unaligned();
         vx == vy
     }
 }

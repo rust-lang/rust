@@ -271,7 +271,7 @@ fn is_ascii(s: &[u8]) -> bool {
 
     let start = s.as_ptr();
     // SAFETY: We verify `len < USIZE_SIZE` above.
-    let first_word = unsafe { (start as *const usize).read_unaligned() };
+    let first_word = unsafe { start.cast::<usize>().read_unaligned() };
 
     if contains_nonascii(first_word) {
         return false;
@@ -283,7 +283,7 @@ fn is_ascii(s: &[u8]) -> bool {
 
     // SAFETY: word_ptr is the (properly aligned) usize ptr we use to read the
     // middle chunk of the slice.
-    let mut word_ptr = unsafe { start.add(offset_to_aligned) as *const usize };
+    let mut word_ptr = unsafe { start.add(offset_to_aligned).cast::<usize>() };
 
     // `byte_pos` is the byte index of `word_ptr`, used for loop end checks.
     let mut byte_pos = offset_to_aligned;
@@ -322,7 +322,7 @@ fn is_ascii(s: &[u8]) -> bool {
     debug_assert!(byte_pos <= len && len - byte_pos <= USIZE_SIZE);
 
     // SAFETY: This relies on `len >= USIZE_SIZE`, which we check at the start.
-    let last_word = unsafe { (start.add(len - USIZE_SIZE) as *const usize).read_unaligned() };
+    let last_word = unsafe { start.add(len - USIZE_SIZE).cast::<usize>().read_unaligned() };
 
     !contains_nonascii(last_word)
 }

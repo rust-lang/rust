@@ -835,7 +835,7 @@ mod impls {
                 #[inline]
                 fn hash_slice<H: ~const Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = mem::size_of_val(data);
-                    let ptr = data.as_ptr() as *const u8;
+                    let ptr = data.as_ptr().cast::<u8>();
                     // SAFETY: `ptr` is valid and aligned, as this macro is only used
                     // for numeric primitives which have no padding. The new slice only
                     // spans across `data` and is never mutated, and its total size is the

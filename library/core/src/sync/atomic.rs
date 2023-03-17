@@ -126,8 +126,8 @@
 use self::Ordering::*;
 
 use crate::cell::UnsafeCell;
-use crate::fmt;
 use crate::intrinsics;
+use crate::{fmt, ptr};
 
 use crate::hint::spin_loop;
 
@@ -368,7 +368,7 @@ impl AtomicBool {
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut bool {
         // SAFETY: the mutable reference guarantees unique ownership.
-        unsafe { &mut *(self.v.get() as *mut bool) }
+        unsafe { &mut *self.v.get().cast::<bool>() }
     }
 
     /// Get atomic access to a `&mut bool`.
@@ -390,7 +390,7 @@ impl AtomicBool {
     pub fn from_mut(v: &mut bool) -> &mut Self {
         // SAFETY: the mutable reference guarantees unique ownership, and
         // alignment of both `bool` and `Self` is 1.
-        unsafe { &mut *(v as *mut bool as *mut Self) }
+        unsafe { &mut *ptr::from_mut(v).cast::<Self>() }
     }
 
     /// Get non-atomic access to a `&mut [AtomicBool]` slice.
@@ -1154,7 +1154,7 @@ impl<T> AtomicPtr<T> {
         //  - the mutable reference guarantees unique ownership.
         //  - the alignment of `*mut T` and `Self` is the same on all platforms
         //    supported by rust, as verified above.
-        unsafe { &mut *(v as *mut *mut T as *mut Self) }
+        unsafe { &mut *ptr::from_mut(v).cast::<Self>() }
     }
 
     /// Get non-atomic access to a `&mut [AtomicPtr]` slice.
@@ -2147,7 +2147,7 @@ macro_rules! atomic_int {
                 //  - the mutable reference guarantees unique ownership.
                 //  - the alignment of `$int_type` and `Self` is the
                 //    same, as promised by $cfg_align and verified above.
-                unsafe { &mut *(v as *mut $int_type as *mut Self) }
+                unsafe { &mut *ptr::from_mut(v).cast::<Self>() }
             }
 
             #[doc = concat!("Get non-atomic access to a `&mut [", stringify!($atomic_type), "]` slice")]

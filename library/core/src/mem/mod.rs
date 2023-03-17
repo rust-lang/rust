@@ -1054,12 +1054,12 @@ pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
     if align_of::<Dst>() > align_of::<Src>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
+        unsafe { ptr::from_ref(src).cast::<Dst>().read_unaligned() }
     } else {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // We just checked that `src as *const Dst` was properly aligned.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read(src as *const Src as *const Dst) }
+        unsafe { ptr::from_ref(src).cast::<Dst>().read() }
     }
 }
 

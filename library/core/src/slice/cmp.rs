@@ -88,7 +88,7 @@ where
         // The two slices have been checked to have the same size above.
         unsafe {
             let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+            memcmp(self.as_ptr().cast::<u8>(), other.as_ptr().cast::<u8>(), size) == 0
         }
     }
 }
@@ -231,7 +231,7 @@ impl SliceContains for i8 {
         // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
         // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
         // than `isize::MAX`. The returned slice is never mutated.
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
+        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr().cast::<u8>(), x.len()) };
         memchr::memchr(byte, bytes).is_some()
     }
 }

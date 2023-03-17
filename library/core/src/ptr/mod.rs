@@ -1278,7 +1278,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(src.cast::<u8>(), tmp.as_mut_ptr().cast::<u8>(), mem::size_of::<T>());
         tmp.assume_init()
     }
 }
@@ -1473,7 +1473,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(addr_of!(src).cast::<u8>(), dst.cast::<u8>(), mem::size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }

@@ -48,7 +48,7 @@ impl<T: ?Sized> *const T {
         }
 
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
+        unsafe { const_eval_select((self.cast::<u8>(),), const_impl, runtime_impl) }
     }
 
     /// Casts to a pointer of another type.
@@ -95,7 +95,7 @@ impl<T: ?Sized> *const T {
     where
         U: ?Sized,
     {
-        from_raw_parts::<U>(self as *const (), metadata(meta))
+        from_raw_parts::<U>(self.cast::<()>(), metadata(meta))
     }
 
     /// Changes constness without changing the type.
@@ -400,7 +400,7 @@ impl<T: ?Sized> *const T {
     {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        if self.is_null() { None } else { Some(unsafe { &*(self as *const MaybeUninit<T>) }) }
+        if self.is_null() { None } else { Some(unsafe { &*self.cast::<MaybeUninit<T>>() }) }
     }
 
     /// Calculates the offset from a pointer.
@@ -822,7 +822,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        match intrinsics::ptr_guaranteed_cmp(self as _, other as _) {
+        match intrinsics::ptr_guaranteed_cmp(self, other) {
             2 => None,
             other => Some(other == 1),
         }

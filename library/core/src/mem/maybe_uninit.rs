@@ -527,7 +527,8 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
-        self as *const _ as *const T
+        // FIXME: consider `ptr::from_ref` once that's const-stable
+        ptr::addr_of!(*self).cast::<T>()
     }
 
     /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
@@ -566,7 +567,7 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
-        self as *mut _ as *mut T
+        ptr::from_mut(self).cast::<T>()
     }
 
     /// Extracts the value from the `MaybeUninit<T>` container. This is a great way
@@ -947,7 +948,7 @@ impl<T> MaybeUninit<T> {
         // And thus the conversion is safe
         let ret = unsafe {
             intrinsics::assert_inhabited::<[T; N]>();
-            (&array as *const _ as *const [T; N]).read()
+            ptr::from_ref(&array).cast::<[T; N]>().read()
         };
 
         // FIXME: required to avoid `~const Destruct` bound
@@ -1002,7 +1003,7 @@ impl<T> MaybeUninit<T> {
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this.as_ptr() as *const T
+        this.as_ptr().cast::<T>()
     }
 
     /// Gets a mutable pointer to the first element of the array.
@@ -1010,7 +1011,7 @@ impl<T> MaybeUninit<T> {
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this.as_mut_ptr() as *mut T
+        this.as_mut_ptr().cast::<T>()
     }
 
     /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
@@ -1182,7 +1183,7 @@ impl<T> MaybeUninit<T> {
     pub fn as_bytes(&self) -> &[MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
-            slice::from_raw_parts(self.as_ptr() as *const MaybeUninit<u8>, mem::size_of::<T>())
+            slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), mem::size_of::<T>())
         }
     }
 
@@ -1214,7 +1215,7 @@ impl<T> MaybeUninit<T> {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts_mut(
-                self.as_mut_ptr() as *mut MaybeUninit<u8>,
+                self.as_mut_ptr().cast::<MaybeUninit<u8>>(),
                 mem::size_of::<T>(),
             )
         }
@@ -1244,7 +1245,7 @@ impl<T> MaybeUninit<T> {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts(
-                this.as_ptr() as *const MaybeUninit<u8>,
+                this.as_ptr().cast::<MaybeUninit<u8>>(),
                 this.len() * mem::size_of::<T>(),
             )
         }
@@ -1277,7 +1278,7 @@ impl<T> MaybeUninit<T> {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts_mut(
-                this.as_mut_ptr() as *mut MaybeUninit<u8>,
+                this.as_mut_ptr().cast::<MaybeUninit<u8>>(),
                 this.len() * mem::size_of::<T>(),
             )
         }

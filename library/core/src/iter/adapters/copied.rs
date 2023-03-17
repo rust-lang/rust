@@ -223,7 +223,7 @@ where
             unsafe {
                 ptr::copy_nonoverlapping(
                     self.as_ref().as_ptr(),
-                    raw_array.as_mut_ptr() as *mut T,
+                    raw_array.as_mut_ptr().cast::<T>(),
                     len,
                 );
                 let _ = self.advance_by(len);
@@ -234,7 +234,7 @@ where
         // SAFETY: `len` is larger than the array size. Copy a fixed amount here to fully initialize
         // the array.
         unsafe {
-            ptr::copy_nonoverlapping(self.as_ref().as_ptr(), raw_array.as_mut_ptr() as *mut T, N);
+            ptr::copy_nonoverlapping(self.as_ref().as_ptr(), raw_array.as_mut_ptr().cast::<T>(), N);
             let _ = self.advance_by(N);
             Ok(MaybeUninit::array_assume_init(raw_array))
         }

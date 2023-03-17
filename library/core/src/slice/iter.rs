@@ -90,7 +90,7 @@ impl<'a, T> Iter<'a, T> {
             let end =
                 if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
+            Self { ptr: NonNull::new_unchecked(ptr.cast_mut()), end, _marker: PhantomData }
         }
     }
 

@@ -412,7 +412,7 @@ impl<T: ?Sized> *mut T {
     {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        if self.is_null() { None } else { Some(unsafe { &*(self as *const MaybeUninit<T>) }) }
+        unsafe { self.cast_const().as_uninit_ref() }
     }
 
     /// Calculates the offset from a pointer.
@@ -476,7 +476,7 @@ impl<T: ?Sized> *mut T {
         // SAFETY: the caller must uphold the safety contract for `offset`.
         // The obtained pointer is valid for writes since the caller must
         // guarantee that it points to the same allocated object as `self`.
-        unsafe { intrinsics::offset(self, count) as *mut T }
+        unsafe { intrinsics::offset(self, count).cast_mut() }
     }
 
     /// Calculates the offset from a pointer in bytes.
@@ -555,7 +555,7 @@ impl<T: ?Sized> *mut T {
         T: Sized,
     {
         // SAFETY: the `arith_offset` intrinsic has no prerequisites to be called.
-        unsafe { intrinsics::arith_offset(self, count) as *mut T }
+        unsafe { intrinsics::arith_offset(self, count).cast_mut() }
     }
 
     /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
@@ -717,7 +717,7 @@ impl<T: ?Sized> *mut T {
     {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        if self.is_null() { None } else { Some(unsafe { &mut *(self as *mut MaybeUninit<T>) }) }
+        if self.is_null() { None } else { Some(unsafe { &mut *self.cast::<MaybeUninit<T>>() }) }
     }
 
     /// Returns whether two pointers are guaranteed to be equal.
@@ -744,7 +744,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        (self as *const T).guaranteed_eq(other as _)
+        self.cast_const().guaranteed_eq(other.cast_const())
     }
 
     /// Returns whether two pointers are guaranteed to be inequal.
@@ -771,7 +771,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        (self as *const T).guaranteed_ne(other as _)
+        self.cast_const().guaranteed_ne(other.cast_const())
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -864,7 +864,7 @@ impl<T: ?Sized> *mut T {
         T: Sized,
     {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
-        unsafe { (self as *const T).offset_from(origin) }
+        unsafe { self.cast_const().offset_from(origin) }
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -955,7 +955,7 @@ impl<T: ?Sized> *mut T {
         T: Sized,
     {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
-        unsafe { (self as *const T).sub_ptr(origin) }
+        unsafe { self.cast_const().sub_ptr(origin) }
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).

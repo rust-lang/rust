@@ -218,7 +218,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                     // always aligned with a `usize` so it's safe to dereference
                     // both `block` and `block.add(1)`.
                     unsafe {
-                        let block = ptr.add(index) as *const usize;
+                        let block = ptr.add(index).cast::<usize>();
                         // break if there is a nonascii byte
                         let zu = contains_nonascii(*block);
                         let zv = contains_nonascii(*block.add(1));
