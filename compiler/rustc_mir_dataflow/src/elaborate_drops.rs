@@ -729,23 +729,59 @@ where
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
-            let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
-                .map(|i| {
-                    (
-                        tcx.mk_place_elem(
-                            self.place,
-                            ProjectionElem::ConstantIndex {
-                                offset: i,
-                                min_length: size,
-                                from_end: false,
-                            },
-                        ),
-                        self.elaborator.array_subpath(self.path, i, size),
-                    )
-                })
-                .collect();
-
-            if fields.iter().any(|(_, path)| path.is_some()) {
+            enum ProjectionKind<Path> {
+                Drop(std::ops::Range<u64>),
+                Keep(u64, Path),
+            }
+            // Previously, we'd make a projection for every element in the array and create a drop
+            // ladder if any `array_subpath` was `Some`, i.e. moving out with an array pattern.
+            // This caused huge memory usage when generating the drops for large arrays, so we instead
+            // record the *subslices* which are dropped and the *indexes* which are kept
+            let mut drop_ranges = vec![];
+            let mut dropping = true;
+            let mut start = 0;
+            for i in 0..size {
+                let path = self.elaborator.array_subpath(self.path, i, size);
+                if dropping && path.is_some() {
+                    drop_ranges.push(ProjectionKind::Drop(start..i));
+                    dropping = false;
+                } else if !dropping && path.is_none() {
+                    dropping = true;
+                    start = i;
+                }
+                if let Some(path) = path {
+                    drop_ranges.push(ProjectionKind::Keep(i, path));
+                }
+            }
+            if !drop_ranges.is_empty() {
+                if dropping {
+                    drop_ranges.push(ProjectionKind::Drop(start..size));
+                }
+                let fields = drop_ranges
+                    .iter()
+                    .rev()
+                    .map(|p| {
+                        let (project, path) = match p {
+                            ProjectionKind::Drop(r) => (
+                                ProjectionElem::Subslice {
+                                    from: r.start,
+                                    to: r.end,
+                                    from_end: false,
+                                },
+                                None,
+                            ),
+                            &ProjectionKind::Keep(offset, path) => (
+                                ProjectionElem::ConstantIndex {
+                                    offset,
+                                    min_length: size,
+                                    from_end: false,
+                                },
+                                Some(path),
+                            ),
+                        };
+                        (tcx.mk_place_elem(self.place, project), path)
+                    })
+                    .collect::<Vec<_>>();
                 let (succ, unwind) = self.drop_ladder_bottom();
                 return self.drop_ladder(fields, succ, unwind).0;
             }
@@ -824,7 +860,7 @@ where
                 let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(*ety, size)
             }
-            ty::Slice(ety) => self.open_drop_for_array(*ety, None),
+            ty::Slice(ety) => self.drop_loop_pair(*ety),
 
             _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
