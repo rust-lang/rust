@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build: macro_rules.rs
 
 #![warn(clippy::all)]
 #![allow(
@@ -8,7 +9,8 @@
     redundant_semicolons,
     dead_code,
     unused_assignments,
-    unused_variables
+    unused_variables,
+    clippy::let_and_return
 )]
 
 struct Foo(u32);
@@ -216,8 +218,11 @@ const fn issue_9864(mut u: u32) -> u32 {
     u + v
 }
 
-#[allow(clippy::let_and_return)]
+#[macro_use]
+extern crate macro_rules;
+
 const fn issue_10421(x: u32) -> u32 {
+    issue_10421!();
     let a = x;
     let a = a;
     let a = a;

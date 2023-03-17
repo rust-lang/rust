@@ -27,3 +27,13 @@ macro_rules! mut_mut {
         let mut_mut_ty: &mut &mut u32 = &mut &mut 1u32;
     };
 }
+
+#[macro_export]
+macro_rules! issue_10421 {
+    () => {
+        let mut a = 1;
+        let mut b = 2;
+        a = b;
+        b = a;
+    };
+}
