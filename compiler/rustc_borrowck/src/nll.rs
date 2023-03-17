@@ -10,10 +10,9 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueHiddenType, Region, RegionVid};
+use rustc_middle::ty::{self, OpaqueHiddenType, Region, RegionVid, TyCtxt};
 use rustc_span::symbol::sym;
 use std::env;
-use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -325,7 +324,7 @@ pub(super) fn dump_mir_results<'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
 ) {
     if !dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
         return;
@@ -340,9 +339,11 @@ pub(super) fn dump_mir_results<'tcx>(
 
                 if let Some(closure_region_requirements) = closure_region_requirements {
                     writeln!(out, "| Free Region Constraints")?;
-                    for_each_region_constraint(closure_region_requirements, &mut |msg| {
-                        writeln!(out, "| {}", msg)
-                    })?;
+                    for_each_region_constraint(
+                        infcx.tcx,
+                        closure_region_requirements,
+                        &mut |msg| writeln!(out, "| {}", msg),
+                    )?;
                     writeln!(out, "|")?;
                 }
             }
@@ -375,7 +376,7 @@ pub(super) fn dump_annotation<'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
@@ -405,7 +406,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         // Dump the region constraints we are imposing *between* those
         // newly created variables.
-        for_each_region_constraint(closure_region_requirements, &mut |msg| {
+        for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
             err.note(msg);
             Ok(())
         })
@@ -426,16 +427,19 @@ pub(super) fn dump_annotation<'tcx>(
     errors.buffer_non_error_diag(err);
 }
 
-fn for_each_region_constraint(
-    closure_region_requirements: &ClosureRegionRequirements<'_>,
+fn for_each_region_constraint<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    closure_region_requirements: &ClosureRegionRequirements<'tcx>,
     with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
-        let subject: &dyn Debug = match &req.subject {
-            ClosureOutlivesSubject::Region(subject) => subject,
-            ClosureOutlivesSubject::Ty(ty) => ty,
+        let subject = match req.subject {
+            ClosureOutlivesSubject::Region(subject) => format!("{:?}", subject),
+            ClosureOutlivesSubject::Ty(ty) => {
+                format!("{:?}", ty.instantiate(tcx, |vid| tcx.mk_re_var(vid)))
+            }
         };
-        with_msg(&format!("where {:?}: {:?}", subject, req.outlived_free_region,))?;
+        with_msg(&format!("where {}: {:?}", subject, req.outlived_free_region,))?;
     }
     Ok(())
 }

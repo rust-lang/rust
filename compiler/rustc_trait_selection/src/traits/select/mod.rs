@@ -1083,7 +1083,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut nested_result = EvaluationResult::EvaluatedToOk;
                     for obligation in nested_obligations {
                         nested_result = cmp::max(
-                            this.evaluate_predicate_recursively(stack.list(), obligation)?,
+                            this.evaluate_predicate_recursively(previous_stack, obligation)?,
                             nested_result,
                         );
                     }
@@ -1092,7 +1092,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let obligation = obligation.with(this.tcx(), predicate);
                         result = cmp::max(
                             nested_result,
-                            this.evaluate_trait_predicate_recursively(stack.list(), obligation)?,
+                            this.evaluate_trait_predicate_recursively(previous_stack, obligation)?,
                         );
                     }
                 }
