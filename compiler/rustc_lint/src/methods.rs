@@ -36,7 +36,7 @@ declare_lint_pass!(TemporaryCStringAsPtr => [TEMPORARY_CSTRING_AS_PTR]);
 
 fn in_macro(span: Span) -> bool {
     if span.from_expansion() {
-        !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
+        !matches!(span.peel_ctxt().ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
     } else {
         false
     }

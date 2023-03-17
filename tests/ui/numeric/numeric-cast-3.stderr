@@ -1,0 +1,975 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:21:18
+   |
+LL |     foo::<usize>(x_u64);
+   |     ------------ ^^^^^ expected `usize`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_u64.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:23:18
+   |
+LL |     foo::<usize>(x_u32);
+   |     ------------ ^^^^^ expected `usize`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_u32.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:25:18
+   |
+LL |     foo::<usize>(x_u16);
+   |     ------------ ^^^^^ expected `usize`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to a `usize`
+   |
+LL |     foo::<usize>(x_u16.into());
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:27:18
+   |
+LL |     foo::<usize>(x_u8);
+   |     ------------ ^^^^ expected `usize`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to a `usize`
+   |
+LL |     foo::<usize>(x_u8.into());
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:29:18
+   |
+LL |     foo::<usize>(x_isize);
+   |     ------------ ^^^^^^^ expected `usize`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_isize.try_into().unwrap());
+   |                         ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:31:18
+   |
+LL |     foo::<usize>(x_i64);
+   |     ------------ ^^^^^ expected `usize`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i64` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_i64.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:33:18
+   |
+LL |     foo::<usize>(x_i32);
+   |     ------------ ^^^^^ expected `usize`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i32` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_i32.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:35:18
+   |
+LL |     foo::<usize>(x_i16);
+   |     ------------ ^^^^^ expected `usize`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_i16.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:37:18
+   |
+LL |     foo::<usize>(x_i8);
+   |     ------------ ^^^^ expected `usize`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<usize>(x_i8.try_into().unwrap());
+   |                      ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:42:18
+   |
+LL |     foo::<isize>(x_usize);
+   |     ------------ ^^^^^^^ expected `isize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_usize.try_into().unwrap());
+   |                         ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:44:18
+   |
+LL |     foo::<isize>(x_u64);
+   |     ------------ ^^^^^ expected `isize`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u64` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_u64.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:46:18
+   |
+LL |     foo::<isize>(x_u32);
+   |     ------------ ^^^^^ expected `isize`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u32` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_u32.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:48:18
+   |
+LL |     foo::<isize>(x_u16);
+   |     ------------ ^^^^^ expected `isize`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_u16.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:50:18
+   |
+LL |     foo::<isize>(x_u8);
+   |     ------------ ^^^^ expected `isize`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to an `isize`
+   |
+LL |     foo::<isize>(x_u8.into());
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:53:18
+   |
+LL |     foo::<isize>(x_i64);
+   |     ------------ ^^^^^ expected `isize`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_i64.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:55:18
+   |
+LL |     foo::<isize>(x_i32);
+   |     ------------ ^^^^^ expected `isize`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     foo::<isize>(x_i32.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:57:18
+   |
+LL |     foo::<isize>(x_i16);
+   |     ------------ ^^^^^ expected `isize`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to an `isize`
+   |
+LL |     foo::<isize>(x_i16.into());
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:59:18
+   |
+LL |     foo::<isize>(x_i8);
+   |     ------------ ^^^^ expected `isize`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to an `isize`
+   |
+LL |     foo::<isize>(x_i8.into());
+   |                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:64:16
+   |
+LL |     foo::<u64>(x_usize);
+   |     ---------- ^^^^^^^ expected `u64`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_usize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:67:16
+   |
+LL |     foo::<u64>(x_u32);
+   |     ---------- ^^^^^ expected `u64`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u32` to a `u64`
+   |
+LL |     foo::<u64>(x_u32.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:69:16
+   |
+LL |     foo::<u64>(x_u16);
+   |     ---------- ^^^^^ expected `u64`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to a `u64`
+   |
+LL |     foo::<u64>(x_u16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:71:16
+   |
+LL |     foo::<u64>(x_u8);
+   |     ---------- ^^^^ expected `u64`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to a `u64`
+   |
+LL |     foo::<u64>(x_u8.into());
+   |                    +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:73:16
+   |
+LL |     foo::<u64>(x_isize);
+   |     ---------- ^^^^^^^ expected `u64`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `isize` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_isize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:75:16
+   |
+LL |     foo::<u64>(x_i64);
+   |     ---------- ^^^^^ expected `u64`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i64` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_i64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:77:16
+   |
+LL |     foo::<u64>(x_i32);
+   |     ---------- ^^^^^ expected `u64`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i32` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_i32.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:79:16
+   |
+LL |     foo::<u64>(x_i16);
+   |     ---------- ^^^^^ expected `u64`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_i16.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:81:16
+   |
+LL |     foo::<u64>(x_i8);
+   |     ---------- ^^^^ expected `u64`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u64>(x_i8.try_into().unwrap());
+   |                    ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:86:16
+   |
+LL |     foo::<i64>(x_usize);
+   |     ---------- ^^^^^^^ expected `i64`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `usize` to an `i64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i64>(x_usize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:88:16
+   |
+LL |     foo::<i64>(x_u64);
+   |     ---------- ^^^^^ expected `i64`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u64` to an `i64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i64>(x_u64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:90:16
+   |
+LL |     foo::<i64>(x_u32);
+   |     ---------- ^^^^^ expected `i64`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u32` to an `i64`
+   |
+LL |     foo::<i64>(x_u32.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:92:16
+   |
+LL |     foo::<i64>(x_u16);
+   |     ---------- ^^^^^ expected `i64`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to an `i64`
+   |
+LL |     foo::<i64>(x_u16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:94:16
+   |
+LL |     foo::<i64>(x_u8);
+   |     ---------- ^^^^ expected `i64`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to an `i64`
+   |
+LL |     foo::<i64>(x_u8.into());
+   |                    +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:96:16
+   |
+LL |     foo::<i64>(x_isize);
+   |     ---------- ^^^^^^^ expected `i64`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i64>(x_isize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:99:16
+   |
+LL |     foo::<i64>(x_i32);
+   |     ---------- ^^^^^ expected `i64`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i32` to an `i64`
+   |
+LL |     foo::<i64>(x_i32.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:101:16
+   |
+LL |     foo::<i64>(x_i16);
+   |     ---------- ^^^^^ expected `i64`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to an `i64`
+   |
+LL |     foo::<i64>(x_i16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:103:16
+   |
+LL |     foo::<i64>(x_i8);
+   |     ---------- ^^^^ expected `i64`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to an `i64`
+   |
+LL |     foo::<i64>(x_i8.into());
+   |                    +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:108:16
+   |
+LL |     foo::<u32>(x_usize);
+   |     ---------- ^^^^^^^ expected `u32`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_usize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:110:16
+   |
+LL |     foo::<u32>(x_u64);
+   |     ---------- ^^^^^ expected `u32`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_u64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:113:16
+   |
+LL |     foo::<u32>(x_u16);
+   |     ---------- ^^^^^ expected `u32`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to a `u32`
+   |
+LL |     foo::<u32>(x_u16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:115:16
+   |
+LL |     foo::<u32>(x_u8);
+   |     ---------- ^^^^ expected `u32`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to a `u32`
+   |
+LL |     foo::<u32>(x_u8.into());
+   |                    +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:117:16
+   |
+LL |     foo::<u32>(x_isize);
+   |     ---------- ^^^^^^^ expected `u32`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `isize` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_isize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:119:16
+   |
+LL |     foo::<u32>(x_i64);
+   |     ---------- ^^^^^ expected `u32`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i64` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_i64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:121:16
+   |
+LL |     foo::<u32>(x_i32);
+   |     ---------- ^^^^^ expected `u32`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_i32.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:123:16
+   |
+LL |     foo::<u32>(x_i16);
+   |     ---------- ^^^^^ expected `u32`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_i16.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:125:16
+   |
+LL |     foo::<u32>(x_i8);
+   |     ---------- ^^^^ expected `u32`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<u32>(x_i8.try_into().unwrap());
+   |                    ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:130:16
+   |
+LL |     foo::<i32>(x_usize);
+   |     ---------- ^^^^^^^ expected `i32`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `usize` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i32>(x_usize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:132:16
+   |
+LL |     foo::<i32>(x_u64);
+   |     ---------- ^^^^^ expected `i32`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u64` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i32>(x_u64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:134:16
+   |
+LL |     foo::<i32>(x_u32);
+   |     ---------- ^^^^^ expected `i32`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i32>(x_u32.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:136:16
+   |
+LL |     foo::<i32>(x_u16);
+   |     ---------- ^^^^^ expected `i32`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u16` to an `i32`
+   |
+LL |     foo::<i32>(x_u16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:138:16
+   |
+LL |     foo::<i32>(x_u8);
+   |     ---------- ^^^^ expected `i32`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert a `u8` to an `i32`
+   |
+LL |     foo::<i32>(x_u8.into());
+   |                    +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:140:16
+   |
+LL |     foo::<i32>(x_isize);
+   |     ---------- ^^^^^^^ expected `i32`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i32>(x_isize.try_into().unwrap());
+   |                       ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:142:16
+   |
+LL |     foo::<i32>(x_i64);
+   |     ---------- ^^^^^ expected `i32`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     foo::<i32>(x_i64.try_into().unwrap());
+   |                     ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:145:16
+   |
+LL |     foo::<i32>(x_i16);
+   |     ---------- ^^^^^ expected `i32`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i16` to an `i32`
+   |
+LL |     foo::<i32>(x_i16.into());
+   |                     +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-3.rs:147:16
+   |
+LL |     foo::<i32>(x_i8);
+   |     ---------- ^^^^ expected `i32`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-cast-3.rs:6:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: you can convert an `i8` to an `i32`
+   |
+LL |     foo::<i32>(x_i8.into());
+   |                    +++++++
+
+error: aborting due to 54 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

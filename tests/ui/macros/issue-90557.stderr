@@ -1,0 +1,22 @@
+error[E0107]: struct takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-90557.rs:8:14
+   |
+LL |         impl Example<$t> {
+   |              ^^^^^^^ expected 2 generic arguments
+...
+LL | impl_example! { u8 }
+   | --------------------
+   | |               |
+   | |               supplied 1 generic argument
+   | in this macro invocation
+   |
+note: struct defined here, with 2 generic parameters: `T`, `U`
+  --> $DIR/issue-90557.rs:1:8
+   |
+LL | struct Example<T, U> {
+   |        ^^^^^^^ -  -
+   = note: this error originates in the macro `impl_example` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

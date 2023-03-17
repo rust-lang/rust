@@ -594,7 +594,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         match self.angle_brackets {
             AngleBrackets::Missing => {
-                let span = self.path_segment.ident.span;
+                let span = self.tcx.mark_span_for_resize(self.path_segment.ident.span);
 
                 // insert a suggestion of the form "Y<'a, 'b>"
                 let sugg = format!("<{}>", suggested_args);
@@ -610,11 +610,23 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             AngleBrackets::Available => {
                 let (sugg_span, is_first) = if self.num_provided_lifetime_args() == 0 {
-                    (self.gen_args.span().unwrap().shrink_to_lo(), true)
+                    (
+                        self.tcx.mark_span_for_resize(self.gen_args.span().unwrap()).shrink_to_lo(),
+                        true,
+                    )
                 } else {
                     let last_lt = &self.gen_args.args[self.num_provided_lifetime_args() - 1];
-                    (last_lt.span().shrink_to_hi(), false)
+                    (self.tcx.mark_span_for_resize(last_lt.span()).shrink_to_hi(), false)
                 };
+                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                if !self.gen_args.args.iter().all(|arg| {
+                    arg.span().can_be_used_for_suggestions()
+                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                }) || !path_sp.can_be_used_for_suggestions()
+                {
+                    // Do not suggest syntax when macros are involved. (#90557)
+                    return;
+                }
                 let has_non_lt_args = self.num_provided_type_or_const_args() != 0;
                 let has_bindings = !self.gen_args.bindings.is_empty();
 
@@ -644,7 +656,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         match self.angle_brackets {
             AngleBrackets::Missing | AngleBrackets::Implied => {
-                let span = self.path_segment.ident.span;
+                let span = self.tcx.mark_span_for_resize(self.path_segment.ident.span);
 
                 // insert a suggestion of the form "Y<T, U>"
                 let sugg = format!("<{}>", suggested_args);
@@ -658,14 +670,24 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 );
             }
             AngleBrackets::Available => {
-                let gen_args_span = self.gen_args.span().unwrap();
+                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                if !self.gen_args.args.iter().all(|arg| {
+                    arg.span().can_be_used_for_suggestions()
+                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                }) || !path_sp.can_be_used_for_suggestions()
+                {
+                    // Do not suggest syntax when macros are involved. (#90557)
+                    return;
+                }
+                let gen_args_span = self.tcx.mark_span_for_resize(self.gen_args.span().unwrap());
                 let sugg_offset =
                     self.get_lifetime_args_offset() + self.num_provided_type_or_const_args();
 
                 let (sugg_span, is_first) = if sugg_offset == 0 {
-                    (gen_args_span.shrink_to_lo(), true)
+                    (self.tcx.mark_span_for_resize(gen_args_span).shrink_to_lo(), true)
                 } else {
-                    let arg_span = self.gen_args.args[sugg_offset - 1].span();
+                    let arg_span =
+                        self.tcx.mark_span_for_resize(self.gen_args.args[sugg_offset - 1].span());
                     // If we came here then inferred lifetime's spans can only point
                     // to either the opening bracket or to the space right after.
                     // Both of these spans have an `hi` lower than or equal to the span
@@ -770,7 +792,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     let sugg = vec![
                         (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
-                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
+                        (self.tcx.mark_span_for_resize(span).with_lo(self.path_segment.ident.span.hi()), "".to_owned())
                     ];
 
                     err.multipart_suggestion(
@@ -953,11 +975,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             }
         } else if remove_entire_generics {
             let span = self
-                .path_segment
-                .args
-                .unwrap()
-                .span_ext()
-                .unwrap()
+                .tcx
+                .mark_span_for_resize(self.path_segment.args.unwrap().span_ext().unwrap())
                 .with_lo(self.path_segment.ident.span.hi());
 
             let msg = format!(

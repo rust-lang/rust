@@ -621,6 +621,10 @@ impl Diagnostic {
             .map(|(span, snippet)| SubstitutionPart { snippet, span })
             .collect::<Vec<_>>();
 
+        if !parts.iter().all(|sub| sub.span.can_be_used_for_suggestions()) {
+            return self;
+        }
+
         parts.sort_unstable_by_key(|part| part.span);
 
         assert!(!parts.is_empty());
@@ -711,6 +715,9 @@ impl Diagnostic {
             !(sp.is_empty() && suggestion.to_string().is_empty()),
             "Span must not be empty and have no suggestion"
         );
+        if !sp.can_be_used_for_suggestions() {
+            return self;
+        }
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart { snippet: suggestion.to_string(), span: sp }],
@@ -774,6 +781,9 @@ impl Diagnostic {
             !(sp.is_empty() && suggestions.iter().any(|suggestion| suggestion.is_empty())),
             "Span must not be empty and have no suggestion"
         );
+        if !sp.can_be_used_for_suggestions() {
+            return self;
+        }
 
         let substitutions = suggestions
             .into_iter()
@@ -799,11 +809,15 @@ impl Diagnostic {
     ) -> &mut Self {
         let substitutions = suggestions
             .into_iter()
-            .map(|sugg| {
+            .filter_map(|sugg| {
                 let mut parts = sugg
                     .into_iter()
                     .map(|(span, snippet)| SubstitutionPart { snippet, span })
                     .collect::<Vec<_>>();
+
+                if !parts.iter().all(|sub| sub.span.can_be_used_for_suggestions()) {
+                    return None;
+                }
 
                 parts.sort_unstable_by_key(|part| part.span);
 
@@ -819,7 +833,7 @@ impl Diagnostic {
                     "suggestion must not have overlapping parts",
                 );
 
-                Substitution { parts }
+                Some(Substitution { parts })
             })
             .collect();
 

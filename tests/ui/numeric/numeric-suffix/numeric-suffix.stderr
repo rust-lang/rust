@@ -845,7 +845,7 @@ LL |     foo::<f64>(42_u32.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:339:16
+  --> $DIR/numeric-suffix.rs:340:16
    |
 LL |     foo::<f64>(42_u16);
    |     ---------- ^^^^^^ expected `f64`, found `u16`
@@ -863,7 +863,7 @@ LL |     foo::<f64>(42_u16.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:343:16
+  --> $DIR/numeric-suffix.rs:345:16
    |
 LL |     foo::<f64>(42_u8);
    |     ---------- ^^^^^ expected `f64`, found `u8`
@@ -881,7 +881,7 @@ LL |     foo::<f64>(42_u8.into());
    |                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:347:16
+  --> $DIR/numeric-suffix.rs:350:16
    |
 LL |     foo::<f64>(42_isize);
    |     ---------- ^^^^^^^^ expected `f64`, found `isize`
@@ -899,7 +899,7 @@ LL |     foo::<f64>(42_f64);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:351:16
+  --> $DIR/numeric-suffix.rs:354:16
    |
 LL |     foo::<f64>(42_i64);
    |     ---------- ^^^^^^ expected `f64`, found `i64`
@@ -917,7 +917,7 @@ LL |     foo::<f64>(42_f64);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:355:16
+  --> $DIR/numeric-suffix.rs:358:16
    |
 LL |     foo::<f64>(42_i32);
    |     ---------- ^^^^^^ expected `f64`, found `i32`
@@ -935,7 +935,7 @@ LL |     foo::<f64>(42_i32.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:359:16
+  --> $DIR/numeric-suffix.rs:363:16
    |
 LL |     foo::<f64>(42_i16);
    |     ---------- ^^^^^^ expected `f64`, found `i16`
@@ -953,7 +953,7 @@ LL |     foo::<f64>(42_i16.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:363:16
+  --> $DIR/numeric-suffix.rs:368:16
    |
 LL |     foo::<f64>(42_i8);
    |     ---------- ^^^^^ expected `f64`, found `i8`
@@ -971,7 +971,7 @@ LL |     foo::<f64>(42_i8.into());
    |                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:368:16
+  --> $DIR/numeric-suffix.rs:374:16
    |
 LL |     foo::<f64>(42.0_f32);
    |     ---------- ^^^^^^^^ expected `f64`, found `f32`
@@ -989,7 +989,7 @@ LL |     foo::<f64>(42.0_f64);
    |                     ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:373:16
+  --> $DIR/numeric-suffix.rs:379:16
    |
 LL |     foo::<f32>(42_usize);
    |     ---------- ^^^^^^^^ expected `f32`, found `usize`
@@ -1007,7 +1007,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:377:16
+  --> $DIR/numeric-suffix.rs:383:16
    |
 LL |     foo::<f32>(42_u64);
    |     ---------- ^^^^^^ expected `f32`, found `u64`
@@ -1025,7 +1025,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:381:16
+  --> $DIR/numeric-suffix.rs:387:16
    |
 LL |     foo::<f32>(42_u32);
    |     ---------- ^^^^^^ expected `f32`, found `u32`
@@ -1043,7 +1043,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:385:16
+  --> $DIR/numeric-suffix.rs:391:16
    |
 LL |     foo::<f32>(42_u16);
    |     ---------- ^^^^^^ expected `f32`, found `u16`
@@ -1061,7 +1061,7 @@ LL |     foo::<f32>(42_u16.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:389:16
+  --> $DIR/numeric-suffix.rs:396:16
    |
 LL |     foo::<f32>(42_u8);
    |     ---------- ^^^^^ expected `f32`, found `u8`
@@ -1079,7 +1079,7 @@ LL |     foo::<f32>(42_u8.into());
    |                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:393:16
+  --> $DIR/numeric-suffix.rs:401:16
    |
 LL |     foo::<f32>(42_isize);
    |     ---------- ^^^^^^^^ expected `f32`, found `isize`
@@ -1097,7 +1097,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:397:16
+  --> $DIR/numeric-suffix.rs:405:16
    |
 LL |     foo::<f32>(42_i64);
    |     ---------- ^^^^^^ expected `f32`, found `i64`
@@ -1115,7 +1115,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:401:16
+  --> $DIR/numeric-suffix.rs:409:16
    |
 LL |     foo::<f32>(42_i32);
    |     ---------- ^^^^^^ expected `f32`, found `i32`
@@ -1133,7 +1133,7 @@ LL |     foo::<f32>(42_f32);
    |                   ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:405:16
+  --> $DIR/numeric-suffix.rs:413:16
    |
 LL |     foo::<f32>(42_i16);
    |     ---------- ^^^^^^ expected `f32`, found `i16`
@@ -1151,7 +1151,7 @@ LL |     foo::<f32>(42_i16.into());
    |                      +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:409:16
+  --> $DIR/numeric-suffix.rs:418:16
    |
 LL |     foo::<f32>(42_i8);
    |     ---------- ^^^^^ expected `f32`, found `i8`
@@ -1169,7 +1169,7 @@ LL |     foo::<f32>(42_i8.into());
    |                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:413:16
+  --> $DIR/numeric-suffix.rs:423:16
    |
 LL |     foo::<f32>(42.0_f64);
    |     ---------- ^^^^^^^^ expected `f32`, found `f64`
@@ -1187,7 +1187,7 @@ LL |     foo::<f32>(42.0_f32);
    |                     ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:419:16
+  --> $DIR/numeric-suffix.rs:429:16
    |
 LL |     foo::<u32>(42_u8 as u16);
    |     ---------- ^^^^^^^^^^^^ expected `u32`, found `u16`
@@ -1205,7 +1205,7 @@ LL |     foo::<u32>((42_u8 as u16).into());
    |                +            ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-suffix.rs:423:16
+  --> $DIR/numeric-suffix.rs:434:16
    |
 LL |     foo::<i32>(-42_i8);
    |     ---------- ^^^^^^ expected `i32`, found `i8`

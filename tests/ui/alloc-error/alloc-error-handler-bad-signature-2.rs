@@ -8,8 +8,8 @@ struct Layout;
 
 #[alloc_error_handler]
 fn oom(
-    info: Layout, //~^ ERROR mismatched types
-) { //~^^ ERROR mismatched types
+    info: Layout, //~ ERROR mismatched types
+) { //~ ERROR mismatched types
     loop {}
 }
 

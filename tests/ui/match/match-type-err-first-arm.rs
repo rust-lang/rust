@@ -8,6 +8,7 @@ fn test_func1(n: i32) -> i32 { //~ NOTE expected `i32` because of return type
         12 => 'b',
         //~^ ERROR mismatched types
         //~| NOTE expected `i32`, found `char`
+        //~| NOTE in this expansion of desugaring of a resized `Span`
         _ => 42,
     }
 }

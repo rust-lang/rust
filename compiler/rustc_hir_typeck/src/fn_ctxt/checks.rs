@@ -31,7 +31,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, sym, Span};
+use rustc_span::{self, sym, ExpnKind, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -496,7 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
-                    ident_span.with_hi(args.span_ext.hi())
+                    self.tcx.mark_span_for_resize(ident_span).with_hi(args.span_ext.hi())
                 } else {
                     ident_span
                 };
@@ -706,8 +706,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
-                                (lo.shrink_to_lo(), "(".to_string()),
-                                (hi.shrink_to_hi(), ")".to_string()),
+                                (tcx.mark_span_for_resize(*lo).shrink_to_lo(), "(".to_string()),
+                                (tcx.mark_span_for_resize(*hi).shrink_to_hi(), ")".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
@@ -939,12 +939,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions() {
                         if arg_idx.index() > 0
-                        && let Some((_, prev)) = provided_arg_tys
-                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
-                    ) {
-                        // Include previous comma
-                        span = prev.shrink_to_hi().to(span);
-                    }
+                            && let Some((_, prev)) = provided_arg_tys
+                                .get(ProvidedIdx::from_usize(arg_idx.index() - 1))
+                        {
+                            // Include previous comma
+                            span = self.tcx.mark_span_for_resize(*prev).shrink_to_hi().to(self.tcx.mark_span_for_resize(span));
+                        }
                         suggestions.push((span, String::new()));
 
                         suggestion_text = match suggestion_text {
@@ -1186,6 +1186,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Call out where the function is defined
         self.label_fn_like(&mut err, fn_def_id, callee_ty, None, is_method);
 
+        if !suggestions.iter().all(|(sp, _)| {
+            sp.macro_backtrace().all(|data| !matches!(data.kind, ExpnKind::Macro(..)))
+        }) {
+            // We don't want to provide structured suggestions if macros are involved at all.
+            err.emit();
+            return;
+        }
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
             SuggestionText::None => None,
@@ -1208,7 +1215,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let source_map = self.sess().source_map();
             let (mut suggestion, suggestion_span) =
                 if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
-                    ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+                    (
+                        "(".to_string(),
+                        tcx.mark_span_for_resize(call_span)
+                            .shrink_to_hi()
+                            .to(tcx.mark_span_for_resize(error_span).shrink_to_hi()),
+                    )
                 } else {
                     (
                         format!(

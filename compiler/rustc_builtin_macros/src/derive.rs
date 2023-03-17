@@ -138,7 +138,7 @@ fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };
-    struct_span_err!(sess, lit.span, E0777, "expected path to a trait, found literal",)
+    struct_span_err!(sess, lit.span, E0777, "expected path to a trait, found literal")
         .span_label(lit.span, "not a trait")
         .help(&help_msg)
         .emit();
