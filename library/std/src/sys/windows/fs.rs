@@ -1246,7 +1246,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
                 }
             }
             Err(err)
-        },
+        }
         Ok(attrs) => Ok(attrs),
     }
 }
