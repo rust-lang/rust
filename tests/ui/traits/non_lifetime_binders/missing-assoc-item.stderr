@@ -1,0 +1,18 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/missing-assoc-item.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0223]: ambiguous associated type
+  --> $DIR/missing-assoc-item.rs:6:12
+   |
+LL |     for<B> B::Item: Send,
+   |            ^^^^^^^ help: use the fully-qualified path: `<B as IntoIterator>::Item`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0223`.
