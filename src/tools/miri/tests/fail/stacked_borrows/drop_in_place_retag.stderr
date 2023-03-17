@@ -1,8 +1,8 @@
 error: Undefined Behavior: trying to retag from <TAG> for Unique permission at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
   --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
    |
-LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub const unsafe fn drop_in_place<T: ?Sized + ~const Destruct>(to_drop: *mut T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | trying to retag from <TAG> for Unique permission at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
    | this error occurs as part of retag at ALLOC[0x0..0x1]

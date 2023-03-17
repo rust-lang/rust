@@ -1,25 +1,21 @@
-error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/issue-102117.rs:19:26
+error[E0277]: can't drop `T` in const contexts
+  --> $DIR/issue-102117.rs:21:88
    |
-LL |                 type_id: TypeId::of::<T>(),
-   |                          ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+LL |                     transmute::<unsafe fn(*mut T), unsafe fn(*mut ())>(drop_in_place::<T>)
+   |                                                                                        ^ the trait `~const Destruct` is not implemented for `T`
    |
-help: consider adding an explicit lifetime bound...
+note: the trait `Destruct` is implemented for `T`, but that implementation is not `const`
+  --> $DIR/issue-102117.rs:21:88
    |
-LL |     pub fn new<T: 'static>() -> &'static Self {
-   |                 +++++++++
+LL |                     transmute::<unsafe fn(*mut T), unsafe fn(*mut ())>(drop_in_place::<T>)
+   |                                                                                        ^
+note: required by a bound in `std::ptr::drop_in_place`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+help: consider restricting type parameter `T`
+   |
+LL |     pub fn new<T: ~const std::marker::Destruct>() -> &'static Self {
+   |                 ++++++++++++++++++++++++++++++
 
-error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/issue-102117.rs:19:26
-   |
-LL |                 type_id: TypeId::of::<T>(),
-   |                          ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
-   |
-help: consider adding an explicit lifetime bound...
-   |
-LL |     pub fn new<T: 'static>() -> &'static Self {
-   |                 +++++++++
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0310`.
+For more information about this error, try `rustc --explain E0277`.

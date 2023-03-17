@@ -17,10 +17,9 @@ impl VTable {
             &VTable {
                 layout: Layout::new::<T>(),
                 type_id: TypeId::of::<T>(),
-                //~^ ERROR the parameter type `T` may not live long enough
-                //~| ERROR the parameter type `T` may not live long enough
                 drop_in_place: unsafe {
                     transmute::<unsafe fn(*mut T), unsafe fn(*mut ())>(drop_in_place::<T>)
+                    //~^ ERROR can't drop `T` in const contexts
                 },
             }
         }
