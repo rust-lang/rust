@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::Range;
-use clippy_utils::is_integer_const;
-use rustc_ast::ast::RangeLimits;
+use clippy_utils::is_range_full;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -16,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
         && let Some(ty_name) = cx.tcx.get_diagnostic_name(adt.did())
         && matches!(ty_name, sym::Vec | sym::VecDeque)
         && let Some(range) = Range::hir(arg)
-        && is_full_range(cx, recv, range)
+        && is_range_full(cx, recv, range)
     {
         span_lint_and_sugg(
             cx,
@@ -28,20 +27,4 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
             Applicability::MaybeIncorrect,
         );
     };
-}
-
-fn is_full_range(cx: &LateContext<'_>, container: &Expr<'_>, range: Range<'_>) -> bool {
-    range.start.map_or(true, |e| is_integer_const(cx, e, 0))
-        && range.end.map_or(true, |e| {
-            if range.limits == RangeLimits::HalfOpen
-                && let ExprKind::Path(QPath::Resolved(None, container_path)) = container.kind
-                && let ExprKind::MethodCall(name, self_arg, [], _) = e.kind
-                && name.ident.name == sym::len
-                && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
-            {
-                container_path.res == path.res
-            } else {
-                false
-            }
-        })
 }

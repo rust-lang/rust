@@ -78,7 +78,7 @@ use std::sync::OnceLock;
 use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
-use rustc_ast::ast::{self, LitKind};
+use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
@@ -115,6 +115,7 @@ use rustc_span::Span;
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
+use crate::higher::Range;
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
 
@@ -1489,6 +1490,24 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
         )) => else_expr.hir_id == expr.hir_id,
         _ => false,
     }
+}
+
+/// Checks whether the given `Range` is equivalent to a `RangeFull`.
+/// Inclusive ranges are not considered because they already constitute a lint.
+pub fn is_range_full(cx: &LateContext<'_>, container: &Expr<'_>, range: Range<'_>) -> bool {
+    range.start.map_or(true, |e| is_integer_const(cx, e, 0))
+        && range.end.map_or(true, |e| {
+            if range.limits == RangeLimits::HalfOpen
+                && let ExprKind::Path(QPath::Resolved(None, container_path)) = container.kind
+                && let ExprKind::MethodCall(name, self_arg, [], _) = e.kind
+                && name.ident.name == sym::len
+                && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
+            {
+                container_path.res == path.res
+            } else {
+                false
+            }
+        })
 }
 
 /// Checks whether the given expression is a constant integer of the given value.
