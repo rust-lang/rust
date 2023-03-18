@@ -97,7 +97,17 @@ pub trait ObligationProcessor {
     type Error: Debug;
     type OUT: OutcomeTrait<Obligation = Self::Obligation, Error = Error<Self::Obligation, Self::Error>>;
 
-    fn needs_process_obligation(&self, obligation: &Self::Obligation) -> bool;
+    /// Implementations can provide a fast-path to obligation-processing
+    /// by counting the prefix of the passed iterator for which
+    /// `needs_process_obligation` would return false.
+    fn skippable_obligations<'a>(
+        &'a self,
+        _it: impl Iterator<Item = &'a Self::Obligation>,
+    ) -> usize {
+        0
+    }
+
+    fn needs_process_obligation(&self, _obligation: &Self::Obligation) -> bool;
 
     fn process_obligation(
         &mut self,
@@ -416,6 +426,10 @@ impl<O: ForestObligation> ObligationForest<O> {
         loop {
             let mut has_changed = false;
 
+            // This is the super fast path for cheap-to-check conditions.
+            let mut index =
+                processor.skippable_obligations(self.nodes.iter().map(|n| &n.obligation));
+
             // Note that the loop body can append new nodes, and those new nodes
             // will then be processed by subsequent iterations of the loop.
             //
@@ -424,9 +438,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             // `for index in 0..self.nodes.len() { ... }` because the range would
             // be computed with the initial length, and we would miss the appended
             // nodes. Therefore we use a `while` loop.
-            let mut index = 0;
             while let Some(node) = self.nodes.get_mut(index) {
-                // This test is extremely hot.
+                // This is the moderately fast path when the prefix skipping above didn't work out.
                 if node.state.get() != NodeState::Pending
                     || !processor.needs_process_obligation(&node.obligation)
                 {
