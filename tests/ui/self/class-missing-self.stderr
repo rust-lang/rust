@@ -16,7 +16,8 @@ LL |       self.sleep();
    |       +++++
 help: consider importing this function
    |
-LL | use std::thread::sleep;
+LL + use std::thread::sleep;
+LL | struct Cat {
    |
 
 error: aborting due to 2 previous errors

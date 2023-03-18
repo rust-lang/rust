@@ -8,7 +8,8 @@ LL |         let arr: [Option<Bar>; 2] = [x; 2];
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct Bar;
    |
 
 error[E0277]: the trait bound `Bar: Copy` is not satisfied
@@ -21,7 +22,8 @@ LL |         let arr: [Option<Bar>; 2] = [x; 2];
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct Bar;
    |
 
 error: aborting due to 2 previous errors

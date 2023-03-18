@@ -14,6 +14,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl Foo {
    |
 
 error: you should consider adding a `Default` implementation for `Bar`
@@ -31,6 +32,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl Bar {
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
@@ -48,6 +50,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl<'c> LtKo<'c> {
    |
 
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
@@ -65,6 +68,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl NewNotEqualToDerive {
    |
 
 error: you should consider adding a `Default` implementation for `FooGenerics<T>`
@@ -82,6 +86,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl<T> FooGenerics<T> {
    |
 
 error: you should consider adding a `Default` implementation for `BarGenerics<T>`
@@ -99,6 +104,7 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
+LL | impl<T: Copy> BarGenerics<T> {
    |
 
 error: you should consider adding a `Default` implementation for `Foo<T>`

@@ -19,7 +19,8 @@ LL |       let _j = i.clone();
            candidate #1: `Clone`
 help: consider annotating `R` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct R {
    |
 
 error: aborting due to previous error

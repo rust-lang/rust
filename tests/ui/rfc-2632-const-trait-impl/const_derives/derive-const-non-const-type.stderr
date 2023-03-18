@@ -16,7 +16,8 @@ LL | pub struct S(A);
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `A` with `#[derive(Default)]`
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | pub struct A;
    |
 
 error[E0015]: cannot call non-const fn `<A as Default>::default` in constant functions

@@ -27,7 +27,8 @@ LL | fn f_clone<T: Clone>(t: T) {}
    |               ^^^^^ required by this bound in `f_clone`
 help: consider annotating `S` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct S;
    |
 
 error[E0277]: `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:22]` cannot be unpinned

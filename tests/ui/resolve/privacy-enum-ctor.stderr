@@ -84,9 +84,11 @@ LL |     let _: E = m::f;
    |                   ~
 help: consider importing one of these items instead
    |
-LL | use std::f32::consts::E;
+LL + use std::f32::consts::E;
+LL | use m::E; // OK, only the type is imported
    |
-LL | use std::f64::consts::E;
+LL + use std::f64::consts::E;
+LL | use m::E; // OK, only the type is imported
    |
 help: if you import `E`, refer to it directly
    |
@@ -121,9 +123,11 @@ LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
 help: consider importing one of these items instead
    |
-LL | use std::f32::consts::E;
+LL + use std::f32::consts::E;
+LL | use m::E; // OK, only the type is imported
    |
-LL | use std::f64::consts::E;
+LL + use std::f64::consts::E;
+LL | use m::E; // OK, only the type is imported
    |
 
 error[E0412]: cannot find type `Z` in this scope

@@ -6,7 +6,8 @@ LL |     let _ = namespaced_enums::A;
    |
 help: consider importing this unit variant
    |
-LL | use namespaced_enums::Foo::A;
+LL + use namespaced_enums::Foo::A;
+LL | extern crate namespaced_enums;
    |
 help: if you import `A`, refer to it directly
    |
@@ -22,7 +23,8 @@ LL |     let _ = namespaced_enums::B(10);
    |
 help: consider importing this tuple variant
    |
-LL | use namespaced_enums::Foo::B;
+LL + use namespaced_enums::Foo::B;
+LL | extern crate namespaced_enums;
    |
 help: if you import `B`, refer to it directly
    |
@@ -38,7 +40,8 @@ LL |     let _ = namespaced_enums::C { a: 10 };
    |
 help: consider importing this variant
    |
-LL | use namespaced_enums::Foo::C;
+LL + use namespaced_enums::Foo::C;
+LL | extern crate namespaced_enums;
    |
 help: if you import `C`, refer to it directly
    |

@@ -32,7 +32,8 @@ note: the trait `Default` must be implemented
   --> $SRC_DIR/core/src/default.rs:LL:COL
 help: consider annotating `Enum` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | enum Enum {
    |
 
 error[E0599]: the method `test` exists for struct `Foo<Struct, CloneStruct>`, but its trait bounds were not satisfied
@@ -67,11 +68,13 @@ LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
    |         unsatisfied trait bound introduced here
 help: consider annotating `CloneStruct` with `#[derive(Default)]`
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct CloneStruct {
    |
 help: consider annotating `Struct` with `#[derive(Clone, Default)]`
    |
-LL | #[derive(Clone, Default)]
+LL + #[derive(Clone, Default)]
+LL | struct Struct {
    |
 
 error[E0599]: the method `test` exists for struct `Foo<Vec<Enum>, Instant>`, but its trait bounds were not satisfied

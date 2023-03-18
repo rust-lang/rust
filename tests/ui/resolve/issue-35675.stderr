@@ -17,7 +17,8 @@ LL |     Apple(5)
    |
 help: consider importing this tuple variant
    |
-LL | use Fruit::Apple;
+LL + use Fruit::Apple;
+LL | enum Fruit {
    |
 
 error[E0573]: expected type, found variant `Fruit::Apple`
@@ -37,7 +38,8 @@ LL |     Apple(5)
    |
 help: consider importing this tuple variant
    |
-LL | use Fruit::Apple;
+LL + use Fruit::Apple;
+LL | enum Fruit {
    |
 
 error[E0573]: expected type, found variant `Ok`

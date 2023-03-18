@@ -6,7 +6,8 @@ LL |         Cons(..) => {}
    |
 help: consider importing this tuple variant
    |
-LL | use list::List::Cons;
+LL + use list::List::Cons;
+LL | mod list {
    |
 
 error: aborting due to previous error

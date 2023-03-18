@@ -12,7 +12,8 @@ LL |     baz();
    |
 help: consider importing this function instead
    |
-LL | use bar::baz;
+LL + use bar::baz;
+LL | use foo::f::{self};
    |
 
 error: aborting due to 2 previous errors

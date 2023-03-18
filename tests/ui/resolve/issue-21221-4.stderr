@@ -6,7 +6,8 @@ LL | impl T for Foo {}
    |
 help: consider importing this trait
    |
-LL | use issue_21221_4::T;
+LL + use issue_21221_4::T;
+LL | extern crate issue_21221_4;
    |
 
 error: aborting due to previous error
