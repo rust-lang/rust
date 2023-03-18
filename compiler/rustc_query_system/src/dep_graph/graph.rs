@@ -1159,6 +1159,12 @@ impl<K: DepKind> CurrentDepGraph<K> {
             .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
             .map(EventId::from_label);
 
+        let capacity = if rustc_data_structures::sync::active() {
+            new_node_count_estimate / sharded::SHARDS
+        } else {
+            new_node_count_estimate
+        };
+
         CurrentDepGraph {
             encoder: Steal::new(GraphEncoder::new(
                 encoder,
@@ -1167,10 +1173,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 record_stats,
             )),
             new_node_to_index: Sharded::new(|| {
-                FxHashMap::with_capacity_and_hasher(
-                    new_node_count_estimate / sharded::SHARDS,
-                    Default::default(),
-                )
+                FxHashMap::with_capacity_and_hasher(capacity, Default::default())
             }),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
             anon_id_seed,
