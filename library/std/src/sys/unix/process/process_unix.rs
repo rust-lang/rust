@@ -35,8 +35,20 @@ cfg_if::cfg_if! {
     if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        // arbitrary number of tries:
-        const MAX_FORKSPAWN_TRIES: u32 = 4;
+        use crate::time::Duration;
+        // Get smallest amount of time we can sleep.
+        // Return a common value if it cannot be determined.
+        fn get_clock_resolution() -> Duration {
+            let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+            if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
+            {
+                Duration::from_nanos(mindelay.tv_nsec as u64)
+            } else {
+                Duration::from_millis(1)
+            }
+        }
+        // Arbitrary minimum sleep duration for retrying fork/spawn
+        const MIN_FORKSPAWN_SLEEP: Duration = Duration::from_nanos(1);
     }
 }
 
@@ -163,12 +175,24 @@ impl Command {
     unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         use crate::sys::os::errno;
 
-        let mut tries_left = MAX_FORKSPAWN_TRIES;
+        let mut minimum_delay = None;
+        let mut delay = MIN_FORKSPAWN_SLEEP;
+
         loop {
             let r = libc::fork();
-            if r == -1 as libc::pid_t && tries_left > 0 && errno() as libc::c_int == libc::EBADF {
-                thread::yield_now();
-                tries_left -= 1;
+            if r == -1 as libc::pid_t && errno() as libc::c_int == libc::EBADF {
+                if minimum_delay.is_none() {
+                    minimum_delay = Some(get_clock_resolution());
+                }
+                if delay < minimum_delay.unwrap() {
+                    // We cannot sleep this short (it would be longer).
+                    // Yield instead.
+                    thread::yield_now();
+                } else {
+                    thread::sleep(delay);
+                }
+                delay *= 2;
+                continue;
             } else {
                 return cvt(r).map(|res| (res, -1));
             }
@@ -481,12 +505,22 @@ impl Command {
             argv: *const *mut c_char,
             envp: *const *mut c_char,
         ) -> i32 {
-            let mut tries_left = MAX_FORKSPAWN_TRIES;
+            let mut minimum_delay = None;
+            let mut delay = MIN_FORKSPAWN_SLEEP;
             loop {
                 match libc::posix_spawnp(pid, file, file_actions, attrp, argv, envp) {
-                    libc::EBADF if tries_left > 0 => {
-                        thread::yield_now();
-                        tries_left -= 1;
+                    libc::EBADF => {
+                        if minimum_delay.is_none() {
+                            minimum_delay = Some(get_clock_resolution());
+                        }
+                        if delay < minimum_delay.unwrap() {
+                            // We cannot sleep this short (it would be longer).
+                            // Yield instead.
+                            thread::yield_now();
+                        } else {
+                            thread::sleep(delay);
+                        }
+                        delay *= 2;
                         continue;
                     }
                     r => {
