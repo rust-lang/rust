@@ -3,7 +3,7 @@ use crate::rmeta::*;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
-use rustc_middle::ty::ParameterizedOverTcx;
+use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
@@ -47,6 +47,16 @@ impl<T> IsDefault for LazyArray<T> {
 impl IsDefault for DefPathHash {
     fn is_default(&self) -> bool {
         self.0 == Fingerprint::ZERO
+    }
+}
+
+impl IsDefault for UnusedGenericParams {
+    fn is_default(&self) -> bool {
+        // UnusedGenericParams encodes the *un*usedness as a bitset.
+        // This means that 0 corresponds to all bits used, which is indeed the default.
+        let is_default = self.bits() == 0;
+        debug_assert_eq!(is_default, self.all_used());
+        is_default
     }
 }
 
@@ -268,6 +278,21 @@ impl FixedSizeEncoding for bool {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = self as u8
+    }
+}
+
+impl FixedSizeEncoding for UnusedGenericParams {
+    type ByteArray = [u8; 4];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 4]) -> Self {
+        let x: u32 = u32::from_bytes(b);
+        UnusedGenericParams::from_bits(x)
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 4]) {
+        self.bits().write_to_bytes(b);
     }
 }
 
