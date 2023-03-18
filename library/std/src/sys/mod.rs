@@ -80,8 +80,8 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     // Fuchsia components default to full backtrace.
     if #[cfg(target_os = "fuchsia")] {
-        pub const BACKTRACE_DEFAULT: bool = true;
+        pub const FULL_BACKTRACE_DEFAULT: bool = true;
     } else {
-        pub const BACKTRACE_DEFAULT: bool = false;
+        pub const FULL_BACKTRACE_DEFAULT: bool = false;
     }
 }

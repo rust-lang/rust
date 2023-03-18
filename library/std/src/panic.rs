@@ -308,7 +308,7 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
                 BacktraceStyle::Short
             }
         })
-        .unwrap_or(if crate::sys::BACKTRACE_DEFAULT {
+        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
             BacktraceStyle::Full
         } else {
             BacktraceStyle::Off
