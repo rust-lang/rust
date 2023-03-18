@@ -16,7 +16,7 @@ note: the lifetime requirement is introduced here
    |
 LL | fn thing(x: impl FnOnce(&u32)) {}
    |                  ^^^^^^^^^^^^
-help: consider changing the type of the closure parameters
+help: consider specifying the type of the closure parameters
    |
 LL |     let f = |_: &_| ();
    |             ~~~~~~~

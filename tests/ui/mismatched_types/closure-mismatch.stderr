@@ -25,7 +25,7 @@ note: the lifetime requirement is introduced here
    |
 LL | fn baz<T: Foo>(_: T) {}
    |           ^^^
-help: consider changing the type of the closure parameters
+help: consider specifying the type of the closure parameters
    |
 LL |     baz(|_: &_| ());
    |         ~~~~~~~
@@ -57,9 +57,9 @@ note: the lifetime requirement is introduced here
    |
 LL | fn baz<T: Foo>(_: T) {}
    |           ^^^
-help: consider changing the type of the closure parameters
+help: consider specifying the type of the closure parameters
    |
-LL |     baz(|_: &_| ());
+LL |     baz(|x: &_| ());
    |         ~~~~~~~
 
 error: aborting due to 4 previous errors
