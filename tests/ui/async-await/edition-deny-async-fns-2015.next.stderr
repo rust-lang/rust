@@ -1,0 +1,98 @@
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:5:1
+   |
+LL | async fn foo() {}
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:7:12
+   |
+LL | fn baz() { async fn foo() {} }
+   |            ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:9:1
+   |
+LL | async fn async_baz() {
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:10:5
+   |
+LL |     async fn bar() {}
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:16:5
+   |
+LL |     async fn foo() {}
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:20:5
+   |
+LL |     async fn foo() {}
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:38:9
+   |
+LL |         async fn bar() {}
+   |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:28:9
+   |
+LL |         async fn foo() {}
+   |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/edition-deny-async-fns-2015.rs:33:13
+   |
+LL |             async fn bar() {}
+   |             ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2021` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/edition-deny-async-fns-2015.rs:20:5
+   |
+LL |     async fn foo() {}
+   |     -----^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0670, E0706.
+For more information about an error, try `rustc --explain E0670`.
