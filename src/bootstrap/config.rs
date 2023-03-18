@@ -69,21 +69,25 @@ impl<'de> Deserialize<'de> for DebuginfoLevel {
         use serde::de::Error;
 
         Ok(match Deserialize::deserialize(deserializer)? {
-            StringOrInt::String("none") | StringOrInt::Int(0) => DebuginfoLevel::None,
-            StringOrInt::String("line-tables-only") => DebuginfoLevel::LineTablesOnly,
-            StringOrInt::String("limited") | StringOrInt::Int(1) => DebuginfoLevel::Limited,
-            StringOrInt::String("full") | StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::Int(2) => DebuginfoLevel::Full,
             StringOrInt::Int(n) => {
                 let other = serde::de::Unexpected::Signed(n);
                 return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
             }
-            StringOrInt::String(s) => {
-                let other = serde::de::Unexpected::Str(s);
-                return Err(D::Error::invalid_value(
-                    other,
-                    &"expected none, line-tables-only, limited, or full",
-                ));
-            }
+            StringOrInt::String(s) => match s.as_str() {
+                "none" => DebuginfoLevel::None,
+                "line-tables-only" => DebuginfoLevel::LineTablesOnly,
+                "limited" => DebuginfoLevel::Limited,
+                "full" => DebuginfoLevel::Full,
+                _ => {
+                    return Err(D::Error::invalid_value(
+                        serde::de::Unexpected::Str(&s),
+                        &"expected none, line-tables-only, limited, or full",
+                    ));
+                }
+            },
         })
     }
 }
@@ -877,8 +881,8 @@ impl Default for StringOrBool {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum StringOrInt<'a> {
-    String(&'a str),
+enum StringOrInt {
+    String(String),
     Int(i64),
 }
 

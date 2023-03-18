@@ -1650,6 +1650,8 @@ impl<'a> Builder<'a> {
             }
         };
         cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
+        // Regardless of the config setting, don't build debuginfo for build scripts.
+        cargo.env(profile_var("BUILD_OVERRIDE_DEBUG"), "0");
         if !self.config.dry_run() && self.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
         {
             rustflags.arg("-Clink-arg=-gz");
