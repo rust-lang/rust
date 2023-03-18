@@ -95,8 +95,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     which is to completely disable them. Any optimizations may hide UB that Miri would \
                     otherwise detect, and it is not necessarily possible to predict what kind of UB will \
                     be missed. If you are enabling optimizations to make Miri run faster, we advise using \
-                    cfg(miri) to shrink your workload instead. The impact of enabling MIR optimizations is \
-                    usually marginal at best.");
+                    cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR \
+                    optimizations is usually marginal at best.");
             }
 
             if let Some(return_code) = miri::eval_entry(tcx, entry_def_id, entry_type, config) {
