@@ -1,12 +1,28 @@
 #![allow(unused)]
 #![warn(clippy::clear_with_drain)]
 
-fn main() {
-    let mut vec: Vec<i32> = Vec::new();
-    //Lint
-    vec.drain(..);
-    vec.drain(0..vec.len());
-
-    // Dont Lint
-    let iter = vec.drain(..);
+fn range() {
+    let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
+    let iter = u.drain(0..u.len()); // Yay
+    v.drain(0..v.len()); // Nay
 }
+
+fn range_from() {
+    let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
+    let iter = u.drain(0..); // Yay
+    v.drain(0..); // Nay
+}
+
+fn range_full() {
+    let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
+    let iter = u.drain(..); // Yay
+    v.drain(..); // Nay
+}
+
+fn range_to() {
+    let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
+    let iter = u.drain(..u.len()); // Yay
+    v.drain(..v.len()); // Nay
+}
+
+fn main() {}
