@@ -646,8 +646,7 @@ pub enum TerminatorKind<'tcx> {
     /// When overflow checking is disabled and this is run-time MIR (as opposed to compile-time MIR
     /// that is used for CTFE), the following variants of this terminator behave as `goto target`:
     /// - `OverflowNeg(..)`,
-    /// - `Overflow(op, ..)` if op is a "checkable" operation (add, sub, mul, shl, shr, but NOT
-    /// div or rem).
+    /// - `Overflow(op, ..)` if op is add, sub, mul, shl, shr, but NOT div or rem.
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
