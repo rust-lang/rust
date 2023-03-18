@@ -485,13 +485,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
                 d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
-                struct LockedPlaceholder;
-                impl fmt::Debug for LockedPlaceholder {
-                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        f.write_str("<locked>")
-                    }
-                }
-                d.field("data", &LockedPlaceholder);
+                d.field("data", &format_args!("<locked>"));
             }
         }
         d.field("poisoned", &self.poison.get());

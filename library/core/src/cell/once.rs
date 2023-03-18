@@ -250,10 +250,12 @@ impl<T> Default for OnceCell<T> {
 #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_tuple("OnceCell");
         match self.get() {
-            Some(v) => f.debug_tuple("OnceCell").field(v).finish(),
-            None => f.write_str("OnceCell(Uninit)"),
-        }
+            Some(v) => d.field(v),
+            None => d.field(&format_args!("<uninit>")),
+        };
+        d.finish()
     }
 }
 

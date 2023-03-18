@@ -2669,22 +2669,12 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let mut d = f.debug_struct("RefCell");
         match self.try_borrow() {
-            Ok(borrow) => f.debug_struct("RefCell").field("value", &borrow).finish(),
-            Err(_) => {
-                // The RefCell is mutably borrowed so we can't look at its value
-                // here. Show a placeholder instead.
-                struct BorrowedPlaceholder;
-
-                impl Debug for BorrowedPlaceholder {
-                    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                        f.write_str("<borrowed>")
-                    }
-                }
-
-                f.debug_struct("RefCell").field("value", &BorrowedPlaceholder).finish()
-            }
-        }
+            Ok(borrow) => d.field("value", &borrow),
+            Err(_) => d.field("value", &format_args!("<borrowed>")),
+        };
+        d.finish()
     }
 }
 

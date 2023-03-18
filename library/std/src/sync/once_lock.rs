@@ -366,10 +366,12 @@ impl<T> const Default for OnceLock<T> {
 #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_tuple("OnceLock");
         match self.get() {
-            Some(v) => f.debug_tuple("Once").field(v).finish(),
-            None => f.write_str("Once(Uninit)"),
-        }
+            Some(v) => d.field(v),
+            None => d.field(&format_args!("<uninit>")),
+        };
+        d.finish()
     }
 }
 
