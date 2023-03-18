@@ -16,9 +16,9 @@ use rustc_infer::infer::{
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
-    Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    UintTy, VariantDef, VariantDiscr,
+    self, layout::ValidityRequirement, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv,
+    Predicate, PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -538,13 +538,12 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 }
 
 /// Checks if a given type looks safe to be uninitialized.
-pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    match *ty.kind() {
-        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
-        ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
-        ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did()),
-        _ => false,
-    }
+pub fn is_uninit_value_valid_for_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx
+        .check_validity_requirement((ValidityRequirement::Uninit, cx.param_env.and(ty)))
+        // For types containing generic parameters we cannot get a layout to check.
+        // Therefore, we are conservative and assume that they don't allow uninit.
+        .unwrap_or(false)
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
