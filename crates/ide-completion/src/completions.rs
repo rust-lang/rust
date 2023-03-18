@@ -23,7 +23,7 @@ pub(crate) mod env_vars;
 
 use std::iter;
 
-use hir::{known, ScopeDef};
+use hir::{known, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, SymbolKind};
 use syntax::ast;
 
@@ -537,17 +537,20 @@ fn enum_variants_with_paths(
     impl_: &Option<ast::Impl>,
     cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::Variant, hir::ModPath),
 ) {
+    let mut process_variant = |variant: Variant| {
+        let self_path = hir::ModPath::from_segments(
+            hir::PathKind::Plain,
+            iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
+        );
+
+        cb(acc, ctx, variant, self_path);
+    };
+
     let variants = enum_.variants(ctx.db);
 
     if let Some(impl_) = impl_.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
         if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {
-            for &variant in &variants {
-                let self_path = hir::ModPath::from_segments(
-                    hir::PathKind::Plain,
-                    iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
-                );
-                cb(acc, ctx, variant, self_path);
-            }
+            variants.iter().for_each(|variant| process_variant(*variant));
         }
     }
 
