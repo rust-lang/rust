@@ -141,16 +141,6 @@ pub(crate) fn compile_fn(
     context.clear();
     context.func = codegened_func.func;
 
-    // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
-    // instruction, which doesn't have an encoding.
-    context.compute_cfg();
-    context.compute_domtree();
-    context.eliminate_unreachable_code(module.isa()).unwrap();
-    context.dce(module.isa()).unwrap();
-    // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
-    // invalidate it when it would change.
-    context.domtree.clear();
-
     #[cfg(any())] // This is never true
     let _clif_guard = {
         use std::fmt::Write;
