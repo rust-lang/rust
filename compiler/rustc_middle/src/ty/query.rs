@@ -151,21 +151,17 @@ macro_rules! query_if_arena {
     };
 }
 
-macro_rules! separate_provide_local_decl {
-    ([][$name:ident]) => {
-        for<'tcx> fn(
-            TyCtxt<'tcx>,
-            query_keys::$name<'tcx>,
-        ) -> query_provided::$name<'tcx>
+/// If `separate_provide_if_extern`, then the key can be projected to its
+/// local key via `<$K as AsLocalKey>::LocalKey`.
+macro_rules! local_key_if_separate_extern {
+    ([] $($K:tt)*) => {
+        $($K)*
     };
-    ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
-        for<'tcx> fn(
-            TyCtxt<'tcx>,
-            query_keys_local::$name<'tcx>,
-        ) -> query_provided::$name<'tcx>
+    ([(separate_provide_extern) $($rest:tt)*] $($K:tt)*) => {
+        <$($K)* as AsLocalKey>::LocalKey
     };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        separate_provide_local_decl!([$($modifiers)*][$($args)*])
+    ([$other:tt $($modifiers:tt)*] $($K:tt)*) => {
+        local_key_if_separate_extern!([$($modifiers)*] $($K)*)
     };
 }
 
@@ -233,7 +229,7 @@ macro_rules! define_callbacks {
         pub mod query_keys_local {
             use super::*;
 
-            $(pub type $name<'tcx> = <$($K)* as AsLocalKey>::LocalKey;)*
+            $(pub type $name<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $($K)*);)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
@@ -407,7 +403,10 @@ macro_rules! define_callbacks {
         }
 
         pub struct Providers {
-            $(pub $name: separate_provide_local_decl!([$($modifiers)*][$name]),)*
+            $(pub $name: for<'tcx> fn(
+                TyCtxt<'tcx>,
+                query_keys_local::$name<'tcx>,
+            ) -> query_provided::$name<'tcx>,)*
         }
 
         pub struct ExternProviders {
