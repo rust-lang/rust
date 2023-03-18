@@ -81,6 +81,7 @@ fn foo(baz: Baz) {
 enum Baz { Foo, Bar }
 
 fn foo(baz: Baz) {
+    use Baz::*;
     match baz {
         Foo => (),
         $0
@@ -91,12 +92,14 @@ fn foo(baz: Baz) {
          en Baz
          en Result
          md core
+         ev Bar
          ev Err
+         ev Foo
          ev Ok
-         bn Baz::Bar Baz::Bar$0
-         bn Baz::Foo Baz::Foo$0
-         bn Err(…)   Err($1)$0
-         bn Ok(…)    Ok($1)$0
+         bn Bar    Bar$0
+         bn Err(…) Err($1)$0
+         bn Foo    Foo$0
+         bn Ok(…)  Ok($1)$0
          kw mut
          kw ref
          "#]],
