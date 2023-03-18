@@ -39,7 +39,6 @@ use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
 
-use crate::clean::inline::merge_attrs;
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
@@ -2168,32 +2167,40 @@ impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
 /// documentation. Otherwise, we repeat the same operation until we find the "end item".
 fn get_all_import_attributes<'hir>(
     mut item: &hir::Item<'hir>,
-    tcx: TyCtxt<'hir>,
+    cx: &mut DocContext<'hir>,
     target_def_id: LocalDefId,
-    attributes: &mut Vec<ast::Attribute>,
     is_inline: bool,
-) {
+    mut prev_import: LocalDefId,
+) -> Vec<(ast::Attribute, Option<DefId>)> {
+    let mut attributes: Vec<(ast::Attribute, Option<DefId>)> = Vec::new();
     let mut first = true;
-    let hir_map = tcx.hir();
+    let hir_map = cx.tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
+    let mut import_attrs = Vec::new();
 
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
+        let import_parent = cx.tcx.opt_local_parent(prev_import).map(|def_id| def_id.to_def_id());
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
-            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
+            attributes = hir_map.attrs(item.hir_id()).iter().cloned().map(|attr| (attr, import_parent)).collect::<Vec<_>>();
             first = false;
         } else {
-            add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+            add_without_unwanted_attributes(&mut import_attrs, hir_map.attrs(item.hir_id()), is_inline);
+            for attr in import_attrs.drain(..) {
+                attributes.push((attr, import_parent));
+            }
         }
 
-        if let Some(i) = visitor.find_target(tcx, item.owner_id.def_id.to_def_id(), path) {
+        if let Some(i) = visitor.find_target(cx.tcx, item.owner_id.def_id.to_def_id(), path) {
             item = i;
         } else {
             break;
         }
+        prev_import = item.owner_id.def_id;
     }
+    attributes
 }
 
 fn filter_tokens_from_list(
@@ -2244,7 +2251,7 @@ fn add_without_unwanted_attributes(
     new_attrs: &[ast::Attribute],
     is_inline: bool,
 ) {
-    // If it's `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
+    // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
     if !is_inline {
         attrs.extend_from_slice(new_attrs);
         return;
@@ -2374,26 +2381,43 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => unreachable!("not yet converted"),
         };
 
-        let mut import_attrs = Vec::new();
-        let mut target_attrs = Vec::new();
-        if let Some(import_id) = import_id &&
+        let attrs = if let Some(import_id) = import_id &&
             let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
-            let is_inline = inline::load_attrs(cx, import_id.to_def_id()).lists(sym::doc).get_word_attr(sym::inline).is_some();
+            let is_inline = inline::load_attrs(cx, import_id.to_def_id())
+                .lists(sym::doc)
+                .get_word_attr(sym::inline)
+                .is_some();
             // Then we get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut import_attrs, is_inline);
-            add_without_unwanted_attributes(&mut target_attrs, inline::load_attrs(cx, def_id), is_inline);
+            let mut attrs = get_all_import_attributes(
+                use_node,
+                cx,
+                item.owner_id.def_id,
+                is_inline,
+                import_id,
+            );
+
+            let mut target_attrs = Vec::new();
+            add_without_unwanted_attributes(
+                &mut target_attrs,
+                inline::load_attrs(cx, def_id),
+                is_inline,
+            );
+            for attr in target_attrs.into_iter() {
+                attrs.push((attr, None));
+            }
+            attrs
         } else {
             // We only keep the item's attributes.
-            target_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
-        }
+            inline::load_attrs(cx, def_id).iter().cloned().map(|attr| (attr, None)).collect::<Vec<_>>()
+        };
 
-        let import_id = import_id.map(|def_id| def_id.to_def_id());
-        let (attrs, cfg) =  merge_attrs(cx, &target_attrs, Some((&import_attrs, import_id)));
+        let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+        let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (attr, *did)), false);
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
-        item.inline_stmt_id = import_id;
+        item.inline_stmt_id = import_id.map(|local| local.to_def_id());
         vec![item]
     })
 }

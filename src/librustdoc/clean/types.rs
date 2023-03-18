@@ -869,25 +869,14 @@ pub(crate) trait AttributesExt {
     type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
     where
         Self: 'a;
+    type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
+    where
+        Self: 'a;
 
     fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a>;
 
-    fn span(&self) -> Option<rustc_span::Span>;
+    fn iter<'a>(&'a self) -> Self::Attributes<'a>;
 
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
-}
-
-impl AttributesExt for [ast::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
-
-    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
-        self.iter()
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
-            .flatten()
-    }
-
-    /// Return the span of the first doc-comment, if it exists.
     fn span(&self) -> Option<rustc_span::Span> {
         self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
     }
@@ -977,6 +966,38 @@ impl AttributesExt for [ast::Attribute] {
         }
 
         if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
+    }
+}
+
+impl AttributesExt for [ast::Attribute] {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        self.iter()
+            .filter(move |attr| attr.has_name(name))
+            .filter_map(ast::Attribute::meta_item_list)
+            .flatten()
+    }
+
+    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
+        self.into_iter()
+    }
+}
+
+impl AttributesExt for [(ast::Attribute, Option<DefId>)] {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        AttributesExt::iter(self)
+            .filter(move |attr| attr.has_name(name))
+            .filter_map(ast::Attribute::meta_item_list)
+            .flatten()
+    }
+
+    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
+        self.into_iter().map(|(attr, _)| attr)
     }
 }
 
