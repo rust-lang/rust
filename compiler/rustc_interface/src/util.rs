@@ -126,12 +126,15 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-#[cfg(not(parallel_compiler))]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
 ) -> R {
+    #[cfg(parallel_compiler)]
+    if _threads > 1 {
+        return run_in_threads_pool_with_globals(edition, _threads, f);
+    }
     // The "thread pool" is a single spawned thread in the non-parallel
     // compiler. We run on a spawned thread instead of the main thread (a) to
     // provide control over the stack size, and (b) to increase similarity with
@@ -161,7 +164,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 }
 
 #[cfg(parallel_compiler)]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_threads_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
