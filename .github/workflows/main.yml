@@ -20,6 +20,7 @@ jobs:
       run: |
         cargo fmt --check
         rustfmt --check build_system/mod.rs
+        rustfmt --check example/*
 
 
   test:
