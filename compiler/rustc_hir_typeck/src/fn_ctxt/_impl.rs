@@ -898,51 +898,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
+    /// Given a function `Node`, return its  `HirId` and `FnDecl` if it exists. Given a closure
+    /// that is the child of a function, return that function's `HirId` and `FnDecl` instead.
+    /// This may seem confusing at first, but this is used in diagnostics for `async fn`,
+    /// for example, where most of the type checking actually happens within a nested closure,
+    /// but we often want access to the parent function's signature.
+    ///
+    /// Otherwise, return false.
     pub(in super::super) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
-    ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident, bool)> {
+    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
         match node {
-            Node::Item(&hir::Item { ident, kind: hir::ItemKind::Fn(ref sig, ..), .. }) => {
+            Node::Item(&hir::Item {
+                ident,
+                kind: hir::ItemKind::Fn(ref sig, ..),
+                owner_id,
+                ..
+            }) => {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((&sig.decl, ident, ident.name != sym::main))
+                Some((
+                    hir::HirId::make_owner(owner_id.def_id),
+                    &sig.decl,
+                    ident,
+                    ident.name != sym::main,
+                ))
             }
             Node::TraitItem(&hir::TraitItem {
                 ident,
                 kind: hir::TraitItemKind::Fn(ref sig, ..),
+                owner_id,
                 ..
-            }) => Some((&sig.decl, ident, true)),
+            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident,
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
+                owner_id,
                 ..
-            }) => Some((&sig.decl, ident, false)),
-            Node::Expr(&hir::Expr {
-                hir_id,
-                kind: hir::ExprKind::Closure(..),
-                ..
-            }) if let Some(Node::Item(&hir::Item {
+            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
+            Node::Expr(&hir::Expr { hir_id, kind: hir::ExprKind::Closure(..), .. })
+                if let Some(Node::Item(&hir::Item {
+                    ident,
+                    kind: hir::ItemKind::Fn(ref sig, ..),
+                    owner_id,
+                    ..
+                })) = self.tcx.hir().find_parent(hir_id) => Some((
+                hir::HirId::make_owner(owner_id.def_id),
+                &sig.decl,
                 ident,
-                kind: hir::ItemKind::Fn(ref sig, ..),
-                ..
-            })) = self.tcx.hir().find_parent(hir_id) => {
-                Some((&sig.decl, ident, ident.name != sym::main))
-            },
+                ident.name != sym::main,
+            )),
             _ => None,
         }
     }
 
-    /// Given a `HirId`, return the `FnDecl` of the method it is enclosed by and whether a
+    /// Given a `HirId`, return the `HirId` of the enclosing function, its `FnDecl`, and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, bool)> {
+    pub fn get_fn_decl(
+        &self,
+        blk_id: hir::HirId,
+    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
             let parent = self.tcx.hir().get(blk_id);
-            self.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+            self.get_node_fn_decl(parent)
+                .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
         })
     }
 

@@ -85,20 +85,28 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
             Single {
                 ref source,
                 ref target,
+                ref source_bindings,
+                ref target_bindings,
                 ref type_ns_only,
                 ref nested,
                 ref id,
-                // Ignore the following to avoid an infinite loop while printing.
-                source_bindings: _,
-                target_bindings: _,
             } => f
                 .debug_struct("Single")
                 .field("source", source)
                 .field("target", target)
+                // Ignore the nested bindings to avoid an infinite loop while printing.
+                .field(
+                    "source_bindings",
+                    &source_bindings.clone().map(|b| b.into_inner().map(|_| format_args!(".."))),
+                )
+                .field(
+                    "target_bindings",
+                    &target_bindings.clone().map(|b| b.into_inner().map(|_| format_args!(".."))),
+                )
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
                 .field("id", id)
-                .finish_non_exhaustive(),
+                .finish(),
             Glob { ref is_prelude, ref max_vis, ref id } => f
                 .debug_struct("Glob")
                 .field("is_prelude", is_prelude)
