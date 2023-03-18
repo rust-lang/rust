@@ -228,6 +228,11 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 
 pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path) -> bool {
+        if path.file_name().map_or(false, |name| name.to_string_lossy().starts_with(".#")) {
+            // vim or emacs temporary file
+            return true;
+        }
+
         if filter_dirs(path) || skip_markdown_path(path) {
             return true;
         }
