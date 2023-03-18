@@ -46,7 +46,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // NOTE: ideally, we want the effects of both `unchecked_smul` and `unchecked_umul`
                 // (resulting in `mul nsw nuw` in LLVM IR), since we know that the multiplication
                 // cannot signed wrap, and that both operands are non-negative. But at the time of writing,
-                // `BuilderMethods` can't do this, and it doesn't seem to enable any further optimizations.
+                // the `LLVM-C` binding can't do this, and it doesn't seem to enable any further optimizations.
                 bx.unchecked_smul(info.unwrap(), bx.const_usize(unit.size.bytes())),
                 bx.const_usize(unit.align.abi.bytes()),
             )
