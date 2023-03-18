@@ -126,10 +126,9 @@ pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
+    "--cfg=miri",
     "-Zalways-encode-mir",
+    "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
     "-Zmir-opt-level=0",
-    "--cfg=miri",
-    "-Cdebug-assertions=on",
-    "-Zextra-const-ub-checks",
 ];
