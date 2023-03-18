@@ -103,7 +103,7 @@ mod os_impl {
 
         // FIXME: we don't need to look at all binaries, only files that have been modified in this branch
         // (e.g. using `git ls-files`).
-        walk_no_read(path, |path| filter_dirs(path) || path.ends_with("src/etc"), &mut |entry| {
+        walk_no_read(&[path], |path| filter_dirs(path) || path.ends_with("src/etc"), &mut |entry| {
             let file = entry.path();
             let extension = file.extension();
             let scripts = ["py", "sh", "ps1"];

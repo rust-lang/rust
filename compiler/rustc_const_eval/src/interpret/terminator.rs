@@ -138,12 +138,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let ignored = M::ignore_checkable_overflow_assertions(self)
-                    && match msg {
-                        mir::AssertKind::OverflowNeg(..) => true,
-                        mir::AssertKind::Overflow(op, ..) => op.is_checkable(),
-                        _ => false,
-                    };
+                let ignored =
+                    M::ignore_optional_overflow_checks(self) && msg.is_optional_overflow_check();
                 let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if ignored || expected == cond_val {
                     self.go_to_block(target);

@@ -73,19 +73,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[lhs], LocalInfo::Boring, NeedsTemporary::Maybe)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[lhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::Maybe
+                    )
                 );
                 let rhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[rhs], LocalInfo::Boring, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[rhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[arg], LocalInfo::Boring, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[arg],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
@@ -272,8 +287,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[source], LocalInfo::Boring, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[source],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
@@ -502,8 +522,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Category::of(&expr.kind),
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                let operand =
-                    unpack!(block = this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No));
+                let operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -662,8 +684,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
-            let value_operand =
-                unpack!(block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No));
+            let value_operand = unpack!(
+                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+            );
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(

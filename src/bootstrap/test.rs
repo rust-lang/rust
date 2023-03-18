@@ -1118,7 +1118,11 @@ impl Step for Tidy {
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         cmd.arg(&builder.out);
-        cmd.arg(builder.jobs().to_string());
+        // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs` hasn't been configured.
+        let jobs = builder.config.jobs.unwrap_or_else(|| {
+            8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
+        });
+        cmd.arg(jobs.to_string());
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }

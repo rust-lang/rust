@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/default-body-with-rpit.rs:11:9
+  --> $DIR/default-body-with-rpit.rs:13:9
    |
 LL |         ""
    |         ^^ expected `impl Debug`, got `&'static str`
    |
 note: previous use here
-  --> $DIR/default-body-with-rpit.rs:10:39
+  --> $DIR/default-body-with-rpit.rs:12:39
    |
 LL |       async fn baz(&self) -> impl Debug {
    |  _______________________________________^
@@ -14,7 +14,7 @@ LL | |     }
    | |_____^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/default-body-with-rpit.rs:10:28
+  --> $DIR/default-body-with-rpit.rs:12:28
    |
 LL |     async fn baz(&self) -> impl Debug {
    |                            ^^^^^^^^^^ cannot resolve opaque type
