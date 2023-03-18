@@ -94,6 +94,7 @@ mod ssa;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod simplify_ref_comparisons;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -497,6 +498,8 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("early-opt"),
+        // Adds more `Deref`s, so needs to be before `Derefer`.
+        &simplify_ref_comparisons::SimplifyRefComparisons,
         &deref_separator::Derefer,
     ];
 

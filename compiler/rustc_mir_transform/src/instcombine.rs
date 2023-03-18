@@ -168,7 +168,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         else { return };
 
         // Only bother looking more if it's easy to know what we're calling
-        let Some((fn_def_id, fn_substs)) = func.const_fn_def()
+        let Some((fn_def_id, fn_substs, _span)) = func.const_fn_def()
         else { return };
 
         // Clone needs one subst, so we can cheaply rule out other stuff

@@ -1,0 +1,106 @@
+- // MIR for `ref_different_levels` before SimplifyRefComparisons
++ // MIR for `ref_different_levels` after SimplifyRefComparisons
+  
+  fn ref_different_levels(_1: &&str, _2: &String) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_cmp.rs:+0:29: +0:30
+      debug y => _2;                       // in scope 0 at $DIR/simplify_cmp.rs:+0:39: +0:40
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_cmp.rs:+0:51: +0:51
+      let _3: bool;                        // in scope 0 at $DIR/simplify_cmp.rs:+1:9: +1:11
+      let mut _4: &&&str;                  // in scope 0 at $DIR/simplify_cmp.rs:+1:14: +1:15
+      let mut _5: &&std::string::String;   // in scope 0 at $DIR/simplify_cmp.rs:+1:19: +1:20
+      let mut _7: &&&str;                  // in scope 0 at $DIR/simplify_cmp.rs:+2:14: +2:15
+      let mut _8: &&std::string::String;   // in scope 0 at $DIR/simplify_cmp.rs:+2:19: +2:20
+      let mut _10: &&std::string::String;  // in scope 0 at $DIR/simplify_cmp.rs:+3:14: +3:15
+      let mut _11: &&&str;                 // in scope 0 at $DIR/simplify_cmp.rs:+3:19: +3:20
+      let mut _13: &&std::string::String;  // in scope 0 at $DIR/simplify_cmp.rs:+4:14: +4:15
+      let mut _14: &&&str;                 // in scope 0 at $DIR/simplify_cmp.rs:+4:19: +4:20
+      scope 1 {
+          debug _a => _3;                  // in scope 1 at $DIR/simplify_cmp.rs:+1:9: +1:11
+          let _6: bool;                    // in scope 1 at $DIR/simplify_cmp.rs:+2:9: +2:11
+          scope 2 {
+              debug _b => _6;              // in scope 2 at $DIR/simplify_cmp.rs:+2:9: +2:11
+              let _9: bool;                // in scope 2 at $DIR/simplify_cmp.rs:+3:9: +3:11
+              scope 3 {
+                  debug _c => _9;          // in scope 3 at $DIR/simplify_cmp.rs:+3:9: +3:11
+                  let _12: bool;           // in scope 3 at $DIR/simplify_cmp.rs:+4:9: +4:11
+                  scope 4 {
+                      debug _d => _12;     // in scope 4 at $DIR/simplify_cmp.rs:+4:9: +4:11
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/simplify_cmp.rs:+1:9: +1:11
+          StorageLive(_4);                 // scope 0 at $DIR/simplify_cmp.rs:+1:14: +1:15
+          _4 = &_1;                        // scope 0 at $DIR/simplify_cmp.rs:+1:14: +1:15
+          StorageLive(_5);                 // scope 0 at $DIR/simplify_cmp.rs:+1:19: +1:20
+          _5 = &_2;                        // scope 0 at $DIR/simplify_cmp.rs:+1:19: +1:20
+-         _3 = <&&str as PartialEq<&String>>::eq(move _4, move _5) -> bb1; // scope 0 at $DIR/simplify_cmp.rs:+1:14: +1:20
++         _3 = <&str as PartialEq<String>>::eq((*_4), (*_5)) -> bb1; // scope 0 at $DIR/simplify_cmp.rs:+1:14: +1:20
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cmp.rs:38:14: 38:20
+-                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &&str, &'b &String) -> bool {<&&str as PartialEq<&String>>::eq}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &str, &'b String) -> bool {<&str as PartialEq<String>>::eq}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 0 at $DIR/simplify_cmp.rs:+1:19: +1:20
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_cmp.rs:+1:19: +1:20
+          StorageLive(_6);                 // scope 1 at $DIR/simplify_cmp.rs:+2:9: +2:11
+          StorageLive(_7);                 // scope 1 at $DIR/simplify_cmp.rs:+2:14: +2:15
+          _7 = &_1;                        // scope 1 at $DIR/simplify_cmp.rs:+2:14: +2:15
+          StorageLive(_8);                 // scope 1 at $DIR/simplify_cmp.rs:+2:19: +2:20
+          _8 = &_2;                        // scope 1 at $DIR/simplify_cmp.rs:+2:19: +2:20
+-         _6 = <&&str as PartialEq<&String>>::ne(move _7, move _8) -> bb2; // scope 1 at $DIR/simplify_cmp.rs:+2:14: +2:20
++         _6 = <&str as PartialEq<String>>::ne((*_7), (*_8)) -> bb2; // scope 1 at $DIR/simplify_cmp.rs:+2:14: +2:20
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cmp.rs:39:14: 39:20
+-                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &&str, &'b &String) -> bool {<&&str as PartialEq<&String>>::ne}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &str, &'b String) -> bool {<&str as PartialEq<String>>::ne}, val: Value(<ZST>) }
+      }
+  
+      bb2: {
+          StorageDead(_8);                 // scope 1 at $DIR/simplify_cmp.rs:+2:19: +2:20
+          StorageDead(_7);                 // scope 1 at $DIR/simplify_cmp.rs:+2:19: +2:20
+          StorageLive(_9);                 // scope 2 at $DIR/simplify_cmp.rs:+3:9: +3:11
+          StorageLive(_10);                // scope 2 at $DIR/simplify_cmp.rs:+3:14: +3:15
+          _10 = &_2;                       // scope 2 at $DIR/simplify_cmp.rs:+3:14: +3:15
+          StorageLive(_11);                // scope 2 at $DIR/simplify_cmp.rs:+3:19: +3:20
+          _11 = &_1;                       // scope 2 at $DIR/simplify_cmp.rs:+3:19: +3:20
+-         _9 = <&String as PartialEq<&&str>>::eq(move _10, move _11) -> bb3; // scope 2 at $DIR/simplify_cmp.rs:+3:14: +3:20
++         _9 = <String as PartialEq<&str>>::eq((*_10), (*_11)) -> bb3; // scope 2 at $DIR/simplify_cmp.rs:+3:14: +3:20
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cmp.rs:40:14: 40:20
+-                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &String, &'b &&str) -> bool {<&String as PartialEq<&&str>>::eq}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: for<'a, 'b> fn(&'a String, &'b &str) -> bool {<String as PartialEq<&str>>::eq}, val: Value(<ZST>) }
+      }
+  
+      bb3: {
+          StorageDead(_11);                // scope 2 at $DIR/simplify_cmp.rs:+3:19: +3:20
+          StorageDead(_10);                // scope 2 at $DIR/simplify_cmp.rs:+3:19: +3:20
+          StorageLive(_12);                // scope 3 at $DIR/simplify_cmp.rs:+4:9: +4:11
+          StorageLive(_13);                // scope 3 at $DIR/simplify_cmp.rs:+4:14: +4:15
+          _13 = &_2;                       // scope 3 at $DIR/simplify_cmp.rs:+4:14: +4:15
+          StorageLive(_14);                // scope 3 at $DIR/simplify_cmp.rs:+4:19: +4:20
+          _14 = &_1;                       // scope 3 at $DIR/simplify_cmp.rs:+4:19: +4:20
+-         _12 = <&String as PartialEq<&&str>>::ne(move _13, move _14) -> bb4; // scope 3 at $DIR/simplify_cmp.rs:+4:14: +4:20
++         _12 = <String as PartialEq<&str>>::ne((*_13), (*_14)) -> bb4; // scope 3 at $DIR/simplify_cmp.rs:+4:14: +4:20
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cmp.rs:41:14: 41:20
+-                                          // + literal: Const { ty: for<'a, 'b> fn(&'a &String, &'b &&str) -> bool {<&String as PartialEq<&&str>>::ne}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: for<'a, 'b> fn(&'a String, &'b &str) -> bool {<String as PartialEq<&str>>::ne}, val: Value(<ZST>) }
+      }
+  
+      bb4: {
+          StorageDead(_14);                // scope 3 at $DIR/simplify_cmp.rs:+4:19: +4:20
+          StorageDead(_13);                // scope 3 at $DIR/simplify_cmp.rs:+4:19: +4:20
+          _0 = const ();                   // scope 0 at $DIR/simplify_cmp.rs:+0:51: +5:2
+          StorageDead(_12);                // scope 3 at $DIR/simplify_cmp.rs:+5:1: +5:2
+          StorageDead(_9);                 // scope 2 at $DIR/simplify_cmp.rs:+5:1: +5:2
+          StorageDead(_6);                 // scope 1 at $DIR/simplify_cmp.rs:+5:1: +5:2
+          StorageDead(_3);                 // scope 0 at $DIR/simplify_cmp.rs:+5:1: +5:2
+          return;                          // scope 0 at $DIR/simplify_cmp.rs:+5:2: +5:2
+      }
+  }
+  
