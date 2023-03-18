@@ -832,7 +832,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     .unwrap_or_default();
     let split_name = split_name.to_str().unwrap();
 
-    // FIXME(#60020):
+    // FIXME(#64405):
     //
     //    This should actually be
     //
@@ -847,7 +847,11 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     //    the emission kind as `FullDebug`.
     //
     //    See https://github.com/rust-lang/rust/issues/60020 for details.
-    let kind = DebugEmissionKind::FullDebug;
+    let kind = if tcx.sess.opts.unstable_opts.force_full_debuginfo {
+        DebugEmissionKind::FullDebug
+    } else {
+        DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo)
+    };
     assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
 
     unsafe {

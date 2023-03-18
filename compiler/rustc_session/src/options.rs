@@ -1425,6 +1425,8 @@ options! {
     flatten_format_args: bool = (false, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: no)"),
+    force_full_debuginfo: bool = (true, parse_bool, [TRACKED],
+        "force all codegen-units to have full debuginfo even for -C debuginfo=1. see #64405 (default: yes)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],

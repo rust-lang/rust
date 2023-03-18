@@ -745,6 +745,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(flatten_format_args, true);
+    tracked!(force_full_debuginfo, false);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
