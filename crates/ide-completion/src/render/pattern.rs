@@ -39,11 +39,11 @@ pub(crate) fn render_struct_pat(
 
     let db = ctx.db();
 
-    Some(build_completion(ctx, label, lookup, pat, strukt, strukt.ty(db)))
+    Some(build_completion(ctx, label, lookup, pat, strukt, strukt.ty(db), false))
 }
 
 pub(crate) fn render_variant_pat(
-    mut ctx: RenderContext<'_>,
+    ctx: RenderContext<'_>,
     pattern_ctx: &PatternContext,
     path_ctx: Option<&PathCompletionCtx>,
     variant: hir::Variant,
@@ -55,11 +55,6 @@ pub(crate) fn render_variant_pat(
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
     let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
-
-    // Missing in context of match statement completions
-    if pattern_ctx.missing_variants.contains(&variant) {
-        ctx.is_variant_missing = Some(true);
-    }
 
     let (name, escaped_name) = match path {
         Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
@@ -89,7 +84,15 @@ pub(crate) fn render_variant_pat(
         }
     };
 
-    Some(build_completion(ctx, label, lookup, pat, variant, enum_ty))
+    Some(build_completion(
+        ctx,
+        label,
+        lookup,
+        pat,
+        variant,
+        enum_ty,
+        pattern_ctx.missing_variants.contains(&variant),
+    ))
 }
 
 fn build_completion(
@@ -99,10 +102,12 @@ fn build_completion(
     pat: String,
     def: impl HasAttrs + Copy,
     adt_ty: hir::Type,
+    // Missing in context of match statement completions
+    is_variant_missing: bool,
 ) -> CompletionItem {
     let mut relevance = ctx.completion_relevance();
 
-    if let Some(true) = ctx.is_variant_missing {
+    if is_variant_missing {
         relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
     }
 

@@ -32,22 +32,11 @@ pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
     is_private_editable: bool,
     import_to_add: Option<LocatedImport>,
-    // For variants which are missing
-    // in match completion context
-    //
-    // Option -> only applicable for enums
-    // bool -> is enum variant missing or not?
-    is_variant_missing: Option<bool>,
 }
 
 impl<'a> RenderContext<'a> {
     pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
-        RenderContext {
-            completion,
-            is_private_editable: false,
-            import_to_add: None,
-            is_variant_missing: None,
-        }
+        RenderContext { completion, is_private_editable: false, import_to_add: None }
     }
 
     pub(crate) fn private_editable(mut self, private_editable: bool) -> Self {
