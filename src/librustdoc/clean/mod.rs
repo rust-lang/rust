@@ -2476,18 +2476,12 @@ fn clean_extern_crate<'tcx>(
 
     let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
-        let mut visited = DefIdSet::default();
-
-        let res = Res::Def(DefKind::Mod, crate_def_id);
-
         if let Some(items) = inline::try_inline(
             cx,
-            cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate_owner_def_id),
-            res,
+            Res::Def(DefKind::Mod, crate_def_id),
             name,
-            Some(attrs),
-            &mut visited,
+            Some((attrs, Some(krate_owner_def_id))),
+            &mut Default::default(),
         ) {
             return items;
         }
@@ -2611,17 +2605,13 @@ fn clean_use_statement_inner<'tcx>(
             denied = true;
         }
         if !denied {
-            let mut visited = DefIdSet::default();
             let import_def_id = import.owner_id.to_def_id();
-
             if let Some(mut items) = inline::try_inline(
                 cx,
-                cx.tcx.parent_module(import.hir_id()).to_def_id(),
-                Some(import_def_id),
                 path.res,
                 name,
-                Some(attrs),
-                &mut visited,
+                Some((attrs, Some(import_def_id))),
+                &mut Default::default(),
             ) {
                 items.push(Item::from_def_id_and_parts(
                     import_def_id,
