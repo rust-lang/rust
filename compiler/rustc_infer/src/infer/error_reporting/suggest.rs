@@ -547,7 +547,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         diag: &mut Diagnostic,
     ) {
         // 0. Extract fn_decl from hir
-        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(hir::Closure { fn_decl, .. }), .. }) = hir else { return; };
+        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }), .. }) = hir else { return; };
+        let hir::Body { params, .. } = self.tcx.hir().body(*body);
 
         // 1. Get the substs of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
@@ -565,7 +566,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mut is_first = true;
             let mut has_suggestion = false;
 
-            for ((expected, found), arg_hir) in expected.iter().zip(found.iter()).zip(fn_decl.inputs.iter()) {
+            for (((expected, found), param_hir), arg_hir) in expected.iter()
+                .zip(found.iter())
+                .zip(params.iter())
+                .zip(fn_decl.inputs.iter()) {
                 if is_first {
                     is_first = false;
                 } else {
@@ -579,11 +583,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let hir::TyKind::Infer = arg_hir.kind {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.
-                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(arg_hir.span) else { return; };
-                    suggestion += &format!("{}: &_", arg);
+                    if param_hir.pat.span == param_hir.ty_span {
+                        // for `|x|`, `|_|`, `|x: impl Foo|`
+                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
+                        suggestion += &format!("{}: &_", pat);
+                    } else {
+                        // for `|x: ty|`, `|_: ty|`
+                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
+                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span) else { return; };
+                        suggestion += &format!("{}: &{}", pat, ty);
+                    }
                     has_suggestion = true;
                 } else {
-                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(arg_hir.span) else { return; };
+                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.span) else { return; };
                     // Otherwise, keep it as-is.
                     suggestion += &arg;
                 }
