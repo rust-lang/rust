@@ -116,6 +116,8 @@ use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
+#[unstable(feature = "command_captured_envs_access", issue = "none")]
+pub use crate::sys_common::process::CapturedEnvs;
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -1048,8 +1050,9 @@ impl Command {
     /// Environment variables explicitly set using [`Command::env`], [`Command::envs`], and
     /// [`Command::env_remove`] can be retrieved with this method.
     ///
-    /// Note that this output does not include environment variables inherited from the parent
-    /// process.
+    /// Note that this output does not include environment variables inherited
+    /// from the parent process. To get the variables that will be set
+    /// when the child spawns use [`Command::capture_envs`].
     ///
     /// Each element is a tuple key/value pair `(&OsStr, Option<&OsStr>)`. A [`None`] value
     /// indicates its key was explicitly removed via [`Command::env_remove`]. The associated key for
@@ -1076,6 +1079,43 @@ impl Command {
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_envs(&self) -> CommandEnvs<'_> {
         self.inner.get_envs()
+    }
+
+    /// Captures a snapshot of all environment variables, inherited and explicitly set, that would
+    /// have been passed to the child process.
+    ///
+    /// Return value is an iterator where each element is a tuple `(OsString, OsString)`. The first
+    /// value is the environment variable key, and the second is its value. Unlike
+    /// [`Command::get_envs`], this method includes inherited and explicitly set environment
+    /// variables.
+    ///
+    /// Note that this method does not prevent time-of-check to time-of-use (TOCTOU) bugs. You
+    /// should only use it when those bugs are not an issue. If no changes occur between when this
+    /// method is called and when the command is spawned, the values returned will be the same as
+    /// those of the spawned child process.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use std::process::Command;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// cmd.env("TERM", "dumb");
+    /// cmd.env_remove("TZ");
+    ///
+    /// let envs: HashMap<OsString, OsString> = cmd.capture_envs().collect();
+    /// // Inherited environment variable(s)
+    /// assert!(envs.contains_key(&OsString::from("PATH")));
+    ///
+    /// // Explicitly set environment variable(s)
+    /// assert!(envs.contains_key(&OsString::from("TERM")));
+    /// assert!(!envs.contains_key(&OsString::from("TZ")));
+    /// ```
+    #[unstable(feature = "command_captured_envs_access", issue = "none")]
+    pub fn capture_envs(&self) -> CapturedEnvs {
+        self.inner.capture_envs()
     }
 
     /// Returns the working directory for the child process.
