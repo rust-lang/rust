@@ -48,6 +48,7 @@ mod add_retag;
 mod check_const_item_mutation;
 mod check_packed_ref;
 pub mod check_unsafety;
+mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
@@ -460,8 +461,11 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let passes: &[&dyn MirPass<'tcx>] =
-        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::ElaborateDrops];
+    let passes: &[&dyn MirPass<'tcx>] = &[
+        &lower_intrinsics::LowerIntrinsics,
+        &remove_place_mention::RemovePlaceMention,
+        &simplify::SimplifyCfg::ElaborateDrops,
+    ];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 
