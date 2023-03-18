@@ -9,6 +9,7 @@ mod chars_last_cmp;
 mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
+mod clear_with_drain;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
@@ -3190,6 +3191,25 @@ declare_clippy_lint! {
     "single command line argument that looks like it should be multiple arguments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// ### Why is this bad?
+    ///
+    /// ### Example
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub CLEAR_WITH_DRAIN,
+    nursery,
+    "default lint description"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3318,6 +3338,7 @@ impl_lint_pass!(Methods => [
     SEEK_TO_START_INSTEAD_OF_REWIND,
     NEEDLESS_COLLECT,
     SUSPICIOUS_COMMAND_ARG_SPACE,
+    CLEAR_WITH_DRAIN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
