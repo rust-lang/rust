@@ -1141,8 +1141,10 @@ fn render_assoc_items_inner(
                 (RenderMode::Normal, "implementations-list".to_owned())
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                let id = cx.derive_id(small_url_encode(format!(
+                    "deref-methods-{}",
+                    type_.print_plain(cx)
+                )));
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id.clone());
                 }
@@ -1314,7 +1316,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
             " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-            ty = Escape(&format!("{:#}", ty.print(cx))),
+            ty = Escape(&ty.print_plain(cx).to_string()),
         ))
     } else {
         None
@@ -1379,7 +1381,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         write!(&mut out, "</code></pre>",);
     }
 
-    (format!("{:#}", ty.print(cx)), out.into_inner())
+    (ty.print_plain(cx).to_string(), out.into_inner())
 }
 
 pub(crate) fn notable_traits_json<'a>(
@@ -1947,20 +1949,18 @@ pub(crate) fn small_url_encode(s: String) -> String {
 
 fn get_id_for_impl(for_: &clean::Type, trait_: Option<&clean::Path>, cx: &Context<'_>) -> String {
     match trait_ {
-        Some(t) => small_url_encode(format!("impl-{:#}-for-{:#}", t.print(cx), for_.print(cx))),
-        None => small_url_encode(format!("impl-{:#}", for_.print(cx))),
+        Some(t) => {
+            small_url_encode(format!("impl-{}-for-{}", t.print_plain(cx), for_.print_plain(cx)))
+        }
+        None => small_url_encode(format!("impl-{}", for_.print_plain(cx))),
     }
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match *item.kind {
-        clean::ItemKind::ImplItem(ref i) => {
-            i.trait_.as_ref().map(|trait_| {
-                // Alternative format produces no URLs,
-                // so this parameter does nothing.
-                (format!("{:#}", i.for_.print(cx)), get_id_for_impl(&i.for_, Some(trait_), cx))
-            })
-        }
+        clean::ItemKind::ImplItem(ref i) => i.trait_.as_ref().map(|trait_| {
+            (i.for_.print_plain(cx).to_string(), get_id_for_impl(&i.for_, Some(trait_), cx))
+        }),
         _ => None,
     }
 }

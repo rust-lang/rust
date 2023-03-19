@@ -378,9 +378,9 @@ fn sidebar_deref_methods<'a>(
                     Cow::Borrowed("deref-methods")
                 };
                 let title = format!(
-                    "Methods from {:#}<Target={:#}>",
-                    impl_.inner_impl().trait_.as_ref().unwrap().print(cx),
-                    real_target.print(cx),
+                    "Methods from {}<Target={}>",
+                    impl_.inner_impl().trait_.as_ref().unwrap().print_plain(cx),
+                    real_target.print_plain(cx),
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
@@ -487,7 +487,7 @@ fn sidebar_render_assoc_items(
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                     ty::ImplPolarity::Negative => "!",
                 };
-                let generated = Link::new(encoded, format!("{prefix}{:#}", trait_.print(cx)));
+                let generated = Link::new(encoded, format!("{prefix}{}", trait_.print_plain(cx)));
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
             .collect::<Vec<Link<'static>>>();
