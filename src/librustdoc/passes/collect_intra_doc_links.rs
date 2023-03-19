@@ -773,30 +773,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
 
 impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        // We want to resolve in the lexical scope of the documentation.
-        // In the presence of re-exports, this is not the same as the module of the item.
-        // Rather than merging all documentation into one, resolve it one attribute at a time
-        // so we know which module it came from.
-        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
-                continue;
-            }
-            debug!("combined_docs={}", doc);
-            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
-            // This is a degenerate case and it's not supported by rustdoc.
-            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
-            let module_id = match self.cx.tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
-                _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
-            };
-            for md_link in preprocessed_markdown_links(&doc) {
-                let link = self.resolve_link(item, item_id, module_id, &doc, &md_link);
-                if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
-                }
-            }
-        }
-
+        self.resolve_links(item);
         self.visit_item_recur(item)
     }
 }
@@ -923,6 +900,32 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 }
 
 impl LinkCollector<'_, '_> {
+    fn resolve_links(&mut self, item: &Item) {
+        // We want to resolve in the lexical scope of the documentation.
+        // In the presence of re-exports, this is not the same as the module of the item.
+        // Rather than merging all documentation into one, resolve it one attribute at a time
+        // so we know which module it came from.
+        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+            if !may_have_doc_links(&doc) {
+                continue;
+            }
+            debug!("combined_docs={}", doc);
+            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
+            // This is a degenerate case and it's not supported by rustdoc.
+            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
+            let module_id = match self.cx.tcx.def_kind(item_id) {
+                DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
+                _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
+            };
+            for md_link in preprocessed_markdown_links(&doc) {
+                let link = self.resolve_link(item, item_id, module_id, &doc, &md_link);
+                if let Some(link) = link {
+                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
+                }
+            }
+        }
+    }
+
     /// This is the entry point for resolving an intra-doc link.
     ///
     /// FIXME(jynelson): this is way too many arguments
