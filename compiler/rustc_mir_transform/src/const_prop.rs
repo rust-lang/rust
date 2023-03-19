@@ -989,12 +989,13 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.ecx.machine.written_only_inside_own_block_locals =
             written_only_inside_own_block_locals;
 
-        #[cfg(debug_assertions)]
-        for (local, &mode) in self.ecx.machine.can_const_prop.iter_enumerated() {
-            match mode {
-                ConstPropMode::FullConstProp => {}
-                ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {
-                    self.ensure_not_propagated(local);
+        if cfg!(debug_assertions) {
+            for (local, &mode) in self.ecx.machine.can_const_prop.iter_enumerated() {
+                match mode {
+                    ConstPropMode::FullConstProp => {}
+                    ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {
+                        self.ensure_not_propagated(local);
+                    }
                 }
             }
         }
