@@ -1028,6 +1028,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     true
                 }
             })
+            // ensure that we don't suggest unstable methods
+            .filter(|candidate| {
+                // note that `DUMMY_SP` is ok here because it is only used for
+                // suggestions and macro stuff which isn't applicable here.
+                !matches!(
+                    self.tcx.eval_stability(candidate.item.def_id, None, DUMMY_SP, None),
+                    stability::EvalResult::Deny { .. }
+                )
+            })
             .map(|candidate| candidate.item.ident(self.tcx))
             .filter(|&name| set.insert(name))
             .collect();
