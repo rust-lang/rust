@@ -23,10 +23,14 @@ use std::{fmt, panic};
 use self::graph::{print_markframe_trace, MarkFrame};
 
 pub trait DepContext: Copy {
+    type Implicit<'a>: DepContext;
     type DepKind: self::DepKind;
 
     /// Create a hashing context for hashing new results.
     fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
+
+    /// Access the implicit context.
+    fn with_context<R>(f: impl FnOnce(Self::Implicit<'_>) -> R) -> R;
 
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;

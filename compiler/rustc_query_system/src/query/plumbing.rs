@@ -7,6 +7,7 @@ use crate::dep_graph::{DepGraphData, HasDepContext};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
+use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::values::Value;
 use crate::HandleCycleError;
@@ -19,7 +20,6 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
-use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -537,7 +537,7 @@ where
 
     let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, &dep_node)?;
 
-    debug_assert!(dep_graph_data.is_green(dep_node));
+    debug_assert!(dep_graph_data.is_index_green(prev_dep_node_index));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
@@ -561,8 +561,7 @@ where
                 dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
             }
 
-            let prev_fingerprint =
-                dep_graph_data.prev_fingerprint_of(dep_node).unwrap_or(Fingerprint::ZERO);
+            let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
             //
@@ -578,7 +577,7 @@ where
                     *qcx.dep_context(),
                     dep_graph_data,
                     &result,
-                    dep_node,
+                    prev_dep_node_index,
                     query.hash_result(),
                 );
             }
@@ -623,7 +622,7 @@ where
         *qcx.dep_context(),
         dep_graph_data,
         &result,
-        dep_node,
+        prev_dep_node_index,
         query.hash_result(),
     );
 
@@ -636,32 +635,38 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     tcx: Tcx,
     dep_graph_data: &DepGraphData<Tcx::DepKind>,
     result: &V,
-    dep_node: &DepNode<Tcx::DepKind>,
+    prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-) -> Fingerprint
-where
+) where
     Tcx: DepContext,
 {
-    assert!(
-        dep_graph_data.is_green(dep_node),
-        "fingerprint for green query instance not loaded from cache: {dep_node:?}",
-    );
+    if !dep_graph_data.is_index_green(prev_index) {
+        incremental_verify_ich_not_green::<Tcx>(prev_index)
+    }
 
     let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
 
-    let old_hash = dep_graph_data.prev_fingerprint_of(dep_node);
+    let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
-    if Some(new_hash) != old_hash {
-        incremental_verify_ich_failed(
-            tcx.sess(),
-            DebugArg::from(&dep_node),
-            DebugArg::from(&result),
-        );
+    if new_hash != old_hash {
+        incremental_verify_ich_failed::<Tcx>(prev_index, DebugArg::from(&result));
     }
+}
 
-    new_hash
+#[cold]
+#[inline(never)]
+fn incremental_verify_ich_not_green<Tcx>(prev_index: SerializedDepNodeIndex)
+where
+    Tcx: DepContext,
+{
+    Tcx::with_context(|tcx| {
+        panic!(
+            "fingerprint for green query instance not loaded from cache: {:?}",
+            tcx.dep_graph().data().unwrap().prev_node_of(prev_index)
+        )
+    })
 }
 
 // This DebugArg business is largely a mirror of std::fmt::ArgumentV1, which is
@@ -706,7 +711,11 @@ impl std::fmt::Debug for DebugArg<'_> {
 // different implementations for LLVM to chew on (and filling up the final
 // binary, too).
 #[cold]
-fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
+#[inline(never)]
+fn incremental_verify_ich_failed<Tcx>(prev_index: SerializedDepNodeIndex, result: DebugArg<'_>)
+where
+    Tcx: DepContext,
+{
     // When we emit an error message and panic, we try to debug-print the `DepNode`
     // and query result. Unfortunately, this can cause us to run additional queries,
     // which may result in another fingerprint mismatch while we're in the middle
@@ -719,21 +728,25 @@ fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result:
 
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
-    if old_in_panic {
-        sess.emit_err(crate::error::Reentrant);
-    } else {
-        let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
-            format!("`cargo clean -p {crate_name}` or `cargo clean`")
+    Tcx::with_context(|tcx| {
+        if old_in_panic {
+            tcx.sess().emit_err(crate::error::Reentrant);
         } else {
-            "`cargo clean`".to_string()
-        };
+            let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
+                format!("`cargo clean -p {crate_name}` or `cargo clean`")
+            } else {
+                "`cargo clean`".to_string()
+            };
 
-        sess.emit_err(crate::error::IncrementCompilation {
-            run_cmd,
-            dep_node: format!("{dep_node:?}"),
-        });
-        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
-    }
+            let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
+
+            let dep_node = tcx.sess().emit_err(crate::error::IncrementCompilation {
+                run_cmd,
+                dep_node: format!("{dep_node:?}"),
+            });
+            panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
+        }
+    });
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
 }

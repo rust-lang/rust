@@ -71,11 +71,17 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 }
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
+    type Implicit<'a> = TyCtxt<'a>;
     type DepKind = DepKind;
 
     #[inline]
     fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
         TyCtxt::with_stable_hashing_context(self, f)
+    }
+
+    #[inline]
+    fn with_context<R>(f: impl FnOnce(TyCtxt<'_>) -> R) -> R {
+        ty::tls::with(|tcx| f(tcx))
     }
 
     #[inline]
