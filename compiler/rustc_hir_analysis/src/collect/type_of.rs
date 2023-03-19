@@ -475,7 +475,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id).subst_identity()
+                        tcx.type_of(assoc_item.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -517,15 +519,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         },
                         def_id.to_def_id(),
                     );
-                    if let Some(param)
-                        = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
+                    if let Some(assoc_item) = assoc_item
+                        && let param = &tcx.generics_of(assoc_item.def_id).params[idx]
+                        && matches!(param.kind, ty::GenericParamDefKind::Const { .. })
                     {
-                        tcx.type_of(param.def_id).subst_identity()
+                        tcx.type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
                             DUMMY_SP,
-                            "Could not find associated const on trait",
+                            "Could not find const param on associated item",
                         )
                     }
                 }
