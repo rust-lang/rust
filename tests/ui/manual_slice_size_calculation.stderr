@@ -1,0 +1,27 @@
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:11:13
+   |
+LL |     let _ = s_i32.len() * size_of::<i32>(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using std::mem::size_of_value instead
+   = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
+
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:12:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32.len(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using std::mem::size_of_value instead
+
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:13:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using std::mem::size_of_value instead
+
+error: aborting due to 3 previous errors
+

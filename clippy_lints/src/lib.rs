@@ -186,6 +186,7 @@ mod manual_main_separator_str;
 mod manual_non_exhaustive;
 mod manual_rem_euclid;
 mod manual_retain;
+mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
 mod map_unit_fn;
@@ -957,6 +958,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
+    store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
