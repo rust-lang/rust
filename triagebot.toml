@@ -17,6 +17,7 @@ contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIB
 
 [assign.owners]
 "/.github" = ["@flip1995"]
+"/util/gh-pages" = ["@xFrednet"]
 "*" = [
     "@flip1995",
     "@Manishearth",
