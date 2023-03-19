@@ -103,7 +103,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-            sym::no_mangle => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE,
+            sym::no_mangle => {
+                if tcx.opt_item_name(did.to_def_id()).is_some() {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE
+                } else {
+                    tcx.sess
+                        .struct_span_err(
+                            attr.span,
+                            format!(
+                                "`#[no_mangle]` cannot be used on {} {} as it has no name",
+                                tcx.def_descr_article(did.to_def_id()),
+                                tcx.def_descr(did.to_def_id()),
+                            ),
+                        )
+                        .emit();
+                }
+            }
             sym::no_coverage => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE,
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
