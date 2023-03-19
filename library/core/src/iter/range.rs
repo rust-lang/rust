@@ -1,4 +1,5 @@
 use crate::convert::TryFrom;
+use crate::marker::Destruct;
 use crate::mem;
 use crate::ops::{self, Try};
 
@@ -20,7 +21,8 @@ unsafe_impl_trusted_step![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usi
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-pub trait Step: Clone + PartialOrd + Sized {
+#[const_trait]
+pub trait Step: ~const Clone + ~const PartialOrd + Sized {
     /// Returns the number of *successor* steps required to get from `start` to `end`.
     ///
     /// Returns `None` if the number of steps would overflow `usize`
@@ -234,7 +236,8 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for $u_narrower {
+            #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+            impl const Step for $u_narrower {
                 step_identical_methods!();
 
                 #[inline]
@@ -266,7 +269,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for $i_narrower {
+            #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+            impl const Step for $i_narrower {
                 step_identical_methods!();
 
                 #[inline]
@@ -330,7 +334,8 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for $u_wider {
+            #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+            impl const Step for $u_wider {
                 step_identical_methods!();
 
                 #[inline]
@@ -355,7 +360,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            impl Step for $i_wider {
+            #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+            impl const Step for $i_wider {
                 step_identical_methods!();
 
                 #[inline]
@@ -405,7 +411,8 @@ step_integer_impls! {
 }
 
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-impl Step for char {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl const Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> Option<usize> {
         let start = start as u32;
@@ -423,6 +430,7 @@ impl Step for char {
     }
 
     #[inline]
+    #[rustc_allow_const_fn_unstable(const_try)]
     fn forward_checked(start: char, count: usize) -> Option<char> {
         let start = start as u32;
         let mut res = Step::forward_checked(start, count)?;
@@ -439,6 +447,7 @@ impl Step for char {
     }
 
     #[inline]
+    #[rustc_allow_const_fn_unstable(const_try)]
     fn backward_checked(start: char, count: usize) -> Option<char> {
         let start = start as u32;
         let mut res = Step::backward_checked(start, count)?;
@@ -514,6 +523,7 @@ macro_rules! range_incl_exact_iter_impl {
 }
 
 /// Specialization implementations for `Range`.
+#[const_trait]
 trait RangeIteratorImpl {
     type Item;
 
@@ -528,7 +538,7 @@ trait RangeIteratorImpl {
     fn spec_advance_back_by(&mut self, n: usize) -> Result<(), usize>;
 }
 
-impl<A: Step> RangeIteratorImpl for ops::Range<A> {
+impl<A: ~const Step + ~const Destruct> const RangeIteratorImpl for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -614,7 +624,7 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
     }
 }
 
-impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
+impl<T: ~const TrustedStep + ~const Destruct> const RangeIteratorImpl for ops::Range<T> {
     #[inline]
     fn spec_next(&mut self) -> Option<T> {
         if self.start < self.end {
@@ -702,7 +712,8 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::Range<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A: ~const Step + ~const Destruct> const Iterator for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -812,7 +823,8 @@ range_incl_exact_iter_impl! {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> DoubleEndedIterator for ops::Range<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A: ~const Step + ~const Destruct> const DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.spec_next_back()
