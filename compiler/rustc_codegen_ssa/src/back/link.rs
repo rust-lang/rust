@@ -358,9 +358,9 @@ fn link_rlib<'a>(
             let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
-        } else if let Some(name) = lib.name {
+        } else {
             let path =
-                find_native_static_library(name.as_str(), lib.verbatim, &lib_search_paths, sess);
+                find_native_static_library(lib.name.as_str(), lib.verbatim, &lib_search_paths, sess);
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
                 sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error })});
         }
@@ -436,7 +436,7 @@ fn collate_raw_dylibs<'a, 'b>(
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
             let ext = if lib.verbatim { "" } else { ".dll" };
-            let name = format!("{}{}", lib.name.expect("unnamed raw-dylib library"), ext);
+            let name = format!("{}{}", lib.name, ext);
             let imports = dylib_table.entry(name.clone()).or_default();
             for import in &lib.dll_imports {
                 if let Some(old_import) = imports.insert(import.name, import) {
@@ -1296,7 +1296,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         .iter()
         .filter(|l| relevant_lib(sess, l))
         .filter_map(|lib| {
-            let name = lib.name?;
+            let name = lib.name;
             match lib.kind {
                 NativeLibKind::Static { bundle: Some(false), .. }
                 | NativeLibKind::Dylib { .. }
@@ -1317,6 +1317,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
                 // These are included, no need to print them
                 NativeLibKind::Static { bundle: None | Some(true), .. }
                 | NativeLibKind::LinkArg
+                | NativeLibKind::WasmImportModule
                 | NativeLibKind::RawDylib => None,
             }
         })
@@ -2275,21 +2276,18 @@ fn add_native_libs_from_crate(
 
     let mut last = (None, NativeLibKind::Unspecified, false);
     for lib in native_libs {
-        let Some(name) = lib.name else {
-            continue;
-        };
         if !relevant_lib(sess, lib) {
             continue;
         }
 
         // Skip if this library is the same as the last.
-        last = if (lib.name, lib.kind, lib.verbatim) == last {
+        last = if (Some(lib.name), lib.kind, lib.verbatim) == last {
             continue;
         } else {
-            (lib.name, lib.kind, lib.verbatim)
+            (Some(lib.name), lib.kind, lib.verbatim)
         };
 
-        let name = name.as_str();
+        let name = lib.name.as_str();
         let verbatim = lib.verbatim;
         match lib.kind {
             NativeLibKind::Static { bundle, whole_archive } => {
@@ -2346,6 +2344,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::RawDylib => {
                 // Handled separately in `linker_with_args`.
             }
+            NativeLibKind::WasmImportModule => {}
             NativeLibKind::LinkArg => {
                 if link_static {
                     cmd.arg(name);
