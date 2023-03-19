@@ -48,19 +48,19 @@ jobs:
         include:
           - name: mingw-check
             tidy: false
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: mingw-check-tidy
             tidy: true
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-llvm-14
             tidy: false
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-tools
             tidy: false
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -181,136 +181,136 @@ jobs:
               - ARM64
               - linux
           - name: arm-android
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: armhf-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-aarch64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-android
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-arm-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-armhf-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-armv7-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-i586-gnu-i586-i686-musl
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-i686-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-mips-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-mips64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-mips64el-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-mipsel-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-powerpc-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-powerpc64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-powerpc64le-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-riscv64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-s390x-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-various-1
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-various-2
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-x86_64-freebsd
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-x86_64-illumos
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: dist-x86_64-musl
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-x86_64-netbsd
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: i686-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: i686-gnu-nopt
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: mingw-check
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: test-various
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: wasm32
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-stable
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: x86_64-gnu-aux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-debug
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-distcheck
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-llvm-15
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: x86_64-gnu-nopt
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-tools
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
@@ -386,80 +386,80 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
               SCRIPT: make ci-subset-1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: x86_64-msvc-2
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
               SCRIPT: make ci-subset-2
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: i686-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
               SCRIPT: make ci-subset-1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: i686-msvc-2
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
               SCRIPT: make ci-subset-2
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: x86_64-msvc-cargo
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld"
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: x86_64-msvc-tools
             env:
               SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json"
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: i686-mingw-1
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
               SCRIPT: make ci-mingw-subset-1
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: i686-mingw-2
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
               SCRIPT: make ci-mingw-subset-2
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-i686-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-aarch64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
               WINDOWS_SDK_20348_HACK: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
@@ -467,7 +467,7 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-x86_64-mingw
             env:
               SCRIPT: python x.py dist bootstrap --include-default-paths
@@ -475,12 +475,12 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
           - name: dist-x86_64-msvc-alt
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
-            os: windows-latest-xl
+            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -595,7 +595,7 @@ jobs:
       matrix:
         include:
           - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-20.04-16core-64gb
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
