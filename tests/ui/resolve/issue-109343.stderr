@@ -1,0 +1,28 @@
+error[E0463]: can't find crate for `f`
+  --> $DIR/issue-109343.rs:4:1
+   |
+LL | extern crate f;
+   | ^^^^^^^^^^^^^^^ can't find crate
+
+error[E0432]: unresolved import `inner`
+  --> $DIR/issue-109343.rs:7:9
+   |
+LL | pub use inner::f;
+   |         ^^^^^ maybe a missing crate `inner`?
+   |
+   = help: consider adding `extern crate inner` to use the `inner` crate
+
+error: extern crate `f` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+  --> $DIR/issue-109343.rs:11:9
+   |
+LL | pub use f as g;
+   |         ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0463.
+For more information about an error, try `rustc --explain E0432`.

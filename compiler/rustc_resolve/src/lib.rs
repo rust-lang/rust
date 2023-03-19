@@ -1860,10 +1860,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match self.maybe_resolve_path(&segments, Some(ns), &parent_scope) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => path_res.full_res(),
-            PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
-                None
-            }
-            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
+            PathResult::Module(..) | PathResult::Failed { .. } | PathResult::Indeterminate => None,
         }
     }
 
