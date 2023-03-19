@@ -293,7 +293,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let gen_trait = tcx.lang_items().gen_trait();
         let is_gen = gen_trait == Some(trait_def_id);
 
-        if !is_fn && !is_gen {
+        let future_trait = tcx.lang_items().future_trait();
+        let is_future = future_trait == Some(trait_def_id);
+
+        if !(is_fn || is_gen || is_future) {
             debug!("not fn or generator");
             return None;
         }
@@ -305,6 +308,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
+        // Since this is a return parameter type it is safe to unwrap.
+        let ret_param_ty = projection.skip_binder().term.ty().unwrap();
+        let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
+        debug!(?ret_param_ty);
+
         let input_tys = if is_fn {
             let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
@@ -314,16 +322,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &ty::Tuple(tys) => tys,
                 _ => return None,
             }
+        } else if is_future {
+            // HACK: Skip infer vars to `ui/generic-associated-types/issue-89008.rs` pass.
+            // Otherwise, we end up with inferring the closure signature to be
+            // `fn() -> Empty<Repr>` instead of `fn() -> Self::LineStream<'a, Repr>` and
+            // opaque type inference gets bungled. Similarly, skip opaques, because we don't
+            // replace them with infer vars, and opaque type inference gets bungled in
+            // `async fn ..() -> impl Trait {}` cases.
+            if ret_param_ty.is_ty_var() || ret_param_ty.has_opaque_types() {
+                return None;
+            }
+
+            let resume_ty_def_id = self.tcx.require_lang_item(hir::LangItem::ResumeTy, cause_span);
+            self.tcx.mk_type_list(&[self
+                .tcx
+                .mk_adt(self.tcx.adt_def(resume_ty_def_id), ty::List::empty())])
         } else {
             // Generators with a `()` resume type may be defined with 0 or 1 explicit arguments,
             // else they must have exactly 1 argument. For now though, just give up in this case.
             return None;
         };
-
-        // Since this is a return parameter type it is safe to unwrap.
-        let ret_param_ty = projection.skip_binder().term.ty().unwrap();
-        let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
-        debug!(?ret_param_ty);
 
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys,
