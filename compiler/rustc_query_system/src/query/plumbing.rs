@@ -429,6 +429,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
+    debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
+
     // Fingerprint the key, just to assert that it doesn't
     // have anything we don't consider hashable
     if cfg!(debug_assertions) {
