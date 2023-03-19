@@ -145,8 +145,8 @@ pub fn get_unique_attr<'a>(
 
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| sess.is_proc_macro_attr(attr))
+pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| attr.is_proc_macro_attr())
 }
 
 /// Return true if the attributes contain `#[doc(hidden)]`

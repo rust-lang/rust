@@ -358,29 +358,29 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::Fn(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
                 }
             }
 
             ast::ItemKind::Static(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
                 }
             }
@@ -391,10 +391,10 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         if let ast::AssocItemKind::Fn(..) = it.kind {
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+            if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                 self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
             }
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+            if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                 self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
             }
         }
@@ -1123,12 +1123,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         };
         match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
-                if let Some(no_mangle_attr) = cx.sess().find_by_name(attrs, sym::no_mangle) {
+                if let Some(no_mangle_attr) = attr::find_by_name(attrs, sym::no_mangle) {
                     check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
                 }
             }
             hir::ItemKind::Const(..) => {
-                if cx.sess().contains_name(attrs, sym::no_mangle) {
+                if attr::contains_name(attrs, sym::no_mangle) {
                     // account for "pub const" (#45562)
                     let start = cx
                         .tcx
@@ -1152,9 +1152,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
             hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
-                        if let Some(no_mangle_attr) = cx
-                            .sess()
-                            .find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                        if let Some(no_mangle_attr) =
+                            attr::find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
                         {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
@@ -1836,7 +1835,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         }
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
-        if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
+        if let Some(attr) = attr::find_by_name(attrs, sym::rustc_test_marker) {
             cx.emit_spanned_lint(UNNAMEABLE_TEST_ITEMS, attr.span, BuiltinUnnameableTestItems);
         }
     }

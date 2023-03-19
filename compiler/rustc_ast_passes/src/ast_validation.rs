@@ -799,11 +799,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
-        if item.attrs.iter().any(|attr| self.session.is_proc_macro_attr(attr)) {
+        if item.attrs.iter().any(|attr| attr.is_proc_macro_attr()) {
             self.has_proc_macro_decls = true;
         }
 
-        if self.session.contains_name(&item.attrs, sym::no_mangle) {
+        if attr::contains_name(&item.attrs, sym::no_mangle) {
             self.check_nomangle_item_asciionly(item.ident, item.span);
         }
 
@@ -973,7 +973,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
-                    && !self.session.contains_name(&item.attrs, sym::path)
+                    && !attr::contains_name(&item.attrs, sym::path)
                 {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
@@ -1248,7 +1248,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if self.session.contains_name(&item.attrs, sym::no_mangle) {
+        if attr::contains_name(&item.attrs, sym::no_mangle) {
             self.check_nomangle_item_asciionly(item.ident, item.span);
         }
 
