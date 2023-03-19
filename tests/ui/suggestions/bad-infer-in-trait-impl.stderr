@@ -1,0 +1,14 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-infer-in-trait-impl.rs:6:15
+   |
+LL |     fn bar(s: _) {}
+   |               ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn bar<T>(s: T) {}
+   |           +++    ~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

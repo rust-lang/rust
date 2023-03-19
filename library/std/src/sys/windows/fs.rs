@@ -1236,7 +1236,17 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
-    metadata(path, ReparsePoint::Follow)
+    match metadata(path, ReparsePoint::Follow) {
+        Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
+            if let Ok(attrs) = lstat(path) {
+                if !attrs.file_type().is_symlink() {
+                    return Ok(attrs);
+                }
+            }
+            Err(err)
+        }
+        result => result,
+    }
 }
 
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {

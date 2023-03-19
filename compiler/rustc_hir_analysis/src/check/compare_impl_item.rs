@@ -1205,6 +1205,17 @@ fn compare_number_of_generics<'tcx>(
         return Ok(());
     }
 
+    // We never need to emit a separate error for RPITITs, since if an RPITIT
+    // has mismatched type or const generic arguments, then the method that it's
+    // inheriting the generics from will also have mismatched arguments, and
+    // we'll report an error for that instead. Delay a bug for safety, though.
+    if tcx.opt_rpitit_info(trait_.def_id).is_some() {
+        return Err(tcx.sess.delay_span_bug(
+            rustc_span::DUMMY_SP,
+            "errors comparing numbers of generics of trait/impl functions were not emitted",
+        ));
+    }
+
     let matchings = [
         ("type", trait_own_counts.types, impl_own_counts.types),
         ("const", trait_own_counts.consts, impl_own_counts.consts),

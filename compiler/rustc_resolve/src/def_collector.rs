@@ -260,9 +260,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                     Async::No => closure_def,
                 }
             }
-            ExprKind::Async(_, async_id, _) => {
-                self.create_def(async_id, DefPathData::ClosureExpr, expr.span)
-            }
+            ExprKind::Async(_, _) => self.create_def(expr.id, DefPathData::ClosureExpr, expr.span),
             _ => self.parent_def,
         };
 

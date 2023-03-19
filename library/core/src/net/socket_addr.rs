@@ -121,7 +121,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "ip_addr", since = "1.7.0")]
     #[must_use]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn new(ip: IpAddr, port: u16) -> SocketAddr {
         match ip {
             IpAddr::V4(a) => SocketAddr::V4(SocketAddrV4::new(a, port)),
@@ -141,7 +141,7 @@ impl SocketAddr {
     /// ```
     #[must_use]
     #[stable(feature = "ip_addr", since = "1.7.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn ip(&self) -> IpAddr {
         match *self {
             SocketAddr::V4(ref a) => IpAddr::V4(*a.ip()),
@@ -182,7 +182,7 @@ impl SocketAddr {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn port(&self) -> u16 {
         match *self {
             SocketAddr::V4(ref a) => a.port(),
@@ -226,7 +226,7 @@ impl SocketAddr {
     /// ```
     #[must_use]
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn is_ipv4(&self) -> bool {
         matches!(*self, SocketAddr::V4(_))
     }
@@ -248,7 +248,7 @@ impl SocketAddr {
     /// ```
     #[must_use]
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn is_ipv6(&self) -> bool {
         matches!(*self, SocketAddr::V6(_))
     }
@@ -268,7 +268,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 { ip, port }
     }
@@ -285,7 +285,7 @@ impl SocketAddrV4 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn ip(&self) -> &Ipv4Addr {
         &self.ip
     }
@@ -318,7 +318,7 @@ impl SocketAddrV4 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn port(&self) -> u16 {
         self.port
     }
@@ -359,7 +359,7 @@ impl SocketAddrV6 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn new(ip: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> SocketAddrV6 {
         SocketAddrV6 { ip, port, flowinfo, scope_id }
     }
@@ -376,7 +376,7 @@ impl SocketAddrV6 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn ip(&self) -> &Ipv6Addr {
         &self.ip
     }
@@ -409,7 +409,7 @@ impl SocketAddrV6 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn port(&self) -> u16 {
         self.port
     }
@@ -452,7 +452,7 @@ impl SocketAddrV6 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn flowinfo(&self) -> u32 {
         self.flowinfo
     }
@@ -492,7 +492,7 @@ impl SocketAddrV6 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_socketaddr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_socketaddr", since = "1.69.0")]
     pub const fn scope_id(&self) -> u32 {
         self.scope_id
     }

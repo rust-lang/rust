@@ -190,6 +190,11 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     ) -> TypeVariableTable<'a, 'tcx> {
         TypeVariableTable { storage: self, undo_log }
     }
+
+    #[inline]
+    pub(crate) fn eq_relations_ref(&self) -> &ut::UnificationTableStorage<TyVidEqKey<'tcx>> {
+        &self.eq_relations
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {

@@ -300,7 +300,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, e, e.kind, Id::Node(e.hir_id), hir, Expr, ExprKind),
             [
-                Box, ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type,
+                ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type,
                 DropTemps, Let, If, Loop, Match, Closure, Block, Assign, AssignOp, Field, Index,
                 Path, AddrOf, Break, Continue, Ret, InlineAsm, Struct, Repeat, Yield, Err
             ]

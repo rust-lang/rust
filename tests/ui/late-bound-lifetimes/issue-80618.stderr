@@ -1,0 +1,15 @@
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/issue-80618.rs:6:19
+   |
+LL |     let _ = foo::<'static>;
+   |                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/issue-80618.rs:1:8
+   |
+LL | fn foo<'a>(x: &'a str) -> &'a str {
+   |        ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0794`.

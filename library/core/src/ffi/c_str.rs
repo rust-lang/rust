@@ -153,10 +153,10 @@ impl Error for FromBytesWithNulError {
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
 ///
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub struct FromBytesUntilNulError(());
 
-#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 impl fmt::Display for FromBytesUntilNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "data provided does not contain a nul")
@@ -324,8 +324,8 @@ impl CStr {
     /// ```
     ///
     #[rustc_allow_const_fn_unstable(const_slice_index)]
-    #[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
+    #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {

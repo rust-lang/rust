@@ -359,10 +359,12 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, substs) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                if matches!(
-                    self.tcx.def_kind(def_id),
-                    DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
-                ) =>
+                if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
+            {
+                (def_id, substs)
+            }
+            ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                if self.tcx.is_impl_trait_in_trait(def_id) =>
             {
                 (def_id, substs)
             }
@@ -1757,8 +1759,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 )
                             }
                             (true, ty::Alias(ty::Projection, proj))
-                                if self.tcx.def_kind(proj.def_id)
-                                    == DefKind::ImplTraitPlaceholder =>
+                                if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
                             {
                                 let sm = self.tcx.sess.source_map();
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());

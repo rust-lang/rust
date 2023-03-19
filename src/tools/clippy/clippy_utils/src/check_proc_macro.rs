@@ -112,7 +112,6 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
 /// Get the search patterns to use for the given expression
 fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
     match e.kind {
-        ExprKind::Box(e) => (Pat::Str("box"), expr_search_pat(tcx, e).1),
         ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
         ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
         ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat(tcx, e).1),

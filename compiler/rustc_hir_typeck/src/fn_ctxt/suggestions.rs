@@ -64,8 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
-        if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
-            let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
+        if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err,
                 &fn_decl,

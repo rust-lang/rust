@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::process;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::{scope, ScopedJoinHandle};
+use std::thread::{self, scope, ScopedJoinHandle};
 
 fn main() {
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
@@ -55,16 +55,28 @@ fn main() {
             VecDeque::with_capacity(concurrency.get());
 
         macro_rules! check {
-            ($p:ident $(, $args:expr)* ) => {
+            ($p:ident) => {
+                check!(@ $p, name=format!("{}", stringify!($p)));
+            };
+            ($p:ident, $path:expr $(, $args:expr)* ) => {
+                let shortened = $path.strip_prefix(&root_path).unwrap();
+                let name = if shortened == std::path::Path::new("") {
+                    format!("{} (.)", stringify!($p))
+                } else {
+                    format!("{} ({})", stringify!($p), shortened.display())
+                };
+                check!(@ $p, name=name, $path $(,$args)*);
+            };
+            (@ $p:ident, name=$name:expr $(, $args:expr)* ) => {
                 drain_handles(&mut handles);
 
-                let handle = s.spawn(|| {
+                let handle = thread::Builder::new().name($name).spawn_scoped(s, || {
                     let mut flag = false;
                     $p::check($($args, )* &mut flag);
                     if (flag) {
                         bad.store(true, Ordering::Relaxed);
                     }
-                });
+                }).unwrap();
                 handles.push_back(handle);
             }
         }
@@ -108,7 +120,6 @@ fn main() {
         check!(edition, &library_path);
 
         check!(alphabetical, &src_path);
-        check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 

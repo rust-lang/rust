@@ -63,20 +63,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::ForLoop(pat, head, body, opt_label) => {
                     return self.lower_expr_for(e, pat, head, body, *opt_label);
                 }
-                // Similarly, async blocks do not use `e.id` but rather `closure_node_id`.
-                ExprKind::Async(capture_clause, closure_node_id, block) => {
-                    let hir_id = self.lower_node_id(*closure_node_id);
-                    self.lower_attrs(hir_id, &e.attrs);
-                    return self.make_async_expr(
-                        *capture_clause,
-                        hir_id,
-                        *closure_node_id,
-                        None,
-                        e.span,
-                        hir::AsyncGeneratorKind::Block,
-                        |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
-                    );
-                }
                 _ => (),
             }
 
@@ -186,6 +172,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr(expr),
                     self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
                     hir::MatchSource::Normal,
+                ),
+                ExprKind::Async(capture_clause, block) => self.make_async_expr(
+                    *capture_clause,
+                    e.id,
+                    None,
+                    e.span,
+                    hir::AsyncGeneratorKind::Block,
+                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Await(expr) => {
                     let dot_await_span = if expr.span.hi() < e.span.hi() {
@@ -320,7 +314,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop(..) | ExprKind::Async(..) => {
+                ExprKind::Paren(_) | ExprKind::ForLoop(..) => {
                     unreachable!("already handled")
                 }
 
@@ -591,13 +585,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
-        outer_hir_id: hir::HirId,
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
-    ) -> hir::Expr<'hir> {
+    ) -> hir::ExprKind<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
         // Resume argument type: `ResumeTy`
@@ -644,24 +637,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
-        let generator_kind = {
-            let c = self.arena.alloc(hir::Closure {
-                def_id: self.local_def_id(closure_node_id),
-                binder: hir::ClosureBinder::Default,
-                capture_clause,
-                bound_generic_params: &[],
-                fn_decl,
-                body,
-                fn_decl_span: self.lower_span(span),
-                fn_arg_span: None,
-                movability: Some(hir::Movability::Static),
-                constness: hir::Constness::NotConst,
-            });
+        hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_node_id),
+            binder: hir::ClosureBinder::Default,
+            capture_clause,
+            bound_generic_params: &[],
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(span),
+            fn_arg_span: None,
+            movability: Some(hir::Movability::Static),
+            constness: hir::Constness::NotConst,
+        }))
+    }
 
-            hir::ExprKind::Closure(c)
-        };
-
-        let hir_id = self.lower_node_id(closure_node_id);
+    /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
+    /// `inner_hir_id` in case the `closure_track_caller` feature is enabled.
+    pub(super) fn maybe_forward_track_caller(
+        &mut self,
+        span: Span,
+        outer_hir_id: hir::HirId,
+        inner_hir_id: hir::HirId,
+    ) {
         if self.tcx.features().closure_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
@@ -669,7 +666,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let unstable_span =
                 self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
             self.lower_attrs(
-                hir_id,
+                inner_hir_id,
                 &[Attribute {
                     kind: AttrKind::Normal(ptr::P(NormalAttr {
                         item: AttrItem {
@@ -685,8 +682,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }],
             );
         }
-
-        hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) }
     }
 
     /// Desugar `<expr>.await` into:
@@ -1001,15 +996,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None
                 };
 
-                this.make_async_expr(
+                let async_body = this.make_async_expr(
                     capture_clause,
-                    closure_hir_id,
                     inner_closure_id,
                     async_ret_ty,
                     body.span,
                     hir::AsyncGeneratorKind::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
-                )
+                );
+                let hir_id = this.lower_node_id(inner_closure_id);
+                this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
+                hir::Expr { hir_id, kind: async_body, span: this.lower_span(body.span) }
             });
             body_id
         });

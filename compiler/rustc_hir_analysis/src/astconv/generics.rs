@@ -612,7 +612,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = tcx.sess.struct_span_err(span, msg);
+            let mut err = struct_span_err!(tcx.sess, span, E0794, "{}", msg);
             err.span_note(span_late, note);
             err.emit();
         } else {

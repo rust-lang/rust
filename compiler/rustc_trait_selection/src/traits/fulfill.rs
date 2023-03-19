@@ -211,6 +211,29 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
     type Error = FulfillmentErrorCode<'tcx>;
     type OUT = Outcome<Self::Obligation, Self::Error>;
 
+    /// Compared to `needs_process_obligation` this and its callees
+    /// contain some optimizations that come at the price of false negatives.
+    ///
+    /// They
+    /// - reduce branching by covering only the most common case
+    /// - take a read-only view of the unification tables which allows skipping undo_log
+    ///   construction.
+    /// - bail out on value-cache misses in ena to avoid pointer chasing
+    /// - hoist RefCell locking out of the loop
+    #[inline]
+    fn skippable_obligations<'b>(
+        &'b self,
+        it: impl Iterator<Item = &'b Self::Obligation>,
+    ) -> usize {
+        let is_unchanged = self.selcx.infcx.is_ty_infer_var_definitely_unchanged();
+
+        it.take_while(|o| match o.stalled_on.as_slice() {
+            [o] => is_unchanged(*o),
+            _ => false,
+        })
+        .count()
+    }
+
     /// Identifies whether a predicate obligation needs processing.
     ///
     /// This is always inlined because it has a single callsite and it is

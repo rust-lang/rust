@@ -1,12 +1,12 @@
 # Style for Templates
 
-This directory has templates in the [Tera templating language](teradoc), which is very
-similar to [Jinja2](jinjadoc) and [Django](djangodoc) templates, and also to [Askama](askamadoc).
+This directory has templates in the [Tera templating language][teradoc], which is very
+similar to [Jinja2][jinjadoc] and [Django][djangodoc] templates, and also to [Askama][askamadoc].
 
 [teradoc]: https://tera.netlify.app/docs/#templates
-[jinjadoc]: https://jinja.palletsprojects.com/en/3.0.x/templates/
-[djangodoc]: https://docs.djangoproject.com/en/3.2/topics/templates/
-[askamadoc]: https://docs.rs/askama/0.10.5/askama/
+[jinjadoc]: https://jinja.palletsprojects.com/en/3.1.x/templates/
+[djangodoc]: https://docs.djangoproject.com/en/4.1/topics/templates/
+[askamadoc]: https://docs.rs/askama/latest/askama/
 
 We want our rendered output to have as little unnecessary whitespace as
 possible, so that pages load quickly. To achieve that we use Tera's
@@ -30,8 +30,8 @@ contents don't necessarily need a new line.
 
 Askama templates support quite sophisticated control flow. To keep our templates
 simple and understandable, we use only a subset: `if` and `for`. In particular
-we avoid [assignments in the template logic](assignments) and [Askama
-macros](macros). This also may make things easier if we switch to a different
+we avoid [assignments in the template logic][assignments] and [Askama
+macros][macros]. This also may make things easier if we switch to a different
 Jinja-style template system, like Askama, in the future.
 
 [assignments]: https://djc.github.io/askama/template_syntax.html#assignments

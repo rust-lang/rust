@@ -3,7 +3,6 @@ use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
-use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::sync::Lrc;
@@ -478,9 +477,7 @@ where
                 }
             }
 
-            ty::Alias(ty::Projection, proj)
-                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
-            {
+            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(proj.def_id);
 
@@ -559,8 +556,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && tcx.def_kind(projection_ty.def_id)
-                                != DefKind::ImplTraitPlaceholder =>
+                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id) =>
                     {
                         self.infer_projection(
                             param_env,
