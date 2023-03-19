@@ -2781,7 +2781,6 @@ impl ClashingExternDeclarations {
 
             // Given a transparent newtype, reach through and grab the inner
             // type unless the newtype makes the type non-null.
-            // Also returns whether this type is a ZST.
             let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
                 loop {
                     if let ty::Adt(def, substs) = *ty.kind() {
