@@ -19,7 +19,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{
     ast::{
-        self, ArrayExprKind, AstChildren, HasArgList, HasLoopBody, HasName, LiteralKind,
+        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasLoopBody, HasName, LiteralKind,
         SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
@@ -100,6 +100,7 @@ pub(super) fn lower(
             _c: Count::new(),
         },
         expander,
+        current_try_block: None,
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
     }
@@ -113,6 +114,7 @@ struct ExprCollector<'a> {
     body: Body,
     krate: CrateId,
     source_map: BodySourceMap,
+    current_try_block: Option<LabelId>,
     is_lowering_assignee_expr: bool,
     is_lowering_generator: bool,
 }
@@ -222,6 +224,10 @@ impl ExprCollector<'_> {
         self.source_map.label_map.insert(src, id);
         id
     }
+    // FIXME: desugared labels don't have ptr, that's wrong and should be fixed somehow.
+    fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
+        self.body.labels.alloc(label)
+    }
     fn make_label(&mut self, label: Label, src: LabelSource) -> LabelId {
         let id = self.body.labels.alloc(label);
         self.source_map.label_map_back.insert(id, src);
@@ -259,13 +265,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Let { pat, expr }, syntax_ptr)
             }
             ast::Expr::BlockExpr(e) => match e.modifier() {
-                Some(ast::BlockModifier::Try(_)) => {
-                    self.collect_block_(e, |id, statements, tail| Expr::TryBlock {
-                        id,
-                        statements,
-                        tail,
-                    })
-                }
+                Some(ast::BlockModifier::Try(_)) => self.collect_try_block(e),
                 Some(ast::BlockModifier::Unsafe(_)) => {
                     self.collect_block_(e, |id, statements, tail| Expr::Unsafe {
                         id,
@@ -606,6 +606,59 @@ impl ExprCollector<'_> {
         })
     }
 
+    /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
+    /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
+    fn collect_try_block(&mut self, e: BlockExpr) -> ExprId {
+        let Some(try_from_output) = LangItem::TryTraitFromOutput.path(self.db, self.krate) else {
+            return self.alloc_expr_desugared(Expr::Missing);
+        };
+        let prev_try_block = self.current_try_block.take();
+        self.current_try_block =
+            Some(self.alloc_label_desugared(Label { name: Name::generate_new_name() }));
+        let expr_id = self.collect_block(e);
+        let callee = self.alloc_expr_desugared(Expr::Path(try_from_output));
+        let Expr::Block { label, tail, .. } = &mut self.body.exprs[expr_id] else {
+            unreachable!("It is the output of collect block");
+        };
+        *label = self.current_try_block;
+        let next_tail = match *tail {
+            Some(tail) => self.alloc_expr_desugared(Expr::Call {
+                callee,
+                args: Box::new([tail]),
+                is_assignee_expr: false,
+            }),
+            None => {
+                let unit = self.alloc_expr_desugared(Expr::Tuple {
+                    exprs: Box::new([]),
+                    is_assignee_expr: false,
+                });
+                self.alloc_expr_desugared(Expr::Call {
+                    callee,
+                    args: Box::new([unit]),
+                    is_assignee_expr: false,
+                })
+            }
+        };
+        let Expr::Block { tail, .. } = &mut self.body.exprs[expr_id] else {
+            unreachable!("It is the output of collect block");
+        };
+        *tail = Some(next_tail);
+        self.current_try_block = prev_try_block;
+        expr_id
+    }
+
+    /// Desugar `ast::TryExpr` from: `<expr>?` into:
+    /// ```ignore (pseudo-rust)
+    /// match Try::branch(<expr>) {
+    ///     ControlFlow::Continue(val) => val,
+    ///     ControlFlow::Break(residual) =>
+    ///         // If there is an enclosing `try {...}`:
+    ///         break 'catch_target Try::from_residual(residual),
+    ///         // Otherwise:
+    ///         return Try::from_residual(residual),
+    /// }
+    /// ```
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
         let (try_branch, cf_continue, cf_break, try_from_residual) = 'if_chain: {
             if let Some(try_branch) = LangItem::TryTraitBranch.path(self.db, self.krate) {
@@ -628,7 +681,9 @@ impl ExprCollector<'_> {
             Expr::Call { callee: try_branch, args: Box::new([operand]), is_assignee_expr: false },
             syntax_ptr.clone(),
         );
-        let continue_binding = self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
+        let continue_name = Name::generate_new_name();
+        let continue_binding =
+            self.alloc_binding(continue_name.clone(), BindingAnnotation::Unannotated);
         let continue_bpat =
             self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
         self.add_definition_to_binding(continue_binding, continue_bpat);
@@ -639,9 +694,10 @@ impl ExprCollector<'_> {
                 ellipsis: None,
             }),
             guard: None,
-            expr: self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone()),
+            expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr.clone()),
         };
-        let break_binding = self.alloc_binding(name![v1], BindingAnnotation::Unannotated);
+        let break_name = Name::generate_new_name();
+        let break_binding = self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated);
         let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
         self.add_definition_to_binding(break_binding, break_bpat);
         let break_arm = MatchArm {
@@ -652,13 +708,18 @@ impl ExprCollector<'_> {
             }),
             guard: None,
             expr: {
-                let x = self.alloc_expr(Expr::Path(Path::from(name![v1])), syntax_ptr.clone());
+                let x = self.alloc_expr(Expr::Path(Path::from(break_name)), syntax_ptr.clone());
                 let callee = self.alloc_expr(Expr::Path(try_from_residual), syntax_ptr.clone());
                 let result = self.alloc_expr(
                     Expr::Call { callee, args: Box::new([x]), is_assignee_expr: false },
                     syntax_ptr.clone(),
                 );
-                self.alloc_expr(Expr::Return { expr: Some(result) }, syntax_ptr.clone())
+                if let Some(label) = self.current_try_block {
+                    let label = Some(self.body.labels[label].name.clone());
+                    self.alloc_expr(Expr::Break { expr: Some(result), label }, syntax_ptr.clone())
+                } else {
+                    self.alloc_expr(Expr::Return { expr: Some(result) }, syntax_ptr.clone())
+                }
             },
         };
         let arms = Box::new([continue_arm, break_arm]);

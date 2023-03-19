@@ -122,11 +122,6 @@ pub enum Expr {
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
-    TryBlock {
-        id: BlockId,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Async {
         id: BlockId,
         statements: Box<[Statement]>,
@@ -310,7 +305,6 @@ impl Expr {
                 f(*expr);
             }
             Expr::Block { statements, tail, .. }
-            | Expr::TryBlock { statements, tail, .. }
             | Expr::Unsafe { statements, tail, .. }
             | Expr::Async { statements, tail, .. }
             | Expr::Const { statements, tail, .. } => {

@@ -522,6 +522,42 @@ fn loops() {
         "#,
         4,
     );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let mut x = 0;
+        loop {
+            x = x + 1;
+            if x == 5 {
+                break x + 2;
+            }
+        }
+    };
+        "#,
+        7,
+    );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        'a: loop {
+            let x = 'b: loop {
+                let x = 'c: loop {
+                    let x = 'd: loop {
+                        let x = 'e: loop {
+                            break 'd 1;
+                        };
+                        break 2 + x;
+                    };
+                    break 3 + x;
+                };
+                break 'a 4 + x;
+            };
+            break 5 + x;
+        }
+    };
+        "#,
+        8,
+    );
 }
 
 #[test]
@@ -1016,6 +1052,24 @@ fn try_operator() {
     const GOAL: i32 = g(Ok(2)) + g(Err(E1(3)));
         "#,
         15140,
+    );
+}
+
+#[test]
+fn try_block() {
+    check_number(
+        r#"
+    //- minicore: option, try
+    const fn g(x: Option<i32>, y: Option<i32>) -> i32 {
+        let r = try { x? * y? };
+        match r {
+            Some(k) => k,
+            None => 5,
+        }
+    }
+    const GOAL: i32 = g(Some(10), Some(20)) + g(Some(30), None) + g(None, Some(40)) + g(None, None);
+        "#,
+        215,
     );
 }
 

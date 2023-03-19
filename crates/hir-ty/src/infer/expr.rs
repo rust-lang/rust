@@ -159,26 +159,6 @@ impl<'a> InferenceContext<'a> {
                 })
                 .1
             }
-            Expr::TryBlock { id: _, statements, tail } => {
-                // The type that is returned from the try block
-                let try_ty = self.table.new_type_var();
-                if let Some(ty) = expected.only_has_type(&mut self.table) {
-                    self.unify(&try_ty, &ty);
-                }
-
-                // The ok-ish type that is expected from the last expression
-                let ok_ty =
-                    self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_output());
-
-                self.infer_block(
-                    tgt_expr,
-                    statements,
-                    *tail,
-                    None,
-                    &Expectation::has_type(ok_ty.clone()),
-                );
-                try_ty
-            }
             Expr::Async { id: _, statements, tail } => {
                 let ret_ty = self.table.new_type_var();
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);

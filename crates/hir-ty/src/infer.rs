@@ -1025,10 +1025,6 @@ impl<'a> InferenceContext<'a> {
         self.resolve_lang_item(lang)?.as_trait()
     }
 
-    fn resolve_ops_try_output(&self) -> Option<TypeAliasId> {
-        self.resolve_output_on(self.resolve_lang_trait(LangItem::Try)?)
-    }
-
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
         self.resolve_output_on(self.resolve_lang_trait(LangItem::Neg)?)
     }

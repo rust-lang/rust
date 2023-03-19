@@ -18,6 +18,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
+use rustc_hash::FxHashMap;
 
 use crate::{
     consteval::ConstEvalError, db::HirDatabase, display::HirDisplay, infer::TypeMismatch,
@@ -32,17 +33,21 @@ mod pattern_matching;
 
 use pattern_matching::AdtPatternShape;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct LoopBlocks {
     begin: BasicBlockId,
     /// `None` for loops that are not terminating
     end: Option<BasicBlockId>,
+    place: Place,
 }
 
 struct MirLowerCtx<'a> {
     result: MirBody,
     owner: DefWithBodyId,
     current_loop_blocks: Option<LoopBlocks>,
+    // FIXME: we should resolve labels in HIR lowering and always work with label id here, not
+    // with raw names.
+    labeled_loop_blocks: FxHashMap<Name, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'a dyn HirDatabase,
     body: &'a Body,
@@ -72,6 +77,7 @@ pub enum MirLowerError {
     ImplementationError(&'static str),
     LangItemNotFound(LangItem),
     MutatingRvalue,
+    UnresolvedLabel,
 }
 
 macro_rules! not_supported {
@@ -375,19 +381,29 @@ impl MirLowerCtx<'_> {
                 Ok(self.merge_blocks(Some(then_target), else_target))
             }
             Expr::Unsafe { id: _, statements, tail } => {
-                self.lower_block_to_place(None, statements, current, *tail, place)
+                self.lower_block_to_place(statements, current, *tail, place)
             }
             Expr::Block { id: _, statements, tail, label } => {
-                self.lower_block_to_place(*label, statements, current, *tail, place)
+                if let Some(label) = label {
+                    self.lower_loop(current, place.clone(), Some(*label), |this, begin| {
+                        if let Some(block) = this.lower_block_to_place(statements, begin, *tail, place)? {
+                            let end = this.current_loop_end()?;
+                            this.set_goto(block, end);
+                        }
+                        Ok(())
+                    })
+                } else {
+                    self.lower_block_to_place(statements, current, *tail, place)
+                }
             }
-            Expr::Loop { body, label } => self.lower_loop(current, *label, |this, begin| {
+            Expr::Loop { body, label } => self.lower_loop(current, place, *label, |this, begin| {
                 if let Some((_, block)) = this.lower_expr_as_place(begin, *body, true)? {
                     this.set_goto(block, begin);
                 }
                 Ok(())
             }),
             Expr::While { condition, body, label } => {
-                self.lower_loop(current, *label, |this, begin| {
+                self.lower_loop(current, place, *label, |this, begin| {
                     let Some((discr, to_switch)) = this.lower_expr_to_some_operand(*condition, begin)? else {
                         return Ok(());
                     };
@@ -438,7 +454,7 @@ impl MirLowerCtx<'_> {
                     return Ok(None);
                 };
                 self.push_assignment(current, ref_mut_iterator_place.clone(), Rvalue::Ref(BorrowKind::Mut { allow_two_phase_borrow: false }, iterator_place), expr_id.into());
-                self.lower_loop(current, label, |this, begin| {
+                self.lower_loop(current, place, label, |this, begin| {
                     let Some(current) = this.lower_call(iter_next_fn_op, vec![Operand::Copy(ref_mut_iterator_place)], option_item_place.clone(), begin, false)?
                     else {
                         return Ok(());
@@ -558,24 +574,28 @@ impl MirLowerCtx<'_> {
                 Some(_) => not_supported!("continue with label"),
                 None => {
                     let loop_data =
-                        self.current_loop_blocks.ok_or(MirLowerError::ContinueWithoutLoop)?;
+                        self.current_loop_blocks.as_ref().ok_or(MirLowerError::ContinueWithoutLoop)?;
                     self.set_goto(current, loop_data.begin);
                     Ok(None)
                 }
             },
             Expr::Break { expr, label } => {
-                if expr.is_some() {
-                    not_supported!("break with value");
+                if let Some(expr) = expr {
+                    let loop_data = match label {
+                        Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?,
+                        None => self.current_loop_blocks.as_ref().ok_or(MirLowerError::BreakWithoutLoop)?,
+                    };
+                    let Some(c) = self.lower_expr_to_place(*expr, loop_data.place.clone(), current)? else {
+                        return Ok(None);
+                    };
+                    current = c;
                 }
-                match label {
-                    Some(_) => not_supported!("break with label"),
-                    None => {
-                        let end =
-                            self.current_loop_end()?;
-                        self.set_goto(current, end);
-                        Ok(None)
-                    }
-                }
+                let end = match label {
+                    Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?.end.expect("We always generate end for labeled loops"),
+                    None => self.current_loop_end()?,
+                };
+                self.set_goto(current, end);
+                Ok(None)
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
@@ -668,7 +688,6 @@ impl MirLowerCtx<'_> {
             }
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            Expr::TryBlock { .. } => not_supported!("try block"),
             Expr::Async { .. } => not_supported!("async block"),
             Expr::Const { .. } => not_supported!("anonymous const block"),
             Expr::Cast { expr, type_ref: _ } => {
@@ -1085,19 +1104,34 @@ impl MirLowerCtx<'_> {
     fn lower_loop(
         &mut self,
         prev_block: BasicBlockId,
+        place: Place,
         label: Option<LabelId>,
         f: impl FnOnce(&mut MirLowerCtx<'_>, BasicBlockId) -> Result<()>,
     ) -> Result<Option<BasicBlockId>> {
-        if label.is_some() {
-            not_supported!("loop with label");
-        }
         let begin = self.new_basic_block();
-        let prev =
-            mem::replace(&mut self.current_loop_blocks, Some(LoopBlocks { begin, end: None }));
+        let prev = mem::replace(
+            &mut self.current_loop_blocks,
+            Some(LoopBlocks { begin, end: None, place }),
+        );
+        let prev_label = if let Some(label) = label {
+            // We should generate the end now, to make sure that it wouldn't change later. It is
+            // bad as we may emit end (unneccessary unreachable block) for unterminating loop, but
+            // it should not affect correctness.
+            self.current_loop_end()?;
+            self.labeled_loop_blocks.insert(
+                self.body.labels[label].name.clone(),
+                self.current_loop_blocks.as_ref().unwrap().clone(),
+            )
+        } else {
+            None
+        };
         self.set_goto(prev_block, begin);
         f(self, begin)?;
         let my = mem::replace(&mut self.current_loop_blocks, prev)
             .ok_or(MirLowerError::ImplementationError("current_loop_blocks is corrupt"))?;
+        if let Some(prev) = prev_label {
+            self.labeled_loop_blocks.insert(self.body.labels[label.unwrap()].name.clone(), prev);
+        }
         Ok(my.end)
     }
 
@@ -1185,15 +1219,11 @@ impl MirLowerCtx<'_> {
 
     fn lower_block_to_place(
         &mut self,
-        label: Option<LabelId>,
         statements: &[hir_def::expr::Statement],
         mut current: BasicBlockId,
         tail: Option<ExprId>,
         place: Place,
     ) -> Result<Option<Idx<BasicBlock>>> {
-        if label.is_some() {
-            not_supported!("block with label");
-        }
         for statement in statements.iter() {
             match statement {
                 hir_def::expr::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
@@ -1355,6 +1385,7 @@ pub fn lower_to_mir(
         body,
         owner,
         current_loop_blocks: None,
+        labeled_loop_blocks: Default::default(),
         discr_temp: None,
     };
     let mut current = start_block;

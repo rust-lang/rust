@@ -206,19 +206,27 @@ fn test() {
 fn infer_try_trait() {
     check_types(
         r#"
-//- minicore: try, result
+//- minicore: try, result, from
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
     v;
 } //^ i32
-
-impl<O, E> core::ops::Try for Result<O, E> {
-    type Output = O;
-    type Error = Result<core::convert::Infallible, E>;
+"#,
+    );
 }
 
-impl<T, E, F: From<E>> core::ops::FromResidual<Result<core::convert::Infallible, E>> for Result<T, F> {}
+#[test]
+fn infer_try_block() {
+    // FIXME: We should test more cases, but it currently doesn't work, since
+    // our labeled block type inference is broken.
+    check_types(
+        r#"
+//- minicore: try, option
+fn test() {
+    let x: Option<_> = try { Some(2)?; };
+      //^ Option<()>
+}
 "#,
     );
 }

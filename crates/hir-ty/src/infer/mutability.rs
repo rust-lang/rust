@@ -44,7 +44,6 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
             Expr::Block { id: _, statements, tail, label: _ }
-            | Expr::TryBlock { id: _, statements, tail }
             | Expr::Async { id: _, statements, tail }
             | Expr::Const { id: _, statements, tail }
             | Expr::Unsafe { id: _, statements, tail } => {

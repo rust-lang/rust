@@ -420,9 +420,6 @@ impl<'a> Printer<'a> {
             Expr::Unsafe { id: _, statements, tail } => {
                 self.print_block(Some("unsafe "), statements, tail);
             }
-            Expr::TryBlock { id: _, statements, tail } => {
-                self.print_block(Some("try "), statements, tail);
-            }
             Expr::Async { id: _, statements, tail } => {
                 self.print_block(Some("async "), statements, tail);
             }
