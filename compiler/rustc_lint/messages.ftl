@@ -508,3 +508,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
     .specifically = this associated type bound is unsatisfied for `{$proj_ty}`
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
+
+lint_useless_anonymous_reexport = useless anonymous re-export
+    .note = only anonymous re-exports of traits are useful, this is {$article} `{$desc}`
