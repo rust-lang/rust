@@ -140,10 +140,6 @@ impl Buffer {
         self.for_html
     }
 
-    pub(crate) fn reserve(&mut self, additional: usize) {
-        self.buffer.reserve(additional)
-    }
-
     pub(crate) fn len(&self) -> usize {
         self.buffer.len()
     }
@@ -1268,7 +1264,7 @@ impl std::fmt::Write for WriteCounter {
     }
 }
 
-// Implements Display by emitting the given number of spaces.
+/// Implements Display by emitting the given number of spaces.
 struct Indent(usize);
 
 impl fmt::Display for Indent {
@@ -1297,28 +1293,24 @@ impl clean::FnDecl {
         })
     }
 
-    /// * `header_len`: The length of the function header and name. In other words, the number of
-    ///   characters in the function declaration up to but not including the parentheses.
-    ///   This is expected to go into a `<pre>`/`code-header` block, so indentation and newlines
-    ///   are preserved.
+    /// * `header`: Prints the function header and name (everything before the params).
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
-        header_len: usize,
+        header: impl fmt::Display + 'a,
         indent: usize,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
+            let header = Plain(header);
+            let decl = Plain(display_fn(|f| self.inner_full_print(None, f, cx)));
             let mut counter = WriteCounter(0);
-            write!(&mut counter, "{:#}", display_fn(|f| { self.inner_full_print(None, f, cx) }))
-                .unwrap();
+            write!(&mut counter, "{header}{decl}")?;
             // If the text form was over 80 characters wide, we will line-wrap our output.
-            let line_wrapping_indent =
-                if header_len + counter.0 > 80 { Some(indent) } else { None };
-            // Generate the final output. This happens to accept `{:#}` formatting to get textual
-            // output but in practice it is only formatted with `{}` to get HTML output.
+            let line_wrapping_indent = (counter.0 > 80).then_some(indent);
+            // Generate the final output.
             self.inner_full_print(line_wrapping_indent, f, cx)
         })
     }
@@ -1582,12 +1574,9 @@ impl clean::TypeBinding {
 }
 
 pub(crate) fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
-    display_fn(move |f| {
-        let quot = "&quot;";
-        match abi {
-            Abi::Rust => Ok(()),
-            abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
-        }
+    display_fn(move |f| match abi {
+        Abi::Rust => Ok(()),
+        abi => write!(f, "extern \"{}\" ", abi.name()),
     })
 }
 

@@ -528,39 +528,34 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
     let visibility = visibility_print_with_space(it.visibility(tcx), it.item_id, cx).to_string();
-    let name = it.name.unwrap();
+    let name = it.name.as_ref().unwrap().as_str();
 
-    let generics_len = format!("{:#}", f.generics.print(cx)).len();
-    let header_len = "fn ".len()
-        + visibility.len()
-        + constness.len()
-        + asyncness.len()
-        + unsafety.len()
-        + abi.len()
-        + name.as_str().len()
-        + generics_len;
+    let fn_header = super::FunctionHeader {
+        indent_str: "",
+        vis: visibility,
+        constness,
+        asyncness,
+        unsafety,
+        // standalone functions are never default, only associated functions.
+        defaultness: "",
+        abi,
+        href: "".to_string(),
+        name,
+        generics: f.generics.print(cx).to_string(),
+    };
 
-    let notable_traits =
-        f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = f
+        .decl
+        .output
+        .as_return()
+        .and_then(|output| notable_traits_button(output, cx))
+        .unwrap_or_default();
 
     wrap_item(w, |w| {
         render_attributes_in_pre(w, it, "");
-        w.reserve(header_len);
-        write!(
-            w,
-            "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-                {name}{generics}{decl}{notable_traits}{where_clause}",
-            vis = visibility,
-            constness = constness,
-            asyncness = asyncness,
-            unsafety = unsafety,
-            abi = abi,
-            name = name,
-            generics = f.generics.print(cx),
-            where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
-            decl = f.decl.full_print(header_len, 0, cx),
-            notable_traits = notable_traits.unwrap_or_default(),
-        );
+        let decl = f.decl.full_print(&fn_header, 0, cx);
+        let where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline);
+        write!(w, "{fn_header}{decl}{notable_traits}{where_clause}");
     });
     document(w, cx, it, None, HeadingOffset::H2);
 }

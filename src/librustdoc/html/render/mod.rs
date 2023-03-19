@@ -809,7 +809,7 @@ fn assoc_method(
 ) {
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
-    let name = meth.name.as_ref().unwrap();
+    let name = meth.name.as_ref().unwrap().as_str();
     let vis = visibility_print_with_space(meth.visibility(tcx), meth.item_id, cx).to_string();
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
@@ -825,22 +825,13 @@ fn assoc_method(
     let abi = print_abi_with_space(header.abi).to_string();
     let href = assoc_href_attr(meth, link, cx);
 
-    // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-    let generics_len = format!("{:#}", g.print(cx)).len();
-    let mut header_len = "fn ".len()
-        + vis.len()
-        + constness.len()
-        + asyncness.len()
-        + unsafety.len()
-        + defaultness.len()
-        + abi.len()
-        + name.as_str().len()
-        + generics_len;
-
-    let notable_traits = d.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = d
+        .output
+        .as_return()
+        .and_then(|output| notable_traits_button(output, cx))
+        .unwrap_or_default();
 
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
-        header_len += 4;
         let indent_str = "    ";
         render_attributes_in_pre(w, meth, indent_str);
         (4, indent_str, Ending::NoNewline)
@@ -848,25 +839,39 @@ fn assoc_method(
         render_attributes_in_code(w, meth);
         (0, "", Ending::Newline)
     };
-    w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
-    write!(
-        w,
-        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a{href} class=\"fn\">{name}</a>\
-         {generics}{decl}{notable_traits}{where_clause}",
-        indent = indent_str,
-        vis = vis,
-        constness = constness,
-        asyncness = asyncness,
-        unsafety = unsafety,
-        defaultness = defaultness,
-        abi = abi,
-        href = href,
-        name = name,
-        generics = g.print(cx),
-        decl = d.full_print(header_len, indent, cx),
-        notable_traits = notable_traits.unwrap_or_default(),
-        where_clause = print_where_clause(g, cx, indent, end_newline),
-    );
+
+    let fn_header = FunctionHeader {
+        indent_str,
+        vis,
+        constness,
+        asyncness,
+        unsafety,
+        defaultness,
+        abi,
+        href,
+        name,
+        generics: g.print(cx).to_string(),
+    };
+
+    let decl = d.full_print(&fn_header, indent, cx);
+    let where_clause = print_where_clause(g, cx, indent, end_newline);
+
+    write!(w, "{fn_header}{decl}{notable_traits}{where_clause}");
+}
+
+#[derive(Template)]
+#[template(path = "function_header.html")]
+struct FunctionHeader<'a> {
+    indent_str: &'static str,
+    vis: String,
+    constness: &'a str,
+    asyncness: &'a str,
+    unsafety: &'a str,
+    defaultness: &'a str,
+    abi: String,
+    href: String,
+    name: &'a str,
+    generics: String,
 }
 
 /// Writes a span containing the versions at which an item became stable and/or const-stable. For

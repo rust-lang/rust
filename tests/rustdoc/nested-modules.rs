@@ -7,11 +7,11 @@ mod a_module {
 
     pub mod a_nested_module {
         // @has aCrate/a_nested_module/index.html '//a[@href="fn.a_nested_public_function.html"]' 'a_nested_public_function'
-        // @hasraw aCrate/a_nested_module/fn.a_nested_public_function.html 'pub fn a_nested_public_function()'
+        // @has aCrate/a_nested_module/fn.a_nested_public_function.html '//' 'pub fn a_nested_public_function()'
         pub fn a_nested_public_function() {}
 
         // @has aCrate/a_nested_module/index.html '//a[@href="fn.another_nested_public_function.html"]' 'another_nested_public_function'
-        // @hasraw aCrate/a_nested_module/fn.another_nested_public_function.html 'pub fn another_nested_public_function()'
+        // @has aCrate/a_nested_module/fn.another_nested_public_function.html '//' 'pub fn another_nested_public_function()'
         pub use a_nested_module::a_nested_public_function as another_nested_public_function;
     }
 
