@@ -1722,12 +1722,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
-            fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+            fcx.get_node_fn_decl(parent)
+                .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)
         };
 
-        if let Some((fn_decl, can_suggest)) = fn_decl {
+        if let Some((fn_id, fn_decl, can_suggest)) = fn_decl {
             if blk_id.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
@@ -1735,7 +1736,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     expected,
                     found,
                     can_suggest,
-                    fcx.tcx.hir().get_parent_item(id).into(),
+                    fn_id,
                 );
             }
             if !pointing_at_return_type {
@@ -1746,17 +1747,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_item(id);
         let parent_item = fcx.tcx.hir().get_by_def_id(parent_id.def_id);
 
-        if let (Some(expr), Some(_), Some((fn_decl, _, _))) =
+        if let (Some(expr), Some(_), Some((fn_id, fn_decl, _, _))) =
             (expression, blk_id, fcx.get_node_fn_decl(parent_item))
         {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err,
-                expr,
-                fn_decl,
-                expected,
-                found,
-                id,
-                parent_id.into(),
+                &mut err, expr, fn_decl, expected, found, id, fn_id,
             );
         }
 
@@ -1882,7 +1877,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
-        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id)
+        if let Some((_, fn_decl, _)) = fcx.get_fn_decl(blk_id)
             && let hir::FnRetTy::Return(ty) = fn_decl.output
             && let ty = fcx.astconv().ast_ty_to_ty( ty)
             && let ty::Dynamic(..) = ty.kind()

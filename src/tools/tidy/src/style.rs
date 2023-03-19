@@ -19,7 +19,7 @@
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
-use std::path::Path;
+use std::{ffi::OsStr, path::Path};
 
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
@@ -228,21 +228,33 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 
 pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path) -> bool {
-        filter_dirs(path) || skip_markdown_path(path)
+        if path.file_name().map_or(false, |name| name.to_string_lossy().starts_with(".#")) {
+            // vim or emacs temporary file
+            return true;
+        }
+
+        if filter_dirs(path) || skip_markdown_path(path) {
+            return true;
+        }
+
+        let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "ftl", "goml"];
+        if extensions.iter().all(|e| path.extension() != Some(OsStr::new(e))) {
+            return true;
+        }
+
+        // We only check CSS files in rustdoc.
+        path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
     }
+
     let problematic_consts_strings: Vec<String> = (PROBLEMATIC_CONSTS.iter().map(u32::to_string))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
         .collect();
     let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
+
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions =
-            [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl", ".goml"];
-        if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
-            return;
-        }
 
         let is_style_file = filename.ends_with(".css");
         let under_rustfmt = filename.ends_with(".rs") &&
@@ -252,11 +264,6 @@ pub fn check(path: &Path, bad: &mut bool) {
                 (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists()) ||
                     a.ends_with("src/doc/book")
             });
-
-        if is_style_file && !is_in(file, "src", "librustdoc") {
-            // We only check CSS files in rustdoc.
-            return;
-        }
 
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());

@@ -117,15 +117,21 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    // When computing the param_env of an RPITIT, copy param_env of the containing function. The
-    // synthesized associated type doesn't have extra predicates to assume.
-    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
-        return tcx.param_env(fn_def_id);
-    }
-
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
+
+    // When computing the param_env of an RPITIT, use predicates of the containing function,
+    // *except* for the additional assumption that the RPITIT normalizes to the trait method's
+    // default opaque type. This is needed to properly check the item bounds of the assoc
+    // type hold (`check_type_bounds`), since that method already installs a similar projection
+    // bound, so they will conflict.
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): I don't like this, we should
+    // at least be making sure that the generics in RPITITs and their parent fn don't
+    // get out of alignment, or else we do actually need to substitute these predicates.
+    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+        predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
+    }
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -160,7 +166,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
 
     let local_did = def_id.as_local();
-    let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): This isn't correct for
+    // RPITITs in const trait fn.
+    let hir_id = local_did.and_then(|def_id| tcx.opt_local_def_id_to_hir_id(def_id));
 
     // FIXME(consts): This is not exactly in line with the constness query.
     let constness = match hir_id {
@@ -268,8 +276,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            && self.tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
-            && self.tcx.impl_trait_in_trait_parent(alias_ty.def_id) == self.fn_def_id
+            && self.tcx.is_impl_trait_in_trait(alias_ty.def_id)
+            && self.tcx.impl_trait_in_trait_parent_fn(alias_ty.def_id) == self.fn_def_id
             && self.seen.insert(alias_ty.def_id)
         {
             // We have entered some binders as we've walked into the
@@ -282,11 +290,24 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                     re
                 }
             });
+
+            // If we're lowering to associated item, install the opaque type which is just
+            // the `type_of` of the trait's associated item. If we're using the old lowering
+            // strategy, then just reinterpret the associated type like an opaque :^)
+            let default_ty = if self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
+                self
+                    .tcx
+                    .type_of(alias_ty.def_id)
+                    .subst(self.tcx, alias_ty.substs)
+            } else {
+                self.tcx.mk_alias(ty::Opaque, alias_ty)
+            };
+
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: alias_ty,
-                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
+                        term: default_ty.into(),
                     },
                     self.bound_vars,
                 )

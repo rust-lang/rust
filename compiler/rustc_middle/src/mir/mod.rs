@@ -1268,6 +1268,13 @@ impl<'tcx> BasicBlockData<'tcx> {
 }
 
 impl<O> AssertKind<O> {
+    /// Returns true if this an overflow checking assertion controlled by -C overflow-checks.
+    pub fn is_optional_overflow_check(&self) -> bool {
+        use AssertKind::*;
+        use BinOp::*;
+        matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
+    }
+
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
     /// The caller is expected to handle `BoundsCheck` separately.
@@ -1989,16 +1996,6 @@ impl BorrowKind {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
             BorrowKind::Mut { .. } => "mutable",
         }
-    }
-}
-
-impl BinOp {
-    /// The checkable operators are those whose overflow checking behavior is controlled by
-    /// -Coverflow-checks option. The remaining operators have either no overflow conditions (e.g.,
-    /// BitAnd, BitOr, BitXor) or are always checked for overflow (e.g., Div, Rem).
-    pub fn is_checkable(self) -> bool {
-        use self::BinOp::*;
-        matches!(self, Add | Sub | Mul | Shl | Shr)
     }
 }
 

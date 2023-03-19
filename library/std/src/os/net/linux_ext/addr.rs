@@ -4,7 +4,7 @@ use crate::os::unix::net::SocketAddr;
 use crate::sealed::Sealed;
 
 /// Platform-specific extensions to [`SocketAddr`].
-#[unstable(feature = "unix_socket_abstract", issue = "85410")]
+#[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
 pub trait SocketAddrExt: Sealed {
     /// Creates a Unix socket address in the abstract namespace.
     ///
@@ -22,7 +22,6 @@ pub trait SocketAddrExt: Sealed {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket_abstract)]
     /// use std::os::unix::net::{UnixListener, SocketAddr};
     /// use std::os::linux::net::SocketAddrExt;
     ///
@@ -38,6 +37,7 @@ pub trait SocketAddrExt: Sealed {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
     fn from_abstract_name<N>(name: N) -> crate::io::Result<SocketAddr>
     where
         N: AsRef<[u8]>;
@@ -47,7 +47,6 @@ pub trait SocketAddrExt: Sealed {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket_abstract)]
     /// use std::os::unix::net::{UnixListener, SocketAddr};
     /// use std::os::linux::net::SocketAddrExt;
     ///
@@ -60,5 +59,6 @@ pub trait SocketAddrExt: Sealed {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
     fn as_abstract_name(&self) -> Option<&[u8]>;
 }

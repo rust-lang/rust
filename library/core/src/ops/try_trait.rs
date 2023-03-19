@@ -392,14 +392,7 @@ impl<T> NeverShortCircuit<T> {
     pub fn wrap_mut_2<A, B>(
         mut f: impl ~const FnMut(A, B) -> T,
     ) -> impl ~const FnMut(A, B) -> Self {
-        cfg_if! {
-            if #[cfg(bootstrap)] {
-                #[allow(unused_parens)]
-                (const move |a, b| NeverShortCircuit(f(a, b)))
-            } else {
-                const move |a, b| NeverShortCircuit(f(a, b))
-            }
-        }
+        const move |a, b| NeverShortCircuit(f(a, b))
     }
 }
 

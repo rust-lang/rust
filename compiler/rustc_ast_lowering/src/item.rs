@@ -1146,7 +1146,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let async_expr = this.make_async_expr(
                 CaptureBy::Value,
-                fn_id,
                 closure_id,
                 None,
                 body.span,
@@ -1180,7 +1179,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             );
 
-            (this.arena.alloc_from_iter(parameters), async_expr)
+            let hir_id = this.lower_node_id(closure_id);
+            this.maybe_forward_track_caller(body.span, fn_id, hir_id);
+            let expr = hir::Expr { hir_id, kind: async_expr, span: this.lower_span(body.span) };
+
+            (this.arena.alloc_from_iter(parameters), expr)
         })
     }
 

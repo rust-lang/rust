@@ -655,26 +655,20 @@ where
     ///
     /// ```text
     /// loop-block:
-    ///    can_go = cur == length_or_end
+    ///    can_go = cur == len
     ///    if can_go then succ else drop-block
     /// drop-block:
-    ///    if ptr_based {
-    ///        ptr = cur
-    ///        cur = cur.offset(1)
-    ///    } else {
-    ///        ptr = &raw mut P[cur]
-    ///        cur = cur + 1
-    ///    }
+    ///    ptr = &raw mut P[cur]
+    ///    cur = cur + 1
     ///    drop(ptr)
     /// ```
     fn drop_loop(
         &mut self,
         succ: BasicBlock,
         cur: Local,
-        length_or_end: Place<'tcx>,
+        len: Local,
         ety: Ty<'tcx>,
         unwind: Unwind,
-        ptr_based: bool,
     ) -> BasicBlock {
         let copy = |place: Place<'tcx>| Operand::Copy(place);
         let move_ = |place: Place<'tcx>| Operand::Move(place);
@@ -683,22 +677,19 @@ where
         let ptr_ty = tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
         let ptr = Place::from(self.new_temp(ptr_ty));
         let can_go = Place::from(self.new_temp(tcx.types.bool));
-
         let one = self.constant_usize(1);
-        let (ptr_next, cur_next) = if ptr_based {
-            (
-                Rvalue::Use(copy(cur.into())),
-                Rvalue::BinaryOp(BinOp::Offset, Box::new((move_(cur.into()), one))),
-            )
-        } else {
-            (
-                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
-                Rvalue::BinaryOp(BinOp::Add, Box::new((move_(cur.into()), one))),
-            )
-        };
 
         let drop_block = BasicBlockData {
-            statements: vec![self.assign(ptr, ptr_next), self.assign(Place::from(cur), cur_next)],
+            statements: vec![
+                self.assign(
+                    ptr,
+                    Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
+                ),
+                self.assign(
+                    cur.into(),
+                    Rvalue::BinaryOp(BinOp::Add, Box::new((move_(cur.into()), one))),
+                ),
+            ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -711,10 +702,7 @@ where
         let loop_block = BasicBlockData {
             statements: vec![self.assign(
                 can_go,
-                Rvalue::BinaryOp(
-                    BinOp::Eq,
-                    Box::new((copy(Place::from(cur)), copy(length_or_end))),
-                ),
+                Rvalue::BinaryOp(BinOp::Eq, Box::new((copy(Place::from(cur)), copy(len.into())))),
             )],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -738,13 +726,6 @@ where
 
     fn open_drop_for_array(&mut self, ety: Ty<'tcx>, opt_size: Option<u64>) -> BasicBlock {
         debug!("open_drop_for_array({:?}, {:?})", ety, opt_size);
-
-        // if size_of::<ety>() == 0 {
-        //     index_based_loop
-        // } else {
-        //     ptr_based_loop
-        // }
-
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
@@ -770,86 +751,36 @@ where
             }
         }
 
-        let move_ = |place: Place<'tcx>| Operand::Move(place);
-        let elem_size = Place::from(self.new_temp(tcx.types.usize));
-        let len = Place::from(self.new_temp(tcx.types.usize));
-
-        let base_block = BasicBlockData {
-            statements: vec![
-                self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
-                self.assign(len, Rvalue::Len(self.place)),
-            ],
-            is_cleanup: self.unwind.is_cleanup(),
-            terminator: Some(Terminator {
-                source_info: self.source_info,
-                kind: TerminatorKind::SwitchInt {
-                    discr: move_(elem_size),
-                    targets: SwitchTargets::static_if(
-                        0,
-                        self.drop_loop_pair(ety, false, len),
-                        self.drop_loop_pair(ety, true, len),
-                    ),
-                },
-            }),
-        };
-        self.elaborator.patch().new_block(base_block)
+        self.drop_loop_pair(ety)
     }
 
     /// Creates a pair of drop-loops of `place`, which drops its contents, even
-    /// in the case of 1 panic. If `ptr_based`, creates a pointer loop,
-    /// otherwise create an index loop.
-    fn drop_loop_pair(
-        &mut self,
-        ety: Ty<'tcx>,
-        ptr_based: bool,
-        length: Place<'tcx>,
-    ) -> BasicBlock {
-        debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
+    /// in the case of 1 panic.
+    fn drop_loop_pair(&mut self, ety: Ty<'tcx>) -> BasicBlock {
+        debug!("drop_loop_pair({:?})", ety);
         let tcx = self.tcx();
-        let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types.usize };
+        let len = self.new_temp(tcx.types.usize);
+        let cur = self.new_temp(tcx.types.usize);
 
-        let cur = self.new_temp(iter_ty);
-        let length_or_end = if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length };
+        let unwind =
+            self.unwind.map(|unwind| self.drop_loop(unwind, cur, len, ety, Unwind::InCleanup));
 
-        let unwind = self.unwind.map(|unwind| {
-            self.drop_loop(unwind, cur, length_or_end, ety, Unwind::InCleanup, ptr_based)
-        });
+        let loop_block = self.drop_loop(self.succ, cur, len, ety, unwind);
 
-        let loop_block = self.drop_loop(self.succ, cur, length_or_end, ety, unwind, ptr_based);
-
-        let cur = Place::from(cur);
-        let drop_block_stmts = if ptr_based {
-            let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
-            let tmp = Place::from(self.new_temp(tmp_ty));
-            // tmp = &raw mut P;
-            // cur = tmp as *mut T;
-            // end = Offset(cur, len);
-            let mir_cast_kind = ty::cast::mir_cast_kind(iter_ty, tmp_ty);
-            vec![
-                self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
-                self.assign(cur, Rvalue::Cast(mir_cast_kind, Operand::Move(tmp), iter_ty)),
-                self.assign(
-                    length_or_end,
-                    Rvalue::BinaryOp(
-                        BinOp::Offset,
-                        Box::new((Operand::Copy(cur), Operand::Move(length))),
-                    ),
-                ),
-            ]
-        } else {
-            // cur = 0 (length already pushed)
-            let zero = self.constant_usize(0);
-            vec![self.assign(cur, Rvalue::Use(zero))]
-        };
-        let drop_block = self.elaborator.patch().new_block(BasicBlockData {
-            statements: drop_block_stmts,
+        let zero = self.constant_usize(0);
+        let block = BasicBlockData {
+            statements: vec![
+                self.assign(len.into(), Rvalue::Len(self.place)),
+                self.assign(cur.into(), Rvalue::Use(zero)),
+            ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::Goto { target: loop_block },
             }),
-        });
+        };
 
+        let drop_block = self.elaborator.patch().new_block(block);
         // FIXME(#34708): handle partially-dropped array/slice elements.
         let reset_block = self.drop_flag_reset_block(DropFlagMode::Deep, drop_block, unwind);
         self.drop_flag_test_block(reset_block, self.succ, unwind)

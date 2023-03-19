@@ -284,7 +284,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Box(subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
@@ -357,16 +356,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
             hir::ExprKind::Err(guar) => tcx.ty_error(guar),
         }
-    }
-
-    fn check_expr_box(&self, expr: &'tcx hir::Expr<'tcx>, expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| match ty.kind() {
-            ty::Adt(def, _) if def.is_box() => Expectation::rvalue_hint(self, ty.boxed_ty()),
-            _ => NoExpectation,
-        });
-        let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
-        self.require_type_is_sized(referent_ty, expr.span, traits::SizedBoxType);
-        self.tcx.mk_box(referent_ty)
     }
 
     fn check_expr_unary(
@@ -799,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.ret_coercion_span.set(Some(expr.span));
             }
             let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-            if let Some((fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
+            if let Some((_, fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
                 coercion.coerce_forced_unit(
                     self,
                     &cause,

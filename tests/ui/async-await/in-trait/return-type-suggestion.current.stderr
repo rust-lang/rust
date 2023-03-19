@@ -1,5 +1,5 @@
 warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/return-type-suggestion.rs:3:12
+  --> $DIR/return-type-suggestion.rs:5:12
    |
 LL | #![feature(async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(async_fn_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/return-type-suggestion.rs:8:9
+  --> $DIR/return-type-suggestion.rs:10:9
    |
 LL |         Ok(())
    |         ^^^^^^- help: consider using a semicolon here: `;`

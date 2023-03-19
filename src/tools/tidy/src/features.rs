@@ -9,8 +9,9 @@
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
 
-use crate::walk::{filter_dirs, walk, walk_many};
+use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 use std::collections::hash_map::{Entry, HashMap};
+use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::num::NonZeroU32;
@@ -101,17 +102,15 @@ pub fn check(
             &tests_path.join("rustdoc-ui"),
             &tests_path.join("rustdoc"),
         ],
-        filter_dirs,
+        |path| {
+            filter_dirs(path)
+                || filter_not_rust(path)
+                || path.file_name() == Some(OsStr::new("features.rs"))
+                || path.file_name() == Some(OsStr::new("diagnostic_list.rs"))
+        },
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
-            if !filename.ends_with(".rs")
-                || filename == "features.rs"
-                || filename == "diagnostic_list.rs"
-            {
-                return;
-            }
-
             let filen_underscore = filename.replace('-', "_").replace(".rs", "");
             let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
 

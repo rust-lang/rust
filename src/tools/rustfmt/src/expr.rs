@@ -366,7 +366,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Async(capture_by, _node_id, ref block) => {
+        ast::ExprKind::Async(capture_by, ref block) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
             } else {

@@ -1,5 +1,5 @@
 warning: the feature `return_position_impl_trait_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/default-method-constraint.rs:5:12
+  --> $DIR/box-coerce-span-in-default.rs:5:12
    |
 LL | #![feature(return_position_impl_trait_in_trait)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

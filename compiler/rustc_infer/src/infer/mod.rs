@@ -188,6 +188,16 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
+    fn try_type_variables_probe_ref(
+        &self,
+        vid: ty::TyVid,
+    ) -> Option<&type_variable::TypeVariableValue<'tcx>> {
+        // Uses a read-only view of the unification table, this way we don't
+        // need an undo log.
+        self.type_variable_storage.eq_relations_ref().try_probe_value(vid)
+    }
+
+    #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
     }
@@ -1644,6 +1654,28 @@ impl<'tcx> InferCtxt<'tcx> {
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
         tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
+    }
+
+    /// The returned function is used in a fast path. If it returns `true` the variable is
+    /// unchanged, `false` indicates that the status is unknown.
+    #[inline]
+    pub fn is_ty_infer_var_definitely_unchanged<'a>(
+        &'a self,
+    ) -> (impl Fn(TyOrConstInferVar<'tcx>) -> bool + 'a) {
+        // This hoists the borrow/release out of the loop body.
+        let inner = self.inner.try_borrow();
+
+        return move |infer_var: TyOrConstInferVar<'tcx>| match (infer_var, &inner) {
+            (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
+                use self::type_variable::TypeVariableValue;
+
+                match inner.try_type_variables_probe_ref(ty_var) {
+                    Some(TypeVariableValue::Unknown { .. }) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
     }
 
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:

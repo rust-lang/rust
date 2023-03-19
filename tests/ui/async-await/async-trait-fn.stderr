@@ -1,5 +1,5 @@
 error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/async-trait-fn.rs:3:5
+  --> $DIR/async-trait-fn.rs:4:5
    |
 LL |     async fn foo() {}
    |     -----^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     async fn foo() {}
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/async-trait-fn.rs:4:5
+  --> $DIR/async-trait-fn.rs:5:5
    |
 LL |     async fn bar(&self) {}
    |     -----^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     async fn bar(&self) {}
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/async-trait-fn.rs:5:5
+  --> $DIR/async-trait-fn.rs:6:5
    |
 LL |     async fn baz() {
    |     -----^^^^^^^^^

@@ -2252,7 +2252,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 internal: false,
-                local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::RefForGuard))),
+                local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(
+                    BindingForm::RefForGuard,
+                ))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

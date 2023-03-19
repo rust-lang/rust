@@ -356,10 +356,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.walk_captures(closure);
             }
 
-            hir::ExprKind::Box(ref base) => {
-                self.consume_expr(base);
-            }
-
             hir::ExprKind::Yield(value, _) => {
                 self.consume_expr(value);
             }

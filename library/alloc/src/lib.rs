@@ -87,7 +87,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
-#![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
+#![warn(multiple_supertrait_upcastable)]
 //
 // Library features:
 #![feature(alloc_layout_extra)]
@@ -195,7 +195,7 @@
 #![feature(c_unwind)]
 #![feature(with_negative_coherence)]
 #![cfg_attr(test, feature(panic_update_hook))]
-#![cfg_attr(not(bootstrap), feature(multiple_supertrait_upcastable))]
+#![feature(multiple_supertrait_upcastable)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
