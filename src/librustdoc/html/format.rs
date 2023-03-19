@@ -1311,7 +1311,94 @@ impl clean::BareFunctionDecl {
     }
 }
 
-// Implements Write but only counts the bytes "written".
+/// This is a simplified HTML processor, intended for counting the number of characters
+/// of text that a stream of HTML is equivalent to. This is used to calculate the width
+/// (in characters) of a function declaration, to decide whether to line-wrap it like
+/// rustfmt would do. It's only valid for use with HTML emitted from within this module,
+/// so it is intentionally not pub(crate).
+///
+/// This makes some assumptions that are specifically tied to the HTML emitted in format.rs:
+///  - Whitespace is significant.
+///  - All tags display their contents as text.
+///  - Each call to write() contains a sequence of bytes that is valid UTF-8 on its own.
+///  - All '<' in HTML attributes are escaped.
+///  - HTML attributes are quoted with double quotes.
+///  - The only HTML entities used are `&lt;`, `&gt;`, `&amp;`, `&quot`, and `&#39;`
+#[derive(Debug, Clone)]
+struct HtmlRemover<W: fmt::Write> {
+    inner: W,
+    state: HtmlTextCounterState,
+}
+
+impl<W: fmt::Write> HtmlRemover<W> {
+    fn new(w: W) -> Self {
+        HtmlRemover { inner: w, state: HtmlTextCounterState::Text }
+    }
+}
+
+// A state machine that tracks our progress through the HTML.
+#[derive(Debug, Clone)]
+enum HtmlTextCounterState {
+    Text,
+    // A small buffer to store the entity name
+    Entity(u8, [u8; 4]),
+    Tag,
+}
+
+impl<W: fmt::Write> fmt::Write for HtmlRemover<W> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        use HtmlTextCounterState::*;
+        for c in s.chars() {
+            match (&mut self.state, c) {
+                (Text, '<') => self.state = Tag,
+                (Text, '&') => self.state = Entity(0, Default::default()),
+                (Text, _) => write!(self.inner, "{c}")?,
+                // Note: `>` can occur in attribute values, but we always escape
+                // them internally, so we don't have to have an extra state for
+                // "in attribute value."
+                // https://www.w3.org/TR/2011/WD-html5-20110525/syntax.html#syntax-attributes
+                (Tag, '>') => self.state = Text,
+                (Tag, '<') => Err(fmt::Error)?,
+                // Within a tag, do nothing.
+                (Tag, _) => {}
+                // Finish an entity
+                (Entity(len, arr), ';') => {
+                    let emit = match std::str::from_utf8(&arr[0..*len as usize]).unwrap() {
+                        "lt" => '<',
+                        "gt" => '>',
+                        "amp" => '&',
+                        "quot" => '"',
+                        "#39" => '\'',
+                        _ => Err(fmt::Error)?,
+                    };
+                    write!(self.inner, "{emit}")?;
+                    self.state = Text;
+                }
+                // Read one character of an entity name
+                (Entity(ref mut len, ref mut arr), c) => {
+                    if *len as usize > arr.len() - 1 {
+                        Err(fmt::Error)?;
+                    }
+                    arr[*len as usize] = c as u8;
+                    *len += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// This generates the plain text form of a marked-up HTML input, using HtmlRemover.
+struct Plain<D: fmt::Display>(D);
+
+impl<D: fmt::Display> fmt::Display for Plain<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut remover = HtmlRemover::new(f);
+        write!(&mut remover, "{}", self.0)
+    }
+}
+
+/// Implements Write but only counts the bytes "written".
 struct WriteCounter(usize);
 
 impl std::fmt::Write for WriteCounter {
@@ -1713,4 +1800,38 @@ pub(crate) fn display_fn(
     }
 
     WithFormatter(Cell::new(Some(f)))
+}
+
+#[test]
+fn test_html_remover() {
+    use std::fmt::Write;
+
+    fn assert_removed_eq(input: &str, output: &str) {
+        let mut remover = HtmlRemover::new(String::new());
+        write!(&mut remover, "{}", input).unwrap();
+        assert_eq!(&remover.inner, output);
+    }
+
+    assert_removed_eq("a<a href='https://example.com'>b", "ab");
+    assert_removed_eq("alpha &lt;bet&gt;", "alpha <bet>");
+    assert_removed_eq("<a href=\"&quot;\">", "");
+    assert_removed_eq("<tag>&gt;</tag>text&lt;<tag>", ">text<");
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "&ent;").is_err());
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "&entity").is_err());
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "&&").is_err());
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "<open <tag").is_err());
+}
+
+#[test]
+fn test_plain() {
+    let d = Plain::new("<strong>alpha</strong> &lt;bet&gt;");
+    assert_eq!(&d.to_string(), "alpha <bet>");
 }

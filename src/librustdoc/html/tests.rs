@@ -48,3 +48,37 @@ fn href_relative_parts_root() {
     let fqp = &[sym::std];
     assert_relative_path(&[sym::std], relative_to_fqp, fqp);
 }
+
+#[test]
+fn test_html_remover() {
+    use super::format::HtmlRemover;
+    use std::fmt::Write;
+
+    fn assert_removed_eq(input: &str, output: &str) {
+        let mut remover = HtmlRemover::new(String::new());
+        write!(&mut remover, "{}", input).unwrap();
+        assert_eq!(&remover.into_inner(), output);
+    }
+
+    assert_removed_eq("a<a href='https://example.com'>b", "ab");
+    assert_removed_eq("alpha &lt;bet&gt;", "alpha <bet>");
+    assert_removed_eq("<a href=\"&quot;\">", "");
+    assert_removed_eq("<tag>&gt;</tag>text&lt;<tag>", ">text<");
+    assert_removed_eq("&quot;&#39;", "\"'");
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "&ent;").is_err());
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "&longentity").is_err());
+
+    let mut remover = HtmlRemover::new(String::new());
+    assert!(write!(&mut remover, "<open <tag").is_err());
+}
+
+#[test]
+fn test_plain() {
+    use super::format::Plain;
+    let d = Plain("<strong>alpha</strong> &lt;bet&gt;");
+    assert_eq!(&d.to_string(), "alpha <bet>");
+}
