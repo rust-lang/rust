@@ -56,7 +56,7 @@ pub use iter::IntoIter;
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
-#[rustc_const_unstable(feature = "const_array_from_fn", issue = "none")]
+#[rustc_const_unstable(feature = "const_array_from_fn", issue = "109341")]
 pub const fn from_fn<T, const N: usize, F>(cb: F) -> [T; N]
 where
     F: ~const FnMut(usize) -> T + ~const Destruct,
@@ -839,7 +839,7 @@ where
 /// not optimizing away.  So if you give it a shot, make sure to watch what
 /// happens in the codegen tests.
 #[inline]
-#[rustc_const_unstable(feature = "const_array_from_fn", issue = "none")]
+#[rustc_const_unstable(feature = "const_array_from_fn", issue = "109341")]
 const fn try_from_fn_erased<T, R>(
     buffer: &mut [MaybeUninit<T>],
     mut generator: impl ~const FnMut(usize) -> R + ~const Destruct,

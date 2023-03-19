@@ -376,6 +376,9 @@ fn cell_allows_array_cycle() {
 fn array_from_fn() {
     let array = core::array::from_fn(|idx| idx);
     assert_eq!(array, [0, 1, 2, 3, 4]);
+
+    const ARR: [usize; 5] = core::array::from_fn(const |idx| idx);
+    assert_eq!(ARR, [0, 1, 2, 3, 4]);
 }
 
 #[test]

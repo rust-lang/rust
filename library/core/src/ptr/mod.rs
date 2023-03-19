@@ -486,7 +486,7 @@ mod mut_ptr;
 /// assert!(weak.upgrade().is_none());
 /// ```
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_const_unstable(feature = "const_drop_in_place", issue = "none")]
+#[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub const unsafe fn drop_in_place<T: ?Sized + ~const Destruct>(to_drop: *mut T) {
