@@ -3,6 +3,7 @@
 //! [`rustc_trait_selection::traits::query::type_op::implied_outlives_bounds`].
 
 use rustc_infer::infer::canonical::{self, Canonical};
+use rustc_infer::infer::canonical::{CanonicalVarInfo, CanonicalVarKind};
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::query::OutlivesBound;
@@ -20,17 +21,63 @@ pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { implied_outlives_bounds, ..*p };
 }
 
+struct MapRegionsToUniversals<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    query_max_universe: ty::UniverseIndex,
+}
+
+impl<'tcx> MapRegionsToUniversals<'tcx> {
+    fn map<K>(tcx: TyCtxt<'tcx>, value: Canonical<'tcx, K>) -> (Canonical<'tcx, K>, Self) {
+        let variables = value.variables.iter().zip(0u32..).map(|(var, idx)| match var.kind {
+            CanonicalVarKind::Region(universe) => {
+                let name = ty::BoundRegionKind::BrAnon(idx, None);
+                let placeholder = ty::Placeholder { universe, name };
+                CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(placeholder) }
+            }
+            CanonicalVarKind::PlaceholderRegion(_) => bug!("unimplemented: placeholder region"),
+
+            CanonicalVarKind::Ty(_) => bug!("unexpected ty var"),
+            CanonicalVarKind::PlaceholderTy(_) => var,
+
+            CanonicalVarKind::Const(..) => bug!("unexpected const var"),
+            CanonicalVarKind::PlaceholderConst(..) => var,
+        });
+        let variables = tcx.mk_canonical_var_infos_from_iter(variables);
+        let query_max_universe = value.max_universe;
+
+        (Canonical { variables, ..value }, Self { tcx, query_max_universe })
+    }
+
+    fn reverse_map<K>(&self, value: Canonical<'tcx, K>) -> Canonical<'tcx, K> {
+        let variables = value.variables.iter().map(|var| match var.kind {
+            CanonicalVarKind::PlaceholderRegion(ty::Placeholder { universe, .. })
+                if self.query_max_universe.can_name(universe) =>
+            {
+                CanonicalVarInfo { kind: CanonicalVarKind::Region(universe) }
+            }
+            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => var,
+
+            CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => var,
+            CanonicalVarKind::Const(..) | CanonicalVarKind::PlaceholderConst(..) => var,
+        });
+        let variables = self.tcx.mk_canonical_var_infos_from_iter(variables);
+        Canonical { variables, ..value }
+    }
+}
+
 fn implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
-) -> Result<
-    &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
-    NoSolution,
-> {
-    tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
+) -> Fallible<&'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>> {
+    let (goal, map) = MapRegionsToUniversals::map(tcx, goal);
+
+    let result = tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let (param_env, ty) = key.into_parts();
         compute_implied_outlives_bounds(ocx, param_env, ty)
-    })
+    })?;
+
+    let result = MapRegionsToUniversals::reverse_map(&map, result.clone());
+    Ok(tcx.arena.alloc(result))
 }
 
 fn compute_implied_outlives_bounds<'tcx>(
