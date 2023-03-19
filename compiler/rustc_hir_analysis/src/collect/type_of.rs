@@ -278,8 +278,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    is_suggestable_infer_ty(ty)
-                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
+                    is_suggestable_infer_ty(ty).then(|| {
+                        infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        )
+                    })
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -335,14 +338,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => {
-                    match self_ty.find_self_aliases() {
-                        spans if spans.len() > 0 => {
-                            let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
-                            tcx.ty_error(guar)
-                        },
-                        _ => icx.to_ty(*self_ty),
+                ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
+                    spans if spans.len() > 0 => {
+                        let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf {
+                            span: spans.into(),
+                            note: (),
+                        });
+                        tcx.ty_error(guar)
                     }
+                    _ => icx.to_ty(*self_ty),
                 },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -364,7 +368,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     ..
                 }) => {
                     if in_trait && !tcx.impl_defaultness(owner).has_value() {
-                        span_bug!(tcx.def_span(def_id), "tried to get type of this RPITIT with no definition");
+                        span_bug!(
+                            tcx.def_span(def_id),
+                            "tried to get type of this RPITIT with no definition"
+                        );
                     }
                     find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
@@ -453,15 +460,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
                 }
 
-                Node::TypeBinding(
-                    TypeBinding {
-                        hir_id: binding_id,
-                        kind: TypeBindingKind::Equality { term: Term::Const(e) },
-                        ident,
-                        ..
-                    },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    kind: TypeBindingKind::Equality { term: Term::Const(e) },
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
@@ -487,10 +491,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
 
-                Node::TypeBinding(
-                    TypeBinding { hir_id: binding_id, gen_args, kind, ident, .. },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    gen_args,
+                    kind,
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && let Some((idx, _)) =
                         gen_args.args.iter().enumerate().find(|(_, arg)| {
                             if let GenericArg::Const(ct) = arg {
