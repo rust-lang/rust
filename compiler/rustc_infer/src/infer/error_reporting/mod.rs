@@ -615,9 +615,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let report_path_match = |err: &mut Diagnostic, did1: DefId, did2: DefId| {
-            // Only external crates, if either is from a local
-            // module we could have false positives
-            if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
+            // Only report definitions from different crates. If both definitions
+            // are from a local module we could have false positives, e.g.
+            // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
+            if did1.krate != did2.krate {
                 let abs_path =
                     |def_id| AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]);
 
@@ -629,10 +630,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 };
                 if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
-                    err.note(&format!(
-                        "perhaps two different versions of crate `{}` are being used?",
-                        crate_name
-                    ));
+                    let msg = if did1.is_local() || did2.is_local() {
+                        format!(
+                            "the crate `{crate_name}` is compiled multiple times, possibly with different configurations"
+                        )
+                    } else {
+                        format!(
+                            "perhaps two different versions of crate `{crate_name}` are being used?"
+                        )
+                    };
+                    err.note(msg);
                 }
             }
         };

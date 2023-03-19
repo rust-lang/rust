@@ -1440,9 +1440,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let instance =
                 ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
             let unused = tcx.unused_generic_params(instance);
-            if !unused.all_used() {
-                record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
-            }
+            self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }
 
         // Encode all the deduced parameter attributes for everything that has MIR, even for items

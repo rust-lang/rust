@@ -67,12 +67,11 @@ pub enum LinkagePreference {
 #[derive(Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
-    pub name: Option<Symbol>,
+    pub name: Symbol,
     /// If packed_bundled_libs enabled, actual filename of library is stored.
     pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
-    pub wasm_import_module: Option<Symbol>,
     pub verbatim: Option<bool>,
     pub dll_imports: Vec<DllImport>,
 }
@@ -80,6 +79,10 @@ pub struct NativeLib {
 impl NativeLib {
     pub fn has_modifiers(&self) -> bool {
         self.verbatim.is_some() || self.kind.has_modifiers()
+    }
+
+    pub fn wasm_import_module(&self) -> Option<Symbol> {
+        if self.kind == NativeLibKind::WasmImportModule { Some(self.name) } else { None }
     }
 }
 

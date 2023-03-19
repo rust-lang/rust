@@ -86,4 +86,5 @@ pub unsafe trait InPlaceIterable: Iterator {}
 /// for details. Consumers are free to rely on the invariants in unsafe code.
 #[unstable(feature = "trusted_step", issue = "85731")]
 #[rustc_specialization_trait]
-pub unsafe trait TrustedStep: Step {}
+#[const_trait]
+pub unsafe trait TrustedStep: ~const Step {}

@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(unused, nonstandard_style)]
+#![allow(unused, nonstandard_style, useless_anonymous_reexport)]
 mod m {
     #[macro_export]
     macro_rules! nu {
