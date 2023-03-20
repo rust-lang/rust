@@ -202,8 +202,11 @@ fn missing_items_err(
     missing_items: &[ty::AssocItem],
     full_impl_span: Span,
 ) {
+    let missing_items =
+        missing_items.iter().filter(|trait_item| tcx.opt_rpitit_info(trait_item.def_id).is_none());
+
     let missing_items_msg = missing_items
-        .iter()
+        .clone()
         .map(|trait_item| trait_item.name.to_string())
         .collect::<Vec<_>>()
         .join("`, `");
