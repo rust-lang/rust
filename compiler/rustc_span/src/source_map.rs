@@ -448,23 +448,34 @@ impl SourceMap {
         sp: Span,
         filename_display_pref: FileNameDisplayPreference,
     ) -> String {
+        let (source_file, lo_line, lo_col, hi_line, hi_col) = self.span_to_location_info(sp);
+
+        let file_name = match source_file {
+            Some(sf) => sf.name.display(filename_display_pref).to_string(),
+            None => return "no-location".to_string(),
+        };
+
+        format!(
+            "{file_name}:{lo_line}:{lo_col}{}",
+            if let FileNameDisplayPreference::Short = filename_display_pref {
+                String::new()
+            } else {
+                format!(": {hi_line}:{hi_col}")
+            }
+        )
+    }
+
+    pub fn span_to_location_info(
+        &self,
+        sp: Span,
+    ) -> (Option<Lrc<SourceFile>>, usize, usize, usize, usize) {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
-            return "no-location".to_string();
+            return (None, 0, 0, 0, 0);
         }
 
         let lo = self.lookup_char_pos(sp.lo());
         let hi = self.lookup_char_pos(sp.hi());
-        format!(
-            "{}:{}:{}{}",
-            lo.file.name.display(filename_display_pref),
-            lo.line,
-            lo.col.to_usize() + 1,
-            if let FileNameDisplayPreference::Short = filename_display_pref {
-                String::new()
-            } else {
-                format!(": {}:{}", hi.line, hi.col.to_usize() + 1)
-            }
-        )
+        (Some(lo.file), lo.line, lo.col.to_usize() + 1, hi.line, hi.col.to_usize() + 1)
     }
 
     /// Format the span location suitable for embedding in build artifacts

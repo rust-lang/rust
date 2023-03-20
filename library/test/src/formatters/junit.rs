@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use super::OutputFormatter;
 use crate::{
-    console::{ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
     test_result::TestResult,
     time,
     types::{TestDesc, TestType},
@@ -27,6 +27,18 @@ impl<T: Write> JunitFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for JunitFormatter<T> {
+    fn write_discovery_start(&mut self) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
+    fn write_test_discovered(&mut self, _desc: &TestDesc, _test_type: &str) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
+    fn write_discovery_finish(&mut self, _state: &ConsoleTestDiscoveryState) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
     fn write_run_start(
         &mut self,
         _test_count: usize,
