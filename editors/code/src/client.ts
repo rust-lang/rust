@@ -121,59 +121,54 @@ export async function createClient(
                 const preview = config.previewRustcOutput;
                 const errorCode = config.useRustcErrorCode;
                 diagnosticList.forEach((diag, idx) => {
-                    let value =
+                    const value =
                         typeof diag.code === "string" || typeof diag.code === "number"
                             ? diag.code
                             : diag.code?.value;
                     if (value === "unlinked-file" && !unlinkedFiles.includes(uri)) {
-                        let config = vscode.workspace.getConfiguration("rust-analyzer");
+                        const config = vscode.workspace.getConfiguration("rust-analyzer");
                         if (config.get("showUnlinkedFileNotification")) {
                             unlinkedFiles.push(uri);
-                            let folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+                            const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
                             if (folder) {
-                                let parent_backslash = uri.fsPath.lastIndexOf(
+                                const parentBackslash = uri.fsPath.lastIndexOf(
                                     pathSeparator + "src"
                                 );
-                                let parent = uri.fsPath.substring(0, parent_backslash);
+                                const parent = uri.fsPath.substring(0, parentBackslash);
 
                                 if (parent.startsWith(folder)) {
-                                    let path = vscode.Uri.file(
+                                    const path = vscode.Uri.file(
                                         parent + pathSeparator + "Cargo.toml"
                                     );
-                                    void vscode.workspace.fs.stat(path).then(() => {
-                                        vscode.window
-                                            .showInformationMessage(
-                                                `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path}, do you want to add it to the linked Projects?`,
-                                                "Yes",
-                                                "No",
-                                                "Don't show this again"
-                                            )
-                                            .then((choice) => {
-                                                switch (choice) {
-                                                    case "Yes":
-                                                        break;
-                                                    case "No":
-                                                        config.update(
-                                                            "linkedProjects",
-                                                            config
-                                                                .get<any[]>("linkedProjects")
-                                                                ?.concat(
-                                                                    path.fsPath.substring(
-                                                                        folder!.length
-                                                                    )
-                                                                ),
-                                                            false
-                                                        );
-                                                        break;
-                                                    case "Don't show this again":
-                                                        config.update(
-                                                            "showUnlinkedFileNotification",
-                                                            false,
-                                                            false
-                                                        );
-                                                        break;
-                                                }
-                                            });
+                                    void vscode.workspace.fs.stat(path).then(async () => {
+                                        const choice = await vscode.window.showInformationMessage(
+                                            `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path}, do you want to add it to the linked Projects?`,
+                                            "Yes",
+                                            "No",
+                                            "Don't show this again"
+                                        );
+                                        switch (choice) {
+                                            case "Yes":
+                                                break;
+                                            case "No":
+                                                await config.update(
+                                                    "linkedProjects",
+                                                    config
+                                                        .get<any[]>("linkedProjects")
+                                                        ?.concat(
+                                                            path.fsPath.substring(folder.length)
+                                                        ),
+                                                    false
+                                                );
+                                                break;
+                                            case "Don't show this again":
+                                                await config.update(
+                                                    "showUnlinkedFileNotification",
+                                                    false,
+                                                    false
+                                                );
+                                                break;
+                                        }
                                     });
                                 }
                             }

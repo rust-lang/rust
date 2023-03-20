@@ -95,7 +95,6 @@ export class Ctx {
     ) {
         extCtx.subscriptions.push(this);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        this.statusBar.show();
         this.workspace = workspace;
         this.clientSubscriptions = [];
         this.commandDisposables = [];
@@ -338,6 +337,7 @@ export class Ctx {
     setServerStatus(status: ServerStatusParams | { health: "stopped" }) {
         let icon = "";
         const statusBar = this.statusBar;
+        statusBar.show();
         statusBar.tooltip = new vscode.MarkdownString("", true);
         statusBar.tooltip.isTrusted = true;
         switch (status.health) {
@@ -386,7 +386,7 @@ export class Ctx {
         );
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
-        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
+        statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
