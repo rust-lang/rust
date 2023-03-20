@@ -609,10 +609,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         _ = stat!("mir", || self.encode_mir());
 
-        _ = stat!("items", || {
-            self.encode_def_ids();
-            self.encode_info_for_items();
-        });
+        _ = stat!("def-ids", || self.encode_def_ids());
+
+        _ = stat!("items", || self.encode_info_for_items());
 
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
