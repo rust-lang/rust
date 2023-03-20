@@ -1434,7 +1434,7 @@ impl Debug for Statement<'_> {
         use self::StatementKind::*;
         match self.kind {
             Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
-            FakeRead(box (ref cause, ref place)) => {
+            FakeRead(box FakeReadCauseAndPlace(ref cause, ref place)) => {
                 write!(fmt, "FakeRead({:?}, {:?})", cause, place)
             }
             Retag(ref kind, ref place) => write!(

@@ -311,7 +311,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => {
                 self.create_move_path(*place);
             }
             StatementKind::StorageLive(_) => {}

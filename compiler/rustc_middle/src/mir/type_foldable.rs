@@ -3,14 +3,11 @@
 use super::*;
 use crate::ty;
 
-TrivialTypeTraversalAndLiftImpls! {
-    FakeReadCause,
-}
-
 CloneLiftImpls! {
     BlockTailInfo,
     MirPhase,
     SourceInfo,
+    FakeReadCause,
     RetagKind,
     SourceScope,
     SourceScopeLocalData,

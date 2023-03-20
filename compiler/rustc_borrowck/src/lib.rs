@@ -30,8 +30,8 @@ use rustc_infer::infer::{
 };
 use rustc_macros::fluent_messages;
 use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
-    Place, PlaceElem, PlaceRef, VarDebugInfoContents,
+    traversal, Body, ClearCrossCrate, FakeReadCauseAndPlace, Local, Location, Mutability,
+    NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -663,7 +663,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.

@@ -14,8 +14,9 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
+    FakeReadCause, FakeReadCauseAndPlace, LocalDecl, LocalInfo, LocalKind, Location, Operand,
+    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    VarBindingForm,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
@@ -2578,9 +2579,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'tcx> {
             fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
                 match statement {
-                    Statement { kind: StatementKind::FakeRead(box (cause, place)), .. }
-                        if *place == self.place =>
-                    {
+                    Statement {
+                        kind: StatementKind::FakeRead(box FakeReadCauseAndPlace(cause, place)),
+                        ..
+                    } if *place == self.place => {
                         self.cause = Some(*cause);
                     }
                     _ => (),

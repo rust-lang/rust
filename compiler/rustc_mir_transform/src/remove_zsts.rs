@@ -119,7 +119,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             | StatementKind::AscribeUserType(box (place, _), _)
             | StatementKind::Retag(_, box place)
             | StatementKind::PlaceMention(box place)
-            | StatementKind::FakeRead(box (_, place)) => Some(place),
+            | StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => Some(place),
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 Some(local.into())
             }

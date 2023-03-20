@@ -62,7 +62,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
 
                 self.mutate_place(location, *lhs, Shallow(None));
             }
-            StatementKind::FakeRead(box (_, _)) => {
+            StatementKind::FakeRead(_) => {
                 // Only relevant for initialized/liveness/safety checks.
             }
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {

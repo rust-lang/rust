@@ -5,8 +5,8 @@ use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
-    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, AggregateKind, BasicBlock, FakeReadCause, FakeReadCauseAndPlace, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
@@ -823,10 +823,10 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         // and `_1` is the `Place` for `somenum`.
         //
         // If and when the Issue is resolved, remove this special case match pattern:
-        StatementKind::FakeRead(box (cause, _)) if cause == FakeReadCause::ForGuardBinding => None,
+        StatementKind::FakeRead(box FakeReadCauseAndPlace(cause, _)) if cause == FakeReadCause::ForGuardBinding => None,
 
         // Retain spans from all other statements
-        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(_) // Not including `ForGuardBinding`
         | StatementKind::Intrinsic(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }

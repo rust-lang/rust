@@ -6,8 +6,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location, Operand, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    Body, CastKind, ConstraintCategory, FakeReadCause, FakeReadCauseAndPlace, Local, LocalInfo,
+    Location, Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
@@ -482,7 +482,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {
-                    kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), place)),
+                    kind:
+                        StatementKind::FakeRead(box FakeReadCauseAndPlace(
+                            FakeReadCause::ForLet(_),
+                            place,
+                        )),
                     ..
                 }) = block.statements.get(location.statement_index)
                 {

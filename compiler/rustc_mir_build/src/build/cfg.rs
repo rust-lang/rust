@@ -85,7 +85,7 @@ impl<'tcx> CFG<'tcx> {
         cause: FakeReadCause,
         place: Place<'tcx>,
     ) {
-        let kind = StatementKind::FakeRead(Box::new((cause, place)));
+        let kind = StatementKind::FakeRead(Box::new(FakeReadCauseAndPlace(cause, place)));
         let stmt = Statement { source_info, kind };
         self.push(block, stmt);
     }
