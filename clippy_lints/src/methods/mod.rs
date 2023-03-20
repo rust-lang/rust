@@ -3193,21 +3193,27 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a `Vec`.
     ///
     /// ### Why is this bad?
+    /// This creates an unnecessary iterator that is dropped immediately.
+    ///
+    /// Calling `.clear()` also makes the intent clearer.
     ///
     /// ### Example
     /// ```rust
-    /// // example code where clippy issues a warning
+    /// let mut v = vec![1, 2, 3];
+    /// v.drain(..);
     /// ```
     /// Use instead:
     /// ```rust
-    /// // example code which does not raise clippy warning
+    /// let mut v = vec![1, 2, 3];
+    /// v.clear();
     /// ```
     #[clippy::version = "1.69.0"]
     pub CLEAR_WITH_DRAIN,
     nursery,
-    "default lint description"
+    "calling `drain` in order to `clear` a `Vec`"
 }
 
 pub struct Methods {
