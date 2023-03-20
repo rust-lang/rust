@@ -22,10 +22,10 @@ either = "1.7.0"
 tracing = "0.1.35"
 rustc-hash = "1.1.0"
 scoped-tls = "1.0.0"
-chalk-solve = { version = "0.88.0", default-features = false }
-chalk-ir = "0.88.0"
-chalk-recursive = { version = "0.88.0", default-features = false }
-chalk-derive = "0.88.0"
+chalk-solve = { version = "0.89.0", default-features = false }
+chalk-ir = "0.89.0"
+chalk-recursive = { version = "0.89.0", default-features = false }
+chalk-derive = "0.89.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 once_cell = "1.17.0"
 typed-arena = "2.0.1"

@@ -65,4 +65,24 @@ fn main(s: module::Struct) {
 "#,
         );
     }
+
+    #[test]
+    fn block_module_madness() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let strukt = {
+        use crate as ForceParentBlockDefMap;
+        {
+            pub struct Struct {
+                field: (),
+            }
+            Struct { field: () }
+        }
+    };
+    strukt.field;
+}
+"#,
+        );
+    }
 }

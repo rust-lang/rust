@@ -1027,7 +1027,7 @@ fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<Generate
 }
 
 fn next_space_for_fn_in_module(
-    db: &dyn hir::db::AstDatabase,
+    db: &dyn hir::db::ExpandDatabase,
     module_source: &hir::InFile<hir::ModuleSource>,
 ) -> Option<(FileId, GeneratedFunctionTarget)> {
     let file = module_source.file_id.original_file(db);

@@ -11,3 +11,9 @@ pub use crate::diagnostics::{
     },
     unsafe_check::{missing_unsafe, unsafe_expressions, UnsafeExpr},
 };
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IncoherentImpl {
+    pub file_id: hir_expand::HirFileId,
+    pub impl_: syntax::AstPtr<syntax::ast::Impl>,
+}

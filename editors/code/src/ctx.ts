@@ -2,12 +2,20 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config, substituteVSCodeVariables } from "./config";
+import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
-import { isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
+import {
+    executeDiscoverProject,
+    isRustDocument,
+    isRustEditor,
+    LazyOutputChannel,
+    log,
+    RustEditor,
+} from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
+import { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -41,6 +49,17 @@ export function fetchWorkspace(): Workspace {
         : { kind: "Workspace Folder" };
 }
 
+export async function discoverWorkspace(
+    files: readonly vscode.TextDocument[],
+    command: string[],
+    options: ExecOptions
+): Promise<JsonProject> {
+    const paths = files.map((f) => `"${f.uri.fsPath}"`).join(" ");
+    const joinedCommand = command.join(" ");
+    const data = await executeDiscoverProject(`${joinedCommand} ${paths}`, options);
+    return JSON.parse(data) as JsonProject;
+}
+
 export type CommandFactory = {
     enabled: (ctx: CtxInit) => Cmd;
     disabled?: (ctx: Ctx) => Cmd;
@@ -52,7 +71,7 @@ export type CtxInit = Ctx & {
 
 export class Ctx {
     readonly statusBar: vscode.StatusBarItem;
-    readonly config: Config;
+    config: Config;
     readonly workspace: Workspace;
 
     private _client: lc.LanguageClient | undefined;
@@ -169,7 +188,30 @@ export class Ctx {
                 };
             }
 
-            const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
+            const discoverProjectCommand = this.config.discoverProjectCommand;
+            if (discoverProjectCommand) {
+                const workspaces: JsonProject[] = await Promise.all(
+                    vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                        const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                        return discoverWorkspace(rustDocuments, discoverProjectCommand, {
+                            cwd: folder.uri.fsPath,
+                        });
+                    })
+                );
+
+                this.addToDiscoveredWorkspaces(workspaces);
+            }
+
+            const initializationOptions = prepareVSCodeConfig(
+                rawInitializationOptions,
+                (key, obj) => {
+                    // we only want to set discovered workspaces on the right key
+                    // and if a workspace has been discovered.
+                    if (key === "linkedProjects" && this.config.discoveredWorkspaces.length > 0) {
+                        obj["linkedProjects"] = this.config.discoveredWorkspaces;
+                    }
+                }
+            );
 
             this._client = await createClient(
                 this.traceOutputChannel,
@@ -251,6 +293,17 @@ export class Ctx {
         return this._serverPath;
     }
 
+    addToDiscoveredWorkspaces(workspaces: JsonProject[]) {
+        for (const workspace of workspaces) {
+            const index = this.config.discoveredWorkspaces.indexOf(workspace);
+            if (~index) {
+                this.config.discoveredWorkspaces[index] = workspace;
+            } else {
+                this.config.discoveredWorkspaces.push(workspace);
+            }
+        }
+    }
+
     private updateCommands(forceDisable?: "disable") {
         this.commandDisposables.forEach((disposable) => disposable.dispose());
         this.commandDisposables = [];
@@ -289,6 +342,7 @@ export class Ctx {
                 statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
+                statusBar.command = "rust-analyzer.stopServer";
                 break;
             case "warning":
                 if (status.message) {
@@ -298,6 +352,7 @@ export class Ctx {
                 statusBar.backgroundColor = new vscode.ThemeColor(
                     "statusBarItem.warningBackground"
                 );
+                statusBar.command = "rust-analyzer.openLogs";
                 icon = "$(warning) ";
                 break;
             case "error":
@@ -306,6 +361,7 @@ export class Ctx {
                 }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.errorForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+                statusBar.command = "rust-analyzer.openLogs";
                 icon = "$(error) ";
                 break;
             case "stopped":
@@ -315,18 +371,19 @@ export class Ctx {
                 );
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
+                statusBar.command = "rust-analyzer.startServer";
                 statusBar.text = `$(stop-circle) rust-analyzer`;
                 return;
         }
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendText("\n\n");
         }
-        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
         statusBar.tooltip.appendMarkdown(
             "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)"
         );
-        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
+        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
+        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }

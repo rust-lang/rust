@@ -499,6 +499,8 @@ impl ExprCollector<'_> {
                         Movability::Movable
                     };
                     ClosureKind::Generator(movability)
+                } else if e.async_token().is_some() {
+                    ClosureKind::Async
                 } else {
                     ClosureKind::Closure
                 };

@@ -406,9 +406,19 @@ impl GlobalState {
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            } else if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message)
-            {
-                self.show_and_log_error(message.clone(), None);
+            } else if let (health, Some(message)) = (status.health, &status.message) {
+                let open_log_button = tracing::enabled!(tracing::Level::ERROR)
+                    && (self.fetch_build_data_error().is_err()
+                        || self.fetch_workspace_error().is_err());
+                self.show_message(
+                    match health {
+                        lsp_ext::Health::Ok => lsp_types::MessageType::INFO,
+                        lsp_ext::Health::Warning => lsp_types::MessageType::WARNING,
+                        lsp_ext::Health::Error => lsp_types::MessageType::ERROR,
+                    },
+                    message.clone(),
+                    open_log_button,
+                );
             }
         }
     }
@@ -653,7 +663,7 @@ impl GlobalState {
             .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
             .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)
             .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
             .on::<lsp_types::request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
             .on::<lsp_types::request::Completion>(handlers::handle_completion)
             .on::<lsp_types::request::ResolveCompletionItem>(handlers::handle_completion_resolve)
@@ -919,6 +929,7 @@ impl GlobalState {
                                         this.show_message(
                                             lsp_types::MessageType::WARNING,
                                             error.to_string(),
+                                            false,
                                         );
                                     }
                                     this.update_configuration(config);

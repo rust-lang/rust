@@ -85,10 +85,10 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
-        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
+        IncorrectCase, InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount,
+        MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem,
+        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
         UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
         UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
@@ -604,9 +604,21 @@ impl Module {
             }
         }
 
+        let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
+
         for impl_def in self.impl_defs(db) {
             for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
                 emit_def_diagnostic(db, acc, diag);
+            }
+
+            if inherent_impls.invalid_impls().contains(&impl_def.id) {
+                let loc = impl_def.id.lookup(db.upcast());
+                let tree = loc.id.item_tree(db.upcast());
+                let node = &tree[loc.id.value];
+                let file_id = loc.id.file_id();
+                let ast_id_map = db.ast_id_map(file_id);
+
+                acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
             }
 
             for item in impl_def.items(db) {
@@ -3210,6 +3222,14 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
+    pub fn is_float(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Float(_)))
+    }
+
+    pub fn is_char(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Char))
+    }
+
     pub fn is_int_or_uint(&self) -> bool {
         match self.ty.kind(Interner) {
             TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)) => true,
@@ -3220,6 +3240,13 @@ impl Type {
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.kind(Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
+            _ => None,
+        }
+    }
+
+    pub fn as_slice(&self) -> Option<Type> {
+        match &self.ty.kind(Interner) {
+            TyKind::Slice(ty) => Some(self.derived(ty.clone())),
             _ => None,
         }
     }

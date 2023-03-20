@@ -24,7 +24,9 @@ use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    expr::{dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId},
+    expr::{
+        dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
+    },
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
     nameres::DefMap,
@@ -431,6 +433,44 @@ impl Body {
         params.shrink_to_fit();
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
+    }
+
+    pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
+        self.walk_pats(pat_id, &mut |pat| {
+            if let Pat::Bind { id, .. } = pat {
+                f(*id);
+            }
+        });
+    }
+
+    pub fn walk_pats(&self, pat_id: PatId, f: &mut impl FnMut(&Pat)) {
+        let pat = &self[pat_id];
+        f(pat);
+        match pat {
+            Pat::Range { .. }
+            | Pat::Lit(..)
+            | Pat::Path(..)
+            | Pat::ConstBlock(..)
+            | Pat::Wild
+            | Pat::Missing => {}
+            &Pat::Bind { subpat, .. } => {
+                if let Some(subpat) = subpat {
+                    self.walk_pats(subpat, f);
+                }
+            }
+            Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
+                args.iter().copied().for_each(|p| self.walk_pats(p, f));
+            }
+            Pat::Ref { pat, .. } => self.walk_pats(*pat, f),
+            Pat::Slice { prefix, slice, suffix } => {
+                let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
+                total_iter.copied().for_each(|p| self.walk_pats(p, f));
+            }
+            Pat::Record { args, .. } => {
+                args.iter().for_each(|RecordFieldPat { pat, .. }| self.walk_pats(*pat, f));
+            }
+            Pat::Box { inner } => self.walk_pats(*inner, f),
+        }
     }
 }
 

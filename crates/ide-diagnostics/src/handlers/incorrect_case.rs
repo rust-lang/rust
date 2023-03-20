@@ -1,4 +1,4 @@
-use hir::{db::AstDatabase, InFile};
+use hir::{db::ExpandDatabase, InFile};
 use ide_db::{assists::Assist, defs::NameClass};
 use syntax::AstNode;
 
