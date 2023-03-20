@@ -22,6 +22,20 @@ rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
 rustup toolchain install nightly # enables -Z unstable-options
 ```
 
+
+## Enzyme Config
+Instead of having to re-build LLVM and Enzyme every time, we can adjust the 
+Enzyme behavior on some higher level inside the following file, starting at line 720
+compiler/rustc_codegen_llvm/src/back/write.rs
+
+We want to make sure that we have EnzymeStrictAliasing=0 all the time to make sure
+that Enzyme handles enums correctly. Other flags might be enabled for debug purpose.
+
+
+
+
+
+
 [Rust]: https://www.rust-lang.org
 
 **Note: this README is for _users_ rather than _contributors_.
