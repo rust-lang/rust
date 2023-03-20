@@ -449,7 +449,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         .predicates_of(body.source.def_id())
         .predicates
         .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+        .filter_map(|p| if p.node.is_global() { Some(p.node) } else { None });
     if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
         trace!("found unsatisfiable predicates for {:?}", body.source);
         // Clear the body to only contain a single `unreachable` statement.

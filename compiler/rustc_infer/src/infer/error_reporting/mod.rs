@@ -407,8 +407,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
         self.tcx.explicit_item_bounds(def_id).iter_instantiated_copied(self.tcx, args).find_map(
-            |(predicate, _)| {
+            |predicate| {
                 predicate
+                    .node
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)

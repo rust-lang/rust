@@ -18,7 +18,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
+fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [ty::Spanned<Ty<'tcx>>] {
     match tcx.def_kind(def_id) {
         DefKind::Fn => {
             let sig = tcx.fn_sig(def_id).instantiate_identity();
@@ -26,7 +26,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             tcx.arena.alloc_from_iter(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
                 fn_sig_spans(tcx, def_id),
-            ))
+            ).map(|(node, span)| ty::Spanned { node, span }))
         }
         DefKind::AssocFn => {
             let sig = tcx.fn_sig(def_id).instantiate_identity();
@@ -36,7 +36,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             assumed_wf_types.extend(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
                 fn_sig_spans(tcx, def_id),
-            ));
+            ).map(|(node, span)| ty::Spanned { node, span }));
             tcx.arena.alloc_slice(&assumed_wf_types)
         }
         DefKind::Impl { .. } => {
@@ -48,7 +48,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);
-            tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
+            tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| ty::Spanned { node: ty, span: impl_spans.next().unwrap() }))
         }
         DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
             match data {

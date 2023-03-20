@@ -166,10 +166,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
                 .iter()
-                .map(|(clause, span)| {
+                .map(|clause| {
                     (
-                        clause.as_predicate().kind().skip_binder().stable(&mut *tables),
-                        span.stable(&mut *tables),
+                        clause.node.as_predicate().kind().skip_binder().stable(&mut *tables),
+                        clause.span.stable(&mut *tables),
                     )
                 })
                 .collect(),
@@ -188,10 +188,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
                 .iter()
-                .map(|(clause, span)| {
+                .map(|clause| {
                     (
-                        clause.as_predicate().kind().skip_binder().stable(&mut *tables),
-                        span.stable(&mut *tables),
+                        clause.node.as_predicate().kind().skip_binder().stable(&mut *tables),
+                        clause.span.stable(&mut *tables),
                     )
                 })
                 .collect(),

@@ -2717,7 +2717,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         assert_eq!(predicates.parent, None);
         let predicates = predicates.instantiate_own(tcx, args);
         let mut obligations = Vec::with_capacity(predicates.len());
-        for (index, (predicate, span)) in predicates.into_iter().enumerate() {
+        for (index, predicate) in predicates.into_iter().enumerate() {
             let cause =
                 if Some(parent_trait_pred.def_id()) == tcx.lang_items().coerce_unsized_trait() {
                     cause.clone()
@@ -2727,7 +2727,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             derived,
                             impl_or_alias_def_id: def_id,
                             impl_def_predicate_index: Some(index),
-                            span,
+                            span: predicate.span,
                         }))
                     })
                 };
@@ -2736,7 +2736,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                predicate,
+                predicate.node,
                 &mut obligations,
             );
             obligations.push(Obligation {

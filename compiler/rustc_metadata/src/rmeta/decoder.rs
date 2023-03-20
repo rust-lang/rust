@@ -663,6 +663,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [ty::Spanned<ty::Clause<'tcx>>] {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
+        ty::codec::RefDecodable::decode(d)
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
@@ -1056,7 +1062,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<&'tcx [ty::Spanned<ty::Clause<'tcx>>]> {
         let lazy = self.root.tables.explicit_item_bounds.get(self, index);
         let output = if lazy.is_default() {
             &mut []

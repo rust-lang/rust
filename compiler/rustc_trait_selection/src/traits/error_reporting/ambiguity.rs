@@ -82,8 +82,8 @@ pub fn recompute_applicable_impls<'tcx>(
 
     let predicates =
         tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
-    for (pred, span) in elaborate(tcx, predicates.into_iter()) {
-        let kind = pred.kind();
+    for pred in elaborate(tcx, predicates.into_iter()) {
+        let kind = pred.node.kind();
         if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))
         {
@@ -92,7 +92,7 @@ pub fn recompute_applicable_impls<'tcx>(
             {
                 ambiguities.push(Ambiguity::ParamEnv(tcx.def_span(trait_pred.def_id())))
             } else {
-                ambiguities.push(Ambiguity::ParamEnv(span))
+                ambiguities.push(Ambiguity::ParamEnv(pred.span))
             }
         }
     }

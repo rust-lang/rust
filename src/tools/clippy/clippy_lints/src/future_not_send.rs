@@ -66,8 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;
-            for (p, _span) in preds.iter_instantiated_copied(cx.tcx, args) {
-                if let Some(trait_pred) = p.as_trait_clause() {
+            for p in preds.iter_instantiated_copied(cx.tcx, args) {
+                if let Some(trait_pred) = p.node.as_trait_clause() {
                     if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;
                         break;

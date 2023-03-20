@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
-                        .map(|(c, s)| (c.as_predicate(), s)),
+                        .map(|c| ty::Spanned { node: c.node.as_predicate(), span: c.span }),
                 ),
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
@@ -193,7 +193,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
                 Ty::new_var(self.tcx, self.root_var(vid)),
-                self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
+                self.obligations_for_self_ty(vid)
+                    .map(|obl| ty::Spanned { node: obl.predicate, span: obl.cause.span }),
             ),
             ty::FnPtr(sig) => {
                 let expected_sig = ExpectedSig { cause_span: None, sig };
@@ -206,12 +207,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_closure_signature_from_predicates(
         &self,
         expected_ty: Ty<'tcx>,
-        predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
+        predicates: impl DoubleEndedIterator<Item = ty::Spanned<ty::Predicate<'tcx>>>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for (pred, span) in traits::elaborate(
+        for pred in traits::elaborate(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
@@ -221,8 +222,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We only care about self bounds
         .filter_only_self()
         {
-            debug!(?pred);
-            let bound_predicate = pred.kind();
+            debug!(?pred.node);
+            let bound_predicate = pred.node.kind();
 
             // Given a Projection predicate, we can potentially infer
             // the complete signature.
@@ -231,9 +232,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bound_predicate.skip_binder()
             {
                 let inferred_sig = self.normalize(
-                    span,
+                    pred.span,
                     self.deduce_sig_from_projection(
-                        Some(span),
+                        Some(pred.span),
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );
@@ -727,7 +728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
+                .find_map(|p| get_future_output(p.node.as_predicate(), p.span))?,
             ty::Error(_) => return None,
             _ => span_bug!(
                 closure_span,

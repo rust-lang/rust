@@ -42,7 +42,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             tcx.predicates_of(inherent.def_id)
                 .instantiate(tcx, inherent_substs)
                 .into_iter()
-                .map(|(pred, _)| goal.with(tcx, pred)),
+                .map(|pred| goal.with(tcx, pred.node)),
         );
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

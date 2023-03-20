@@ -108,11 +108,11 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    generic_bounds.into_iter().enumerate().map(move |(idx, (clause, span))| Obligation {
-        cause: cause(idx, span),
+    generic_bounds.into_iter().enumerate().map(move |(idx, clause)| Obligation {
+        cause: cause(idx, clause.span),
         recursion_depth: 0,
         param_env,
-        predicate: clause.as_predicate(),
+        predicate: clause.node.as_predicate(),
     })
 }
 
@@ -512,13 +512,13 @@ fn is_impossible_associated_item(
     let param_env = tcx.param_env(impl_def_id);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
-    let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
-        pred.visit_with(&mut visitor).is_continue().then(|| {
+    let predicates_for_trait = predicates.predicates.iter().filter_map(|pred| {
+        pred.node.visit_with(&mut visitor).is_continue().then(|| {
             Obligation::new(
                 tcx,
-                ObligationCause::dummy_with_span(*span),
+                ObligationCause::dummy_with_span(pred.span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args),
+                ty::EarlyBinder::bind(pred.node).instantiate(tcx, impl_trait_ref.args),
             )
         })
     });

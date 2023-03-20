@@ -292,10 +292,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     )
                     // We only care about self bounds for the impl-trait
                     .filter_only_self()
-                    .find_map(|(pred, _span)| {
+                    .find_map(|pred| {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
                         if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
-                            pred.kind().skip_binder()
+                            pred.node.kind().skip_binder()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
 

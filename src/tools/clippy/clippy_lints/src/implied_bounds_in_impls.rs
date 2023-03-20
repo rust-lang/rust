@@ -265,8 +265,8 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                             let implied_by_args = implied_by_path.args.map_or([].as_slice(), |a| a.args);
                             let implied_by_bindings = implied_by_path.args.map_or([].as_slice(), |a| a.bindings);
 
-                            preds.iter().find_map(|(clause, _)| {
-                                if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                            preds.iter().find_map(|clause| {
+                                if let ClauseKind::Trait(tr) = clause.node.kind().skip_binder()
                                     && tr.def_id() == def_id
                                     && is_same_generics(
                                         cx.tcx,

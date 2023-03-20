@@ -1144,17 +1144,16 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations =
-        bounds.instantiate_identity_iter_copied().flat_map(|(bound, bound_span)| {
-            let normalized_bound = wfcx.normalize(span, None, bound);
-            traits::wf::clause_obligations(
-                wfcx.infcx,
-                wfcx.param_env,
-                wfcx.body_def_id,
-                normalized_bound,
-                bound_span,
-            )
-        });
+    let wf_obligations = bounds.instantiate_identity_iter_copied().flat_map(|bound| {
+        let normalized_bound = wfcx.normalize(span, None, bound.node);
+        traits::wf::clause_obligations(
+            wfcx.infcx,
+            wfcx.param_env,
+            wfcx.body_def_id,
+            normalized_bound,
+            bound.span,
+        )
+    });
 
     wfcx.register_obligations(wf_obligations);
 }
@@ -1396,7 +1395,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let default_obligations = predicates
         .predicates
         .iter()
-        .flat_map(|&(pred, sp)| {
+        .flat_map(|&pred| {
             #[derive(Default)]
             struct CountParams {
                 params: FxHashSet<u32>,
@@ -1423,18 +1422,18 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 }
             }
             let mut param_count = CountParams::default();
-            let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
+            let has_region = pred.node.visit_with(&mut param_count).is_break();
+            let substituted_pred = ty::EarlyBinder::bind(pred.node).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&p| p.node == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
-                Some((substituted_pred, sp))
+                Some((substituted_pred, pred.span))
             }
         })
         .map(|(pred, sp)| {
@@ -1462,8 +1461,8 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
+    let wf_obligations = predicates.into_iter().flat_map(|p| {
+        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p.node, p.span)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);
@@ -1869,7 +1868,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         // Check elaborated bounds.
         let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
-        for (pred, obligation_span) in implied_obligations {
+        for ty::Spanned { node: pred, span: obligation_span } in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking

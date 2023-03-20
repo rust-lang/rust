@@ -91,11 +91,11 @@ fn into_iter_bound<'tcx>(
     let param_env = cx.tcx.param_env(fn_did);
     let mut into_iter_span = None;
 
-    for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
-        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
+    for pred in cx.tcx.explicit_predicates_of(fn_did).predicates {
+        if let ty::ClauseKind::Trait(tr) = pred.node.kind().skip_binder() {
             if tr.self_ty().is_param(param_index) {
                 if tr.def_id() == into_iter_did {
-                    into_iter_span = Some(*span);
+                    into_iter_span = Some(pred.span);
                 } else {
                     let tr = cx.tcx.erase_regions(tr);
                     if tr.has_escaping_bound_vars() {

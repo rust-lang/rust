@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .super_predicates_of(def_id)
                 .predicates
                 .into_iter()
-                .filter_map(|(pred, _)| pred.as_trait_clause());
+                .filter_map(|pred| pred.node.as_trait_clause());
             if direct_super_traits_iter.count() > 1 {
                 cx.emit_spanned_lint(
                     MULTIPLE_SUPERTRAIT_UPCASTABLE,

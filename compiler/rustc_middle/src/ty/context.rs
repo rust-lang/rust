@@ -1635,8 +1635,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
-        self.explicit_item_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
-            let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+        self.explicit_item_bounds(def_id).skip_binder().iter().any(|&predicate| {
+            let ty::ClauseKind::Trait(trait_predicate) = predicate.node.kind().skip_binder() else {
                 return false;
             };
             trait_predicate.trait_ref.def_id == future_trait
@@ -1658,8 +1658,8 @@ impl<'tcx> TyCtxt<'tcx> {
             let trait_did = stack.pop()?;
             let generic_predicates = self.super_predicates_of(trait_did);
 
-            for (predicate, _) in generic_predicates.predicates {
-                if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
+            for predicate in generic_predicates.predicates {
+                if let ty::ClauseKind::Trait(data) = predicate.node.kind().skip_binder() {
                     if set.insert(data.def_id()) {
                         stack.push(data.def_id());
                     }

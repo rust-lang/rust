@@ -115,7 +115,7 @@ trait DefIdVisitor<'tcx> {
     }
     fn visit_clauses(
         &mut self,
-        clauses: &[(ty::Clause<'tcx>, Span)],
+        clauses: &[ty::Spanned<ty::Clause<'tcx>>],
     ) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_clauses(clauses)
     }
@@ -168,8 +168,11 @@ where
         }
     }
 
-    fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> ControlFlow<V::BreakTy> {
-        clauses.into_iter().try_for_each(|&(clause, _span)| self.visit_clause(clause))
+    fn visit_clauses(
+        &mut self,
+        clauses: &[ty::Spanned<ty::Clause<'tcx>>],
+    ) -> ControlFlow<V::BreakTy> {
+        clauses.into_iter().try_for_each(|&clause| self.visit_clause(clause.node))
     }
 }
 
@@ -1225,8 +1228,8 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (clause, _) in bounds.clauses() {
-                match clause.kind().skip_binder() {
+            for clause in bounds.clauses() {
+                match clause.node.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_predicate) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;

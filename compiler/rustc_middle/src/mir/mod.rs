@@ -11,7 +11,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, GenericArgsRef};
+use crate::ty::{GenericArg, GenericArgsRef, Spanned};
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
@@ -593,13 +593,13 @@ impl<'tcx> Body<'tcx> {
         loop {
             let scope_data = &self.source_scopes[source_info.scope];
 
-            if let Some((callee, callsite_span)) = scope_data.inlined {
+            if let Some(callee) = scope_data.inlined {
                 // Stop inside the most nested non-`#[track_caller]` function,
                 // before ever reaching its caller (which is irrelevant).
-                if !callee.def.requires_caller_location(tcx) {
+                if !callee.node.def.requires_caller_location(tcx) {
                     return from_span(source_info.span);
                 }
-                source_info.span = callsite_span;
+                source_info.span = callee.span;
             }
 
             // Skip past all of the parents with `inlined: None`.
@@ -780,7 +780,7 @@ pub struct VarBindingForm<'tcx> {
     #[skip_traversal(
         despite_potential_miscompilation_because = "potential oversight since 0193d1f"
     )]
-    pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
+    pub opt_match_place: Option<Spanned<Option<Place<'tcx>>>>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
 }
@@ -1344,10 +1344,10 @@ impl SourceScope {
         source_scopes: &IndexSlice<SourceScope, SourceScopeData<'tcx>>,
     ) -> Option<ty::Instance<'tcx>> {
         let scope_data = &source_scopes[self];
-        if let Some((inlined_instance, _)) = scope_data.inlined {
-            Some(inlined_instance)
+        if let Some(inlined_instance) = scope_data.inlined {
+            Some(inlined_instance.node)
         } else if let Some(inlined_scope) = scope_data.inlined_parent_scope {
-            Some(source_scopes[inlined_scope].inlined.unwrap().0)
+            Some(source_scopes[inlined_scope].inlined.unwrap().node)
         } else {
             None
         }
@@ -1362,7 +1362,7 @@ pub struct SourceScopeData<'tcx> {
     /// Whether this scope is the root of a scope tree of another body,
     /// inlined into this body by the MIR inliner.
     /// `ty::Instance` is the callee, and the `Span` is the call site.
-    pub inlined: Option<(ty::Instance<'tcx>, Span)>,
+    pub inlined: Option<Spanned<ty::Instance<'tcx>>>,
 
     /// Nearest (transitive) parent scope (if any) which is inlined.
     /// This is an optimization over walking up `parent_scope`

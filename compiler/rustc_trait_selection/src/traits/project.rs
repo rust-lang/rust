@@ -674,7 +674,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 let infcx = self.selcx.infcx;
                 self.obligations.extend(
                     infcx.tcx.predicates_of(data.def_id).instantiate_own(infcx.tcx, data.args).map(
-                        |(mut predicate, span)| {
+                        |ty::Spanned { node: mut predicate, span }| {
                             if data.has_escaping_bound_vars() {
                                 (predicate, ..) = BoundVarReplacer::replace_bound_vars(
                                     infcx,
@@ -1370,13 +1370,14 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
     // Register the obligations arising from the impl and from the associated type itself.
     let predicates = tcx.predicates_of(alias_ty.def_id).instantiate(tcx, args);
-    for (predicate, span) in predicates {
+    for predicate in predicates {
+        let span = predicate.span;
         let predicate = normalize_with_depth_to(
             selcx,
             param_env,
             cause.clone(),
             depth + 1,
-            predicate,
+            predicate.node,
             obligations,
         );
 
@@ -2446,13 +2447,13 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
         .instantiate_own(tcx, obligation.predicate.args);
-    for (predicate, span) in predicates {
+    for predicate in predicates {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            predicate,
+            predicate.node,
             nested,
         );
 
@@ -2463,7 +2464,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
                 | super::AscribeUserTypeProvePredicate(..)
         ) {
             obligation.cause.clone()
-        } else if span.is_dummy() {
+        } else if predicate.span.is_dummy() {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
@@ -2473,7 +2474,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                super::BindingObligation(obligation.predicate.def_id, span),
+                super::BindingObligation(obligation.predicate.def_id, predicate.span),
             )
         };
         nested.push(Obligation::with_depth(

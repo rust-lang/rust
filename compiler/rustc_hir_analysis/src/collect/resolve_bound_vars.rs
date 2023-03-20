@@ -1802,8 +1802,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
             let predicates = tcx.super_predicates_that_define_assoc_item((def_id, assoc_name));
-            let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
-                let bound_predicate = pred.kind();
+            let obligations = predicates.predicates.iter().filter_map(|&pred| {
+                let bound_predicate = pred.node.kind();
                 match bound_predicate.skip_binder() {
                     ty::ClauseKind::Trait(data) => {
                         // The order here needs to match what we would get from `subst_supertrait`

@@ -305,13 +305,13 @@ fn default_body_is_unstable(
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
 fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    predicates: impl IntoIterator<Item = ty::Spanned<ty::Clause<'tcx>>>,
 ) -> (String, String) {
     let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
     let mut projections = vec![];
-    for (predicate, _) in predicates {
-        debug!("predicate {:?}", predicate);
-        let bound_predicate = predicate.kind();
+    for predicate in predicates {
+        debug!("predicate {:?}", predicate.node);
+        let bound_predicate = predicate.node.kind();
         match bound_predicate.skip_binder() {
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
@@ -382,7 +382,7 @@ fn fn_sig_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    predicates: impl IntoIterator<Item = ty::Spanned<ty::Clause<'tcx>>>,
     assoc: ty::AssocItem,
 ) -> String {
     let args = sig
@@ -429,7 +429,7 @@ fn fn_sig_suggestion<'tcx>(
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
             tcx.explicit_item_bounds(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
-                .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
+                .find_map(|bound| bound.node.as_projection_clause()?.no_bound_vars()?.term.ty())
                 .unwrap_or_else(|| {
                     span_bug!(
                         ident.span,

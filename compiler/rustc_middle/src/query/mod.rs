@@ -365,7 +365,7 @@ rustc_queries! {
     /// `key` is the `DefId` of the associated type or opaque type.
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx [ty::Spanned<ty::Clause<'tcx>>]> {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -884,13 +884,13 @@ rustc_queries! {
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
     /// this can not be used to check whether these types are well formed.
-    query assumed_wf_types(key: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
+    query assumed_wf_types(key: LocalDefId) -> &'tcx [ty::Spanned<Ty<'tcx>>] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
     }
 
     /// We need to store the assumed_wf_types for an RPITIT so that impls of foreign
     /// traits with return-position impl trait in traits can inherit the right wf types.
-    query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [(Ty<'tcx>, Span)] {
+    query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [ty::Spanned<Ty<'tcx>>] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }

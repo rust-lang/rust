@@ -597,8 +597,8 @@ impl<'tcx> InferCtxt<'tcx> {
         let tcx = self.tcx;
         let item_bounds = tcx.explicit_item_bounds(def_id);
 
-        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
-            let predicate = predicate.fold_with(&mut BottomUpFolder {
+        for predicate in item_bounds.iter_instantiated_copied(tcx, args) {
+            let predicate = predicate.node.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,

@@ -613,7 +613,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .iter()
-                        .find_map(|(p, span)| if p == pred { Some(span) } else { None })
+                        .find_map(|p| (p.node == pred).then_some(p.span))
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }

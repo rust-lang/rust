@@ -938,7 +938,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             LocalInfo::User(BindingForm::Var(VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
-                                opt_match_place: Some((None, span)),
+                                opt_match_place: Some(ty::Spanned { node: None, span }),
                                 pat_span: span,
                             }))
                         };
@@ -950,7 +950,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr.span,
                         &pat,
                         None,
-                        Some((Some(&place), span)),
+                        Some(ty::Spanned { node: Some(&place), span }),
                     );
                     let place_builder = PlaceBuilder::from(local);
                     unpack!(block = self.place_into_pattern(block, &pat, place_builder, false));

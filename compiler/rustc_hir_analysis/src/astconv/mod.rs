@@ -1057,7 +1057,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx,
                     predicates
                         .iter()
-                        .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref))),
+                        .filter_map(|p| Some(p.node.as_trait_clause()?.map_bound(|t| t.trait_ref))),
                     assoc_name,
                 )
             },

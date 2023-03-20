@@ -158,15 +158,15 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
-    for (pred, _) in tcx.explicit_item_bounds(item_def_id).iter_instantiated_copied(tcx, id_args) {
-        debug!(?pred);
+    for pred in tcx.explicit_item_bounds(item_def_id).iter_instantiated_copied(tcx, id_args) {
+        debug!(?pred.node);
 
         // We only ignore opaque type args if the opaque type is the outermost type.
         // The opaque type may be nested within itself via recursion in e.g.
         // type Foo<'a> = impl PartialEq<Foo<'a>>;
         // which thus mentions `'a` and should thus accept hidden types that borrow 'a
         // instead of requiring an additional `+ 'a`.
-        match pred.kind().skip_binder() {
+        match pred.node.kind().skip_binder() {
             ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
@@ -188,7 +188,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 region.visit_with(&mut collector);
             }
             _ => {
-                pred.visit_with(&mut collector);
+                pred.node.visit_with(&mut collector);
             }
         }
     }

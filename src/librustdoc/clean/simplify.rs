@@ -118,8 +118,8 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
     predicates
         .predicates
         .iter()
-        .filter_map(|(pred, _)| {
-            if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder() {
+        .filter_map(|pred| {
+            if let ty::ClauseKind::Trait(pred) = pred.node.kind().skip_binder() {
                 if pred.trait_ref.self_ty() == self_ty { Some(pred.def_id()) } else { None }
             } else {
                 None

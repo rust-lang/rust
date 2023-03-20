@@ -123,8 +123,8 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                 .super_predicates_of(inner_most_trait_ref.def_id())
                 .predicates
                 .into_iter()
-                .filter_map(move |(pred, _)| {
-                    pred.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
+                .filter_map(move |pred| {
+                    pred.node.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
                 });
 
             // Find an unvisited supertrait
@@ -282,7 +282,7 @@ fn vtable_entries<'tcx>(
                     let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
                     if impossible_predicates(
                         tcx,
-                        predicates.map(|(predicate, _)| predicate).collect(),
+                        predicates.map(|predicate| predicate.node).collect(),
                     ) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;

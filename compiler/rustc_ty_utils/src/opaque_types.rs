@@ -171,13 +171,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         // Collect opaque types nested within the associated type bounds of this opaque type.
                         // We use identity args here, because we already know that the opaque type uses
                         // only generic parameters, and thus substituting would not give us more information.
-                        for (pred, span) in self
+                        for pred in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)
                             .instantiate_identity_iter_copied()
                         {
-                            trace!(?pred);
-                            self.visit_spanned(span, pred);
+                            trace!(?pred.node);
+                            self.visit_spanned(pred.span, pred.node);
                         }
                     }
                     Err(NotUniqueParam::NotParam(arg)) => {

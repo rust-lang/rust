@@ -442,7 +442,7 @@ fn clean_projection<'tcx>(
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
             .iter_instantiated_copied(cx.tcx, ty.skip_binder().args)
-            .map(|(pred, _)| pred)
+            .map(|pred| pred.node)
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
     }
@@ -787,10 +787,10 @@ fn clean_ty_generics<'tcx>(
     let where_predicates = preds
         .predicates
         .iter()
-        .flat_map(|(pred, _)| {
+        .flat_map(|pred| {
             let mut projection = None;
             let param_idx = (|| {
-                let bound_p = pred.kind();
+                let bound_p = pred.node.kind();
                 match bound_p.skip_binder() {
                     ty::ClauseKind::Trait(pred) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
@@ -817,7 +817,7 @@ fn clean_ty_generics<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx.into())
             {
-                let pred = clean_predicate(*pred, cx)?;
+                let pred = clean_predicate(pred.node, cx)?;
 
                 bounds.extend(
                     pred.get_bounds()
@@ -840,7 +840,7 @@ fn clean_ty_generics<'tcx>(
                 return None;
             }
 
-            Some(pred)
+            Some(&pred.node)
         })
         .collect::<Vec<_>>();
 
@@ -2269,7 +2269,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                     .tcx
                     .explicit_item_bounds(def_id)
                     .iter_instantiated_copied(cx.tcx, args)
-                    .map(|(bound, _)| bound)
+                    .map(|bound| bound.node)
                     .collect::<Vec<_>>();
                 let ty = clean_middle_opaque_bounds(cx, bounds);
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {

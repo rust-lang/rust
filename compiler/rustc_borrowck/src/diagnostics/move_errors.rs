@@ -130,7 +130,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // opt_match_place is None for let [mut] x = ... statements,
                 // whether or not the right-hand side is a place expression
                 if let LocalInfo::User(BindingForm::Var(VarBindingForm {
-                    opt_match_place: Some((opt_match_place, match_span)),
+                    opt_match_place: Some(opt_match_place),
                     binding_mode: _,
                     opt_ty_info: _,
                     pat_span: _,
@@ -143,8 +143,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         original_path,
                         *move_from,
                         local,
-                        opt_match_place,
-                        match_span,
+                        opt_match_place.node,
+                        opt_match_place.span,
                         stmt_source_info.span,
                     );
                     return;

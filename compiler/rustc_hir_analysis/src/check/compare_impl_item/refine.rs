@@ -123,7 +123,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .instantiate_identity(tcx)
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
-        .map(|(clause, _)| clause);
+        .map(|clause| clause.node);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
@@ -193,14 +193,14 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     // too, since we *do not* use the trait solver to prove that the RPITIT's
     // bounds are not stronger -- we're doing a simple, syntactic compatibility
     // check between bounds. This is strictly forwards compatible, though.
-    for (clause, span) in impl_bounds {
-        if !trait_bounds.contains(&clause) {
+    for clause in impl_bounds {
+        if !trait_bounds.contains(&clause.node) {
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
                 trait_m.def_id,
                 impl_m.def_id,
-                Some(span),
+                Some(clause.span),
             );
             return;
         }
@@ -220,12 +220,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
             && self.tcx.is_impl_trait_in_trait(proj.def_id)
         {
             if self.types.insert(proj) {
-                for (pred, _) in self
+                for pred in self
                     .tcx
                     .explicit_item_bounds(proj.def_id)
                     .iter_instantiated_copied(self.tcx, proj.args)
                 {
-                    pred.visit_with(self)?;
+                    pred.node.visit_with(self)?;
                 }
             }
             ControlFlow::Continue(())
@@ -267,7 +267,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         let Some(future_output_ty) = tcx
             .explicit_item_bounds(future_ty.def_id)
             .iter_instantiated_copied(tcx, future_ty.args)
-            .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
+            .find_map(|clause| match clause.node.kind().no_bound_vars()? {
                 ty::ClauseKind::Projection(proj) => proj.term.ty(),
                 _ => None,
             })
