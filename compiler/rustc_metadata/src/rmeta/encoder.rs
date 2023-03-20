@@ -1044,7 +1044,13 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
                 ty::AssocItemContainer::ImplContainer => true,
-                ty::AssocItemContainer::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) always encode RPITITs,
+                // since we need to be able to "project" from an RPITIT associated item
+                // to an opaque when installing the default projection predicates in
+                // default trait methods with RPITITs.
+                ty::AssocItemContainer::TraitContainer => {
+                    assoc_item.defaultness(tcx).has_value() || assoc_item.opt_rpitit_info.is_some()
+                }
             }
         }
         DefKind::TyParam => {
