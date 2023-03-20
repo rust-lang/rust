@@ -16,7 +16,6 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
@@ -701,7 +700,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
-        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey, TreatProjections::AsCandidateKey) else {
+        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
         for &impl_def_id in self.tcx.incoherent_impls(simp) {
