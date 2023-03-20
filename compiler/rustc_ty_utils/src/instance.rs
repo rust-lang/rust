@@ -14,9 +14,9 @@ use crate::errors::UnexpectedFnPtrAssociatedItem;
 
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, ty::InstanceOfArg<'tcx>>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (def_id, args)) = key.into_parts();
+    let (param_env, ty::InstanceOfArg(def_id, args)) = key.into_parts();
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);

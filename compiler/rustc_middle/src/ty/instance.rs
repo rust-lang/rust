@@ -334,6 +334,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
+pub struct InstanceOfArg<'tcx>(pub DefId, pub GenericArgsRef<'tcx>);
+
 impl<'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
         assert!(
@@ -400,7 +403,7 @@ impl<'tcx> Instance<'tcx> {
         // below is more likely to ignore the bounds in scope (e.g. if the only
         // generic parameters mentioned by `args` were lifetime ones).
         let args = tcx.erase_regions(args);
-        tcx.resolve_instance(tcx.erase_regions(param_env.and((def_id, args))))
+        tcx.resolve_instance(tcx.erase_regions(param_env.and(InstanceOfArg(def_id, args))))
     }
 
     pub fn expect_resolve(
