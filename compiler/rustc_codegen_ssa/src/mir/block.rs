@@ -917,7 +917,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_region_ptr()
+                            && !op.layout.ty.is_ref()
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);
@@ -959,7 +959,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_region_ptr()
+                            && !op.layout.ty.is_ref()
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);

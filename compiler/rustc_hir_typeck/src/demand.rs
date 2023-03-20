@@ -1487,7 +1487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             "unboxing the value"
-                        } else if checked_ty.is_region_ptr() {
+                        } else if checked_ty.is_ref() {
                             "dereferencing the borrow"
                         } else {
                             "dereferencing the type"
