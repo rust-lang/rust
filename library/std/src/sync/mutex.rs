@@ -107,8 +107,8 @@ use crate::sys::locks as sys;
 /// *guard += 1;
 /// ```
 ///
-/// It is sometimes necessary to manually drop the mutex guard or to create an inner scope
-/// to unlock it sooner than the end of the enclosing scope.
+/// To unlock a mutex guard sooner than the end of the enclosing scope,
+/// either create an inner scope or drop the guard manually.
 ///
 /// ```
 /// use std::sync::{Arc, Mutex};
@@ -153,7 +153,7 @@ use crate::sys::locks as sys;
 /// // It's even more important here than in the threads because we `.join` the
 /// // threads after that. If we had not dropped the mutex guard, a thread could
 /// // be waiting forever for it, causing a deadlock.
-/// // As in the threads a block could have been used instead of calling the
+/// // As in the threads, a block could have been used instead of calling the
 /// // `drop` function.
 /// drop(data);
 /// // Here the mutex guard is not assigned to a variable and so, even if the
