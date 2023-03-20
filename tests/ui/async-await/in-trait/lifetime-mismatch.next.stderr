@@ -1,0 +1,21 @@
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/lifetime-mismatch.rs:5:12
+   |
+LL | #![feature(async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
+  --> $DIR/lifetime-mismatch.rs:14:17
+   |
+LL |     async fn foo<'a>(&self);
+   |                 ---- lifetimes in impl do not match this method in trait
+...
+LL |     async fn foo(&self) {}
+   |                 ^ lifetimes do not match method in trait
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0195`.

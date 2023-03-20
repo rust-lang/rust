@@ -880,7 +880,7 @@ impl Span {
     pub fn fresh_expansion(self, expn_id: LocalExpnId) -> Span {
         HygieneData::with(|data| {
             self.with_ctxt(data.apply_mark(
-                SyntaxContext::root(),
+                self.ctxt(),
                 expn_id.to_expn_id(),
                 Transparency::Transparent,
             ))

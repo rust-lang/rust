@@ -567,6 +567,8 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "Haiku");
         } else if target.contains("solaris") || target.contains("illumos") {
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
+        } else if target.contains("linux") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Linux");
         }
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.

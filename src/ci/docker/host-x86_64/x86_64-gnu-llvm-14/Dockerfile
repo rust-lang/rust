@@ -2,7 +2,6 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# NOTE: intentionally installs both python2 and python3 so we can test support for both.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   gcc-multilib \
@@ -11,8 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python2.7 \
-  python3 \
+  python3.11 \
   git \
   cmake \
   sudo \
