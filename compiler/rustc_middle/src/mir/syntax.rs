@@ -3,7 +3,7 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
-use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
+use super::{AscribeUserType, BasicBlock, Constant, Field, Local, SwitchTargets};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;
@@ -350,7 +350,7 @@ pub enum StatementKind<'tcx> {
     /// When executed at runtime this is a nop.
     ///
     /// Disallowed after drop elaboration.
-    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
+    AscribeUserType(Box<AscribeUserType<'tcx>>, ty::Variance),
 
     /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
     /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage

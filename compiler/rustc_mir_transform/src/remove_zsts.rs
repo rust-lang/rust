@@ -116,7 +116,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             }
             StatementKind::Deinit(box place)
             | StatementKind::SetDiscriminant { box place, variant_index: _ }
-            | StatementKind::AscribeUserType(box (place, _), _)
+            | StatementKind::AscribeUserType(box AscribeUserType(place, _), _)
             | StatementKind::Retag(_, box place)
             | StatementKind::PlaceMention(box place)
             | StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => Some(place),

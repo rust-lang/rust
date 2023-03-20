@@ -530,7 +530,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Statement {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
-                            Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
+                            Box::new(AscribeUserType(
+                                place,
+                                UserTypeProjection { base, projs: Vec::new() },
+                            )),
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
                             // when applying the type to the value being matched, but this
@@ -2087,7 +2090,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Statement {
                     source_info,
                     kind: StatementKind::AscribeUserType(
-                        Box::new((
+                        Box::new(AscribeUserType(
                             ascription.source,
                             UserTypeProjection { base, projs: Vec::new() },
                         )),
