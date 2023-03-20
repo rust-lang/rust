@@ -13,7 +13,6 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 
-#[derive(Debug)]
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
     assignments: IndexVec<Local, Set1<LocationExtended>>,
@@ -127,6 +126,25 @@ impl SsaLocals {
     /// Return the number of uses if a local that are not "Deref".
     pub fn num_direct_uses(&self, local: Local) -> u32 {
         self.direct_uses[local]
+    }
+
+    pub fn assignment_dominates(
+        &self,
+        dominators: &Dominators<BasicBlock>,
+        local: Local,
+        location: Location,
+    ) -> bool {
+        match self.assignments[local] {
+            Set1::One(LocationExtended::Arg) => true,
+            Set1::One(LocationExtended::Plain(ass)) => {
+                if ass.block == location.block {
+                    ass.statement_index < location.statement_index
+                } else {
+                    dominators.dominates(ass.block, location.block)
+                }
+            }
+            _ => false,
+        }
     }
 
     pub fn assignments<'a, 'tcx>(
