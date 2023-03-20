@@ -1042,6 +1042,14 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
+                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) always encode RPITITs but when we
+                // stop lowering default method bodies as ImplTraitPlaceholder this may be wrong,
+                // because we want to do something similar to what we do in the branch above.
+                _ => {
+                    if tcx.opt_rpitit_info(def_id.to_def_id()).is_some() {
+                        true
+                    }
+                }
                 ty::AssocItemContainer::ImplContainer => true,
                 ty::AssocItemContainer::TraitContainer => assoc_item.defaultness(tcx).has_value(),
             }
