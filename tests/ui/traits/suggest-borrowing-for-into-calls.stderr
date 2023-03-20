@@ -1,0 +1,51 @@
+error[E0277]: the trait bound `&Foo: From<u64>` is not satisfied
+  --> $DIR/suggest-borrowing-for-into-calls.rs:12:15
+   |
+LL |     foo(42u64.into());
+   |               ^^^^ the trait `From<u64>` is not implemented for `&Foo`
+   |
+   = help: the trait `From<u64>` is implemented for `Foo`
+   = note: required for `u64` to implement `Into<&Foo>`
+help: consider borrowing the expression to use `From<u64>`
+   |
+LL |     foo(&42u64.into());
+   |         +
+
+error[E0277]: the trait bound `&Foo: From<u64>` is not satisfied
+  --> $DIR/suggest-borrowing-for-into-calls.rs:18:21
+   |
+LL |     let val = 42u64.into();
+   |                     ^^^^ the trait `From<u64>` is not implemented for `&Foo`
+   |
+   = help: the trait `From<u64>` is implemented for `Foo`
+   = note: required for `u64` to implement `Into<&Foo>`
+help: consider borrowing the expression to use `From<u64>`
+   |
+LL |     let val = &42u64.into();
+   |               +
+
+error[E0277]: the trait bound `&mut Foo: From<u64>` is not satisfied
+  --> $DIR/suggest-borrowing-for-into-calls.rs:25:19
+   |
+LL |     foo_mut(42u64.into());
+   |                   ^^^^ the trait `From<u64>` is not implemented for `&mut Foo`
+   |
+   = help: the trait `From<u64>` is implemented for `Foo`
+   = note: required for `u64` to implement `Into<&mut Foo>`
+help: consider borrowing the expression to use `From<u64>`
+   |
+LL |     foo_mut(&mut 42u64.into());
+   |             ++++
+
+error[E0277]: the trait bound `&Foo: From<i32>` is not satisfied
+  --> $DIR/suggest-borrowing-for-into-calls.rs:31:15
+   |
+LL |     foo(42i32.into());
+   |               ^^^^ the trait `From<i32>` is not implemented for `&Foo`
+   |
+   = help: the trait `From<u64>` is implemented for `Foo`
+   = note: required for `i32` to implement `Into<&Foo>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

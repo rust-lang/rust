@@ -24,7 +24,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -946,7 +946,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let body_def_id = obligation.cause.body_id;
                         // Try to report a help message
                         if is_fn_trait
                             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
@@ -1027,7 +1026,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 &impl_candidates,
                                 trait_ref,
-                                body_def_id,
+                                &obligation.cause,
                                 &mut err,
                                 true,
                             ) {
@@ -1063,7 +1062,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         &impl_candidates,
                                         trait_ref,
-                                        body_def_id,
+                                        &obligation.cause,
                                         &mut err,
                                         true,
                                     );
@@ -1524,10 +1523,18 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
-        body_def_id: LocalDefId,
+        cause: &ObligationCause<'tcx>,
         err: &mut Diagnostic,
         other: bool,
     ) -> bool;
+
+    fn suggest_borrowing_to_use_the_candidates(
+        &self,
+        impl_candidates: &[TraitRef<'tcx>],
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        code: &ObligationCauseCode<'tcx>,
+        err: &mut Diagnostic,
+    );
 
     /// Gets the parent trait chain start
     fn get_parent_trait_ref(
@@ -2019,10 +2026,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
-        body_def_id: LocalDefId,
+        cause: &ObligationCause<'tcx>,
         err: &mut Diagnostic,
         other: bool,
     ) -> bool {
+        let body_def_id = cause.body_id;
         let other = if other { "other " } else { "" };
         let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             candidates.sort();
@@ -2145,7 +2153,53 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|(_, normalized)| normalized)
             .collect::<Vec<_>>();
 
+        self.suggest_borrowing_to_use_the_candidates(
+            &normalized_impl_candidates,
+            trait_ref,
+            cause.code(),
+            err,
+        );
+
         report(normalized_impl_candidates, err)
+    }
+
+    /// Suggests borrowing if there exists an impl candidate that equals to target
+    /// `trait_ref` except `trait_ref`'s self type being a reference to that type.
+    /// Although it's not specific, this method targets `.into()` conversions.
+    fn suggest_borrowing_to_use_the_candidates(
+        &self,
+        impl_candidates: &[TraitRef<'tcx>],
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        code: &ObligationCauseCode<'tcx>,
+        err: &mut Diagnostic,
+    ) {
+        let ty::Ref(_, ty, mutability) = trait_ref.self_ty().skip_binder().kind() else { return };
+        // first arg is the self type and the rest is the arguments for the trait
+        let rest_args = &trait_ref.skip_binder().substs[1..];
+
+        let ObligationCauseCode::FunctionArgumentObligation { call_hir_id, .. } = code else { return };
+        let Some(hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::MethodCall(_, receiver, _, _),
+            ..
+        })) = self.tcx.hir().find(*call_hir_id) else { return };
+
+        let ty = self.tcx.erase_regions(*ty);
+        for impl_candidate in impl_candidates.iter() {
+            let candidate_rest_args = &impl_candidate.substs[1..];
+            if ty == self.tcx.erase_regions(impl_candidate.self_ty())
+                && rest_args == candidate_rest_args
+            {
+                err.span_suggestion_verbose(
+                    receiver.span.shrink_to_lo(),
+                    &format!(
+                        "consider borrowing the expression to use `{}`",
+                        impl_candidate.print_only_trait_path(),
+                    ),
+                    format!("&{}", mutability.prefix_str()),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
     }
 
     /// Gets the parent trait chain start
@@ -2347,7 +2401,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 self.report_similar_impl_candidates(
                                     impl_candidates.as_slice(),
                                     trait_ref,
-                                    obligation.cause.body_id,
+                                    &obligation.cause,
                                     &mut err,
                                     false,
                                 );
