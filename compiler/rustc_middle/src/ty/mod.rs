@@ -87,7 +87,9 @@ pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
     TyCtxtFeed,
 };
-pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
+pub use self::instance::{
+    Instance, InstanceDef, InstanceOfArg, InstanceOfConstArg, ShortInstance, UnusedGenericParams,
+};
 pub use self::list::List;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
@@ -1425,6 +1427,14 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable)]
+pub struct SubstsWithOptConstParam<'tcx, T>(
+    #[skip_traversal] pub WithOptConstParam<T>,
+    pub SubstsRef<'tcx>,
+);
+
 /// A `DefId` which, in case it is a const argument, is potentially bundled with
 /// the `DefId` of the generic parameter it instantiates.
 ///
@@ -1476,7 +1486,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 /// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {

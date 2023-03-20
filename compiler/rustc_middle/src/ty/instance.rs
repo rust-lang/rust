@@ -319,6 +319,12 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
+pub struct InstanceOfConstArg<'tcx>(pub ty::LocalDefId, pub DefId, pub SubstsRef<'tcx>);
+
+#[derive(Clone, Copy, Debug, Eq, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
+pub struct InstanceOfArg<'tcx>(pub DefId, pub SubstsRef<'tcx>);
+
 impl<'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> Instance<'tcx> {
         assert!(
@@ -419,10 +425,10 @@ impl<'tcx> Instance<'tcx> {
         // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
         if let Some((did, param_did)) = def.as_const_arg() {
             tcx.resolve_instance_of_const_arg(
-                tcx.erase_regions(param_env.and((did, param_did, substs))),
+                tcx.erase_regions(param_env.and(InstanceOfConstArg(did, param_did, substs))),
             )
         } else {
-            tcx.resolve_instance(tcx.erase_regions(param_env.and((def.did, substs))))
+            tcx.resolve_instance(tcx.erase_regions(param_env.and(InstanceOfArg(def.did, substs))))
         }
     }
 

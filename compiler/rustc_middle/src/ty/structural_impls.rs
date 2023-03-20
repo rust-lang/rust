@@ -217,6 +217,8 @@ CloneLiftImpls! {
     ::rustc_ast::NodeId,
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
+    ::rustc_hir::def_id::DefId,
+    ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
@@ -261,8 +263,6 @@ CloneLiftImpls! {
 // implementation and traversal implementations (the latter only for
 // TyCtxt<'_> interners).
 TrivialTypeTraversalAndLiftImpls! {
-    ::rustc_hir::def_id::DefId,
-    ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::Unsafety,
     ::rustc_target::spec::abi::Abi,
     crate::ty::BoundConstness,

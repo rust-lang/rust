@@ -353,6 +353,18 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key for ty::InstanceOfArg<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        self.0.krate == LOCAL_CRATE
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
@@ -365,7 +377,7 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
+impl<'tcx> Key for ty::InstanceOfConstArg<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     #[inline(always)]

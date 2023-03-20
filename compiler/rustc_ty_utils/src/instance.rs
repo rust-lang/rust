@@ -1,5 +1,5 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
@@ -10,26 +10,31 @@ use traits::{translate_substs, Reveal};
 
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, ty::InstanceOfArg<'tcx>>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (did, substs)) = key.into_parts();
+    let (param_env, ty::InstanceOfArg(did, substs)) = key.into_parts();
     if let Some(did) = did.as_local() {
         if let Some(param_did) = tcx.opt_const_param_of(did) {
-            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
+            return tcx.resolve_instance_of_const_arg(
+                param_env.and(ty::InstanceOfConstArg(did, param_did, substs)),
+            );
         }
     }
 
-    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::unknown(did), substs)))
+    inner_resolve_instance(
+        tcx,
+        param_env.and(ty::SubstsWithOptConstParam(ty::WithOptConstParam::unknown(did), substs)),
+    )
 }
 
 fn resolve_instance_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, ty::InstanceOfConstArg<'tcx>>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (did, const_param_did, substs)) = key.into_parts();
+    let (param_env, ty::InstanceOfConstArg(did, const_param_did, substs)) = key.into_parts();
     inner_resolve_instance(
         tcx,
-        param_env.and((
+        param_env.and(ty::SubstsWithOptConstParam(
             ty::WithOptConstParam { did: did.to_def_id(), const_param_did: Some(const_param_did) },
             substs,
         )),
@@ -38,9 +43,9 @@ fn resolve_instance_of_const_arg<'tcx>(
 
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, ty::SubstsWithOptConstParam<'tcx, DefId>>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (def, substs)) = key.into_parts();
+    let (param_env, ty::SubstsWithOptConstParam(def, substs)) = key.into_parts();
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);

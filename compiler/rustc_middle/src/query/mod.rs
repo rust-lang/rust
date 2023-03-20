@@ -2133,14 +2133,14 @@ rustc_queries! {
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
     ///    has already been/will be emitted, for the original cause
     query resolve_instance(
-        key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>
+        key: ty::ParamEnvAnd<'tcx, ty::InstanceOfArg<'tcx>>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
         remap_env_constness
     }
 
     query resolve_instance_of_const_arg(
-        key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>
+        key: ty::ParamEnvAnd<'tcx, ty::InstanceOfConstArg<'tcx>>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc {
             "resolving instance of the const argument `{}`",
