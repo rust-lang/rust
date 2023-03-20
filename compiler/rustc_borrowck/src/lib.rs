@@ -629,7 +629,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.

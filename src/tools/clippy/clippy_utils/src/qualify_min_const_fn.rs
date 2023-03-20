@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::{
-    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Body, CastKind, FakeReadCauseAndPlace, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
@@ -207,7 +207,7 @@ fn check_statement<'tcx>(
             check_rvalue(tcx, body, def_id, rval, span)
         },
 
-        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
+        StatementKind::FakeRead(box FakeReadCauseAndPlace(_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
             check_place(tcx, **place, span, body)

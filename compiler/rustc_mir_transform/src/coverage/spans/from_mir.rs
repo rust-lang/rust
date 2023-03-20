@@ -1,7 +1,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::{
-    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, AggregateKind, FakeReadCause, FakeReadCauseAndPlace, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_span::Span;
 
@@ -120,10 +120,10 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         // and `_1` is the `Place` for `somenum`.
         //
         // If and when the Issue is resolved, remove this special case match pattern:
-        StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
+        StatementKind::FakeRead(box FakeReadCauseAndPlace(FakeReadCause::ForGuardBinding, _)) => None,
 
         // Retain spans from all other statements
-        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(_) // Not including `ForGuardBinding`
         | StatementKind::Intrinsic(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
