@@ -54,7 +54,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
@@ -102,6 +102,7 @@ pub(crate) struct IndexItem {
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<isize>,
+    pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
     pub(crate) deprecation: Option<Deprecation>,
@@ -1877,7 +1878,7 @@ pub(crate) fn render_impl_summary(
     aliases: &[String],
 ) {
     let inner_impl = i.inner_impl();
-    let id = cx.derive_id(get_id_for_impl(&inner_impl.for_, inner_impl.trait_.as_ref(), cx));
+    let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
@@ -1994,21 +1995,35 @@ pub(crate) fn small_url_encode(s: String) -> String {
     }
 }
 
-fn get_id_for_impl(for_: &clean::Type, trait_: Option<&clean::Path>, cx: &Context<'_>) -> String {
-    match trait_ {
-        Some(t) => small_url_encode(format!("impl-{:#}-for-{:#}", t.print(cx), for_.print(cx))),
-        None => small_url_encode(format!("impl-{:#}", for_.print(cx))),
-    }
+fn get_id_for_impl<'tcx>(tcx: TyCtxt<'tcx>, impl_id: ItemId) -> String {
+    use rustc_middle::ty::print::with_forced_trimmed_paths;
+    let (type_, trait_) = match impl_id {
+        ItemId::Auto { trait_, for_ } => {
+            let ty = tcx.type_of(for_).skip_binder();
+            (ty, Some(ty::TraitRef::new(tcx, trait_, [ty])))
+        }
+        ItemId::Blanket { impl_id, .. } | ItemId::DefId(impl_id) => {
+            match tcx.impl_subject(impl_id).skip_binder() {
+                ty::ImplSubject::Trait(trait_ref) => {
+                    (trait_ref.args[0].expect_ty(), Some(trait_ref))
+                }
+                ty::ImplSubject::Inherent(ty) => (ty, None),
+            }
+        }
+    };
+    with_forced_trimmed_paths!(small_url_encode(if let Some(trait_) = trait_ {
+        format!("impl-{trait_}-for-{type_}", trait_ = trait_.print_only_trait_path())
+    } else {
+        format!("impl-{type_}")
+    }))
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match *item.kind {
-        clean::ItemKind::ImplItem(ref i) => {
-            i.trait_.as_ref().map(|trait_| {
-                // Alternative format produces no URLs,
-                // so this parameter does nothing.
-                (format!("{:#}", i.for_.print(cx)), get_id_for_impl(&i.for_, Some(trait_), cx))
-            })
+        clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
+            // Alternative format produces no URLs,
+            // so this parameter does nothing.
+            Some((format!("{:#}", i.for_.print(cx)), get_id_for_impl(cx.tcx(), item.item_id)))
         }
         _ => None,
     }

@@ -22,7 +22,7 @@ impl Bar for GenericStruct<u32> {}
 // We check that "Aliased type" is also present as a title in the sidebar.
 // @has - '//*[@class="sidebar-elems"]//h3/a[@href="#aliased-type"]' 'Aliased type'
 // We check that we have the implementation of the type alias itself.
-// @has - '//*[@id="impl-TypedefStruct"]/h3' 'impl TypedefStruct'
+// @has - '//*[@id="impl-GenericStruct%3Cu8%3E"]/h3' 'impl TypedefStruct'
 // @has - '//*[@id="method.on_alias"]/h4' 'pub fn on_alias()'
 // @has - '//*[@id="impl-GenericStruct%3CT%3E"]/h3' 'impl<T> GenericStruct<T>'
 // @has - '//*[@id="method.on_gen"]/h4' 'pub fn on_gen(arg: T)'

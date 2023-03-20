@@ -503,8 +503,7 @@ fn sidebar_render_assoc_items(
             .iter()
             .filter_map(|it| {
                 let trait_ = it.inner_impl().trait_.as_ref()?;
-                let encoded =
-                    id_map.derive(super::get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
+                let encoded = id_map.derive(super::get_id_for_impl(cx.tcx(), it.impl_item.item_id));
 
                 let prefix = match it.inner_impl().polarity {
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",

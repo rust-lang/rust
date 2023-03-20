@@ -350,6 +350,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
+                            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) = self.cache.parent_stack.last() {
+                                item_id.as_def_id()
+                            } else {
+                                None
+                            },
                             search_type: get_function_type_for_search(
                                 &item,
                                 self.tcx,
@@ -369,6 +374,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         parent,
                         item: item.clone(),
                         impl_generics,
+                        impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
+                            self.cache.parent_stack.last()
+                        {
+                            item_id.as_def_id()
+                        } else {
+                            None
+                        },
                     });
                 }
                 _ => {}
@@ -539,6 +551,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
 pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
+    pub(crate) impl_id: Option<DefId>,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
 }
