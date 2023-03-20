@@ -776,10 +776,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Operations.
-            Rvalue::Len(ref mut place) => {
-                let place = self.simplify_place_value(place, location)?;
-                Value::Len(place)
-            }
+            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(kind, ref mut value, to) => {
                 let from = value.ty(self.local_decls, self.tcx);
                 let value = self.simplify_operand(value, location)?;
@@ -1020,6 +1017,39 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         } else {
             Some(result)
         }
+    }
+
+    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
+        // Trivial case: we are fetching a statically known length.
+        let place_ty = place.ty(self.local_decls, self.tcx).ty;
+        if let ty::Array(_, len) = place_ty.kind() {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        let mut inner = self.simplify_place_value(place, location)?;
+
+        // The length information is stored in the fat pointer.
+        // Reborrowing copies length information from one pointer to the other.
+        while let Value::Address { place: borrowed, .. } = self.get(inner)
+            && let [PlaceElem::Deref] = borrowed.projection[..]
+            && let Some(borrowed) = self.locals[borrowed.local]
+        {
+            inner = borrowed;
+        }
+
+        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        if let Value::Cast { kind, from, to, .. } = self.get(inner)
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let Some(from) = from.builtin_deref(true)
+            && let ty::Array(_, len) = from.ty.kind()
+            && let Some(to) = to.builtin_deref(true)
+            && let ty::Slice(..) = to.ty.kind()
+        {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        // Fallback: a symbolic `Len`.
+        Some(self.insert(Value::Len(inner)))
     }
 }
 
