@@ -3822,7 +3822,7 @@ impl<T> [T] {
     where
         F: FnMut(&'a T, &'a T) -> Option<Ordering>,
     {
-        self.iter().is_sorted_by(|a, b| compare(*a, *b))
+        self.array_windows().all(|[a, b]| compare(a, b).map_or(false, Ordering::is_le))
     }
 
     /// Checks if the elements of this slice are sorted using the given key extraction function.
