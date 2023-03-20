@@ -49,6 +49,8 @@
 //!
 //! The input to the [`mir!`] macro is:
 //!
+//!  - An optional return type annotation in the form of `type RET = ...;`. This may be required
+//!    if the compiler cannot infer the type of RET.
 //!  - A possibly empty list of local declarations. Locals can also be declared inline on
 //!    assignments via `let`. Type inference generally works. Shadowing does not.
 //!  - A list of basic blocks. The first of these is the start block and is where execution begins.
@@ -120,6 +122,18 @@
 //!         }
 //!
 //!         ret = {
+//!             Return()
+//!         }
+//!     )
+//! }
+//!
+//! #[custom_mir(dialect = "runtime", phase = "optimized")]
+//! fn annotated_return_type() -> (i32, bool) {
+//!     mir!(
+//!         type RET = (i32, bool);
+//!         {
+//!             RET.0 = 1;
+//!             RET.1 = true;
 //!             Return()
 //!         }
 //!     )
