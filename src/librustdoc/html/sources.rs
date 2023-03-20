@@ -85,7 +85,7 @@ impl LocalSourcesCollector<'_, '_> {
             },
         );
 
-        let mut href = href.into_inner().to_string_lossy().to_string();
+        let mut href = href.into_inner().to_string_lossy().into_owned();
         if let Some(c) = href.as_bytes().last() && *c != b'/' {
             href.push('/');
         }

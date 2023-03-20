@@ -3068,7 +3068,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // generate the def_id of an associated type for the trait and return as
                         // type a projection.
                         let def_id = if in_trait && tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                            tcx.associated_item_for_impl_trait_in_trait(local_def_id).to_def_id()
+                            tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
                         } else {
                             local_def_id.to_def_id()
                         };

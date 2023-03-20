@@ -1,5 +1,6 @@
 use clean::AttributesExt;
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -28,8 +29,8 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
-    visibility_print_with_space, Buffer, Ending, PrintWithSpace,
+    display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
+    print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
@@ -367,7 +368,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         ..myitem.clone()
                     };
 
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()));
+                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()).to_string());
                     stab_tags
                 } else {
                     None
@@ -461,42 +462,62 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
 /// Render the stability, deprecation and portability tags that are displayed in the item's summary
 /// at the module level.
-fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) -> String {
-    let mut tags = String::new();
+fn extra_info_tags<'a, 'tcx: 'a>(
+    item: &'a clean::Item,
+    parent: &'a clean::Item,
+    tcx: TyCtxt<'tcx>,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    display_fn(move |f| {
+        fn tag_html<'a>(
+            class: &'a str,
+            title: &'a str,
+            contents: &'a str,
+        ) -> impl fmt::Display + 'a {
+            display_fn(move |f| {
+                write!(
+                    f,
+                    r#"<span class="stab {}" title="{}">{}</span>"#,
+                    class,
+                    Escape(title),
+                    contents
+                )
+            })
+        }
 
-    fn tag_html(class: &str, title: &str, contents: &str) -> String {
-        format!(r#"<span class="stab {}" title="{}">{}</span>"#, class, Escape(title), contents)
-    }
+        // The trailing space after each tag is to space it properly against the rest of the docs.
+        if let Some(depr) = &item.deprecation(tcx) {
+            let message = if stability::deprecation_in_effect(depr) {
+                "Deprecated"
+            } else {
+                "Deprecation planned"
+            };
+            write!(f, "{}", tag_html("deprecated", "", message))?;
+        }
 
-    // The trailing space after each tag is to space it properly against the rest of the docs.
-    if let Some(depr) = &item.deprecation(tcx) {
-        let message = if stability::deprecation_in_effect(depr) {
-            "Deprecated"
-        } else {
-            "Deprecation planned"
+        // The "rustc_private" crates are permanently unstable so it makes no sense
+        // to render "unstable" everywhere.
+        if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
+            == Some(true)
+        {
+            write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+        }
+
+        let cfg = match (&item.cfg, parent.cfg.as_ref()) {
+            (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
+            (cfg, _) => cfg.as_deref().cloned(),
         };
-        tags += &tag_html("deprecated", "", message);
-    }
 
-    // The "rustc_private" crates are permanently unstable so it makes no sense
-    // to render "unstable" everywhere.
-    if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
-        == Some(true)
-    {
-        tags += &tag_html("unstable", "", "Experimental");
-    }
-
-    let cfg = match (&item.cfg, parent.cfg.as_ref()) {
-        (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
-        (cfg, _) => cfg.as_deref().cloned(),
-    };
-
-    debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
-    if let Some(ref cfg) = cfg {
-        tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
-    }
-
-    tags
+        debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
+        if let Some(ref cfg) = cfg {
+            write!(
+                f,
+                "{}",
+                tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html())
+            )
+        } else {
+            Ok(())
+        }
+    })
 }
 
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {

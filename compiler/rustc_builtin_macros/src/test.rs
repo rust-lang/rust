@@ -33,7 +33,23 @@ pub fn expand_test_case(
     }
 
     let sp = ecx.with_def_site_ctxt(attr_sp);
-    let mut item = anno_item.expect_item();
+    let (mut item, is_stmt) = match anno_item {
+        Annotatable::Item(item) => (item, false),
+        Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
+            (i, true)
+        } else {
+            unreachable!()
+        },
+        _ => {
+            ecx.struct_span_err(
+                anno_item.span(),
+                "`#[test_case]` attribute is only allowed on items",
+            )
+            .emit();
+
+            return vec![];
+        }
+    };
     item = item.map(|mut item| {
         let test_path_symbol = Symbol::intern(&item_path(
             // skip the name of the root module
@@ -50,7 +66,13 @@ pub fn expand_test_case(
         item
     });
 
-    return vec![Annotatable::Item(item)];
+    let ret = if is_stmt {
+        Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
+    } else {
+        Annotatable::Item(item)
+    };
+
+    vec![ret]
 }
 
 pub fn expand_test(
