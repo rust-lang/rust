@@ -342,6 +342,7 @@ define!(
 #[rustc_macro_transparency = "transparent"]
 pub macro mir {
     (
+        $(type RET = $ret_ty:ty ;)?
         $(let $local_decl:ident $(: $local_decl_ty:ty)? ;)*
 
         {
@@ -362,7 +363,7 @@ pub macro mir {
         {
             // Now all locals
             #[allow(non_snake_case)]
-            let RET;
+            let RET $(: $ret_ty)?;
             $(
                 let $local_decl $(: $local_decl_ty)? ;
             )*
