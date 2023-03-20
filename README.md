@@ -25,8 +25,8 @@ rustup toolchain install nightly # enables -Z unstable-options
 
 ## Enzyme Config
 Instead of having to re-build LLVM and Enzyme every time, we can adjust the 
-Enzyme behavior on some higher level inside the following file, starting at line 720
-compiler/rustc_codegen_llvm/src/back/write.rs
+Enzyme behavior on some higher level inside the following file or using the config parameter
+[compiler/rustc_codegen_llvm/src/back/write.rs](https://github.com/EnzymeAD/rust/blob/c7fbb43f83a224cfa290dde2a46a930dce0c5507/compiler/rustc_codegen_llvm/src/back/write.rs#L712)
 
 We want to make sure that we have EnzymeStrictAliasing=0 all the time to make sure
 that Enzyme handles enums correctly. Other flags might be enabled for debug purpose.
