@@ -1,3 +1,15 @@
+Version 1.68.1 (2023-03-23)
+===========================
+
+- [Fix miscompilation in produced Windows MSVC artifacts](https://github.com/rust-lang/rust/pull/109094)
+  This was introduced by enabling ThinLTO for the distributed rustc which led
+  to miscompilations in the resulting binary. Currently this is believed to be
+  limited to the -Zdylib-lto flag used for rustc compilation, rather than a
+  general bug in ThinLTO, so only rustc artifacts should be affected.
+- [Fix --enable-local-rust builds](https://github.com/rust-lang/rust/pull/109111/)
+- [Treat `$prefix-clang` as `clang` in linker detection code](https://github.com/rust-lang/rust/pull/109156)
+- [Fix panic in compiler code](https://github.com/rust-lang/rust/pull/108162)
+
 Version 1.68.0 (2023-03-09)
 ==========================
 

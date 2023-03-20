@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             });
             cx.emit_spanned_lint(DEREF_INTO_DYN_SUPERTRAIT, cx.tcx.def_span(item.owner_id.def_id), SupertraitAsDerefTarget {
                 t,
-                target_principal: target_principal.to_string(),
+                target_principal,
                 label,
             });
         }
