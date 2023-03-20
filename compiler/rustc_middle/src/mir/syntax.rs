@@ -3,7 +3,7 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
-use super::{BasicBlock, Const, Local, UserTypeProjection};
+use super::{AscribeUserType, BasicBlock, Const, Local};
 
 use crate::mir::coverage::CoverageKind;
 use crate::traits::Reveal;
@@ -359,7 +359,7 @@ pub enum StatementKind<'tcx> {
     /// When executed at runtime this is a nop.
     ///
     /// Disallowed after drop elaboration.
-    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
+    AscribeUserType(Box<AscribeUserType<'tcx>>, ty::Variance),
 
     /// Carries control-flow-sensitive information injected by `-Cinstrument-coverage`,
     /// such as where to generate physical coverage-counter-increments during codegen.

@@ -425,7 +425,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::AscribeUserType(
-                        box (place, user_ty),
+                        box AscribeUserType(place, user_ty),
                         variance
                     ) => {
                         self.visit_ascribe_user_ty(place, $(& $mutability)? *variance, user_ty, location);
