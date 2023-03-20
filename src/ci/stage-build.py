@@ -727,7 +727,7 @@ def record_metrics(pipeline: Pipeline, timer: Timer):
     metrics = load_last_metrics(pipeline.metrics_path())
     if metrics is None:
         return
-    llvm_steps = tuple(metrics.find_all_by_type("bootstrap::native::Llvm"))
+    llvm_steps = tuple(metrics.find_all_by_type("bootstrap::llvm::Llvm"))
     assert len(llvm_steps) > 0
     llvm_duration = sum(step.duration for step in llvm_steps)
 
