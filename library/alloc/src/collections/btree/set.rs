@@ -1545,6 +1545,37 @@ impl<T: Ord + Clone, A: Allocator + Clone> Sub<&BTreeSet<T, A>> for &BTreeSet<T,
     }
 }
 
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Ord, A: Allocator + Clone> Sub<&BTreeSet<T, A>> for BTreeSet<T, A> {
+    type Output = BTreeSet<T, A>;
+
+    /// Returns the difference of `self` and `rhs` as a new `BTreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([3, 4, 5]);
+    ///
+    /// let result = a - &b;
+    /// assert_eq!(result, BTreeSet::from([1, 2]));
+    /// ```
+    fn sub(mut self, rhs: &BTreeSet<T, A>) -> BTreeSet<T, A> {
+        // Iterate the smaller set, removing elements that are in `rhs` from `self`
+        if self.len() <= rhs.len() {
+            self.retain(|e| !rhs.contains(e));
+        } else {
+            rhs.iter().for_each(|e| {
+                self.remove(e);
+            })
+        }
+
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord + Clone, A: Allocator + Clone> BitXor<&BTreeSet<T, A>> for &BTreeSet<T, A> {
     type Output = BTreeSet<T, A>;
@@ -1567,6 +1598,37 @@ impl<T: Ord + Clone, A: Allocator + Clone> BitXor<&BTreeSet<T, A>> for &BTreeSet
             self.symmetric_difference(rhs).cloned(),
             ManuallyDrop::into_inner(self.map.alloc.clone()),
         )
+    }
+}
+
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Ord, A: Allocator + Clone> BitXor<BTreeSet<T, A>> for BTreeSet<T, A> {
+    type Output = BTreeSet<T, A>;
+
+    /// Returns the symmetric difference of `self` and `rhs` as a new `BTreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([2, 3, 4]);
+    ///
+    /// let result = a ^ b;
+    /// assert_eq!(result, BTreeSet::from([1, 4]));
+    /// ```
+    fn bitxor(self, rhs: BTreeSet<T, A>) -> BTreeSet<T, A> {
+        // Iterate through the smaller set
+        let [mut a, mut b] = minmax_by_key(self, rhs, BTreeSet::len);
+
+        // This is essentially
+        // a = a - b (retain elements that are *not* in b)
+        // b = b - a (remove all elements that are in a)
+        a.retain(|e| !b.remove(e));
+
+        // Union of the differences
+        a | b
     }
 }
 
@@ -1595,6 +1657,29 @@ impl<T: Ord + Clone, A: Allocator + Clone> BitAnd<&BTreeSet<T, A>> for &BTreeSet
     }
 }
 
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Ord, A: Allocator + Clone> BitAnd<&BTreeSet<T, A>> for BTreeSet<T, A> {
+    type Output = BTreeSet<T, A>;
+
+    /// Returns the intersection of `self` and `rhs` as a new `BTreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([2, 3, 4]);
+    ///
+    /// let result = a & &b;
+    /// assert_eq!(result, BTreeSet::from([2, 3]));
+    /// ```
+    fn bitand(mut self, rhs: &BTreeSet<T, A>) -> BTreeSet<T, A> {
+        self.retain(|e| rhs.contains(e));
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord + Clone, A: Allocator + Clone> BitOr<&BTreeSet<T, A>> for &BTreeSet<T, A> {
     type Output = BTreeSet<T, A>;
@@ -1617,6 +1702,33 @@ impl<T: Ord + Clone, A: Allocator + Clone> BitOr<&BTreeSet<T, A>> for &BTreeSet<
             self.union(rhs).cloned(),
             ManuallyDrop::into_inner(self.map.alloc.clone()),
         )
+    }
+}
+
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Ord, A: Allocator + Clone> BitOr<BTreeSet<T, A>> for BTreeSet<T, A> {
+    type Output = BTreeSet<T, A>;
+
+    /// Returns the union of `self` and `rhs` as a new `BTreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([3, 4, 5]);
+    ///
+    /// let result = a | b;
+    /// assert_eq!(result, BTreeSet::from([1, 2, 3, 4, 5]));
+    /// ```
+    fn bitor(self, rhs: BTreeSet<T, A>) -> BTreeSet<T, A> {
+        // Try to avoid unnecessary moves, by keeping set with the bigger length
+        let [a, mut b] = minmax_by_key(self, rhs, BTreeSet::len);
+
+        b.extend(a);
+
+        b
     }
 }
 
@@ -2396,6 +2508,10 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMutKey<'a, T, A> {
 
 #[unstable(feature = "btree_cursors", issue = "107540")]
 pub use super::map::UnorderedKeyError;
+
+fn minmax_by_key<T, K: Ord>(a: T, b: T, k: impl Fn(&T) -> K) -> [T; 2] {
+    if k(&a) <= k(&b) { [a, b] } else { [b, a] }
+}
 
 #[cfg(test)]
 mod tests;
