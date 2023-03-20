@@ -8,7 +8,7 @@
 //!
 //! The documentation for this module describes how to use this feature. If you are interested in
 //! hacking on the implementation, most of that documentation lives at
-//! `rustc_mir_building/src/build/custom/mod.rs`.
+//! `rustc_mir_build/src/build/custom/mod.rs`.
 //!
 //! Typical usage will look like this:
 //!
