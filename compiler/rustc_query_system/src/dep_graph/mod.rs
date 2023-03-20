@@ -17,8 +17,10 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
-use std::fmt;
 use std::hash::Hash;
+use std::{fmt, panic};
+
+use self::graph::{print_markframe_trace, MarkFrame};
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
@@ -53,11 +55,23 @@ pub trait DepContext: Copy {
     }
 
     /// Try to force a dep node to execute and see if it's green.
-    #[instrument(skip(self), level = "debug")]
-    fn try_force_from_dep_node(self, dep_node: DepNode<Self::DepKind>) -> bool {
+    #[inline]
+    #[instrument(skip(self, frame), level = "debug")]
+    fn try_force_from_dep_node(
+        self,
+        dep_node: DepNode<Self::DepKind>,
+        frame: Option<&MarkFrame<'_>>,
+    ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
-            f(self, dep_node);
+            if let Err(value) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                f(self, dep_node);
+            })) {
+                if !value.is::<rustc_errors::FatalErrorMarker>() {
+                    print_markframe_trace(self.dep_graph(), frame);
+                }
+                panic::resume_unwind(value)
+            }
             true
         } else {
             false
