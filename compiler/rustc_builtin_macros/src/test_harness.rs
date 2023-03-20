@@ -37,7 +37,7 @@ struct TestCtxt<'a> {
 
 /// Traverse the crate, collecting all the test functions, eliding any
 /// existing main functions, and synthesizing a main test harness
-pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast::Crate) {
+pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn ResolverExpand) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
