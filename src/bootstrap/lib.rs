@@ -144,6 +144,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by filetime, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "emulate_second_only_system", None),
     (Some(Mode::ToolRustc), "emulate_second_only_system", None),
+    // Needed to avoid the need to copy windows.lib into the sysroot.
+    (Some(Mode::Rustc), "windows_raw_dylib", None),
+    (Some(Mode::ToolRustc), "windows_raw_dylib", None),
 ];
 
 /// A structure representing a Rust compiler.

@@ -87,35 +87,38 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::OsString;
     use std::io;
     use std::os::windows::prelude::*;
-    use std::ptr;
 
-    use winapi::um::libloaderapi::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+    use windows::{
+        core::PCWSTR,
+        Win32::Foundation::HINSTANCE,
+        Win32::System::LibraryLoader::{
+            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        },
     };
 
+    let mut module = HINSTANCE::default();
     unsafe {
-        let mut module = ptr::null_mut();
-        let r = GetModuleHandleExW(
+        GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            current_dll_path as usize as *mut _,
+            PCWSTR(current_dll_path as *mut u16),
             &mut module,
-        );
-        if r == 0 {
-            return Err(format!("GetModuleHandleExW failed: {}", io::Error::last_os_error()));
-        }
-        let mut space = Vec::with_capacity(1024);
-        let r = GetModuleFileNameW(module, space.as_mut_ptr(), space.capacity() as u32);
-        if r == 0 {
-            return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
-        }
-        let r = r as usize;
-        if r >= space.capacity() {
-            return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
-        }
-        space.set_len(r);
-        let os = OsString::from_wide(&space);
-        Ok(PathBuf::from(os))
+        )
     }
+    .ok()
+    .map_err(|e| e.to_string())?;
+
+    let mut filename = vec![0; 1024];
+    let n = unsafe { GetModuleFileNameW(module, &mut filename) } as usize;
+    if n == 0 {
+        return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
+    }
+    if n >= filename.capacity() {
+        return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
+    }
+
+    filename.truncate(n);
+
+    Ok(OsString::from_wide(&filename).into())
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {

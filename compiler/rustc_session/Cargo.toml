@@ -24,5 +24,9 @@ termize = "0.1.1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["libloaderapi"] }
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.46.0"
+features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+]
