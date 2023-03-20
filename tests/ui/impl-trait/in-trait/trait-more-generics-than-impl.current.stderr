@@ -1,5 +1,5 @@
 error[E0049]: method `bar` has 0 type parameters but its trait declaration has 1 type parameter
-  --> $DIR/trait-more-generics-than-impl.rs:11:11
+  --> $DIR/trait-more-generics-than-impl.rs:14:11
    |
 LL |     fn bar<T>() -> impl Sized;
    |            - expected 1 type parameter
