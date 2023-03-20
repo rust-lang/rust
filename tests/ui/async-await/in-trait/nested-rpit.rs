@@ -1,7 +1,10 @@
 // edition: 2021
-// known-bug: #105197
-// failure-status:101
-// dont-check-compiler-stderr
+// [current] known-bug: #105197
+// [current] failure-status:101
+// [current] dont-check-compiler-stderr
+// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
+// [next] check-pass
+// revisions: current next
 
 #![feature(async_fn_in_trait)]
 #![feature(return_position_impl_trait_in_trait)]
