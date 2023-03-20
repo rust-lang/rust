@@ -651,7 +651,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed::<Tcx>(prev_index, DebugArg::from(&result));
+        incremental_verify_ich_failed::<Tcx>(prev_index, result);
     }
 }
 
@@ -669,50 +669,12 @@ where
     })
 }
 
-// This DebugArg business is largely a mirror of std::fmt::ArgumentV1, which is
-// currently not exposed publicly.
-//
-// The PR which added this attempted to use `&dyn Debug` instead, but that
-// showed statistically significant worse compiler performance. It's not
-// actually clear what the cause there was -- the code should be cold. If this
-// can be replaced with `&dyn Debug` with on perf impact, then it probably
-// should be.
-extern "C" {
-    type Opaque;
-}
-
-struct DebugArg<'a> {
-    value: &'a Opaque,
-    fmt: fn(&Opaque, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
-}
-
-impl<'a, T> From<&'a T> for DebugArg<'a>
-where
-    T: std::fmt::Debug,
-{
-    fn from(value: &'a T) -> DebugArg<'a> {
-        DebugArg {
-            value: unsafe { std::mem::transmute(value) },
-            fmt: unsafe {
-                std::mem::transmute(<T as std::fmt::Debug>::fmt as fn(_, _) -> std::fmt::Result)
-            },
-        }
-    }
-}
-
-impl std::fmt::Debug for DebugArg<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        (self.fmt)(self.value, f)
-    }
-}
-
-// Note that this is marked #[cold] and intentionally takes the equivalent of
-// `dyn Debug` for its arguments, as we want to avoid generating a bunch of
-// different implementations for LLVM to chew on (and filling up the final
-// binary, too).
+// Note that this is marked #[cold] and intentionally takes `dyn Debug` for `result`,
+// as we want to avoid generating a bunch of different implementations for LLVM to
+// chew on (and filling up the final binary, too).
 #[cold]
 #[inline(never)]
-fn incremental_verify_ich_failed<Tcx>(prev_index: SerializedDepNodeIndex, result: DebugArg<'_>)
+fn incremental_verify_ich_failed<Tcx>(prev_index: SerializedDepNodeIndex, result: &dyn Debug)
 where
     Tcx: DepContext,
 {
