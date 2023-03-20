@@ -188,7 +188,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(ref opaque) => {
-                    if opaque.in_trait {
+                    if opaque.in_trait && !self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                         DefKind::ImplTraitPlaceholder
                     } else {
                         DefKind::OpaqueTy
