@@ -166,8 +166,6 @@ cfg_if! {
 
         pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
 
-        pub use std::rc::Rc as Lrc;
-        pub use std::rc::Weak as Weak;
         pub use std::cell::Ref as ReadGuard;
         pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
@@ -263,9 +261,6 @@ cfg_if! {
         pub use std::sync::OnceLock as OnceCell;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
-
-        pub use std::sync::Arc as Lrc;
-        pub use std::sync::Weak as Weak;
 
         pub type MTRef<'a, T> = &'a T;
 
@@ -363,6 +358,8 @@ cfg_if! {
         }
     }
 }
+
+pub use std::sync::Arc as Lrc;
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send<T: ?Sized + Send>() {}
