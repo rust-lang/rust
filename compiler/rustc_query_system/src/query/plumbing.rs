@@ -379,7 +379,11 @@ where
 
     match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, state_lock, span, key) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) = execute_job(query, qcx, key.clone(), dep_node, job.id);
+            let (result, dep_node_index) = match qcx.dep_context().dep_graph().data() {
+                None => execute_job_non_incr(query, qcx, key, job.id),
+                Some(data) => execute_job_incr(query, qcx, data, key, dep_node, job.id),
+            };
+
             let cache = query.query_cache(qcx);
             if query.feedable() {
                 // We should not compute queries that also got a value via feeding.
@@ -413,10 +417,47 @@ where
     }
 }
 
+// Fast path for when incr. comp. is off.
 #[inline(always)]
-fn execute_job<Q, Qcx>(
+fn execute_job_non_incr<Q, Qcx>(
     query: Q,
     qcx: Qcx,
+    key: Q::Key,
+    job_id: QueryJobId,
+) -> (Q::Value, DepNodeIndex)
+where
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
+{
+    debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
+
+    // Fingerprint the key, just to assert that it doesn't
+    // have anything we don't consider hashable
+    if cfg!(debug_assertions) {
+        let _ = key.to_fingerprint(*qcx.dep_context());
+    }
+
+    let prof_timer = qcx.dep_context().profiler().query_provider();
+    let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+    let dep_node_index = qcx.dep_context().dep_graph().next_virtual_depnode_index();
+    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+    // Similarly, fingerprint the result to assert that
+    // it doesn't have anything not considered hashable.
+    if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result() {
+        qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+            hash_result(&mut hcx, &result);
+        });
+    }
+
+    (result, dep_node_index)
+}
+
+#[inline(always)]
+fn execute_job_incr<Q, Qcx>(
+    query: Q,
+    qcx: Qcx,
+    dep_graph_data: &DepGraphData<Qcx::DepKind>,
     key: Q::Key,
     mut dep_node_opt: Option<DepNode<Qcx::DepKind>>,
     job_id: QueryJobId,
@@ -425,36 +466,6 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let dep_graph = qcx.dep_context().dep_graph();
-    let dep_graph_data = match dep_graph.data() {
-        // Fast path for when incr. comp. is off.
-        None => {
-            // Fingerprint the key, just to assert that it doesn't
-            // have anything we don't consider hashable
-            if cfg!(debug_assertions) {
-                let _ = key.to_fingerprint(*qcx.dep_context());
-            }
-
-            let prof_timer = qcx.dep_context().profiler().query_provider();
-            let result =
-                qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
-            let dep_node_index = dep_graph.next_virtual_depnode_index();
-            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-            // Similarly, fingerprint the result to assert that
-            // it doesn't have anything not considered hashable.
-            if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result()
-            {
-                qcx.dep_context().with_stable_hashing_context(|mut hcx| {
-                    hash_result(&mut hcx, &result);
-                });
-            }
-
-            return (result, dep_node_index);
-        }
-        Some(data) => data,
-    };
-
     if !query.anon() && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
