@@ -173,12 +173,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 )
             ),
             ExprKind::Array { fields } => {
-                let elem_ty = match expr.ty.kind() {
-                    ty::Array(ty, ..) => ty,
-                    _                 => unreachable!("ty is array"),
-                };
+                let elem_ty = expr.ty.builtin_index().expect("ty must be an array");
                 Ok(Rvalue::Aggregate(
-                    Box::new(AggregateKind::Array(*elem_ty)),
+                    Box::new(AggregateKind::Array(elem_ty)),
                     fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
                 ))
             },
