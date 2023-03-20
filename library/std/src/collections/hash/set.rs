@@ -1147,6 +1147,38 @@ where
     }
 }
 
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T, S> BitOr<HashSet<T, S>> for HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
+    type Output = HashSet<T, S>;
+
+    /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a = HashSet::from([1, 2, 3]);
+    /// let b = HashSet::from([3, 4, 5]);
+    ///
+    /// let result = a | b;
+    /// assert_eq!(result, HashSet::from([1, 2, 3, 4, 5]));
+    /// ```
+    fn bitor(self, rhs: HashSet<T, S>) -> HashSet<T, S> {
+        // Try to avoid allocations by keeping set with the bigger capacity,
+        // try to avoid unnecessary moves, by keeping set with the bigger length
+        let [a, mut b] = minmax_by_key(self, rhs, |set| (set.capacity(), set.len()));
+
+        b.extend(a);
+
+        b
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
 where
@@ -1170,6 +1202,33 @@ where
     /// ```
     fn bitand(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.intersection(rhs).cloned().collect()
+    }
+}
+
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T, S> BitAnd<&HashSet<T, S>> for HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
+    type Output = HashSet<T, S>;
+
+    /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, S>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a = HashSet::from([1, 2, 3]);
+    /// let b = HashSet::from([2, 3, 4]);
+    ///
+    /// let result = a & &b;
+    /// assert_eq!(result, HashSet::from([2, 3]));
+    /// ```
+    fn bitand(mut self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+        self.retain(|e| rhs.contains(e));
+        self
     }
 }
 
@@ -1199,6 +1258,41 @@ where
     }
 }
 
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T, S> BitXor<HashSet<T, S>> for HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
+    type Output = HashSet<T, S>;
+
+    /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, S>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a = HashSet::from([1, 2, 3]);
+    /// let b = HashSet::from([3, 4, 5]);
+    ///
+    /// let result = a ^ b;
+    /// assert_eq!(result, HashSet::from([1, 2, 4, 5]));
+    /// ```
+    fn bitxor(self, rhs: HashSet<T, S>) -> HashSet<T, S> {
+        // Iterate through the smaller set
+        let [mut a, mut b] = minmax_by_key(self, rhs, HashSet::len);
+
+        // This is essentially
+        // a = a - b (retain elements that are *not* in b)
+        // b = b - a (remove all elements that are in a)
+        a.retain(|e| !b.remove(e));
+
+        // Union of the differences
+        a | b
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
 where
@@ -1222,6 +1316,41 @@ where
     /// ```
     fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.difference(rhs).cloned().collect()
+    }
+}
+
+#[stable(feature = "set_owned_ops", since = "CURRENT_RUSTC_VERSION")]
+impl<T, S> Sub<&HashSet<T, S>> for HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
+    type Output = HashSet<T, S>;
+
+    /// Returns the difference of `self` and `rhs` as a new `HashSet<T, S>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a = HashSet::from([1, 2, 3]);
+    /// let b = HashSet::from([3, 4, 5]);
+    ///
+    /// let result = a - &b;
+    /// assert_eq!(result, HashSet::from([1, 2]));
+    /// ```
+    fn sub(mut self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+        // Iterate the smaller set, removing elements that are in `rhs` from `self`
+        if self.len() <= rhs.len() {
+            self.retain(|e| !rhs.contains(e));
+        } else {
+            rhs.iter().for_each(|e| {
+                self.remove(e);
+            })
+        }
+
+        self
     }
 }
 
@@ -1884,4 +2013,8 @@ fn assert_covariance() {
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
         d
     }
+}
+
+fn minmax_by_key<T, K: Ord>(a: T, b: T, k: impl Fn(&T) -> K) -> [T; 2] {
+    if k(&a) <= k(&b) { [a, b] } else { [b, a] }
 }
