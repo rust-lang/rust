@@ -1139,15 +1139,8 @@ where
     /// let a = HashSet::from([1, 2, 3]);
     /// let b = HashSet::from([3, 4, 5]);
     ///
-    /// let set = &a | &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2, 3, 4, 5];
-    /// for x in &set {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
+    /// let result = &a | &b;
+    /// assert_eq!(result, HashSet::from([1, 2, 3, 4, 5]));
     /// ```
     fn bitor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.union(rhs).cloned().collect()
@@ -1172,15 +1165,8 @@ where
     /// let a = HashSet::from([1, 2, 3]);
     /// let b = HashSet::from([2, 3, 4]);
     ///
-    /// let set = &a & &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [2, 3];
-    /// for x in &set {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
+    /// let result = &a & &b;
+    /// assert_eq!(result, HashSet::from([2, 3]));
     /// ```
     fn bitand(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.intersection(rhs).cloned().collect()
@@ -1205,15 +1191,8 @@ where
     /// let a = HashSet::from([1, 2, 3]);
     /// let b = HashSet::from([3, 4, 5]);
     ///
-    /// let set = &a ^ &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2, 4, 5];
-    /// for x in &set {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
+    /// let result = &a ^ &b;
+    /// assert_eq!(result, HashSet::from([1, 2, 4, 5]));
     /// ```
     fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.symmetric_difference(rhs).cloned().collect()
@@ -1238,15 +1217,8 @@ where
     /// let a = HashSet::from([1, 2, 3]);
     /// let b = HashSet::from([3, 4, 5]);
     ///
-    /// let set = &a - &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2];
-    /// for x in &set {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
+    /// let result = &a - &b;
+    /// assert_eq!(result, HashSet::from([1, 2]));
     /// ```
     fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.difference(rhs).cloned().collect()
