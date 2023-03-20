@@ -231,13 +231,13 @@ impl MirLowerCtx<'_> {
                 let pr = match pr {
                     ResolveValueResult::ValueNs(v) => v,
                     ResolveValueResult::Partial(..) => {
-                        if let Some(assoc) = self
+                        if let Some((assoc, subst)) = self
                             .infer
                             .assoc_resolutions_for_expr(expr_id)
                         {
-                            match assoc.0 {
+                            match assoc {
                                 hir_def::AssocItemId::ConstId(c) => {
-                                    self.lower_const(c, current, place, expr_id.into())?;
+                                    self.lower_const(c, current, place, subst, expr_id.into())?;
                                     return Ok(Some(current))
                                 },
                                 hir_def::AssocItemId::FunctionId(_) => {
@@ -274,7 +274,7 @@ impl MirLowerCtx<'_> {
                         Ok(Some(current))
                     }
                     ValueNs::ConstId(const_id) => {
-                        self.lower_const(const_id, current, place, expr_id.into())?;
+                        self.lower_const(const_id, current, place, Substitution::empty(Interner), expr_id.into())?;
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
@@ -951,9 +951,10 @@ impl MirLowerCtx<'_> {
         const_id: hir_def::ConstId,
         prev_block: BasicBlockId,
         place: Place,
+        subst: Substitution,
         span: MirSpan,
     ) -> Result<()> {
-        let c = self.db.const_eval(const_id)?;
+        let c = self.db.const_eval(const_id, subst)?;
         self.write_const_to_place(c, prev_block, place, span)
     }
 

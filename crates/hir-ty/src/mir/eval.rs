@@ -282,6 +282,7 @@ struct Locals<'a> {
 pub fn interpret_mir(
     db: &dyn HirDatabase,
     body: &MirBody,
+    subst: Substitution,
     // FIXME: This is workaround. Ideally, const generics should have a separate body (issue #7434), but now
     // they share their body with their parent, so in MIR lowering we have locals of the parent body, which
     // might have placeholders. With this argument, we (wrongly) assume that every placeholder type has
@@ -291,11 +292,11 @@ pub fn interpret_mir(
 ) -> Result<Const> {
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body, assert_placeholder_ty_is_unused);
-    let bytes = evaluator.interpret_mir_with_no_arg(&body)?;
+    let bytes = evaluator.interpret_mir(&body, None.into_iter(), subst.clone())?;
     let memory_map = evaluator.create_memory_map(
         &bytes,
         &ty,
-        &Locals { ptr: &ArenaMap::new(), body: &body, subst: &Substitution::empty(Interner) },
+        &Locals { ptr: &ArenaMap::new(), body: &body, subst: &subst },
     )?;
     return Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty));
 }

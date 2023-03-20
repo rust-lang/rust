@@ -1,4 +1,5 @@
 use base_db::fixture::WithFixture;
+use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 
 use crate::{
@@ -64,7 +65,7 @@ fn eval_goal(ra_fixture: &str) -> Result<Const, ConstEvalError> {
             _ => None,
         })
         .unwrap();
-    db.const_eval(const_id)
+    db.const_eval(const_id, Substitution::empty(Interner))
 }
 
 #[test]
@@ -1519,8 +1520,7 @@ fn const_generic_subst_fn() {
 
 #[test]
 fn const_generic_subst_assoc_const_impl() {
-    // FIXME: this should evaluate to 5
-    check_fail(
+    check_number(
         r#"
     struct Adder<const N: usize, const M: usize>;
     impl<const N: usize, const M: usize> Adder<N, M> {
@@ -1528,7 +1528,7 @@ fn const_generic_subst_assoc_const_impl() {
     }
     const GOAL: usize = Adder::<2, 3>::VAL;
     "#,
-        ConstEvalError::MirEvalError(MirEvalError::TypeError("missing generic arg")),
+        5,
     );
 }
 

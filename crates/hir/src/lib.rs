@@ -1801,7 +1801,7 @@ impl Function {
         let body = db
             .mir_body(self.id.into())
             .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))?;
-        interpret_mir(db, &body, false)?;
+        interpret_mir(db, &body, Substitution::empty(Interner), false)?;
         Ok(())
     }
 }
@@ -1947,7 +1947,7 @@ impl Const {
     }
 
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id)?;
+        let c = db.const_eval(self.id, Substitution::empty(Interner))?;
         let r = format!("{}", HexifiedConst(c).display(db));
         // We want to see things like `<utf8-error>` and `<layout-error>` as they are probably bug in our
         // implementation, but there is no need to show things like `<enum-not-supported>` or `<ref-not-supported>` to
