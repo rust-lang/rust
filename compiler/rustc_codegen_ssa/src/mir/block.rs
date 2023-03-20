@@ -1497,13 +1497,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         loop {
             let scope_data = &self.mir.source_scopes[source_info.scope];
 
-            if let Some((callee, callsite_span)) = scope_data.inlined {
+            if let Some(callee) = scope_data.inlined {
                 // Stop inside the most nested non-`#[track_caller]` function,
                 // before ever reaching its caller (which is irrelevant).
-                if !callee.def.requires_caller_location(tcx) {
+                if !callee.node.def.requires_caller_location(tcx) {
                     return span_to_caller_location(source_info.span);
                 }
-                source_info.span = callsite_span;
+                source_info.span = callee.span;
             }
 
             // Skip past all of the parents with `inlined: None`.

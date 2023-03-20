@@ -503,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(expr);
         }
         let relevant_broken_predicate: ty::PredicateKind<'tcx> =
-            impl_predicates.predicates[impl_predicate_index].0.kind().skip_binder();
+            impl_predicates.predicates[impl_predicate_index].node.kind().skip_binder();
 
         match relevant_broken_predicate {
             ty::PredicateKind::Clause(ty::Clause::Trait(broken_trait)) => {

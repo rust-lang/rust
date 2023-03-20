@@ -432,7 +432,7 @@ fn clean_projection<'tcx>(
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
             .iter()
-            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.skip_binder().substs))
+            .map(|bound| EarlyBinder(bound.node).subst(cx.tcx, ty.skip_binder().substs))
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
     }
@@ -770,10 +770,10 @@ fn clean_ty_generics<'tcx>(
     let where_predicates = preds
         .predicates
         .iter()
-        .flat_map(|(p, _)| {
+        .flat_map(|p| {
             let mut projection = None;
             let param_idx = (|| {
-                let bound_p = p.kind();
+                let bound_p = p.node.kind();
                 match bound_p.skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
@@ -803,7 +803,7 @@ fn clean_ty_generics<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(b) = impl_trait.get_mut(&param_idx.into())
             {
-                let p: WherePredicate = clean_predicate(*p, cx)?;
+                let p: WherePredicate = clean_predicate(p.node, cx)?;
 
                 b.extend(
                     p.get_bounds()
@@ -839,7 +839,7 @@ fn clean_ty_generics<'tcx>(
                 return None;
             }
 
-            Some(p)
+            Some(&p.node)
         })
         .collect::<Vec<_>>();
 
@@ -1849,7 +1849,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .tcx
                 .explicit_item_bounds(def_id)
                 .iter()
-                .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
+                .map(|bound| EarlyBinder(bound.node).subst(cx.tcx, substs))
                 .collect::<Vec<_>>();
             clean_middle_opaque_bounds(cx, bounds)
         }

@@ -3,9 +3,8 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, Spanned, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -100,10 +99,10 @@ pub fn elaborate_predicates<'tcx>(
 
 pub fn elaborate_predicates_with_span<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl Iterator<Item = (ty::Predicate<'tcx>, Span)>,
+    predicates: impl Iterator<Item = ty::Spanned<ty::Predicate<'tcx>>>,
 ) -> Elaborator<'tcx> {
     let obligations = predicates
-        .map(|(predicate, span)| {
+        .map(|ty::Spanned { node: predicate, span }| {
             predicate_obligation(
                 predicate,
                 ty::ParamEnv::empty(),
@@ -154,8 +153,8 @@ impl<'tcx> Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations =
-                    predicates.predicates.iter().enumerate().map(|(index, &(mut pred, span))| {
+                let obligations = predicates.predicates.iter().enumerate().map(
+                    |(index, &Spanned { node: mut pred, span })| {
                         // when parent predicate is non-const, elaborate it to non-const predicates.
                         if data.constness == ty::BoundConstness::NotConst {
                             pred = pred.without_const(tcx);
@@ -179,7 +178,8 @@ impl<'tcx> Elaborator<'tcx> {
                             obligation.param_env,
                             cause,
                         )
-                    });
+                    },
+                );
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
             }
@@ -362,8 +362,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
                     trait_ref.def_id(),
                     Some(assoc_name),
                 ));
-                for (super_predicate, _) in super_predicates.predicates {
-                    let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
+                for super_predicate in super_predicates.predicates {
+                    let subst_predicate = super_predicate.node.subst_supertrait(tcx, &trait_ref);
                     if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
                         stack.push(binder.map_bound(|t| t.trait_ref));
                     }

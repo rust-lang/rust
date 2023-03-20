@@ -11,6 +11,7 @@ use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, AliasTy, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
@@ -249,6 +250,7 @@ CloneLiftImpls! {
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
+    ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     Field,
@@ -266,7 +268,6 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::Unsafety,
     ::rustc_target::spec::abi::Abi,
     crate::ty::BoundConstness,
-    ::rustc_span::Span,
 }
 
 CloneLiftImpls! {
@@ -363,6 +364,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(self.caller_bounds())
             .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal(), self.constness()))
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Spanned<T> {
+    type Lifted = Spanned<T::Lifted>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(Spanned { node: tcx.lift(self.node)?, span: self.span })
     }
 }
 

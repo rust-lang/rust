@@ -48,6 +48,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
+pub use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
@@ -1292,27 +1293,34 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 }
 
 impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
-    type Item = (Predicate<'tcx>, Span);
+    type Item = Spanned<Predicate<'tcx>>;
 
-    type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
+    type IntoIter = std::iter::Map<
+        std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>,
+        fn((Predicate<'tcx>, Span)) -> Spanned<Predicate<'tcx>>,
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates, self.spans)
+        std::iter::zip(self.predicates, self.spans).map(|(node, span)| Spanned { node, span })
     }
 }
 
 impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
-    type Item = (Predicate<'tcx>, Span);
+    type Item = Spanned<Predicate<'tcx>>;
 
-    type IntoIter = std::iter::Zip<
-        std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>,
-        std::iter::Copied<std::slice::Iter<'a, Span>>,
+    type IntoIter = std::iter::Map<
+        std::iter::Zip<
+            std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>,
+            std::iter::Copied<std::slice::Iter<'a, Span>>,
+        >,
+        fn((Predicate<'tcx>, Span)) -> Spanned<Predicate<'tcx>>,
     >;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
         std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+            .map(|(node, span)| Spanned { node, span })
     }
 }
 

@@ -322,7 +322,7 @@ macro_rules! make_mir_visitor {
                 if let Some(parent_scope) = parent_scope {
                     self.visit_source_scope($(& $mutability)? *parent_scope);
                 }
-                if let Some((callee, callsite_span)) = inlined {
+                if let Some(Spanned { node: callee, span: callsite_span }) = inlined {
                     let location = Location::START;
 
                     self.visit_span($(& $mutability)? *callsite_span);

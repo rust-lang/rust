@@ -231,7 +231,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         remainder_span,
                                         pattern,
                                         None,
-                                        Some((Some(&destination), initializer_span)),
+                                        Some(ty::Spanned {
+                                            node: Some(&destination),
+                                            span: initializer_span,
+                                        }),
                                     );
                                     this.visit_primary_bindings(
                                         pattern,
@@ -308,7 +311,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             remainder_span,
                                             pattern,
                                             None,
-                                            Some((None, initializer_span)),
+                                            Some(ty::Spanned {
+                                                node: None,
+                                                span: initializer_span,
+                                            }),
                                         );
                                         this.expr_into_pattern(block, &pattern, init)
                                         // irrefutable pattern

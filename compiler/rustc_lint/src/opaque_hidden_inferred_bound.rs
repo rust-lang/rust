@@ -70,10 +70,10 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
-        for &(pred, pred_span) in cx.tcx.explicit_item_bounds(def_id) {
+        for &pred in cx.tcx.explicit_item_bounds(def_id) {
             // Liberate bound regions in the predicate since we
             // don't actually care about lifetimes in this check.
-            let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());
+            let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.node.kind());
             let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = predicate else {
                 continue;
             };
@@ -95,12 +95,12 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
             // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`
             // with `impl Send: OtherTrait`.
-            for (assoc_pred, assoc_pred_span) in cx
+            for assoc_pred_spanned in cx
                 .tcx
                 .bound_explicit_item_bounds(proj.projection_ty.def_id)
                 .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
             {
-                let assoc_pred = assoc_pred.fold_with(proj_replacer);
+                let assoc_pred = assoc_pred_spanned.node.fold_with(proj_replacer);
                 let Ok(assoc_pred) = traits::fully_normalize(infcx, traits::ObligationCause::dummy(), cx.param_env, assoc_pred) else {
                     continue;
                 };
@@ -127,14 +127,14 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     };
                     cx.emit_spanned_lint(
                         OPAQUE_HIDDEN_INFERRED_BOUND,
-                        pred_span,
+                        pred.span,
                         OpaqueHiddenInferredBoundLint {
                             ty: cx.tcx.mk_opaque(
                                 def_id,
                                 ty::InternalSubsts::identity_for_item(cx.tcx, def_id),
                             ),
                             proj_ty: proj_term,
-                            assoc_pred_span,
+                            assoc_pred_span: assoc_pred_spanned.span,
                             add_bound,
                         },
                     );

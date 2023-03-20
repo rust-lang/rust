@@ -1134,14 +1134,14 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
-        let normalized_bound = wfcx.normalize(span, None, bound);
+    let wf_obligations = bounds.iter().flat_map(|&bound| {
+        let normalized_bound = wfcx.normalize(span, None, bound.node);
         traits::wf::predicate_obligations(
             wfcx.infcx,
             wfcx.param_env,
             wfcx.body_def_id,
             normalized_bound,
-            bound_span,
+            bound.span,
         )
     });
 
@@ -1377,7 +1377,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let default_obligations = predicates
         .predicates
         .iter()
-        .flat_map(|&(pred, sp)| {
+        .flat_map(|&pred| {
             #[derive(Default)]
             struct CountParams {
                 params: FxHashSet<u32>,
@@ -1404,18 +1404,18 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 }
             }
             let mut param_count = CountParams::default();
-            let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = ty::EarlyBinder(pred).subst(tcx, substs);
+            let has_region = pred.node.visit_with(&mut param_count).is_break();
+            let substituted_pred = ty::EarlyBinder(pred.node).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&p| p.node == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
-                Some((substituted_pred, sp))
+                Some((substituted_pred, pred.span))
             }
         })
         .map(|(pred, sp)| {
@@ -1443,13 +1443,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+    let wf_obligations = predicates.into_iter().flat_map(|p| {
         traits::wf::predicate_obligations(
             infcx,
             wfcx.param_env.without_const(),
             wfcx.body_def_id,
-            p,
-            sp,
+            p.node,
+            p.span,
         )
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
@@ -1566,7 +1566,7 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
             {
                 let span = tcx.def_span(opaque_ty.def_id);
                 let bounds = wfcx.tcx().explicit_item_bounds(opaque_ty.def_id);
-                let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+                let wf_obligations = bounds.iter().flat_map(|&ty::Spanned { node: bound, span: bound_span }| {
                     let bound = ty::EarlyBinder(bound).subst(tcx, opaque_ty.substs);
                     let normalized_bound = wfcx.normalize(span, None, bound);
                     traits::wf::predicate_obligations(

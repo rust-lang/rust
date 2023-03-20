@@ -502,8 +502,8 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         .collect::<Vec<_>>();
 
     let ty_predicates = tcx.predicates_of(did).predicates;
-    for (p, _) in ty_predicates {
-        if let PredicateKind::Clause(Clause::Trait(p)) = p.kind().skip_binder()
+    for p in ty_predicates {
+        if let PredicateKind::Clause(Clause::Trait(p)) = p.node.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && p.constness == BoundConstness::NotConst
@@ -514,7 +514,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     }
 
     ParamEnv::new(
-        tcx.mk_predicates_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
+        tcx.mk_predicates_from_iter(ty_predicates.iter().map(|p| p.node).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
                     trait_ref: tcx.mk_trait_ref(eq_trait_id, [tcx.mk_param_from_def(param)]),

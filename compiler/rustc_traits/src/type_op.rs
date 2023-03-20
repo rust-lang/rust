@@ -107,15 +107,15 @@ fn relate_mir_and_user_substs<'tcx>(
     let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
 
     debug!(?instantiated_predicates);
-    for (instantiated_predicate, predicate_span) in instantiated_predicates {
-        let span = if span == DUMMY_SP { predicate_span } else { span };
+    for instantiated_predicate in instantiated_predicates {
+        let span = if span == DUMMY_SP { instantiated_predicate.span } else { span };
         let cause = ObligationCause::new(
             span,
             CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(instantiated_predicate.span),
         );
         let instantiated_predicate =
-            ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
+            ocx.normalize(&cause.clone(), param_env, instantiated_predicate.node);
 
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }

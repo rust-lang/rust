@@ -189,7 +189,7 @@ where
         predicates: ty::GenericPredicates<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
-        predicates.iter().try_for_each(|&(predicate, _span)| self.visit_predicate(predicate))
+        predicates.iter().try_for_each(|&predicate| self.visit_predicate(predicate.node))
     }
 }
 
@@ -1248,8 +1248,8 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (pred, _) in bounds.predicates() {
-                match pred.kind().skip_binder() {
+            for pred in bounds.predicates() {
+                match pred.node.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;

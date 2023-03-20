@@ -2692,13 +2692,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         assert_eq!(predicates.parent, None);
         let predicates = predicates.instantiate_own(tcx, substs);
         let mut obligations = Vec::with_capacity(predicates.len());
-        for (index, (predicate, span)) in predicates.into_iter().enumerate() {
+        for (index, predicate) in predicates.into_iter().enumerate() {
             let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
                     impl_or_alias_def_id: def_id,
                     impl_def_predicate_index: Some(index),
-                    span,
+                    span: predicate.span,
                 }))
             });
             let predicate = normalize_with_depth_to(
@@ -2706,7 +2706,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                predicate,
+                predicate.node,
                 &mut obligations,
             );
             obligations.push(Obligation { cause, recursion_depth, param_env, predicate });

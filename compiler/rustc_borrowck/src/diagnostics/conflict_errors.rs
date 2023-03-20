@@ -671,8 +671,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |(pred, _): (ty::Predicate<'tcx>, _)| {
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred.kind().skip_binder()
+        let find_fn_kind_from_did = |pred: ty::Spanned<ty::Predicate<'tcx>>| {
+            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred.node.kind().skip_binder()
                 && pred.self_ty() == ty
             {
                 if Some(pred.def_id()) == tcx.lang_items().fn_trait() {

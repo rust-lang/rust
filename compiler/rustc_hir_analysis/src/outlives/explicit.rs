@@ -28,8 +28,8 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
             let mut required_predicates = RequiredPredicates::default();
 
             // process predicates and convert to `RequiredPredicates` entry, see below
-            for &(predicate, span) in predicates.predicates {
-                match predicate.kind().skip_binder() {
+            for predicate in predicates.predicates {
+                match predicate.node.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::TypeOutlives(OutlivesPredicate(
                         ty,
                         reg,
@@ -37,7 +37,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         tcx,
                         ty.into(),
                         reg,
-                        span,
+                        predicate.span,
                         &mut required_predicates,
                     ),
 
@@ -48,7 +48,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         tcx,
                         reg1.into(),
                         reg2,
-                        span,
+                        predicate.span,
                         &mut required_predicates,
                     ),
 

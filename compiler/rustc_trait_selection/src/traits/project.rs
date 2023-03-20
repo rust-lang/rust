@@ -2254,21 +2254,21 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         tcx.predicates_of(impl_fn_def_id).instantiate(tcx, impl_fn_substs),
         &mut obligations,
     );
-    obligations.extend(predicates.into_iter().map(|(pred, span)| {
+    obligations.extend(predicates.into_iter().map(|pred| {
         Obligation::with_depth(
             tcx,
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                if span.is_dummy() {
+                if pred.span.is_dummy() {
                     super::ItemObligation(impl_fn_def_id)
                 } else {
-                    super::BindingObligation(impl_fn_def_id, span)
+                    super::BindingObligation(impl_fn_def_id, pred.span)
                 },
             ),
             obligation.recursion_depth + 1,
             obligation.param_env,
-            pred,
+            pred.node,
         )
     }));
 
@@ -2299,13 +2299,13 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
         .instantiate_own(tcx, obligation.predicate.substs);
-    for (predicate, span) in predicates {
+    for predicate in predicates {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            predicate,
+            predicate.node,
             nested,
         );
 
@@ -2316,7 +2316,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
                 | super::AscribeUserTypeProvePredicate(..)
         ) {
             obligation.cause.clone()
-        } else if span.is_dummy() {
+        } else if predicate.span.is_dummy() {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
@@ -2326,7 +2326,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                super::BindingObligation(obligation.predicate.def_id, span),
+                super::BindingObligation(obligation.predicate.def_id, predicate.span),
             )
         };
         nested.push(Obligation::with_depth(

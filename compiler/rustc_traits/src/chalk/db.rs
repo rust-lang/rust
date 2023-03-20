@@ -42,7 +42,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
             .tcx
             .predicates_defined_on(def_id)
             .instantiate_own(self.interner.tcx, bound_vars)
-            .filter_map(|(wc, _)| LowerInto::lower_into(wc, self.interner))
+            .filter_map(|wc| LowerInto::lower_into(wc.node, self.interner))
             .collect()
     }
 
@@ -54,7 +54,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
         bounds
             .0
             .iter()
-            .map(|(bound, _)| bounds.rebind(*bound).subst(self.interner.tcx, &bound_vars))
+            .map(|bound| bounds.rebind(bound.node).subst(self.interner.tcx, &bound_vars))
             .filter_map(|bound| LowerInto::<Option<_>>::lower_into(bound, self.interner))
             .collect()
     }
@@ -511,8 +511,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             explicit_item_bounds
                 .0
                 .iter()
-                .map(|(bound, _)| {
-                    explicit_item_bounds.rebind(*bound).subst(self.interner.tcx, &bound_vars)
+                .map(|bound| {
+                    explicit_item_bounds.rebind(bound.node).subst(self.interner.tcx, &bound_vars)
                 })
                 .map(|bound| {
                     bound.fold_with(&mut ReplaceOpaqueTyFolder {

@@ -314,9 +314,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .tcx
             .explicit_predicates_of(trait_item_def_id)
             .instantiate_own(self.tcx, trait_item_substs)
-            .map(|(pred, _)| {
-                if pred.is_suggestable(self.tcx, false) {
-                    Ok(pred.to_string())
+            .map(|pred| {
+                if pred.node.is_suggestable(self.tcx, false) {
+                    Ok(pred.node.to_string())
                 } else {
                     Err(())
                 }

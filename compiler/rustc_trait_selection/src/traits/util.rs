@@ -118,10 +118,10 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
         debug!(?predicates);
 
-        let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
-            pred.subst_supertrait(tcx, &trait_ref)
-                .to_opt_poly_trait_pred()
-                .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
+        let items = predicates.predicates.iter().rev().filter_map(|pred| {
+            pred.node.subst_supertrait(tcx, &trait_ref).to_opt_poly_trait_pred().map(|trait_ref| {
+                item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), pred.span)
+            })
         });
         debug!("expand_trait_aliases: items={:?}", items.clone().collect::<Vec<_>>());
 
@@ -177,7 +177,7 @@ impl Iterator for SupertraitDefIds<'_> {
             predicates
                 .predicates
                 .iter()
-                .filter_map(|(pred, _)| pred.to_opt_poly_trait_pred())
+                .filter_map(|pred| pred.node.to_opt_poly_trait_pred())
                 .map(|trait_ref| trait_ref.def_id())
                 .filter(|&super_def_id| visited.insert(super_def_id)),
         );

@@ -528,12 +528,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for ty in [first_ty, second_ty] {
-                    for (pred, _) in self
+                    for pred in self
                         .tcx
                         .bound_explicit_item_bounds(rpit_def_id)
                         .subst_iter_copied(self.tcx, substs)
                     {
-                        let pred = pred.kind().rebind(match pred.kind().skip_binder() {
+                        let pred = pred.node.kind().rebind(match pred.node.kind().skip_binder() {
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
                                 // FIXME(rpitit): This will need to be fixed when we move to associated types
                                 assert!(matches!(

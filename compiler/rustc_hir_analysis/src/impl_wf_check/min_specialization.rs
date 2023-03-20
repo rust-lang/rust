@@ -212,9 +212,9 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // what we want here. We want only a list of constrained parameters while
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
-    for (predicate, _) in impl_generic_predicates.predicates.iter() {
+    for predicate in impl_generic_predicates.predicates.iter() {
         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
-            predicate.kind().skip_binder()
+            predicate.node.kind().skip_binder()
         {
             let projection_ty = proj.projection_ty;
             let projected_ty = proj.term;
@@ -324,9 +324,10 @@ fn check_predicates<'tcx>(
             instantiated.predicates,
             // Don't drop predicates (unsound!) because `spans` is too short
             instantiated.spans.into_iter().chain(std::iter::repeat(span)),
-        ),
+        )
+        .map(|(node, span)| ty::Spanned { node, span }),
     )
-    .map(|obligation| (obligation.predicate, obligation.cause.span))
+    .map(|obligation| ty::Spanned { node: obligation.predicate, span: obligation.cause.span })
     .collect();
 
     let mut impl2_predicates = if impl2_node.is_from_trait() {
@@ -361,9 +362,9 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&(predicate, _)| {
+    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&predicate| {
         matches!(
-            trait_predicate_kind(tcx, predicate),
+            trait_predicate_kind(tcx, predicate.node),
             Some(TraitSpecializationKind::AlwaysApplicable)
         )
     });
@@ -385,9 +386,12 @@ fn check_predicates<'tcx>(
             .map(|obligation| obligation.predicate),
     );
 
-    for (predicate, span) in impl1_predicates {
-        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(tcx, predicate, *pred2, span)) {
-            check_specialization_on(tcx, predicate, span)
+    for predicate in impl1_predicates {
+        if !impl2_predicates
+            .iter()
+            .any(|pred2| trait_predicates_eq(tcx, predicate.node, *pred2, predicate.span))
+        {
+            check_specialization_on(tcx, predicate.node, predicate.span)
         }
     }
 }

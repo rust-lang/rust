@@ -1314,20 +1314,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.predicates() {
-            let bound_pred = pred.kind();
+        for pred in bounds.predicates() {
+            let bound_pred = pred.node.kind();
             match bound_pred.skip_binder() {
                 ty::PredicateKind::Clause(clause) => match clause {
                     ty::Clause::Trait(trait_pred) => {
                         assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
                         trait_bounds.push((
                             bound_pred.rebind(trait_pred.trait_ref),
-                            span,
+                            pred.span,
                             trait_pred.constness,
                         ));
                     }
                     ty::Clause::Projection(proj) => {
-                        projection_bounds.push((bound_pred.rebind(proj), span));
+                        projection_bounds.push((bound_pred.rebind(proj), pred.span));
                     }
                     ty::Clause::TypeOutlives(_) => {
                         // Do nothing, we deal with regions separately
@@ -1784,8 +1784,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             || {
                 traits::transitive_bounds_that_define_assoc_type(
                     tcx,
-                    predicates.iter().filter_map(|(p, _)| {
-                        Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
+                    predicates.iter().filter_map(|p| {
+                        Some(p.node.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
                     }),
                     assoc_name,
                 )

@@ -43,10 +43,10 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     trait_id: Option<DefId>,
 ) -> Vec<TraitPredicate<'tcx>> {
     let mut preds = Vec::new();
-    for (pred, _) in generics.predicates {
+    for pred in generics.predicates {
         if_chain! {
-            if let PredicateKind::Clause(Clause::Trait(poly_trait_pred)) = pred.kind().skip_binder();
-            let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
+            if let PredicateKind::Clause(Clause::Trait(poly_trait_pred)) = pred.node.kind().skip_binder();
+            let trait_pred = cx.tcx.erase_late_bound_regions(pred.node.kind().rebind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
             then {
@@ -62,9 +62,9 @@ fn get_projection_pred<'tcx>(
     generics: GenericPredicates<'tcx>,
     trait_pred: TraitPredicate<'tcx>,
 ) -> Option<ProjectionPredicate<'tcx>> {
-    generics.predicates.iter().find_map(|(proj_pred, _)| {
-        if let ty::PredicateKind::Clause(Clause::Projection(pred)) = proj_pred.kind().skip_binder() {
-            let projection_pred = cx.tcx.erase_late_bound_regions(proj_pred.kind().rebind(pred));
+    generics.predicates.iter().find_map(|proj_pred| {
+        if let ty::PredicateKind::Clause(Clause::Projection(pred)) = proj_pred.node.kind().skip_binder() {
+            let projection_pred = cx.tcx.erase_late_bound_regions(proj_pred.node.kind().rebind(pred));
             if projection_pred.projection_ty.substs == trait_pred.trait_ref.substs {
                 return Some(projection_pred);
             }

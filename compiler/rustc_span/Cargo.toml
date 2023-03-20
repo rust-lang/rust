@@ -11,6 +11,7 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
 rustc_arena = { path = "../rustc_arena" }
+rustc_type_ir = { path = "../rustc_type_ir" }
 scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "1.0"

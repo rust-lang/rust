@@ -5301,6 +5301,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_type_ir",
  "scoped-tls",
  "sha1",
  "sha2",

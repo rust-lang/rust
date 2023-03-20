@@ -345,8 +345,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // };
                     // ```
                     let scrutinee_place = scrutinee_place_builder.try_to_place(this);
-                    let opt_scrutinee_place =
-                        scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
+                    let opt_scrutinee_place = scrutinee_place
+                        .as_ref()
+                        .map(|place| ty::Spanned { node: Some(place), span: scrutinee_span });
                     let scope = this.declare_bindings(
                         None,
                         arm.span,
@@ -611,7 +612,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // ```
                     if let Some(place) = initializer.try_to_place(self) {
                         let LocalInfo::User(BindingForm::Var(
-                            VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
+                            VarBindingForm { opt_match_place: Some(ty::Spanned { node: ref mut match_place, .. }), .. },
                         )) = **self.local_decls[local].local_info.as_mut().assert_crate_local() else {
                             bug!("Let binding to non-user variable.")
                         };
@@ -646,7 +647,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope_span: Span,
         pattern: &Pat<'tcx>,
         guard: Option<&Guard<'tcx>>,
-        opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
+        opt_match_place: Option<ty::Spanned<Option<&Place<'tcx>>>>,
     ) -> Option<SourceScope> {
         self.visit_primary_bindings(
             &pattern,
@@ -668,7 +669,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ty,
                     user_ty,
                     ArmHasGuard(guard.is_some()),
-                    opt_match_place.map(|(x, y)| (x.cloned(), y)),
+                    opt_match_place.map(|x| ty::Spanned { node: x.node.cloned(), span: x.span }),
                     pattern.span,
                 );
             },
@@ -1796,7 +1797,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &mut [&mut guard_candidate, &mut otherwise_candidate],
         );
         let expr_place = expr_place_builder.try_to_place(self);
-        let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+        let opt_expr_place =
+            expr_place.as_ref().map(|place| ty::Spanned { node: Some(place), span: expr_span });
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
         self.break_for_else(otherwise_post_guard_block, else_target, self.source_info(expr_span));
 
@@ -2212,7 +2214,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections,
         has_guard: ArmHasGuard,
-        opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
+        opt_match_place: Option<ty::Spanned<Option<Place<'tcx>>>>,
         pat_span: Span,
     ) {
         let tcx = self.tcx;

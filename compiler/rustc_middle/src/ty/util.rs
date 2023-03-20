@@ -678,7 +678,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_explicit_item_bounds(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, rustc_span::Span)]> {
+    ) -> ty::EarlyBinder<&'tcx [ty::Spanned<ty::Predicate<'tcx>>]> {
         ty::EarlyBinder(self.explicit_item_bounds(def_id))
     }
 

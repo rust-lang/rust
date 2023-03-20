@@ -228,7 +228,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                         {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
-                            Some((predicate, span))
+                            Some(ty::Spanned { node: predicate, span })
                         }
                         _ => None,
                     }

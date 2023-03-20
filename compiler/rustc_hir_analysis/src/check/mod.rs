@@ -302,9 +302,9 @@ fn bounds_from_generic_predicates<'tcx>(
 ) -> (String, String) {
     let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
     let mut projections = vec![];
-    for (predicate, _) in predicates.predicates {
-        debug!("predicate {:?}", predicate);
-        let bound_predicate = predicate.kind();
+    for predicate in predicates.predicates {
+        debug!("predicate {:?}", predicate.node);
+        let bound_predicate = predicate.node.kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();

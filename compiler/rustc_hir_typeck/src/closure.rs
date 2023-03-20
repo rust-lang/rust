@@ -186,7 +186,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
                 self.tcx.mk_ty_var(self.root_var(vid)),
-                self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
+                self.obligations_for_self_ty(vid)
+                    .map(|obl| ty::Spanned { node: obl.predicate, span: obl.cause.span }),
             ),
             ty::FnPtr(sig) => {
                 let expected_sig = ExpectedSig { cause_span: None, sig };
@@ -199,7 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_closure_signature_from_predicates(
         &self,
         expected_ty: Ty<'tcx>,
-        predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
+        predicates: impl DoubleEndedIterator<Item = ty::Spanned<ty::Predicate<'tcx>>>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
@@ -712,13 +713,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .bound_explicit_item_bounds(def_id)
                 .subst_iter_copied(self.tcx, substs)
-                .find_map(|(p, s)| get_future_output(p, s))?,
+                .find_map(|p| get_future_output(p.node, p.span))?,
             ty::Error(_) => return None,
             ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
                 .tcx
                 .bound_explicit_item_bounds(proj.def_id)
                 .subst_iter_copied(self.tcx, proj.substs)
-                .find_map(|(p, s)| get_future_output(p, s))?,
+                .find_map(|p| get_future_output(p.node, p.span))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"

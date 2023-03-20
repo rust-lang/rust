@@ -612,14 +612,18 @@ fn write_scope_tree(
         let child_data = &body.source_scopes[child];
         assert_eq!(child_data.parent_scope, Some(parent));
 
-        let (special, span) = if let Some((callee, callsite_span)) = child_data.inlined {
+        let (special, span) = if let Some(callee) = child_data.inlined {
             (
                 format!(
                     " (inlined {}{})",
-                    if callee.def.requires_caller_location(tcx) { "#[track_caller] " } else { "" },
-                    callee
+                    if callee.node.def.requires_caller_location(tcx) {
+                        "#[track_caller] "
+                    } else {
+                        ""
+                    },
+                    callee.node
                 ),
-                Some(callsite_span),
+                Some(callee.span),
             )
         } else {
             (String::new(), None)

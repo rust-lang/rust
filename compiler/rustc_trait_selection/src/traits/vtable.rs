@@ -113,8 +113,10 @@ pub(super) fn prepare_vtable_segments<'tcx, T>(
                     .super_predicates_of(inner_most_trait_ref.def_id())
                     .predicates
                     .into_iter()
-                    .filter_map(move |(pred, _)| {
-                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_pred()
+                    .filter_map(move |pred| {
+                        pred.node
+                            .subst_supertrait(tcx, &inner_most_trait_ref)
+                            .to_opt_poly_trait_pred()
                     });
 
                 'diving_in_skip_visited_traits: loop {
@@ -263,7 +265,7 @@ fn vtable_entries<'tcx>(
                     let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
                     if impossible_predicates(
                         tcx,
-                        predicates.map(|(predicate, _)| predicate).collect(),
+                        predicates.map(|predicate| predicate.node).collect(),
                     ) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;

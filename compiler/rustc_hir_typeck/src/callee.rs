@@ -385,21 +385,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, subst);
-                    for (predicate, predicate_span) in predicates {
+                    for predicate in predicates {
                         let obligation = Obligation::new(
                             self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
-                            predicate,
+                            predicate.node,
                         );
                         let result = self.evaluate_obligation(&obligation);
                         self.tcx
                             .sess
                             .struct_span_err(
                                 callee_expr.span,
-                                &format!("evaluate({:?}) = {:?}", predicate, result),
+                                &format!("evaluate({:?}) = {:?}", predicate.node, result),
                             )
-                            .span_label(predicate_span, "predicate")
+                            .span_label(predicate.span, "predicate")
                             .emit();
                     }
                 }

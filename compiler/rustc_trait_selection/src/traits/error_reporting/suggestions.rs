@@ -2108,7 +2108,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // but whose substs don't match.
             let other_pred = predicates.into_iter()
                 .enumerate()
-                .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
+                .find(|(other_idx, pred)| match pred.node.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                         if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
@@ -2116,12 +2116,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // (i.e. constraining this closure)
                             && expected_self
                                 == self.tcx.anonymize_bound_vars(
-                                    pred.kind().rebind(trait_pred.self_ty()),
+                                    pred.node.kind().rebind(trait_pred.self_ty()),
                                 )
                             // But the substs don't match (i.e. incompatible args)
                             && expected_substs
                                 != self.tcx.anonymize_bound_vars(
-                                    pred.kind().rebind(trait_pred.trait_ref.substs),
+                                    pred.node.kind().rebind(trait_pred.trait_ref.substs),
                                 ) =>
                     {
                         true
@@ -2129,9 +2129,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     _ => false,
                 });
             // If we found one, then it's very likely the cause of the error.
-            if let Some((_, (_, other_pred_span))) = other_pred {
+            if let Some((_, other_pred)) = other_pred {
                 err.span_note(
-                    other_pred_span,
+                    other_pred.span,
                     "closure inferred to have a different signature due to this bound",
                 );
             }
@@ -3339,10 +3339,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
-                if let Some((expr_ty, expr_span)) = expr_info {
-                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
+                if let Some(expr) = expr_info {
+                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr.node));
                     err.span_label(
-                        expr_span,
+                        expr.span,
                         with_forced_trimmed_paths!(format!(
                             "return type was inferred to be `{expr_ty}` here",
                         )),

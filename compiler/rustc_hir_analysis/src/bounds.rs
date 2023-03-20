@@ -23,7 +23,7 @@ use rustc_span::Span;
 /// include the self type (e.g., `trait_bounds`) but in others we do not
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub predicates: Vec<(ty::Predicate<'tcx>, Span)>,
+    pub predicates: Vec<ty::Spanned<ty::Predicate<'tcx>>>,
 }
 
 impl<'tcx> Bounds<'tcx> {
@@ -33,7 +33,7 @@ impl<'tcx> Bounds<'tcx> {
         region: ty::PolyTypeOutlivesPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((region.to_predicate(tcx), span));
+        self.predicates.push(ty::Spanned { node: region.to_predicate(tcx), span });
     }
 
     pub fn push_trait_bound(
@@ -43,7 +43,10 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
         constness: ty::BoundConstness,
     ) {
-        self.predicates.push((trait_ref.with_constness(constness).to_predicate(tcx), span));
+        self.predicates.push(ty::Spanned {
+            node: trait_ref.with_constness(constness).to_predicate(tcx),
+            span,
+        });
     }
 
     pub fn push_projection_bound(
@@ -52,17 +55,18 @@ impl<'tcx> Bounds<'tcx> {
         projection: ty::PolyProjectionPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((projection.to_predicate(tcx), span));
+        self.predicates.push(ty::Spanned { node: projection.to_predicate(tcx), span });
     }
 
     pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
         let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
         let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [ty]));
         // Preferrable to put this obligation first, since we report better errors for sized ambiguity.
-        self.predicates.insert(0, (trait_ref.without_const().to_predicate(tcx), span));
+        self.predicates
+            .insert(0, ty::Spanned { node: trait_ref.without_const().to_predicate(tcx), span });
     }
 
-    pub fn predicates(&self) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> + '_ {
+    pub fn predicates(&self) -> impl Iterator<Item = ty::Spanned<ty::Predicate<'tcx>>> + '_ {
         self.predicates.iter().cloned()
     }
 }

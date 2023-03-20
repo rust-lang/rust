@@ -773,7 +773,7 @@ impl<'tcx> WfPredicates<'tcx> {
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(predicates, origins.into_iter().rev())
-            .map(|((mut pred, span), origin_def_id)| {
+            .map(|(ty::Spanned { node: mut pred, span }, origin_def_id)| {
                 let code = if span.is_dummy() {
                     traits::ItemObligation(origin_def_id)
                 } else {

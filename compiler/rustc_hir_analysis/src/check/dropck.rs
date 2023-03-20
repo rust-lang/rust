@@ -155,7 +155,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for &(predicate, predicate_sp) in dtor_predicates.predicates {
+    for &ty::Spanned { node: predicate, span: predicate_sp } in dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of

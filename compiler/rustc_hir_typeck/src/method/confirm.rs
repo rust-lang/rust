@@ -582,11 +582,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 {
                     let span = predicates
                         .iter()
-                        .find_map(
-                            |(p, span)| {
-                                if p == obligation.predicate { Some(span) } else { None }
-                            },
-                        )
+                        .find_map(|p| (p.node == obligation.predicate).then_some(p.span))
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }

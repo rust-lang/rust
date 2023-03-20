@@ -12,7 +12,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 
 #[derive(Debug)]
 struct OnlySelfBounds(bool);
@@ -49,11 +49,13 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         };
 
         let span = rustc_span::DUMMY_SP;
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).with_constness(constness).to_predicate(tcx),
+        result.predicates = tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(
+            std::iter::once(ty::Spanned {
+                node:
+                    ty::TraitRef::identity(tcx, def_id).with_constness(constness).to_predicate(tcx),
                 span,
-            ))));
+            }),
+        ));
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -77,7 +79,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
-    let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
+    let mut predicates: FxIndexSet<ty::Spanned<ty::Predicate<'_>>> = FxIndexSet::default();
 
     let ast_generics = match node {
         Node::TraitItem(item) => item.generics,
@@ -136,7 +138,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.insert((trait_ref.without_const().to_predicate(tcx), tcx.def_span(def_id)));
+        predicates.insert(ty::Spanned {
+            node: trait_ref.without_const().to_predicate(tcx),
+            span: tcx.def_span(def_id),
+        });
     }
 
     // Collect the region predicates that were declared inline as
@@ -187,7 +192,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     ty::Clause::ConstArgHasType(ct, ct_ty),
                 ))
                 .to_predicate(tcx);
-                predicates.insert((predicate, param.span));
+                predicates.insert(ty::Spanned { node: predicate, span: param.span });
 
                 index += 1;
             }
@@ -219,7 +224,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             ty::PredicateKind::WellFormed(ty.into()),
                             bound_vars,
                         );
-                        predicates.insert((predicate.to_predicate(tcx), span));
+                        predicates.insert(ty::Spanned { node: predicate.to_predicate(tcx), span });
                     }
                 }
 
@@ -242,7 +247,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     ))
                     .to_predicate(icx.tcx);
 
-                    (pred, span)
+                    ty::Spanned { node: pred, span }
                 }))
             }
 
@@ -302,20 +307,20 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 index: dup_index,
                 name: duplicate.name.ident().name,
             });
-            predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+            predicates.push(ty::Spanned {
+                node: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(orig_region, dup_region),
                 )))
                 .to_predicate(icx.tcx),
-                duplicate.span,
-            ));
-            predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                span: duplicate.span,
+            });
+            predicates.push(ty::Spanned {
+                node: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(dup_region, orig_region),
                 )))
                 .to_predicate(icx.tcx),
-                duplicate.span,
-            ));
+                span: duplicate.span,
+            });
         }
         debug!(?predicates);
     }
@@ -329,10 +334,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 fn const_evaluatable_predicates_of(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> FxIndexSet<(ty::Predicate<'_>, Span)> {
+) -> FxIndexSet<ty::Spanned<ty::Predicate<'_>>> {
     struct ConstCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
-        preds: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
+        preds: FxIndexSet<ty::Spanned<ty::Predicate<'tcx>>>,
     }
 
     impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
@@ -340,11 +345,11 @@ fn const_evaluatable_predicates_of(
             let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
-                self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
+                self.preds.insert(ty::Spanned {
+                    node: ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
                         .to_predicate(self.tcx),
                     span,
-                ));
+                });
             }
         }
 
@@ -428,7 +433,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             .predicates
             .iter()
             .copied()
-            .filter(|(pred, _)| match pred.kind().skip_binder() {
+            .filter(|pred| match pred.node.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => !is_assoc_item_ty(tr.self_ty()),
                 ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => {
                     !is_assoc_item_ty(proj.projection_ty.self_ty())
@@ -475,9 +480,9 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 let filtered_predicates = parent_preds
                     .predicates
                     .into_iter()
-                    .filter(|(pred, _)| {
+                    .filter(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, _)) =
-                            pred.kind().skip_binder()
+                            pred.node.kind().skip_binder()
                         {
                             match ct.kind() {
                                 ty::ConstKind::Param(param_const) => {
@@ -598,12 +603,12 @@ pub(super) fn super_predicates_that_define_assoc_type(
         if assoc_name.is_none() {
             // Now require that immediate supertraits are converted,
             // which will, in turn, reach indirect supertraits.
-            for &(pred, span) in superbounds {
-                debug!("superbound: {:?}", pred);
+            for &pred in superbounds {
+                debug!("superbound: {:?}", pred.node);
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) =
-                    pred.kind().skip_binder()
+                    pred.node.kind().skip_binder()
                 {
-                    tcx.at(span).super_predicates_of(bound.def_id());
+                    tcx.at(pred.span).super_predicates_of(bound.def_id());
                 }
             }
         }
@@ -674,8 +679,10 @@ pub(super) fn type_param_predicates(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        extend =
-                            Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
+                        extend = Some(ty::Spanned {
+                            node: identity_trait_ref.without_const().to_predicate(tcx),
+                            span: item.span,
+                        });
                     }
                     generics
                 }
@@ -701,7 +708,7 @@ pub(super) fn type_param_predicates(
             Some(assoc_name),
         )
         .into_iter()
-        .filter(|(predicate, _)| match predicate.kind().skip_binder() {
+        .filter(|predicate| match predicate.node.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => data.self_ty().is_param(index),
             _ => false,
         }),
@@ -724,7 +731,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
         assoc_name: Option<Ident>,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    ) -> Vec<ty::Spanned<ty::Predicate<'tcx>>> {
         ast_generics
             .predicates
             .iter()
@@ -779,7 +786,7 @@ fn predicates_from_bound<'tcx>(
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
+) -> Vec<ty::Spanned<ty::Predicate<'tcx>>> {
     let mut bounds = Bounds::default();
     astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
     bounds.predicates().collect()

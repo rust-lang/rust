@@ -24,7 +24,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
-        for (predicate, _) in predicates.predicates {
+        for ty::Spanned { node: predicate, .. } in predicates.predicates {
             match predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(
                     ty::Clause::RegionOutlives(_)

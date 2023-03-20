@@ -928,7 +928,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let scope = frame.current_source_info()?.scope;
             let inlined_parent = frame.body.source_scopes[scope].inlined_parent_scope?;
             let source = &frame.body.source_scopes[inlined_parent];
-            source.inlined.expect("inlined_parent_scope points to scope without inline info").0
+            source.inlined.expect("inlined_parent_scope points to scope without inline info").node
         };
         // Fall back to the instance of the function itself.
         let instance = instance.unwrap_or(frame.instance);

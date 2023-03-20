@@ -66,8 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         if let ty::Alias(ty::Opaque, AliasTy { def_id, substs, .. }) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;
-            for &(p, _span) in preds {
-                let p = EarlyBinder(p).subst(cx.tcx, substs);
+            for p in preds {
+                let p = EarlyBinder(p.node).subst(cx.tcx, substs);
                 if let Some(trait_pred) = p.to_opt_poly_trait_pred() {
                     if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;

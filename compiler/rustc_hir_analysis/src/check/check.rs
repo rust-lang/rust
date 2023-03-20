@@ -320,7 +320,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
             .iter()
-            .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
+            .try_for_each(|predicate| predicate.node.visit_with(&mut visitor));
 
         if let Some(ty) = prohibit_opaque.break_value() {
             visitor.visit_item(&item);

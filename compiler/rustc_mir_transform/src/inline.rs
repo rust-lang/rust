@@ -1059,7 +1059,10 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
             // Mark the outermost callee scope as an inlined one.
             assert_eq!(scope_data.inlined, None);
-            scope_data.inlined = Some((self.callsite.callee, self.callsite.source_info.span));
+            scope_data.inlined = Some(ty::Spanned {
+                node: self.callsite.callee,
+                span: self.callsite.source_info.span,
+            });
         } else if scope_data.inlined_parent_scope.is_none() {
             // Make it easy to find the scope with `inlined` set above.
             scope_data.inlined_parent_scope = Some(self.map_scope(OUTERMOST_SOURCE_SCOPE));

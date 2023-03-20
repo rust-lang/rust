@@ -866,7 +866,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let new_cause = ObligationCause::new(
                     cause.span,
                     cause.body_id,
-                    ObligationCauseCode::OpaqueReturnType(Some((return_expr_ty, span))),
+                    ObligationCauseCode::OpaqueReturnType(Some(ty::Spanned {
+                        node: return_expr_ty,
+                        span,
+                    })),
                 );
                 *cause = new_cause;
             }
