@@ -2003,7 +2003,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
-    /// assert_eq!(vec![0, 1, 2, 4, 6, 10, 20, 30], vec);
+    /// assert_eq!(vec, vec![0, 1, 2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// `Vec` can have a manual set capacity to avoid reallocating it:
@@ -2018,7 +2018,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
     /// assert_eq!(6, vec.capacity());
-    /// println!("{:?}", vec);
+    /// assert_eq!(vec, vec![2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// The returned mutable reference can be used to continue the call chain:
@@ -2032,12 +2032,12 @@ pub trait Iterator {
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3]);
     ///
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len now is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3, 1, 2, 3]);
     /// ```
     #[inline]
     #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
