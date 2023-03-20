@@ -96,9 +96,16 @@ enum Address {
 
 use Address::*;
 
+#[derive(Debug, Clone, Copy)]
 struct Interval {
     addr: Address,
     size: usize,
+}
+
+#[derive(Debug, Clone)]
+struct IntervalAndTy {
+    interval: Interval,
+    ty: Ty,
 }
 
 impl Interval {
@@ -110,8 +117,34 @@ impl Interval {
         memory.read_memory(self.addr, self.size)
     }
 
+    fn write_from_bytes(&self, memory: &mut Evaluator<'_>, bytes: &[u8]) -> Result<()> {
+        memory.write_memory(self.addr, bytes)
+    }
+
+    fn write_from_interval(&self, memory: &mut Evaluator<'_>, interval: Interval) -> Result<()> {
+        // FIXME: this could be more efficent
+        let bytes = &interval.get(memory)?.to_vec();
+        memory.write_memory(self.addr, bytes)
+    }
+
     fn slice(self, range: Range<usize>) -> Interval {
         Interval { addr: self.addr.offset(range.start), size: range.len() }
+    }
+}
+
+impl IntervalAndTy {
+    fn get<'a>(&self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
+        memory.read_memory(self.interval.addr, self.interval.size)
+    }
+
+    fn new(
+        addr: Address,
+        ty: Ty,
+        evaluator: &Evaluator<'_>,
+        locals: &Locals<'_>,
+    ) -> Result<IntervalAndTy> {
+        let size = evaluator.size_of_sized(&ty, locals, "type of interval")?;
+        Ok(IntervalAndTy { interval: Interval { addr, size }, ty })
     }
 }
 
@@ -135,7 +168,7 @@ impl Address {
 
     fn from_usize(x: usize) -> Self {
         if x > usize::MAX / 2 {
-            Stack(usize::MAX - x)
+            Stack(x - usize::MAX / 2)
         } else {
             Heap(x)
         }
@@ -147,7 +180,7 @@ impl Address {
 
     fn to_usize(&self) -> usize {
         let as_num = match self {
-            Stack(x) => usize::MAX - *x,
+            Stack(x) => *x + usize::MAX / 2,
             Heap(x) => *x,
         };
         as_num
@@ -174,7 +207,7 @@ pub enum MirEvalError {
     /// Means that code had undefined behavior. We don't try to actively detect UB, but if it was detected
     /// then use this type of error.
     UndefinedBehavior(&'static str),
-    Panic,
+    Panic(String),
     MirLowerError(FunctionId, MirLowerError),
     TypeIsUnsized(Ty, &'static str),
     NotSupported(String),
@@ -197,7 +230,7 @@ impl std::fmt::Debug for MirEvalError {
             Self::UndefinedBehavior(arg0) => {
                 f.debug_tuple("UndefinedBehavior").field(arg0).finish()
             }
-            Self::Panic => write!(f, "Panic"),
+            Self::Panic(msg) => write!(f, "Panic with message:\n{msg:?}"),
             Self::TargetDataLayoutNotAvailable => write!(f, "TargetDataLayoutNotAvailable"),
             Self::TypeIsUnsized(ty, it) => write!(f, "{ty:?} is unsized. {it} should be sized."),
             Self::ExecutionLimitExceeded => write!(f, "execution limit exceeded"),
@@ -289,7 +322,19 @@ impl Evaluator<'_> {
     }
 
     fn place_addr(&self, p: &Place, locals: &Locals<'_>) -> Result<Address> {
-        Ok(self.place_addr_and_ty(p, locals)?.0)
+        Ok(self.place_addr_and_ty_and_metadata(p, locals)?.0)
+    }
+
+    fn place_interval(&self, p: &Place, locals: &Locals<'_>) -> Result<Interval> {
+        let place_addr_and_ty = self.place_addr_and_ty_and_metadata(p, locals)?;
+        Ok(Interval {
+            addr: place_addr_and_ty.0,
+            size: self.size_of_sized(
+                &place_addr_and_ty.1,
+                locals,
+                "Type of place that we need its interval",
+            )?,
+        })
     }
 
     fn ptr_size(&self) -> usize {
@@ -299,10 +344,15 @@ impl Evaluator<'_> {
         }
     }
 
-    fn place_addr_and_ty<'a>(&'a self, p: &Place, locals: &'a Locals<'a>) -> Result<(Address, Ty)> {
+    fn place_addr_and_ty_and_metadata<'a>(
+        &'a self,
+        p: &Place,
+        locals: &'a Locals<'a>,
+    ) -> Result<(Address, Ty, Option<Interval>)> {
         let mut addr = locals.ptr[p.local];
         let mut ty: Ty =
             self.ty_filler(&locals.body.locals[p.local].ty, locals.subst, locals.body.owner)?;
+        let mut metadata = None; // locals are always sized
         for proj in &p.projection {
             match proj {
                 ProjectionElem::Deref => {
@@ -314,12 +364,18 @@ impl Evaluator<'_> {
                             ))
                         }
                     };
+                    metadata = if self.size_of(&ty, locals)?.is_none() {
+                        Some(Interval { addr: addr.offset(self.ptr_size()), size: self.ptr_size() })
+                    } else {
+                        None
+                    };
                     let x = from_bytes!(usize, self.read_memory(addr, self.ptr_size())?);
                     addr = Address::from_usize(x);
                 }
                 ProjectionElem::Index(op) => {
                     let offset =
                         from_bytes!(usize, self.read_memory(locals.ptr[*op], self.ptr_size())?);
+                    metadata = None; // Result of index is always sized
                     match &ty.data(Interner).kind {
                         TyKind::Ref(_, _, inner) => match &inner.data(Interner).kind {
                             TyKind::Slice(inner) => {
@@ -357,6 +413,7 @@ impl Evaluator<'_> {
                             .clone();
                         let offset = layout.fields.offset(f).bytes_usize();
                         addr = addr.offset(offset);
+                        metadata = None; // tuple field is always sized
                     }
                     _ => return Err(MirEvalError::TypeError("Only tuple has tuple fields")),
                 },
@@ -386,6 +443,8 @@ impl Evaluator<'_> {
                             .offset(u32::from(f.local_id.into_raw()) as usize)
                             .bytes_usize();
                         addr = addr.offset(offset);
+                        // FIXME: support structs with unsized fields
+                        metadata = None;
                     }
                     _ => return Err(MirEvalError::TypeError("Only adt has fields")),
                 },
@@ -396,7 +455,7 @@ impl Evaluator<'_> {
                 ProjectionElem::OpaqueCast(_) => not_supported!("opaque cast"),
             }
         }
-        Ok((addr, ty))
+        Ok((addr, ty, metadata))
     }
 
     fn layout(&self, ty: &Ty) -> Result<Layout> {
@@ -411,13 +470,20 @@ impl Evaluator<'_> {
     }
 
     fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals<'a>) -> Result<Ty> {
-        Ok(self.place_addr_and_ty(p, locals)?.1)
+        Ok(self.place_addr_and_ty_and_metadata(p, locals)?.1)
     }
 
-    fn operand_ty<'a>(&'a self, o: &'a Operand, locals: &'a Locals<'a>) -> Result<Ty> {
+    fn operand_ty(&self, o: &Operand, locals: &Locals<'_>) -> Result<Ty> {
         Ok(match o {
             Operand::Copy(p) | Operand::Move(p) => self.place_ty(p, locals)?,
             Operand::Constant(c) => c.data(Interner).ty.clone(),
+        })
+    }
+
+    fn operand_ty_and_eval(&mut self, o: &Operand, locals: &Locals<'_>) -> Result<IntervalAndTy> {
+        Ok(IntervalAndTy {
+            interval: self.eval_operand(o, locals)?,
+            ty: self.operand_ty(o, locals)?,
         })
     }
 
@@ -498,14 +564,19 @@ impl Evaluator<'_> {
                     cleanup: _,
                     from_hir_call: _,
                 } => {
+                    let destination = self.place_interval(destination, &locals)?;
                     let fn_ty = self.operand_ty(func, &locals)?;
+                    let args = args
+                        .iter()
+                        .map(|x| self.operand_ty_and_eval(x, &locals))
+                        .collect::<Result<Vec<_>>>()?;
                     match &fn_ty.data(Interner).kind {
                         TyKind::Function(_) => {
                             let bytes = self.eval_operand(func, &locals)?;
-                            self.exec_fn_pointer(bytes, destination, args, &locals)?;
+                            self.exec_fn_pointer(bytes, destination, &args, &locals)?;
                         }
                         TyKind::FnDef(def, generic_args) => {
-                            self.exec_fn_def(*def, generic_args, destination, args, &locals)?;
+                            self.exec_fn_def(*def, generic_args, destination, &args, &locals)?;
                         }
                         x => not_supported!("unknown function type {x:?}"),
                     }
@@ -545,8 +616,12 @@ impl Evaluator<'_> {
         Ok(match r {
             Rvalue::Use(x) => Borrowed(self.eval_operand(x, locals)?),
             Rvalue::Ref(_, p) => {
-                let addr = self.place_addr(p, locals)?;
-                Owned(addr.to_bytes())
+                let (addr, _, metadata) = self.place_addr_and_ty_and_metadata(p, locals)?;
+                let mut r = addr.to_bytes();
+                if let Some(metadata) = metadata {
+                    r.extend(metadata.get(self)?);
+                }
+                Owned(r)
             }
             Rvalue::Len(_) => not_supported!("rvalue len"),
             Rvalue::UnaryOp(op, val) => {
@@ -624,8 +699,12 @@ impl Evaluator<'_> {
                         let r = match op {
                             BinOp::Add => l128.overflowing_add(r128).0,
                             BinOp::Mul => l128.overflowing_mul(r128).0,
-                            BinOp::Div => l128.checked_div(r128).ok_or(MirEvalError::Panic)?,
-                            BinOp::Rem => l128.checked_rem(r128).ok_or(MirEvalError::Panic)?,
+                            BinOp::Div => l128.checked_div(r128).ok_or_else(|| {
+                                MirEvalError::Panic(format!("Overflow in {op:?}"))
+                            })?,
+                            BinOp::Rem => l128.checked_rem(r128).ok_or_else(|| {
+                                MirEvalError::Panic(format!("Overflow in {op:?}"))
+                            })?,
                             BinOp::Sub => l128.overflowing_sub(r128).0,
                             BinOp::BitAnd => l128 & r128,
                             BinOp::BitOr => l128 | r128,
@@ -635,16 +714,16 @@ impl Evaluator<'_> {
                         let r = r.to_le_bytes();
                         for &k in &r[lc.len()..] {
                             if k != 0 && (k != 255 || !is_signed) {
-                                return Err(MirEvalError::Panic);
+                                return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                             }
                         }
                         Owned(r[0..lc.len()].into())
                     }
                     BinOp::Shl | BinOp::Shr => {
                         let shift_amout = if r128 < 0 {
-                            return Err(MirEvalError::Panic);
+                            return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                         } else if r128 > 128 {
-                            return Err(MirEvalError::Panic);
+                            return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                         } else {
                             r128 as u8
                         };
@@ -720,47 +799,54 @@ impl Evaluator<'_> {
             }
             Rvalue::ShallowInitBox(_, _) => not_supported!("shallow init box"),
             Rvalue::CopyForDeref(_) => not_supported!("copy for deref"),
-            Rvalue::Aggregate(kind, values) => match kind {
-                AggregateKind::Array(_) => {
-                    let mut r = vec![];
-                    for x in values {
-                        let value = self.eval_operand(x, locals)?.get(&self)?;
-                        r.extend(value);
+            Rvalue::Aggregate(kind, values) => {
+                let values = values
+                    .iter()
+                    .map(|x| self.eval_operand(x, locals))
+                    .collect::<Result<Vec<_>>>()?;
+                match kind {
+                    AggregateKind::Array(_) => {
+                        let mut r = vec![];
+                        for x in values {
+                            let value = x.get(&self)?;
+                            r.extend(value);
+                        }
+                        Owned(r)
                     }
-                    Owned(r)
+                    AggregateKind::Tuple(ty) => {
+                        let layout = self.layout(&ty)?;
+                        Owned(self.make_by_layout(
+                            layout.size.bytes_usize(),
+                            &layout,
+                            None,
+                            values.iter().copied(),
+                        )?)
+                    }
+                    AggregateKind::Union(x, f) => {
+                        let layout = self.layout_adt((*x).into(), Substitution::empty(Interner))?;
+                        let offset = layout
+                            .fields
+                            .offset(u32::from(f.local_id.into_raw()) as usize)
+                            .bytes_usize();
+                        let op = values[0].get(&self)?;
+                        let mut result = vec![0; layout.size.bytes_usize()];
+                        result[offset..offset + op.len()].copy_from_slice(op);
+                        Owned(result)
+                    }
+                    AggregateKind::Adt(x, subst) => {
+                        let subst = self.subst_filler(subst, locals);
+                        let (size, variant_layout, tag) =
+                            self.layout_of_variant(*x, subst, locals)?;
+                        Owned(self.make_by_layout(
+                            size,
+                            &variant_layout,
+                            tag,
+                            values.iter().copied(),
+                        )?)
+                    }
                 }
-                AggregateKind::Tuple(ty) => {
-                    let layout = self.layout(&ty)?;
-                    Owned(self.make_by_layout(
-                        layout.size.bytes_usize(),
-                        &layout,
-                        None,
-                        values,
-                        locals,
-                    )?)
-                }
-                AggregateKind::Union(x, f) => {
-                    let layout = self.layout_adt((*x).into(), Substitution::empty(Interner))?;
-                    let offset = layout
-                        .fields
-                        .offset(u32::from(f.local_id.into_raw()) as usize)
-                        .bytes_usize();
-                    let op = self.eval_operand(&values[0], locals)?.get(&self)?;
-                    let mut result = vec![0; layout.size.bytes_usize()];
-                    result[offset..offset + op.len()].copy_from_slice(op);
-                    Owned(result)
-                }
-                AggregateKind::Adt(x, subst) => {
-                    let subst = self.subst_filler(subst, locals);
-                    let (size, variant_layout, tag) = self.layout_of_variant(*x, subst, locals)?;
-                    Owned(self.make_by_layout(size, &variant_layout, tag, values, locals)?)
-                }
-            },
+            }
             Rvalue::Cast(kind, operand, target_ty) => match kind {
-                CastKind::PointerExposeAddress => not_supported!("exposing pointer address"),
-                CastKind::PointerFromExposedAddress => {
-                    not_supported!("creating pointer from exposed address")
-                }
                 CastKind::Pointer(cast) => match cast {
                     PointerCast::ReifyFnPointer => {
                         let current_ty = self.operand_ty(operand, locals)?;
@@ -818,7 +904,9 @@ impl Evaluator<'_> {
                     x => not_supported!("pointer cast {x:?}"),
                 },
                 CastKind::DynStar => not_supported!("dyn star cast"),
-                CastKind::IntToInt => {
+                CastKind::IntToInt
+                | CastKind::PointerExposeAddress
+                | CastKind::PointerFromExposedAddress => {
                     // FIXME: handle signed cast
                     let current = pad16(self.eval_operand(operand, locals)?.get(&self)?, false);
                     let dest_size =
@@ -828,7 +916,12 @@ impl Evaluator<'_> {
                 CastKind::FloatToInt => not_supported!("float to int cast"),
                 CastKind::FloatToFloat => not_supported!("float to float cast"),
                 CastKind::IntToFloat => not_supported!("float to int cast"),
-                CastKind::PtrToPtr => not_supported!("ptr to ptr cast"),
+                CastKind::PtrToPtr => {
+                    let current = pad16(self.eval_operand(operand, locals)?.get(&self)?, false);
+                    let dest_size =
+                        self.size_of_sized(target_ty, locals, "destination of ptr to ptr cast")?;
+                    Owned(current[0..dest_size].to_vec())
+                }
                 CastKind::FnPtrToPtr => not_supported!("fn ptr to ptr cast"),
             },
         })
@@ -895,16 +988,15 @@ impl Evaluator<'_> {
         size: usize, // Not neccessarily equal to variant_layout.size
         variant_layout: &Layout,
         tag: Option<(usize, usize, i128)>,
-        values: &[Operand],
-        locals: &Locals<'_>,
+        values: impl Iterator<Item = Interval>,
     ) -> Result<Vec<u8>> {
         let mut result = vec![0; size];
         if let Some((offset, size, value)) = tag {
             result[offset..offset + size].copy_from_slice(&value.to_le_bytes()[0..size]);
         }
-        for (i, op) in values.iter().enumerate() {
+        for (i, op) in values.enumerate() {
             let offset = variant_layout.fields.offset(i).bytes_usize();
-            let op = self.eval_operand(op, locals)?.get(&self)?;
+            let op = op.get(&self)?;
             result[offset..offset + op.len()].copy_from_slice(op);
         }
         Ok(result)
@@ -1196,28 +1288,89 @@ impl Evaluator<'_> {
     }
 
     fn exec_intrinsic(
-        &self,
+        &mut self,
         as_str: &str,
-        mut arg_bytes: impl Iterator<Item = Vec<u8>>,
+        args: &[IntervalAndTy],
         generic_args: Substitution,
+        destination: Interval,
         locals: &Locals<'_>,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<()> {
         match as_str {
             "size_of" => {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
                     return Err(MirEvalError::TypeError("size_of generic arg is not provided"));
                 };
-                let size = self.size_of(ty, locals)?;
-                match size {
-                    Some(x) => Ok(x.to_le_bytes().to_vec()),
-                    None => return Err(MirEvalError::TypeError("size_of arg is unsized")),
-                }
+                let size = self.size_of_sized(ty, locals, "size_of arg")?;
+                destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_add" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("const_eval_select args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_add(rhs);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "copy" | "copy_nonoverlapping" => {
+                let [src, dst, offset] = args else {
+                    return Err(MirEvalError::TypeError("copy_nonoverlapping args are not provided"));
+                };
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("copy_nonoverlapping generic arg is not provided"));
+                };
+                let src = Address::from_bytes(src.get(self)?)?;
+                let dst = Address::from_bytes(dst.get(self)?)?;
+                let offset = from_bytes!(usize, offset.get(self)?);
+                let size = self.size_of_sized(ty, locals, "copy_nonoverlapping ptr type")?;
+                let size = offset * size;
+                let src = Interval { addr: src, size };
+                let dst = Interval { addr: dst, size };
+                dst.write_from_interval(self, src)
+            }
+            "offset" | "arith_offset" => {
+                let [ptr, offset] = args else {
+                    return Err(MirEvalError::TypeError("offset args are not provided"));
+                };
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("offset generic arg is not provided"));
+                };
+                let ptr = u128::from_le_bytes(pad16(ptr.get(self)?, false));
+                let offset = u128::from_le_bytes(pad16(offset.get(self)?, false));
+                let size = self.size_of_sized(ty, locals, "offset ptr type")? as u128;
+                let ans = ptr + offset * size;
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "assert_inhabited" | "assert_zero_valid" | "assert_uninit_valid" => {
+                // FIXME: We should actually implement these checks
+                Ok(())
+            }
+            "forget" => {
+                // We don't call any drop glue yet, so there is nothing here
+                Ok(())
             }
             "transmute" => {
-                let Some(arg) = arg_bytes.next() else {
+                let [arg] = args else {
                     return Err(MirEvalError::TypeError("trasmute arg is not provided"));
                 };
-                Ok(arg)
+                destination.write_from_interval(self, arg.interval)
+            }
+            "const_eval_select" => {
+                let [tuple, const_fn, _] = args else {
+                    return Err(MirEvalError::TypeError("const_eval_select args are not provided"));
+                };
+                let mut args = vec![const_fn.clone()];
+                let TyKind::Tuple(_, fields) = tuple.ty.kind(Interner) else {
+                    return Err(MirEvalError::TypeError("const_eval_select arg[0] is not a tuple"));
+                };
+                let layout = self.layout(&tuple.ty)?;
+                for (i, field) in fields.iter(Interner).enumerate() {
+                    let field = field.assert_ty_ref(Interner).clone();
+                    let offset = layout.fields.offset(i).bytes_usize();
+                    let addr = tuple.interval.addr.offset(offset);
+                    args.push(IntervalAndTy::new(addr, field, self, locals)?);
+                }
+                self.exec_fn_trait(&args, destination, locals)
             }
             _ => not_supported!("unknown intrinsic {as_str}"),
         }
@@ -1226,8 +1379,8 @@ impl Evaluator<'_> {
     fn exec_fn_pointer(
         &mut self,
         bytes: Interval,
-        destination: &Place,
-        args: &[Operand],
+        destination: Interval,
+        args: &[IntervalAndTy],
         locals: &Locals<'_>,
     ) -> Result<()> {
         let id = from_bytes!(usize, bytes.get(self)?);
@@ -1244,38 +1397,41 @@ impl Evaluator<'_> {
         &mut self,
         def: FnDefId,
         generic_args: &Substitution,
-        destination: &Place,
-        args: &[Operand],
+        destination: Interval,
+        args: &[IntervalAndTy],
         locals: &Locals<'_>,
     ) -> Result<()> {
         let def: CallableDefId = from_chalk(self.db, def);
         let generic_args = self.subst_filler(generic_args, &locals);
         match def {
             CallableDefId::FunctionId(def) => {
-                let dest_addr = self.place_addr(destination, &locals)?;
-                if let Some(x) = self.detect_fn_trait(def) {
-                    self.exec_fn_trait(x, &args, destination, locals)?;
+                if let Some(_) = self.detect_fn_trait(def) {
+                    self.exec_fn_trait(&args, destination, locals)?;
                     return Ok(());
                 }
-                let arg_bytes = args
-                    .iter()
-                    .map(|x| Ok(self.eval_operand(x, &locals)?.get(&self)?.to_owned()))
-                    .collect::<Result<Vec<_>>>()?;
-                self.exec_fn_with_args(def, arg_bytes, generic_args, locals, dest_addr)?;
+                self.exec_fn_with_args(def, args, generic_args, locals, destination)?;
             }
             CallableDefId::StructId(id) => {
                 let (size, variant_layout, tag) =
                     self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
-                let result = self.make_by_layout(size, &variant_layout, tag, args, &locals)?;
-                let dest_addr = self.place_addr(destination, &locals)?;
-                self.write_memory(dest_addr, &result)?;
+                let result = self.make_by_layout(
+                    size,
+                    &variant_layout,
+                    tag,
+                    args.iter().map(|x| x.interval),
+                )?;
+                destination.write_from_bytes(self, &result)?;
             }
             CallableDefId::EnumVariantId(id) => {
                 let (size, variant_layout, tag) =
                     self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
-                let result = self.make_by_layout(size, &variant_layout, tag, args, &locals)?;
-                let dest_addr = self.place_addr(destination, &locals)?;
-                self.write_memory(dest_addr, &result)?;
+                let result = self.make_by_layout(
+                    size,
+                    &variant_layout,
+                    tag,
+                    args.iter().map(|x| x.interval),
+                )?;
+                destination.write_from_bytes(self, &result)?;
             }
         }
         Ok(())
@@ -1284,10 +1440,10 @@ impl Evaluator<'_> {
     fn exec_fn_with_args(
         &mut self,
         def: FunctionId,
-        arg_bytes: Vec<Vec<u8>>,
+        args: &[IntervalAndTy],
         generic_args: Substitution,
         locals: &Locals<'_>,
-        dest_addr: Address,
+        destination: Interval,
     ) -> Result<()> {
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
@@ -1301,14 +1457,18 @@ impl Evaluator<'_> {
                 _ => false,
             },
         };
-        let result = if is_intrinsic {
-            self.exec_intrinsic(
+        if is_intrinsic {
+            return self.exec_intrinsic(
                 function_data.name.as_text().unwrap_or_default().as_str(),
-                arg_bytes.iter().cloned(),
+                args,
                 generic_args,
+                destination,
                 &locals,
-            )?
-        } else if let Some(x) = self.detect_lang_function(def) {
+            );
+        }
+        let arg_bytes =
+            args.iter().map(|x| Ok(x.get(&self)?.to_owned())).collect::<Result<Vec<_>>>()?;
+        let result = if let Some(x) = self.detect_lang_function(def) {
             self.exec_lang_item(x, &arg_bytes)?
         } else {
             if let Some(self_ty_idx) =
@@ -1321,9 +1481,12 @@ impl Evaluator<'_> {
                 let ty = self
                     .vtable_map
                     .ty_of_bytes(&arg_bytes[0][self.ptr_size()..self.ptr_size() * 2])?;
+                let mut args_for_target = args.to_vec();
+                args_for_target[0] = IntervalAndTy {
+                    interval: args_for_target[0].interval.slice(0..self.ptr_size()),
+                    ty: ty.clone(),
+                };
                 let ty = GenericArgData::Ty(ty.clone()).intern(Interner);
-                let mut args_for_target = arg_bytes;
-                args_for_target[0] = args_for_target[0][0..self.ptr_size()].to_vec();
                 let generics_for_target = Substitution::from_iter(
                     Interner,
                     generic_args.iter(Interner).enumerate().map(|(i, x)| {
@@ -1336,10 +1499,10 @@ impl Evaluator<'_> {
                 );
                 return self.exec_fn_with_args(
                     def,
-                    args_for_target,
+                    &args_for_target,
                     generics_for_target,
                     locals,
-                    dest_addr,
+                    destination,
                 );
             }
             let (imp, generic_args) =
@@ -1351,20 +1514,19 @@ impl Evaluator<'_> {
             self.interpret_mir(&mir_body, arg_bytes.iter().cloned(), generic_args)
                 .map_err(|e| MirEvalError::InFunction(imp, Box::new(e)))?
         };
-        self.write_memory(dest_addr, &result)?;
+        destination.write_from_bytes(self, &result)?;
         Ok(())
     }
 
     fn exec_fn_trait(
         &mut self,
-        ft: FnTrait,
-        args: &[Operand],
-        destination: &Place,
+        args: &[IntervalAndTy],
+        destination: Interval,
         locals: &Locals<'_>,
     ) -> Result<()> {
         let func = args.get(0).ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
-        let mut func_ty = self.operand_ty(func, locals)?;
-        let mut func_data = self.eval_operand(func, locals)?;
+        let mut func_ty = func.ty.clone();
+        let mut func_data = func.interval;
         while let TyKind::Ref(_, _, z) = func_ty.kind(Interner) {
             func_ty = z.clone();
             if matches!(func_ty.kind(Interner), TyKind::Dyn(_)) {
@@ -1383,7 +1545,7 @@ impl Evaluator<'_> {
             TyKind::Function(_) => {
                 self.exec_fn_pointer(func_data, destination, &args[1..], locals)?;
             }
-            x => not_supported!("Call {ft:?} trait methods with type {x:?}"),
+            x => not_supported!("Call FnTrait methods with type {x:?}"),
         }
         Ok(())
     }
@@ -1392,7 +1554,10 @@ impl Evaluator<'_> {
         use LangItem::*;
         let mut args = args.iter();
         match x {
-            PanicFmt | BeginPanic => Err(MirEvalError::Panic),
+            // FIXME: we want to find the panic message from arguments, but it wouldn't work
+            // currently even if we do that, since macro expansion of panic related macros
+            // is dummy.
+            PanicFmt | BeginPanic => Err(MirEvalError::Panic("<format-args>".to_string())),
             SliceLen => {
                 let arg = args
                     .next()

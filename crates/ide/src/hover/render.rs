@@ -409,7 +409,6 @@ pub(super) fn definition(
             }
             match it.eval(db) {
                 Ok(()) => Some("pass".into()),
-                Err(MirEvalError::Panic) => Some("fail".into()),
                 Err(MirEvalError::MirLowerError(f, e)) => {
                     let name = &db.function_data(f).name;
                     Some(format!("error: fail to lower {name} due {e:?}"))

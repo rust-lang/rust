@@ -11,6 +11,8 @@ use super::{
     ConstEvalError,
 };
 
+mod intrinsics;
+
 fn simplify(e: ConstEvalError) -> ConstEvalError {
     match e {
         ConstEvalError::MirEvalError(MirEvalError::InFunction(_, e)) => {
@@ -80,6 +82,49 @@ fn bit_op() {
     check_number(r#"const GOAL: i8 = 1 << 7"#, (1i8 << 7) as i128);
     // FIXME: report panic here
     check_number(r#"const GOAL: i8 = 1 << 8"#, 0);
+}
+
+#[test]
+fn casts() {
+    check_number(r#"const GOAL: usize = 12 as *const i32 as usize"#, 12);
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: i32 = {
+        let a = [10, 20, 3, 15];
+        let x: &[i32] = &a;
+        let y: *const [i32] = x;
+        let z = y as *const i32;
+        unsafe { *z }
+    };
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: i16 = {
+        let a = &mut 5;
+        let z = a as *mut _;
+        unsafe { *z }
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: usize = {
+        let a = [10, 20, 3, 15];
+        let x: &[i32] = &a;
+        let y: *const [i32] = x;
+        let z = y as *const [u8]; // slice fat pointer cast don't touch metadata
+        let w = unsafe { &*z };
+        w.len()
+    };
+        "#,
+        4,
+    );
 }
 
 #[test]
@@ -276,20 +321,6 @@ fn function_call() {
     const GOAL: usize = add(add(1, 2), add(3, add(4, 5)));
     "#,
         15,
-    );
-}
-
-#[test]
-fn intrinsics() {
-    check_number(
-        r#"
-    extern "rust-intrinsic" {
-        pub fn size_of<T>() -> usize;
-    }
-
-    const GOAL: usize = size_of::<i32>();
-    "#,
-        4,
     );
 }
 
@@ -1348,6 +1379,17 @@ fn array_and_index() {
         r#"
     //- minicore: coerce_unsized, index, slice
     const GOAL: usize = { let a = [1, 2, 3]; let x: &[i32] = &a; x.len() };"#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: usize = {
+        let a = [1, 2, 3];
+        let x: &[i32] = &a;
+        let y = &*x;
+        y.len()
+    };"#,
         3,
     );
     check_number(

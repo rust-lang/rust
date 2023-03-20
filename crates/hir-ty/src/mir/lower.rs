@@ -1285,6 +1285,11 @@ fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
             (_, chalk_ir::Scalar::Float(_)) => CastKind::IntToFloat,
             (_, _) => CastKind::IntToInt,
         },
+        (TyKind::Scalar(_), TyKind::Raw(..)) => CastKind::PointerFromExposedAddress,
+        (TyKind::Raw(..), TyKind::Scalar(_)) => CastKind::PointerExposeAddress,
+        (TyKind::Raw(..) | TyKind::Ref(..), TyKind::Raw(..) | TyKind::Ref(..)) => {
+            CastKind::PtrToPtr
+        }
         // Enum to int casts
         (TyKind::Scalar(_), TyKind::Adt(..)) | (TyKind::Adt(..), TyKind::Scalar(_)) => {
             CastKind::IntToInt

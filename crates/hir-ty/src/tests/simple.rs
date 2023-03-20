@@ -2697,6 +2697,21 @@ fn f() {
 }
 
 #[test]
+fn infer_ref_to_raw_cast() {
+    check_types(
+        r#"
+struct S;
+
+fn f() {
+    let s = &mut S;
+    let s = s as *mut _;
+      //^ *mut S
+}
+    "#,
+    );
+}
+
+#[test]
 fn infer_missing_type() {
     check_types(
         r#"
@@ -3254,25 +3269,6 @@ fn f<T>(t: Ark<T>) {
             116..141 'Ark::f...nst ()': *const ()
             125..127 '&t': &Ark<T>
             126..127 't': Ark<T>
-        "#]],
-    );
-}
-
-// FIXME
-#[test]
-fn castable_to2() {
-    check_infer(
-        r#"
-fn func() {
-    let x = &0u32 as *const _;
-}
-"#,
-        expect![[r#"
-            10..44 '{     ...t _; }': ()
-            20..21 'x': *const {unknown}
-            24..29 '&0u32': &u32
-            24..41 '&0u32 ...onst _': *const {unknown}
-            25..29 '0u32': u32
         "#]],
     );
 }

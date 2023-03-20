@@ -630,8 +630,15 @@ impl<'a> InferenceContext<'a> {
             Expr::Cast { expr, type_ref } => {
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME: propagate the "castable to" expectation
-                let _inner_ty = self.infer_expr_no_expect(*expr);
-                // FIXME check the cast...
+                let inner_ty = self.infer_expr_no_expect(*expr);
+                match (inner_ty.kind(Interner), cast_ty.kind(Interner)) {
+                    (TyKind::Ref(_, _, inner), TyKind::Raw(_, cast)) => {
+                        // FIXME: record invalid cast diagnostic in case of mismatch
+                        self.unify(inner, cast);
+                    }
+                    // FIXME check the other kinds of cast...
+                    _ => (),
+                }
                 cast_ty
             }
             Expr::Ref { expr, rawness, mutability } => {
