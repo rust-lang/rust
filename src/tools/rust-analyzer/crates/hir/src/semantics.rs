@@ -15,7 +15,7 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    db::AstDatabase,
+    db::ExpandDatabase,
     name::{known, AsName},
     ExpansionInfo, MacroCallId,
 };
@@ -411,7 +411,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_record_field(field)
     }
 
-    pub fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<Field> {
+    pub fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<(Field, Type)> {
         self.imp.resolve_record_pat_field(field)
     }
 
@@ -1201,7 +1201,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax())?.resolve_record_field(self.db, field)
     }
 
-    fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<Field> {
+    fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<(Field, Type)> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
     }
 
@@ -1536,7 +1536,7 @@ impl<'db> SemanticsImpl<'db> {
 
 fn macro_call_to_macro_id(
     ctx: &mut SourceToDefCtx<'_, '_>,
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
     let loc = db.lookup_intern_macro_call(macro_call_id);

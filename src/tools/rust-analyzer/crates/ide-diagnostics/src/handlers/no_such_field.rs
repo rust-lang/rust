@@ -1,4 +1,4 @@
-use hir::{db::AstDatabase, HasSource, HirDisplay, Semantics};
+use hir::{db::ExpandDatabase, HasSource, HirDisplay, Semantics};
 use ide_db::{base_db::FileId, source_change::SourceChange, RootDatabase};
 use syntax::{
     ast::{self, edit::IndentLevel, make},

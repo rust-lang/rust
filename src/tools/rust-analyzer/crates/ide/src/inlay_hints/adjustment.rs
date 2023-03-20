@@ -31,18 +31,30 @@ pub(super) fn hints(
         return None;
     }
 
-    // These inherit from the inner expression which would result in duplicate hints
-    if let ast::Expr::ParenExpr(_)
-    | ast::Expr::IfExpr(_)
-    | ast::Expr::BlockExpr(_)
-    | ast::Expr::MatchExpr(_) = expr
-    {
+    // ParenExpr resolve to their contained expressions HIR so they will dupe these hints
+    if let ast::Expr::ParenExpr(_) = expr {
         return None;
+    }
+    if let ast::Expr::BlockExpr(b) = expr {
+        if !b.is_standalone() {
+            return None;
+        }
     }
 
     let descended = sema.descend_node_into_attributes(expr.clone()).pop();
     let desc_expr = descended.as_ref().unwrap_or(expr);
     let adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
+
+    if let ast::Expr::BlockExpr(_) | ast::Expr::IfExpr(_) | ast::Expr::MatchExpr(_) = desc_expr {
+        if let [Adjustment { kind: Adjust::Deref(_), source, .. }, Adjustment { kind: Adjust::Borrow(_), source: _, target }] =
+            &*adjustments
+        {
+            // Don't show unnecessary reborrows for these, they will just repeat the inner ones again
+            if source == target {
+                return None;
+            }
+        }
+    }
 
     let (postfix, needs_outer_parens, needs_inner_parens) =
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
@@ -67,6 +79,7 @@ pub(super) fn hints(
 
     for Adjustment { source, target, kind } in iter {
         if source == target {
+            cov_mark::hit!(same_type_adjustment);
             continue;
         }
 
@@ -251,7 +264,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn
+//- minicore: coerce_unsized, fn, eq
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -332,7 +345,7 @@ fn main() {
         loop {}
       //^^^^^^^<never-to-any>
     };
-    let _: &mut [u32] = match () { () => &mut [] }
+    let _: &mut [u32] = match () { () => &mut [] };
                                        //^^^^^^^<unsize>
                                        //^^^^^^^&mut $
                                        //^^^^^^^*
@@ -341,6 +354,12 @@ fn main() {
                          //^^^^^^^^^^<unsize>
                          //^^^^^^^^^^&mut $
                          //^^^^^^^^^^*
+    () == ();
+ // ^^&
+       // ^^&
+    (()) == {()};
+  // ^^&
+         // ^^^^&
 }
 
 #[derive(Copy, Clone)]
@@ -363,7 +382,7 @@ impl Struct {
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn
+//- minicore: coerce_unsized, fn, eq
 fn main() {
 
     Struct.consume();
@@ -419,7 +438,7 @@ fn main() {
         loop {}
       //^^^^^^^.<never-to-any>
     };
-    let _: &mut [u32] = match () { () => &mut [] }
+    let _: &mut [u32] = match () { () => &mut [] };
                                        //^^^^^^^(
                                        //^^^^^^^)
                                        //^^^^^^^.*
@@ -432,6 +451,12 @@ fn main() {
                          //^^^^^^^^^^.*
                          //^^^^^^^^^^.&mut
                          //^^^^^^^^^^.<unsize>
+    () == ();
+ // ^^.&
+       // ^^.&
+    (()) == {()};
+  // ^^.&
+         // ^^^^.&
 }
 
 #[derive(Copy, Clone)]
@@ -499,6 +524,7 @@ fn main() {
 
     #[test]
     fn never_to_never_is_never_shown() {
+        cov_mark::check!(same_type_adjustment);
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"

@@ -37,7 +37,9 @@ pub(crate) fn render_struct_pat(
     let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, lookup, pat, strukt))
+    let db = ctx.db();
+
+    Some(build_completion(ctx, label, lookup, pat, strukt, strukt.ty(db), false))
 }
 
 pub(crate) fn render_variant_pat(
@@ -52,6 +54,7 @@ pub(crate) fn render_variant_pat(
 
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
+    let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
 
     let (name, escaped_name) = match path {
         Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
@@ -81,7 +84,15 @@ pub(crate) fn render_variant_pat(
         }
     };
 
-    Some(build_completion(ctx, label, lookup, pat, variant))
+    Some(build_completion(
+        ctx,
+        label,
+        lookup,
+        pat,
+        variant,
+        enum_ty,
+        pattern_ctx.missing_variants.contains(&variant),
+    ))
 }
 
 fn build_completion(
@@ -90,13 +101,22 @@ fn build_completion(
     lookup: SmolStr,
     pat: String,
     def: impl HasAttrs + Copy,
+    adt_ty: hir::Type,
+    // Missing in context of match statement completions
+    is_variant_missing: bool,
 ) -> CompletionItem {
+    let mut relevance = ctx.completion_relevance();
+
+    if is_variant_missing {
+        relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
+    }
+
     let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat)
         .lookup_by(lookup)
-        .set_relevance(ctx.completion_relevance());
+        .set_relevance(relevance);
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
         None => item.insert_text(pat),

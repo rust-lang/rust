@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{db::AstDatabase, HirDisplay, InFile, Type};
+use hir::{db::ExpandDatabase, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},

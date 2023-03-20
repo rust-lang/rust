@@ -24,8 +24,8 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
     let project_workspace = ProjectWorkspace::Cargo {
         cargo: cargo_workspace,
         build_scripts: WorkspaceBuildScripts::default(),
-        sysroot: None,
-        rustc: None,
+        sysroot: Err(None),
+        rustc: Err(None),
         rustc_cfg: Vec::new(),
         cfg_overrides,
         toolchain: None,
@@ -37,7 +37,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
 fn load_rust_project(file: &str) -> CrateGraph {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
-    let sysroot = Some(get_fake_sysroot());
+    let sysroot = Ok(get_fake_sysroot());
     let project_workspace = ProjectWorkspace::Json { project, sysroot, rustc_cfg: Vec::new() };
     to_crate_graph(project_workspace)
 }

@@ -153,6 +153,7 @@ function createCommands(): Record<string, CommandFactory> {
         memoryUsage: { enabled: commands.memoryUsage },
         shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
+        addProject: { enabled: commands.addProject },
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },

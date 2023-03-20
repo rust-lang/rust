@@ -6,7 +6,7 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
-import { Config, substituteVSCodeVariables } from "./config";
+import { Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
 
 export interface Env {
@@ -95,7 +95,16 @@ export async function createClient(
                     const resp = await next(params, token);
                     if (resp && Array.isArray(resp)) {
                         return resp.map((val) => {
-                            return substituteVSCodeVariables(val);
+                            return prepareVSCodeConfig(val, (key, cfg) => {
+                                // we only want to set discovered workspaces on the right key
+                                // and if a workspace has been discovered.
+                                if (
+                                    key === "linkedProjects" &&
+                                    config.discoveredWorkspaces.length > 0
+                                ) {
+                                    cfg[key] = config.discoveredWorkspaces;
+                                }
+                            });
                         });
                     } else {
                         return resp;

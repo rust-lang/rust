@@ -20,7 +20,7 @@ use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{
-    db::{AstDatabase, TokenExpander},
+    db::{ExpandDatabase, TokenExpander},
     AstId, InFile, MacroDefId, MacroDefKind, MacroFile,
 };
 use stdx::format_to;

@@ -90,38 +90,55 @@ impl GlobalState {
             quiescent: self.is_quiescent(),
             message: None,
         };
+        let mut message = String::new();
 
         if self.proc_macro_changed {
             status.health = lsp_ext::Health::Warning;
-            status.message =
-                Some("Reload required due to source changes of a procedural macro.".into())
+            message.push_str("Reload required due to source changes of a procedural macro.\n\n");
         }
         if let Err(_) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
-            status.message =
-                Some("Failed to run build scripts of some packages, check the logs.".to_string());
+            message.push_str("Failed to run build scripts of some packages.\n\n");
         }
         if !self.config.cargo_autoreload()
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
         {
             status.health = lsp_ext::Health::Warning;
-            status.message = Some("Workspace reload required".to_string())
+            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
         }
-
-        if let Err(_) = self.fetch_workspace_error() {
-            status.health = lsp_ext::Health::Error;
-            status.message = Some("Failed to load workspaces".to_string())
-        }
-
         if self.config.linked_projects().is_empty()
             && self.config.detached_files().is_empty()
             && self.config.notifications().cargo_toml_not_found
         {
             status.health = lsp_ext::Health::Warning;
-            status.message = Some("Failed to discover workspace".to_string())
+            message.push_str("Failed to discover workspace.\n\n");
         }
 
+        for ws in self.workspaces.iter() {
+            let (ProjectWorkspace::Cargo { sysroot, .. }
+            | ProjectWorkspace::Json { sysroot, .. }
+            | ProjectWorkspace::DetachedFiles { sysroot, .. }) = ws;
+            if let Err(Some(e)) = sysroot {
+                status.health = lsp_ext::Health::Warning;
+                message.push_str(e);
+                message.push_str("\n\n");
+            }
+            if let ProjectWorkspace::Cargo { rustc: Err(Some(e)), .. } = ws {
+                status.health = lsp_ext::Health::Warning;
+                message.push_str(e);
+                message.push_str("\n\n");
+            }
+        }
+
+        if let Err(_) = self.fetch_workspace_error() {
+            status.health = lsp_ext::Health::Error;
+            message.push_str("Failed to load workspaces.\n\n");
+        }
+
+        if !message.is_empty() {
+            status.message = Some(message.trim_end().to_owned());
+        }
         status
     }
 
