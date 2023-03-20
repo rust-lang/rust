@@ -335,6 +335,14 @@ impl<'tcx> Key for (DefId, GenericArgsRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key for ty::InstanceOfArg<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 

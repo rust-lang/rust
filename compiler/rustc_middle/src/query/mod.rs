@@ -2103,7 +2103,7 @@ rustc_queries! {
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
     ///    has already been/will be emitted, for the original cause
     query resolve_instance(
-        key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>
+        key: ty::ParamEnvAnd<'tcx, ty::InstanceOfArg<'tcx>>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
