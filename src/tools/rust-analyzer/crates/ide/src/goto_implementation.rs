@@ -297,6 +297,7 @@ impl Foo<str> {}
 //- /lib.rs crate:main deps:core
 fn foo(_: bool$0) {{}}
 //- /libcore.rs crate:core
+#![rustc_coherence_is_core]
 #[lang = "bool"]
 impl bool {}
    //^^^^

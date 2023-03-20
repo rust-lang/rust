@@ -50,7 +50,7 @@ use base_db::{
     AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
     symbols::FileSymbolKind,
 };
 use stdx::hash::NoHashHashSet;
@@ -68,7 +68,7 @@ pub type FxIndexMap<K, V> =
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
     base_db::SourceDatabaseStorage,
-    hir::db::AstDatabaseStorage,
+    hir::db::ExpandDatabaseStorage,
     hir::db::DefDatabaseStorage,
     hir::db::HirDatabaseStorage,
     hir::db::InternDatabaseStorage,
@@ -95,8 +95,8 @@ impl fmt::Debug for RootDatabase {
     }
 }
 
-impl Upcast<dyn AstDatabase> for RootDatabase {
-    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+impl Upcast<dyn ExpandDatabase> for RootDatabase {
+    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
         &*self
     }
 }

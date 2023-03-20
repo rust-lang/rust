@@ -265,7 +265,6 @@ mod handlers {
             inline_local_variable::inline_local_variable,
             inline_type_alias::inline_type_alias,
             inline_type_alias::inline_type_alias_uses,
-            inline_macro::inline_macro,
             introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,
@@ -286,7 +285,6 @@ mod handlers {
             raw_string::add_hash,
             raw_string::make_usual_string,
             raw_string::remove_hash,
-            remove_dbg::remove_dbg,
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             remove_parentheses::remove_parentheses,
@@ -335,6 +333,9 @@ mod handlers {
             generate_setter::generate_setter,
             generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
+            //
+            remove_dbg::remove_dbg,
+            inline_macro::inline_macro,
             // Are you sure you want to add new assist here, and not to the
             // sorted list above?
         ]

@@ -87,10 +87,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                     // FIXME: a hacky way to create a Name from string.
                     let name =
                         tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
-                    (
-                        name.as_name(),
-                        ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
-                    )
+                    (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
                 })
                 .collect()
         }
@@ -296,6 +293,11 @@ impl DefCollector<'_> {
                     if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
                         self.is_proc_macro = true;
                     }
+                    continue;
+                }
+
+                if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
+                    self.def_map.rustc_coherence_is_core = true;
                     continue;
                 }
 
@@ -581,7 +583,7 @@ impl DefCollector<'_> {
         let kind = def.kind.to_basedb_kind();
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some(&(_, expander)) => (expander, kind),
-            None => (ProcMacroExpander::dummy(self.def_map.krate), kind),
+            None => (ProcMacroExpander::dummy(), kind),
         };
 
         let proc_macro_id =

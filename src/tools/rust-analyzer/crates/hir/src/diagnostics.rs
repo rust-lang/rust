@@ -3,6 +3,8 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
+pub use hir_ty::diagnostics::{IncoherentImpl, IncorrectCase};
+
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -35,6 +37,7 @@ diagnostics![
     InactiveCode,
     IncorrectCase,
     InvalidDeriveTarget,
+    IncoherentImpl,
     MacroError,
     MalformedDerive,
     MismatchedArgCount,
@@ -220,5 +223,3 @@ pub struct NeedMut {
 pub struct UnusedMut {
     pub local: Local,
 }
-
-pub use hir_ty::diagnostics::IncorrectCase;

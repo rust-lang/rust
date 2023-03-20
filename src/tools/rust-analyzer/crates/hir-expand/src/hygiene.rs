@@ -14,7 +14,7 @@ use syntax::{
 };
 
 use crate::{
-    db::{self, AstDatabase},
+    db::{self, ExpandDatabase},
     fixup,
     name::{AsName, Name},
     HirFileId, InFile, MacroCallKind, MacroCallLoc, MacroDefKind, MacroFile,
@@ -26,7 +26,7 @@ pub struct Hygiene {
 }
 
 impl Hygiene {
-    pub fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Hygiene {
+    pub fn new(db: &dyn ExpandDatabase, file_id: HirFileId) -> Hygiene {
         Hygiene { frames: Some(HygieneFrames::new(db, file_id)) }
     }
 
@@ -37,7 +37,7 @@ impl Hygiene {
     // FIXME: this should just return name
     pub fn name_ref_to_name(
         &self,
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         name_ref: ast::NameRef,
     ) -> Either<Name, CrateId> {
         if let Some(frames) = &self.frames {
@@ -51,7 +51,7 @@ impl Hygiene {
         Either::Left(name_ref.as_name())
     }
 
-    pub fn local_inner_macros(&self, db: &dyn AstDatabase, path: ast::Path) -> Option<CrateId> {
+    pub fn local_inner_macros(&self, db: &dyn ExpandDatabase, path: ast::Path) -> Option<CrateId> {
         let mut token = path.syntax().first_token()?.text_range();
         let frames = self.frames.as_ref()?;
         let mut current = &frames.0;
@@ -87,13 +87,13 @@ pub struct HygieneFrame {
 }
 
 impl HygieneFrames {
-    fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Self {
+    fn new(db: &dyn ExpandDatabase, file_id: HirFileId) -> Self {
         // Note that this intentionally avoids the `hygiene_frame` query to avoid blowing up memory
         // usage. The query is only helpful for nested `HygieneFrame`s as it avoids redundant work.
         HygieneFrames(Arc::new(HygieneFrame::new(db, file_id)))
     }
 
-    fn root_crate(&self, db: &dyn AstDatabase, node: &SyntaxNode) -> Option<CrateId> {
+    fn root_crate(&self, db: &dyn ExpandDatabase, node: &SyntaxNode) -> Option<CrateId> {
         let mut token = node.first_token()?.text_range();
         let mut result = self.0.krate;
         let mut current = self.0.clone();
@@ -136,7 +136,7 @@ struct HygieneInfo {
 impl HygieneInfo {
     fn map_ident_up(
         &self,
-        db: &dyn AstDatabase,
+        db: &dyn ExpandDatabase,
         token: TextRange,
     ) -> Option<(InFile<TextRange>, Origin)> {
         let token_id = self.exp_map.token_by_range(token)?;
@@ -175,7 +175,7 @@ impl HygieneInfo {
 }
 
 fn make_hygiene_info(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     macro_file: MacroFile,
     loc: &MacroCallLoc,
 ) -> Option<HygieneInfo> {
@@ -215,7 +215,7 @@ fn make_hygiene_info(
 }
 
 impl HygieneFrame {
-    pub(crate) fn new(db: &dyn AstDatabase, file_id: HirFileId) -> HygieneFrame {
+    pub(crate) fn new(db: &dyn ExpandDatabase, file_id: HirFileId) -> HygieneFrame {
         let (info, krate, local_inner) = match file_id.macro_file() {
             None => (None, None, false),
             Some(macro_file) => {

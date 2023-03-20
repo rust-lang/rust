@@ -88,6 +88,42 @@ impl<'a> RequestDispatcher<'a> {
     }
 
     /// Dispatches the request onto thread pool
+    pub(crate) fn on_no_retry<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
+        let (req, params, panic_context) = match self.parse::<R>() {
+            Some(it) => it,
+            None => return self,
+        };
+
+        self.global_state.task_pool.handle.spawn({
+            let world = self.global_state.snapshot();
+            move || {
+                let result = panic::catch_unwind(move || {
+                    let _pctx = stdx::panic_context::enter(panic_context);
+                    f(world, params)
+                });
+                match thread_result_to_response::<R>(req.id.clone(), result) {
+                    Ok(response) => Task::Response(response),
+                    Err(_) => Task::Response(lsp_server::Response::new_err(
+                        req.id,
+                        lsp_server::ErrorCode::ContentModified as i32,
+                        "content modified".to_string(),
+                    )),
+                }
+            }
+        });
+
+        self
+    }
+
+    /// Dispatches the request onto thread pool
     pub(crate) fn on<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,

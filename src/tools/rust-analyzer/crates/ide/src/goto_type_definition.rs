@@ -55,7 +55,7 @@ pub(crate) fn goto_type_definition(
                                 ty
                             } else {
                                 let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
-                                sema.resolve_record_pat_field(&record_field)?.ty(db)
+                                sema.resolve_record_pat_field(&record_field)?.1
                             }
                         },
                         _ => return None,

@@ -1113,7 +1113,7 @@ impl MirLowerCtx<'_> {
                 if matches!(mode, BindingAnnotation::Ref | BindingAnnotation::RefMut) {
                     binding_mode = mode;
                 }
-                self.push_storage_live(*id, current)?;
+                self.push_storage_live(*id, current);
                 self.push_assignment(
                     current,
                     target_place.into(),
@@ -1327,8 +1327,9 @@ impl MirLowerCtx<'_> {
         is_ty_uninhabited_from(&self.infer[expr_id], self.owner.module(self.db.upcast()), self.db)
     }
 
-    /// This function push `StorageLive` statements for each binding in the pattern.
-    fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId) -> Result<()> {
+    /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` in
+    /// the appropriated places.
+    fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId) {
         // Current implementation is wrong. It adds no `StorageDead` at the end of scope, and before each break
         // and continue. It just add a `StorageDead` before the `StorageLive`, which is not wrong, but unneeeded in
         // the proper implementation. Due this limitation, implementing a borrow checker on top of this mir will falsely
@@ -1356,7 +1357,6 @@ impl MirLowerCtx<'_> {
         let l = self.result.binding_locals[b];
         self.push_statement(current, StatementKind::StorageDead(l).with_span(span));
         self.push_statement(current, StatementKind::StorageLive(l).with_span(span));
-        Ok(())
     }
 
     fn resolve_lang_item(&self, item: LangItem) -> Result<LangItemTarget> {
@@ -1381,10 +1381,10 @@ impl MirLowerCtx<'_> {
                     if let Some(expr_id) = initializer {
                         let else_block;
                         let Some((init_place, c)) =
-                        self.lower_expr_as_place(current, *expr_id, true)?
-                    else {
-                        return Ok(None);
-                    };
+                            self.lower_expr_as_place(current, *expr_id, true)?
+                        else {
+                            return Ok(None);
+                        };
                         current = c;
                         (current, else_block) = self.pattern_match(
                             current,
@@ -1407,6 +1407,10 @@ impl MirLowerCtx<'_> {
                                 }
                             }
                         }
+                    } else {
+                        self.body.walk_bindings_in_pat(*pat, |b| {
+                            self.push_storage_live(b, current);
+                        });
                     }
                 }
                 hir_def::expr::Statement::Expr { expr, has_semi: _ } => {

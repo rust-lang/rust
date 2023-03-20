@@ -50,7 +50,7 @@ impl ops::Index<Target> for CargoWorkspace {
 
 /// Describes how to set the rustc source directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RustcSource {
+pub enum RustLibSource {
     /// Explicit path for the rustc source directory.
     Path(AbsPathBuf),
     /// Try to automatically detect where the rustc source directory is.
@@ -95,10 +95,10 @@ pub struct CargoConfig {
     /// rustc target
     pub target: Option<String>,
     /// Sysroot loading behavior
-    pub sysroot: Option<RustcSource>,
+    pub sysroot: Option<RustLibSource>,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
-    pub rustc_source: Option<RustcSource>,
+    pub rustc_source: Option<RustLibSource>,
     /// crates to disable `#[cfg(test)]` on
     pub unset_test_crates: UnsetTestCrates,
     /// Invoke `cargo check` through the RUSTC_WRAPPER.
