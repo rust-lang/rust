@@ -603,7 +603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(expr);
         }
 
-        match impl_predicates.predicates[impl_predicate_index].0.kind().skip_binder() {
+        match impl_predicates.predicates[impl_predicate_index].node.kind().skip_binder() {
             ty::ClauseKind::Trait(broken_trait) => {
                 // ...
                 self.blame_specific_part_of_expr_corresponding_to_generic_param(

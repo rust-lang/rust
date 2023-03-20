@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
 use std::ops::ControlFlow;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -151,7 +150,7 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// think of any.
 pub fn setup_constraining_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &mut [(ty::Clause<'tcx>, Span)],
+    predicates: &mut [ty::Spanned<ty::Clause<'tcx>>],
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     input_parameters: &mut FxHashSet<Parameter>,
 ) {
@@ -187,7 +186,8 @@ pub fn setup_constraining_predicates<'tcx>(
         for j in i..predicates.len() {
             // Note that we don't have to care about binders here,
             // as the impl trait ref never contains any late-bound regions.
-            if let ty::ClauseKind::Projection(projection) = predicates[j].0.kind().skip_binder() {
+            if let ty::ClauseKind::Projection(projection) = predicates[j].node.kind().skip_binder()
+            {
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very
                 // trait.

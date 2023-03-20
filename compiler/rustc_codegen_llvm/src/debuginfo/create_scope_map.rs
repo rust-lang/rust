@@ -90,13 +90,13 @@ fn make_mir_scope<'ll, 'tcx>(
     let file_metadata = file_metadata(cx, &loc.file);
 
     let parent_dbg_scope = match scope_data.inlined {
-        Some((callee, _)) => {
+        Some(callee) => {
             // FIXME(eddyb) this would be `self.monomorphize(&callee)`
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
             let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
                 ty::ParamEnv::reveal_all(),
-                ty::EarlyBinder::bind(callee),
+                ty::EarlyBinder::bind(callee.node),
             );
             debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
                 let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
@@ -116,11 +116,11 @@ fn make_mir_scope<'ll, 'tcx>(
         )
     };
 
-    let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
+    let inlined_at = scope_data.inlined.map(|callee| {
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
-        let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
-        cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span)
+        let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callee.span);
+        cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callee.span)
     });
 
     debug_context.scopes[scope] = DebugScope {

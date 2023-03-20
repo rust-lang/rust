@@ -264,7 +264,10 @@ fn predicates_reference_self(
     predicates
         .predicates
         .iter()
-        .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
+        .map(|&predicate| ty::Spanned {
+            node: predicate.node.subst_supertrait(tcx, &trait_ref),
+            span: predicate.span,
+        })
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }
@@ -280,7 +283,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
 
 fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (predicate, sp): (ty::Clause<'tcx>, Span),
+    ty::Spanned { node: predicate, span: sp }: ty::Spanned<ty::Clause<'tcx>>,
 ) -> Option<Span> {
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
@@ -329,7 +332,7 @@ fn super_predicates_have_non_lifetime_binders(
     tcx.super_predicates_of(trait_def_id)
         .predicates
         .iter()
-        .filter_map(|(pred, span)| pred.has_non_region_late_bound().then_some(*span))
+        .filter_map(|pred| pred.node.has_non_region_late_bound().then_some(pred.span))
         .collect()
 }
 
@@ -556,7 +559,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, span)| {
+    if tcx.predicates_of(method.def_id).predicates.iter().any(|&pred| {
         // dyn Trait is okay:
         //
         //     trait Trait {
@@ -566,7 +569,7 @@ fn virtual_call_violations_for_method<'tcx>(
         // because a trait object can't claim to live longer than the concrete
         // type. If the lifetime bound holds on dyn Trait then it's guaranteed
         // to hold as well on the concrete type.
-        if pred.as_type_outlives_clause().is_some() {
+        if pred.node.as_type_outlives_clause().is_some() {
             return false;
         }
 
@@ -586,7 +589,7 @@ fn virtual_call_violations_for_method<'tcx>(
         if let ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
             polarity: ty::ImplPolarity::Positive,
-        }) = pred.kind().skip_binder()
+        }) = pred.node.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
@@ -597,12 +600,12 @@ fn virtual_call_violations_for_method<'tcx>(
             if pred_trait_ref.args.len() != 1 {
                 tcx.sess
                     .diagnostic()
-                    .delay_span_bug(span, "auto traits cannot have generic parameters");
+                    .delay_span_bug(pred.span, "auto traits cannot have generic parameters");
             }
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred.node)
     }) {
         errors.push(MethodViolationCode::WhereClauseReferencesSelf);
     }

@@ -494,14 +494,14 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     let mut pretty_predicates =
         Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
 
-    for (p, _) in predicates {
-        if let Some(poly_trait_ref) = p.as_trait_clause() {
+    for p in predicates {
+        if let Some(poly_trait_ref) = p.node.as_trait_clause() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
                 types_without_default_bounds.remove(&poly_trait_ref.self_ty().skip_binder());
                 continue;
             }
         }
-        pretty_predicates.push(p.to_string());
+        pretty_predicates.push(p.node.to_string());
     }
 
     pretty_predicates.extend(types_without_default_bounds.iter().map(|ty| format!("{ty}: ?Sized")));

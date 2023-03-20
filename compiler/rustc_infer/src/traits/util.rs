@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Spanned, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -165,6 +165,26 @@ impl<'tcx> Elaboratable<'tcx> for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx> Elaboratable<'tcx> for ty::Spanned<ty::Predicate<'tcx>> {
+    fn predicate(&self) -> ty::Predicate<'tcx> {
+        self.node
+    }
+
+    fn child(&self, clause: ty::Clause<'tcx>) -> Self {
+        ty::Spanned { node: clause.as_predicate(), span: self.span }
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        clause: ty::Clause<'tcx>,
+        _span: Span,
+        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _index: usize,
+    ) -> Self {
+        ty::Spanned { node: clause.as_predicate(), span: self.span }
+    }
+}
+
 impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {
     fn predicate(&self) -> ty::Predicate<'tcx> {
         self.0
@@ -182,6 +202,26 @@ impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {
         _index: usize,
     ) -> Self {
         (clause.as_predicate(), self.1)
+    }
+}
+
+impl<'tcx> Elaboratable<'tcx> for Spanned<ty::Clause<'tcx>> {
+    fn predicate(&self) -> ty::Predicate<'tcx> {
+        self.node.as_predicate()
+    }
+
+    fn child(&self, clause: ty::Clause<'tcx>) -> Self {
+        Spanned { node: clause, span: self.span }
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        clause: ty::Clause<'tcx>,
+        _span: Span,
+        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _index: usize,
+    ) -> Self {
+        Spanned { node: clause, span: self.span }
     }
 }
 
@@ -277,15 +317,16 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                     }
                 };
 
-                let obligations =
-                    predicates.predicates.iter().enumerate().map(|(index, &(clause, span))| {
+                let obligations = predicates.predicates.iter().enumerate().map(
+                    |(index, &Spanned { node: clause, span })| {
                         elaboratable.child_with_derived_cause(
                             clause.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                             span,
                             bound_predicate.rebind(data),
                             index,
                         )
-                    });
+                    },
+                );
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
             }

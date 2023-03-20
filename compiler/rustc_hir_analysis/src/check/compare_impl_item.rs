@@ -222,7 +222,7 @@ fn compare_method_predicate_entailment<'tcx>(
     hybrid_preds.predicates.extend(
         trait_m_predicates
             .instantiate_own(tcx, trait_to_placeholder_args)
-            .map(|(predicate, _)| predicate),
+            .map(|predicate| predicate.node),
     );
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
@@ -238,7 +238,7 @@ fn compare_method_predicate_entailment<'tcx>(
     debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_args);
-    for (predicate, span) in impl_m_own_bounds {
+    for ty::Spanned { node: predicate, span } in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
 
@@ -691,7 +691,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .instantiate_identity(tcx)
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_placeholder_args))
-        .map(|(clause, _)| clause);
+        .map(|clause| clause.node);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
@@ -1009,7 +1009,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.args));
             // Recurse into bounds
-            for (pred, pred_span) in self
+            for ty::Spanned { node: pred, span: pred_span } in self
                 .interner()
                 .explicit_item_bounds(proj.def_id)
                 .iter_instantiated_copied(self.interner(), proj.args)
@@ -1963,7 +1963,7 @@ fn compare_const_predicate_entailment<'tcx>(
     hybrid_preds.predicates.extend(
         trait_ct_predicates
             .instantiate_own(tcx, trait_to_impl_args)
-            .map(|(predicate, _)| predicate),
+            .map(|predicate| predicate.node),
     );
 
     let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds.predicates), Reveal::UserFacing);
@@ -1977,7 +1977,7 @@ fn compare_const_predicate_entailment<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let impl_ct_own_bounds = impl_ct_predicates.instantiate_own(tcx, impl_args);
-    for (predicate, span) in impl_ct_own_bounds {
+    for ty::Spanned { node: predicate, span } in impl_ct_own_bounds {
         let cause = ObligationCause::misc(span, impl_ct_def_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
 
@@ -2098,7 +2098,7 @@ fn compare_type_predicate_entailment<'tcx>(
     hybrid_preds.predicates.extend(
         trait_ty_predicates
             .instantiate_own(tcx, trait_to_impl_args)
-            .map(|(predicate, _)| predicate),
+            .map(|predicate| predicate.node),
     );
 
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
@@ -2112,7 +2112,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
-    for (predicate, span) in impl_ty_own_bounds {
+    for ty::Spanned { node: predicate, span } in impl_ty_own_bounds {
         let cause = ObligationCause::misc(span, impl_ty_def_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
 
@@ -2210,9 +2210,14 @@ pub(super) fn check_type_bounds<'tcx>(
     let obligations: Vec<_> = tcx
         .explicit_item_bounds(trait_ty.def_id)
         .iter_instantiated_copied(tcx, rebased_args)
-        .map(|(concrete_ty_bound, span)| {
-            debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
-            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
+        .map(|concrete_ty_bound| {
+            debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound.node);
+            traits::Obligation::new(
+                tcx,
+                mk_cause(concrete_ty_bound.span),
+                param_env,
+                concrete_ty_bound.node,
+            )
         })
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);

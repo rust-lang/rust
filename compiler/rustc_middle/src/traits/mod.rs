@@ -13,7 +13,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtKind, Ty};
+use crate::ty::{self, AdtKind, Spanned, Ty};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -411,7 +411,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnType,
 
     /// Opaque return type of this function
-    OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
+    OpaqueReturnType(Option<Spanned<Ty<'tcx>>>),
 
     /// Block implicit return
     BlockTailExpression(hir::HirId, hir::MatchSource),

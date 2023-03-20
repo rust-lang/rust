@@ -1165,9 +1165,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // If the stacktrace passes through MIR-inlined source scopes, add them.
                     let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
                     let mut scope_data = &frame.body.source_scopes[scope];
-                    while let Some((instance, call_span)) = scope_data.inlined {
-                        frames.push(FrameInfo { span, instance });
-                        span = call_span;
+                    while let Some(instance) = scope_data.inlined {
+                        frames.push(FrameInfo { span, instance: instance.node });
+                        span = instance.span;
                         scope_data = &frame.body.source_scopes[scope_data.parent_scope.unwrap()];
                     }
                     span

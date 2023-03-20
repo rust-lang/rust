@@ -152,7 +152,7 @@ fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::I
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
-            .map(|(c, _)| c.as_predicate())
+            .map(|c| c.node.as_predicate())
             .collect(),
     }
 }
@@ -416,7 +416,7 @@ fn impl_intersection_has_negative_obligation(
     plug_infer_with_placeholders(infcx, universe, (impl1_header.impl_args, impl2_header.impl_args));
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
-        .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
+        .any(|clause| try_prove_negated_where_clause(infcx, clause.node, param_env))
 }
 
 fn plug_infer_with_placeholders<'tcx>(

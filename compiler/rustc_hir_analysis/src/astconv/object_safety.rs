@@ -57,15 +57,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.clauses() {
-            let bound_pred = pred.kind();
+        for pred in bounds.clauses() {
+            let bound_pred = pred.node.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
                     assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
-                    trait_bounds.push((bound_pred.rebind(trait_pred.trait_ref), span));
+                    trait_bounds.push((bound_pred.rebind(trait_pred.trait_ref), pred.span));
                 }
                 ty::ClauseKind::Projection(proj) => {
-                    projection_bounds.push((bound_pred.rebind(proj), span));
+                    projection_bounds.push((bound_pred.rebind(proj), pred.span));
                 }
                 ty::ClauseKind::TypeOutlives(_) => {
                     // Do nothing, we deal with regions separately

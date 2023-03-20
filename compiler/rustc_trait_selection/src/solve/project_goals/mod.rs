@@ -137,7 +137,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     ecx.add_goals(
                         tcx.predicates_of(goal.predicate.def_id())
                             .instantiate_own(tcx, goal.predicate.projection_ty.args)
-                            .map(|(pred, _)| goal.with(tcx, pred)),
+                            .map(|pred| goal.with(tcx, pred.node)),
                     );
 
                     then(ecx)
@@ -182,7 +182,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ecx.add_goals(
                 tcx.predicates_of(goal.predicate.def_id())
                     .instantiate_own(tcx, goal.predicate.projection_ty.args)
-                    .map(|(pred, _)| goal.with(tcx, pred)),
+                    .map(|pred| goal.with(tcx, pred.node)),
             );
 
             // In case the associated item is hidden due to specialization, we have to

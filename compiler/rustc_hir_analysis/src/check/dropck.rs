@@ -132,7 +132,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let param_env =
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
 
-    for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity(tcx) {
+    for ty::Spanned { node: pred, span } in
+        tcx.predicates_of(drop_impl_def_id).instantiate_identity(tcx)
+    {
         let normalize_cause = traits::ObligationCause::misc(span, adt_def_id);
         let pred = ocx.normalize(&normalize_cause, param_env, pred);
         let cause = traits::ObligationCause::new(span, adt_def_id, traits::DropImpl);

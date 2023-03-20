@@ -6,7 +6,9 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use super::{
+    Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Spanned, Ty, TyCtxt,
+};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -362,7 +364,7 @@ impl<'tcx> Generics {
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(Clause<'tcx>, Span)],
+    pub predicates: &'tcx [Spanned<Clause<'tcx>>],
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
@@ -380,7 +382,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
+    ) -> impl Iterator<Item = Spanned<Clause<'tcx>>> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
     }
 
@@ -395,9 +397,9 @@ impl<'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, args);
         }
         instantiated.predicates.extend(
-            self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).instantiate(tcx, args)),
+            self.predicates.iter().map(|p| EarlyBinder::bind(p.node).instantiate(tcx, args)),
         );
-        instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
+        instantiated.spans.extend(self.predicates.iter().map(|p| p.span));
     }
 
     pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
@@ -414,7 +416,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
-        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+        instantiated.predicates.extend(self.predicates.iter().map(|p| p.node));
+        instantiated.spans.extend(self.predicates.iter().map(|p| p.span));
     }
 }

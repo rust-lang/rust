@@ -229,7 +229,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         let mut implied_bounds = FxIndexSet::default();
         let mut errors = Vec::new();
-        for &(ty, span) in tcx.assumed_wf_types(def_id) {
+        for &ty in tcx.assumed_wf_types(def_id) {
             // FIXME(@lcnr): rustc currently does not check wf for types
             // pre-normalization, meaning that implied bounds are sometimes
             // incorrect. See #100910 for more details.
@@ -242,11 +242,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
-            let cause = ObligationCause::misc(span, def_id);
+            let cause = ObligationCause::misc(ty.span, def_id);
             match self
                 .infcx
                 .at(&cause, param_env)
-                .deeply_normalize(ty, &mut **self.engine.borrow_mut())
+                .deeply_normalize(ty.node, &mut **self.engine.borrow_mut())
             {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),

@@ -23,7 +23,7 @@ use rustc_middle::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
@@ -96,8 +96,8 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied() {
-                        match predicate.kind().skip_binder() {
+                    for predicate in cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied() {
+                        match predicate.node.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
                             ty::ClauseKind::Trait(trait_predicate) => {
@@ -300,8 +300,8 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_bounds(def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
+            for predicate in cx.tcx.explicit_item_bounds(def_id).skip_binder() {
+                if let ty::ClauseKind::Trait(trait_predicate) = predicate.node.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
@@ -599,7 +599,7 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
-pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(ty::Clause<'_>, Span)> {
+pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &ty::Spanned<ty::Clause<'_>>> {
     let mut next_id = Some(id);
     iter::from_fn(move || {
         next_id.take().map(|id| {
@@ -777,18 +777,18 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for (pred, _) in cx
+    for pred in cx
         .tcx
         .explicit_item_bounds(ty.def_id)
         .iter_instantiated_copied(cx.tcx, ty.args)
     {
-        match pred.kind().skip_binder() {
+        match pred.node.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
             {
-                let i = pred.kind().rebind(p.trait_ref.args.type_at(1));
+                let i = pred.node.kind().rebind(p.trait_ref.args.type_at(1));
 
                 if inputs.map_or(false, |inputs| inputs != i) {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -801,7 +801,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = pred.kind().rebind(p.term.ty()).transpose();
+                output = pred.node.kind().rebind(p.term.ty()).transpose();
             },
             _ => (),
         }

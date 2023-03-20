@@ -90,8 +90,8 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         use rustc_middle::ty::ClauseKind;
 
         let predicates = cx.tcx.explicit_predicates_of(item.owner_id);
-        for &(predicate, span) in predicates.predicates {
-            let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+        for &predicate in predicates.predicates {
+            let ClauseKind::Trait(trait_predicate) = predicate.node.kind().skip_binder() else {
                 continue;
             };
             let def_id = trait_predicate.trait_ref.def_id;
@@ -103,8 +103,8 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
                 cx.emit_spanned_lint(
                     DROP_BOUNDS,
-                    span,
-                    DropTraitConstraintsDiag { predicate, tcx: cx.tcx, def_id },
+                    predicate.span,
+                    DropTraitConstraintsDiag { predicate: predicate.node, tcx: cx.tcx, def_id },
                 );
             }
         }

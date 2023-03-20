@@ -1600,8 +1600,8 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
 
         if cx.tcx.features().trivial_bounds {
             let predicates = cx.tcx.predicates_of(item.owner_id);
-            for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate.kind().skip_binder() {
+            for &predicate in predicates.predicates {
+                let predicate_kind_name = match predicate.node.kind().skip_binder() {
                     ClauseKind::Trait(..) => "trait",
                     ClauseKind::TypeOutlives(..) |
                     ClauseKind::RegionOutlives(..) => "lifetime",
@@ -1616,11 +1616,11 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     | ClauseKind::ConstEvaluatable(..)  => continue,
                 };
-                if predicate.is_global() {
+                if predicate.node.is_global() {
                     cx.emit_spanned_lint(
                         TRIVIAL_BOUNDS,
-                        span,
-                        BuiltinTrivialBounds { predicate_kind_name, predicate },
+                        predicate.span,
+                        BuiltinTrivialBounds { predicate_kind_name, predicate: predicate.node },
                     );
                 }
             }

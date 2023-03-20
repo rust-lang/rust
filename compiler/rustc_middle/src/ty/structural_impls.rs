@@ -11,6 +11,7 @@ use crate::ty::{
     self, noop_if_trivially_traversable, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt,
 };
 use rustc_hir::def::Namespace;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -421,7 +422,6 @@ TrivialLiftImpls! {
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
     crate::ty::BoundConstness,
-    ::rustc_span::Span,
 }
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal
@@ -457,6 +457,13 @@ impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
             }
             .pack(),
         )
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Spanned<T> {
+    type Lifted = Spanned<T::Lifted>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(Spanned { node: tcx.lift(self.node)?, span: self.span })
     }
 }
 

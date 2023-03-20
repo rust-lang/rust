@@ -316,18 +316,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_args);
 
-        let Ok(trait_predicates) =
-            self.tcx
-                .explicit_predicates_of(trait_item_def_id)
-                .instantiate_own(self.tcx, trait_item_args)
-                .map(|(pred, _)| {
-                    if pred.is_suggestable(self.tcx, false) {
-                        Ok(pred.to_string())
-                    } else {
-                        Err(())
-                    }
-                })
-                .collect::<Result<Vec<_>, ()>>()
+        let Ok(trait_predicates) = self
+            .tcx
+            .explicit_predicates_of(trait_item_def_id)
+            .instantiate_own(self.tcx, trait_item_args)
+            .map(|pred| {
+                if pred.node.is_suggestable(self.tcx, false) {
+                    Ok(pred.node.to_string())
+                } else {
+                    Err(())
+                }
+            })
+            .collect::<Result<Vec<_>, ()>>()
         else {
             return;
         };

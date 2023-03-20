@@ -208,9 +208,9 @@ fn rematch_impl<'tcx>(
     );
 
     nested.extend(
-        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, args).into_iter().map(
-            |(pred, _)| Obligation::new(infcx.tcx, ObligationCause::dummy(), goal.param_env, pred),
-        ),
+        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, args).into_iter().map(|pred| {
+            Obligation::new(infcx.tcx, ObligationCause::dummy(), goal.param_env, pred.node)
+        }),
     );
 
     Ok(Some(ImplSource::UserDefined(ImplSourceUserDefinedData { impl_def_id, args, nested })))

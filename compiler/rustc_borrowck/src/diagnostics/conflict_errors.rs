@@ -671,8 +671,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |(pred, _): (ty::Clause<'tcx>, _)| {
-            if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
+        let find_fn_kind_from_did = |pred: ty::Spanned<ty::Clause<'tcx>>| {
+            if let ty::ClauseKind::Trait(pred) = pred.node.kind().skip_binder()
                 && pred.self_ty() == ty
             {
                 if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
@@ -698,7 +698,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => tcx
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(tcx, args)
-                .find_map(|(clause, span)| find_fn_kind_from_did((clause, span))),
+                .find_map(find_fn_kind_from_did),
             ty::Closure(_, args) => match args.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
                 ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),

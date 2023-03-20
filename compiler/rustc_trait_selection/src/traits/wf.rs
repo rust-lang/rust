@@ -825,11 +825,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(predicates, origins.into_iter().rev())
-            .map(|((pred, span), origin_def_id)| {
-                let code = if span.is_dummy() {
+            .map(|(pred, origin_def_id)| {
+                let code = if pred.span.is_dummy() {
                     traits::ItemObligation(origin_def_id)
                 } else {
-                    traits::BindingObligation(origin_def_id, span)
+                    traits::BindingObligation(origin_def_id, pred.span)
                 };
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(
@@ -837,7 +837,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     cause,
                     self.recursion_depth,
                     self.param_env,
-                    pred,
+                    pred.node,
                 )
             })
             .filter(|pred| !pred.has_escaping_bound_vars())

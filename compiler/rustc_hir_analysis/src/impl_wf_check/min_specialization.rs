@@ -235,8 +235,8 @@ fn unconstrained_parent_impl_args<'tcx>(
     // what we want here. We want only a list of constrained parameters while
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
-    for (clause, _) in impl_generic_predicates.predicates.iter() {
-        if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
+    for clause in impl_generic_predicates.predicates.iter() {
+        if let ty::ClauseKind::Projection(proj) = clause.node.kind().skip_binder() {
             let projection_ty = proj.projection_ty;
             let projected_ty = proj.term;
 
@@ -354,7 +354,7 @@ fn check_predicates<'tcx>(
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_args)
                 .into_iter()
-                .map(|(c, _s)| c.as_predicate()),
+                .map(|c| c.node.as_predicate()),
         )
         .collect()
     };
@@ -378,13 +378,13 @@ fn check_predicates<'tcx>(
     let always_applicable_traits = impl1_predicates
         .iter()
         .copied()
-        .filter(|&(clause, _span)| {
+        .filter(|&clause| {
             matches!(
-                trait_specialization_kind(tcx, clause),
+                trait_specialization_kind(tcx, clause.node),
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
-        .map(|(c, _span)| c.as_predicate());
+        .map(|c| c.node.as_predicate());
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity().args {
@@ -399,12 +399,12 @@ fn check_predicates<'tcx>(
     }
     impl2_predicates.extend(traits::elaborate(tcx, always_applicable_traits));
 
-    for (clause, span) in impl1_predicates {
+    for clause in impl1_predicates {
         if !impl2_predicates
             .iter()
-            .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
+            .any(|pred2| trait_predicates_eq(tcx, clause.node.as_predicate(), *pred2, clause.span))
         {
-            check_specialization_on(tcx, clause, span)
+            check_specialization_on(tcx, clause.node, clause.span)
         }
     }
 }

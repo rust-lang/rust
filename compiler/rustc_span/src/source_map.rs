@@ -68,6 +68,7 @@ mod monotonic {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Eq, PartialEq, Hash, TypeFoldable, TypeVisitable)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,

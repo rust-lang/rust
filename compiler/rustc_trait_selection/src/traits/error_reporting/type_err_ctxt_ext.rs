@@ -1716,8 +1716,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .predicates_of(single.impl_def_id)
                         .instantiate(self.tcx, impl_args)
                         .into_iter()
-                        .map(|(clause, _)| {
-                            Obligation::new(self.tcx, ObligationCause::dummy(), param_env, clause)
+                        .map(|clause| {
+                            Obligation::new(
+                                self.tcx,
+                                ObligationCause::dummy(),
+                                param_env,
+                                clause.node,
+                            )
                         }),
                 );
                 if !ocx.select_where_possible().is_empty() {

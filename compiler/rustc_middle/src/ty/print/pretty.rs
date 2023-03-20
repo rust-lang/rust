@@ -916,8 +916,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut is_sized = false;
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
-        for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
-            let bound_predicate = predicate.kind();
+        for predicate in bounds.iter_instantiated_copied(tcx, args) {
+            let bound_predicate = predicate.node.kind();
 
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
