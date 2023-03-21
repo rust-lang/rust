@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
 use std::collections::HashMap;
-use syn::{parse_quote, spanned::Spanned, Attribute, Generics, Ident, Lifetime, LifetimeDef};
+use syn::{parse_quote, spanned::Spanned, Attribute, Generics, Ident};
 
 /// Generate a type parameter with the given `suffix` that does not conflict with
 /// any of the `existing` generics.
@@ -13,25 +13,22 @@ fn gen_param(suffix: impl ToString, existing: &Generics) -> Ident {
     Ident::new(&suffix, Span::call_site())
 }
 
-/// Return the `TyCtxt` interner for the given `structure`.
+/// Return the interner for the given `structure`.
 ///
-/// If the input represented by `structure` has a `'tcx` lifetime parameter, then that will be used
-/// used as the lifetime of the `TyCtxt`. Otherwise a `'tcx` lifetime parameter that is unrelated
-/// to the input will be used.
+/// If the input represented by `structure` has a `'tcx` lifetime parameter, then we `TyCtxt<'tcx>`
+/// will be returned; otherwise our derived implementation will be generic over the interner.
 fn gen_interner(structure: &mut synstructure::Structure<'_>) -> TokenStream {
-    let lt = structure
+    structure
         .ast()
         .generics
         .lifetimes()
         .find_map(|def| (def.lifetime.ident == "tcx").then_some(&def.lifetime))
-        .cloned()
+        .map(|lt| quote! { ::rustc_middle::ty::TyCtxt<#lt> })
         .unwrap_or_else(|| {
-            let tcx: Lifetime = parse_quote! { 'tcx };
-            structure.add_impl_generic(LifetimeDef::new(tcx.clone()).into());
-            tcx
-        });
-
-    quote! { ::rustc_middle::ty::TyCtxt<#lt> }
+            let ident = gen_param("I", &structure.ast().generics);
+            structure.add_impl_generic(parse_quote! { #ident: ::rustc_type_ir::Interner });
+            ident.into_token_stream()
+        })
 }
 
 /// Returns the `Span` of the first `#[skip_traversal]` attribute in `attrs`.
