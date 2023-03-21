@@ -127,8 +127,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         //
         // The actual solver logic happens in `ecx.compute_goal`.
         search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
-            let (ref infcx, goal, var_values) =
-                tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
+            let intercrate = match search_graph.solver_mode() {
+                SolverMode::Normal => false,
+                SolverMode::Coherence => true,
+            };
+            let (ref infcx, goal, var_values) = tcx
+                .infer_ctxt()
+                .intercrate(intercrate)
+                .build_with_canonical(DUMMY_SP, &canonical_goal);
             let mut ecx = EvalCtxt {
                 infcx,
                 var_values,
