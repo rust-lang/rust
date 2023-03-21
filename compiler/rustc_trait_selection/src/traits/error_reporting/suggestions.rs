@@ -420,6 +420,7 @@ fn suggest_restriction<'tcx>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
+        || projection.map_or(false, |projection| tcx.opt_rpitit_info(projection.def_id).is_some())
     {
         return;
     }
