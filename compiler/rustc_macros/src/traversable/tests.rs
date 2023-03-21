@@ -284,11 +284,11 @@ fn skipping_generic_type_requires_justification() {
             #[skip_traversal(despite_potential_miscompilation_because = ".")]
             struct SomethingInteresting<T>;
         } => {
-            impl<'tcx, T> TypeFoldable<TyCtxt<'tcx>> for SomethingInteresting<T>
+            impl<I: Interner, T> TypeFoldable<I> for SomethingInteresting<T>
             where
-                Self: TypeVisitable<TyCtxt<'tcx>>
+                Self: TypeVisitable<I>
             {
-                fn try_fold_with<_T: FallibleTypeFolder<TyCtxt<'tcx>>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
+                fn try_fold_with<_T: FallibleTypeFolder<I>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
                     Ok(self) // no attempt to fold fields
                 }
             }
@@ -312,12 +312,12 @@ fn skipping_generic_field_requires_justification() {
                 T,
             );
         } => {
-            impl<'tcx, T> TypeFoldable<TyCtxt<'tcx>> for SomethingInteresting<T>
+            impl<I: Interner, T> TypeFoldable<I> for SomethingInteresting<T>
             where
-                Self: TypeVisitable<TyCtxt<'tcx>>,
-                TyCtxt<'tcx>: TriviallyTraverses<T> // `because_trivial`
+                I: TriviallyTraverses<T>, // `because_trivial`
+                Self: TypeVisitable<I>
             {
-                fn try_fold_with<_T: FallibleTypeFolder<TyCtxt<'tcx>>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
+                fn try_fold_with<_T: FallibleTypeFolder<I>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
                     Ok(match self {
                         SomethingInteresting(__binding_0,) => { SomethingInteresting(__binding_0,) } // not folded
                     })
@@ -331,11 +331,11 @@ fn skipping_generic_field_requires_justification() {
                 T,
             );
         } => {
-            impl<'tcx, T> TypeFoldable<TyCtxt<'tcx>> for SomethingInteresting<T>
+            impl<I: Interner, T> TypeFoldable<I> for SomethingInteresting<T>
             where
-                Self: TypeVisitable<TyCtxt<'tcx>> // no constraint on T
+                Self: TypeVisitable<I> // no constraint on T
             {
-                fn try_fold_with<_T: FallibleTypeFolder<TyCtxt<'tcx>>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
+                fn try_fold_with<_T: FallibleTypeFolder<I>>(self, folder: &mut _T) -> Result<Self, _T::Error> {
                     Ok(match self {
                         SomethingInteresting(__binding_0,) => { SomethingInteresting(__binding_0,) } // not folded
                     })

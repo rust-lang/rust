@@ -142,28 +142,30 @@ impl WhenToSkip {
     }
 }
 
-pub struct Interner<'a>(Option<&'a Lifetime>);
+pub enum Interner<'a> {
+    Middle(&'a Lifetime),
+    Generic(Ident),
+}
 
 impl<'a> Interner<'a> {
-    /// Return the `TyCtxt` interner for the given `structure`.
+    /// Return the interner for the given `structure`.
     ///
-    /// If the input represented by `structure` has a `'tcx` lifetime parameter, then that will be used
-    /// used as the lifetime of the `TyCtxt`. Otherwise a `'tcx` lifetime parameter that is unrelated
-    /// to the input will be used.
-    fn resolve(generics: &'a Generics) -> Self {
-        Self(
-            generics
-                .lifetimes()
-                .find_map(|def| (def.lifetime.ident == "tcx").then_some(&def.lifetime)),
-        )
+    /// If the input represented by `structure` has a `'tcx` lifetime parameter, then `Middle('tcx)`
+    /// will be returned; otherwise our derived implementation will be generic over a new parameter.
+    fn resolve(suffix: impl ToString, generics: &'a Generics) -> Self {
+        generics
+            .lifetimes()
+            .find_map(|def| (def.lifetime.ident == "tcx").then_some(Self::Middle(&def.lifetime)))
+            .unwrap_or_else(|| Self::Generic(gen_param(suffix, generics)))
     }
 }
 
 impl ToTokens for Interner<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let default = parse_quote! { 'tcx };
-        let lt = self.0.unwrap_or(&default);
-        tokens.extend(quote! { ::rustc_middle::ty::TyCtxt<#lt> });
+        match self {
+            Interner::Middle(lt) => tokens.extend(quote! { ::rustc_middle::ty::TyCtxt<#lt> }),
+            Interner::Generic(ident) => ident.to_tokens(tokens),
+        }
     }
 }
 
@@ -301,7 +303,7 @@ impl Interner<'_> {
 
         if !referenced_ty_params.is_empty() {
             Generic
-        } else if let Some(interner) = &self.0 && fields.into_iter().any(|field| {
+        } else if let Interner::Middle(interner) = self && fields.into_iter().any(|field| {
             let mut info = Info { interner, contains_interner: false };
             info.visit_type(&field.ty);
             info.contains_interner
@@ -320,7 +322,7 @@ pub fn traversable_derive<T: Traversable>(
 
     let ast = structure.ast();
 
-    let interner = Interner::resolve(&ast.generics);
+    let interner = Interner::resolve("I", &ast.generics);
     let traverser = gen_param("T", &ast.generics);
     let traversable = T::traversable(&interner);
 
@@ -331,8 +333,8 @@ pub fn traversable_derive<T: Traversable>(
     structure.add_bounds(synstructure::AddBounds::None);
     structure.bind_with(|_| synstructure::BindStyle::Move);
 
-    let not_generic = if interner.0.is_none() {
-        structure.add_impl_generic(parse_quote! { 'tcx });
+    let not_generic = if let Interner::Generic(ident) = &interner {
+        structure.add_impl_generic(parse_quote! { #ident: ::rustc_type_ir::Interner });
         Trivial
     } else {
         NotGeneric
