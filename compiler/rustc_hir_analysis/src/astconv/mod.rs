@@ -31,6 +31,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
@@ -2225,47 +2226,66 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let param_env = tcx.param_env(block.owner.to_def_id());
         let cause = ObligationCause::misc(span, block.owner.def_id);
+
         let mut fulfillment_errors = Vec::new();
-        let mut applicable_candidates: Vec<_> = candidates
-            .iter()
-            .filter_map(|&(impl_, (assoc_item, def_scope))| {
-                infcx.probe(|_| {
-                    let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+        let mut applicable_candidates: Vec<_> = infcx.probe(|_| {
+            let universe = infcx.create_next_universe();
 
-                    let impl_ty = tcx.type_of(impl_);
-                    let impl_substs = infcx.fresh_item_substs(impl_);
-                    let impl_ty = impl_ty.subst(tcx, impl_substs);
-                    let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
+            // Regions are not considered during selection.
+            let self_ty = tcx.replace_escaping_bound_vars_uncached(
+                self_ty,
+                FnMutDelegate {
+                    regions: &mut |_| tcx.lifetimes.re_erased,
+                    types: &mut |bv| {
+                        tcx.mk_placeholder(ty::PlaceholderType { universe, name: bv.kind })
+                    },
+                    consts: &mut |bv, ty| {
+                        tcx.mk_const(ty::PlaceholderConst { universe, name: bv }, ty)
+                    },
+                },
+            );
 
-                    // Check that the Self-types can be related.
-                    // FIXME(fmease): Should we use `eq` here?
-                    ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).ok()?;
+            candidates
+                .iter()
+                .filter_map(|&(impl_, (assoc_item, def_scope))| {
+                    infcx.probe(|_| {
+                        let ocx = ObligationCtxt::new_in_snapshot(&infcx);
 
-                    // Check whether the impl imposes obligations we have to worry about.
-                    let impl_bounds = tcx.predicates_of(impl_);
-                    let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
+                        let impl_ty = tcx.type_of(impl_);
+                        let impl_substs = infcx.fresh_item_substs(impl_);
+                        let impl_ty = impl_ty.subst(tcx, impl_substs);
+                        let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
-                    let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
+                        // Check that the Self-types can be related.
+                        // FIXME(fmease): Should we use `eq` here?
+                        ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).ok()?;
 
-                    let impl_obligations = traits::predicates_for_generics(
-                        |_, _| cause.clone(),
-                        param_env,
-                        impl_bounds,
-                    );
+                        // Check whether the impl imposes obligations we have to worry about.
+                        let impl_bounds = tcx.predicates_of(impl_);
+                        let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
 
-                    ocx.register_obligations(impl_obligations);
+                        let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
 
-                    let mut errors = ocx.select_where_possible();
-                    if !errors.is_empty() {
-                        fulfillment_errors.append(&mut errors);
-                        return None;
-                    }
+                        let impl_obligations = traits::predicates_for_generics(
+                            |_, _| cause.clone(),
+                            param_env,
+                            impl_bounds,
+                        );
 
-                    // FIXME(fmease): Unsolved vars can escape this InferCtxt snapshot.
-                    Some((assoc_item, def_scope, infcx.resolve_vars_if_possible(impl_substs)))
+                        ocx.register_obligations(impl_obligations);
+
+                        let mut errors = ocx.select_where_possible();
+                        if !errors.is_empty() {
+                            fulfillment_errors.append(&mut errors);
+                            return None;
+                        }
+
+                        // FIXME(fmease): Unsolved vars can escape this InferCtxt snapshot.
+                        Some((assoc_item, def_scope, infcx.resolve_vars_if_possible(impl_substs)))
+                    })
                 })
-            })
-            .collect();
+                .collect()
+        });
 
         if applicable_candidates.len() > 1 {
             return Err(self.complain_about_ambiguous_inherent_assoc_type(
