@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
-use test::ColorConfig;
+use test::{ColorConfig, OutputFormat};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -337,7 +337,7 @@ pub struct Config {
     pub verbose: bool,
 
     /// Print one character per test instead of one line
-    pub quiet: bool,
+    pub format: OutputFormat,
 
     /// Whether to use colors in test.
     pub color: ColorConfig,
