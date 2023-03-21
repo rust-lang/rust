@@ -3448,6 +3448,9 @@ pub trait Iterator {
     ///
     /// An empty iterator returns the zero value of the type.
     ///
+    /// `sum()` can be used to sum any type implementing [`Sum`][`core::iter::Sum`],
+    /// including [`Option`][`Option::sum`] and [`Result`][`Result::sum`].
+    ///
     /// # Panics
     ///
     /// When calling `sum()` and a primitive integer type is being returned, this
@@ -3477,6 +3480,9 @@ pub trait Iterator {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
     /// An empty iterator returns the one value of the type.
+    ///
+    /// `product()` can be used to multiply any type implementing [`Product`][`core::iter::Product`],
+    /// including [`Option`][`Option::product`] and [`Result`][`Result::product`].
     ///
     /// # Panics
     ///
