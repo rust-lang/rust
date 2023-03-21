@@ -808,4 +808,4 @@ changelog-seen = 2
 # compression profile, the longer compression will take.
 #
 # Available options: fast, balanced, best
-#compression-profile = "balanced"
+#compression-profile = "fast"

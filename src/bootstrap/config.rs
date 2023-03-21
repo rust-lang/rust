@@ -821,7 +821,7 @@ impl Config {
         config.deny_warnings = true;
         config.bindir = "bin".into();
         config.dist_include_mingw_linker = true;
-        config.dist_compression_profile = "balanced".into();
+        config.dist_compression_profile = "fast".into();
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
