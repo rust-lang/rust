@@ -6,7 +6,7 @@ inference, type checking, and trait solving. Conceptually, during these routines
 that one type is equal to another type and want to swap one out for the other and then swap that out
 for another type and so on until we eventually get some concrete types (or an error).
 
-In rustc this is done using the `SubstsRef` that we mentioned above (“substs” = “substitutions”).
+In rustc this is done using [SubstsRef] (“substs” = “substitutions”).
 Conceptually, you can think of `SubstsRef` as a list of types that are to be substituted for the
 generic type parameters of the ADT.
 
@@ -18,6 +18,7 @@ is conceptually like a `&'tcx [GenericArgKind<'tcx>]` slice (but it is actually 
 [list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
 [`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/struct.GenericArg.html
 [`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/enum.GenericArgKind.html
+[SubstsRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/type.SubstsRef.html
 
 So why do we use this `List` type instead of making it really a slice? It has the length "inline",
 so `&List` is only 32 bits. As a consequence, it cannot be "subsliced" (that only works if the
