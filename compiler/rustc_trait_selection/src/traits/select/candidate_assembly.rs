@@ -11,7 +11,6 @@ use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_target::spec::abi::Abi;
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -291,6 +290,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
+        // Keep this funtion in sync with extract_tupled_inputs_and_output_from_callable
+        // until the old solver (and thus this function) is removed.
+
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
         match *self_ty.kind() {
@@ -299,31 +301,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true; // Could wind up being a fn() type.
             }
             // Provide an impl, but only for suitable `fn` pointers.
-            ty::FnPtr(_) => {
-                if let ty::FnSig {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: Abi::Rust,
-                    c_variadic: false,
-                    ..
-                } = self_ty.fn_sig(self.tcx()).skip_binder()
-                {
+            ty::FnPtr(sig) => {
+                if sig.is_fn_trait_compatible() {
                     candidates.vec.push(FnPointerCandidate { is_const: false });
                 }
             }
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
             ty::FnDef(def_id, _) => {
-                if let ty::FnSig {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: Abi::Rust,
-                    c_variadic: false,
-                    ..
-                } = self_ty.fn_sig(self.tcx()).skip_binder()
+                if self.tcx().fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && self.tcx().codegen_fn_attrs(def_id).target_features.is_empty()
                 {
-                    if self.tcx().codegen_fn_attrs(def_id).target_features.is_empty() {
-                        candidates
-                            .vec
-                            .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
-                    }
+                    candidates
+                        .vec
+                        .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
                 }
             }
             _ => {}
