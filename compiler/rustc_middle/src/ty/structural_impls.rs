@@ -178,7 +178,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             // TODO
-            ty::PredicateKind::AliasEq(t1, t2, _) => write!(f, "AliasEq({t1:?}, {t2:?})"),
+            ty::PredicateKind::AliasRelate(t1, t2, _) => write!(f, "AliasRelate({t1:?}, {t2:?})"),
         }
     }
 }

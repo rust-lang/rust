@@ -543,7 +543,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -640,7 +640,7 @@ pub enum PredicateKind<'tcx> {
     /// This predicate requires two terms to be equal to eachother.
     ///
     /// Only used for new solver
-    AliasEq(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
+    AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1224,7 +1224,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1245,7 +1245,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1267,7 +1267,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))

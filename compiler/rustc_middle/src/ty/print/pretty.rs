@@ -2848,7 +2848,7 @@ define_print_and_forward_display! {
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
             // TODO
-            ty::PredicateKind::AliasEq(t1, t2, _) => p!(print(t1), " == ", print(t2)),
+            ty::PredicateKind::AliasRelate(t1, t2, _) => p!(print(t1), " == ", print(t2)),
         }
     }
 

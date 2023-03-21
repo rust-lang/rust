@@ -56,7 +56,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                     | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                     | ty::PredicateKind::WellFormed(..)
-                    | ty::PredicateKind::AliasEq(..)
+                    | ty::PredicateKind::AliasRelate(..)
                     | ty::PredicateKind::ObjectSafe(..)
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::Subtype(..)

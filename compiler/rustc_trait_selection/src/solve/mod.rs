@@ -156,7 +156,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn compute_alias_eq_goal(
+    fn compute_alias_relate_goal(
         &mut self,
         goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
     ) -> QueryResult<'tcx> {
@@ -204,12 +204,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         if lhs.is_infer() || rhs.is_infer() {
             bug!(
-                "`AliasEq` goal with an infer var on lhs or rhs which should have been instantiated"
+                "`AliasRelate` goal with an infer var on lhs or rhs which should have been instantiated"
             );
         }
 
         match (lhs.to_projection_term(tcx), rhs.to_projection_term(tcx)) {
-            (None, None) => bug!("`AliasEq` goal without an alias on either lhs or rhs"),
+            (None, None) => bug!("`AliasRelate` goal without an alias on either lhs or rhs"),
 
             // RHS is not a projection, only way this is true is if LHS normalizes-to RHS
             (Some(alias_lhs), None) => evaluate_normalizes_to(self, alias_lhs, rhs, direction),
@@ -220,7 +220,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             }
 
             (Some(alias_lhs), Some(alias_rhs)) => {
-                debug!("compute_alias_eq_goal: both sides are aliases");
+                debug!("compute_alias_relate_goal: both sides are aliases");
 
                 let candidates = vec![
                     // LHS normalizes-to RHS
@@ -229,7 +229,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     evaluate_normalizes_to(self, alias_rhs, lhs, direction.invert()),
                     // Relate via substs
                     self.probe(|ecx| {
-                        debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
+                        debug!(
+                            "compute_alias_relate_goal: alias defids are equal, equating substs"
+                        );
 
                         ecx.add_goals(
                             match direction {

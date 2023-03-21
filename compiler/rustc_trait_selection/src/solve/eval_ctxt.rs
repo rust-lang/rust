@@ -223,9 +223,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-                ty::PredicateKind::AliasEq(lhs, rhs, direction) => {
-                    self.compute_alias_eq_goal(Goal { param_env, predicate: (lhs, rhs, direction) })
-                }
+                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
+                    .compute_alias_relate_goal(Goal {
+                        param_env,
+                        predicate: (lhs, rhs, direction),
+                    }),
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
