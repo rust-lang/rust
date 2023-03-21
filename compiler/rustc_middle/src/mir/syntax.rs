@@ -1165,7 +1165,7 @@ pub enum AggregateKind<'tcx> {
     Tuple,
 
     /// The second field is the variant index. It's equal to 0 for struct
-    /// and union expressions. The fourth field is
+    /// and union expressions. The last field is the
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
