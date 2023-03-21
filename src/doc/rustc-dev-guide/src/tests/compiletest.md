@@ -11,6 +11,16 @@ efficient test execution (parallel execution is supported),
 and allows the test author to configure behavior and expected results of both
 individual and groups of tests.
 
+> NOTE:
+> For macOS users, `SIP` (System Integrity Protection) [may consistently
+> check the compiled binary by sending network requests to Apple][zulip],
+> so you may get a huge performance degradation when running tests.
+>
+> You can resolve it by tweaking the following settings:
+> `Privacy & Security -> Developer Tools -> Add Terminal (Or VsCode, etc.)`.
+
+[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20Is.20there.20any.20performance.20issue.20for.20MacOS.3F
+
 `compiletest` may check test code for success, for runtime failure,
 or for compile-time failure.
 Tests are typically organized as a Rust source file with annotations in
