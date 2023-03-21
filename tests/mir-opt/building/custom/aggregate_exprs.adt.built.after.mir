@@ -1,0 +1,16 @@
+// MIR for `adt` after built
+
+fn adt() -> Onion {
+    let mut _0: Onion;                   // return place in scope 0 at $DIR/aggregate_exprs.rs:+0:13: +0:18
+    let mut _1: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _2: Foo;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _3: Bar;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+
+    bb0: {
+        _1 = const 1_i32;                // scope 0 at $DIR/aggregate_exprs.rs:+6:13: +6:20
+        _2 = Foo { a: const 1_i32, b: const 2_i32 }; // scope 0 at $DIR/aggregate_exprs.rs:+7:13: +10:14
+        _3 = Bar::Foo(move _2, _1);      // scope 0 at $DIR/aggregate_exprs.rs:+11:13: +11:39
+        _0 = Onion { neon: ((_3 as variant#0).1: i32) }; // scope 0 at $DIR/aggregate_exprs.rs:+12:13: +12:58
+        return;                          // scope 0 at $DIR/aggregate_exprs.rs:+13:13: +13:21
+    }
+}
