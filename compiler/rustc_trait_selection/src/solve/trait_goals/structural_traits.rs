@@ -2,7 +2,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_target::spec::abi::Abi;
 
 use crate::solve::EvalCtxt;
 
@@ -197,13 +196,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         )),
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnPtr(sig) => {
-            if let ty::FnSig {
-                unsafety: rustc_hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                c_variadic: false,
-                ..
-            } = sig.skip_binder()
-            {
+            if sig.is_fn_trait_compatible() {
                 Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output()))))
             } else {
                 Err(NoSolution)

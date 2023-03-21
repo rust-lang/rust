@@ -23,7 +23,7 @@ use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi;
+use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -1402,6 +1402,18 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
+    }
+
+    pub fn is_fn_trait_compatible(&self) -> bool {
+        matches!(
+            self.skip_binder(),
+            ty::FnSig {
+                unsafety: rustc_hir::Unsafety::Normal,
+                abi: Abi::Rust,
+                c_variadic: false,
+                ..
+            }
+        )
     }
 }
 
