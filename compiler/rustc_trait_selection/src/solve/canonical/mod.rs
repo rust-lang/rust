@@ -48,7 +48,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// - `external_constraints`: additional constraints which aren't expressable
     ///   using simple unification of inference variables.
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn make_canonical_response(&self, certainty: Certainty) -> QueryResult<'tcx> {
+    pub(super) fn evaluate_added_goals_and_make_canonical_response(
+        &mut self,
+        certainty: Certainty,
+    ) -> QueryResult<'tcx> {
+        let goals_certainty = self.try_evaluate_added_goals()?;
+        let certainty = certainty.unify_and(goals_certainty);
+
         let external_constraints = self.compute_external_query_constraints()?;
 
         let response = Response { var_values: self.var_values, external_constraints, certainty };
@@ -209,7 +215,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // FIXME: To deal with #105787 I also expect us to emit nested obligations here at
             // some point. We can figure out how to deal with this once we actually have
             // an ICE.
-            let nested_goals = self.eq(param_env, orig, response)?;
+            let nested_goals = self.eq_and_get_goals(param_env, orig, response)?;
             assert!(nested_goals.is_empty(), "{nested_goals:?}");
         }
 
