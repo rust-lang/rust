@@ -78,7 +78,7 @@ impl Name {
         Self::new_text(lt.text().into())
     }
 
-    /// Shortcut to create inline plain text name
+    /// Shortcut to create inline plain text name. Panics if `text.len() > 22`
     const fn new_inline(text: &str) -> Name {
         Name::new_text(SmolStr::new_inline(text))
     }
@@ -110,6 +110,18 @@ impl Name {
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
         Name::new_inline("[missing name]")
+    }
+
+    /// Generates a new name which is only equal to itself, by incrementing a counter. Due
+    /// its implementation, it should not be used in things that salsa considers, like
+    /// type names or field names, and it should be only used in names of local variables
+    /// and labels and similar things.
+    pub fn generate_new_name() -> Name {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static CNT: AtomicUsize = AtomicUsize::new(0);
+        let c = CNT.fetch_add(1, Ordering::Relaxed);
+        // FIXME: Currently a `__RA_generated_name` in user code will break our analysis
+        Name::new_text(format!("__RA_geneated_name_{c}").into())
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.
@@ -343,6 +355,8 @@ pub mod known {
         feature,
         // known methods of lang items
         call_once,
+        call_mut,
+        call,
         eq,
         ne,
         ge,

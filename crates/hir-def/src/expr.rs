@@ -92,6 +92,16 @@ pub enum Literal {
     Float(FloatTypeWrapper, Option<BuiltinFloat>),
 }
 
+impl Literal {
+    pub fn negate(self) -> Option<Self> {
+        if let Literal::Int(i, k) = self {
+            Some(Literal::Int(-i, k))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.
@@ -111,11 +121,6 @@ pub enum Expr {
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
-    },
-    TryBlock {
-        id: BlockId,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
     },
     Async {
         id: BlockId,
@@ -190,9 +195,6 @@ pub enum Expr {
         name: Name,
     },
     Await {
-        expr: ExprId,
-    },
-    Try {
         expr: ExprId,
     },
     Cast {
@@ -303,7 +305,6 @@ impl Expr {
                 f(*expr);
             }
             Expr::Block { statements, tail, .. }
-            | Expr::TryBlock { statements, tail, .. }
             | Expr::Unsafe { statements, tail, .. }
             | Expr::Async { statements, tail, .. }
             | Expr::Const { statements, tail, .. } => {
@@ -383,7 +384,6 @@ impl Expr {
             }
             Expr::Field { expr, .. }
             | Expr::Await { expr }
-            | Expr::Try { expr }
             | Expr::Cast { expr, .. }
             | Expr::Ref { expr, .. }
             | Expr::UnaryOp { expr, .. }

@@ -34,6 +34,7 @@ use crate::{
     method_resolution::{self, lang_items_for_bin_op, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
+    traits::FnTrait,
     utils::{generics, Generics},
     Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
     Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt,
@@ -157,26 +158,6 @@ impl<'a> InferenceContext<'a> {
                     this.infer_block(tgt_expr, statements, *tail, None, expected)
                 })
                 .1
-            }
-            Expr::TryBlock { id: _, statements, tail } => {
-                // The type that is returned from the try block
-                let try_ty = self.table.new_type_var();
-                if let Some(ty) = expected.only_has_type(&mut self.table) {
-                    self.unify(&try_ty, &ty);
-                }
-
-                // The ok-ish type that is expected from the last expression
-                let ok_ty =
-                    self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_output());
-
-                self.infer_block(
-                    tgt_expr,
-                    statements,
-                    *tail,
-                    None,
-                    &Expectation::has_type(ok_ty.clone()),
-                );
-                try_ty
             }
             Expr::Async { id: _, statements, tail } => {
                 let ret_ty = self.table.new_type_var();
@@ -385,16 +366,46 @@ impl<'a> InferenceContext<'a> {
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
-                        let adjustments = auto_deref_adjust_steps(&derefs);
-                        // FIXME: Handle call adjustments for Fn/FnMut
-                        self.write_expr_adj(*callee, adjustments);
-                        if let Some((trait_, func)) = func {
-                            let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-                                .push(callee_ty.clone())
-                                .push(TyBuilder::tuple_with(params.iter().cloned()))
-                                .build();
-                            self.write_method_resolution(tgt_expr, func, subst.clone());
+                        let mut adjustments = auto_deref_adjust_steps(&derefs);
+                        if let Some(fn_x) = func {
+                            match fn_x {
+                                FnTrait::FnOnce => (),
+                                FnTrait::FnMut => {
+                                    if !matches!(
+                                        derefed_callee.kind(Interner),
+                                        TyKind::Ref(Mutability::Mut, _, _)
+                                    ) {
+                                        adjustments.push(Adjustment::borrow(
+                                            Mutability::Mut,
+                                            derefed_callee.clone(),
+                                        ));
+                                    }
+                                }
+                                FnTrait::Fn => {
+                                    if !matches!(
+                                        derefed_callee.kind(Interner),
+                                        TyKind::Ref(Mutability::Not, _, _)
+                                    ) {
+                                        adjustments.push(Adjustment::borrow(
+                                            Mutability::Not,
+                                            derefed_callee.clone(),
+                                        ));
+                                    }
+                                }
+                            }
+                            let trait_ = fn_x
+                                .get_id(self.db, self.trait_env.krate)
+                                .expect("We just used it");
+                            let trait_data = self.db.trait_data(trait_);
+                            if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
+                                let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+                                    .push(callee_ty.clone())
+                                    .push(TyBuilder::tuple_with(params.iter().cloned()))
+                                    .build();
+                                self.write_method_resolution(tgt_expr, func, subst.clone());
+                            }
                         }
+                        self.write_expr_adj(*callee, adjustments);
                         (params, ret_ty)
                     }
                     None => {
@@ -601,26 +612,18 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
-            Expr::Try { expr } => {
-                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                if let Some(trait_) = self.resolve_lang_trait(LangItem::Try) {
-                    if let Some(func) = self.db.trait_data(trait_).method_by_name(&name!(branch)) {
-                        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-                            .push(inner_ty.clone())
-                            .build();
-                        self.write_method_resolution(tgt_expr, func, subst.clone());
-                    }
-                    let try_output = self.resolve_output_on(trait_);
-                    self.resolve_associated_type(inner_ty, try_output)
-                } else {
-                    self.err_ty()
-                }
-            }
             Expr::Cast { expr, type_ref } => {
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME: propagate the "castable to" expectation
-                let _inner_ty = self.infer_expr_no_expect(*expr);
-                // FIXME check the cast...
+                let inner_ty = self.infer_expr_no_expect(*expr);
+                match (inner_ty.kind(Interner), cast_ty.kind(Interner)) {
+                    (TyKind::Ref(_, _, inner), TyKind::Raw(_, cast)) => {
+                        // FIXME: record invalid cast diagnostic in case of mismatch
+                        self.unify(inner, cast);
+                    }
+                    // FIXME check the other kinds of cast...
+                    _ => (),
+                }
                 cast_ty
             }
             Expr::Ref { expr, rawness, mutability } => {
@@ -656,6 +659,23 @@ impl<'a> InferenceContext<'a> {
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
+                        if let Some(deref_trait) = self
+                            .db
+                            .lang_item(self.table.trait_env.krate, LangItem::Deref)
+                            .and_then(|l| l.as_trait())
+                        {
+                            if let Some(deref_fn) =
+                                self.db.trait_data(deref_trait).method_by_name(&name![deref])
+                            {
+                                // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
+                                // the mutability is not wrong, and will be fixed in `self.infer_mut`).
+                                self.write_method_resolution(
+                                    tgt_expr,
+                                    deref_fn,
+                                    Substitution::empty(Interner),
+                                );
+                            }
+                        }
                         autoderef::deref(&mut self.table, inner_ty).unwrap_or_else(|| self.err_ty())
                     }
                     UnaryOp::Neg => {

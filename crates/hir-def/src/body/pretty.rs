@@ -288,10 +288,6 @@ impl<'a> Printer<'a> {
                 self.print_expr(*expr);
                 w!(self, ".await");
             }
-            Expr::Try { expr } => {
-                self.print_expr(*expr);
-                w!(self, "?");
-            }
             Expr::Cast { expr, type_ref } => {
                 self.print_expr(*expr);
                 w!(self, " as ");
@@ -423,9 +419,6 @@ impl<'a> Printer<'a> {
             }
             Expr::Unsafe { id: _, statements, tail } => {
                 self.print_block(Some("unsafe "), statements, tail);
-            }
-            Expr::TryBlock { id: _, statements, tail } => {
-                self.print_block(Some("try "), statements, tail);
             }
             Expr::Async { id: _, statements, tail } => {
                 self.print_block(Some("async "), statements, tail);

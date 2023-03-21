@@ -3,6 +3,7 @@
 
 use std::{mem, sync::Arc};
 
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap,
@@ -18,7 +19,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{
     ast::{
-        self, ArrayExprKind, AstChildren, HasArgList, HasLoopBody, HasName, LiteralKind,
+        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasLoopBody, HasName, LiteralKind,
         SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
@@ -36,6 +37,7 @@ use crate::{
         RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
+    lang_item::LangItem,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockId, BlockLoc, ModuleDefId, UnresolvedMacro,
@@ -80,9 +82,11 @@ pub(super) fn lower(
     expander: Expander,
     params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
+    krate: CrateId,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
         db,
+        krate,
         source_map: BodySourceMap::default(),
         ast_id_map: db.ast_id_map(expander.current_file_id),
         body: Body {
@@ -96,6 +100,7 @@ pub(super) fn lower(
             _c: Count::new(),
         },
         expander,
+        current_try_block: None,
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
     }
@@ -107,7 +112,9 @@ struct ExprCollector<'a> {
     expander: Expander,
     ast_id_map: Arc<AstIdMap>,
     body: Body,
+    krate: CrateId,
     source_map: BodySourceMap,
+    current_try_block: Option<LabelId>,
     is_lowering_assignee_expr: bool,
     is_lowering_generator: bool,
 }
@@ -176,8 +183,7 @@ impl ExprCollector<'_> {
         self.source_map.expr_map.insert(src, id);
         id
     }
-    // desugared exprs don't have ptr, that's wrong and should be fixed
-    // somehow.
+    // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.body.exprs.alloc(expr)
     }
@@ -199,6 +205,10 @@ impl ExprCollector<'_> {
         self.source_map.pat_map.insert(src, id);
         id
     }
+    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.
+    fn alloc_pat_desugared(&mut self, pat: Pat) -> PatId {
+        self.body.pats.alloc(pat)
+    }
     fn missing_pat(&mut self) -> PatId {
         self.body.pats.alloc(Pat::Missing)
     }
@@ -213,6 +223,10 @@ impl ExprCollector<'_> {
         let id = self.make_label(label, src.clone());
         self.source_map.label_map.insert(src, id);
         id
+    }
+    // FIXME: desugared labels don't have ptr, that's wrong and should be fixed somehow.
+    fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
+        self.body.labels.alloc(label)
     }
     fn make_label(&mut self, label: Label, src: LabelSource) -> LabelId {
         let id = self.body.labels.alloc(label);
@@ -251,13 +265,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Let { pat, expr }, syntax_ptr)
             }
             ast::Expr::BlockExpr(e) => match e.modifier() {
-                Some(ast::BlockModifier::Try(_)) => {
-                    self.collect_block_(e, |id, statements, tail| Expr::TryBlock {
-                        id,
-                        statements,
-                        tail,
-                    })
-                }
+                Some(ast::BlockModifier::Try(_)) => self.collect_try_block(e),
                 Some(ast::BlockModifier::Unsafe(_)) => {
                     self.collect_block_(e, |id, statements, tail| Expr::Unsafe {
                         id,
@@ -437,10 +445,7 @@ impl ExprCollector<'_> {
                 let expr = self.collect_expr_opt(e.expr());
                 self.alloc_expr(Expr::Await { expr }, syntax_ptr)
             }
-            ast::Expr::TryExpr(e) => {
-                let expr = self.collect_expr_opt(e.expr());
-                self.alloc_expr(Expr::Try { expr }, syntax_ptr)
-            }
+            ast::Expr::TryExpr(e) => self.collect_try_operator(syntax_ptr, e),
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let type_ref = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
@@ -599,6 +604,126 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
         })
+    }
+
+    /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
+    /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
+    fn collect_try_block(&mut self, e: BlockExpr) -> ExprId {
+        let Some(try_from_output) = LangItem::TryTraitFromOutput.path(self.db, self.krate) else {
+            return self.alloc_expr_desugared(Expr::Missing);
+        };
+        let prev_try_block = self.current_try_block.take();
+        self.current_try_block =
+            Some(self.alloc_label_desugared(Label { name: Name::generate_new_name() }));
+        let expr_id = self.collect_block(e);
+        let callee = self.alloc_expr_desugared(Expr::Path(try_from_output));
+        let Expr::Block { label, tail, .. } = &mut self.body.exprs[expr_id] else {
+            unreachable!("It is the output of collect block");
+        };
+        *label = self.current_try_block;
+        let next_tail = match *tail {
+            Some(tail) => self.alloc_expr_desugared(Expr::Call {
+                callee,
+                args: Box::new([tail]),
+                is_assignee_expr: false,
+            }),
+            None => {
+                let unit = self.alloc_expr_desugared(Expr::Tuple {
+                    exprs: Box::new([]),
+                    is_assignee_expr: false,
+                });
+                self.alloc_expr_desugared(Expr::Call {
+                    callee,
+                    args: Box::new([unit]),
+                    is_assignee_expr: false,
+                })
+            }
+        };
+        let Expr::Block { tail, .. } = &mut self.body.exprs[expr_id] else {
+            unreachable!("It is the output of collect block");
+        };
+        *tail = Some(next_tail);
+        self.current_try_block = prev_try_block;
+        expr_id
+    }
+
+    /// Desugar `ast::TryExpr` from: `<expr>?` into:
+    /// ```ignore (pseudo-rust)
+    /// match Try::branch(<expr>) {
+    ///     ControlFlow::Continue(val) => val,
+    ///     ControlFlow::Break(residual) =>
+    ///         // If there is an enclosing `try {...}`:
+    ///         break 'catch_target Try::from_residual(residual),
+    ///         // Otherwise:
+    ///         return Try::from_residual(residual),
+    /// }
+    /// ```
+    fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
+        let (try_branch, cf_continue, cf_break, try_from_residual) = 'if_chain: {
+            if let Some(try_branch) = LangItem::TryTraitBranch.path(self.db, self.krate) {
+                if let Some(cf_continue) = LangItem::ControlFlowContinue.path(self.db, self.krate) {
+                    if let Some(cf_break) = LangItem::ControlFlowBreak.path(self.db, self.krate) {
+                        if let Some(try_from_residual) =
+                            LangItem::TryTraitFromResidual.path(self.db, self.krate)
+                        {
+                            break 'if_chain (try_branch, cf_continue, cf_break, try_from_residual);
+                        }
+                    }
+                }
+            }
+            // Some of the needed lang items are missing, so we can't desugar
+            return self.alloc_expr(Expr::Missing, syntax_ptr);
+        };
+        let operand = self.collect_expr_opt(e.expr());
+        let try_branch = self.alloc_expr(Expr::Path(try_branch), syntax_ptr.clone());
+        let expr = self.alloc_expr(
+            Expr::Call { callee: try_branch, args: Box::new([operand]), is_assignee_expr: false },
+            syntax_ptr.clone(),
+        );
+        let continue_name = Name::generate_new_name();
+        let continue_binding =
+            self.alloc_binding(continue_name.clone(), BindingAnnotation::Unannotated);
+        let continue_bpat =
+            self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
+        self.add_definition_to_binding(continue_binding, continue_bpat);
+        let continue_arm = MatchArm {
+            pat: self.alloc_pat_desugared(Pat::TupleStruct {
+                path: Some(Box::new(cf_continue)),
+                args: Box::new([continue_bpat]),
+                ellipsis: None,
+            }),
+            guard: None,
+            expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr.clone()),
+        };
+        let break_name = Name::generate_new_name();
+        let break_binding = self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated);
+        let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
+        self.add_definition_to_binding(break_binding, break_bpat);
+        let break_arm = MatchArm {
+            pat: self.alloc_pat_desugared(Pat::TupleStruct {
+                path: Some(Box::new(cf_break)),
+                args: Box::new([break_bpat]),
+                ellipsis: None,
+            }),
+            guard: None,
+            expr: {
+                let x = self.alloc_expr(Expr::Path(Path::from(break_name)), syntax_ptr.clone());
+                let callee = self.alloc_expr(Expr::Path(try_from_residual), syntax_ptr.clone());
+                let result = self.alloc_expr(
+                    Expr::Call { callee, args: Box::new([x]), is_assignee_expr: false },
+                    syntax_ptr.clone(),
+                );
+                if let Some(label) = self.current_try_block {
+                    let label = Some(self.body.labels[label].name.clone());
+                    self.alloc_expr(Expr::Break { expr: Some(result), label }, syntax_ptr.clone())
+                } else {
+                    self.alloc_expr(Expr::Return { expr: Some(result) }, syntax_ptr.clone())
+                }
+            },
+        };
+        let arms = Box::new([continue_arm, break_arm]);
+        self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
     }
 
     fn collect_macro_call<F, T, U>(
@@ -949,16 +1074,24 @@ impl ExprCollector<'_> {
                         .collect(),
                 }
             }
-            ast::Pat::LiteralPat(lit) => {
-                if let Some(ast_lit) = lit.literal() {
-                    let expr = Expr::Literal(ast_lit.kind().into());
+            // FIXME: rustfmt removes this label if it is a block and not a loop
+            ast::Pat::LiteralPat(lit) => 'b: loop {
+                break if let Some(ast_lit) = lit.literal() {
+                    let mut hir_lit: Literal = ast_lit.kind().into();
+                    if lit.minus_token().is_some() {
+                        let Some(h) = hir_lit.negate() else {
+                            break 'b Pat::Missing;
+                        };
+                        hir_lit = h;
+                    }
+                    let expr = Expr::Literal(hir_lit);
                     let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
                     let expr_id = self.alloc_expr(expr, expr_ptr);
                     Pat::Lit(expr_id)
                 } else {
                     Pat::Missing
-                }
-            }
+                };
+            },
             ast::Pat::RestPat(_) => {
                 // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
@@ -1063,11 +1196,11 @@ impl From<ast::LiteralKind> for Literal {
                         FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
                         builtin,
                     )
-                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinInt::from_suffix) {
-                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
-                } else {
-                    let builtin = lit.suffix().and_then(BuiltinUint::from_suffix);
+                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
                     Literal::Uint(lit.value().unwrap_or(0), builtin)
+                } else {
+                    let builtin = lit.suffix().and_then(BuiltinInt::from_suffix);
+                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
                 }
             }
             LiteralKind::FloatNumber(lit) => {

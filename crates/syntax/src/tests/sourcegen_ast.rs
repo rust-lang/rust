@@ -535,6 +535,7 @@ impl Field {
                     "!" => "excl",
                     "*" => "star",
                     "&" => "amp",
+                    "-" => "minus",
                     "_" => "underscore",
                     "." => "dot",
                     ".." => "dotdot",

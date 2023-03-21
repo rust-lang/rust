@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 
 use crate::{
-    db::DefDatabase, AdtId, AssocItemId, AttrDefId, CrateId, EnumId, EnumVariantId, FunctionId,
-    ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, CrateId, EnumId, EnumVariantId,
+    FunctionId, ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -221,11 +221,6 @@ macro_rules! language_item_table {
             }
 
             /// Opposite of [`LangItem::name`]
-            pub fn from_name(name: &hir_expand::name::Name) -> Option<Self> {
-                Self::from_str(name.as_str()?)
-            }
-
-            /// Opposite of [`LangItem::name`]
             pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     $( stringify!($name) => Some(LangItem::$variant), )*
@@ -233,6 +228,18 @@ macro_rules! language_item_table {
                 }
             }
         }
+    }
+}
+
+impl LangItem {
+    /// Opposite of [`LangItem::name`]
+    pub fn from_name(name: &hir_expand::name::Name) -> Option<Self> {
+        Self::from_str(name.as_str()?)
+    }
+
+    pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
+        let t = db.lang_item(start_crate, *self)?;
+        Some(Path::LangItem(t))
     }
 }
 

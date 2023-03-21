@@ -4,19 +4,21 @@ use std::{iter, mem, sync::Arc};
 
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
+    adt::{StructKind, VariantData},
     body::Body,
     expr::{
         Array, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm, Pat, PatId,
-        RecordLitField,
+        RecordFieldPat, RecordLitField,
     },
     lang_item::{LangItem, LangItemTarget},
     layout::LayoutError,
     path::Path,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    DefWithBodyId, EnumVariantId, HasModule,
+    AdtId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, LocalFieldId, TraitId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
+use rustc_hash::FxHashMap;
 
 use crate::{
     consteval::ConstEvalError, db::HirDatabase, display::HirDisplay, infer::TypeMismatch,
@@ -27,18 +29,25 @@ use crate::{
 use super::*;
 
 mod as_place;
+mod pattern_matching;
 
-#[derive(Debug, Clone, Copy)]
+use pattern_matching::AdtPatternShape;
+
+#[derive(Debug, Clone)]
 struct LoopBlocks {
     begin: BasicBlockId,
     /// `None` for loops that are not terminating
     end: Option<BasicBlockId>,
+    place: Place,
 }
 
 struct MirLowerCtx<'a> {
     result: MirBody,
     owner: DefWithBodyId,
     current_loop_blocks: Option<LoopBlocks>,
+    // FIXME: we should resolve labels in HIR lowering and always work with label id here, not
+    // with raw names.
+    labeled_loop_blocks: FxHashMap<Name, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'a dyn HirDatabase,
     body: &'a Body,
@@ -50,6 +59,8 @@ pub enum MirLowerError {
     ConstEvalError(Box<ConstEvalError>),
     LayoutError(LayoutError),
     IncompleteExpr,
+    /// Trying to lower a trait function, instead of an implementation
+    TraitFunctionDefinition(TraitId, Name),
     UnresolvedName(String),
     RecordLiteralWithoutPath,
     UnresolvedMethod,
@@ -66,6 +77,7 @@ pub enum MirLowerError {
     ImplementationError(&'static str),
     LangItemNotFound(LangItem),
     MutatingRvalue,
+    UnresolvedLabel,
 }
 
 macro_rules! not_supported {
@@ -200,26 +212,42 @@ impl MirLowerCtx<'_> {
         mut current: BasicBlockId,
     ) -> Result<Option<BasicBlockId>> {
         match &self.body.exprs[expr_id] {
-            Expr::Missing => Err(MirLowerError::IncompleteExpr),
+            Expr::Missing => {
+                if let DefWithBodyId::FunctionId(f) = self.owner {
+                    let assoc = self.db.lookup_intern_function(f);
+                    if let ItemContainerId::TraitId(t) = assoc.container {
+                        let name = &self.db.function_data(f).name;
+                        return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
+                    }
+                }
+                Err(MirLowerError::IncompleteExpr)
+            },
             Expr::Path(p) => {
                 let unresolved_name = || MirLowerError::unresolved_path(self.db, p);
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
                 let pr = resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), p.mod_path())
+                    .resolve_path_in_value_ns(self.db.upcast(), p)
                     .ok_or_else(unresolved_name)?;
                 let pr = match pr {
                     ResolveValueResult::ValueNs(v) => v,
                     ResolveValueResult::Partial(..) => {
-                        if let Some(assoc) = self
+                        if let Some((assoc, subst)) = self
                             .infer
                             .assoc_resolutions_for_expr(expr_id)
                         {
-                            match assoc.0 {
+                            match assoc {
                                 hir_def::AssocItemId::ConstId(c) => {
-                                    self.lower_const(c, current, place, expr_id.into())?;
+                                    self.lower_const(c, current, place, subst, expr_id.into())?;
                                     return Ok(Some(current))
                                 },
-                                _ => not_supported!("associated functions and types"),
+                                hir_def::AssocItemId::FunctionId(_) => {
+                                    // FnDefs are zero sized, no action is needed.
+                                    return Ok(Some(current))
+                                }
+                                hir_def::AssocItemId::TypeAliasId(_) => {
+                                    // FIXME: If it is unreachable, use proper error instead of `not_supported`.
+                                    not_supported!("associated functions and types")
+                                },
                             }
                         } else if let Some(variant) = self
                             .infer
@@ -246,19 +274,23 @@ impl MirLowerCtx<'_> {
                         Ok(Some(current))
                     }
                     ValueNs::ConstId(const_id) => {
-                        self.lower_const(const_id, current, place, expr_id.into())?;
+                        self.lower_const(const_id, current, place, Substitution::empty(Interner), expr_id.into())?;
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
-                        let ty = self.infer.type_of_expr[expr_id].clone();
-                        let current = self.lower_enum_variant(
-                            variant_id,
-                            current,
-                            place,
-                            ty,
-                            vec![],
-                            expr_id.into(),
-                        )?;
+                        let variant_data = &self.db.enum_data(variant_id.parent).variants[variant_id.local_id];
+                        if variant_data.variant_data.kind() == StructKind::Unit {
+                            let ty = self.infer.type_of_expr[expr_id].clone();
+                            current = self.lower_enum_variant(
+                                variant_id,
+                                current,
+                                place,
+                                ty,
+                                vec![],
+                                expr_id.into(),
+                            )?;
+                        }
+                        // Otherwise its a tuple like enum, treated like a zero sized function, so no action is needed
                         Ok(Some(current))
                     }
                     ValueNs::GenericParam(p) => {
@@ -287,7 +319,7 @@ impl MirLowerCtx<'_> {
                         );
                         Ok(Some(current))
                     }
-                    ValueNs::StructId(_) => {
+                    ValueNs::FunctionId(_) | ValueNs::StructId(_) => {
                         // It's probably a unit struct or a zero sized function, so no action is needed.
                         Ok(Some(current))
                     }
@@ -349,19 +381,29 @@ impl MirLowerCtx<'_> {
                 Ok(self.merge_blocks(Some(then_target), else_target))
             }
             Expr::Unsafe { id: _, statements, tail } => {
-                self.lower_block_to_place(None, statements, current, *tail, place)
+                self.lower_block_to_place(statements, current, *tail, place)
             }
             Expr::Block { id: _, statements, tail, label } => {
-                self.lower_block_to_place(*label, statements, current, *tail, place)
+                if let Some(label) = label {
+                    self.lower_loop(current, place.clone(), Some(*label), |this, begin| {
+                        if let Some(block) = this.lower_block_to_place(statements, begin, *tail, place)? {
+                            let end = this.current_loop_end()?;
+                            this.set_goto(block, end);
+                        }
+                        Ok(())
+                    })
+                } else {
+                    self.lower_block_to_place(statements, current, *tail, place)
+                }
             }
-            Expr::Loop { body, label } => self.lower_loop(current, *label, |this, begin| {
+            Expr::Loop { body, label } => self.lower_loop(current, place, *label, |this, begin| {
                 if let Some((_, block)) = this.lower_expr_as_place(begin, *body, true)? {
                     this.set_goto(block, begin);
                 }
                 Ok(())
             }),
             Expr::While { condition, body, label } => {
-                self.lower_loop(current, *label, |this, begin| {
+                self.lower_loop(current, place, *label, |this, begin| {
                     let Some((discr, to_switch)) = this.lower_expr_to_some_operand(*condition, begin)? else {
                         return Ok(());
                     };
@@ -412,7 +454,7 @@ impl MirLowerCtx<'_> {
                     return Ok(None);
                 };
                 self.push_assignment(current, ref_mut_iterator_place.clone(), Rvalue::Ref(BorrowKind::Mut { allow_two_phase_borrow: false }, iterator_place), expr_id.into());
-                self.lower_loop(current, label, |this, begin| {
+                self.lower_loop(current, place, label, |this, begin| {
                     let Some(current) = this.lower_call(iter_next_fn_op, vec![Operand::Copy(ref_mut_iterator_place)], option_item_place.clone(), begin, false)?
                     else {
                         return Ok(());
@@ -426,7 +468,8 @@ impl MirLowerCtx<'_> {
                         current,
                         pat.into(),
                         Some(end),
-                        &[pat], &None)?;
+                        AdtPatternShape::Tuple { args: &[pat], ellipsis: None },
+                    )?;
                     if let Some((_, block)) = this.lower_expr_as_place(current, body, true)? {
                         this.set_goto(block, begin);
                     }
@@ -434,36 +477,36 @@ impl MirLowerCtx<'_> {
                 })
             },
             Expr::Call { callee, args, .. } => {
+                if let Some((func_id, generic_args)) =
+                    self.infer.method_resolution(expr_id) {
+                    let ty = chalk_ir::TyKind::FnDef(
+                        CallableDefId::FunctionId(func_id).to_chalk(self.db),
+                        generic_args,
+                    )
+                    .intern(Interner);
+                    let func = Operand::from_bytes(vec![], ty);
+                    return self.lower_call_and_args(
+                        func,
+                        iter::once(*callee).chain(args.iter().copied()),
+                        place,
+                        current,
+                        self.is_uninhabited(expr_id),
+                    );
+                }
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
                 match &callee_ty.data(Interner).kind {
                     chalk_ir::TyKind::FnDef(..) => {
                         let func = Operand::from_bytes(vec![], callee_ty.clone());
                         self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
                     }
-                    TyKind::Scalar(_)
-                    | TyKind::Tuple(_, _)
-                    | TyKind::Array(_, _)
-                    | TyKind::Adt(_, _)
-                    | TyKind::Str
-                    | TyKind::Foreign(_)
-                    | TyKind::Slice(_) => {
-                        return Err(MirLowerError::TypeError("function call on data type"))
+                    chalk_ir::TyKind::Function(_) => {
+                        let Some((func, current)) = self.lower_expr_to_some_operand(*callee, current)? else {
+                            return Ok(None);
+                        };
+                        self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id))
                     }
                     TyKind::Error => return Err(MirLowerError::MissingFunctionDefinition),
-                    TyKind::AssociatedType(_, _)
-                    | TyKind::Raw(_, _)
-                    | TyKind::Ref(_, _, _)
-                    | TyKind::OpaqueType(_, _)
-                    | TyKind::Never
-                    | TyKind::Closure(_, _)
-                    | TyKind::Generator(_, _)
-                    | TyKind::GeneratorWitness(_, _)
-                    | TyKind::Placeholder(_)
-                    | TyKind::Dyn(_)
-                    | TyKind::Alias(_)
-                    | TyKind::Function(_)
-                    | TyKind::BoundVar(_)
-                    | TyKind::InferenceVar(_, _) => not_supported!("dynamic function call"),
+                    _ => return Err(MirLowerError::TypeError("function call on bad type")),
                 }
             }
             Expr::MethodCall { receiver, args, .. } => {
@@ -491,10 +534,7 @@ impl MirLowerCtx<'_> {
                 let cond_ty = self.expr_ty_after_adjustments(*expr);
                 let mut end = None;
                 for MatchArm { pat, guard, expr } in arms.iter() {
-                    if guard.is_some() {
-                        not_supported!("pattern matching with guard");
-                    }
-                    let (then, otherwise) = self.pattern_match(
+                    let (then, mut otherwise) = self.pattern_match(
                         current,
                         None,
                         cond_place.clone(),
@@ -502,6 +542,16 @@ impl MirLowerCtx<'_> {
                         *pat,
                         BindingAnnotation::Unannotated,
                     )?;
+                    let then = if let &Some(guard) = guard {
+                        let next = self.new_basic_block();
+                        let o = otherwise.get_or_insert_with(|| self.new_basic_block());
+                        if let Some((discr, c)) = self.lower_expr_to_some_operand(guard, then)? {
+                            self.set_terminator(c, Terminator::SwitchInt { discr, targets: SwitchTargets::static_if(1, next, *o) });
+                        }
+                        next
+                    } else {
+                        then
+                    };
                     if let Some(block) = self.lower_expr_to_place(*expr, place.clone(), then)? {
                         let r = end.get_or_insert_with(|| self.new_basic_block());
                         self.set_goto(block, *r);
@@ -524,24 +574,28 @@ impl MirLowerCtx<'_> {
                 Some(_) => not_supported!("continue with label"),
                 None => {
                     let loop_data =
-                        self.current_loop_blocks.ok_or(MirLowerError::ContinueWithoutLoop)?;
+                        self.current_loop_blocks.as_ref().ok_or(MirLowerError::ContinueWithoutLoop)?;
                     self.set_goto(current, loop_data.begin);
                     Ok(None)
                 }
             },
             Expr::Break { expr, label } => {
-                if expr.is_some() {
-                    not_supported!("break with value");
+                if let Some(expr) = expr {
+                    let loop_data = match label {
+                        Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?,
+                        None => self.current_loop_blocks.as_ref().ok_or(MirLowerError::BreakWithoutLoop)?,
+                    };
+                    let Some(c) = self.lower_expr_to_place(*expr, loop_data.place.clone(), current)? else {
+                        return Ok(None);
+                    };
+                    current = c;
                 }
-                match label {
-                    Some(_) => not_supported!("break with label"),
-                    None => {
-                        let end =
-                            self.current_loop_end()?;
-                        self.set_goto(current, end);
-                        Ok(None)
-                    }
-                }
+                let end = match label {
+                    Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?.end.expect("We always generate end for labeled loops"),
+                    None => self.current_loop_end()?,
+                };
+                self.set_goto(current, end);
+                Ok(None)
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
@@ -555,7 +609,17 @@ impl MirLowerCtx<'_> {
                 Ok(None)
             }
             Expr::Yield { .. } => not_supported!("yield"),
-            Expr::RecordLit { fields, path, .. } => {
+            Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
+                let spread_place = match spread {
+                    &Some(x) => {
+                        let Some((p, c)) = self.lower_expr_as_place(current, x, true)? else {
+                            return Ok(None);
+                        };
+                        current = c;
+                        Some(p)
+                    },
+                    None => None,
+                };
                 let variant_id = self
                     .infer
                     .variant_resolution_for_expr(expr_id)
@@ -585,9 +649,24 @@ impl MirLowerCtx<'_> {
                             place,
                             Rvalue::Aggregate(
                                 AggregateKind::Adt(variant_id, subst),
-                                operands.into_iter().map(|x| x).collect::<Option<_>>().ok_or(
-                                    MirLowerError::TypeError("missing field in record literal"),
-                                )?,
+                                match spread_place {
+                                    Some(sp) => operands.into_iter().enumerate().map(|(i, x)| {
+                                        match x {
+                                            Some(x) => x,
+                                            None => {
+                                                let mut p = sp.clone();
+                                                p.projection.push(ProjectionElem::Field(FieldId {
+                                                    parent: variant_id,
+                                                    local_id: LocalFieldId::from_raw(RawIdx::from(i as u32)),
+                                                }));
+                                                Operand::Copy(p)
+                                            },
+                                        }
+                                    }).collect(),
+                                    None => operands.into_iter().collect::<Option<_>>().ok_or(
+                                        MirLowerError::TypeError("missing field in record literal"),
+                                    )?,
+                                },
                             ),
                             expr_id.into(),
                         );
@@ -608,9 +687,7 @@ impl MirLowerCtx<'_> {
                 }
             }
             Expr::Await { .. } => not_supported!("await"),
-            Expr::Try { .. } => not_supported!("? operator"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            Expr::TryBlock { .. } => not_supported!("try block"),
             Expr::Async { .. } => not_supported!("async block"),
             Expr::Const { .. } => not_supported!("anonymous const block"),
             Expr::Cast { expr, type_ref: _ } => {
@@ -703,7 +780,49 @@ impl MirLowerCtx<'_> {
                 );
                 Ok(Some(current))
             }
-            Expr::Range { .. } => not_supported!("range"),
+            &Expr::Range { lhs, rhs, range_type: _ } => {
+                let ty = self.expr_ty(expr_id);
+                let Some((adt, subst)) = ty.as_adt() else {
+                    return Err(MirLowerError::TypeError("Range type is not adt"));
+                };
+                let AdtId::StructId(st) = adt else {
+                    return Err(MirLowerError::TypeError("Range type is not struct"));
+                };
+                let mut lp = None;
+                let mut rp = None;
+                if let Some(x) = lhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                        return Ok(None);
+                    };
+                    lp = Some(o);
+                    current = c;
+                }
+                if let Some(x) = rhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                        return Ok(None);
+                    };
+                    rp = Some(o);
+                    current = c;
+                }
+                self.push_assignment(
+                    current,
+                    place,
+                    Rvalue::Aggregate(
+                        AggregateKind::Adt(st.into(), subst.clone()),
+                        self.db.struct_data(st).variant_data.fields().iter().map(|x| {
+                            let o = match x.1.name.as_str() {
+                                Some("start") => lp.take(),
+                                Some("end") => rp.take(),
+                                Some("exhausted") => Some(Operand::from_bytes(vec![0], TyBuilder::bool())),
+                                _ => None,
+                            };
+                            o.ok_or(MirLowerError::UnresolvedField)
+                        }).collect::<Result<_>>()?,
+                    ),
+                    expr_id.into(),
+                );
+                Ok(Some(current))
+            },
             Expr::Closure { .. } => not_supported!("closure"),
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 let Some(values) = exprs
@@ -832,9 +951,10 @@ impl MirLowerCtx<'_> {
         const_id: hir_def::ConstId,
         prev_block: BasicBlockId,
         place: Place,
+        subst: Substitution,
         span: MirSpan,
     ) -> Result<()> {
-        let c = self.db.const_eval(const_id)?;
+        let c = self.db.const_eval(const_id, subst)?;
         self.write_const_to_place(c, prev_block, place, span)
     }
 
@@ -872,7 +992,7 @@ impl MirLowerCtx<'_> {
     ) -> Result<BasicBlockId> {
         let subst = match ty.kind(Interner) {
             TyKind::Adt(_, subst) => subst.clone(),
-            _ => not_supported!("Non ADT enum"),
+            _ => implementation_error!("Non ADT enum"),
         };
         self.push_assignment(
             prev_block,
@@ -970,287 +1090,6 @@ impl MirLowerCtx<'_> {
         self.push_statement(block, StatementKind::Assign(place, rvalue).with_span(span));
     }
 
-    /// It gets a `current` unterminated block, appends some statements and possibly a terminator to it to check if
-    /// the pattern matches and write bindings, and returns two unterminated blocks, one for the matched path (which
-    /// can be the `current` block) and one for the mismatched path. If the input pattern is irrefutable, the
-    /// mismatched path block is `None`.
-    ///
-    /// By default, it will create a new block for mismatched path. If you already have one, you can provide it with
-    /// `current_else` argument to save an unneccessary jump. If `current_else` isn't `None`, the result mismatched path
-    /// wouldn't be `None` as well. Note that this function will add jumps to the beginning of the `current_else` block,
-    /// so it should be an empty block.
-    fn pattern_match(
-        &mut self,
-        mut current: BasicBlockId,
-        mut current_else: Option<BasicBlockId>,
-        mut cond_place: Place,
-        mut cond_ty: Ty,
-        pattern: PatId,
-        mut binding_mode: BindingAnnotation,
-    ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
-        Ok(match &self.body.pats[pattern] {
-            Pat::Missing => return Err(MirLowerError::IncompleteExpr),
-            Pat::Wild => (current, current_else),
-            Pat::Tuple { args, ellipsis } => {
-                pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
-                let subst = match cond_ty.kind(Interner) {
-                    TyKind::Tuple(_, s) => s,
-                    _ => {
-                        return Err(MirLowerError::TypeError(
-                            "non tuple type matched with tuple pattern",
-                        ))
-                    }
-                };
-                self.pattern_match_tuple_like(
-                    current,
-                    current_else,
-                    args.iter().enumerate().map(|(i, x)| {
-                        (
-                            PlaceElem::TupleField(i),
-                            *x,
-                            subst.at(Interner, i).assert_ty_ref(Interner).clone(),
-                        )
-                    }),
-                    *ellipsis,
-                    &cond_place,
-                    binding_mode,
-                )?
-            }
-            Pat::Or(pats) => {
-                let then_target = self.new_basic_block();
-                let mut finished = false;
-                for pat in &**pats {
-                    let (next, next_else) = self.pattern_match(
-                        current,
-                        None,
-                        cond_place.clone(),
-                        cond_ty.clone(),
-                        *pat,
-                        binding_mode,
-                    )?;
-                    self.set_goto(next, then_target);
-                    match next_else {
-                        Some(t) => {
-                            current = t;
-                        }
-                        None => {
-                            finished = true;
-                            break;
-                        }
-                    }
-                }
-                if !finished {
-                    let ce = *current_else.get_or_insert_with(|| self.new_basic_block());
-                    self.set_goto(current, ce);
-                }
-                (then_target, current_else)
-            }
-            Pat::Record { .. } => not_supported!("record pattern"),
-            Pat::Range { .. } => not_supported!("range pattern"),
-            Pat::Slice { .. } => not_supported!("slice pattern"),
-            Pat::Path(_) => {
-                let Some(variant) = self.infer.variant_resolution_for_pat(pattern) else {
-                    not_supported!("unresolved variant");
-                };
-                self.pattern_matching_variant(
-                    cond_ty,
-                    binding_mode,
-                    cond_place,
-                    variant,
-                    current,
-                    pattern.into(),
-                    current_else,
-                    &[],
-                    &None,
-                )?
-            }
-            Pat::Lit(l) => {
-                let then_target = self.new_basic_block();
-                let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
-                match &self.body.exprs[*l] {
-                    Expr::Literal(l) => match l {
-                        hir_def::expr::Literal::Int(x, _) => {
-                            self.set_terminator(
-                                current,
-                                Terminator::SwitchInt {
-                                    discr: Operand::Copy(cond_place),
-                                    targets: SwitchTargets::static_if(
-                                        *x as u128,
-                                        then_target,
-                                        else_target,
-                                    ),
-                                },
-                            );
-                        }
-                        hir_def::expr::Literal::Uint(x, _) => {
-                            self.set_terminator(
-                                current,
-                                Terminator::SwitchInt {
-                                    discr: Operand::Copy(cond_place),
-                                    targets: SwitchTargets::static_if(*x, then_target, else_target),
-                                },
-                            );
-                        }
-                        _ => not_supported!("non int path literal"),
-                    },
-                    _ => not_supported!("expression path literal"),
-                }
-                (then_target, Some(else_target))
-            }
-            Pat::Bind { id, subpat } => {
-                let target_place = self.result.binding_locals[*id];
-                let mode = self.body.bindings[*id].mode;
-                if let Some(subpat) = subpat {
-                    (current, current_else) = self.pattern_match(
-                        current,
-                        current_else,
-                        cond_place.clone(),
-                        cond_ty,
-                        *subpat,
-                        binding_mode,
-                    )?
-                }
-                if matches!(mode, BindingAnnotation::Ref | BindingAnnotation::RefMut) {
-                    binding_mode = mode;
-                }
-                self.push_storage_live(*id, current);
-                self.push_assignment(
-                    current,
-                    target_place.into(),
-                    match binding_mode {
-                        BindingAnnotation::Unannotated | BindingAnnotation::Mutable => {
-                            Operand::Copy(cond_place).into()
-                        }
-                        BindingAnnotation::Ref => Rvalue::Ref(BorrowKind::Shared, cond_place),
-                        BindingAnnotation::RefMut => Rvalue::Ref(
-                            BorrowKind::Mut { allow_two_phase_borrow: false },
-                            cond_place,
-                        ),
-                    },
-                    pattern.into(),
-                );
-                (current, current_else)
-            }
-            Pat::TupleStruct { path: _, args, ellipsis } => {
-                let Some(variant) = self.infer.variant_resolution_for_pat(pattern) else {
-                    not_supported!("unresolved variant");
-                };
-                self.pattern_matching_variant(
-                    cond_ty,
-                    binding_mode,
-                    cond_place,
-                    variant,
-                    current,
-                    pattern.into(),
-                    current_else,
-                    args,
-                    ellipsis,
-                )?
-            }
-            Pat::Ref { .. } => not_supported!("& pattern"),
-            Pat::Box { .. } => not_supported!("box pattern"),
-            Pat::ConstBlock(_) => not_supported!("const block pattern"),
-        })
-    }
-
-    fn pattern_matching_variant(
-        &mut self,
-        mut cond_ty: Ty,
-        mut binding_mode: BindingAnnotation,
-        mut cond_place: Place,
-        variant: VariantId,
-        current: BasicBlockId,
-        span: MirSpan,
-        current_else: Option<BasicBlockId>,
-        args: &[PatId],
-        ellipsis: &Option<usize>,
-    ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
-        pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
-        let subst = match cond_ty.kind(Interner) {
-            TyKind::Adt(_, s) => s,
-            _ => return Err(MirLowerError::TypeError("non adt type matched with tuple struct")),
-        };
-        let fields_type = self.db.field_types(variant);
-        Ok(match variant {
-            VariantId::EnumVariantId(v) => {
-                let e = self.db.const_eval_discriminant(v)? as u128;
-                let next = self.new_basic_block();
-                let tmp = self.discr_temp_place();
-                self.push_assignment(
-                    current,
-                    tmp.clone(),
-                    Rvalue::Discriminant(cond_place.clone()),
-                    span,
-                );
-                let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
-                self.set_terminator(
-                    current,
-                    Terminator::SwitchInt {
-                        discr: Operand::Copy(tmp),
-                        targets: SwitchTargets::static_if(e, next, else_target),
-                    },
-                );
-                let enum_data = self.db.enum_data(v.parent);
-                let fields =
-                    enum_data.variants[v.local_id].variant_data.fields().iter().map(|(x, _)| {
-                        (
-                            PlaceElem::Field(FieldId { parent: v.into(), local_id: x }),
-                            fields_type[x].clone().substitute(Interner, subst),
-                        )
-                    });
-                self.pattern_match_tuple_like(
-                    next,
-                    Some(else_target),
-                    args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
-                    *ellipsis,
-                    &cond_place,
-                    binding_mode,
-                )?
-            }
-            VariantId::StructId(s) => {
-                let struct_data = self.db.struct_data(s);
-                let fields = struct_data.variant_data.fields().iter().map(|(x, _)| {
-                    (
-                        PlaceElem::Field(FieldId { parent: s.into(), local_id: x }),
-                        fields_type[x].clone().substitute(Interner, subst),
-                    )
-                });
-                self.pattern_match_tuple_like(
-                    current,
-                    current_else,
-                    args.iter().zip(fields).map(|(x, y)| (y.0, *x, y.1)),
-                    *ellipsis,
-                    &cond_place,
-                    binding_mode,
-                )?
-            }
-            VariantId::UnionId(_) => {
-                return Err(MirLowerError::TypeError("pattern matching on union"))
-            }
-        })
-    }
-
-    fn pattern_match_tuple_like(
-        &mut self,
-        mut current: BasicBlockId,
-        mut current_else: Option<BasicBlockId>,
-        args: impl Iterator<Item = (PlaceElem, PatId, Ty)>,
-        ellipsis: Option<usize>,
-        cond_place: &Place,
-        binding_mode: BindingAnnotation,
-    ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
-        if ellipsis.is_some() {
-            not_supported!("tuple like pattern with ellipsis");
-        }
-        for (proj, arg, ty) in args {
-            let mut cond_place = cond_place.clone();
-            cond_place.projection.push(proj);
-            (current, current_else) =
-                self.pattern_match(current, current_else, cond_place, ty, arg, binding_mode)?;
-        }
-        Ok((current, current_else))
-    }
-
     fn discr_temp_place(&mut self) -> Place {
         match &self.discr_temp {
             Some(x) => x.clone(),
@@ -1266,19 +1105,34 @@ impl MirLowerCtx<'_> {
     fn lower_loop(
         &mut self,
         prev_block: BasicBlockId,
+        place: Place,
         label: Option<LabelId>,
         f: impl FnOnce(&mut MirLowerCtx<'_>, BasicBlockId) -> Result<()>,
     ) -> Result<Option<BasicBlockId>> {
-        if label.is_some() {
-            not_supported!("loop with label");
-        }
         let begin = self.new_basic_block();
-        let prev =
-            mem::replace(&mut self.current_loop_blocks, Some(LoopBlocks { begin, end: None }));
+        let prev = mem::replace(
+            &mut self.current_loop_blocks,
+            Some(LoopBlocks { begin, end: None, place }),
+        );
+        let prev_label = if let Some(label) = label {
+            // We should generate the end now, to make sure that it wouldn't change later. It is
+            // bad as we may emit end (unneccessary unreachable block) for unterminating loop, but
+            // it should not affect correctness.
+            self.current_loop_end()?;
+            self.labeled_loop_blocks.insert(
+                self.body.labels[label].name.clone(),
+                self.current_loop_blocks.as_ref().unwrap().clone(),
+            )
+        } else {
+            None
+        };
         self.set_goto(prev_block, begin);
         f(self, begin)?;
         let my = mem::replace(&mut self.current_loop_blocks, prev)
             .ok_or(MirLowerError::ImplementationError("current_loop_blocks is corrupt"))?;
+        if let Some(prev) = prev_label {
+            self.labeled_loop_blocks.insert(self.body.labels[label.unwrap()].name.clone(), prev);
+        }
         Ok(my.end)
     }
 
@@ -1366,15 +1220,11 @@ impl MirLowerCtx<'_> {
 
     fn lower_block_to_place(
         &mut self,
-        label: Option<LabelId>,
         statements: &[hir_def::expr::Statement],
         mut current: BasicBlockId,
         tail: Option<ExprId>,
         place: Place,
     ) -> Result<Option<Idx<BasicBlock>>> {
-        if label.is_some() {
-            not_supported!("block with label");
-        }
         for statement in statements.iter() {
             match statement {
                 hir_def::expr::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
@@ -1428,22 +1278,6 @@ impl MirLowerCtx<'_> {
     }
 }
 
-fn pattern_matching_dereference(
-    cond_ty: &mut Ty,
-    binding_mode: &mut BindingAnnotation,
-    cond_place: &mut Place,
-) {
-    while let Some((ty, _, mu)) = cond_ty.as_reference() {
-        if mu == Mutability::Mut && *binding_mode != BindingAnnotation::Ref {
-            *binding_mode = BindingAnnotation::RefMut;
-        } else {
-            *binding_mode = BindingAnnotation::Ref;
-        }
-        *cond_ty = ty.clone();
-        cond_place.projection.push(ProjectionElem::Deref);
-    }
-}
-
 fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
     Ok(match (source_ty.kind(Interner), target_ty.kind(Interner)) {
         (TyKind::Scalar(s), TyKind::Scalar(t)) => match (s, t) {
@@ -1452,6 +1286,11 @@ fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
             (_, chalk_ir::Scalar::Float(_)) => CastKind::IntToFloat,
             (_, _) => CastKind::IntToInt,
         },
+        (TyKind::Scalar(_), TyKind::Raw(..)) => CastKind::PointerFromExposedAddress,
+        (TyKind::Raw(..), TyKind::Scalar(_)) => CastKind::PointerExposeAddress,
+        (TyKind::Raw(..) | TyKind::Ref(..), TyKind::Raw(..) | TyKind::Ref(..)) => {
+            CastKind::PtrToPtr
+        }
         // Enum to int casts
         (TyKind::Scalar(_), TyKind::Adt(..)) | (TyKind::Adt(..), TyKind::Scalar(_)) => {
             CastKind::IntToInt
@@ -1552,6 +1391,7 @@ pub fn lower_to_mir(
         body,
         owner,
         current_loop_blocks: None,
+        labeled_loop_blocks: Default::default(),
         discr_temp: None,
     };
     let mut current = start_block;

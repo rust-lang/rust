@@ -1076,10 +1076,7 @@ impl<'db> SemanticsImpl<'db> {
         let hygiene = hir_expand::hygiene::Hygiene::new(self.db.upcast(), analyze.file_id);
         let ctx = body::LowerCtx::with_hygiene(self.db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
-        match analyze
-            .resolver
-            .resolve_path_in_type_ns_fully(self.db.upcast(), hir_path.mod_path())?
-        {
+        match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
             _ => None,
         }

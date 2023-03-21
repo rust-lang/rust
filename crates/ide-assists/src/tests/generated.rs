@@ -2352,7 +2352,7 @@ fn doctest_replace_try_expr_with_match() {
     check_doc_test(
         "replace_try_expr_with_match",
         r#####"
-//- minicore:option
+//- minicore: try, option
 fn handle() {
     let pat = Some(true)$0?;
 }

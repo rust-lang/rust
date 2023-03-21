@@ -57,7 +57,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
-    fn const_eval(&self, def: ConstId) -> Result<Const, ConstEvalError>;
+    fn const_eval(&self, def: ConstId, subst: Substitution) -> Result<Const, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
@@ -96,6 +96,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<QuantifiedWhereClause>]>;
+
+    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
+    #[salsa::transparent]
+    fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<crate::TraitEnvironment>;
 
     #[salsa::invoke(crate::lower::trait_environment_query)]
     fn trait_environment(&self, def: GenericDefId) -> Arc<crate::TraitEnvironment>;

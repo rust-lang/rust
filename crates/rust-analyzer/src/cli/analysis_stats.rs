@@ -2,6 +2,7 @@
 //! errors.
 
 use std::{
+    collections::HashMap,
     env,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -153,6 +154,10 @@ impl flags::AnalysisStats {
             self.run_inference(&host, db, &vfs, &funcs, verbosity);
         }
 
+        if self.mir_stats {
+            self.lower_mir(db, &funcs);
+        }
+
         let total_span = analysis_sw.elapsed();
         eprintln!("{:<20} {total_span}", "Total:");
         report_metric("total time", total_span.time.as_millis() as u64, "ms");
@@ -187,6 +192,24 @@ impl flags::AnalysisStats {
         }
 
         Ok(())
+    }
+
+    fn lower_mir(&self, db: &RootDatabase, funcs: &[Function]) {
+        let all = funcs.len();
+        let mut fail = 0;
+        let mut h: HashMap<String, usize> = HashMap::new();
+        for f in funcs {
+            let f = FunctionId::from(*f);
+            let Err(e) = db.mir_body(f.into()) else {
+                continue;
+            };
+            let es = format!("{:?}", e);
+            *h.entry(es).or_default() += 1;
+            fail += 1;
+        }
+        let h = h.into_iter().sorted_by_key(|x| x.1).collect::<Vec<_>>();
+        eprintln!("Mir failed reasons: {:#?}", h);
+        eprintln!("Mir failed bodies: {fail} ({}%)", fail * 100 / all);
     }
 
     fn run_inference(

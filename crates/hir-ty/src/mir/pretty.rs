@@ -1,6 +1,6 @@
 //! A pretty-printer for MIR.
 
-use std::fmt::{Display, Write};
+use std::fmt::{Debug, Display, Write};
 
 use hir_def::{body::Body, expr::BindingId};
 use hir_expand::name::Name;
@@ -22,6 +22,18 @@ impl MirBody {
         let mut ctx = MirPrettyCtx::new(self, &hir_body, db);
         ctx.for_body();
         ctx.result
+    }
+
+    // String with lines is rendered poorly in `dbg` macros, which I use very much, so this
+    // function exists to solve that.
+    pub fn dbg(&self, db: &dyn HirDatabase) -> impl Debug {
+        struct StringDbg(String);
+        impl Debug for StringDbg {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        StringDbg(self.pretty_print(db))
     }
 }
 
@@ -77,6 +89,7 @@ impl Display for LocalName {
 
 impl<'a> MirPrettyCtx<'a> {
     fn for_body(&mut self) {
+        wln!(self, "// {:?}", self.body.owner);
         self.with_block(|this| {
             this.locals();
             wln!(this);
@@ -300,9 +313,9 @@ impl<'a> MirPrettyCtx<'a> {
                 w!(self, ")");
             }
             Rvalue::Cast(ck, op, ty) => {
-                w!(self, "Discriminant({ck:?}");
+                w!(self, "Cast({ck:?}, ");
                 self.operand(op);
-                w!(self, "{})", ty.display(self.db));
+                w!(self, ", {})", ty.display(self.db));
             }
             Rvalue::CheckedBinaryOp(b, o1, o2) => {
                 self.operand(o1);

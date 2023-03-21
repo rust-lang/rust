@@ -75,8 +75,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let Path { mod_path, generic_args: path_generic_args, .. } =
-                            Path::from_src(trait_ref.path()?, ctx)?;
+                        let Path::Normal { mod_path, generic_args: path_generic_args, .. } =
+                            Path::from_src(trait_ref.path()?, ctx)? else
+                        {
+                            return None;
+                        };
                         let num_segments = mod_path.segments().len();
                         kind = mod_path.kind;
 
@@ -157,7 +160,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
-    return Some(Path {
+    return Some(Path::Normal {
         type_anchor,
         mod_path,
         generic_args: if generic_args.is_empty() { None } else { Some(generic_args.into()) },

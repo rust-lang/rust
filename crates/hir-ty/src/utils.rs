@@ -130,7 +130,7 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
             WherePredicate::Lifetime { .. } => None,
         })
         .filter(|(_, bound_modifier)| matches!(bound_modifier, TraitBoundModifier::None))
-        .filter_map(|(path, _)| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
+        .filter_map(|(path, _)| match resolver.resolve_path_in_type_ns_fully(db, path) {
             Some(TypeNs::TraitId(t)) => Some(t),
             _ => None,
         })

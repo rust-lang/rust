@@ -181,7 +181,7 @@ pub mod convert {
     }
     // endregion:as_ref
     // region:infallible
-    pub enum Infallibe {}
+    pub enum Infallible {}
     // endregion:infallible
 }
 
@@ -375,16 +375,82 @@ pub mod ops {
             type Output;
             extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
         }
+
+        mod impls {
+            use crate::marker::Tuple;
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const Fn<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                extern "rust-call" fn call(&self, args: A) -> F::Output {
+                    (**self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    (**self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
+            where
+                F: ~const Fn<A>,
+            {
+                type Output = F::Output;
+
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    (*self).call(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
+            where
+                F: ~const FnMut<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    (*self).call_mut(args)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
+            where
+                F: ~const FnMut<A>,
+            {
+                type Output = F::Output;
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    (*self).call_mut(args)
+                }
+            }
+        }
     }
     pub use self::function::{Fn, FnMut, FnOnce};
     // endregion:fn
     // region:try
     mod try_ {
+        use super::super::convert::Infallible;
+
         pub enum ControlFlow<B, C = ()> {
+            #[lang = "Continue"]
             Continue(C),
+            #[lang = "Break"]
             Break(B),
         }
-        pub trait FromResidual<R = Self::Residual> {
+        pub trait FromResidual<R = <Self as Try>::Residual> {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
@@ -400,14 +466,66 @@ pub mod ops {
 
         impl<B, C> Try for ControlFlow<B, C> {
             type Output = C;
-            type Residual = ControlFlow<B, convert::Infallible>;
+            type Residual = ControlFlow<B, Infallible>;
             fn from_output(output: Self::Output) -> Self {}
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {}
         }
 
         impl<B, C> FromResidual for ControlFlow<B, C> {
-            fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {}
+            fn from_residual(residual: ControlFlow<B, Infallible>) -> Self {}
         }
+        // region:option
+        impl<T> Try for Option<T> {
+            type Output = T;
+            type Residual = Option<Infallible>;
+            fn from_output(output: Self::Output) -> Self {
+                Some(output)
+            }
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+                match self {
+                    Some(x) => ControlFlow::Continue(x),
+                    None => ControlFlow::Break(None),
+                }
+            }
+        }
+
+        impl<T> FromResidual for Option<T> {
+            fn from_residual(x: Option<Infallible>) -> Self {
+                match x {
+                    None => None,
+                }
+            }
+        }
+        // endregion:option
+        // region:result
+        // region:from
+        use super::super::convert::From;
+
+        impl<T, E> Try for Result<T, E> {
+            type Output = T;
+            type Residual = Result<Infallible, E>;
+
+            fn from_output(output: Self::Output) -> Self {
+                Ok(output)
+            }
+
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+                match self {
+                    Ok(v) => ControlFlow::Continue(v),
+                    Err(e) => ControlFlow::Break(Err(e)),
+                }
+            }
+        }
+
+        impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
+            fn from_residual(residual: Result<Infallible, E>) -> Self {
+                match residual {
+                    Err(e) => Err(From::from(e)),
+                }
+            }
+        }
+        // endregion:from
+        // endregion:result
     }
     pub use self::try_::{ControlFlow, FromResidual, Try};
     // endregion:try
@@ -541,7 +659,10 @@ pub mod option {
             loop {}
         }
         pub fn unwrap_or(self, default: T) -> T {
-            loop {}
+            match self {
+                Some(val) => val,
+                None => default,
+            }
         }
         // region:fn
         pub fn and_then<U, F>(self, f: F) -> Option<U>

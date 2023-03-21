@@ -613,7 +613,7 @@ Pat =
 | ConstBlockPat
 
 LiteralPat =
-  Literal
+  '-'? Literal
 
 IdentPat =
   Attr* 'ref'? 'mut'? Name ('@' Pat)?

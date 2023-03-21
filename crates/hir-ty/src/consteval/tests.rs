@@ -1,14 +1,18 @@
 use base_db::fixture::WithFixture;
+use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, test_db::TestDB, Const, ConstScalar, Interner,
+    consteval::try_const_usize, db::HirDatabase, mir::pad16, test_db::TestDB, Const, ConstScalar,
+    Interner,
 };
 
 use super::{
     super::mir::{MirEvalError, MirLowerError},
     ConstEvalError,
 };
+
+mod intrinsics;
 
 fn simplify(e: ConstEvalError) -> ConstEvalError {
     match e {
@@ -30,7 +34,12 @@ fn check_number(ra_fixture: &str, answer: i128) {
     match &r.data(Interner).value {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(b, _) => {
-                assert_eq!(b, &answer.to_le_bytes()[0..b.len()]);
+                assert_eq!(
+                    b,
+                    &answer.to_le_bytes()[0..b.len()],
+                    "Bytes differ. In decimal form: actual = {}, expected = {answer}",
+                    i128::from_le_bytes(pad16(b, true))
+                );
             }
             x => panic!("Expected number but found {:?}", x),
         },
@@ -56,7 +65,7 @@ fn eval_goal(ra_fixture: &str) -> Result<Const, ConstEvalError> {
             _ => None,
         })
         .unwrap();
-    db.const_eval(const_id)
+    db.const_eval(const_id, Substitution::empty(Interner))
 }
 
 #[test]
@@ -74,6 +83,49 @@ fn bit_op() {
     check_number(r#"const GOAL: i8 = 1 << 7"#, (1i8 << 7) as i128);
     // FIXME: report panic here
     check_number(r#"const GOAL: i8 = 1 << 8"#, 0);
+}
+
+#[test]
+fn casts() {
+    check_number(r#"const GOAL: usize = 12 as *const i32 as usize"#, 12);
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: i32 = {
+        let a = [10, 20, 3, 15];
+        let x: &[i32] = &a;
+        let y: *const [i32] = x;
+        let z = y as *const i32;
+        unsafe { *z }
+    };
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: i16 = {
+        let a = &mut 5;
+        let z = a as *mut _;
+        unsafe { *z }
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: usize = {
+        let a = [10, 20, 3, 15];
+        let x: &[i32] = &a;
+        let y: *const [i32] = x;
+        let z = y as *const [u8]; // slice fat pointer cast don't touch metadata
+        let w = unsafe { &*z };
+        w.len()
+    };
+        "#,
+        4,
+    );
 }
 
 #[test]
@@ -166,8 +218,7 @@ fn reference_autoderef() {
 
 #[test]
 fn overloaded_deref() {
-    // FIXME: We should support this.
-    check_fail(
+    check_number(
         r#"
     //- minicore: deref_mut
     struct Foo;
@@ -185,9 +236,7 @@ fn overloaded_deref() {
         *y + *x
     };
     "#,
-        ConstEvalError::MirLowerError(MirLowerError::NotSupported(
-            "explicit overloaded deref".into(),
-        )),
+        10,
     );
 }
 
@@ -219,6 +268,42 @@ fn overloaded_deref_autoref() {
 }
 
 #[test]
+fn overloaded_index() {
+    check_number(
+        r#"
+    //- minicore: index
+    struct Foo;
+
+    impl core::ops::Index<usize> for Foo {
+        type Output = i32;
+        fn index(&self, index: usize) -> &i32 {
+            if index == 7 {
+                &700
+            } else {
+                &1000
+            }
+        }
+    }
+
+    impl core::ops::IndexMut<usize> for Foo {
+        fn index_mut(&mut self, index: usize) -> &mut i32 {
+            if index == 7 {
+                &mut 7
+            } else {
+                &mut 10
+            }
+        }
+    }
+
+    const GOAL: i32 = {
+        (Foo[2]) + (Foo[7]) + (*&Foo[2]) + (*&Foo[7]) + (*&mut Foo[2]) + (*&mut Foo[7])
+    };
+    "#,
+        3417,
+    );
+}
+
+#[test]
 fn function_call() {
     check_number(
         r#"
@@ -237,20 +322,6 @@ fn function_call() {
     const GOAL: usize = add(add(1, 2), add(3, add(4, 5)));
     "#,
         15,
-    );
-}
-
-#[test]
-fn intrinsics() {
-    check_number(
-        r#"
-    extern "rust-intrinsic" {
-        pub fn size_of<T>() -> usize;
-    }
-
-    const GOAL: usize = size_of::<i32>();
-    "#,
-        4,
     );
 }
 
@@ -483,6 +554,42 @@ fn loops() {
         "#,
         4,
     );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let mut x = 0;
+        loop {
+            x = x + 1;
+            if x == 5 {
+                break x + 2;
+            }
+        }
+    };
+        "#,
+        7,
+    );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        'a: loop {
+            let x = 'b: loop {
+                let x = 'c: loop {
+                    let x = 'd: loop {
+                        let x = 'e: loop {
+                            break 'd 1;
+                        };
+                        break 2 + x;
+                    };
+                    break 3 + x;
+                };
+                break 'a 4 + x;
+            };
+            break 5 + x;
+        }
+    };
+        "#,
+        8,
+    );
 }
 
 #[test]
@@ -523,6 +630,18 @@ fn for_loops() {
 }
 
 #[test]
+fn ranges() {
+    check_number(
+        r#"
+    //- minicore: range
+    const GOAL: i32 = (1..2).start + (20..10).end + (100..=200).start + (2000..=1000).end
+        + (10000..).start + (..100000).end + (..=1000000).end;
+        "#,
+        1111111,
+    );
+}
+
+#[test]
 fn recursion() {
     check_number(
         r#"
@@ -554,6 +673,38 @@ fn structs() {
         };
         "#,
         17,
+    );
+    check_number(
+        r#"
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        const GOAL: i32 = {
+            let p = Point { x: 5, y: 2 };
+            let p2 = Point { x: 3, ..p };
+            p.x * 1000 + p.y * 100 + p2.x * 10 + p2.y
+        };
+        "#,
+        5232,
+    );
+    check_number(
+        r#"
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        const GOAL: i32 = {
+            let p = Point { x: 5, y: 2 };
+            let Point { x, y } = p;
+            let Point { x: x2, .. } = p;
+            let Point { y: y2, .. } = p;
+            x * 1000 + y * 100 + x2 * 10 + y2
+        };
+        "#,
+        5252,
     );
 }
 
@@ -599,13 +750,14 @@ fn tuples() {
     );
     check_number(
         r#"
-    struct TupleLike(i32, u8, i64, u16);
-    const GOAL: u8 = {
+    struct TupleLike(i32, i64, u8, u16);
+    const GOAL: i64 = {
         let a = TupleLike(10, 20, 3, 15);
-        a.1
+        let TupleLike(b, .., c) = a;
+        a.1 * 100 + b as i64 + c as i64
     };
         "#,
-        20,
+        2025,
     );
     check_number(
         r#"
@@ -653,6 +805,36 @@ fn path_pattern_matching() {
 }
 
 #[test]
+fn pattern_matching_literal() {
+    check_number(
+        r#"
+    const fn f(x: i32) -> i32 {
+        match x {
+            -1 => 1,
+            1 => 10,
+            _ => 100,
+        }
+    }
+    const GOAL: i32 = f(-1) + f(1) + f(0) + f(-5);
+        "#,
+        211,
+    );
+    check_number(
+        r#"
+    const fn f(x: &str) -> u8 {
+        match x {
+            "foo" => 1,
+            "bar" => 10,
+            _ => 100,
+        }
+    }
+    const GOAL: u8 = f("foo") + f("bar");
+        "#,
+        11,
+    );
+}
+
+#[test]
 fn pattern_matching_ergonomics() {
     check_number(
         r#"
@@ -662,6 +844,16 @@ fn pattern_matching_ergonomics() {
         }
     }
     const GOAL: u8 = f(&(2, 3));
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let a = &(2, 3);
+        let &(x, y) = a;
+        x + y
+    };
         "#,
         5,
     );
@@ -749,6 +941,33 @@ fn function_param_patterns() {
 }
 
 #[test]
+fn match_guards() {
+    check_number(
+        r#"
+    //- minicore: option, eq
+    impl<T: PartialEq> PartialEq for Option<T> {
+        fn eq(&self, other: &Rhs) -> bool {
+            match (self, other) {
+                (Some(x), Some(y)) => x == y,
+                (None, None) => true,
+                _ => false,
+            }
+        }
+    }
+    fn f(x: Option<i32>) -> i32 {
+        match x {
+            y if y == Some(42) => 42000,
+            Some(y) => y,
+            None => 10
+        }
+    }
+    const GOAL: i32 = f(Some(42)) + f(Some(2)) + f(None);
+        "#,
+        42012,
+    );
+}
+
+#[test]
 fn options() {
     check_number(
         r#"
@@ -802,6 +1021,91 @@ fn options() {
 }
 
 #[test]
+fn from_trait() {
+    check_number(
+        r#"
+    //- minicore: from
+    struct E1(i32);
+    struct E2(i32);
+
+    impl From<E1> for E2 {
+        fn from(E1(x): E1) -> Self {
+            E2(1000 * x)
+        }
+    }
+    const GOAL: i32 = {
+        let x: E2 = E1(2).into();
+        x.0
+    };
+    "#,
+        2000,
+    );
+}
+
+#[test]
+fn try_operator() {
+    check_number(
+        r#"
+    //- minicore: option, try
+    const fn f(x: Option<i32>, y: Option<i32>) -> Option<i32> {
+        Some(x? * y?)
+    }
+    const fn g(x: Option<i32>, y: Option<i32>) -> i32 {
+        match f(x, y) {
+            Some(k) => k,
+            None => 5,
+        }
+    }
+    const GOAL: i32 = g(Some(10), Some(20)) + g(Some(30), None) + g(None, Some(40)) + g(None, None);
+        "#,
+        215,
+    );
+    check_number(
+        r#"
+    //- minicore: result, try, from
+    struct E1(i32);
+    struct E2(i32);
+
+    impl From<E1> for E2 {
+        fn from(E1(x): E1) -> Self {
+            E2(1000 * x)
+        }
+    }
+
+    const fn f(x: Result<i32, E1>) -> Result<i32, E2> {
+        Ok(x? * 10)
+    }
+    const fn g(x: Result<i32, E1>) -> i32 {
+        match f(x) {
+            Ok(k) => 7 * k,
+            Err(E2(k)) => 5 * k,
+        }
+    }
+    const GOAL: i32 = g(Ok(2)) + g(Err(E1(3)));
+        "#,
+        15140,
+    );
+}
+
+#[test]
+fn try_block() {
+    check_number(
+        r#"
+    //- minicore: option, try
+    const fn g(x: Option<i32>, y: Option<i32>) -> i32 {
+        let r = try { x? * y? };
+        match r {
+            Some(k) => k,
+            None => 5,
+        }
+    }
+    const GOAL: i32 = g(Some(10), Some(20)) + g(Some(30), None) + g(None, Some(40)) + g(None, None);
+        "#,
+        215,
+    );
+}
+
+#[test]
 fn or_pattern() {
     check_number(
         r#"
@@ -840,6 +1144,220 @@ fn or_pattern() {
 }
 
 #[test]
+fn function_pointer() {
+    check_number(
+        r#"
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = {
+        let plus2 = add2;
+        plus2(3)
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = {
+        let plus2: fn(u8) -> u8 = add2;
+        plus2(3)
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn mult3(x: u8) -> u8 {
+        x * 3
+    }
+    const GOAL: u8 = {
+        let x = [add2, mult3];
+        x[0](1) + x[1](5)
+    };
+        "#,
+        18,
+    );
+}
+
+#[test]
+fn enum_variant_as_function() {
+    check_number(
+        r#"
+    //- minicore: option
+    const GOAL: u8 = {
+        let f = Some;
+        f(3).unwrap_or(2)
+    };
+        "#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const GOAL: u8 = {
+        let f: fn(u8) -> Option<u8> = Some;
+        f(3).unwrap_or(2)
+    };
+        "#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    enum Foo {
+        Add2(u8),
+        Mult3(u8),
+    }
+    use Foo::*;
+    const fn f(x: Foo) -> u8 {
+        match x {
+            Add2(x) => x + 2,
+            Mult3(x) => x * 3,
+        }
+    }
+    const GOAL: u8 = {
+        let x = [Add2, Mult3];
+        f(x[0](1)) + f(x[1](5))
+    };
+        "#,
+        18,
+    );
+}
+
+#[test]
+fn function_traits() {
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(mut f: impl FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_once(f: impl FnOnce(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(add2, 3) + call_mut(add2, 3) + call_once(add2, 3);
+        "#,
+        15,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: &dyn Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(f: &mut dyn FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(&add2, 3) + call_mut(&mut add2, 3);
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_mut(mut f: impl FnMut(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    fn call_once(f: impl FnOnce(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = {
+        let add2: fn(u8) -> u8 = add2;
+        call(add2, 3) + call_mut(add2, 3) + call_once(add2, 3)
+    };
+        "#,
+        15,
+    );
+    check_number(
+        r#"
+    //- minicore: fn
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    fn call(f: &&&&&impl Fn(u8) -> u8, x: u8) -> u8 {
+        f(x)
+    }
+    const GOAL: u8 = call(&&&&&add2, 3);
+        "#,
+        5,
+    );
+}
+
+#[test]
+fn dyn_trait() {
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    trait Foo {
+        fn foo(&self) -> u8 { 10 }
+    }
+    struct S1;
+    struct S2;
+    struct S3;
+    impl Foo for S1 {
+        fn foo(&self) -> u8 { 1 }
+    }
+    impl Foo for S2 {
+        fn foo(&self) -> u8 { 2 }
+    }
+    impl Foo for S3 {}
+    const GOAL: u8 = {
+        let x: &[&dyn Foo] = &[&S1, &S2, &S3];
+        x[0].foo() + x[1].foo() + x[2].foo()
+    };
+        "#,
+        13,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    trait Foo {
+        fn foo(&self) -> i32 { 10 }
+    }
+    trait Bar {
+        fn bar(&self) -> i32 { 20 }
+    }
+
+    struct S;
+    impl Foo for S {
+        fn foo(&self) -> i32 { 200 }
+    }
+    impl Bar for dyn Foo {
+        fn bar(&self) -> i32 { 700 }
+    }
+    const GOAL: i32 = {
+        let x: &dyn Foo = &S;
+        x.bar() + x.foo()
+    };
+        "#,
+        900,
+    );
+}
+
+#[test]
 fn array_and_index() {
     check_number(
         r#"
@@ -862,6 +1380,17 @@ fn array_and_index() {
         r#"
     //- minicore: coerce_unsized, index, slice
     const GOAL: usize = { let a = [1, 2, 3]; let x: &[i32] = &a; x.len() };"#,
+        3,
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: usize = {
+        let a = [1, 2, 3];
+        let x: &[i32] = &a;
+        let y = &*x;
+        y.len()
+    };"#,
         3,
     );
     check_number(
@@ -991,8 +1520,7 @@ fn const_generic_subst_fn() {
 
 #[test]
 fn const_generic_subst_assoc_const_impl() {
-    // FIXME: this should evaluate to 5
-    check_fail(
+    check_number(
         r#"
     struct Adder<const N: usize, const M: usize>;
     impl<const N: usize, const M: usize> Adder<N, M> {
@@ -1000,7 +1528,7 @@ fn const_generic_subst_assoc_const_impl() {
     }
     const GOAL: usize = Adder::<2, 3>::VAL;
     "#,
-        ConstEvalError::MirEvalError(MirEvalError::TypeError("missing generic arg")),
+        5,
     );
 }
 

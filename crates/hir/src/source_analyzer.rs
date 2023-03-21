@@ -420,7 +420,10 @@ impl SourceAnalyzer {
             None
         } else {
             // Shorthand syntax, resolve to the local
-            let path = ModPath::from_segments(PathKind::Plain, once(local_name.clone()));
+            let path = Path::from_known_path_with_no_generic(ModPath::from_segments(
+                PathKind::Plain,
+                once(local_name.clone()),
+            ));
             match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
                 Some(ValueNs::LocalBinding(binding_id)) => {
                     Some(Local { binding_id, parent: self.resolver.body_owner()? })
@@ -461,7 +464,7 @@ impl SourceAnalyzer {
     ) -> Option<Macro> {
         let ctx = body::LowerCtx::new(db.upcast(), macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
-        self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(|it| it.into())
+        self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()?).map(|it| it.into())
     }
 
     pub(crate) fn resolve_bind_pat_to_const(
@@ -801,15 +804,11 @@ impl SourceAnalyzer {
         func: FunctionId,
         substs: Substitution,
     ) -> FunctionId {
-        let krate = self.resolver.krate();
         let owner = match self.resolver.body_owner() {
             Some(it) => it,
             None => return func,
         };
-        let env = owner.as_generic_def_id().map_or_else(
-            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
-            |d| db.trait_environment(d),
-        );
+        let env = db.trait_environment_for_body(owner);
         method_resolution::lookup_impl_method(db, env, func, substs).0
     }
 
@@ -819,15 +818,11 @@ impl SourceAnalyzer {
         const_id: ConstId,
         subs: Substitution,
     ) -> ConstId {
-        let krate = self.resolver.krate();
         let owner = match self.resolver.body_owner() {
             Some(it) => it,
             None => return const_id,
         };
-        let env = owner.as_generic_def_id().map_or_else(
-            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
-            |d| db.trait_environment(d),
-        );
+        let env = db.trait_environment_for_body(owner);
         method_resolution::lookup_impl_const(db, env, const_id, subs).0
     }
 
@@ -946,7 +941,7 @@ pub(crate) fn resolve_hir_path_as_macro(
     resolver: &Resolver,
     path: &Path,
 ) -> Option<Macro> {
-    resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(Into::into)
+    resolver.resolve_path_as_macro(db.upcast(), path.mod_path()?).map(Into::into)
 }
 
 fn resolve_hir_path_(
@@ -962,8 +957,7 @@ fn resolve_hir_path_(
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
-                let (ty, remaining_idx) =
-                    resolver.resolve_path_in_type_ns(db.upcast(), path.mod_path())?;
+                let (ty, remaining_idx) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {
@@ -1019,7 +1013,7 @@ fn resolve_hir_path_(
 
     let body_owner = resolver.body_owner();
     let values = || {
-        resolver.resolve_path_in_value_ns_fully(db.upcast(), path.mod_path()).and_then(|val| {
+        resolver.resolve_path_in_value_ns_fully(db.upcast(), path).and_then(|val| {
             let res = match val {
                 ValueNs::LocalBinding(binding_id) => {
                     let var = Local { parent: body_owner?, binding_id };
@@ -1039,14 +1033,14 @@ fn resolve_hir_path_(
 
     let items = || {
         resolver
-            .resolve_module_path_in_items(db.upcast(), path.mod_path())
+            .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
             .take_types()
             .map(|it| PathResolution::Def(it.into()))
     };
 
     let macros = || {
         resolver
-            .resolve_path_as_macro(db.upcast(), path.mod_path())
+            .resolve_path_as_macro(db.upcast(), path.mod_path()?)
             .map(|def| PathResolution::Def(ModuleDef::Macro(def.into())))
     };
 
@@ -1074,7 +1068,7 @@ fn resolve_hir_path_qualifier(
     path: &Path,
 ) -> Option<PathResolution> {
     resolver
-        .resolve_path_in_type_ns_fully(db.upcast(), path.mod_path())
+        .resolve_path_in_type_ns_fully(db.upcast(), &path)
         .map(|ty| match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
@@ -1089,7 +1083,7 @@ fn resolve_hir_path_qualifier(
         })
         .or_else(|| {
             resolver
-                .resolve_module_path_in_items(db.upcast(), path.mod_path())
+                .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
                 .take_types()
                 .map(|it| PathResolution::Def(it.into()))
         })

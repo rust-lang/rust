@@ -4,7 +4,7 @@ use base_db::CrateId;
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData};
 use hir_def::{
     expr::Expr,
-    path::ModPath,
+    path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::ConstRef,
     ConstId, EnumVariantId,
@@ -15,7 +15,7 @@ use stdx::never;
 use crate::{
     db::HirDatabase, infer::InferenceContext, layout::layout_of_ty, lower::ParamLoweringMode,
     to_placeholder_idx, utils::Generics, Const, ConstData, ConstScalar, ConstValue, GenericArg,
-    Interner, MemoryMap, Ty, TyBuilder,
+    Interner, MemoryMap, Substitution, Ty, TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -72,7 +72,7 @@ impl From<MirEvalError> for ConstEvalError {
 pub(crate) fn path_to_const(
     db: &dyn HirDatabase,
     resolver: &Resolver,
-    path: &ModPath,
+    path: &Path,
     mode: ParamLoweringMode,
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
@@ -89,7 +89,7 @@ pub(crate) fn path_to_const(
                     Some(x) => ConstValue::BoundVar(BoundVar::new(debruijn, x)),
                     None => {
                         never!(
-                            "Generic list doesn't contain this param: {:?}, {}, {:?}",
+                            "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
                             args,
                             path,
                             p
@@ -169,6 +169,7 @@ pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &[String],
     _: &ConstId,
+    _: &Substitution,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -184,10 +185,11 @@ pub(crate) fn const_eval_discriminant_recover(
 pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     const_id: ConstId,
+    subst: Substitution,
 ) -> Result<Const, ConstEvalError> {
     let def = const_id.into();
     let body = db.mir_body(def)?;
-    let c = interpret_mir(db, &body, false)?;
+    let c = interpret_mir(db, &body, subst, false)?;
     Ok(c)
 }
 
@@ -210,7 +212,7 @@ pub(crate) fn const_eval_discriminant_variant(
         return Ok(value);
     }
     let mir_body = db.mir_body(def)?;
-    let c = interpret_mir(db, &mir_body, false)?;
+    let c = interpret_mir(db, &mir_body, Substitution::empty(Interner), false)?;
     let c = try_const_usize(&c).unwrap() as i128;
     Ok(c)
 }
@@ -228,13 +230,13 @@ pub(crate) fn eval_to_const(
     let db = ctx.db;
     if let Expr::Path(p) = &ctx.body.exprs[expr] {
         let resolver = &ctx.resolver;
-        if let Some(c) = path_to_const(db, resolver, p.mod_path(), mode, args, debruijn) {
+        if let Some(c) = path_to_const(db, resolver, p, mode, args, debruijn) {
             return c;
         }
     }
     let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, &mir_body, true) {
+        if let Ok(result) = interpret_mir(db, &mir_body, Substitution::empty(Interner), true) {
             return result;
         }
     }

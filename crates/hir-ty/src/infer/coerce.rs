@@ -51,11 +51,12 @@ fn success(
 pub(super) struct CoerceMany {
     expected_ty: Ty,
     final_ty: Option<Ty>,
+    expressions: Vec<ExprId>,
 }
 
 impl CoerceMany {
     pub(super) fn new(expected: Ty) -> Self {
-        CoerceMany { expected_ty: expected, final_ty: None }
+        CoerceMany { expected_ty: expected, final_ty: None, expressions: vec![] }
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -125,8 +126,15 @@ impl CoerceMany {
             let result1 = ctx.table.coerce_inner(self.merged_ty(), &target_ty);
             let result2 = ctx.table.coerce_inner(expr_ty.clone(), &target_ty);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
-                ctx.table.register_infer_ok(result1);
-                ctx.table.register_infer_ok(result2);
+                ctx.table.register_infer_ok(InferOk { value: (), goals: result1.goals });
+                for &e in &self.expressions {
+                    ctx.write_expr_adj(e, result1.value.0.clone());
+                }
+                ctx.table.register_infer_ok(InferOk { value: (), goals: result2.goals });
+                if let Some(expr) = expr {
+                    ctx.write_expr_adj(expr, result2.value.0);
+                    self.expressions.push(expr);
+                }
                 return self.final_ty = Some(target_ty);
             }
         }
@@ -147,6 +155,9 @@ impl CoerceMany {
                 );
             }
             cov_mark::hit!(coerce_merge_fail_fallback);
+        }
+        if let Some(expr) = expr {
+            self.expressions.push(expr);
         }
     }
 }
