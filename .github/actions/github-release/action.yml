@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-name: 'wasmtime github releases'
-description: 'wasmtime github releases'
+name: 'rustc_codegen_cranelift github releases'
+description: 'rustc_codegen_cranelift github releases'
 inputs:
   token:
     description: ''
