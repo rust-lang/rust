@@ -7,7 +7,10 @@ use rustc_middle::ty::{
     TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
-use rustc_span::def_id::{DefId, CRATE_DEF_ID};
+use rustc_span::{
+    def_id::{DefId, CRATE_DEF_ID},
+    DUMMY_SP,
+};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -275,16 +278,22 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            && self.tcx.is_impl_trait_in_trait(alias_ty.def_id)
-            && self.tcx.impl_trait_in_trait_parent_fn(alias_ty.def_id) == self.fn_def_id
-            && self.seen.insert(alias_ty.def_id)
+        if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
+            && self.tcx.is_impl_trait_in_trait(unshifted_alias_ty.def_id)
+            && self.tcx.impl_trait_in_trait_parent_fn(unshifted_alias_ty.def_id) == self.fn_def_id
+            && self.seen.insert(unshifted_alias_ty.def_id)
         {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
-            let alias_ty = self.tcx.fold_regions(alias_ty, |re, _| {
+            let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
                 if let ty::ReLateBound(index, bv) = re.kind() {
+                    if depth != ty::INNERMOST {
+                        return self.tcx.mk_re_error_with_message(
+                            DUMMY_SP,
+                            "we shouldn't walk non-predicate binders with `impl Trait`...",
+                        );
+                    }
                     self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
@@ -295,26 +304,27 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // the `type_of` of the trait's associated item. If we're using the old lowering
             // strategy, then just reinterpret the associated type like an opaque :^)
             let default_ty = if self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                self
-                    .tcx
-                    .type_of(alias_ty.def_id)
-                    .subst(self.tcx, alias_ty.substs)
+                self.tcx.type_of(shifted_alias_ty.def_id).subst(self.tcx, shifted_alias_ty.substs)
             } else {
-                self.tcx.mk_alias(ty::Opaque, alias_ty)
+                self.tcx.mk_alias(ty::Opaque, shifted_alias_ty)
             };
 
             self.predicates.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
-                        projection_ty: alias_ty,
-                        term: default_ty.into(),
-                    },
+                    ty::ProjectionPredicate { projection_ty: shifted_alias_ty, term: default_ty.into() },
                     self.bound_vars,
                 )
                 .to_predicate(self.tcx),
             );
 
-            for bound in self.tcx.item_bounds(alias_ty.def_id).subst_iter(self.tcx, alias_ty.substs)
+            // We walk the *un-shifted* alias ty, because we're tracking the de bruijn
+            // binder depth, and if we were to walk `shifted_alias_ty` instead, we'd
+            // have to reset `self.depth` back to `ty::INNERMOST` or something. It's
+            // easier to just do this.
+            for bound in self
+                .tcx
+                .item_bounds(unshifted_alias_ty.def_id)
+                .subst_iter(self.tcx, unshifted_alias_ty.substs)
             {
                 bound.visit_with(self);
             }
