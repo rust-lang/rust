@@ -888,12 +888,12 @@ pub(crate) struct InvalidMetaItem {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    parse_sugg_escape_to_use_as_identifier,
+    parse_sugg_escape_identifier,
     style = "verbose",
     applicability = "maybe-incorrect",
     code = "r#"
 )]
-pub(crate) struct SuggEscapeToUseAsIdentifier {
+pub(crate) struct SuggEscapeIdentifier {
     #[primary_span]
     pub span: Span,
     pub ident_name: String,
@@ -937,7 +937,7 @@ impl ExpectedIdentifierFound {
 pub(crate) struct ExpectedIdentifier {
     pub span: Span,
     pub token: Token,
-    pub suggest_raw: Option<SuggEscapeToUseAsIdentifier>,
+    pub suggest_raw: Option<SuggEscapeIdentifier>,
     pub suggest_remove_comma: Option<SuggRemoveComma>,
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
@@ -986,7 +986,10 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
 
 #[derive(Subdiagnostic)]
 #[help(parse_invalid_identifier_with_leading_number)]
-pub(crate) struct HelpIdentifierStartsWithNumber;
+pub(crate) struct HelpIdentifierStartsWithNumber {
+    #[primary_span]
+    pub num_span: Span,
+}
 
 pub(crate) struct ExpectedSemi {
     pub span: Span,
