@@ -11,29 +11,29 @@ const EXPECTED = [
         'query': 'simd<i16>, simd<i16> -> simd<i16>',
         'others': [
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_max',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci16,+LANES%3E/method.simd_max'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci16,+LANES%3E/method.simd_max'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_min',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci16,+LANES%3E/method.simd_min'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci16,+LANES%3E/method.simd_min'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_clamp',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci16,+LANES%3E/method.simd_clamp'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci16,+LANES%3E/method.simd_clamp'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_add',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdInt-for-core::simd::Simd%3Ci16,+LANES%3E/method.saturating_add'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci16,+LANES%3E/method.saturating_add'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_sub',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdInt-for-core::simd::Simd%3Ci16,+LANES%3E/method.saturating_sub'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci16,+LANES%3E/method.saturating_sub'
             },
         ],
     },
@@ -41,29 +41,29 @@ const EXPECTED = [
         'query': 'simd<i8>, simd<i8> -> simd<i8>',
         'others': [
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_max',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci8,+LANES%3E/method.simd_max'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci8,+LANES%3E/method.simd_max'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_min',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci8,+LANES%3E/method.simd_min'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci8,+LANES%3E/method.simd_min'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'simd_clamp',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdOrd-for-core::simd::Simd%3Ci8,+LANES%3E/method.simd_clamp'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci8,+LANES%3E/method.simd_clamp'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_add',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdInt-for-core::simd::Simd%3Ci8,+LANES%3E/method.saturating_add'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci8,+LANES%3E/method.saturating_add'
             },
             {
-                'path': 'std::simd::Simd',
+                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_sub',
-                'href': '../std/simd/struct.Simd.html#impl-core::simd::SimdInt-for-core::simd::Simd%3Ci8,+LANES%3E/method.saturating_sub'
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci8,+LANES%3E/method.saturating_sub'
             },
         ],
     },
