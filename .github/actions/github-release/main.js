@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
 const core = require('@actions/core');
 const path = require("path");
 const fs = require("fs");

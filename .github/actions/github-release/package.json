@@ -1,6 +1,7 @@
 {
   "name": "wasmtime-github-release",
   "version": "0.0.0",
+  "license": "Apache-2.0 WITH LLVM-exception",
   "main": "main.js",
   "dependencies": {
     "@actions/core": "^1.9.1",

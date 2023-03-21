@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 name: 'wasmtime github releases'
 description: 'wasmtime github releases'
 inputs:
