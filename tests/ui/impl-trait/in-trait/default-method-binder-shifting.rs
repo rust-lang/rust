@@ -13,4 +13,10 @@ trait Trait {
     fn method(&self) -> impl Trait<Type = impl Sized + '_>;
 }
 
+trait Trait2 {
+    type Type;
+
+    fn method(&self) -> impl Trait2<Type = impl Trait2<Type = impl Sized + '_> + '_>;
+}
+
 fn main() {}
