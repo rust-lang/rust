@@ -787,7 +787,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             start_rss.unwrap(),
             end_rss,
             tcx.sess.opts.unstable_opts.time_passes_format,
-            true,
         );
     }
 

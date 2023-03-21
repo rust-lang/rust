@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 
 impl Session {
     pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
-        self.prof.unique_verbose_generic_activity(what)
+        self.prof.verbose_generic_activity(what)
     }
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
-        self.prof.unique_verbose_generic_activity(what).run(f)
+        self.prof.verbose_generic_activity(what).run(f)
     }
 }
 

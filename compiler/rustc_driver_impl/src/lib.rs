@@ -1359,7 +1359,7 @@ pub fn main() -> ! {
 
     if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();
-        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss, format, true);
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss, format);
     }
 
     process::exit(exit_code)

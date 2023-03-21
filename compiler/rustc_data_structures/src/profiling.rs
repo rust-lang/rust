@@ -220,7 +220,7 @@ impl SelfProfilerRef {
         let message_and_format =
             self.print_verbose_generic_activities.map(|format| (event_label.to_owned(), format));
 
-        VerboseTimingGuard::start(message_and_format, self.generic_activity(event_label), false)
+        VerboseTimingGuard::start(message_and_format, self.generic_activity(event_label))
     }
 
     /// Like `verbose_generic_activity`, but with an extra arg.
@@ -239,19 +239,7 @@ impl SelfProfilerRef {
         VerboseTimingGuard::start(
             message_and_format,
             self.generic_activity_with_arg(event_label, event_arg),
-            false,
         )
-    }
-
-    /// Like `verbose_generic_activity`, but `event_label` must be unique for a rustc session.
-    pub fn unique_verbose_generic_activity(
-        &self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'_> {
-        let message_and_format =
-            self.print_verbose_generic_activities.map(|format| (event_label.to_owned(), format));
-
-        VerboseTimingGuard::start(message_and_format, self.generic_activity(event_label), true)
     }
 
     /// Start profiling a generic activity. Profiling continues until the
@@ -729,9 +717,16 @@ impl<'a> TimingGuard<'a> {
     }
 }
 
+struct VerboseInfo {
+    start_time: Instant,
+    start_rss: Option<usize>,
+    message: String,
+    format: TimePassesFormat,
+}
+
 #[must_use]
 pub struct VerboseTimingGuard<'a> {
-    start_and_message: Option<(Instant, Option<usize>, String, TimePassesFormat, bool)>,
+    info: Option<VerboseInfo>,
     _guard: TimingGuard<'a>,
 }
 
@@ -739,12 +734,14 @@ impl<'a> VerboseTimingGuard<'a> {
     pub fn start(
         message_and_format: Option<(String, TimePassesFormat)>,
         _guard: TimingGuard<'a>,
-        unique: bool,
     ) -> Self {
         VerboseTimingGuard {
             _guard,
-            start_and_message: message_and_format.map(|(msg, format)| {
-                (Instant::now(), get_resident_set_size(), msg, format, unique)
+            info: message_and_format.map(|(message, format)| VerboseInfo {
+                start_time: Instant::now(),
+                start_rss: get_resident_set_size(),
+                message,
+                format,
             }),
         }
     }
@@ -758,10 +755,10 @@ impl<'a> VerboseTimingGuard<'a> {
 
 impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
-        if let Some((start_time, start_rss, ref message, format, unique)) = self.start_and_message {
+        if let Some(info) = &self.info {
             let end_rss = get_resident_set_size();
-            let dur = start_time.elapsed();
-            print_time_passes_entry(message, dur, start_rss, end_rss, format, unique);
+            let dur = info.start_time.elapsed();
+            print_time_passes_entry(&info.message, dur, info.start_rss, end_rss, info.format);
         }
     }
 }
@@ -772,18 +769,19 @@ pub fn print_time_passes_entry(
     start_rss: Option<usize>,
     end_rss: Option<usize>,
     format: TimePassesFormat,
-    unique: bool,
 ) {
-    if format == TimePassesFormat::Json {
-        let json = json!({
-            "pass": what,
-            "time": dur.as_secs_f64(),
-            "rss_start": start_rss,
-            "rss_end": end_rss,
-            "unique": unique,
-        });
-        eprintln!("time: {}", json.to_string());
-        return;
+    match format {
+        TimePassesFormat::Json => {
+            let json = json!({
+                "pass": what,
+                "time": dur.as_secs_f64(),
+                "rss_start": start_rss,
+                "rss_end": end_rss,
+            });
+            eprintln!("time: {}", json.to_string());
+            return;
+        }
+        TimePassesFormat::Text => (),
     }
 
     // Print the pass if its duration is greater than 5 ms, or it changed the
