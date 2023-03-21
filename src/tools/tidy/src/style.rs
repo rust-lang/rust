@@ -385,10 +385,12 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if filename != "style.rs" {
                 if trimmed.contains("TODO") {
-                    err("TODO is deprecated; use FIXME")
+                    err(
+                        "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
+                    )
                 }
                 if trimmed.contains("//") && trimmed.contains(" XXX") {
-                    err("XXX is deprecated; use FIXME")
+                    err("Instead of XXX use FIXME")
                 }
                 if any_problematic_line {
                     for s in problematic_consts_strings.iter() {
