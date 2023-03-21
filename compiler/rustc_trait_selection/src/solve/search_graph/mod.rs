@@ -254,7 +254,8 @@ impl<'tcx> SearchGraph<'tcx> {
             // dependencies, our non-root goal may no longer appear as child of the root goal.
             //
             // See https://github.com/rust-lang/rust/pull/108071 for some additional context.
-            let should_cache_globally = !self.overflow_data.did_overflow() || self.stack.is_empty();
+            let should_cache_globally = matches!(self.solver_mode(), SolverMode::Normal)
+                && (!self.overflow_data.did_overflow() || self.stack.is_empty());
             if should_cache_globally {
                 tcx.new_solver_evaluation_cache.insert(
                     current_goal.goal,
