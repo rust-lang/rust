@@ -11,7 +11,7 @@ libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle", "specialization"] }
 tempfile = "3.2"
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }

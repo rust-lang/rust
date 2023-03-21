@@ -19,7 +19,7 @@ thorin-dwp = "0.4"
 pathdiff = "0.2.0"
 serde_json = "1.0.59"
 snap = "1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle", "specialization"] }
 regex = "1.4"
 
 rustc_serialize = { path = "../rustc_serialize" }

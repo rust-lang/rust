@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 indexmap = "1.9.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle", "specialization"] }
 thin-vec = "0.2.12"
 
 [dev-dependencies]
