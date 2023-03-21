@@ -353,7 +353,7 @@ fn run_compiler(
 
             {
                 let plugins = queries.register_plugins()?;
-                let (_, lint_store) = &*plugins.borrow();
+                let (.., lint_store) = &*plugins.borrow();
 
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
