@@ -28,7 +28,7 @@ use std::mem;
 use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module};
-use crate::clean::{Crate, Item, ItemId, ItemLink, PrimitiveType};
+use crate::clean::{Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
@@ -42,8 +42,7 @@ pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut collector =
-        LinkCollector { cx, mod_ids: Vec::new(), visited_links: FxHashMap::default() };
+    let mut collector = LinkCollector { cx, visited_links: FxHashMap::default() };
     collector.visit_crate(&krate);
     krate
 }
@@ -149,7 +148,7 @@ impl TryFrom<ResolveRes> for Res {
 #[derive(Debug)]
 struct UnresolvedPath<'a> {
     /// Item on which the link is resolved, used for resolving `Self`.
-    item_id: ItemId,
+    item_id: DefId,
     /// The scope the link was resolved in.
     module_id: DefId,
     /// If part of the link resolved, this has the `Res`.
@@ -225,7 +224,7 @@ impl UrlFragment {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 struct ResolutionInfo {
-    item_id: ItemId,
+    item_id: DefId,
     module_id: DefId,
     dis: Option<Disambiguator>,
     path_str: Box<str>,
@@ -242,11 +241,6 @@ struct DiagnosticInfo<'a> {
 
 struct LinkCollector<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
-    /// A stack of modules used to decide what scope to resolve in.
-    ///
-    /// The last module will be used if the parent scope of the current item is
-    /// unknown.
-    mod_ids: Vec<DefId>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
     visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
@@ -262,7 +256,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn variant_field<'path>(
         &self,
         path_str: &'path str,
-        item_id: ItemId,
+        item_id: DefId,
         module_id: DefId,
     ) -> Result<(Res, DefId), UnresolvedPath<'path>> {
         let tcx = self.cx.tcx;
@@ -333,35 +327,33 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         })
     }
 
-    fn resolve_self_ty(&self, path_str: &str, ns: Namespace, item_id: ItemId) -> Option<Res> {
+    fn resolve_self_ty(&self, path_str: &str, ns: Namespace, item_id: DefId) -> Option<Res> {
         if ns != TypeNS || path_str != "Self" {
             return None;
         }
 
         let tcx = self.cx.tcx;
-        item_id
-            .as_def_id()
-            .map(|def_id| match tcx.def_kind(def_id) {
-                def_kind @ (DefKind::AssocFn
-                | DefKind::AssocConst
-                | DefKind::AssocTy
-                | DefKind::Variant
-                | DefKind::Field) => {
-                    let parent_def_id = tcx.parent(def_id);
-                    if def_kind == DefKind::Field && tcx.def_kind(parent_def_id) == DefKind::Variant
-                    {
-                        tcx.parent(parent_def_id)
-                    } else {
-                        parent_def_id
-                    }
+        let self_id = match tcx.def_kind(item_id) {
+            def_kind @ (DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::AssocTy
+            | DefKind::Variant
+            | DefKind::Field) => {
+                let parent_def_id = tcx.parent(item_id);
+                if def_kind == DefKind::Field && tcx.def_kind(parent_def_id) == DefKind::Variant {
+                    tcx.parent(parent_def_id)
+                } else {
+                    parent_def_id
                 }
-                _ => def_id,
-            })
-            .and_then(|self_id| match tcx.def_kind(self_id) {
-                DefKind::Impl { .. } => self.def_id_to_res(self_id),
-                DefKind::Use => None,
-                def_kind => Some(Res::Def(def_kind, self_id)),
-            })
+            }
+            _ => item_id,
+        };
+
+        match tcx.def_kind(self_id) {
+            DefKind::Impl { .. } => self.def_id_to_res(self_id),
+            DefKind::Use => None,
+            def_kind => Some(Res::Def(def_kind, self_id)),
+        }
     }
 
     /// Convenience wrapper around `doc_link_resolutions`.
@@ -373,7 +365,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &self,
         path_str: &str,
         ns: Namespace,
-        item_id: ItemId,
+        item_id: DefId,
         module_id: DefId,
     ) -> Option<Res> {
         if let res @ Some(..) = self.resolve_self_ty(path_str, ns, item_id) {
@@ -400,7 +392,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &mut self,
         path_str: &'path str,
         ns: Namespace,
-        item_id: ItemId,
+        item_id: DefId,
         module_id: DefId,
     ) -> Result<(Res, Option<DefId>), UnresolvedPath<'path>> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
@@ -779,48 +771,8 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
 
 impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let parent_node =
-            item.item_id.as_def_id().and_then(|did| find_nearest_parent_module(self.cx.tcx, did));
-        if parent_node.is_some() {
-            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.item_id);
-        }
-
-        let inner_docs = item.inner_docs(self.cx.tcx);
-
-        if item.is_mod() && inner_docs {
-            self.mod_ids.push(item.item_id.expect_def_id());
-        }
-
-        // We want to resolve in the lexical scope of the documentation.
-        // In the presence of re-exports, this is not the same as the module of the item.
-        // Rather than merging all documentation into one, resolve it one attribute at a time
-        // so we know which module it came from.
-        for (parent_module, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
-                continue;
-            }
-            debug!("combined_docs={}", doc);
-            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
-            // This is a degenerate case and it's not supported by rustdoc.
-            let parent_node = parent_module.or(parent_node);
-            for md_link in preprocessed_markdown_links(&doc) {
-                let link = self.resolve_link(item, &doc, parent_node, &md_link);
-                if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
-                }
-            }
-        }
-
-        if item.is_mod() {
-            if !inner_docs {
-                self.mod_ids.push(item.item_id.expect_def_id());
-            }
-
-            self.visit_item_recur(item);
-            self.mod_ids.pop();
-        } else {
-            self.visit_item_recur(item)
-        }
+        self.resolve_links(item);
+        self.visit_item_recur(item)
     }
 }
 
@@ -946,14 +898,41 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 }
 
 impl LinkCollector<'_, '_> {
+    fn resolve_links(&mut self, item: &Item) {
+        // We want to resolve in the lexical scope of the documentation.
+        // In the presence of re-exports, this is not the same as the module of the item.
+        // Rather than merging all documentation into one, resolve it one attribute at a time
+        // so we know which module it came from.
+        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+            if !may_have_doc_links(&doc) {
+                continue;
+            }
+            debug!("combined_docs={}", doc);
+            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
+            // This is a degenerate case and it's not supported by rustdoc.
+            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
+            let module_id = match self.cx.tcx.def_kind(item_id) {
+                DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
+                _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
+            };
+            for md_link in preprocessed_markdown_links(&doc) {
+                let link = self.resolve_link(item, item_id, module_id, &doc, &md_link);
+                if let Some(link) = link {
+                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
+                }
+            }
+        }
+    }
+
     /// This is the entry point for resolving an intra-doc link.
     ///
     /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
         item: &Item,
+        item_id: DefId,
+        module_id: DefId,
         dox: &str,
-        parent_node: Option<DefId>,
         link: &PreprocessedMarkdownLink,
     ) -> Option<ItemLink> {
         let PreprocessedMarkdownLink(pp_link, ori_link) = link;
@@ -970,25 +949,9 @@ impl LinkCollector<'_, '_> {
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
 
-        // In order to correctly resolve intra-doc links we need to
-        // pick a base AST node to work from.  If the documentation for
-        // this module came from an inner comment (//!) then we anchor
-        // our name resolution *inside* the module.  If, on the other
-        // hand it was an outer comment (///) then we anchor the name
-        // resolution in the parent module on the basis that the names
-        // used are more likely to be intended to be parent names.  For
-        // this, we set base_node to None for inner comments since
-        // we've already pushed this node onto the resolution stack but
-        // for outer comments we explicitly try and resolve against the
-        // parent_node first.
-        let inner_docs = item.inner_docs(self.cx.tcx);
-        let base_node =
-            if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
-        let module_id = base_node.expect("doc link without parent module");
-
         let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
-                item_id: item.item_id,
+                item_id,
                 module_id,
                 dis: disambiguator,
                 path_str: path_str.clone(),
@@ -1229,11 +1192,11 @@ impl LinkCollector<'_, '_> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
         let item_id = key.item_id;
-        let base_node = key.module_id;
+        let module_id = key.module_id;
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns) => {
-                match self.resolve(path_str, expected_ns, item_id, base_node) {
+                match self.resolve(path_str, expected_ns, item_id, module_id) {
                     Ok(res) => Some(res),
                     Err(err) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1243,7 +1206,7 @@ impl LinkCollector<'_, '_> {
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
                             if other_ns != expected_ns {
                                 if let Ok(res) =
-                                    self.resolve(path_str, other_ns, item_id, base_node)
+                                    self.resolve(path_str, other_ns, item_id, module_id)
                                 {
                                     err = ResolutionFailure::WrongNamespace {
                                         res: full_res(self.cx.tcx, res),
@@ -1260,7 +1223,7 @@ impl LinkCollector<'_, '_> {
             None => {
                 // Try everything!
                 let mut candidate = |ns| {
-                    self.resolve(path_str, ns, item_id, base_node)
+                    self.resolve(path_str, ns, item_id, module_id)
                         .map_err(ResolutionFailure::NotResolved)
                 };
 

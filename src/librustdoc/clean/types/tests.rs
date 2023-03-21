@@ -10,7 +10,7 @@ use rustc_span::symbol::Symbol;
 fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
     vec![DocFragment {
         span: DUMMY_SP,
-        parent_module: None,
+        item_id: None,
         doc: Symbol::intern(s),
         kind: DocFragmentKind::SugaredDoc,
         indent: 0,
