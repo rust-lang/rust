@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    db::AstDatabase,
+    db::ExpandDatabase,
     hygiene::Hygiene,
     name::{known, Name},
 };
@@ -37,7 +37,11 @@ pub enum PathKind {
 }
 
 impl ModPath {
-    pub fn from_src(db: &dyn AstDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
+    pub fn from_src(
+        db: &dyn ExpandDatabase,
+        path: ast::Path,
+        hygiene: &Hygiene,
+    ) -> Option<ModPath> {
         convert_path(db, None, path, hygiene)
     }
 
@@ -162,7 +166,7 @@ impl From<Name> for ModPath {
 }
 
 fn convert_path(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     prefix: Option<ModPath>,
     path: ast::Path,
     hygiene: &Hygiene,

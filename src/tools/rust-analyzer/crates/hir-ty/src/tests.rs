@@ -23,7 +23,7 @@ use hir_def::{
     src::HasSource,
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::AstDatabase, InFile};
+use hir_expand::{db::ExpandDatabase, InFile};
 use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{

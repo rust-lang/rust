@@ -1,5 +1,5 @@
 warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/lifetime-mismatch.rs:3:12
+  --> $DIR/lifetime-mismatch.rs:5:12
    |
 LL | #![feature(async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(async_fn_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
-  --> $DIR/lifetime-mismatch.rs:12:17
+  --> $DIR/lifetime-mismatch.rs:14:17
    |
 LL |     async fn foo<'a>(&self);
    |                 ---- lifetimes in impl do not match this method in trait

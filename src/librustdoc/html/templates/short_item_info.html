@@ -2,7 +2,7 @@
     {% when Self::Deprecation with { message } %}
         <div class="stab deprecated"> {# #}
             <span class="emoji">👎</span> {# #}
-            <span>{{message}}</span> {# #}
+            <span>{{message|safe}}</span> {# #}
         </div> {# #}
     {% when Self::Unstable with { feature, tracking } %}
         <div class="stab unstable"> {# #}

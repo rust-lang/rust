@@ -205,77 +205,78 @@ if '--help' in sys.argv or '-h' in sys.argv:
 
 # Parse all command line arguments into one of these three lists, handling
 # boolean and value-based options separately
-unknown_args = []
-need_value_args = []
-known_args = {}
+def parse_args(args):
+    unknown_args = []
+    need_value_args = []
+    known_args = {}
 
-p("processing command line")
-i = 1
-while i < len(sys.argv):
-    arg = sys.argv[i]
-    i += 1
-    if not arg.startswith('--'):
-        unknown_args.append(arg)
-        continue
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        i += 1
+        if not arg.startswith('--'):
+            unknown_args.append(arg)
+            continue
 
-    found = False
-    for option in options:
-        value = None
-        if option.value:
-            keyval = arg[2:].split('=', 1)
-            key = keyval[0]
-            if option.name != key:
-                continue
+        found = False
+        for option in options:
+            value = None
+            if option.value:
+                keyval = arg[2:].split('=', 1)
+                key = keyval[0]
+                if option.name != key:
+                    continue
 
-            if len(keyval) > 1:
-                value = keyval[1]
-            elif i < len(sys.argv):
-                value = sys.argv[i]
-                i += 1
+                if len(keyval) > 1:
+                    value = keyval[1]
+                elif i < len(args):
+                    value = args[i]
+                    i += 1
+                else:
+                    need_value_args.append(arg)
+                    continue
             else:
-                need_value_args.append(arg)
-                continue
-        else:
-            if arg[2:] == 'enable-' + option.name:
-                value = True
-            elif arg[2:] == 'disable-' + option.name:
-                value = False
-            else:
-                continue
+                if arg[2:] == 'enable-' + option.name:
+                    value = True
+                elif arg[2:] == 'disable-' + option.name:
+                    value = False
+                else:
+                    continue
 
-        found = True
-        if option.name not in known_args:
-            known_args[option.name] = []
-        known_args[option.name].append((option, value))
-        break
+            found = True
+            if option.name not in known_args:
+                known_args[option.name] = []
+            known_args[option.name].append((option, value))
+            break
 
-    if not found:
-        unknown_args.append(arg)
-p("")
+        if not found:
+            unknown_args.append(arg)
 
-# Note: here and a few other places, we use [-1] to apply the *last* value
-# passed.  But if option-checking is enabled, then the known_args loop will
-# also assert that options are only passed once.
-option_checking = ('option-checking' not in known_args
-                   or known_args['option-checking'][-1][1])
-if option_checking:
-    if len(unknown_args) > 0:
-        err("Option '" + unknown_args[0] + "' is not recognized")
-    if len(need_value_args) > 0:
-        err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
+    # Note: here and a few other places, we use [-1] to apply the *last* value
+    # passed.  But if option-checking is enabled, then the known_args loop will
+    # also assert that options are only passed once.
+    option_checking = ('option-checking' not in known_args
+                    or known_args['option-checking'][-1][1])
+    if option_checking:
+        if len(unknown_args) > 0:
+            err("Option '" + unknown_args[0] + "' is not recognized")
+        if len(need_value_args) > 0:
+            err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
 
-# Parse all known arguments into a configuration structure that reflects the
-# TOML we're going to write out
-config = {}
+    config = {}
+
+    set('build.configure-args', sys.argv[1:], config)
+    apply_args(known_args, option_checking, config)
+    return parse_example_config(known_args, config)
 
 
-def build():
+def build(known_args):
     if 'build' in known_args:
         return known_args['build'][-1][1]
     return bootstrap.default_build_triple(verbose=False)
 
 
-def set(key, value):
+def set(key, value, config):
     if isinstance(value, list):
         # Remove empty values, which value.split(',') tends to generate.
         value = [v for v in value if v]
@@ -297,75 +298,76 @@ def set(key, value):
             arr = arr[part]
 
 
-for key in known_args:
-    # The `set` option is special and can be passed a bunch of times
-    if key == 'set':
-        for option, value in known_args[key]:
-            keyval = value.split('=', 1)
-            if len(keyval) == 1 or keyval[1] == "true":
-                value = True
-            elif keyval[1] == "false":
-                value = False
-            else:
-                value = keyval[1]
-            set(keyval[0], value)
-        continue
+def apply_args(known_args, option_checking, config):
+    for key in known_args:
+        # The `set` option is special and can be passed a bunch of times
+        if key == 'set':
+            for option, value in known_args[key]:
+                keyval = value.split('=', 1)
+                if len(keyval) == 1 or keyval[1] == "true":
+                    value = True
+                elif keyval[1] == "false":
+                    value = False
+                else:
+                    value = keyval[1]
+                set(keyval[0], value, config)
+            continue
 
-    # Ensure each option is only passed once
-    arr = known_args[key]
-    if option_checking and len(arr) > 1:
-        err("Option '{}' provided more than once".format(key))
-    option, value = arr[-1]
+        # Ensure each option is only passed once
+        arr = known_args[key]
+        if option_checking and len(arr) > 1:
+            err("Option '{}' provided more than once".format(key))
+        option, value = arr[-1]
 
-    # If we have a clear avenue to set our value in rustbuild, do so
-    if option.rustbuild is not None:
-        set(option.rustbuild, value)
-        continue
+        # If we have a clear avenue to set our value in rustbuild, do so
+        if option.rustbuild is not None:
+            set(option.rustbuild, value, config)
+            continue
 
-    # Otherwise we're a "special" option and need some extra handling, so do
-    # that here.
-    if option.name == 'sccache':
-        set('llvm.ccache', 'sccache')
-    elif option.name == 'local-rust':
-        for path in os.environ['PATH'].split(os.pathsep):
-            if os.path.exists(path + '/rustc'):
-                set('build.rustc', path + '/rustc')
-                break
-        for path in os.environ['PATH'].split(os.pathsep):
-            if os.path.exists(path + '/cargo'):
-                set('build.cargo', path + '/cargo')
-                break
-    elif option.name == 'local-rust-root':
-        set('build.rustc', value + '/bin/rustc')
-        set('build.cargo', value + '/bin/cargo')
-    elif option.name == 'llvm-root':
-        set('target.{}.llvm-config'.format(build()), value + '/bin/llvm-config')
-    elif option.name == 'llvm-config':
-        set('target.{}.llvm-config'.format(build()), value)
-    elif option.name == 'llvm-filecheck':
-        set('target.{}.llvm-filecheck'.format(build()), value)
-    elif option.name == 'tools':
-        set('build.tools', value.split(','))
-    elif option.name == 'codegen-backends':
-        set('rust.codegen-backends', value.split(','))
-    elif option.name == 'host':
-        set('build.host', value.split(','))
-    elif option.name == 'target':
-        set('build.target', value.split(','))
-    elif option.name == 'full-tools':
-        set('rust.codegen-backends', ['llvm'])
-        set('rust.lld', True)
-        set('rust.llvm-tools', True)
-        set('build.extended', True)
-    elif option.name == 'option-checking':
-        # this was handled above
-        pass
-    elif option.name == 'dist-compression-formats':
-        set('dist.compression-formats', value.split(','))
-    else:
-        raise RuntimeError("unhandled option {}".format(option.name))
+        # Otherwise we're a "special" option and need some extra handling, so do
+        # that here.
+        build_triple = build(known_args)
 
-set('build.configure-args', sys.argv[1:])
+        if option.name == 'sccache':
+            set('llvm.ccache', 'sccache', config)
+        elif option.name == 'local-rust':
+            for path in os.environ['PATH'].split(os.pathsep):
+                if os.path.exists(path + '/rustc'):
+                    set('build.rustc', path + '/rustc', config)
+                    break
+            for path in os.environ['PATH'].split(os.pathsep):
+                if os.path.exists(path + '/cargo'):
+                    set('build.cargo', path + '/cargo', config)
+                    break
+        elif option.name == 'local-rust-root':
+            set('build.rustc', value + '/bin/rustc', config)
+            set('build.cargo', value + '/bin/cargo', config)
+        elif option.name == 'llvm-root':
+            set('target.{}.llvm-config'.format(build_triple), value + '/bin/llvm-config', config)
+        elif option.name == 'llvm-config':
+            set('target.{}.llvm-config'.format(build_triple), value, config)
+        elif option.name == 'llvm-filecheck':
+            set('target.{}.llvm-filecheck'.format(build_triple), value, config)
+        elif option.name == 'tools':
+            set('build.tools', value.split(','), config)
+        elif option.name == 'codegen-backends':
+            set('rust.codegen-backends', value.split(','), config)
+        elif option.name == 'host':
+            set('build.host', value.split(','), config)
+        elif option.name == 'target':
+            set('build.target', value.split(','), config)
+        elif option.name == 'full-tools':
+            set('rust.codegen-backends', ['llvm'], config)
+            set('rust.lld', True, config)
+            set('rust.llvm-tools', True, config)
+            set('build.extended', True, config)
+        elif option.name == 'option-checking':
+            # this was handled above
+            pass
+        elif option.name == 'dist-compression-formats':
+            set('dist.compression-formats', value.split(','), config)
+        else:
+            raise RuntimeError("unhandled option {}".format(option.name))
 
 # "Parse" the `config.example.toml` file into the various sections, and we'll
 # use this as a template of a `config.toml` to write out which preserves
@@ -373,46 +375,50 @@ set('build.configure-args', sys.argv[1:])
 #
 # Note that the `target` section is handled separately as we'll duplicate it
 # per configured target, so there's a bit of special handling for that here.
-sections = {}
-cur_section = None
-sections[None] = []
-section_order = [None]
-targets = {}
-top_level_keys = []
+def parse_example_config(known_args, config):
+    sections = {}
+    cur_section = None
+    sections[None] = []
+    section_order = [None]
+    targets = {}
+    top_level_keys = []
 
-for line in open(rust_dir + '/config.example.toml').read().split("\n"):
-    if cur_section == None:
-        if line.count('=') == 1:
-            top_level_key = line.split('=')[0]
-            top_level_key = top_level_key.strip(' #')
-            top_level_keys.append(top_level_key)
-    if line.startswith('['):
-        cur_section = line[1:-1]
-        if cur_section.startswith('target'):
-            cur_section = 'target'
-        elif '.' in cur_section:
-            raise RuntimeError("don't know how to deal with section: {}".format(cur_section))
-        sections[cur_section] = [line]
-        section_order.append(cur_section)
-    else:
-        sections[cur_section].append(line)
+    for line in open(rust_dir + '/config.example.toml').read().split("\n"):
+        if cur_section == None:
+            if line.count('=') == 1:
+                top_level_key = line.split('=')[0]
+                top_level_key = top_level_key.strip(' #')
+                top_level_keys.append(top_level_key)
+        if line.startswith('['):
+            cur_section = line[1:-1]
+            if cur_section.startswith('target'):
+                cur_section = 'target'
+            elif '.' in cur_section:
+                raise RuntimeError("don't know how to deal with section: {}".format(cur_section))
+            sections[cur_section] = [line]
+            section_order.append(cur_section)
+        else:
+            sections[cur_section].append(line)
 
-# Fill out the `targets` array by giving all configured targets a copy of the
-# `target` section we just loaded from the example config
-configured_targets = [build()]
-if 'build' in config:
-    if 'host' in config['build']:
-        configured_targets += config['build']['host']
-    if 'target' in config['build']:
-        configured_targets += config['build']['target']
-if 'target' in config:
-    for target in config['target']:
-        configured_targets.append(target)
-for target in configured_targets:
-    targets[target] = sections['target'][:]
-    # For `.` to be valid TOML, it needs to be quoted. But `bootstrap.py` doesn't use a proper TOML parser and fails to parse the target.
-    # Avoid using quotes unless it's necessary.
-    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
+    # Fill out the `targets` array by giving all configured targets a copy of the
+    # `target` section we just loaded from the example config
+    configured_targets = [build(known_args)]
+    if 'build' in config:
+        if 'host' in config['build']:
+            configured_targets += config['build']['host']
+        if 'target' in config['build']:
+            configured_targets += config['build']['target']
+    if 'target' in config:
+        for target in config['target']:
+            configured_targets.append(target)
+    for target in configured_targets:
+        targets[target] = sections['target'][:]
+        # For `.` to be valid TOML, it needs to be quoted. But `bootstrap.py` doesn't use a proper TOML parser and fails to parse the target.
+        # Avoid using quotes unless it's necessary.
+        targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
+
+    configure_file(sections, top_level_keys, targets, config)
+    return section_order, sections, targets
 
 
 def is_number(value):
@@ -475,17 +481,20 @@ def configure_top_level_key(lines, top_level_key, value):
     raise RuntimeError("failed to find config line for {}".format(top_level_key))
 
 
-for section_key, section_config in config.items():
-    if section_key not in sections and section_key not in top_level_keys:
-        raise RuntimeError("config key {} not in sections or top_level_keys".format(section_key))
-    if section_key in top_level_keys:
-        configure_top_level_key(sections[None], section_key, section_config)
+# Modify `sections` to reflect the parsed arguments and example configs.
+def configure_file(sections, top_level_keys, targets, config):
+    for section_key, section_config in config.items():
+        if section_key not in sections and section_key not in top_level_keys:
+            raise RuntimeError("config key {} not in sections or top_level_keys".format(section_key))
+        if section_key in top_level_keys:
+            configure_top_level_key(sections[None], section_key, section_config)
 
-    elif  section_key == 'target':
-        for target in section_config:
-            configure_section(targets[target], section_config[target])
-    else:
-        configure_section(sections[section_key], section_config)
+        elif  section_key == 'target':
+            for target in section_config:
+                configure_section(targets[target], section_config[target])
+        else:
+            configure_section(sections[section_key], section_config)
+
 
 def write_uncommented(target, f):
     block = []
@@ -503,24 +512,36 @@ def write_uncommented(target, f):
         is_comment = is_comment and line.startswith('#')
     return f
 
-# Now that we've built up our `config.toml`, write it all out in the same
-# order that we read it in.
-p("")
-p("writing `config.toml` in current directory")
-with bootstrap.output('config.toml') as f:
+
+def write_config_toml(writer, section_order, targets, sections):
     for section in section_order:
         if section == 'target':
             for target in targets:
-                f = write_uncommented(targets[target], f)
+                writer = write_uncommented(targets[target], writer)
         else:
-            f = write_uncommented(sections[section], f)
+            writer = write_uncommented(sections[section], writer)
 
-with bootstrap.output('Makefile') as f:
-    contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
-    contents = open(contents).read()
-    contents = contents.replace("$(CFG_SRC_DIR)", rust_dir + '/')
-    contents = contents.replace("$(CFG_PYTHON)", sys.executable)
-    f.write(contents)
 
-p("")
-p("run `python {}/x.py --help`".format(rust_dir))
+if __name__ == "__main__":
+    p("processing command line")
+    # Parse all known arguments into a configuration structure that reflects the
+    # TOML we're going to write out
+    p("")
+    section_order, sections, targets = parse_args(sys.argv[1:])
+
+    # Now that we've built up our `config.toml`, write it all out in the same
+    # order that we read it in.
+    p("")
+    p("writing `config.toml` in current directory")
+    with bootstrap.output('config.toml') as f:
+        write_config_toml(f, section_order, targets, sections)
+
+    with bootstrap.output('Makefile') as f:
+        contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
+        contents = open(contents).read()
+        contents = contents.replace("$(CFG_SRC_DIR)", rust_dir + '/')
+        contents = contents.replace("$(CFG_PYTHON)", sys.executable)
+        f.write(contents)
+
+    p("")
+    p("run `python {}/x.py --help`".format(rust_dir))

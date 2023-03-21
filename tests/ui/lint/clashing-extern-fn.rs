@@ -122,8 +122,8 @@ mod banana {
             weight: u32,
             length: u16,
         } // note: distinct type
-          // This should not trigger the lint because two::Banana is structurally equivalent to
-          // one::Banana.
+        // This should not trigger the lint because two::Banana is structurally equivalent to
+        // one::Banana.
         extern "C" {
             fn weigh_banana(count: *const Banana) -> u64;
         }
@@ -219,6 +219,27 @@ mod transparent {
             // Should warn, because there's a signedness conversion here:
             fn transparent_incorrect() -> isize;
             //~^ WARN `transparent_incorrect` redeclared with a different signature
+        }
+    }
+}
+
+#[allow(improper_ctypes)]
+mod zst {
+    mod transparent {
+        #[repr(transparent)]
+        struct TransparentZst(());
+        extern "C" {
+            fn zst() -> ();
+            fn transparent_zst() -> TransparentZst;
+        }
+    }
+
+    mod not_transparent {
+        struct NotTransparentZst(());
+        extern "C" {
+            // These shouldn't warn since all return types are zero sized
+            fn zst() -> NotTransparentZst;
+            fn transparent_zst() -> NotTransparentZst;
         }
     }
 }
@@ -397,10 +418,14 @@ mod hidden_niche {
         use std::num::NonZeroUsize;
 
         #[repr(transparent)]
-        struct Transparent { x: NonZeroUsize }
+        struct Transparent {
+            x: NonZeroUsize,
+        }
 
         #[repr(transparent)]
-        struct TransparentNoNiche { y: UnsafeCell<NonZeroUsize> }
+        struct TransparentNoNiche {
+            y: UnsafeCell<NonZeroUsize>,
+        }
 
         extern "C" {
             fn hidden_niche_transparent() -> Option<Transparent>;

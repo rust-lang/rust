@@ -9,7 +9,7 @@ use base_db::{
     salsa, AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition,
     SourceDatabase, Upcast,
 };
-use hir_expand::{db::AstDatabase, InFile};
+use hir_expand::{db::ExpandDatabase, InFile};
 use stdx::hash::NoHashHashSet;
 use syntax::{algo, ast, AstNode};
 
@@ -23,7 +23,7 @@ use crate::{
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
     base_db::SourceDatabaseStorage,
-    hir_expand::db::AstDatabaseStorage,
+    hir_expand::db::ExpandDatabaseStorage,
     crate::db::InternDatabaseStorage,
     crate::db::DefDatabaseStorage
 )]
@@ -40,8 +40,8 @@ impl Default for TestDB {
     }
 }
 
-impl Upcast<dyn AstDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+impl Upcast<dyn ExpandDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
         &*self
     }
 }

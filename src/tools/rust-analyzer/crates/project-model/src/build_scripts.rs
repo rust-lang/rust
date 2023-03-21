@@ -429,8 +429,9 @@ impl WorkspaceBuildScripts {
             for p in rustc.packages() {
                 let package = &rustc[p];
                 if package.targets.iter().any(|&it| rustc[it].is_proc_macro) {
-                    if let Some((_, path)) =
-                        proc_macro_dylibs.iter().find(|(name, _)| *name == package.name)
+                    if let Some((_, path)) = proc_macro_dylibs
+                        .iter()
+                        .find(|(name, _)| *name.trim_start_matches("lib") == package.name)
                     {
                         bs.outputs[p].proc_macro_dylib_path = Some(path.clone());
                     }

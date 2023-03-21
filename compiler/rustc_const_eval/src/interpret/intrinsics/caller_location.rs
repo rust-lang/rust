@@ -111,7 +111,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         location
     }
 
-    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+    pub(crate) fn location_triple_for_span(&self, mut span: Span) -> (Symbol, u32, u32) {
+        // Remove `Inlined` marks as they pollute `expansion_cause`.
+        while span.is_inlined() {
+            span.remove_mark();
+        }
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (

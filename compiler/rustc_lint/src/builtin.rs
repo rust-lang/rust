@@ -2781,8 +2781,7 @@ impl ClashingExternDeclarations {
 
             // Given a transparent newtype, reach through and grab the inner
             // type unless the newtype makes the type non-null.
-            let non_transparent_ty = |ty: Ty<'tcx>| -> Ty<'tcx> {
-                let mut ty = ty;
+            let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
                 loop {
                     if let ty::Adt(def, substs) = *ty.kind() {
                         let is_transparent = def.repr().transparent();
@@ -2792,14 +2791,14 @@ impl ClashingExternDeclarations {
                             ty, is_transparent, is_non_null
                         );
                         if is_transparent && !is_non_null {
-                            debug_assert!(def.variants().len() == 1);
+                            debug_assert_eq!(def.variants().len(), 1);
                             let v = &def.variant(VariantIdx::new(0));
-                            ty = transparent_newtype_field(tcx, v)
-                                .expect(
-                                    "single-variant transparent structure with zero-sized field",
-                                )
-                                .ty(tcx, substs);
-                            continue;
+                            // continue with `ty`'s non-ZST field,
+                            // otherwise `ty` is a ZST and we can return
+                            if let Some(field) = transparent_newtype_field(tcx, v) {
+                                ty = field.ty(tcx, substs);
+                                continue;
+                            }
                         }
                     }
                     debug!("non_transparent_ty -> {:?}", ty);
@@ -2813,10 +2812,8 @@ impl ClashingExternDeclarations {
             if !seen_types.insert((a, b)) {
                 // We've encountered a cycle. There's no point going any further -- the types are
                 // structurally the same.
-                return true;
-            }
-            let tcx = cx.tcx;
-            if a == b {
+                true
+            } else if a == b {
                 // All nominally-same types are structurally same, too.
                 true
             } else {

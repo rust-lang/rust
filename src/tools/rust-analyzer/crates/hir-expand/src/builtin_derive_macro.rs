@@ -9,7 +9,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId};
+use crate::{db::ExpandDatabase, name, quote, ExpandError, ExpandResult, MacroCallId};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -21,7 +21,7 @@ macro_rules! register_builtin {
         impl BuiltinDeriveExpander {
             pub fn expand(
                 &self,
-                db: &dyn AstDatabase,
+                db: &dyn ExpandDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> ExpandResult<tt::Subtree> {
@@ -141,7 +141,7 @@ fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResu
     ExpandResult::ok(expanded)
 }
 
-fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
+fn find_builtin_crate(db: &dyn ExpandDatabase, id: MacroCallId) -> tt::TokenTree {
     // FIXME: make hygiene works for builtin derive macro
     // such that $crate can be used here.
     let cg = db.crate_graph();
@@ -158,7 +158,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
 }
 
 fn copy_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -167,7 +167,7 @@ fn copy_expand(
 }
 
 fn clone_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -176,7 +176,7 @@ fn clone_expand(
 }
 
 fn default_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -185,7 +185,7 @@ fn default_expand(
 }
 
 fn debug_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -194,7 +194,7 @@ fn debug_expand(
 }
 
 fn hash_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -202,13 +202,17 @@ fn hash_expand(
     expand_simple_derive(tt, quote! { #krate::hash::Hash })
 }
 
-fn eq_expand(db: &dyn AstDatabase, id: MacroCallId, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn eq_expand(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+    tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::cmp::Eq })
 }
 
 fn partial_eq_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -217,7 +221,7 @@ fn partial_eq_expand(
 }
 
 fn ord_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -226,7 +230,7 @@ fn ord_expand(
 }
 
 fn partial_ord_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {

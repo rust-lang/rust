@@ -29,7 +29,7 @@ use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
-use vfs::AbsPathBuf;
+use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -46,6 +46,7 @@ use crate::{
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
     state.proc_macro_clients.clear();
     state.proc_macro_changed = false;
+
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string());
     state.fetch_build_data_queue.request_op("reload workspace request".to_string());
     Ok(())
@@ -83,6 +84,15 @@ pub(crate) fn handle_analyzer_status(
             snap.workspaces.iter().map(|w| w.n_packages()).sum::<usize>(),
             snap.workspaces.len(),
             if snap.workspaces.len() == 1 { "" } else { "s" }
+        );
+
+        format_to!(
+            buf,
+            "Workspace root folders: {:?}",
+            snap.workspaces
+                .iter()
+                .flat_map(|ws| ws.workspace_definition_path())
+                .collect::<Vec<&AbsPath>>()
         );
     }
     buf.push_str("\nAnalysis:\n");

@@ -132,9 +132,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
     {
-        self.as_slice().windows(2).all(|w| {
-            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
-        })
+        self.as_slice().is_sorted_by(|a, b| compare(&a, &b))
     }
 }}
 

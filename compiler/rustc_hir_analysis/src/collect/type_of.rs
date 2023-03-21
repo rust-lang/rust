@@ -278,8 +278,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    is_suggestable_infer_ty(ty)
-                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
+                    is_suggestable_infer_ty(ty).then(|| {
+                        infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        )
+                    })
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -335,14 +338,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => {
-                    match self_ty.find_self_aliases() {
-                        spans if spans.len() > 0 => {
-                            let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
-                            tcx.ty_error(guar)
-                        },
-                        _ => icx.to_ty(*self_ty),
+                ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
+                    spans if spans.len() > 0 => {
+                        let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf {
+                            span: spans.into(),
+                            note: (),
+                        });
+                        tcx.ty_error(guar)
                     }
+                    _ => icx.to_ty(*self_ty),
                 },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -364,7 +368,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     ..
                 }) => {
                     if in_trait && !tcx.impl_defaultness(owner).has_value() {
-                        span_bug!(tcx.def_span(def_id), "tried to get type of this RPITIT with no definition");
+                        span_bug!(
+                            tcx.def_span(def_id),
+                            "tried to get type of this RPITIT with no definition"
+                        );
                     }
                     find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
@@ -453,15 +460,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
                 }
 
-                Node::TypeBinding(
-                    TypeBinding {
-                        hir_id: binding_id,
-                        kind: TypeBindingKind::Equality { term: Term::Const(e) },
-                        ident,
-                        ..
-                    },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    kind: TypeBindingKind::Equality { term: Term::Const(e) },
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
@@ -475,7 +479,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id).subst_identity()
+                        tcx.type_of(assoc_item.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -485,10 +491,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
 
-                Node::TypeBinding(
-                    TypeBinding { hir_id: binding_id, gen_args, kind, ident, .. },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    gen_args,
+                    kind,
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && let Some((idx, _)) =
                         gen_args.args.iter().enumerate().find(|(_, arg)| {
                             if let GenericArg::Const(ct) = arg {
@@ -517,15 +526,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         },
                         def_id.to_def_id(),
                     );
-                    if let Some(param)
-                        = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
+                    if let Some(assoc_item) = assoc_item
+                        && let param = &tcx.generics_of(assoc_item.def_id).params[idx]
+                        && matches!(param.kind, ty::GenericParamDefKind::Const { .. })
                     {
-                        tcx.type_of(param.def_id).subst_identity()
+                        tcx.type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
                             DUMMY_SP,
-                            "Could not find associated const on trait",
+                            "Could not find const param on associated item",
                         )
                     }
                 }

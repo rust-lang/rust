@@ -13,7 +13,7 @@ use ide_db::LineIndexDatabase;
 use ide_db::base_db::salsa::{self, ParallelDatabase};
 use ide_db::line_index::WideEncoding;
 use lsp_types::{self, lsif};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustcSource};
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use vfs::{AbsPathBuf, Vfs};
 
 use crate::cli::load_cargo::ProcMacroServerChoice;
@@ -290,7 +290,7 @@ impl flags::Lsif {
         eprintln!("Generating LSIF started...");
         let now = Instant::now();
         let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustcSource::Discover);
+        cargo_config.sysroot = Some(RustLibSource::Discover);
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,

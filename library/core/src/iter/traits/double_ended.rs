@@ -1,3 +1,4 @@
+use crate::marker::Destruct;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
@@ -37,6 +38,7 @@ use crate::ops::{ControlFlow, Try};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "DoubleEndedIterator")]
+#[const_trait]
 pub trait DoubleEndedIterator: Iterator {
     /// Removes and returns an element from the end of the iterator.
     ///
@@ -131,7 +133,10 @@ pub trait DoubleEndedIterator: Iterator {
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        Self::Item: ~const Destruct,
+    {
         for i in 0..n {
             self.next_back().ok_or(i)?;
         }
@@ -181,6 +186,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
+    #[rustc_do_not_const_check]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.advance_back_by(n).ok()?;
         self.next_back()
@@ -218,6 +224,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
+    #[rustc_do_not_const_check]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -289,6 +296,7 @@ pub trait DoubleEndedIterator: Iterator {
     #[doc(alias = "foldr")]
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
+    #[rustc_do_not_const_check]
     fn rfold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -344,6 +352,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfind", since = "1.27.0")]
+    #[rustc_do_not_const_check]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         Self: Sized,

@@ -275,7 +275,23 @@ impl<'a> InferenceContext<'a> {
                     Some(type_ref) => self.make_ty(type_ref),
                     None => self.table.new_type_var(),
                 };
-                sig_tys.push(ret_ty.clone());
+                if let ClosureKind::Async = closure_kind {
+                    // Use the first type parameter as the output type of future.
+                    // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
+                    let impl_trait_id =
+                        crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
+                    let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
+                    sig_tys.push(
+                        TyKind::OpaqueType(
+                            opaque_ty_id,
+                            Substitution::from1(Interner, ret_ty.clone()),
+                        )
+                        .intern(Interner),
+                    );
+                } else {
+                    sig_tys.push(ret_ty.clone());
+                }
+
                 let sig_ty = TyKind::Function(FnPointer {
                     num_binders: 0,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
@@ -286,33 +302,38 @@ impl<'a> InferenceContext<'a> {
                 })
                 .intern(Interner);
 
-                let (ty, resume_yield_tys) = if matches!(closure_kind, ClosureKind::Generator(_)) {
-                    // FIXME: report error when there are more than 1 parameter.
-                    let resume_ty = match sig_tys.first() {
-                        // When `sig_tys.len() == 1` the first type is the return type, not the
-                        // first parameter type.
-                        Some(ty) if sig_tys.len() > 1 => ty.clone(),
-                        _ => self.result.standard_types.unit.clone(),
-                    };
-                    let yield_ty = self.table.new_type_var();
+                let (ty, resume_yield_tys) = match closure_kind {
+                    ClosureKind::Generator(_) => {
+                        // FIXME: report error when there are more than 1 parameter.
+                        let resume_ty = match sig_tys.first() {
+                            // When `sig_tys.len() == 1` the first type is the return type, not the
+                            // first parameter type.
+                            Some(ty) if sig_tys.len() > 1 => ty.clone(),
+                            _ => self.result.standard_types.unit.clone(),
+                        };
+                        let yield_ty = self.table.new_type_var();
 
-                    let subst = TyBuilder::subst_for_generator(self.db, self.owner)
-                        .push(resume_ty.clone())
-                        .push(yield_ty.clone())
-                        .push(ret_ty.clone())
-                        .build();
+                        let subst = TyBuilder::subst_for_generator(self.db, self.owner)
+                            .push(resume_ty.clone())
+                            .push(yield_ty.clone())
+                            .push(ret_ty.clone())
+                            .build();
 
-                    let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
-                    let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
+                        let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
+                        let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
 
-                    (generator_ty, Some((resume_ty, yield_ty)))
-                } else {
-                    let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
-                    let closure_ty =
-                        TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
-                            .intern(Interner);
+                        (generator_ty, Some((resume_ty, yield_ty)))
+                    }
+                    ClosureKind::Closure | ClosureKind::Async => {
+                        let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
+                        let closure_ty = TyKind::Closure(
+                            closure_id,
+                            Substitution::from1(Interner, sig_ty.clone()),
+                        )
+                        .intern(Interner);
 
-                    (closure_ty, None)
+                        (closure_ty, None)
+                    }
                 };
 
                 // Eagerly try to relate the closure type with the expected
@@ -321,7 +342,7 @@ impl<'a> InferenceContext<'a> {
                 self.deduce_closure_type_from_expectations(tgt_expr, &ty, &sig_ty, expected);
 
                 // Now go through the argument patterns
-                for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
+                for (arg_pat, arg_ty) in args.iter().zip(&sig_tys) {
                     self.infer_top_pat(*arg_pat, &arg_ty);
                 }
 

@@ -16,7 +16,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList},
-    match_ast, AstNode, Direction, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxElementChildren, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -101,6 +101,20 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                         continue;
                     }
                     return signature_help_for_record_lit(&sema, record, token);
+                },
+                ast::RecordPat(record) => {
+                    let cursor_outside = record.record_pat_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_record_pat(&sema, record, token);
+                },
+                ast::TupleStructPat(tuple_pat) => {
+                    let cursor_outside = tuple_pat.r_paren_token().as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_tuple_struct_pat(&sema, tuple_pat, token);
                 },
                 _ => (),
             }
@@ -346,10 +360,111 @@ fn signature_help_for_record_lit(
     record: ast::RecordExpr,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let active_parameter = record
-        .record_expr_field_list()?
+    signature_help_for_record_(
+        sema,
+        record.record_expr_field_list()?.syntax().children_with_tokens(),
+        &record.path()?,
+        record
+            .record_expr_field_list()?
+            .fields()
+            .filter_map(|field| sema.resolve_record_field(&field))
+            .map(|(field, _, ty)| (field, ty)),
+        token,
+    )
+}
+
+fn signature_help_for_record_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    record: ast::RecordPat,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    signature_help_for_record_(
+        sema,
+        record.record_pat_field_list()?.syntax().children_with_tokens(),
+        &record.path()?,
+        record
+            .record_pat_field_list()?
+            .fields()
+            .filter_map(|field| sema.resolve_record_pat_field(&field)),
+        token,
+    )
+}
+
+fn signature_help_for_tuple_struct_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    pat: ast::TupleStructPat,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let rest_pat = pat.fields().find(|it| matches!(it, ast::Pat::RestPat(_)));
+    let is_left_of_rest_pat =
+        rest_pat.map_or(true, |it| token.text_range().start() < it.syntax().text_range().end());
+
+    let mut res = SignatureHelp {
+        doc: None,
+        signature: String::new(),
+        parameters: vec![],
+        active_parameter: None,
+    };
+
+    let db = sema.db;
+    let path_res = sema.resolve_path(&pat.path()?)?;
+    let fields: Vec<_> = if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+        let en = variant.parent_enum(db);
+
+        res.doc = en.docs(db).map(|it| it.into());
+        format_to!(res.signature, "enum {}::{} (", en.name(db), variant.name(db));
+        variant.fields(db)
+    } else {
+        let adt = match path_res {
+            PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
+            PathResolution::Def(ModuleDef::Adt(adt)) => adt,
+            _ => return None,
+        };
+
+        match adt {
+            hir::Adt::Struct(it) => {
+                res.doc = it.docs(db).map(|it| it.into());
+                format_to!(res.signature, "struct {} (", it.name(db));
+                it.fields(db)
+            }
+            _ => return None,
+        }
+    };
+    let commas = pat
         .syntax()
         .children_with_tokens()
+        .filter_map(syntax::NodeOrToken::into_token)
+        .filter(|t| t.kind() == syntax::T![,]);
+    res.active_parameter = Some(if is_left_of_rest_pat {
+        commas.take_while(|t| t.text_range().start() <= token.text_range().start()).count()
+    } else {
+        let n_commas = commas
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .take_while(|t| t.text_range().start() > token.text_range().start())
+            .count();
+        fields.len().saturating_sub(1).saturating_sub(n_commas)
+    });
+
+    let mut buf = String::new();
+    for ty in fields.into_iter().map(|it| it.ty(db)) {
+        format_to!(buf, "{}", ty.display_truncated(db, Some(20)));
+        res.push_call_param(&buf);
+        buf.clear();
+    }
+    res.signature.push_str(")");
+    Some(res)
+}
+
+fn signature_help_for_record_(
+    sema: &Semantics<'_, RootDatabase>,
+    field_list_children: SyntaxElementChildren,
+    path: &ast::Path,
+    fields2: impl Iterator<Item = (hir::Field, hir::Type)>,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let active_parameter = field_list_children
         .filter_map(syntax::NodeOrToken::into_token)
         .filter(|t| t.kind() == syntax::T![,])
         .take_while(|t| t.text_range().start() <= token.text_range().start())
@@ -365,7 +480,7 @@ fn signature_help_for_record_lit(
     let fields;
 
     let db = sema.db;
-    let path_res = sema.resolve_path(&record.path()?)?;
+    let path_res = sema.resolve_path(path)?;
     if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
         fields = variant.fields(db);
         let en = variant.parent_enum(db);
@@ -397,8 +512,7 @@ fn signature_help_for_record_lit(
     let mut fields =
         fields.into_iter().map(|field| (field.name(db), Some(field))).collect::<FxIndexMap<_, _>>();
     let mut buf = String::new();
-    for field in record.record_expr_field_list()?.fields() {
-        let Some((field, _, ty)) = sema.resolve_record_field(&field) else { continue };
+    for (field, ty) in fields2 {
         let name = field.name(db);
         format_to!(buf, "{name}: {}", ty.display_truncated(db, Some(20)));
         res.push_record_field(&buf);
@@ -439,6 +553,7 @@ mod tests {
         (database, FilePosition { file_id, offset })
     }
 
+    #[track_caller]
     fn check(ra_fixture: &str, expect: Expect) {
         let fixture = format!(
             r#"
@@ -886,6 +1001,119 @@ fn main() {
                 ------
                 struct S(u32, i32)
                          ---  ^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn tuple_struct_pat() {
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32);
+fn main() {
+    let S(0, $0);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32)
+                          ---  ^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn tuple_struct_pat_rest() {
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16);
+fn main() {
+    let S(0, .., $0);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16)
+                          ---  ---  ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16, u8);
+fn main() {
+    let S(0, .., $0, 0);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16, u8)
+                          ---  ---  ---  ^^^  --
+            "#]],
+        );
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16);
+fn main() {
+    let S($0, .., 1);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16)
+                          ^^^  ---  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16, u8);
+fn main() {
+    let S(1, .., 1, $0, 2);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16, u8)
+                          ---  ---  ---  ^^^  --
+            "#]],
+        );
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16);
+fn main() {
+    let S(1, $0.., 1);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16)
+                          ---  ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+/// A cool tuple struct
+struct S(u32, i32, f32, u16);
+fn main() {
+    let S(1, ..$0, 1);
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct S (u32, i32, f32, u16)
+                          ---  ^^^  ---  ---
             "#]],
         );
     }
@@ -1546,6 +1774,29 @@ impl S {
             expect![[r#"
                 struct S { t: u8 }
                            ^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_pat() {
+        check(
+            r#"
+struct Strukt<T, U = ()> {
+    t: T,
+    u: U,
+    unit: (),
+}
+fn f() {
+    let Strukt {
+        u: 0,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { u: i32, t: T, unit: () }
+                                ------  ^^^^  --------
             "#]],
         );
     }

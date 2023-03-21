@@ -118,7 +118,7 @@ bitflags::bitflags! {
 #[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
-    pub name: Option<Symbol>,
+    pub name: Symbol,
     pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub verbatim: bool,

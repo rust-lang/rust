@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    db::{AstDatabase, HirDatabase},
+    db::{ExpandDatabase, HirDatabase},
     known, AssocItem, HirDisplay, InFile, Type,
 };
 use ide_db::{

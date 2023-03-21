@@ -7,7 +7,7 @@ use std::{
 };
 
 use hir::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
     AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::{
@@ -24,7 +24,7 @@ use ide_db::base_db::{
 use itertools::Itertools;
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustcSource};
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
@@ -57,7 +57,7 @@ impl flags::AnalysisStats {
         let mut cargo_config = CargoConfig::default();
         cargo_config.sysroot = match self.no_sysroot {
             true => None,
-            false => Some(RustcSource::Discover),
+            false => Some(RustLibSource::Discover),
         };
         let no_progress = &|_| ();
 

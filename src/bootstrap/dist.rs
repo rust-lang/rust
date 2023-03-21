@@ -210,6 +210,8 @@ fn make_win_dist(
         rustc_dlls.push("libgcc_s_seh-1.dll");
     }
 
+    // Libraries necessary to link the windows-gnu toolchains.
+    // System libraries will be preferred if they are available (see #67429).
     let target_libs = [
         //MinGW libs
         "libgcc.a",
@@ -223,6 +225,7 @@ fn make_win_dist(
         "libmoldname.a",
         "libpthread.a",
         //Windows import libs
+        //This should contain only the set of libraries necessary to link the standard library.
         "libadvapi32.a",
         "libbcrypt.a",
         "libcomctl32.a",
@@ -236,6 +239,7 @@ fn make_win_dist(
         "libkernel32.a",
         "libmsimg32.a",
         "libmsvcrt.a",
+        "libntdll.a",
         "libodbc32.a",
         "libole32.a",
         "liboleaut32.a",

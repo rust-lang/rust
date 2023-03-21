@@ -1480,7 +1480,7 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
                 debug!("path={:?}", path);
                 // modified from `resolved_path()` to work with `DefPathData`
                 let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = anchor(vis_did, last_name, cx).to_string();
+                let anchor = anchor(vis_did, last_name, cx);
 
                 let mut s = "pub(in ".to_owned();
                 for seg in &path.data[..path.data.len() - 1] {
