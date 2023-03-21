@@ -333,7 +333,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
             // FIXME: Technically this folder could be fallible?
             let nested = self
                 .ecx
-                .eq(self.param_env, alias_ty, proj.projection_ty)
+                .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
                 .expect("expected to be able to unify goal projection with dyn's projection");
             // FIXME: Technically we could register these too..
             assert!(nested.is_empty(), "did not expect unification to have any nested goals");
