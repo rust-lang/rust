@@ -445,66 +445,102 @@ still valid. Load up an older issue, double check that it's still true, and
 leave a comment letting us know if it is or is not. The [least recently
 updated sort][lru] is good for finding issues like this.
 
+If you're looking for somewhere to start, check out the [E-easy] tag.
+
 [Thanks to `@rustbot`][rustbot], anyone can help triage issues by adding
 appropriate labels to issues that haven't been triaged yet:
 
-* Yellow, **A**-prefixed labels state which **area** of the project an issue
-  relates to.
-
-* Magenta, **B**-prefixed labels identify bugs which are **blockers**.
-
-* Dark blue, **beta-** labels track changes which need to be backported into
-  the beta branches.
-
-* Light purple, **C**-prefixed labels represent the **category** of an issue.
-
-* Green, **E**-prefixed labels explain the level of **experience** necessary
-  to fix the issue.
-
-* The dark blue **final-comment-period** label marks bugs that are using the
-  RFC signoff functionality of [rfcbot] and are currently in the final
-  comment period.
-
-* Red, **I**-prefixed labels indicate the **importance** of the issue. The
-  [I-nominated][inom] label indicates that an issue has been nominated for
-  discussion at the next meeting of the team tagged using a
-  **T**-prefixed label. Similarly, the [I-prioritize][ipri] indicates
-  that an issue has been requested to be prioritized by the appropriate
-  team.
-
-* The purple **metabug** label marks lists of bugs collected by other
-  categories.
-
-* Purple gray, **O**-prefixed labels are the **operating system** or platform
-  that this issue is specific to.
-
-* Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
-  can be assigned by anyone that understand the issue and is able to
-  prioritize it, and replace the [I-prioritize][ipri] label.
-
-* The gray **proposed-final-comment-period** label marks bugs that are using
-  the RFC signoff functionality of [rfcbot] and are currently awaiting
-  signoff of all team members in order to enter the final comment period.
-
-* Pink, **regression**-prefixed labels track regressions from stable to the
-  release channels.
-
-* The light orange **relnotes** label marks issues that should be documented in
-  the release notes of the next release.
-
-* Gray, **S**-prefixed labels are used for tracking the **status** of pull
-  requests.
-
-* Blue, **T**-prefixed bugs denote which **team** the issue belongs to.
-
-If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
-
-[rustbot]: ./rustbot.md
-[inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
-[ipri]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-prioritize
-[eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
+[E-easy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
+[rustbot]: ./rustbot.md
+
+<style>
+.label-color {
+    border-radius:0.5em;
+}
+table td:nth-child(2) {
+    white-space: nowrap;
+}
+
+</style>
+
+| Labels | Color | Description |
+|--------|-------|-------------|
+| [A-]   | <span class="label-color" style="background-color:#f7e101;">&#x2003;</span>&nbsp;Yellow | The **area** of the project an issue relates to. |
+| [B-]   | <span class="label-color" style="background-color:#d304cb;">&#x2003;</span>&nbsp;Magenta | Issues which are **blockers**. |
+| [beta-] | <span class="label-color" style="background-color:#1e76d9;">&#x2003;</span>&nbsp;Dark Blue | Tracks changes which need to be [backported to beta][beta-backport] |
+| [C-] | <span class="label-color" style="background-color:#f5f1fd;">&#x2003;</span>&nbsp;Light Purple | The **category** of an issue. |
+| [D-] | <span class="label-color" style="background-color:#c9f7a3;">&#x2003;</span>&nbsp;Mossy Green | Issues for **diagnostics**. |
+| [E-] | <span class="label-color" style="background-color:#02e10c;">&#x2003;</span>&nbsp;Green | The **experience** level necessary to fix an issue. |
+| [F-] | <span class="label-color" style="background-color:#f9c0cc;">&#x2003;</span>&nbsp;Peach | Issues for **nightly features**. |
+| [I-] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The **importance** of the issue. |
+| [I-\*-nominated] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for discussion at the next meeting of the corresponding team. |
+| [I-prioritize] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for prioritization by the team tagged with a **T**-prefixed label. |
+| [metabug] | <span class="label-color" style="background-color:#5319e7;">&#x2003;</span>&nbsp;Purple | Bugs that collect other bugs. |
+| [O-] | <span class="label-color" style="background-color:#6e6ec0;">&#x2003;</span>&nbsp;Purple Grey | The **operating system** or platform that the issue is specific to. |
+| [P-] | <span class="label-color" style="background-color:#eb6420;">&#x2003;</span>&nbsp;Orange | The issue **priority**.  These labels can be assigned by anyone that understand the issue and is able to  prioritize it, and remove the [I-prioritize] label. |
+| [regression-] | <span class="label-color" style="background-color:#e4008a;">&#x2003;</span>&nbsp;Pink | Tracks regressions from a stable release. |
+| [relnotes] | <span class="label-color" style="background-color:#fad8c7;">&#x2003;</span>&nbsp;Light Orange | Changes that should be documented in the release notes of the next release. |
+| [S-] | <span class="label-color" style="background-color:#d3dddd;">&#x2003;</span>&nbsp;Gray | Tracks the **status** of pull requests. |
+| [S-tracking-] | <span class="label-color" style="background-color:#4682b4;">&#x2003;</span>&nbsp;Steel Blue | Tracks the **status** of [tracking issues]. |
+| [stable-] | <span class="label-color" style="background-color:#00229c;">&#x2003;</span>&nbsp;Dark Blue | Tracks changes which need to be [backported to stable][stable-backport] in anticipation of a point release. |
+| [T-] | <span class="label-color" style="background-color:#bfd4f2;">&#x2003;</span>&nbsp;Blue | Denotes which **team** the issue belongs to. |
+| [WG-] | <span class="label-color" style="background-color:#c2e0c6;">&#x2003;</span>&nbsp;Green | Denotes which **working group** the issue belongs to. |
+
+
+[A-]: https://github.com/rust-lang/rust/labels?q=A
+[B-]: https://github.com/rust-lang/rust/labels?q=B
+[C-]: https://github.com/rust-lang/rust/labels?q=C
+[D-]: https://github.com/rust-lang/rust/labels?q=D
+[E-]: https://github.com/rust-lang/rust/labels?q=E
+[F-]: https://github.com/rust-lang/rust/labels?q=F
+[I-]: https://github.com/rust-lang/rust/labels?q=I
+[O-]: https://github.com/rust-lang/rust/labels?q=O
+[P-]: https://github.com/rust-lang/rust/labels?q=P
+[S-]: https://github.com/rust-lang/rust/labels?q=S
+[T-]: https://github.com/rust-lang/rust/labels?q=T
+[WG-]: https://github.com/rust-lang/rust/labels?q=WG
+[stable-]: https://github.com/rust-lang/rust/labels?q=stable
+[beta-]: https://github.com/rust-lang/rust/labels?q=beta
+[I-\*-nominated]: https://github.com/rust-lang/rust/labels?q=nominated
+[I-prioritize]: https://github.com/rust-lang/rust/labels/I-prioritize
+[tracking issues]: https://github.com/rust-lang/rust/labels/C-tracking-issue
+[beta-backport]: https://forge.rust-lang.org/release/backporting.html#beta-backporting-in-rust-langrust
+[stable-backport]: https://forge.rust-lang.org/release/backporting.html#stable-backporting-in-rust-langrust
+[metabug]: https://github.com/rust-lang/rust/labels/metabug
+[regression-]: https://github.com/rust-lang/rust/labels?q=regression
+[relnotes]: https://github.com/rust-lang/rust/labels/relnotes
+[S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
+
+### Rfcbot labels
+
+[rfcbot] uses its own labels for tracking the process of coordinating
+asynchronous decisions, such as approving or rejecting a change.
+This is used for [RFCs], issues, and pull requests.
+
+| Labels | Color | Description |
+|--------|-------|-------------|
+| [proposed-final-comment-period] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Currently awaiting signoff of all team members in order to enter the final comment period. |
+| [disposition-merge] | <span class="label-color" style="background-color:#008800;">&#x2003;</span>&nbsp;Green | Indicates the intent is to merge the change. |
+| [disposition-close] | <span class="label-color" style="background-color:#dd0000;">&#x2003;</span>&nbsp;Red | Indicates the intent is to not accept the change and close it. |
+| [disposition-postpone] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Indicates the intent is to not accept the change at this time and postpone it to a later date. |
+| [final-comment-period] | <span class="label-color" style="background-color:#1e76d9;">&#x2003;</span>&nbsp;Blue | Currently soliciting final comments before merging or closing. |
+| [finished-final-comment-period] | <span class="label-color" style="background-color:#f9e189;">&#x2003;</span>&nbsp;Light Yellow | The final comment period has concluded, and the issue will be merged or closed. |
+| [postponed] | <span class="label-color" style="background-color:#fbca04;">&#x2003;</span>&nbsp;Yellow | The issue has been postponed. |
+| [closed] | <span class="label-color" style="background-color:#dd0000;">&#x2003;</span>&nbsp;Red | The issue has been rejected. |
+| [to-announce] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Issues that have finished their final-comment-period and should be publicly announced. Note: the rust-lang/rust repository uses this label differently, to announce issues at the triage meetings. |
+
+[disposition-merge]: https://github.com/rust-lang/rust/labels/disposition-merge
+[disposition-close]: https://github.com/rust-lang/rust/labels/disposition-close
+[disposition-postpone]: https://github.com/rust-lang/rust/labels/disposition-postpone
+[proposed-final-comment-period]: https://github.com/rust-lang/rust/labels/proposed-final-comment-period
+[final-comment-period]: https://github.com/rust-lang/rust/labels/final-comment-period
+[finished-final-comment-period]: https://github.com/rust-lang/rust/labels/finished-final-comment-period
+[postponed]: https://github.com/rust-lang/rfcs/labels/postponed
+[closed]: https://github.com/rust-lang/rfcs/labels/closed
+[to-announce]: https://github.com/rust-lang/rfcs/labels/to-announce
 [rfcbot]: https://github.com/anp/rfcbot-rs/
+[RFCs]: https://github.com/rust-lang/rfcs
 
 ## Out-of-tree Contributions
 
