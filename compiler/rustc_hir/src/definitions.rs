@@ -281,7 +281,7 @@ pub enum DefPathData {
     /// An `impl Trait` type node.
     ImplTrait,
     /// `impl Trait` generated associated type node.
-    ImplTraitAssocTy,
+    ImplTraitAssocTy(Symbol),
 }
 
 impl Definitions {
@@ -402,11 +402,11 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
-
-            // We use this name when collecting `ModChild`s.
-            // FIXME this could probably be removed with some refactoring to the name resolver.
-            ImplTraitAssocTy => Some(kw::Empty),
+            TypeNs(name)
+            | ValueNs(name)
+            | MacroNs(name)
+            | LifetimeNs(name)
+            | ImplTraitAssocTy(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
             | ImplTrait => None,
@@ -416,9 +416,11 @@ impl DefPathData {
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            TypeNs(name)
+            | ValueNs(name)
+            | MacroNs(name)
+            | LifetimeNs(name)
+            | ImplTraitAssocTy(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
@@ -428,7 +430,7 @@ impl DefPathData {
             ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            ImplTrait | ImplTraitAssocTy => DefPathDataName::Anon { namespace: sym::opaque },
+            ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
 }

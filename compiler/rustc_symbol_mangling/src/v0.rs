@@ -792,7 +792,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             | DefPathData::Use
             | DefPathData::GlobalAsm
             | DefPathData::Impl
-            | DefPathData::ImplTraitAssocTy
+            | DefPathData::ImplTraitAssocTy(_)
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

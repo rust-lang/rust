@@ -5,7 +5,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, TyCtxt};
-use rustc_span::symbol::kw;
+use rustc_span::Symbol;
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
@@ -266,7 +266,8 @@ fn associated_type_for_impl_trait_in_trait(
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
     let span = tcx.def_span(opaque_ty_def_id);
-    let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, DefPathData::ImplTraitAssocTy);
+    let name = name_for_impl_trait_in_trait(tcx, opaque_ty_def_id, trait_def_id);
+    let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, DefPathData::ImplTraitAssocTy(name));
 
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
@@ -281,7 +282,7 @@ fn associated_type_for_impl_trait_in_trait(
     trait_assoc_ty.def_ident_span(Some(span));
 
     trait_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
+        name,
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: None,
@@ -351,6 +352,24 @@ fn associated_type_for_impl_trait_in_trait(
     local_def_id
 }
 
+/// Create a stable path name for an associated type for an impl trait in trait
+/// by appending the opaque type's path segments starting from the function name.
+fn name_for_impl_trait_in_trait(
+    tcx: TyCtxt<'_>,
+    opaque_ty_def_id: LocalDefId,
+    trait_def_id: LocalDefId,
+) -> Symbol {
+    let mut name = vec![];
+    let mut def_id = opaque_ty_def_id;
+    while def_id != trait_def_id {
+        name.push(tcx.def_key(def_id.to_def_id()).disambiguated_data.to_string());
+        def_id = tcx.local_parent(def_id);
+    }
+    name.reverse();
+    let name = Symbol::intern(&name.join("::"));
+    name
+}
+
 /// Given an `trait_assoc_def_id` corresponding to an associated item synthesized
 /// from an `impl Trait` in an associated function from a trait, and an
 /// `impl_fn_def_id` that represents an implementation of the associated function
@@ -364,9 +383,11 @@ fn associated_type_for_impl_trait_in_impl(
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
     let impl_def_id = impl_local_def_id.to_def_id();
 
+    let name = tcx.item_name(trait_assoc_def_id);
     // FIXME fix the span, we probably want the def_id of the return type of the function
     let span = tcx.def_span(impl_fn_def_id);
-    let impl_assoc_ty = tcx.at(span).create_def(impl_local_def_id, DefPathData::ImplTraitAssocTy);
+    let impl_assoc_ty =
+        tcx.at(span).create_def(impl_local_def_id, DefPathData::ImplTraitAssocTy(name));
 
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
@@ -381,7 +402,7 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.def_ident_span(Some(span));
 
     impl_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
+        name,
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
