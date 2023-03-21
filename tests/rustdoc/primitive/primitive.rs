@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @has foo/index.html '//h2[@id="primitives"]' 'Primitive Types'
 // @has foo/index.html '//a[@href="primitive.i32.html"]' 'i32'
@@ -11,11 +11,11 @@
 // @has foo/primitive.i32.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 // @has foo/index.html '//a/@href' '../foo/index.html'
 // @!has foo/index.html '//span' '🔒'
-#[doc(primitive = "i32")]
+#[rustc_doc_primitive = "i32"]
 /// this is a test!
 mod i32{}
 
 // @has foo/primitive.bool.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
-#[doc(primitive = "bool")]
+#[rustc_doc_primitive = "bool"]
 /// hello
 mod bool {}

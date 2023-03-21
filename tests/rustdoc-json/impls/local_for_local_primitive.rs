@@ -1,5 +1,5 @@
 #![feature(no_core)]
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 #![no_core]
 
 // @set Local = "$.index[*][?(@.name=='Local')].id"
@@ -16,6 +16,6 @@ impl Local for bool {}
 
 // FIXME(#101695): Test bool's `impls` include "Local for bool"
 // @has "$.index[*][?(@.name=='bool')]"
-#[doc(primitive = "bool")]
+#[rustc_doc_primitive = "bool"]
 /// Boolean docs
 mod prim_bool {}
