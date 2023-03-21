@@ -712,7 +712,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // return Equal for two identical projections
+                self.tcx.sess.delay_span_bug(
+                    closure_span,
+                    &format!(
+                        "two identical projections: ({:?}, {:?})",
+                        capture1.place.projections, capture2.place.projections
+                    ),
+                );
                 std::cmp::Ordering::Equal
             });
         }
