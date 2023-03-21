@@ -6,6 +6,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 
 pub struct LowerIntrinsics;
 
@@ -186,6 +187,35 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 kind: StatementKind::Assign(Box::new((
                                     *destination,
                                     Rvalue::Discriminant(arg),
+                                ))),
+                            });
+                            terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
+                    sym::option_payload_ptr => {
+                        if let (Some(target), Some(arg)) = (*target, args[0].place()) {
+                            let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
+                                destination.ty(local_decls, tcx).ty.kind()
+                            else { bug!(); };
+
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    *destination,
+                                    Rvalue::AddressOf(
+                                        Mutability::Not,
+                                        arg.project_deeper(
+                                            &[
+                                                PlaceElem::Deref,
+                                                PlaceElem::Downcast(
+                                                    Some(sym::Some),
+                                                    VariantIdx::from_u32(1),
+                                                ),
+                                                PlaceElem::Field(Field::from_u32(0), *dest_ty),
+                                            ],
+                                            tcx,
+                                        ),
+                                    ),
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
