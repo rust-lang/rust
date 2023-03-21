@@ -64,7 +64,7 @@ impl Certainty {
             (Certainty::Yes, Certainty::Maybe(_)) => other,
             (Certainty::Maybe(_), Certainty::Yes) => self,
             (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Ambiguity)) => {
-                Certainty::Maybe(MaybeCause::Overflow)
+                Certainty::Maybe(MaybeCause::Ambiguity)
             }
             (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Overflow))
             | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Ambiguity))
