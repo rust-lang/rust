@@ -5,7 +5,17 @@
 
 extern crate rpitit;
 
+use std::sync::Arc;
+
+// Implement an RPITIT from another crate.
+struct Local;
+impl rpitit::Foo for Local {
+    fn bar() -> Arc<String> { Arc::new(String::new()) }
+}
+
 fn main() {
-    // Witness an RPITIT from another crate
-    let () = <rpitit::Foreign as rpitit::Foo>::bar();
+    // Witness an RPITIT from another crate.
+    let &() = <rpitit::Foreign as rpitit::Foo>::bar();
+
+    let x: Arc<String> = <Local as rpitit::Foo>::bar();
 }
