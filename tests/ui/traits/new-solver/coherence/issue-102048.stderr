@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait<for<'a> fn(<_ as WithAssoc1<'a>>::Assoc, <_ as WithAssoc2<'a>>::Assoc)>` for type `(_, _)`
+  --> $DIR/issue-102048.rs:39:1
+   |
+LL | impl<T, U> Trait<for<'a> fn(<T as WithAssoc1<'a>>::Assoc, <U as WithAssoc2<'a>>::Assoc)> for (T, U)
+   | --------------------------------------------------------------------------------------------------- first implementation here
+...
+LL | impl<T, U> Trait<for<'a> fn(<U as WithAssoc1<'a>>::Assoc, u32)> for (T, U) where
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(_, _)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

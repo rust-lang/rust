@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `OtherTrait` for type `()`
-  --> $DIR/coherence-conflict.rs:11:1
+  --> $DIR/coherence-conflict.rs:12:1
    |
 LL | impl OtherTrait for () {}
    | ---------------------- first implementation here

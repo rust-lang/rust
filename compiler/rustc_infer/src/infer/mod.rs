@@ -585,8 +585,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
-    pub fn intercrate(mut self) -> Self {
-        self.intercrate = true;
+    pub fn intercrate(mut self, intercrate: bool) -> Self {
+        self.intercrate = intercrate;
         self
     }
 

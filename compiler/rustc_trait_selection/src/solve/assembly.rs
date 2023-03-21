@@ -2,7 +2,8 @@
 
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
-use super::EvalCtxt;
+use super::{EvalCtxt, SolverMode};
+use crate::traits::coherence;
 use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -86,6 +87,8 @@ pub(super) enum CandidateSource {
 /// Methods used to assemble candidates for either trait or projection goals.
 pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
+
+    fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx>;
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self;
 
@@ -244,15 +247,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         self.assemble_object_bound_candidates(goal, &mut candidates);
 
+        self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
+
         candidates
     }
 
     /// If the self type of a goal is a projection, computing the relevant candidates is difficult.
     ///
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
-    /// self type to the list of candidates in case that succeeds. Note that we can't just eagerly return in
-    /// this case as projections as self types add
-    // FIXME complete the unfinished sentence above
+    /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
+    /// projection as a self type as well
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -468,14 +472,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        match self.solver_mode() {
+            SolverMode::Normal => return,
+            SolverMode::Coherence => {
+                let trait_ref = goal.predicate.trait_ref(self.tcx());
+                match coherence::trait_ref_is_knowable(self.tcx(), trait_ref) {
+                    Ok(()) => {}
+                    Err(_) => match self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    {
+                        Ok(result) => candidates
+                            .push(Candidate { source: CandidateSource::BuiltinImpl, result }),
+                        // FIXME: This will be reachable at some point if we're in
+                        // `assemble_candidates_after_normalizing_self_ty` and we get a
+                        // universe error. We'll deal with it at this point.
+                        Err(NoSolution) => bug!("coherence candidate resulted in NoSolution"),
+                    },
+                }
+            }
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn merge_candidates_and_discard_reservation_impls(
+    pub(super) fn merge_candidates(
         &mut self,
         mut candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
         match candidates.len() {
             0 => return Err(NoSolution),
-            1 => return Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result),
+            1 => return Ok(candidates.pop().unwrap().result),
             _ => {}
         }
 
@@ -483,10 +513,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             let mut i = 0;
             'outer: while i < candidates.len() {
                 for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.trait_candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                    ) {
+                    if self.candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
+                    {
                         debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
                         candidates.swap_remove(i);
                         continue 'outer;
@@ -511,11 +539,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        // FIXME: What if there are >1 candidates left with the same response, and one is a reservation impl?
-        Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
+        Ok(candidates.pop().unwrap().result)
     }
 
-    fn trait_candidate_should_be_dropped_in_favor_of(
+    fn candidate_should_be_dropped_in_favor_of(
         &self,
         candidate: &Candidate<'tcx>,
         other: &Candidate<'tcx>,
@@ -527,21 +554,5 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | (CandidateSource::AliasBound, _)
             | (CandidateSource::BuiltinImpl, _) => false,
         }
-    }
-
-    fn discard_reservation_impl(&mut self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
-        if let CandidateSource::Impl(def_id) = candidate.source {
-            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
-                debug!("Selected reservation impl");
-                // We assemble all candidates inside of a probe so by
-                // making a new canonical response here our result will
-                // have no constraints.
-                candidate.result = self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .unwrap();
-            }
-        }
-
-        candidate
     }
 }
