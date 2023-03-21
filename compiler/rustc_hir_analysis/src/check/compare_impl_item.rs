@@ -583,13 +583,13 @@ fn compare_asyncness<'tcx>(
 #[instrument(skip(tcx), level = "debug", ret)]
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    impl_m_def_id: LocalDefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(def_id).unwrap();
+    let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(impl_m_def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during substitution later.
@@ -599,7 +599,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let trait_to_impl_substs = impl_trait_ref.substs;
 
-    let impl_m_def_id = impl_m.def_id.expect_local();
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m_def_id);
     let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
     let cause = ObligationCause::new(

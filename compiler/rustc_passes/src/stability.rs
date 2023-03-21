@@ -691,14 +691,10 @@ pub(crate) fn provide(providers: &mut Providers) {
         check_mod_unstable_api_usage,
         stability_index,
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
-        lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
-        lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
-        lookup_default_body_stability: |tcx, id| {
-            tcx.stability().local_default_body_stability(id.expect_local())
-        },
-        lookup_deprecation_entry: |tcx, id| {
-            tcx.stability().local_deprecation_entry(id.expect_local())
-        },
+        lookup_stability: |tcx, id| tcx.stability().local_stability(id),
+        lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id),
+        lookup_default_body_stability: |tcx, id| tcx.stability().local_default_body_stability(id),
+        lookup_deprecation_entry: |tcx, id| tcx.stability().local_deprecation_entry(id),
         ..*providers
     };
 }

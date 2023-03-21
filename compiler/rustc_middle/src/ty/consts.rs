@@ -4,7 +4,7 @@ use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use std::fmt;
 
@@ -83,7 +83,7 @@ impl<'tcx> Const<'tcx> {
             None => tcx.mk_const(
                 ty::UnevaluatedConst {
                     def: def.to_global(),
-                    substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                    substs: InternalSubsts::identity_for_item(tcx, def.did),
                 },
                 ty,
             ),
@@ -265,8 +265,8 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-pub fn const_param_default(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Const<'_>> {
-    let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
+pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Const<'_>> {
+    let default_def_id = match tcx.hir().get_by_def_id(def_id) {
         hir::Node::GenericParam(hir::GenericParam {
             kind: hir::GenericParamKind::Const { default: Some(ac), .. },
             ..

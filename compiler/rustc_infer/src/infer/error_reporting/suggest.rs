@@ -356,7 +356,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
-                    || ty::util::is_intrinsic(self.tcx, *did)
+                    || self.tcx.is_intrinsic(*did)
                 {
                     return;
                 }
@@ -400,8 +400,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !found_sig.is_suggestable(self.tcx, true)
                     || !expected_sig.is_suggestable(self.tcx, true)
-                    || ty::util::is_intrinsic(self.tcx, *did1)
-                    || ty::util::is_intrinsic(self.tcx, *did2)
+                    || self.tcx.is_intrinsic(*did1)
+                    || self.tcx.is_intrinsic(*did2)
                 {
                     return;
                 }

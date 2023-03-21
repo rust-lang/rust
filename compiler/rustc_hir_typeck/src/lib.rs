@@ -207,7 +207,7 @@ fn typeck_with_fallback<'tcx>(
     let body = tcx.hir().body(body_id);
 
     let param_env = tcx.param_env(def_id);
-    let param_env = if tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
+    let param_env = if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
         param_env.without_const()
     } else {
         param_env

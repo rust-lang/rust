@@ -1385,7 +1385,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
         debug!(?id_substs);
 
         // This zip may have several times the same lifetime in `substs` paired with a different
@@ -2027,7 +2027,6 @@ impl<'tcx> FieldDef {
     }
 }
 
-pub type Attributes<'tcx> = impl Iterator<Item = &'tcx ast::Attribute>;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
@@ -2375,7 +2374,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Gets all attributes with the given name.
-    pub fn get_attrs(self, did: DefId, attr: Symbol) -> ty::Attributes<'tcx> {
+    pub fn get_attrs(
+        self,
+        did: impl Into<DefId>,
+        attr: Symbol,
+    ) -> impl Iterator<Item = &'tcx ast::Attribute> {
+        let did: DefId = did.into();
         let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
@@ -2386,8 +2390,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn get_attr(self, did: DefId, attr: Symbol) -> Option<&'tcx ast::Attribute> {
+    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx ast::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
+            let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
         } else {
             self.get_attrs(did, attr).next()
@@ -2395,7 +2400,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Determines whether an item is annotated with an attribute.
-    pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
+    pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
+        let did: DefId = did.into();
         if cfg!(debug_assertions) && !did.is_local() && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {

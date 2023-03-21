@@ -22,6 +22,12 @@ impl From<OwnerId> for HirId {
     }
 }
 
+impl From<OwnerId> for DefId {
+    fn from(value: OwnerId) -> Self {
+        value.to_def_id()
+    }
+}
+
 impl OwnerId {
     #[inline]
     pub fn to_def_id(self) -> DefId {

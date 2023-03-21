@@ -147,18 +147,18 @@ pub fn provide(providers: &mut Providers) {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
     providers.def_span = |tcx, def_id| {
-        let def_id = def_id.expect_local();
+        let def_id = def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
     };
     providers.def_ident_span = |tcx, def_id| {
-        let def_id = def_id.expect_local();
+        let def_id = def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         tcx.hir().opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
-        let def_id = id.expect_local();
+        let def_id = id;
         let hir_id = hir.local_def_id_to_hir_id(def_id);
         if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
             tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
@@ -176,12 +176,10 @@ pub fn provide(providers: &mut Providers) {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
         }
     };
-    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
+    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id);
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
-    providers.expn_that_defined = |tcx, id| {
-        let id = id.expect_local();
-        tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
-    };
+    providers.expn_that_defined =
+        |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
     providers.in_scope_traits_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
     };

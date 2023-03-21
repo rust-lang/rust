@@ -1306,7 +1306,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness() == IsAsync::Async
             && !cx.tcx.features().closure_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = cx.tcx.get_attr(def_id.to_def_id(), sym::track_caller)
+            && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
             cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
                 label: span,
@@ -2748,10 +2748,7 @@ impl ClashingExternDeclarations {
                 // information, we could have codegen_fn_attrs also give span information back for
                 // where the attribute was defined. However, until this is found to be a
                 // bottleneck, this does just fine.
-                (
-                    overridden_link_name,
-                    tcx.get_attr(fi.owner_id.to_def_id(), sym::link_name).unwrap().span,
-                )
+                (overridden_link_name, tcx.get_attr(fi.owner_id, sym::link_name).unwrap().span)
             })
         {
             SymbolName::Link(overridden_link_name, overridden_link_name_span)

@@ -7,10 +7,8 @@ use rustc_middle::ty::{
     TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
-use rustc_span::{
-    def_id::{DefId, CRATE_DEF_ID},
-    DUMMY_SP,
-};
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -79,8 +77,8 @@ fn sized_constraint_for_ty<'tcx>(
     result
 }
 
-fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    match tcx.hir().get_by_def_id(def_id.expect_local()) {
+fn impl_defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
+    match tcx.hir().get_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
@@ -516,8 +514,8 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 }
 
 /// Check if a function is async.
-fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    let node = tcx.hir().get_by_def_id(def_id.expect_local());
+fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::IsAsync {
+    let node = tcx.hir().get_by_def_id(def_id);
     node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
 }
 

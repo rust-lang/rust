@@ -112,7 +112,6 @@ pub fn provide(providers: &mut Providers) {
         mir_keys,
         mir_const,
         mir_const_qualif: |tcx, def_id| {
-            let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.mir_const_qualif_const_arg(def)
             } else {
@@ -133,7 +132,6 @@ pub fn provide(providers: &mut Providers) {
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir: |tcx, def_id| {
-            let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.promoted_mir_of_const_arg(def)
             } else {
@@ -206,8 +204,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
     body
 }
 
-fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let def_id = def_id.expect_local();
+fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     tcx.mir_keys(()).contains(&def_id)
 }
 
@@ -350,12 +347,11 @@ fn mir_promoted(
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
-fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
-    let did = def_id.expect_local();
-    if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
+fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &Body<'_> {
+    if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
         tcx.mir_for_ctfe_of_const_arg(def)
     } else {
-        tcx.arena.alloc(inner_mir_for_ctfe(tcx, ty::WithOptConstParam::unknown(did)))
+        tcx.arena.alloc(inner_mir_for_ctfe(tcx, ty::WithOptConstParam::unknown(def_id)))
     }
 }
 
@@ -599,8 +595,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 }
 
 /// Optimize the MIR and prepare it for codegen.
-fn optimized_mir(tcx: TyCtxt<'_>, did: DefId) -> &Body<'_> {
-    let did = did.expect_local();
+fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
     assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
     tcx.arena.alloc(inner_optimized_mir(tcx, did))
 }

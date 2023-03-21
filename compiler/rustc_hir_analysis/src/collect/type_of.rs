@@ -63,7 +63,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
                 .unwrap()
                 .0
-                .to_def_id();
+                .def_id;
             let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
@@ -244,11 +244,13 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty<'_>> {
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
     // associated type in the impl.
-    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) =
+        tcx.opt_rpitit_info(def_id.to_def_id())
+    {
         match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
             Ok(map) => {
                 let assoc_item = tcx.associated_item(def_id);
@@ -263,17 +265,16 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
         }
     }
 
-    let def_id = def_id.expect_local();
     use rustc_hir::*;
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let icx = ItemCtxt::new(tcx, def_id);
 
     let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             TraitItemKind::Const(ty, body_id) => body_id
@@ -293,7 +294,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
 
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ImplItemKind::Const(ty, body_id) => {
@@ -349,12 +350,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     _ => icx.to_ty(*self_ty),
                 },
                 ItemKind::Fn(..) => {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id.to_def_id(), substs)
                 }
                 ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
@@ -394,7 +395,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ForeignItemKind::Static(t, _) => icx.to_ty(t),
@@ -406,7 +407,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
         },
@@ -439,7 +440,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 Node::Expr(Expr { kind: ExprKind::ConstBlock(anon_const), .. })
                     if anon_const.hir_id == hir_id =>
                 {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     substs.as_inline_const().ty()
                 }
 

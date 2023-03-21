@@ -22,13 +22,14 @@ use log::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
-use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
+use rustc_hir::{self as hir, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
     ty::{query::ExternProviders, TyCtxt},
+    query::LocalCrate,
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
@@ -107,8 +108,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
-                local_providers.exported_symbols = |tcx, cnum| {
-                    assert_eq!(cnum, LOCAL_CRATE);
+                local_providers.exported_symbols = |tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
                     });

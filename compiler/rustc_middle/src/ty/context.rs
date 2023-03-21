@@ -15,6 +15,7 @@ use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{
     Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
+use crate::query::LocalCrate;
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
@@ -2518,16 +2519,11 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.is_panic_runtime = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)
-    };
-    providers.is_compiler_builtins = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
-    };
-    providers.has_panic_handler = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
+    providers.is_panic_runtime =
+        |tcx, LocalCrate| tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime);
+    providers.is_compiler_builtins =
+        |tcx, LocalCrate| tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
+    providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };

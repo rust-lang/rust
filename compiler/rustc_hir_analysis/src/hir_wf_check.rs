@@ -31,7 +31,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     tcx.sess
         .delay_span_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
 
-    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let icx = ItemCtxt::new(tcx, def_id);
 
     // To perform HIR-based WF checking, we iterate over all HIR types
     // that occur 'inside' the item we're checking. For example,

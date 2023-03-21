@@ -22,7 +22,7 @@ use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
+    let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
     if let hir::ItemKind::Fn(ref sig, _generics, ref body_id) = item.kind {
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -47,7 +47,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
+        let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if is_public
@@ -73,7 +73,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
+        let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if let hir::TraitFn::Provided(eid) = *eid {
