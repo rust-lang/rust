@@ -9,7 +9,7 @@ fn is_edition_2021(mut line: &str) -> bool {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    walk(path, |path| filter_dirs(path), &mut |entry, contents| {
+    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap();
         if filename != "Cargo.toml" {
