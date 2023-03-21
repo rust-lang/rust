@@ -102,7 +102,7 @@ pub(crate) static RAND_REPO: GitRepo =
 pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
-    GitRepo::github("rust-lang", "regex", "a9b2e02352db92ce1f6e5b7ecd41b8bbffbe161a", "regex");
+    GitRepo::github("rust-lang", "regex", "32fed9429eafba0ae92a64b01796a0c5a75b88c8", "regex");
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
 
