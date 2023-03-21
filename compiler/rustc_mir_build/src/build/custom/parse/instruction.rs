@@ -166,6 +166,28 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 let cast_kind = mir_cast_kind(source_ty, expr.ty);
                 Ok(Rvalue::Cast(cast_kind, source, expr.ty))
             },
+            ExprKind::Tuple { fields } => Ok(
+                Rvalue::Aggregate(
+                    Box::new(AggregateKind::Tuple),
+                    fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
+                )
+            ),
+            ExprKind::Array { fields } => {
+                let elem_ty = expr.ty.builtin_index().expect("ty must be an array");
+                Ok(Rvalue::Aggregate(
+                    Box::new(AggregateKind::Array(elem_ty)),
+                    fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
+                ))
+            },
+            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, substs, fields, .. }) => {
+                let is_union = adt_def.is_union();
+                let active_field_index = is_union.then(|| fields[0].name.index());
+
+                Ok(Rvalue::Aggregate(
+                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, substs, None, active_field_index)),
+                    fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
+                ))
+            },
             _ => self.parse_operand(expr_id).map(Rvalue::Use),
         )
     }
