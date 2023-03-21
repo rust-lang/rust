@@ -661,6 +661,16 @@ impl AliasRelationDirection {
     }
 }
 
+impl std::fmt::Display for AliasRelationDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AliasRelationDirection::Equate => write!(f, " == "),
+            AliasRelationDirection::Subtype => write!(f, " <: "),
+            AliasRelationDirection::Supertype => write!(f, " :> "),
+        }
+    }
+}
+
 /// The crate outlives map is computed during typeck and contains the
 /// outlives of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
