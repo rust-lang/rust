@@ -884,15 +884,15 @@ impl Span {
         )
     }
 
-    pub fn peel_ctxt(mut self) -> Span {
-        loop {
-            let data = self.data().ctxt.outer_expn_data();
-            if let ExpnKind::Desugaring(DesugaringKind::Resize) = data.kind {
-                self = data.call_site;
-            } else {
-                break;
-            }
-        }
+    pub fn peel_ctxt(self) -> Span {
+        // loop {
+        //     let data = self.data().ctxt.outer_expn_data();
+        //     if let ExpnKind::Desugaring(DesugaringKind::Resize) = data.kind {
+        //         self = data.call_site;
+        //     } else {
+        //         break;
+        //     }
+        // }
         self
     }
 

@@ -2402,12 +2402,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `Span` points at an attribute and not user code.
     #[inline(always)]
     pub fn mark_span_for_resize(self, span: Span) -> Span {
-        if true {
-            return span;
-        }
-        self.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(None, rustc_span::DesugaringKind::Resize, span.edition(), hcx)
-        })
+        span
+        // if true {
+        //     return span;
+        // }
+        // self.with_stable_hashing_context(|hcx| {
+        //     span.mark_with_reason(None, rustc_span::DesugaringKind::Resize, span.edition(), hcx)
+        // })
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
