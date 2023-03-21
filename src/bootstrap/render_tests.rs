@@ -260,6 +260,9 @@ impl<'a> Renderer<'a> {
                 self.render_test_outcome(Outcome::Failed, &outcome);
                 self.failures.push(outcome);
             }
+            Message::Test(TestMessage::Timeout { name }) => {
+                println!("test {name} has been running for a long time");
+            }
             Message::Test(TestMessage::Started) => {} // Not useful
         }
     }
@@ -353,6 +356,7 @@ enum TestMessage {
     Ok(TestOutcome),
     Failed(TestOutcome),
     Ignored(TestOutcome),
+    Timeout { name: String },
     Started,
 }
 
