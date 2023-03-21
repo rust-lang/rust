@@ -2,9 +2,9 @@
     <pre class="src-line-numbers">
         {% for line in lines.clone() %}
             {% if embedded %}
-                <span>{{line}}</span>
+                <span>{{line|safe}}</span>
             {%~ else %}
-                <a href="#{{line}}" id="{{line}}">{{line}}</a>
+                <a href="#{{line|safe}}" id="{{line|safe}}">{{line|safe}}</a>
             {%~ endif %}
         {% endfor %}
     </pre> {# #}
