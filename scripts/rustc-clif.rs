@@ -30,7 +30,7 @@ fn main() {
     env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
 
     #[cfg(unix)]
-    Command::new("rustc").args(args).exec();
+    panic!("Failed to spawn rustc: {}", Command::new("rustc").args(args).exec());
 
     #[cfg(not(unix))]
     std::process::exit(

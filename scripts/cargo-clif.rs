@@ -64,7 +64,7 @@ fn main() {
     };
 
     #[cfg(unix)]
-    Command::new("cargo").args(args).exec();
+    panic!("Failed to spawn cargo: {}", Command::new("cargo").args(args).exec());
 
     #[cfg(not(unix))]
     std::process::exit(
