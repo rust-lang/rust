@@ -296,7 +296,6 @@ pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 
 pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
 pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
-pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -1282,6 +1281,46 @@ extern "system" {
     ) -> NTSTATUS;
 }
 
+#[link(name = "ntdll")]
+extern "system" {
+    pub fn NtCreateFile(
+        FileHandle: *mut HANDLE,
+        DesiredAccess: ACCESS_MASK,
+        ObjectAttributes: *const OBJECT_ATTRIBUTES,
+        IoStatusBlock: *mut IO_STATUS_BLOCK,
+        AllocationSize: *mut i64,
+        FileAttributes: ULONG,
+        ShareAccess: ULONG,
+        CreateDisposition: ULONG,
+        CreateOptions: ULONG,
+        EaBuffer: *mut c_void,
+        EaLength: ULONG,
+    ) -> NTSTATUS;
+    pub fn NtReadFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *mut crate::mem::MaybeUninit<u8>,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>,
+    ) -> NTSTATUS;
+    pub fn NtWriteFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *const u8,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>,
+    ) -> NTSTATUS;
+    pub fn RtlNtStatusToDosError(Status: NTSTATUS) -> ULONG;
+}
+
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn_with_fallback! {
@@ -1322,52 +1361,6 @@ compat_fn_optional! {
 compat_fn_with_fallback! {
     pub static NTDLL: &CStr = ansi_str!("ntdll");
 
-    pub fn NtCreateFile(
-        FileHandle: *mut HANDLE,
-        DesiredAccess: ACCESS_MASK,
-        ObjectAttributes: *const OBJECT_ATTRIBUTES,
-        IoStatusBlock: *mut IO_STATUS_BLOCK,
-        AllocationSize: *mut i64,
-        FileAttributes: ULONG,
-        ShareAccess: ULONG,
-        CreateDisposition: ULONG,
-        CreateOptions: ULONG,
-        EaBuffer: *mut c_void,
-        EaLength: ULONG
-    ) -> NTSTATUS {
-        STATUS_NOT_IMPLEMENTED
-    }
-    pub fn NtReadFile(
-        FileHandle: BorrowedHandle<'_>,
-        Event: HANDLE,
-        ApcRoutine: Option<IO_APC_ROUTINE>,
-        ApcContext: *mut c_void,
-        IoStatusBlock: &mut IO_STATUS_BLOCK,
-        Buffer: *mut crate::mem::MaybeUninit<u8>,
-        Length: ULONG,
-        ByteOffset: Option<&LARGE_INTEGER>,
-        Key: Option<&ULONG>
-    ) -> NTSTATUS {
-        STATUS_NOT_IMPLEMENTED
-    }
-    pub fn NtWriteFile(
-        FileHandle: BorrowedHandle<'_>,
-        Event: HANDLE,
-        ApcRoutine: Option<IO_APC_ROUTINE>,
-        ApcContext: *mut c_void,
-        IoStatusBlock: &mut IO_STATUS_BLOCK,
-        Buffer: *const u8,
-        Length: ULONG,
-        ByteOffset: Option<&LARGE_INTEGER>,
-        Key: Option<&ULONG>
-    ) -> NTSTATUS {
-        STATUS_NOT_IMPLEMENTED
-    }
-    pub fn RtlNtStatusToDosError(
-        Status: NTSTATUS
-    ) -> ULONG {
-        Status as ULONG
-    }
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: LPHANDLE,
         DesiredAccess: ACCESS_MASK,
