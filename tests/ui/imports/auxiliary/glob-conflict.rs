@@ -1,3 +1,5 @@
+#![allow(ambiguous_glob_reexports)]
+
 mod m1 {
     pub fn f() {}
 }
