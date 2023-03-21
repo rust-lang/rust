@@ -305,6 +305,7 @@ pub enum Visibility<Id = LocalDefId> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum BoundConstness {
     /// `T: Trait`
     NotConst,

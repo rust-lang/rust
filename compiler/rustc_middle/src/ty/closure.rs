@@ -77,7 +77,7 @@ pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
     // because the trait Fn is a subtrait of FnMut and so in turn, and

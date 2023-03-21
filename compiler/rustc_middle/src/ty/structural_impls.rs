@@ -12,7 +12,6 @@ use crate::ty::{
 };
 use rustc_hir::def::Namespace;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
 use std::fmt::{self, Debug};
@@ -409,29 +408,16 @@ TrivialLiftImpls! {
      bool,
      usize,
      u64,
+     ::rustc_hir::def_id::DefId,
      ::rustc_hir::Mutability,
+     ::rustc_hir::Unsafety,
+     ::rustc_target::spec::abi::Abi,
+     crate::ty::ClosureKind,
      crate::ty::ParamConst,
      crate::ty::ParamTy,
      interpret::Scalar,
      interpret::AllocId,
      rustc_target::abi::Size,
-}
-
-// For some things about which the type library does not know, or does not
-// provide any traversal implementations, we need to provide a traversal
-// implementation (only for TyCtxt<'_> interners).
-TrivialTypeTraversalImpls! {
-    crate::ty::BoundConstness,
-}
-// For some things about which the type library does not know, or does not
-// provide any traversal implementations, we need to provide a traversal
-// implementation and a lift implementation (the former only for TyCtxt<'_>
-// interners).
-TrivialTypeTraversalAndLiftImpls! {
-    ::rustc_hir::def_id::DefId,
-    ::rustc_hir::Unsafety,
-    ::rustc_target::spec::abi::Abi,
-    crate::ty::ClosureKind,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -805,11 +791,5 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         self.args.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_ty(self.ty)
     }
 }
