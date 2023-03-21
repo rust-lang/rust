@@ -605,7 +605,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         found: Option<ty::OpaqueHiddenType<'tcx>>,
 
         /// In the presence of dead code, typeck may figure out a hidden type
-        /// while borrowck will now. We collect these cases here and check at
+        /// while borrowck will not. We collect these cases here and check at
         /// the end that we actually found a type that matches (modulo regions).
         typeck_types: Vec<ty::OpaqueHiddenType<'tcx>>,
     }
