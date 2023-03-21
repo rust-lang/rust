@@ -36,15 +36,11 @@ use crate::formats::item_type::ItemType;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
-///
-/// `parent_module` refers to the parent of the *re-export*, not the original item.
 pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
-    parent_module: DefId,
-    import_def_id: Option<DefId>,
     res: Res,
     name: Symbol,
-    attrs: Option<&[ast::Attribute]>,
+    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -55,38 +51,17 @@ pub(crate) fn try_inline(
 
     debug!("attrs={:?}", attrs);
 
-    let attrs_without_docs = attrs.map(|attrs| {
-        attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>()
+    let attrs_without_docs = attrs.map(|(attrs, def_id)| {
+        (attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
     });
-    // We need this ugly code because:
-    //
-    // ```
-    // attrs_without_docs.map(|a| a.as_slice())
-    // ```
-    //
-    // will fail because it returns a temporary slice and:
-    //
-    // ```
-    // attrs_without_docs.map(|s| {
-    //     vec = s.as_slice();
-    //     vec
-    // })
-    // ```
-    //
-    // will fail because we're moving an uninitialized variable into a closure.
-    let vec;
-    let attrs_without_docs = match attrs_without_docs {
-        Some(s) => {
-            vec = s;
-            Some(vec.as_slice())
-        }
-        None => None,
-    };
+    let attrs_without_docs =
+        attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
 
+    let import_def_id = attrs.and_then(|(_, def_id)| def_id);
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::TraitItem(Box::new(build_external_trait(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
@@ -95,27 +70,27 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, ItemType::Struct);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::StructItem(build_struct(cx, did))
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, ItemType::Union);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::Typedef);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::TypedefItem(build_type_alias(cx, did))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::EnumItem(build_enum(cx, did))
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, ItemType::ForeignType);
-            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
+            build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -149,7 +124,7 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs);
+    let (attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
     cx.inlined.insert(did.into());
     let mut item =
         clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
@@ -316,9 +291,8 @@ fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
 pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
-    parent_module: Option<DefId>,
     did: DefId,
-    attrs: Option<&[ast::Attribute]>,
+    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     let _prof_timer = cx.tcx.sess.prof.generic_activity("build_inherent_impls");
@@ -326,7 +300,7 @@ pub(crate) fn build_impls(
 
     // for each implementation of an item represented by `did`, build the clean::Item for that impl
     for &did in tcx.inherent_impls(did).iter() {
-        build_impl(cx, parent_module, did, attrs, ret);
+        build_impl(cx, did, attrs, ret);
     }
 
     // This pretty much exists expressly for `dyn Error` traits that exist in the `alloc` crate.
@@ -340,28 +314,26 @@ pub(crate) fn build_impls(
         let type_ =
             if tcx.is_trait(did) { TraitSimplifiedType(did) } else { AdtSimplifiedType(did) };
         for &did in tcx.incoherent_impls(type_) {
-            build_impl(cx, parent_module, did, attrs, ret);
+            build_impl(cx, did, attrs, ret);
         }
     }
 }
 
-/// `parent_module` refers to the parent of the re-export, not the original item
 pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
-    parent_module: Option<DefId>,
     old_attrs: &[ast::Attribute],
-    new_attrs: Option<&[ast::Attribute]>,
+    new_attrs: Option<(&[ast::Attribute], Option<DefId>)>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
-    if let Some(inner) = new_attrs {
+    if let Some((inner, item_id)) = new_attrs {
         let mut both = inner.to_vec();
         both.extend_from_slice(old_attrs);
         (
-            if let Some(new_id) = parent_module {
-                Attributes::from_ast_with_additional(old_attrs, (inner, new_id))
+            if let Some(item_id) = item_id {
+                Attributes::from_ast_with_additional(old_attrs, (inner, item_id))
             } else {
                 Attributes::from_ast(&both)
             },
@@ -375,9 +347,8 @@ pub(crate) fn merge_attrs(
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
-    parent_module: Option<DefId>,
     did: DefId,
-    attrs: Option<&[ast::Attribute]>,
+    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     if !cx.inlined.insert(did.into()) {
@@ -539,7 +510,7 @@ pub(crate) fn build_impl(
         record_extern_trait(cx, did);
     }
 
-    let (merged_attrs, cfg) = merge_attrs(cx, parent_module, load_attrs(cx, did), attrs);
+    let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
     trace!("merged_attrs={:?}", merged_attrs);
 
     trace!(
@@ -635,7 +606,7 @@ fn build_module_items(
                     cfg: None,
                     inline_stmt_id: None,
                 });
-            } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {
+            } else if let Some(i) = try_inline(cx, res, item.ident.name, None, visited) {
                 items.extend(i)
             }
         }

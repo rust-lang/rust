@@ -2388,12 +2388,12 @@ fn clean_maybe_renamed_item<'tcx>(
             target_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
         }
 
-        let import_parent = import_id.map(|import_id| cx.tcx.local_parent(import_id).to_def_id());
-        let (attrs, cfg) =  merge_attrs(cx, import_parent, &target_attrs, Some(&import_attrs));
+        let import_id = import_id.map(|def_id| def_id.to_def_id());
+        let (attrs, cfg) =  merge_attrs(cx, &target_attrs, Some((&import_attrs, import_id)));
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
-        item.inline_stmt_id = import_id.map(|def_id| def_id.to_def_id());
+        item.inline_stmt_id = import_id;
         vec![item]
     })
 }
@@ -2478,18 +2478,12 @@ fn clean_extern_crate<'tcx>(
 
     let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
-        let mut visited = DefIdSet::default();
-
-        let res = Res::Def(DefKind::Mod, crate_def_id);
-
         if let Some(items) = inline::try_inline(
             cx,
-            cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate_owner_def_id),
-            res,
+            Res::Def(DefKind::Mod, crate_def_id),
             name,
-            Some(attrs),
-            &mut visited,
+            Some((attrs, Some(krate_owner_def_id))),
+            &mut Default::default(),
         ) {
             return items;
         }
@@ -2613,17 +2607,13 @@ fn clean_use_statement_inner<'tcx>(
             denied = true;
         }
         if !denied {
-            let mut visited = DefIdSet::default();
             let import_def_id = import.owner_id.to_def_id();
-
             if let Some(mut items) = inline::try_inline(
                 cx,
-                cx.tcx.parent_module(import.hir_id()).to_def_id(),
-                Some(import_def_id),
                 path.res,
                 name,
-                Some(attrs),
-                &mut visited,
+                Some((attrs, Some(import_def_id))),
+                &mut Default::default(),
             ) {
                 items.push(Item::from_def_id_and_parts(
                     import_def_id,
