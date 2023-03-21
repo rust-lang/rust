@@ -1,0 +1,34 @@
+error[E0423]: expected value, found macro `file`
+  --> $DIR/issue-109396.rs:5:13
+   |
+LL |             file.as_raw_fd(),
+   |             ^^^^ not a value
+
+error[E0061]: this function takes 0 arguments but 4 arguments were supplied
+  --> $DIR/issue-109396.rs:3:25
+   |
+LL |         let mut mutex = std::mem::zeroed(
+   |                         ^^^^^^^^^^^^^^^^
+LL |
+LL |             file.as_raw_fd(),
+   |             ---------------- unexpected argument
+LL |
+LL |             0,
+   |             - unexpected argument of type `{integer}`
+LL |             0,
+   |             - unexpected argument of type `{integer}`
+LL |             0,
+   |             - unexpected argument of type `{integer}`
+   |
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: remove the extra arguments
+   |
+LL -             file.as_raw_fd(),
+LL +             ,
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0061, E0423.
+For more information about an error, try `rustc --explain E0061`.
