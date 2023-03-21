@@ -3190,7 +3190,7 @@ impl<'hir> Item<'hir> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[derive(Encodable, Decodable, HashStable_Generic, TypeFoldable, TypeVisitable)]
 pub enum Unsafety {
     Unsafe,
     Normal,

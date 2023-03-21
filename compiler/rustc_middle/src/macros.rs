@@ -67,10 +67,10 @@ macro_rules! CloneLiftImpls {
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
 macro_rules! TrivialTypeTraversalImpls {
-    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
+    ($(for { $($generic:tt)+ } { $interner:ty } { $ty:ty })+) => {
         $(
-            impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<$tcx>>>(
+            impl<$($generic)+> $crate::ty::fold::TypeFoldable<$interner> for $ty {
+                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$interner>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -78,7 +78,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<$tcx>>>(
+                fn fold_with<F: $crate::ty::fold::TypeFolder<$interner>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -86,9 +86,9 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<$tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
+            impl<$($generic)+> $crate::ty::visit::TypeVisitable<$interner> for $ty {
                 #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<$tcx>>>(
+                fn visit_with<F: $crate::ty::visit::TypeVisitor<$interner>>(
                     &self,
                     _: &mut F)
                     -> ::std::ops::ControlFlow<F::BreakTy>
@@ -99,11 +99,15 @@ macro_rules! TrivialTypeTraversalImpls {
         )+
     };
 
+    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
+        TrivialTypeTraversalImpls! {
+            $(for { $tcx } { $crate::ty::TyCtxt<$tcx> } { $ty })+
+        }
+    };
+
     ($($ty:ty,)+) => {
         TrivialTypeTraversalImpls! {
-            for<'tcx> {
-                $($ty,)+
-            }
+            $(for { I: $crate::ty::Interner } { I } { $ty })+
         }
     };
 }

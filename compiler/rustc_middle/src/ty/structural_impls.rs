@@ -12,7 +12,6 @@ use crate::ty::{self, AliasTy, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -223,7 +222,9 @@ CloneLiftImpls! {
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
+    ::rustc_hir::Unsafety,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
+    ::rustc_target::spec::abi::Abi,
     crate::mir::coverage::ExpressionOperandId,
     crate::mir::coverage::CounterValueReference,
     crate::mir::coverage::InjectedExpressionId,
@@ -265,8 +266,6 @@ CloneLiftImpls! {
 // implementation and traversal implementations (the latter only for
 // TyCtxt<'_> interners).
 TrivialTypeTraversalAndLiftImpls! {
-    ::rustc_hir::Unsafety,
-    ::rustc_target::spec::abi::Abi,
     crate::ty::BoundConstness,
 }
 
@@ -673,11 +672,5 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_ty(self.ty)
     }
 }
