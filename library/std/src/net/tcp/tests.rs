@@ -1,6 +1,7 @@
 use crate::fmt;
 use crate::io::prelude::*;
-use crate::io::{ErrorKind, IoSlice, IoSliceMut};
+use crate::io::{BorrowedBuf, ErrorKind, IoSlice, IoSliceMut};
+use crate::mem::MaybeUninit;
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
@@ -276,6 +277,31 @@ fn partial_read() {
         assert_eq!(c.read(&mut b).unwrap(), 1);
         t!(c.write(&[1]));
         rx.recv().unwrap();
+    })
+}
+
+#[test]
+fn read_buf() {
+    each_ip(&mut |addr| {
+        let srv = t!(TcpListener::bind(&addr));
+        let t = thread::spawn(move || {
+            let mut s = t!(TcpStream::connect(&addr));
+            s.write_all(&[1, 2, 3, 4]).unwrap();
+        });
+
+        let mut s = t!(srv.accept()).0;
+        let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+        t!(s.read_buf(buf.unfilled()));
+        assert_eq!(buf.filled(), &[1, 2, 3, 4]);
+
+        // FIXME: sgx uses default_read_buf that initializes the buffer.
+        if cfg!(not(target_env = "sgx")) {
+            // TcpStream::read_buf should omit buffer initialization.
+            assert_eq!(buf.init_len(), 4);
+        }
+
+        t.join().ok().expect("thread panicked");
     })
 }
 

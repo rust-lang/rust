@@ -1,6 +1,6 @@
 use super::Scripter;
 use super::Tarballer;
-use crate::compression::CompressionFormats;
+use crate::compression::{CompressionFormats, CompressionProfile};
 use crate::util::*;
 use anyhow::{bail, format_err, Context, Result};
 use std::collections::BTreeSet;
@@ -53,6 +53,10 @@ actor! {
         /// The location to put the final image and tarball
         #[clap(value_name = "DIR")]
         output_dir: String = "./dist",
+
+        /// The profile used to compress the tarball.
+        #[clap(value_name = "FORMAT", default_value_t)]
+        compression_profile: CompressionProfile,
 
         /// The formats used to compress the tarball
         #[clap(value_name = "FORMAT", default_value_t)]
@@ -113,6 +117,7 @@ impl Generator {
             .work_dir(self.work_dir)
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
+            .compression_profile(self.compression_profile)
             .compression_formats(self.compression_formats.clone());
         tarballer.run()?;
 

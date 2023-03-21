@@ -6,7 +6,7 @@ use tar::{Builder, Header};
 use walkdir::WalkDir;
 
 use crate::{
-    compression::{CombinedEncoder, CompressionFormats},
+    compression::{CombinedEncoder, CompressionFormats, CompressionProfile},
     util::*,
 };
 
@@ -25,6 +25,10 @@ actor! {
         #[clap(value_name = "DIR")]
         work_dir: String = "./workdir",
 
+        /// The profile used to compress the tarball.
+        #[clap(value_name = "FORMAT", default_value_t)]
+        compression_profile: CompressionProfile,
+
         /// The formats used to compress the tarball.
         #[clap(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
@@ -38,7 +42,7 @@ impl Tarballer {
         let encoder = CombinedEncoder::new(
             self.compression_formats
                 .iter()
-                .map(|f| f.encode(&tarball_name))
+                .map(|f| f.encode(&tarball_name, self.compression_profile))
                 .collect::<Result<Vec<_>>>()?,
         );
 

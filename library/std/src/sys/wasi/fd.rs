@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use super::err2io;
-use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::net::Shutdown;
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
@@ -44,6 +44,22 @@ impl WasiFd {
 
     pub fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         unsafe { wasi::fd_read(self.as_raw_fd() as wasi::Fd, iovec(bufs)).map_err(err2io) }
+    }
+
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        unsafe {
+            let bufs = [wasi::Iovec {
+                buf: buf.as_mut().as_mut_ptr() as *mut u8,
+                buf_len: buf.capacity(),
+            }];
+            match wasi::fd_read(self.as_raw_fd() as wasi::Fd, &bufs) {
+                Ok(n) => {
+                    buf.advance(n);
+                    Ok(())
+                }
+                Err(e) => Err(err2io(e)),
+            }
+        }
     }
 
     pub fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {

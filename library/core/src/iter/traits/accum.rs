@@ -164,12 +164,13 @@ where
     /// element is encountered:
     ///
     /// ```
+    /// let f = |&x: &i32| if x < 0 { Err("Negative element found") } else { Ok(x) };
     /// let v = vec![1, 2];
-    /// let res: Result<i32, &'static str> = v.iter().map(|&x: &i32|
-    ///     if x < 0 { Err("Negative element found") }
-    ///     else { Ok(x) }
-    /// ).sum();
+    /// let res: Result<i32, _> = v.iter().map(f).sum();
     /// assert_eq!(res, Ok(3));
+    /// let v = vec![1, -2];
+    /// let res: Result<i32, _> = v.iter().map(f).sum();
+    /// assert_eq!(res, Err("Negative element found"));
     /// ```
     fn sum<I>(iter: I) -> Result<T, E>
     where
@@ -187,6 +188,20 @@ where
     /// Takes each element in the [`Iterator`]: if it is an [`Err`], no further
     /// elements are taken, and the [`Err`] is returned. Should no [`Err`]
     /// occur, the product of all elements is returned.
+    ///
+    /// # Examples
+    ///
+    /// This multiplies each number in a vector of strings,
+    /// if a string could not be parsed the operation returns `Err`:
+    ///
+    /// ```
+    /// let nums = vec!["5", "10", "1", "2"];
+    /// let total: Result<usize, _> = nums.iter().map(|w| w.parse::<usize>()).product();
+    /// assert_eq!(total, Ok(100));
+    /// let nums = vec!["5", "10", "one", "2"];
+    /// let total: Result<usize, _> = nums.iter().map(|w| w.parse::<usize>()).product();
+    /// assert!(total.is_err());
+    /// ```
     fn product<I>(iter: I) -> Result<T, E>
     where
         I: Iterator<Item = Result<U, E>>,
@@ -213,6 +228,9 @@ where
     /// let words = vec!["have", "a", "great", "day"];
     /// let total: Option<usize> = words.iter().map(|w| w.find('a')).sum();
     /// assert_eq!(total, Some(5));
+    /// let words = vec!["have", "a", "good", "day"];
+    /// let total: Option<usize> = words.iter().map(|w| w.find('a')).sum();
+    /// assert_eq!(total, None);
     /// ```
     fn sum<I>(iter: I) -> Option<T>
     where
@@ -230,6 +248,20 @@ where
     /// Takes each element in the [`Iterator`]: if it is a [`None`], no further
     /// elements are taken, and the [`None`] is returned. Should no [`None`]
     /// occur, the product of all elements is returned.
+    ///
+    /// # Examples
+    ///
+    /// This multiplies each number in a vector of strings,
+    /// if a string could not be parsed the operation returns `None`:
+    ///
+    /// ```
+    /// let nums = vec!["5", "10", "1", "2"];
+    /// let total: Option<usize> = nums.iter().map(|w| w.parse::<usize>().ok()).product();
+    /// assert_eq!(total, Some(100));
+    /// let nums = vec!["5", "10", "one", "2"];
+    /// let total: Option<usize> = nums.iter().map(|w| w.parse::<usize>().ok()).product();
+    /// assert_eq!(total, None);
+    /// ```
     fn product<I>(iter: I) -> Option<T>
     where
         I: Iterator<Item = Option<U>>,

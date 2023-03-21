@@ -318,6 +318,7 @@ impl<'a> Tarball<'a> {
             assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
+        cmd.args(&["--compression-profile", &self.builder.config.dist_compression_profile]);
         self.builder.run(&mut cmd);
 
         // Ensure there are no symbolic links in the tarball. In particular,

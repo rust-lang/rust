@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::ffi::CStr;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
@@ -242,19 +242,35 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
-    fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
-            libc::recv(self.as_raw_fd(), buf.as_mut_ptr() as *mut c_void, buf.len(), flags)
+            libc::recv(
+                self.as_raw_fd(),
+                buf.as_mut().as_mut_ptr() as *mut c_void,
+                buf.capacity(),
+                flags,
+            )
         })?;
-        Ok(ret as usize)
+        unsafe {
+            buf.advance(ret as usize);
+        }
+        Ok(())
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.recv_with_flags(buf, 0)
+        let mut buf = BorrowedBuf::from(buf);
+        self.recv_with_flags(buf.unfilled(), 0)?;
+        Ok(buf.len())
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.recv_with_flags(buf, MSG_PEEK)
+        let mut buf = BorrowedBuf::from(buf);
+        self.recv_with_flags(buf.unfilled(), MSG_PEEK)?;
+        Ok(buf.len())
+    }
+
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.recv_with_flags(buf, 0)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
