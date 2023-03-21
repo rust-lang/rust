@@ -111,7 +111,7 @@ use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, TraitItem, TraitItemKind};
+use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -3590,7 +3590,13 @@ impl Methods {
                     _ => {},
                 },
                 ("drain", [arg]) => {
-                    iter_with_drain::check(cx, expr, recv, span, arg);
+                if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
+                    && matches!(kind, StmtKind::Semi(_))
+                    {
+                        clear_with_drain::check(cx, expr, recv, span, arg);
+                    } else {
+                        iter_with_drain::check(cx, expr, recv, span, arg);
+                    }
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
