@@ -1556,6 +1556,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
 
+        // The original arguments to the function are no longer arguments, mark them as such.
+        // Otherwise they'll conflict with our new arguments, which although they don't have
+        // argument_index set, will get emitted as unnamed arguments.
+        for var in &mut body.var_debug_info {
+            var.argument_index = None;
+        }
+
         body.generator.as_mut().unwrap().yield_ty = None;
         body.generator.as_mut().unwrap().generator_layout = Some(layout);
 

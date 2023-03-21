@@ -442,11 +442,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (var_ty, var_kind) = match var.value {
                     mir::VarDebugInfoContents::Place(place) => {
                         let var_ty = self.monomorphized_place_ty(place.as_ref());
-                        let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
+                        let var_kind = if let Some(arg_index) = var.argument_index
                             && place.projection.is_empty()
-                            && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
                         {
-                            let arg_index = place.local.index() - 1;
+                            let arg_index = arg_index as usize;
                             if target_is_msvc {
                                 // ScalarPair parameters are spilled to the stack so they need to
                                 // be marked as a `LocalVariable` for MSVC debuggers to visualize
@@ -455,13 +454,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
                                     VariableKind::LocalVariable
                                 } else {
-                                    VariableKind::ArgumentVariable(arg_index + 1)
+                                    VariableKind::ArgumentVariable(arg_index)
                                 }
                             } else {
                                 // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
                                 // offset in closures to account for the hidden environment?
-                                // Also, is this `+ 1` needed at all?
-                                VariableKind::ArgumentVariable(arg_index + 1)
+                                VariableKind::ArgumentVariable(arg_index)
                             }
                         } else {
                             VariableKind::LocalVariable
