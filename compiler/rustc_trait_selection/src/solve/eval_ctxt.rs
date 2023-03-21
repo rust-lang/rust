@@ -2,8 +2,11 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{
+    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
+};
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::{
@@ -13,8 +16,8 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
-use super::search_graph::SearchGraph;
-use super::Goal;
+use super::search_graph::{self, OverflowHandler};
+use super::{search_graph::SearchGraph, Goal};
 
 pub struct EvalCtxt<'a, 'tcx> {
     // FIXME: should be private.
@@ -33,14 +36,305 @@ pub struct EvalCtxt<'a, 'tcx> {
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
-    /// This field is used by a debug assertion in [`EvalCtxt::evaluate_goal`],
-    /// see the comment in that method for more details.
-    pub in_projection_eq_hack: bool,
+    pub(super) nested_goals: NestedGoals<'tcx>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(super) enum IsNormalizesToHack {
+    Yes,
+    No,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct NestedGoals<'tcx> {
+    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
+    pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+}
+
+impl NestedGoals<'_> {
+    pub(super) fn new() -> Self {
+        Self { normalizes_to_hack_goal: None, goals: Vec::new() }
+    }
+
+    pub(super) fn is_empty(&self) -> bool {
+        self.normalizes_to_hack_goal.is_none() && self.goals.is_empty()
+    }
+}
+
+pub trait InferCtxtEvalExt<'tcx> {
+    /// Evaluates a goal from **outside** of the trait solver.
+    ///
+    /// Using this while inside of the solver is wrong as it uses a new
+    /// search graph which would break cycle detection.
+    fn evaluate_root_goal(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(bool, Certainty), NoSolution>;
+}
+
+impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
+    #[instrument(level = "debug", skip(self))]
+    fn evaluate_root_goal(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(bool, Certainty), NoSolution> {
+        let mut search_graph = search_graph::SearchGraph::new(self.tcx);
+
+        let mut ecx = EvalCtxt {
+            search_graph: &mut search_graph,
+            infcx: self,
+            // Only relevant when canonicalizing the response.
+            max_input_universe: ty::UniverseIndex::ROOT,
+            var_values: CanonicalVarValues::dummy(),
+            nested_goals: NestedGoals::new(),
+        };
+        let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
+
+        assert!(
+            ecx.nested_goals.is_empty(),
+            "root `EvalCtxt` should not have any goals added to it"
+        );
+
+        assert!(search_graph.is_empty());
+        result
+    }
+}
+
+impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+    /// The entry point of the solver.
+    ///
+    /// This function deals with (coinductive) cycles, overflow, and caching
+    /// and then calls [`EvalCtxt::compute_goal`] which contains the actual
+    /// logic of the solver.
+    ///
+    /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
+    /// if you're inside of the solver or [InferCtxtEvalExt::evaluate_root_goal] if you're
+    /// outside of it.
+    #[instrument(level = "debug", skip(tcx, search_graph), ret)]
+    fn evaluate_canonical_goal(
+        tcx: TyCtxt<'tcx>,
+        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+        canonical_goal: CanonicalGoal<'tcx>,
+    ) -> QueryResult<'tcx> {
+        // Deal with overflow, caching, and coinduction.
+        //
+        // The actual solver logic happens in `ecx.compute_goal`.
+        search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
+            let (ref infcx, goal, var_values) =
+                tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
+            let mut ecx = EvalCtxt {
+                infcx,
+                var_values,
+                max_input_universe: canonical_goal.max_universe,
+                search_graph,
+                nested_goals: NestedGoals::new(),
+            };
+            ecx.compute_goal(goal)
+        })
+    }
+
+    /// Recursively evaluates `goal`, returning whether any inference vars have
+    /// been constrained and the certainty of the result.
+    fn evaluate_goal(
+        &mut self,
+        is_normalizes_to_hack: IsNormalizesToHack,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(bool, Certainty), NoSolution> {
+        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let canonical_response =
+            EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
+
+        let has_changed = !canonical_response.value.var_values.is_identity();
+        let certainty = self.instantiate_and_apply_query_response(
+            goal.param_env,
+            orig_values,
+            canonical_response,
+        )?;
+
+        // Check that rerunning this query with its inference constraints applied
+        // doesn't result in new inference constraints and has the same result.
+        //
+        // If we have projection goals like `<T as Trait>::Assoc == u32` we recursively
+        // call `exists<U> <T as Trait>::Assoc == U` to enable better caching. This goal
+        // could constrain `U` to `u32` which would cause this check to result in a
+        // solver cycle.
+        if cfg!(debug_assertions)
+            && has_changed
+            && is_normalizes_to_hack == IsNormalizesToHack::No
+            && !self.search_graph.in_cycle()
+        {
+            debug!("rerunning goal to check result is stable");
+            let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
+            let canonical_response =
+                EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
+            if !canonical_response.value.var_values.is_identity() {
+                bug!("unstable result: {goal:?} {canonical_goal:?} {canonical_response:?}");
+            }
+            assert_eq!(certainty, canonical_response.value.certainty);
+        }
+
+        Ok((has_changed, certainty))
+    }
+
+    fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
+        let Goal { param_env, predicate } = goal;
+        let kind = predicate.kind();
+        if let Some(kind) = kind.no_bound_vars() {
+            match kind {
+                ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+                    self.compute_trait_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
+                    self.compute_projection_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => {
+                    self.compute_type_outlives_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
+                    self.compute_region_outlives_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                    self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
+                }
+                ty::PredicateKind::Subtype(predicate) => {
+                    self.compute_subtype_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Coerce(predicate) => {
+                    self.compute_coerce_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::ClosureKind(def_id, substs, kind) => self
+                    .compute_closure_kind_goal(Goal {
+                        param_env,
+                        predicate: (def_id, substs, kind),
+                    }),
+                ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                    self.compute_object_safe_goal(trait_def_id)
+                }
+                ty::PredicateKind::WellFormed(arg) => {
+                    self.compute_well_formed_goal(Goal { param_env, predicate: arg })
+                }
+                ty::PredicateKind::Ambiguous => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
+                // FIXME: implement these predicates :)
+                ty::PredicateKind::ConstEvaluatable(_) | ty::PredicateKind::ConstEquate(_, _) => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::AliasEq(lhs, rhs) => {
+                    self.compute_alias_eq_goal(Goal { param_env, predicate: (lhs, rhs) })
+                }
+            }
+        } else {
+            let kind = self.infcx.instantiate_binder_with_placeholders(kind);
+            let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
+            self.add_goal(goal);
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        }
+    }
+
+    // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
+    // the certainty of all the goals.
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
+        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
+        let mut new_goals = NestedGoals::new();
+
+        let response = self.repeat_while_none(
+            |_| Ok(Certainty::Maybe(MaybeCause::Overflow)),
+            |this| {
+                let mut has_changed = Err(Certainty::Yes);
+
+                if let Some(goal) = goals.normalizes_to_hack_goal.take() {
+                    let (_, certainty) = match this.evaluate_goal(
+                        IsNormalizesToHack::Yes,
+                        goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
+                    ) {
+                        Ok(r) => r,
+                        Err(NoSolution) => return Some(Err(NoSolution)),
+                    };
+
+                    if goal.predicate.projection_ty
+                        != this.resolve_vars_if_possible(goal.predicate.projection_ty)
+                    {
+                        has_changed = Ok(())
+                    }
+
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            let goal = this.resolve_vars_if_possible(goal);
+
+                            // The rhs of this `normalizes-to` must always be an unconstrained infer var as it is
+                            // the hack used by `normalizes-to` to ensure that every `normalizes-to` behaves the same
+                            // regardless of the rhs.
+                            //
+                            // However it is important not to unconditionally replace the rhs with a new infer var
+                            // as otherwise we may replace the original unconstrained infer var with a new infer var
+                            // and never propagate any constraints on the new var back to the original var.
+                            let term = this
+                                .term_is_fully_unconstrained(goal)
+                                .then_some(goal.predicate.term)
+                                .unwrap_or_else(|| {
+                                    this.next_term_infer_of_kind(goal.predicate.term)
+                                });
+                            let projection_pred = ty::ProjectionPredicate {
+                                term,
+                                projection_ty: goal.predicate.projection_ty,
+                            };
+                            new_goals.normalizes_to_hack_goal =
+                                Some(goal.with(this.tcx(), projection_pred));
+
+                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                        }
+                    }
+                }
+
+                for nested_goal in goals.goals.drain(..) {
+                    let (changed, certainty) =
+                        match this.evaluate_goal(IsNormalizesToHack::No, nested_goal) {
+                            Ok(result) => result,
+                            Err(NoSolution) => return Some(Err(NoSolution)),
+                        };
+
+                    if changed {
+                        has_changed = Ok(());
+                    }
+
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            new_goals.goals.push(nested_goal);
+                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                        }
+                    }
+                }
+
+                core::mem::swap(&mut new_goals, &mut goals);
+                match has_changed {
+                    Ok(()) => None,
+                    Err(certainty) => Some(Ok(certainty)),
+                }
+            },
+        );
+
+        self.nested_goals = goals;
+        response
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn probe<T>(&mut self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {
-        self.infcx.probe(|_| f(self))
+        let mut ecx = EvalCtxt {
+            infcx: self.infcx,
+            var_values: self.var_values,
+            max_input_universe: self.max_input_universe,
+            search_graph: self.search_graph,
+            nested_goals: self.nested_goals.clone(),
+        };
+        self.infcx.probe(|_| f(&mut ecx))
     }
 
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
@@ -59,6 +353,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty,
             ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span: DUMMY_SP },
         )
+    }
+
+    /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
+    /// If `kind` is an integer inference variable this will still return a ty infer var.
+    pub(super) fn next_term_infer_of_kind(&self, kind: ty::Term<'tcx>) -> ty::Term<'tcx> {
+        match kind.unpack() {
+            ty::TermKind::Ty(_) => self.next_ty_infer().into(),
+            ty::TermKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
+        }
     }
 
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
@@ -137,6 +440,30 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self, param_env), ret)]
     pub(super) fn eq<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to equate");
+                NoSolution
+            })
+    }
+
+    /// Equates two values returning the nested goals without adding them
+    /// to the nested goals of the `EvalCtxt`.
+    ///
+    /// If possible, try using `eq` instead which automatically handles nested
+    /// goals correctly.
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn eq_and_get_goals<T: ToTrace<'tcx>>(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         lhs: T,
