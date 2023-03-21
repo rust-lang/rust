@@ -1,0 +1,28 @@
+error: `drain` used to clear a `Vec`
+  --> $DIR/clear_with_drain.rs:8:7
+   |
+LL |     v.drain(0..v.len()); // Nay
+   |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
+   |
+   = note: `-D clippy::clear-with-drain` implied by `-D warnings`
+
+error: `drain` used to clear a `Vec`
+  --> $DIR/clear_with_drain.rs:14:7
+   |
+LL |     v.drain(0..); // Nay
+   |       ^^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> $DIR/clear_with_drain.rs:20:7
+   |
+LL |     v.drain(..); // Nay
+   |       ^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `Vec`
+  --> $DIR/clear_with_drain.rs:26:7
+   |
+LL |     v.drain(..v.len()); // Nay
+   |       ^^^^^^^^^^^^^^^^ help: try: `clear()`
+
+error: aborting due to 4 previous errors
+

@@ -10,8 +10,6 @@ use rustc_span::Span;
 
 use super::CLEAR_WITH_DRAIN;
 
-// TODO: Adjust the parameters as necessary
-// see clippy_lints/src/methods/mod.rs to add call to this check in `check_methods`
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(recv);
     if is_type_diagnostic_item(cx, ty, sym::Vec) && let Some(range) = Range::hir(arg) && is_range_full(cx, recv, range)

@@ -5,25 +5,25 @@
 fn range() {
     let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
     let iter = u.drain(0..u.len()); // Yay
-    v.drain(0..v.len()); // Nay
+    v.clear(); // Nay
 }
 
 fn range_from() {
     let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
     let iter = u.drain(0..); // Yay
-    v.drain(0..); // Nay
+    v.clear(); // Nay
 }
 
 fn range_full() {
     let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
     let iter = u.drain(..); // Yay
-    v.drain(..); // Nay
+    v.clear(); // Nay
 }
 
 fn range_to() {
     let (mut u, mut v) = (vec![1, 2, 3], vec![1, 2, 3]);
     let iter = u.drain(..u.len()); // Yay
-    v.drain(..v.len()); // Nay
+    v.clear(); // Nay
 }
 
 fn partial_drains() {
