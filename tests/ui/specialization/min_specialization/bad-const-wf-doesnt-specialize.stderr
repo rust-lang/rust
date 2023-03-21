@@ -1,11 +1,14 @@
-error[E0119]: conflicting implementations of trait `Copy` for type `S<_>`
-  --> $DIR/bad-const-wf-doesnt-specialize.rs:9:1
+error: the constant `N` is not of type `usize`
+  --> $DIR/bad-const-wf-doesnt-specialize.rs:8:29
    |
 LL | impl<const N: i32> Copy for S<N> {}
-   | -------------------------------- first implementation here
-LL | impl<const M: usize> Copy for S<M> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `S<_>`
+   |                             ^^^^
+   |
+note: required by a bound in `S`
+  --> $DIR/bad-const-wf-doesnt-specialize.rs:6:10
+   |
+LL | struct S<const L: usize>;
+   |          ^^^^^^^^^^^^^^ required by this bound in `S`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0119`.
