@@ -25,4 +25,15 @@ fn range_to() {
     v.drain(..v.len()); // Nay
 }
 
+fn partial_drains() {
+    let mut v = vec![1, 2, 3];
+    v.drain(1..); // Yay
+
+    let mut v = vec![1, 2, 3];
+    v.drain(..v.len() - 1); // Yay
+
+    let mut v = vec![1, 2, 3];
+    v.drain(1..v.len() - 1); // Yay
+}
+
 fn main() {}
