@@ -226,15 +226,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    // FIXME: Could be defaulted, but `LazyValue<UnusedGenericParams>` is not `FixedSizeEncoding`..
-    unused_generic_params => {
-        cdata
-            .root
-            .tables
-            .unused_generic_params
-            .get(cdata, def_id.index)
-            .map_or_else(|| ty::UnusedGenericParams::new_all_used(), |lazy| lazy.decode((cdata, tcx)))
-    }
+    unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
     opt_def_kind => { table_direct }
     impl_parent => { table }
     impl_polarity => { table_direct }
@@ -262,7 +254,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
      }
 
-    associated_items_for_impl_trait_in_trait => { table_defaulted_array }
+    associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }

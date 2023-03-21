@@ -200,6 +200,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.addProject",
+                "title": "Add current file's crate to workspace",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
                 "category": "rust-analyzer"
@@ -427,6 +432,17 @@
                     "markdownDescription": "Whether to use the rustc error code.",
                     "default": false,
                     "type": "boolean"
+                },
+                "rust-analyzer.discoverProjectCommand": {
+                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command should only be used\n if a build system like Buck or Bazel is also in use. The command must accept files as arguments and return \n a rust-project.json over stdout.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "array"
+                    ],
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {

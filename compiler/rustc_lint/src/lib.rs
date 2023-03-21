@@ -74,6 +74,7 @@ mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
+mod reexports;
 mod traits;
 mod types;
 mod unused;
@@ -111,6 +112,7 @@ use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
 use redundant_semicolon::*;
+use reexports::*;
 use traits::*;
 use types::*;
 use unused::*;
@@ -242,6 +244,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            UselessAnonymousReexport: UselessAnonymousReexport,
         ]
     ]
 );

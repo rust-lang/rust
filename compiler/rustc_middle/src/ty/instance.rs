@@ -781,6 +781,12 @@ fn needs_fn_once_adapter_shim(
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Decodable, Encodable, HashStable)]
 pub struct UnusedGenericParams(FiniteBitSet<u32>);
 
+impl Default for UnusedGenericParams {
+    fn default() -> Self {
+        UnusedGenericParams::new_all_used()
+    }
+}
+
 impl UnusedGenericParams {
     pub fn new_all_unused(amount: u32) -> Self {
         let mut bitset = FiniteBitSet::new_empty();
@@ -806,5 +812,13 @@ impl UnusedGenericParams {
 
     pub fn all_used(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn bits(&self) -> u32 {
+        self.0.0
+    }
+
+    pub fn from_bits(bits: u32) -> UnusedGenericParams {
+        UnusedGenericParams(FiniteBitSet(bits))
     }
 }

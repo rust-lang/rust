@@ -49,8 +49,10 @@ const FAKE_SRC_BASE: &str = "fake-test-src-base";
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
-    use winapi::um::errhandlingapi::SetErrorMode;
-    use winapi::um::winbase::SEM_NOGPFAULTERRORBOX;
+
+    use windows::Win32::System::Diagnostics::Debug::{
+        SetErrorMode, SEM_NOGPFAULTERRORBOX, THREAD_ERROR_MODE,
+    };
 
     static LOCK: Mutex<()> = Mutex::new(());
 
@@ -62,6 +64,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     // termination by design. This mode is inherited by all child processes.
     unsafe {
         let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+        let old_mode = THREAD_ERROR_MODE(old_mode);
         SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
         let r = f();
         SetErrorMode(old_mode);
@@ -278,13 +281,15 @@ impl<'test> TestCx<'test> {
             Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
-                if revision.starts_with("rpass") || revision.starts_with("rfail") {
+                if revision.starts_with("cpass")
+                    || revision.starts_with("rpass")
+                    || revision.starts_with("rfail")
+                {
                     true
                 } else if revision.starts_with("cfail") {
-                    // FIXME: would be nice if incremental revs could start with "cpass"
                     pm.is_some()
                 } else {
-                    panic!("revision name must begin with rpass, rfail, or cfail");
+                    panic!("revision name must begin with cpass, rpass, rfail, or cfail");
                 }
             }
             mode => panic!("unimplemented for mode {:?}", mode),
@@ -384,6 +389,20 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn run_cpass_test(&self) {
+        let emit_metadata = self.should_emit_metadata(self.pass_mode());
+        let proc_res = self.compile_test(WillExecute::No, emit_metadata);
+
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        // FIXME(#41968): Move this check to tidy?
+        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
+            self.fatal("compile-pass tests with expected warnings should be moved to ui/");
+        }
+    }
+
     fn run_rpass_test(&self) {
         let emit_metadata = self.should_emit_metadata(self.pass_mode());
         let should_run = self.run_if_enabled();
@@ -393,16 +412,14 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
+        // FIXME(#41968): Move this check to tidy?
+        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
+            self.fatal("run-pass tests with expected warnings should be moved to ui/");
+        }
+
         if let WillExecute::Disabled = should_run {
             return;
         }
-
-        // FIXME(#41968): Move this check to tidy?
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-        assert!(
-            expected_errors.is_empty(),
-            "run-pass tests with expected warnings should be moved to ui/"
-        );
 
         let proc_res = self.exec_compiled_test();
         if !proc_res.status.success() {
@@ -2913,10 +2930,11 @@ impl<'test> TestCx<'test> {
     fn run_incremental_test(&self) {
         // Basic plan for a test incremental/foo/bar.rs:
         // - load list of revisions rpass1, cfail2, rpass3
-        //   - each should begin with `rpass`, `cfail`, or `rfail`
-        //   - if `rpass`, expect compile and execution to succeed
+        //   - each should begin with `cpass`, `rpass`, `cfail`, or `rfail`
+        //   - if `cpass`, expect compilation to succeed, don't execute
+        //   - if `rpass`, expect compilation and execution to succeed
         //   - if `cfail`, expect compilation to fail
-        //   - if `rfail`, expect execution to fail
+        //   - if `rfail`, expect compilation to succeed and execution to fail
         // - create a directory build/foo/bar.incremental
         // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass1
         //   - because name of revision starts with "rpass", expect success
@@ -2940,7 +2958,12 @@ impl<'test> TestCx<'test> {
             print!("revision={:?} props={:#?}", revision, self.props);
         }
 
-        if revision.starts_with("rpass") {
+        if revision.starts_with("cpass") {
+            if self.props.should_ice {
+                self.fatal("can only use should-ice in cfail tests");
+            }
+            self.run_cpass_test();
+        } else if revision.starts_with("rpass") {
             if self.props.should_ice {
                 self.fatal("can only use should-ice in cfail tests");
             }
@@ -2953,7 +2976,7 @@ impl<'test> TestCx<'test> {
         } else if revision.starts_with("cfail") {
             self.run_cfail_test();
         } else {
-            self.fatal("revision name must begin with rpass, rfail, or cfail");
+            self.fatal("revision name must begin with cpass, rpass, rfail, or cfail");
         }
     }
 

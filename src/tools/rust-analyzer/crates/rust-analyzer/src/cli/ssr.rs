@@ -1,7 +1,7 @@
 //! Applies structured search replace rules from the command line.
 
 use ide_ssr::MatchFinder;
-use project_model::{CargoConfig, RustcSource};
+use project_model::{CargoConfig, RustLibSource};
 
 use crate::cli::{
     flags,
@@ -13,7 +13,7 @@ impl flags::Ssr {
     pub fn run(self) -> Result<()> {
         use ide_db::base_db::SourceDatabaseExt;
         let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustcSource::Discover);
+        cargo_config.sysroot = Some(RustLibSource::Discover);
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,

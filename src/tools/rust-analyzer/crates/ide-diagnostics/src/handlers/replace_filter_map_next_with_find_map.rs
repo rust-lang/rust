@@ -1,4 +1,4 @@
-use hir::{db::AstDatabase, InFile};
+use hir::{db::ExpandDatabase, InFile};
 use ide_db::source_change::SourceChange;
 use syntax::{
     ast::{self, HasArgList},

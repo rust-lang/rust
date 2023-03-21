@@ -26,4 +26,10 @@ libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.5"
-winapi = { version = "0.3", features = ["winerror"] }
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.46.0"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_Debug",
+]

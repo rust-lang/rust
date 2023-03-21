@@ -1756,3 +1756,35 @@ const C: usize = 2 + 2;
 "#,
     );
 }
+
+#[test]
+fn regression_14164() {
+    check_types(
+        r#"
+trait Rec {
+    type K;
+    type Rebind<Tok>: Rec<K = Tok>;
+}
+
+trait Expr<K> {
+    type Part: Rec<K = K>;
+    fn foo(_: <Self::Part as Rec>::Rebind<i32>) {}
+}
+
+struct Head<K>(K);
+impl<K> Rec for Head<K> {
+    type K = K;
+    type Rebind<Tok> = Head<Tok>;
+}
+
+fn test<E>()
+where
+    E: Expr<usize, Part = Head<usize>>,
+{
+    let head;
+      //^^^^ Head<i32>
+    E::foo(head);
+}
+"#,
+    );
+}

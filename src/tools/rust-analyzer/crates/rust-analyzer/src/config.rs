@@ -22,7 +22,7 @@ use ide_db::{
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
-    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
     UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -272,7 +272,6 @@ config_data! {
         /// The warnings will be indicated by a blue squiggly underline in code
         /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
-
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
@@ -895,6 +894,15 @@ impl Config {
         }
     }
 
+    pub fn add_linked_projects(&mut self, linked_projects: Vec<ProjectJsonData>) {
+        let mut linked_projects = linked_projects
+            .into_iter()
+            .map(ManifestOrProjectJson::ProjectJson)
+            .collect::<Vec<ManifestOrProjectJson>>();
+
+        self.data.linkedProjects.append(&mut linked_projects);
+    }
+
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
         let caps = try_or_def!(self.caps.text_document.as_ref()?.synchronization.clone()?);
         caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
@@ -1129,16 +1137,16 @@ impl Config {
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustc_source.as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
-                RustcSource::Discover
+                RustLibSource::Discover
             } else {
-                RustcSource::Path(self.root_path.join(rustc_src))
+                RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
         let sysroot = self.data.cargo_sysroot.as_ref().map(|sysroot| {
             if sysroot == "discover" {
-                RustcSource::Discover
+                RustLibSource::Discover
             } else {
-                RustcSource::Path(self.root_path.join(sysroot))
+                RustLibSource::Path(self.root_path.join(sysroot))
             }
         });
         let sysroot_src =

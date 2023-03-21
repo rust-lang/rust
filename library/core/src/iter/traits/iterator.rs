@@ -1,5 +1,6 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::marker::Destruct;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -336,8 +337,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    #[rustc_do_not_const_check]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        Self::Item: ~const Destruct,
+    {
         for i in 0..n {
             self.next().ok_or(i)?;
         }
@@ -385,8 +388,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_do_not_const_check]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, n: usize) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+    {
         self.advance_by(n).ok()?;
         self.next()
     }
@@ -1998,7 +2003,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
-    /// assert_eq!(vec![0, 1, 2, 4, 6, 10, 20, 30], vec);
+    /// assert_eq!(vec, vec![0, 1, 2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// `Vec` can have a manual set capacity to avoid reallocating it:
@@ -2013,7 +2018,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
     /// assert_eq!(6, vec.capacity());
-    /// println!("{:?}", vec);
+    /// assert_eq!(vec, vec![2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// The returned mutable reference can be used to continue the call chain:
@@ -2027,12 +2032,12 @@ pub trait Iterator {
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3]);
     ///
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len now is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3, 1, 2, 3]);
     /// ```
     #[inline]
     #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]

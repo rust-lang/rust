@@ -614,6 +614,7 @@ fn f(u: U) {
 
     check_empty(
         r#"
+#![rustc_coherence_is_core]
 #[lang = "u32"]
 impl u32 {
     pub const MIN: Self = 0;

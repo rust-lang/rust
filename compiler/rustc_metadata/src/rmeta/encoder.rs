@@ -609,10 +609,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         _ = stat!("mir", || self.encode_mir());
 
-        _ = stat!("items", || {
-            self.encode_def_ids();
-            self.encode_info_for_items();
-        });
+        _ = stat!("def-ids", || self.encode_def_ids());
+
+        _ = stat!("items", || self.encode_info_for_items());
 
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
@@ -1198,8 +1197,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
             if should_encode_fn_impl_trait_in_trait(tcx, def_id) {
-                let table = tcx.associated_items_for_impl_trait_in_trait(def_id);
-                record_defaulted_array!(self.tables.associated_items_for_impl_trait_in_trait[def_id] <- table);
+                let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
+                record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
             }
         }
 
@@ -1440,9 +1439,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let instance =
                 ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
             let unused = tcx.unused_generic_params(instance);
-            if !unused.all_used() {
-                record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
-            }
+            self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }
 
         // Encode all the deduced parameter attributes for everything that has MIR, even for items

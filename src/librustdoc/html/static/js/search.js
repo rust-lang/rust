@@ -1202,28 +1202,42 @@ function initSearch(rawSearchIndex) {
          * @param {Row} row
          * @param {QueryElement} elem    - The element from the parsed query.
          * @param {integer} typeFilter
+         * @param {Array<integer>} skipPositions - Do not return one of these positions.
          *
-         * @return {integer} - Returns an edit distance to the best match. If there is no
-         *                      match, returns `maxEditDistance + 1`.
+         * @return {dist: integer, position: integer} - Returns an edit distance to the best match.
+         *                                              If there is no match, returns
+         *                                              `maxEditDistance + 1` and position: -1.
          */
-        function findArg(row, elem, typeFilter, maxEditDistance) {
+        function findArg(row, elem, typeFilter, maxEditDistance, skipPositions) {
             let dist = maxEditDistance + 1;
+            let position = -1;
 
             if (row && row.type && row.type.inputs && row.type.inputs.length > 0) {
+                let i = 0;
                 for (const input of row.type.inputs) {
-                    if (!typePassesFilter(typeFilter, input.ty)) {
+                    if (!typePassesFilter(typeFilter, input.ty) ||
+                        skipPositions.indexOf(i) !== -1) {
+                        i += 1;
                         continue;
                     }
-                    dist = Math.min(
-                        dist,
-                        checkType(input, elem, parsedQuery.literalSearch, maxEditDistance)
+                    const typeDist = checkType(
+                        input,
+                        elem,
+                        parsedQuery.literalSearch,
+                        maxEditDistance
                     );
-                    if (dist === 0) {
-                        return 0;
+                    if (typeDist === 0) {
+                        return {dist: 0, position: i};
                     }
+                    if (typeDist < dist) {
+                        dist = typeDist;
+                        position = i;
+                    }
+                    i += 1;
                 }
             }
-            return parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
+            dist = parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
+            return {dist, position};
         }
 
         /**
@@ -1232,29 +1246,43 @@ function initSearch(rawSearchIndex) {
          * @param {Row} row
          * @param {QueryElement} elem   - The element from the parsed query.
          * @param {integer} typeFilter
+         * @param {Array<integer>} skipPositions - Do not return one of these positions.
          *
-         * @return {integer} - Returns an edit distance to the best match. If there is no
-         *                      match, returns `maxEditDistance + 1`.
+         * @return {dist: integer, position: integer} - Returns an edit distance to the best match.
+         *                                              If there is no match, returns
+         *                                              `maxEditDistance + 1` and position: -1.
          */
-        function checkReturned(row, elem, typeFilter, maxEditDistance) {
+        function checkReturned(row, elem, typeFilter, maxEditDistance, skipPositions) {
             let dist = maxEditDistance + 1;
+            let position = -1;
 
             if (row && row.type && row.type.output.length > 0) {
                 const ret = row.type.output;
+                let i = 0;
                 for (const ret_ty of ret) {
-                    if (!typePassesFilter(typeFilter, ret_ty.ty)) {
+                    if (!typePassesFilter(typeFilter, ret_ty.ty) ||
+                        skipPositions.indexOf(i) !== -1) {
+                        i += 1;
                         continue;
                     }
-                    dist = Math.min(
-                        dist,
-                        checkType(ret_ty, elem, parsedQuery.literalSearch, maxEditDistance)
+                    const typeDist = checkType(
+                        ret_ty,
+                        elem,
+                        parsedQuery.literalSearch,
+                        maxEditDistance
                     );
-                    if (dist === 0) {
-                        return 0;
+                    if (typeDist === 0) {
+                        return {dist: 0, position: i};
                     }
+                    if (typeDist < dist) {
+                        dist = typeDist;
+                        position = i;
+                    }
+                    i += 1;
                 }
             }
-            return parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
+            dist = parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
+            return {dist, position};
         }
 
         function checkPath(contains, ty, maxEditDistance) {
@@ -1455,13 +1483,13 @@ function initSearch(rawSearchIndex) {
             const fullId = row.id;
             const searchWord = searchWords[pos];
 
-            const in_args = findArg(row, elem, parsedQuery.typeFilter, maxEditDistance);
-            const returned = checkReturned(row, elem, parsedQuery.typeFilter, maxEditDistance);
+            const in_args = findArg(row, elem, parsedQuery.typeFilter, maxEditDistance, []);
+            const returned = checkReturned(row, elem, parsedQuery.typeFilter, maxEditDistance, []);
 
             // path_dist is 0 because no parent path information is currently stored
             // in the search index
-            addIntoResults(results_in_args, fullId, pos, -1, in_args, 0, maxEditDistance);
-            addIntoResults(results_returned, fullId, pos, -1, returned, 0, maxEditDistance);
+            addIntoResults(results_in_args, fullId, pos, -1, in_args.dist, 0, maxEditDistance);
+            addIntoResults(results_returned, fullId, pos, -1, returned.dist, 0, maxEditDistance);
 
             if (!typePassesFilter(parsedQuery.typeFilter, row.ty)) {
                 return;
@@ -1534,12 +1562,20 @@ function initSearch(rawSearchIndex) {
 
             // If the result is too "bad", we return false and it ends this search.
             function checkArgs(elems, callback) {
+                const skipPositions = [];
                 for (const elem of elems) {
                     // There is more than one parameter to the query so all checks should be "exact"
-                    const dist = callback(row, elem, NO_TYPE_FILTER, maxEditDistance);
+                    const { dist, position } = callback(
+                        row,
+                        elem,
+                        NO_TYPE_FILTER,
+                        maxEditDistance,
+                        skipPositions
+                    );
                     if (dist <= 1) {
                         nbDist += 1;
                         totalDist += dist;
+                        skipPositions.push(position);
                     } else {
                         return false;
                     }
@@ -1597,9 +1633,17 @@ function initSearch(rawSearchIndex) {
                             row,
                             elem,
                             parsedQuery.typeFilter,
+                            maxEditDistance,
+                            []
+                        );
+                        addIntoResults(
+                            results_others,
+                            row.id,
+                            i,
+                            -1,
+                            in_returned.dist,
                             maxEditDistance
                         );
-                        addIntoResults(results_others, row.id, i, -1, in_returned, maxEditDistance);
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {

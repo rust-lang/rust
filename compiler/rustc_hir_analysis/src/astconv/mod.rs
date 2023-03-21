@@ -3068,7 +3068,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // generate the def_id of an associated type for the trait and return as
                         // type a projection.
                         let def_id = if in_trait && tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                            tcx.associated_item_for_impl_trait_in_trait(local_def_id).to_def_id()
+                            tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
                         } else {
                             local_def_id.to_def_id()
                         };
@@ -3152,8 +3152,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
-            if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
-                // Our own parameters are the resolved lifetimes.
+            // We use `generics.count() - lifetimes.len()` here instead of `generics.parent_count`
+            // since return-position impl trait in trait squashes all of the generics from its source fn
+            // into its own generics, so the opaque's "own" params isn't always just lifetimes.
+            if let Some(i) = (param.index as usize).checked_sub(generics.count() - lifetimes.len())
+            {
+                // Resolve our own lifetime parameters.
                 let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
                 let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
                 self.ast_region_to_region(lifetime, None).into()

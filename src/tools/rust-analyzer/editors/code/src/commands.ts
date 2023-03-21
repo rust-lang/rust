@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Ctx, Cmd, CtxInit } from "./ctx";
+import { Ctx, Cmd, CtxInit, discoverWorkspace } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -747,6 +747,33 @@ export function expandMacro(ctx: CtxInit): Cmd {
 
 export function reloadWorkspace(ctx: CtxInit): Cmd {
     return async () => ctx.client.sendRequest(ra.reloadWorkspace);
+}
+
+export function addProject(ctx: CtxInit): Cmd {
+    return async () => {
+        const discoverProjectCommand = ctx.config.discoverProjectCommand;
+        if (!discoverProjectCommand) {
+            return;
+        }
+
+        const workspaces: JsonProject[] = await Promise.all(
+            vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                return discoverWorkspace(rustDocuments, discoverProjectCommand, {
+                    cwd: folder.uri.fsPath,
+                });
+            })
+        );
+
+        ctx.addToDiscoveredWorkspaces(workspaces);
+
+        // this is a workaround to avoid needing writing the `rust-project.json` into
+        // a workspace-level VS Code-specific settings folder. We'd like to keep the
+        // `rust-project.json` entirely in-memory.
+        await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: "",
+        });
+    };
 }
 
 async function showReferencesImpl(

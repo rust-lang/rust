@@ -11,8 +11,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item,
         associated_item_def_ids,
         associated_items,
-        associated_items_for_impl_trait_in_trait,
-        associated_item_for_impl_trait_in_trait,
+        associated_types_for_impl_traits_in_associated_fn,
+        associated_type_for_impl_trait_in_trait,
         impl_item_implementor_ids,
         ..*providers
     };
@@ -24,7 +24,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type and create a
-                // corresponding associated item using associated_items_for_impl_trait_in_trait
+                // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
                 // query.
                 tcx.arena.alloc_from_iter(
                     trait_item_refs
@@ -39,7 +39,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
                                 .flat_map(|trait_item_ref| {
                                     let trait_fn_def_id =
                                         trait_item_ref.id.owner_id.def_id.to_def_id();
-                                    tcx.associated_items_for_impl_trait_in_trait(trait_fn_def_id)
+                                    tcx.associated_types_for_impl_traits_in_associated_fn(
+                                        trait_fn_def_id,
+                                    )
                                 })
                                 .map(|def_id| *def_id),
                         ),
@@ -56,7 +58,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                 // We collect RPITITs for each trait method's return type, on the impl side too and
                 // create a corresponding associated item using
-                // associated_items_for_impl_trait_in_trait query.
+                // associated_types_for_impl_traits_in_associated_fn query.
                 tcx.arena.alloc_from_iter(
                     impl_
                         .items
@@ -72,7 +74,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
                                 .flat_map(|impl_item_ref| {
                                     let impl_fn_def_id =
                                         impl_item_ref.id.owner_id.def_id.to_def_id();
-                                    tcx.associated_items_for_impl_trait_in_trait(impl_fn_def_id)
+                                    tcx.associated_types_for_impl_traits_in_associated_fn(
+                                        impl_fn_def_id,
+                                    )
                                 })
                                 .map(|def_id| *def_id)
                         })),
@@ -176,13 +180,19 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
     }
 }
 
-/// Given an `fn_def_id` of a trait or of an impl that implements a given trait:
-/// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
-/// the associated items that correspond to each impl trait in return position for that trait.
-/// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
-/// creates and returns the associated items that correspond to each impl trait in return position
-/// of the implemented trait.
-fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -> &'_ [DefId] {
+/// Given an `fn_def_id` of a trait or a trait implementation:
+///
+/// if `fn_def_id` is a function defined inside a trait, then it synthesizes
+/// a new def id corresponding to a new associated type for each return-
+/// position `impl Trait` in the signature.
+///
+/// if `fn_def_id` is a function inside of an impl, then for each synthetic
+/// associated type generated for the corresponding trait function described
+/// above, synthesize a corresponding associated type in the impl.
+fn associated_types_for_impl_traits_in_associated_fn(
+    tcx: TyCtxt<'_>,
+    fn_def_id: DefId,
+) -> &'_ [DefId] {
     let parent_def_id = tcx.parent(fn_def_id);
 
     match tcx.def_kind(parent_def_id) {
@@ -206,7 +216,7 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
                 visitor.visit_fn_ret_ty(output);
 
                 tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
-                    tcx.associated_item_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
+                    tcx.associated_type_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
                 }))
             } else {
                 &[]
@@ -217,9 +227,9 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
             let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else { return &[] };
 
             tcx.arena.alloc_from_iter(
-                tcx.associated_items_for_impl_trait_in_trait(trait_fn_def_id).iter().map(
+                tcx.associated_types_for_impl_traits_in_associated_fn(trait_fn_def_id).iter().map(
                     move |trait_assoc_def_id| {
-                        impl_associated_item_for_impl_trait_in_trait(
+                        associated_type_for_impl_trait_in_impl(
                             tcx,
                             trait_assoc_def_id.expect_local(),
                             fn_def_id.expect_local(),
@@ -231,16 +241,17 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
         }
 
         def_kind => bug!(
-            "associated_items_for_impl_trait_in_trait: {:?} should be Trait or Impl but is {:?}",
+            "associated_types_for_impl_traits_in_associated_fn: {:?} should be Trait or Impl but is {:?}",
             parent_def_id,
             def_kind
         ),
     }
 }
 
-/// Given an `opaque_ty_def_id` corresponding to an impl trait in trait, create and return the
-/// corresponding associated item.
-fn associated_item_for_impl_trait_in_trait(
+/// Given an `opaque_ty_def_id` corresponding to an `impl Trait` in an associated
+/// function from a trait, synthesize an associated type for that `impl Trait`
+/// that inherits properties that we infer from the method and the opaque type.
+fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
@@ -335,10 +346,12 @@ fn associated_item_for_impl_trait_in_trait(
     local_def_id
 }
 
-/// Given an `trait_assoc_def_id` that corresponds to a previously synthesized impl trait in trait
-/// into an associated type and an `impl_def_id` corresponding to an impl block, create and return
-/// the corresponding associated item inside the impl block.
-fn impl_associated_item_for_impl_trait_in_trait(
+/// Given an `trait_assoc_def_id` corresponding to an associated item synthesized
+/// from an `impl Trait` in an associated function from a trait, and an
+/// `impl_fn_def_id` that represents an implementation of the associated function
+/// that the `impl Trait` comes from, synthesize an associated type for that `impl Trait`
+/// that inherits properties that we infer from the method and the associated type.
+fn associated_type_for_impl_trait_in_impl(
     tcx: TyCtxt<'_>,
     trait_assoc_def_id: LocalDefId,
     impl_fn_def_id: LocalDefId,
@@ -383,6 +396,8 @@ fn impl_associated_item_for_impl_trait_in_trait(
     impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
 
     // Copy generics_of the trait's associated item but the impl as the parent.
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) resolves to the trait instead of the impl
+    // generics.
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;
@@ -391,15 +406,9 @@ fn impl_associated_item_for_impl_trait_in_trait(
         let parent_generics = tcx.generics_of(impl_def_id);
         let parent_count = parent_generics.parent_count + parent_generics.params.len();
 
-        let mut impl_fn_params = tcx.generics_of(impl_fn_def_id).params.clone();
-
         for param in &mut params {
-            param.index = param.index + parent_count as u32 + impl_fn_params.len() as u32
-                - trait_assoc_parent_count as u32;
+            param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;
         }
-
-        impl_fn_params.extend(params);
-        params = impl_fn_params;
 
         let param_def_id_to_index =
             params.iter().map(|param| (param.def_id, param.index)).collect();

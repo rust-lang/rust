@@ -265,10 +265,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        if !self.view_item_stack.insert(res_did) {
-            return false;
-        }
-
         if !please_inline &&
             let mut visitor = OneLevelVisitor::new(self.cx.tcx.hir(), res_did) &&
             let Some(item) = visitor.find_target(self.cx.tcx, def_id.to_def_id(), path) &&
@@ -282,6 +278,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             !inherits_doc_hidden(self.cx.tcx, item_def_id)
         {
             // The imported item is public and not `doc(hidden)` so no need to inline it.
+            return false;
+        }
+
+        if !self.view_item_stack.insert(res_did) {
             return false;
         }
 

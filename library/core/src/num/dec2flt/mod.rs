@@ -147,7 +147,13 @@ macro_rules! from_str_float_impl {
             /// representable floating-point number to the number represented
             /// by `src` (following the same rules for rounding as for the
             /// results of primitive operations).
-            #[inline]
+            // We add the `#[inline(never)]` attribute, since its content will
+            // be filled with that of `dec2flt`, which has #[inline(always)].
+            // Since `dec2flt` is generic, a normal inline attribute on this function
+            // with `dec2flt` having no attributes results in heavily repeated
+            // generation of `dec2flt`, despite the fact only a maximum of 2
+            // possible instances can ever exist. Adding #[inline(never)] avoids this.
+            #[inline(never)]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 dec2flt(src)
             }
@@ -202,12 +208,14 @@ impl fmt::Display for ParseFloatError {
     }
 }
 
+#[inline]
 pub(super) fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
 // Used in unit tests, keep public.
 // This is much better than making FloatErrorKind and ParseFloatError::kind public.
+#[inline]
 pub fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
@@ -220,6 +228,7 @@ fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
 }
 
 /// Converts a decimal string into a floating point number.
+#[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
 pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
     let c = if let Some(&c) = s.first() {

@@ -286,7 +286,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             split.next().map(|f|  Symbol::intern(f)).ok_or_else(no_res)?;
         let path = split
             .next()
-            .map(|f| f.to_owned())
             // If there's no third component, we saw `[a::b]` before and it failed to resolve.
             // So there's no partial res.
             .ok_or_else(no_res)?;
@@ -429,7 +428,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let item_name = Symbol::intern(item_str);
         let path_root = split
             .next()
-            .map(|f| f.to_owned())
             // If there's no `::`, it's not an associated item.
             // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
             .ok_or_else(|| {

@@ -1,4 +1,4 @@
-use hir::db::AstDatabase;
+use hir::db::ExpandDatabase;
 use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use itertools::Itertools;
 use syntax::AstNode;

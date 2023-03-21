@@ -35,6 +35,7 @@ pub struct FunctionData {
     pub visibility: RawVisibility,
     pub abi: Option<Interned<str>>,
     pub legacy_const_generics_indices: Box<[u32]>,
+    pub rustc_allow_incoherent_impl: bool,
     flags: FnFlags,
 }
 
@@ -84,13 +85,14 @@ impl FunctionData {
             }
         }
 
-        let legacy_const_generics_indices = item_tree
-            .attrs(db, krate, ModItem::from(loc.id.value).into())
+        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
+        let legacy_const_generics_indices = attrs
             .by_key("rustc_legacy_const_generics")
             .tt_values()
             .next()
             .map(parse_rustc_legacy_const_generics)
             .unwrap_or_default();
+        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
 
         Arc::new(FunctionData {
             name: func.name.clone(),
@@ -108,6 +110,7 @@ impl FunctionData {
             abi: func.abi.clone(),
             legacy_const_generics_indices,
             flags,
+            rustc_allow_incoherent_impl,
         })
     }
 
@@ -171,6 +174,7 @@ pub struct TypeAliasData {
     pub visibility: RawVisibility,
     pub is_extern: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
+    pub rustc_allow_incoherent_impl: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
     pub bounds: Vec<Interned<TypeBound>>,
 }
@@ -189,10 +193,14 @@ impl TypeAliasData {
             item_tree[typ.visibility].clone()
         };
 
-        let rustc_has_incoherent_inherent_impls = item_tree
-            .attrs(db, loc.container.module(db).krate(), ModItem::from(loc.id.value).into())
-            .by_key("rustc_has_incoherent_inherent_impls")
-            .exists();
+        let attrs = item_tree.attrs(
+            db,
+            loc.container.module(db).krate(),
+            ModItem::from(loc.id.value).into(),
+        );
+        let rustc_has_incoherent_inherent_impls =
+            attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
+        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
@@ -200,6 +208,7 @@ impl TypeAliasData {
             visibility,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             rustc_has_incoherent_inherent_impls,
+            rustc_allow_incoherent_impl,
             bounds: typ.bounds.to_vec(),
         })
     }
@@ -212,11 +221,12 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
+    pub skip_array_during_method_dispatch: bool,
+    pub fundamental: bool,
     pub visibility: RawVisibility,
     /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
     /// method calls to this trait's methods when the receiver is an array and the crate edition is
     /// 2015 or 2018.
-    pub skip_array_during_method_dispatch: bool,
     // box it as the vec is usually empty anyways
     pub attribute_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
 }
@@ -245,6 +255,7 @@ impl TraitData {
             attrs.by_key("rustc_skip_array_during_method_dispatch").exists();
         let rustc_has_incoherent_inherent_impls =
             attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
+        let fundamental = attrs.by_key("fundamental").exists();
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
@@ -260,6 +271,7 @@ impl TraitData {
                 visibility,
                 skip_array_during_method_dispatch,
                 rustc_has_incoherent_inherent_impls,
+                fundamental,
             }),
             diagnostics.into(),
         )
@@ -450,6 +462,7 @@ pub struct ConstData {
     pub name: Option<Name>,
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
+    pub rustc_allow_incoherent_impl: bool,
 }
 
 impl ConstData {
@@ -463,10 +476,16 @@ impl ConstData {
             item_tree[konst.visibility].clone()
         };
 
+        let rustc_allow_incoherent_impl = item_tree
+            .attrs(db, loc.container.module(db).krate(), ModItem::from(loc.id.value).into())
+            .by_key("rustc_allow_incoherent_impl")
+            .exists();
+
         Arc::new(ConstData {
             name: konst.name.clone(),
             type_ref: konst.type_ref.clone(),
             visibility,
+            rustc_allow_incoherent_impl,
         })
     }
 }

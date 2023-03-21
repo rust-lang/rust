@@ -5,10 +5,7 @@ use std::iter::repeat_with;
 use chalk_ir::Mutability;
 use hir_def::{
     body::Body,
-    expr::{
-        Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId,
-        RecordFieldPat,
-    },
+    expr::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
     path::Path,
 };
 use hir_expand::name::Name;
@@ -439,38 +436,8 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
 
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
-    walk_pats(body, pat_id, &mut |pat| {
+    body.walk_pats(pat_id, &mut |pat| {
         res |= matches!(pat, Pat::Bind { id, .. } if body.bindings[*id].mode == BindingAnnotation::Ref);
     });
     res
-}
-
-fn walk_pats(body: &Body, pat_id: PatId, f: &mut impl FnMut(&Pat)) {
-    let pat = &body[pat_id];
-    f(pat);
-    match pat {
-        Pat::Range { .. }
-        | Pat::Lit(..)
-        | Pat::Path(..)
-        | Pat::ConstBlock(..)
-        | Pat::Wild
-        | Pat::Missing => {}
-        &Pat::Bind { subpat, .. } => {
-            if let Some(subpat) = subpat {
-                walk_pats(body, subpat, f);
-            }
-        }
-        Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-            args.iter().copied().for_each(|p| walk_pats(body, p, f));
-        }
-        Pat::Ref { pat, .. } => walk_pats(body, *pat, f),
-        Pat::Slice { prefix, slice, suffix } => {
-            let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-            total_iter.copied().for_each(|p| walk_pats(body, p, f));
-        }
-        Pat::Record { args, .. } => {
-            args.iter().for_each(|RecordFieldPat { pat, .. }| walk_pats(body, *pat, f));
-        }
-        Pat::Box { inner } => walk_pats(body, *inner, f),
-    }
 }
