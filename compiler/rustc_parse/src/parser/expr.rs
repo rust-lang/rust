@@ -1843,20 +1843,14 @@ impl<'a> Parser<'a> {
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
-        if let token::Interpolated(inner) = &self.token.kind {
-            let expr = match inner.as_ref() {
-                token::NtExpr(expr) => Some(expr),
-                token::NtLiteral(expr) => Some(expr),
-                _ => None,
-            };
-            if let Some(expr) = expr {
-                if matches!(expr.kind, ExprKind::Err) {
-                    let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
-                        .into_diagnostic(&self.sess.span_diagnostic);
-                    err.downgrade_to_delayed_bug();
-                    return Err(err);
-                }
-            }
+        if let token::Interpolated(nt) = &self.token.kind
+            && let token::NtExpr(e) | token::NtLiteral(e) = &**nt
+            && matches!(e.kind, ExprKind::Err)
+        {
+            let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
+                .into_diagnostic(&self.sess.span_diagnostic);
+            err.downgrade_to_delayed_bug();
+            return Err(err);
         }
         let token = self.token.clone();
         let err = |self_: &Self| {
