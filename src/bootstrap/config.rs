@@ -194,6 +194,7 @@ pub struct Config {
     pub dist_sign_folder: Option<PathBuf>,
     pub dist_upload_addr: Option<String>,
     pub dist_compression_formats: Option<Vec<String>>,
+    pub dist_compression_profile: String,
     pub dist_include_mingw_linker: bool,
 
     // libstd features
@@ -706,6 +707,7 @@ define_config! {
         src_tarball: Option<bool> = "src-tarball",
         missing_tools: Option<bool> = "missing-tools",
         compression_formats: Option<Vec<String>> = "compression-formats",
+        compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
     }
 }
@@ -824,6 +826,7 @@ impl Config {
         config.deny_warnings = true;
         config.bindir = "bin".into();
         config.dist_include_mingw_linker = true;
+        config.dist_compression_profile = "fast".into();
 
         config.stdout_is_tty = atty::is(atty::Stream::Stdout);
         config.stderr_is_tty = atty::is(atty::Stream::Stderr);
@@ -1314,6 +1317,7 @@ impl Config {
             config.dist_sign_folder = t.sign_folder.map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr;
             config.dist_compression_formats = t.compression_formats;
+            set(&mut config.dist_compression_profile, t.compression_profile);
             set(&mut config.rust_dist_src, t.src_tarball);
             set(&mut config.missing_tools, t.missing_tools);
             set(&mut config.dist_include_mingw_linker, t.include_mingw_linker)
