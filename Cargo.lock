@@ -5294,6 +5294,7 @@ name = "rustc_span"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
+ "indexmap",
  "md-5",
  "rustc_arena",
  "rustc_data_structures",
