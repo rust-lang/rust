@@ -77,11 +77,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
-                                let header_snip = if !vis_snip.is_empty() {
-                                    format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
-                                } else {
+                                let header_snip = if vis_snip.is_empty() {
                                     format!("async {}", &header_snip[..ret_pos])
+                                } else {
+                                    format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
                                 };
+
                                 let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,

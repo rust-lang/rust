@@ -3,7 +3,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_trait_method, match_def_path, paths, peel_hir_expr_refs};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -69,4 +69,6 @@ impl LateLintPass<'_> for ManualMainSeparatorStr {
                 );
             }
     }
+
+    extract_msrv_attr!(LateContext);
 }
