@@ -17,10 +17,10 @@ use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
+use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -138,6 +138,10 @@ fn object_safety_violations_for_trait(
     let spans = bounds_reference_self(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
+    }
+    let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
+    if !spans.is_empty() {
+        violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
     }
 
     violations.extend(
@@ -346,6 +350,21 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
+}
+
+fn super_predicates_have_non_lifetime_binders(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> SmallVec<[Span; 1]> {
+    // If non_lifetime_binders is disabled, then exit early
+    if !tcx.features().non_lifetime_binders {
+        return SmallVec::new();
+    }
+    tcx.super_predicates_of(trait_def_id)
+        .predicates
+        .iter()
+        .filter_map(|(pred, span)| pred.has_non_region_late_bound().then_some(*span))
+        .collect()
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
