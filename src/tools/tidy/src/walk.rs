@@ -40,7 +40,7 @@ pub fn filter_not_rust(path: &Path) -> bool {
 
 pub fn walk(
     path: &Path,
-    skip: impl Clone + Send + Sync + 'static + Fn(&Path, bool) -> bool,
+    skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
     walk_many(&[path], skip, f);
@@ -48,7 +48,7 @@ pub fn walk(
 
 pub fn walk_many(
     paths: &[&Path],
-    skip: impl Clone + Send + Sync + 'static + Fn(&Path, bool) -> bool,
+    skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
     let mut contents = Vec::new();
