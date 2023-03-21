@@ -1846,7 +1846,17 @@ impl<'tcx> TyCtxt<'tcx> {
         let substs = substs.into_iter().map(Into::into);
         #[cfg(debug_assertions)]
         {
-            let n = self.generics_of(_def_id).count();
+            let generics = self.generics_of(_def_id);
+
+            let n = if let DefKind::AssocTy = self.def_kind(_def_id)
+                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(_def_id))
+            {
+                // If this is an inherent projection.
+
+                generics.params.len() + 1
+            } else {
+                generics.count()
+            };
             assert_eq!(
                 (n, Some(n)),
                 substs.size_hint(),
@@ -2007,7 +2017,7 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert_matches!(
             (kind, self.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
-                | (ty::Projection, DefKind::AssocTy)
+                | (ty::Projection | ty::Inherent, DefKind::AssocTy)
                 | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
         );
         self.mk_ty_from_kind(Alias(kind, alias_ty))

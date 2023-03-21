@@ -549,6 +549,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
+                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
                             && !tcx.is_impl_trait_in_trait(projection_ty.def_id) =>
@@ -569,6 +570,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         hidden_ty
                     }
                     // FIXME(RPITIT): This can go away when we move to associated types
+                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     ty::Alias(
                         ty::Projection,
                         ty::AliasTy { def_id: def_id2, substs: substs2, .. },

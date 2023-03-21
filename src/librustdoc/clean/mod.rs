@@ -1836,6 +1836,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
             clean_projection(bound_ty.rebind(*data), cx, parent_def_id)
         }
 
+        // FIXME(fmease): Clean inherent projections properly. This requires making the trait ref in
+        // `QPathData` optional or alternatively adding a new `clean::Type` variant.
+        ty::Alias(ty::Inherent, _data) => Type::Infer,
+
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
                 ImplTrait(bounds)

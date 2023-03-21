@@ -550,6 +550,11 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_projection(projection_ty.def_id, projection_ty.substs))
         }
 
+        (&ty::Alias(ty::Inherent, a_data), &ty::Alias(ty::Inherent, b_data)) => {
+            let alias_ty = relation.relate(a_data, b_data)?;
+            Ok(tcx.mk_alias(ty::Inherent, tcx.mk_alias_ty(alias_ty.def_id, alias_ty.substs)))
+        }
+
         (
             &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs, .. }),
             &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs, .. }),

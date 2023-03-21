@@ -605,6 +605,9 @@ impl<'tcx> WfPredicates<'tcx> {
                     walker.skip_current_subtree(); // Subtree handled by compute_projection.
                     self.compute_projection(data);
                 }
+                ty::Alias(ty::Inherent, _) => {
+                    // WF if their substs are WF.
+                }
 
                 ty::Adt(def, substs) => {
                     // WfNominalType

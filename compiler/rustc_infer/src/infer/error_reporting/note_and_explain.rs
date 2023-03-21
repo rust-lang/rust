@@ -71,9 +71,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Alias(ty::Projection, _), ty::Alias(ty::Projection, _)) => {
+                    (ty::Alias(ty::Projection | ty::Inherent, _), ty::Alias(ty::Projection | ty::Inherent, _)) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
+                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     (ty::Param(p), ty::Alias(ty::Projection, proj)) | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
@@ -222,7 +223,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Alias(ty::Projection, proj_ty), _) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
+                    (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -231,7 +232,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Alias(ty::Projection, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
+                    (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,

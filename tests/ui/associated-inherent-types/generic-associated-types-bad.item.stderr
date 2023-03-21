@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/generic-associated-types-bad.rs:16:10
+   |
+LL | const _: Ty::Pr<String> = String::new();
+   |          ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `Ty::Pr`
+  --> $DIR/generic-associated-types-bad.rs:10:16
+   |
+LL |     type Pr<T: Copy> = T;
+   |                ^^^^ required by this bound in `Ty::Pr`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

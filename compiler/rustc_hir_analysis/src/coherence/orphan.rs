@@ -210,6 +210,19 @@ fn do_orphan_check_impl<'tcx>(
                 NonlocalImpl::DisallowOther,
             ),
 
+            // ```
+            // struct S<T>(T);
+            // impl<T: ?Sized> S<T> {
+            //     type This = T;
+            // }
+            // impl<T: ?Sized> AutoTrait for S<T>::This {}
+            // ```
+            // FIXME(inherent_associated_types): The example code above currently leads to a cycle
+            ty::Alias(AliasKind::Inherent, _) => (
+                LocalImpl::Disallow { problematic_kind: "associated type" },
+                NonlocalImpl::DisallowOther,
+            ),
+
             // type Opaque = impl Trait;
             // impl AutoTrait for Opaque {}
             ty::Alias(AliasKind::Opaque, _) => (
