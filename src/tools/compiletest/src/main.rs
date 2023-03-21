@@ -114,6 +114,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
+        .optflag("", "json", "emit json output instead of plaintext output")
         .optopt("", "logfile", "file to log test execution to", "FILE")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
@@ -281,7 +282,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             && !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
-        quiet: matches.opt_present("quiet"),
+        format: match (matches.opt_present("quiet"), matches.opt_present("json")) {
+            (true, true) => panic!("--quiet and --json are incompatible"),
+            (true, false) => test::OutputFormat::Terse,
+            (false, true) => test::OutputFormat::Json,
+            (false, false) => test::OutputFormat::Pretty,
+        },
         only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
@@ -339,7 +345,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("ar: {}", config.ar));
     logv(c, format!("linker: {:?}", config.linker));
     logv(c, format!("verbose: {}", config.verbose));
-    logv(c, format!("quiet: {}", config.quiet));
+    logv(c, format!("format: {:?}", config.format));
     logv(c, "\n".to_string());
 }
 
@@ -416,7 +422,7 @@ pub fn run_tests(config: Config) {
             // easy to miss which tests failed, and as such fail to reproduce
             // the failure locally.
 
-            eprintln!(
+            println!(
                 "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
                 config.suite,
                 config.compare_mode.map(|c| format!(" compare_mode={:?}", c)).unwrap_or_default(),
@@ -501,7 +507,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         filters: config.filters.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
-        format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
+        format: config.format,
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
