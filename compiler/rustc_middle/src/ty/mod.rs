@@ -640,7 +640,25 @@ pub enum PredicateKind<'tcx> {
     /// This predicate requires two terms to be equal to eachother.
     ///
     /// Only used for new solver
-    AliasEq(Term<'tcx>, Term<'tcx>),
+    AliasEq(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, Debug)]
+pub enum AliasRelationDirection {
+    Equate,
+    Subtype,
+    Supertype,
+}
+
+impl AliasRelationDirection {
+    pub fn invert(self) -> Self {
+        match self {
+            AliasRelationDirection::Equate => AliasRelationDirection::Equate,
+            AliasRelationDirection::Subtype => AliasRelationDirection::Supertype,
+            AliasRelationDirection::Supertype => AliasRelationDirection::Subtype,
+        }
+    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -976,11 +994,11 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    /// This function returns `None` for `AliasKind::Opaque`.
+    /// This function returns the inner `AliasTy` if this term is a projection.
     ///
     /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
     /// deal with constants.
-    pub fn to_alias_term_no_opaque(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    pub fn to_projection_term(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
             TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(kind, alias_ty) => match kind {

@@ -777,6 +777,16 @@ where
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.delegate.register_obligations(obligations);
     }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        match self.ambient_variance {
+            ty::Variance::Covariant => ty::AliasRelationDirection::Subtype,
+            ty::Variance::Contravariant => ty::AliasRelationDirection::Supertype,
+            ty::Variance::Invariant => ty::AliasRelationDirection::Equate,
+            // FIXME(deferred_projection_equality): Implement this when we trigger it
+            ty::Variance::Bivariant => unreachable!(),
+        }
+    }
 }
 
 /// When we encounter a binder like `for<..> fn(..)`, we actually have

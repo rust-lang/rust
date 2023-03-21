@@ -73,7 +73,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                         MismatchedProjectionTypes { err: TypeError::Mismatch },
                                     )
                                 }
-                                ty::PredicateKind::AliasEq(_, _) => {
+                                ty::PredicateKind::AliasEq(_, _, _) => {
                                     FulfillmentErrorCode::CodeProjectionError(
                                         MismatchedProjectionTypes { err: TypeError::Mismatch },
                                     )

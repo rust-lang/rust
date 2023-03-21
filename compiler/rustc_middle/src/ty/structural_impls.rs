@@ -177,7 +177,8 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
-            ty::PredicateKind::AliasEq(t1, t2) => write!(f, "AliasEq({t1:?}, {t2:?})"),
+            // TODO
+            ty::PredicateKind::AliasEq(t1, t2, _) => write!(f, "AliasEq({t1:?}, {t2:?})"),
         }
     }
 }
@@ -250,6 +251,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::AliasKind,
+    crate::ty::AliasRelationDirection,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::Placeholder<crate::ty::BoundTyKind>,
     crate::ty::ClosureKind,

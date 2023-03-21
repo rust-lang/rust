@@ -842,7 +842,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
         let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
 
         self.register_predicates([ty::Binder::dummy(if self.tcx().trait_solver_next() {
-            ty::PredicateKind::AliasEq(a.into(), b.into())
+            ty::PredicateKind::AliasEq(a.into(), b.into(), ty::AliasRelationDirection::Equate)
         } else {
             ty::PredicateKind::ConstEquate(a, b)
         })]);
@@ -852,13 +852,15 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     ///
     /// If they aren't equal then the relation doesn't hold.
     fn register_type_equate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-
         self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasEq(
             a.into(),
             b.into(),
+            self.alias_relate_direction(),
         ))]);
     }
+
+    /// Relation direction emitted for `AliasEq` predicates
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection;
 }
 
 fn int_unification_error<'tcx>(
