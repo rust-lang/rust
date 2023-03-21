@@ -383,7 +383,7 @@ export class Ctx {
         );
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
-        statusBar.tooltip.appendMarkdown("[Stop server](command:rust-analyzer.stopServer)");
+        statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
