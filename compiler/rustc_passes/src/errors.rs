@@ -289,10 +289,6 @@ pub struct DocTestTakesList;
 pub struct DocCfgHideTakesList;
 
 #[derive(LintDiagnostic)]
-#[diag(passes_doc_primitive)]
-pub struct DocPrimitive;
-
-#[derive(LintDiagnostic)]
 #[diag(passes_doc_test_unknown_any)]
 pub struct DocTestUnknownAny {
     pub path: String,
