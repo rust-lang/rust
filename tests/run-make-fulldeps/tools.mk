@@ -112,9 +112,9 @@ endif
 # Extra flags needed to compile a working executable with the standard library
 ifdef IS_WINDOWS
 ifdef IS_MSVC
-	EXTRACFLAGS := ws2_32.lib userenv.lib advapi32.lib bcrypt.lib
+	EXTRACFLAGS := ws2_32.lib userenv.lib advapi32.lib bcrypt.lib ntdll.lib
 else
-	EXTRACFLAGS := -lws2_32 -luserenv -lbcrypt
+	EXTRACFLAGS := -lws2_32 -luserenv -lbcrypt -lntdll
 	EXTRACXXFLAGS := -lstdc++
 	# So this is a bit hacky: we can't use the DLL version of libstdc++ because
 	# it pulls in the DLL version of libgcc, which means that we end up with 2
