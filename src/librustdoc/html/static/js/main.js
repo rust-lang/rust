@@ -370,8 +370,12 @@ function preLoadCss(cssUrl) {
                         item => {
                             const numbered = /([^-]+)-([0-9]+)/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
-                                expandSection(item.id);
-                                window.location = "#" + item.id;
+                                openParentDetails(item);
+                                item.scrollIntoView();
+                                // Let the section expand itself before trying to highlight
+                                setTimeout(() => {
+                                    window.location.replace("#" + item.id);
+                                }, 0);
                             }
                         }
                     );

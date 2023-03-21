@@ -20,6 +20,7 @@ wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
     "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation"
 }, ENDS_WITH)
+assert: "section:target"
 
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
@@ -39,3 +40,4 @@ wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
     "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation-1"
 }, ENDS_WITH)
+assert: "section:target"
