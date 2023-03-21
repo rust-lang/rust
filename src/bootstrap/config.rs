@@ -87,6 +87,9 @@ pub struct Config {
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
 
+    pub stdout_is_tty: bool,
+    pub stderr_is_tty: bool,
+
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
@@ -824,6 +827,9 @@ impl Config {
         config.bindir = "bin".into();
         config.dist_include_mingw_linker = true;
         config.dist_compression_profile = "fast".into();
+
+        config.stdout_is_tty = atty::is(atty::Stream::Stdout);
+        config.stderr_is_tty = atty::is(atty::Stream::Stderr);
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
