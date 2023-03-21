@@ -1,7 +1,7 @@
 use fortanix_sgx_abi::Fd;
 
 use super::abi::usercalls;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::sys::{AsInner, FromInner, IntoInner};
 
@@ -28,6 +28,10 @@ impl FileDesc {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         usercalls::read(self.fd, &mut [IoSliceMut::new(buf)])
+    }
+
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|b| self.read(b), buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
