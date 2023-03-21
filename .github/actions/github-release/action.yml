@@ -1,0 +1,12 @@
+name: 'wasmtime github releases'
+description: 'wasmtime github releases'
+inputs:
+  token:
+    description: ''
+    required: true
+  files:
+    description: ''
+    required: true
+runs:
+  using: 'node16'
+  main: 'main.js'
