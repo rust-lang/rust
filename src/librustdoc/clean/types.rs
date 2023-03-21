@@ -249,13 +249,13 @@ impl ExternalCrate {
         //
         // Note that this loop only searches the top-level items of the crate,
         // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we would also have to
+        // item tagged with `#[rustc_doc_primitive]` then we would also have to
         // search the entirety of external modules for items tagged
-        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+        // `#[rustc_doc_primitive]`, which is a pretty inefficient process (decoding
         // all that metadata unconditionally).
         //
         // In order to keep the metadata load under control, the
-        // `#[doc(primitive)]` feature is explicitly designed to only allow the
+        // `#[rustc_doc_primitive]` feature is explicitly designed to only allow the
         // primitive tags to show up as the top level items in a crate.
         //
         // Also note that this does not attempt to deal with modules tagged
@@ -264,18 +264,13 @@ impl ExternalCrate {
         let as_primitive = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let mut prim = None;
-                let meta_items = tcx
-                    .get_attrs(def_id, sym::doc)
-                    .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
-                for meta in meta_items {
-                    if let Some(v) = meta.value_str() {
-                        if meta.has_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
-                            }
-                            // FIXME: should warn on unknown primitives?
+                for attr in tcx.get_attrs(def_id, sym::rustc_doc_primitive) {
+                    if let Some(v) = attr.value_str() {
+                        prim = PrimitiveType::from_symbol(v);
+                        if prim.is_some() {
+                            break;
                         }
+                        // FIXME: should warn on unknown primitives?
                     }
                 }
                 return prim.map(|p| (def_id, p));
@@ -1829,13 +1824,17 @@ impl PrimitiveType {
         }
     }
 
-    /// Returns the DefId of the module with `doc(primitive)` for this primitive type.
+    /// Returns the DefId of the module with `rustc_doc_primitive` for this primitive type.
     /// Panics if there is no such module.
     ///
-    /// This gives precedence to primitives defined in the current crate, and deprioritizes primitives defined in `core`,
-    /// but otherwise, if multiple crates define the same primitive, there is no guarantee of which will be picked.
-    /// In particular, if a crate depends on both `std` and another crate that also defines `doc(primitive)`, then
-    /// it's entirely random whether `std` or the other crate is picked. (no_std crates are usually fine unless multiple dependencies define a primitive.)
+    /// This gives precedence to primitives defined in the current crate, and deprioritizes
+    /// primitives defined in `core`,
+    /// but otherwise, if multiple crates define the same primitive, there is no guarantee of which
+    /// will be picked.
+    ///
+    /// In particular, if a crate depends on both `std` and another crate that also defines
+    /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
+    /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
         static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {

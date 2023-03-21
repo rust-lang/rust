@@ -249,9 +249,7 @@ pub(crate) fn id_from_item_inner(
                     // instead, we directly get the primitive symbol and convert it to u32 to
                     // generate the ID.
                     if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
-                        let Some(prim) = tcx.get_attrs(*def_id, sym::doc)
-                            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-                            .filter(|attr| attr.has_name(sym::primitive))
+                        let Some(prim) = tcx.get_attrs(*def_id, sym::rustc_doc_primitive)
                             .find_map(|attr| attr.value_str()) {
                         format!(":{}", prim.as_u32())
                     } else {

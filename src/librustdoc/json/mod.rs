@@ -78,7 +78,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // HACK(hkmatsumoto): For impls of primitive types, we index them
                         // regardless of whether they're local. This is because users can
                         // document primitive items in an arbitrary crate by using
-                        // `doc(primitive)`.
+                        // `rustc_doc_primitive`.
                         let mut is_primitive_impl = false;
                         if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind &&
                             impl_.trait_.is_none() &&
