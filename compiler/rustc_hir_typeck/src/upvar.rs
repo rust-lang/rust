@@ -712,10 +712,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                unreachable!(
-                    "we captured two identical projections: capture1 = {:?}, capture2 = {:?}",
-                    capture1, capture2
-                );
+                // return Equal for two identical projections
+                std::cmp::Ordering::Equal
             });
         }
 
