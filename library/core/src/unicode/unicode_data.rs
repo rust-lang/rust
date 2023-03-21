@@ -580,7 +580,7 @@ pub mod white_space {
 
 #[rustfmt::skip]
 pub mod conversions {
-    const INDEX_MASK: u32 = 4194304;
+    const INDEX_MASK: u32 = 0x400000;
 
     pub fn to_lower(c: char) -> [char; 3] {
         if c.is_ascii() {
