@@ -189,7 +189,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
             && first.span.eq_ctxt(second.span)
-			&& !in_external_macro(&cx.sess(), first.span)
+			&& !in_external_macro(cx.sess(), first.span)
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
 			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
@@ -260,8 +260,8 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
 /// Implementation of the xor case for `MANUAL_SWAP` lint.
 fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for [s1, s2, s3] in block.stmts.array_windows::<3>() {
+        let ctxt = s1.span.ctxt();
         if_chain! {
-            let ctxt = s1.span.ctxt();
             if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(s1, ctxt);
             if let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(s2, ctxt);
             if let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(s3, ctxt);

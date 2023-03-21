@@ -1,5 +1,5 @@
 use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
-use rustc_ast::ast::*;
+use rustc_ast::ast::{Expr, ExprKind, Stmt, StmtKind};
 use rustc_ast::visit::Visitor as AstVisitor;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
