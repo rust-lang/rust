@@ -235,7 +235,6 @@ trivial! {
     rustc_hir::OwnerId,
     rustc_hir::Upvar,
     rustc_index::bit_set::FiniteBitSet<u32>,
-    rustc_middle::metadata::ModChild,
     rustc_middle::middle::dependency_format::Linkage,
     rustc_middle::middle::exported_symbols::SymbolExportInfo,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,

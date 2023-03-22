@@ -991,7 +991,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             _ => false,
         };
 
-        ModChild { ident, res, vis, span, macro_rules }
+        ModChild { ident, res, vis, span, macro_rules, reexport_chain: Default::default() }
     }
 
     /// Iterates over all named children of the given module,
