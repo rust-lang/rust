@@ -590,7 +590,6 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     parent_scope: ParentScope<'a>,
 
     /// The current set of local scopes for types and values.
-    /// FIXME #4948: Reuse ribs to avoid allocation.
     ribs: PerNS<Vec<Rib<'a>>>,
 
     /// Previous poped `rib`, only used for diagnostic.
