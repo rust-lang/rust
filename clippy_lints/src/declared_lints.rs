@@ -232,6 +232,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::let_with_type_underscore::LET_WITH_TYPE_UNDERSCORE_INFO,
     crate::lifetimes::EXTRA_UNUSED_LIFETIMES_INFO,
     crate::lifetimes::NEEDLESS_LIFETIMES_INFO,
+    crate::lines_filter_map_ok::LINES_FILTER_MAP_OK_INFO,
     crate::literal_representation::DECIMAL_LITERAL_REPRESENTATION_INFO,
     crate::literal_representation::INCONSISTENT_DIGIT_GROUPING_INFO,
     crate::literal_representation::LARGE_DIGIT_GROUPS_INFO,
