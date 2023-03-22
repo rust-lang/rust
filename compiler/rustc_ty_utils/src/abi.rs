@@ -539,7 +539,7 @@ fn make_thin_self_ptr<'tcx>(
         // get a built-in pointer type
         let mut fat_pointer_layout = layout;
         'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
-            && !fat_pointer_layout.ty.is_region_ptr()
+            && !fat_pointer_layout.ty.is_ref()
         {
             for i in 0..fat_pointer_layout.fields.count() {
                 let field_layout = fat_pointer_layout.field(cx, i);
