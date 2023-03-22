@@ -212,7 +212,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn extract_callable_info(
         &self,
-        hir_id: LocalDefId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)>;
@@ -1112,7 +1112,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// Extracts information about a callable type for diagnostics. This is a
     /// heuristic -- it doesn't necessarily mean that a type is always callable,
     /// because the callable type must also be well-formed to be called.
-    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     fn extract_callable_info(
         &self,
         body_id: LocalDefId,
