@@ -81,10 +81,18 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         if self.tcx.trait_solver_next() {
             self.probe(|snapshot| {
-                if let Ok((_, certainty)) =
+                if let Ok((_, certainty, nested_goals)) =
                     self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
                 {
                     match certainty {
+                        // If we have nested obligations from instantiating the canonical
+                        // response from this goal, just treat the response as ambiguous.
+                        //
+                        // FIXME(deferred_projection_equality): We need to process this
+                        // in a loop probably... can't be worse than an ICE though
+                        Certainty::Yes if !nested_goals.is_empty() => {
+                            Ok(EvaluationResult::EvaluatedToAmbig)
+                        }
                         Certainty::Yes => {
                             if self.opaque_types_added_in_snapshot(snapshot) {
                                 Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)

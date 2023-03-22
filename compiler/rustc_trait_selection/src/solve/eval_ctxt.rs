@@ -70,7 +70,7 @@ pub trait InferCtxtEvalExt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(bool, Certainty), NoSolution>;
+    ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>;
 }
 
 impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
@@ -78,9 +78,8 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(bool, Certainty), NoSolution> {
+    ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let mode = if self.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
-
         let mut search_graph = search_graph::SearchGraph::new(self.tcx, mode);
 
         let mut ecx = EvalCtxt {
@@ -152,13 +151,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         &mut self,
         is_normalizes_to_hack: IsNormalizesToHack,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(bool, Certainty), NoSolution> {
+    ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let canonical_response =
             EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
 
         let has_changed = !canonical_response.value.var_values.is_identity();
-        let certainty = self.instantiate_and_apply_query_response(
+        let (certainty, nested_goals) = self.instantiate_and_apply_query_response(
             goal.param_env,
             orig_values,
             canonical_response,
@@ -186,7 +185,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             assert_eq!(certainty, canonical_response.value.certainty);
         }
 
-        Ok((has_changed, certainty))
+        Ok((has_changed, certainty, nested_goals))
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
@@ -263,13 +262,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 let mut has_changed = Err(Certainty::Yes);
 
                 if let Some(goal) = goals.normalizes_to_hack_goal.take() {
-                    let (_, certainty) = match this.evaluate_goal(
+                    let (_, certainty, nested_goals) = match this.evaluate_goal(
                         IsNormalizesToHack::Yes,
                         goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
                     ) {
                         Ok(r) => r,
                         Err(NoSolution) => return Some(Err(NoSolution)),
                     };
+                    new_goals.goals.extend(nested_goals);
 
                     if goal.predicate.projection_ty
                         != this.resolve_vars_if_possible(goal.predicate.projection_ty)
@@ -308,11 +308,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 }
 
                 for nested_goal in goals.goals.drain(..) {
-                    let (changed, certainty) =
+                    let (changed, certainty, nested_goals) =
                         match this.evaluate_goal(IsNormalizesToHack::No, nested_goal) {
                             Ok(result) => result,
                             Err(NoSolution) => return Some(Err(NoSolution)),
                         };
+                    new_goals.goals.extend(nested_goals);
 
                     if changed {
                         has_changed = Ok(());
