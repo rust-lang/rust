@@ -12,9 +12,9 @@
       let mut _7: u32;                     // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
       let mut _8: u32;                     // in scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       let mut _9: u32;                     // in scope 0 at $DIR/issue_101973.rs:+1:33: +1:39
-      let mut _10: i32;                    // in scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+      let mut _10: u32;                    // in scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       let mut _11: bool;                   // in scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-      let mut _12: i32;                    // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+      let mut _12: u32;                    // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       let mut _13: bool;                   // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       scope 1 (inlined imm8) {             // at $DIR/issue_101973.rs:14:5: 14:17
           debug x => _1;                   // in scope 1 at $DIR/issue_101973.rs:5:13: 5:14
@@ -43,24 +43,24 @@
           StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageLive(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageLive(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
--         _10 = BitAnd(const 8_i32, const -32_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
--         _11 = Ne(move _10, const 0_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
--         assert(!move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-+         _10 = const 0_i32;               // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-+         _11 = const false;               // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-+         assert(!const false, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+-         _10 = const 8_i32 as u32 (IntToInt); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+-         _11 = Lt(move _10, const 32_u32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+-         assert(move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
++         _10 = const 8_u32;               // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
++         _11 = const true;                // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
++         assert(const true, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       }
   
       bb1: {
           _8 = Shr(_1, const 8_i32);       // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
           _7 = BitAnd(move _8, const 15_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageDead(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:51: +1:52
--         _12 = BitAnd(const 1_i32, const -32_i32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
--         _13 = Ne(move _12, const 0_i32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
--         assert(!move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-+         _12 = const 0_i32;               // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-+         _13 = const false;               // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-+         assert(!const false, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+-         _12 = const 1_i32 as u32 (IntToInt); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+-         _13 = Lt(move _12, const 32_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+-         assert(move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
++         _12 = const 1_u32;               // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
++         _13 = const true;                // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
++         assert(const true, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       }
   
       bb2: {

@@ -11,34 +11,28 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
     let mut _7: u8;                      // in scope 0 at $DIR/shifts.rs:+2:10: +2:20
     let mut _8: u8;                      // in scope 0 at $DIR/shifts.rs:+2:10: +2:15
     let mut _9: u8;                      // in scope 0 at $DIR/shifts.rs:+2:19: +2:20
-    let mut _10: u8;                     // in scope 0 at $DIR/shifts.rs:+2:10: +2:20
-    let mut _11: bool;                   // in scope 0 at $DIR/shifts.rs:+2:10: +2:20
-    let mut _12: u8;                     // in scope 0 at $DIR/shifts.rs:+2:22: +2:32
-    let mut _13: u8;                     // in scope 0 at $DIR/shifts.rs:+2:22: +2:27
-    let mut _14: u32;                    // in scope 0 at $DIR/shifts.rs:+2:31: +2:32
-    let mut _15: u32;                    // in scope 0 at $DIR/shifts.rs:+2:22: +2:32
-    let mut _16: bool;                   // in scope 0 at $DIR/shifts.rs:+2:22: +2:32
-    let mut _17: u8;                     // in scope 0 at $DIR/shifts.rs:+2:34: +2:44
-    let mut _18: u8;                     // in scope 0 at $DIR/shifts.rs:+2:34: +2:39
-    let mut _19: u128;                   // in scope 0 at $DIR/shifts.rs:+2:43: +2:44
-    let mut _20: u128;                   // in scope 0 at $DIR/shifts.rs:+2:34: +2:44
-    let mut _21: bool;                   // in scope 0 at $DIR/shifts.rs:+2:34: +2:44
-    let mut _22: [i128; 3];              // in scope 0 at $DIR/shifts.rs:+3:9: +3:39
-    let mut _23: i128;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:18
-    let mut _24: i128;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:13
-    let mut _25: u8;                     // in scope 0 at $DIR/shifts.rs:+3:17: +3:18
-    let mut _26: u8;                     // in scope 0 at $DIR/shifts.rs:+3:10: +3:18
-    let mut _27: bool;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:18
-    let mut _28: i128;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:28
-    let mut _29: i128;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:23
-    let mut _30: u32;                    // in scope 0 at $DIR/shifts.rs:+3:27: +3:28
-    let mut _31: u32;                    // in scope 0 at $DIR/shifts.rs:+3:20: +3:28
-    let mut _32: bool;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:28
-    let mut _33: i128;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:38
-    let mut _34: i128;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:33
-    let mut _35: u128;                   // in scope 0 at $DIR/shifts.rs:+3:37: +3:38
-    let mut _36: u128;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:38
-    let mut _37: bool;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:38
+    let mut _10: bool;                   // in scope 0 at $DIR/shifts.rs:+2:10: +2:20
+    let mut _11: u8;                     // in scope 0 at $DIR/shifts.rs:+2:22: +2:32
+    let mut _12: u8;                     // in scope 0 at $DIR/shifts.rs:+2:22: +2:27
+    let mut _13: u32;                    // in scope 0 at $DIR/shifts.rs:+2:31: +2:32
+    let mut _14: bool;                   // in scope 0 at $DIR/shifts.rs:+2:22: +2:32
+    let mut _15: u8;                     // in scope 0 at $DIR/shifts.rs:+2:34: +2:44
+    let mut _16: u8;                     // in scope 0 at $DIR/shifts.rs:+2:34: +2:39
+    let mut _17: u128;                   // in scope 0 at $DIR/shifts.rs:+2:43: +2:44
+    let mut _18: bool;                   // in scope 0 at $DIR/shifts.rs:+2:34: +2:44
+    let mut _19: [i128; 3];              // in scope 0 at $DIR/shifts.rs:+3:9: +3:39
+    let mut _20: i128;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:18
+    let mut _21: i128;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:13
+    let mut _22: u8;                     // in scope 0 at $DIR/shifts.rs:+3:17: +3:18
+    let mut _23: bool;                   // in scope 0 at $DIR/shifts.rs:+3:10: +3:18
+    let mut _24: i128;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:28
+    let mut _25: i128;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:23
+    let mut _26: u32;                    // in scope 0 at $DIR/shifts.rs:+3:27: +3:28
+    let mut _27: bool;                   // in scope 0 at $DIR/shifts.rs:+3:20: +3:28
+    let mut _28: i128;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:38
+    let mut _29: i128;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:33
+    let mut _30: u128;                   // in scope 0 at $DIR/shifts.rs:+3:37: +3:38
+    let mut _31: bool;                   // in scope 0 at $DIR/shifts.rs:+3:30: +3:38
 
     bb0: {
         StorageLive(_6);                 // scope 0 at $DIR/shifts.rs:+2:9: +2:45
@@ -47,96 +41,90 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         _8 = _1;                         // scope 0 at $DIR/shifts.rs:+2:10: +2:15
         StorageLive(_9);                 // scope 0 at $DIR/shifts.rs:+2:19: +2:20
         _9 = _3;                         // scope 0 at $DIR/shifts.rs:+2:19: +2:20
-        _10 = BitAnd(_9, const 248_u8);  // scope 0 at $DIR/shifts.rs:+2:10: +2:20
-        _11 = Ne(move _10, const 0_u8);  // scope 0 at $DIR/shifts.rs:+2:10: +2:20
-        assert(!move _11, "attempt to shift right by `{}`, which would overflow", _9) -> [success: bb1, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:10: +2:20
+        _10 = Lt(_9, const 8_u8);        // scope 0 at $DIR/shifts.rs:+2:10: +2:20
+        assert(move _10, "attempt to shift right by `{}`, which would overflow", _9) -> [success: bb1, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:10: +2:20
     }
 
     bb1: {
         _7 = Shr(move _8, move _9);      // scope 0 at $DIR/shifts.rs:+2:10: +2:20
         StorageDead(_9);                 // scope 0 at $DIR/shifts.rs:+2:19: +2:20
         StorageDead(_8);                 // scope 0 at $DIR/shifts.rs:+2:19: +2:20
-        StorageLive(_12);                // scope 0 at $DIR/shifts.rs:+2:22: +2:32
-        StorageLive(_13);                // scope 0 at $DIR/shifts.rs:+2:22: +2:27
-        _13 = _1;                        // scope 0 at $DIR/shifts.rs:+2:22: +2:27
-        StorageLive(_14);                // scope 0 at $DIR/shifts.rs:+2:31: +2:32
-        _14 = _4;                        // scope 0 at $DIR/shifts.rs:+2:31: +2:32
-        _15 = BitAnd(_14, const 4294967288_u32); // scope 0 at $DIR/shifts.rs:+2:22: +2:32
-        _16 = Ne(move _15, const 0_u32); // scope 0 at $DIR/shifts.rs:+2:22: +2:32
-        assert(!move _16, "attempt to shift right by `{}`, which would overflow", _14) -> [success: bb2, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:22: +2:32
+        StorageLive(_11);                // scope 0 at $DIR/shifts.rs:+2:22: +2:32
+        StorageLive(_12);                // scope 0 at $DIR/shifts.rs:+2:22: +2:27
+        _12 = _1;                        // scope 0 at $DIR/shifts.rs:+2:22: +2:27
+        StorageLive(_13);                // scope 0 at $DIR/shifts.rs:+2:31: +2:32
+        _13 = _4;                        // scope 0 at $DIR/shifts.rs:+2:31: +2:32
+        _14 = Lt(_13, const 8_u32);      // scope 0 at $DIR/shifts.rs:+2:22: +2:32
+        assert(move _14, "attempt to shift right by `{}`, which would overflow", _13) -> [success: bb2, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:22: +2:32
     }
 
     bb2: {
-        _12 = Shr(move _13, move _14);   // scope 0 at $DIR/shifts.rs:+2:22: +2:32
-        StorageDead(_14);                // scope 0 at $DIR/shifts.rs:+2:31: +2:32
+        _11 = Shr(move _12, move _13);   // scope 0 at $DIR/shifts.rs:+2:22: +2:32
         StorageDead(_13);                // scope 0 at $DIR/shifts.rs:+2:31: +2:32
-        StorageLive(_17);                // scope 0 at $DIR/shifts.rs:+2:34: +2:44
-        StorageLive(_18);                // scope 0 at $DIR/shifts.rs:+2:34: +2:39
-        _18 = _1;                        // scope 0 at $DIR/shifts.rs:+2:34: +2:39
-        StorageLive(_19);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
-        _19 = _5;                        // scope 0 at $DIR/shifts.rs:+2:43: +2:44
-        _20 = BitAnd(_19, const 340282366920938463463374607431768211448_u128); // scope 0 at $DIR/shifts.rs:+2:34: +2:44
-        _21 = Ne(move _20, const 0_u128); // scope 0 at $DIR/shifts.rs:+2:34: +2:44
-        assert(!move _21, "attempt to shift right by `{}`, which would overflow", _19) -> [success: bb3, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:34: +2:44
+        StorageDead(_12);                // scope 0 at $DIR/shifts.rs:+2:31: +2:32
+        StorageLive(_15);                // scope 0 at $DIR/shifts.rs:+2:34: +2:44
+        StorageLive(_16);                // scope 0 at $DIR/shifts.rs:+2:34: +2:39
+        _16 = _1;                        // scope 0 at $DIR/shifts.rs:+2:34: +2:39
+        StorageLive(_17);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
+        _17 = _5;                        // scope 0 at $DIR/shifts.rs:+2:43: +2:44
+        _18 = Lt(_17, const 8_u128);     // scope 0 at $DIR/shifts.rs:+2:34: +2:44
+        assert(move _18, "attempt to shift right by `{}`, which would overflow", _17) -> [success: bb3, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+2:34: +2:44
     }
 
     bb3: {
-        _17 = Shr(move _18, move _19);   // scope 0 at $DIR/shifts.rs:+2:34: +2:44
-        StorageDead(_19);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
-        StorageDead(_18);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
-        _6 = [move _7, move _12, move _17]; // scope 0 at $DIR/shifts.rs:+2:9: +2:45
-        StorageDead(_17);                // scope 0 at $DIR/shifts.rs:+2:44: +2:45
-        StorageDead(_12);                // scope 0 at $DIR/shifts.rs:+2:44: +2:45
+        _15 = Shr(move _16, move _17);   // scope 0 at $DIR/shifts.rs:+2:34: +2:44
+        StorageDead(_17);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
+        StorageDead(_16);                // scope 0 at $DIR/shifts.rs:+2:43: +2:44
+        _6 = [move _7, move _11, move _15]; // scope 0 at $DIR/shifts.rs:+2:9: +2:45
+        StorageDead(_15);                // scope 0 at $DIR/shifts.rs:+2:44: +2:45
+        StorageDead(_11);                // scope 0 at $DIR/shifts.rs:+2:44: +2:45
         StorageDead(_7);                 // scope 0 at $DIR/shifts.rs:+2:44: +2:45
-        StorageLive(_22);                // scope 0 at $DIR/shifts.rs:+3:9: +3:39
-        StorageLive(_23);                // scope 0 at $DIR/shifts.rs:+3:10: +3:18
-        StorageLive(_24);                // scope 0 at $DIR/shifts.rs:+3:10: +3:13
-        _24 = _2;                        // scope 0 at $DIR/shifts.rs:+3:10: +3:13
-        StorageLive(_25);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
-        _25 = _3;                        // scope 0 at $DIR/shifts.rs:+3:17: +3:18
-        _26 = BitAnd(_25, const 128_u8); // scope 0 at $DIR/shifts.rs:+3:10: +3:18
-        _27 = Ne(move _26, const 0_u8);  // scope 0 at $DIR/shifts.rs:+3:10: +3:18
-        assert(!move _27, "attempt to shift left by `{}`, which would overflow", _25) -> [success: bb4, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:10: +3:18
+        StorageLive(_19);                // scope 0 at $DIR/shifts.rs:+3:9: +3:39
+        StorageLive(_20);                // scope 0 at $DIR/shifts.rs:+3:10: +3:18
+        StorageLive(_21);                // scope 0 at $DIR/shifts.rs:+3:10: +3:13
+        _21 = _2;                        // scope 0 at $DIR/shifts.rs:+3:10: +3:13
+        StorageLive(_22);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
+        _22 = _3;                        // scope 0 at $DIR/shifts.rs:+3:17: +3:18
+        _23 = Lt(_22, const 128_u8);     // scope 0 at $DIR/shifts.rs:+3:10: +3:18
+        assert(move _23, "attempt to shift left by `{}`, which would overflow", _22) -> [success: bb4, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:10: +3:18
     }
 
     bb4: {
-        _23 = Shl(move _24, move _25);   // scope 0 at $DIR/shifts.rs:+3:10: +3:18
-        StorageDead(_25);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
-        StorageDead(_24);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
-        StorageLive(_28);                // scope 0 at $DIR/shifts.rs:+3:20: +3:28
-        StorageLive(_29);                // scope 0 at $DIR/shifts.rs:+3:20: +3:23
-        _29 = _2;                        // scope 0 at $DIR/shifts.rs:+3:20: +3:23
-        StorageLive(_30);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
-        _30 = _4;                        // scope 0 at $DIR/shifts.rs:+3:27: +3:28
-        _31 = BitAnd(_30, const 4294967168_u32); // scope 0 at $DIR/shifts.rs:+3:20: +3:28
-        _32 = Ne(move _31, const 0_u32); // scope 0 at $DIR/shifts.rs:+3:20: +3:28
-        assert(!move _32, "attempt to shift left by `{}`, which would overflow", _30) -> [success: bb5, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:20: +3:28
+        _20 = Shl(move _21, move _22);   // scope 0 at $DIR/shifts.rs:+3:10: +3:18
+        StorageDead(_22);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
+        StorageDead(_21);                // scope 0 at $DIR/shifts.rs:+3:17: +3:18
+        StorageLive(_24);                // scope 0 at $DIR/shifts.rs:+3:20: +3:28
+        StorageLive(_25);                // scope 0 at $DIR/shifts.rs:+3:20: +3:23
+        _25 = _2;                        // scope 0 at $DIR/shifts.rs:+3:20: +3:23
+        StorageLive(_26);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
+        _26 = _4;                        // scope 0 at $DIR/shifts.rs:+3:27: +3:28
+        _27 = Lt(_26, const 128_u32);    // scope 0 at $DIR/shifts.rs:+3:20: +3:28
+        assert(move _27, "attempt to shift left by `{}`, which would overflow", _26) -> [success: bb5, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:20: +3:28
     }
 
     bb5: {
-        _28 = Shl(move _29, move _30);   // scope 0 at $DIR/shifts.rs:+3:20: +3:28
-        StorageDead(_30);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
-        StorageDead(_29);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
-        StorageLive(_33);                // scope 0 at $DIR/shifts.rs:+3:30: +3:38
-        StorageLive(_34);                // scope 0 at $DIR/shifts.rs:+3:30: +3:33
-        _34 = _2;                        // scope 0 at $DIR/shifts.rs:+3:30: +3:33
-        StorageLive(_35);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
-        _35 = _5;                        // scope 0 at $DIR/shifts.rs:+3:37: +3:38
-        _36 = BitAnd(_35, const 340282366920938463463374607431768211328_u128); // scope 0 at $DIR/shifts.rs:+3:30: +3:38
-        _37 = Ne(move _36, const 0_u128); // scope 0 at $DIR/shifts.rs:+3:30: +3:38
-        assert(!move _37, "attempt to shift left by `{}`, which would overflow", _35) -> [success: bb6, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:30: +3:38
+        _24 = Shl(move _25, move _26);   // scope 0 at $DIR/shifts.rs:+3:20: +3:28
+        StorageDead(_26);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
+        StorageDead(_25);                // scope 0 at $DIR/shifts.rs:+3:27: +3:28
+        StorageLive(_28);                // scope 0 at $DIR/shifts.rs:+3:30: +3:38
+        StorageLive(_29);                // scope 0 at $DIR/shifts.rs:+3:30: +3:33
+        _29 = _2;                        // scope 0 at $DIR/shifts.rs:+3:30: +3:33
+        StorageLive(_30);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
+        _30 = _5;                        // scope 0 at $DIR/shifts.rs:+3:37: +3:38
+        _31 = Lt(_30, const 128_u128);   // scope 0 at $DIR/shifts.rs:+3:30: +3:38
+        assert(move _31, "attempt to shift left by `{}`, which would overflow", _30) -> [success: bb6, unwind: bb7]; // scope 0 at $DIR/shifts.rs:+3:30: +3:38
     }
 
     bb6: {
-        _33 = Shl(move _34, move _35);   // scope 0 at $DIR/shifts.rs:+3:30: +3:38
-        StorageDead(_35);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
-        StorageDead(_34);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
-        _22 = [move _23, move _28, move _33]; // scope 0 at $DIR/shifts.rs:+3:9: +3:39
-        StorageDead(_33);                // scope 0 at $DIR/shifts.rs:+3:38: +3:39
+        _28 = Shl(move _29, move _30);   // scope 0 at $DIR/shifts.rs:+3:30: +3:38
+        StorageDead(_30);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
+        StorageDead(_29);                // scope 0 at $DIR/shifts.rs:+3:37: +3:38
+        _19 = [move _20, move _24, move _28]; // scope 0 at $DIR/shifts.rs:+3:9: +3:39
         StorageDead(_28);                // scope 0 at $DIR/shifts.rs:+3:38: +3:39
-        StorageDead(_23);                // scope 0 at $DIR/shifts.rs:+3:38: +3:39
-        _0 = (move _6, move _22);        // scope 0 at $DIR/shifts.rs:+1:5: +4:6
-        StorageDead(_22);                // scope 0 at $DIR/shifts.rs:+4:5: +4:6
+        StorageDead(_24);                // scope 0 at $DIR/shifts.rs:+3:38: +3:39
+        StorageDead(_20);                // scope 0 at $DIR/shifts.rs:+3:38: +3:39
+        _0 = (move _6, move _19);        // scope 0 at $DIR/shifts.rs:+1:5: +4:6
+        StorageDead(_19);                // scope 0 at $DIR/shifts.rs:+4:5: +4:6
         StorageDead(_6);                 // scope 0 at $DIR/shifts.rs:+4:5: +4:6
         return;                          // scope 0 at $DIR/shifts.rs:+5:2: +5:2
     }
