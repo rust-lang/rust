@@ -77,21 +77,20 @@ pub fn obligations<'tcx>(
 
 /// Compute the predicates that are required for a type to be well-formed.
 ///
-/// This is only intended to be used in the new solver, since it does not
-/// take into account recursion depth or proper error-reporting spans.
+/// This is only intended to be used in implied bounds computation and in
+/// the new solver, since it does not take into account recursion depth or
+/// proper error-reporting spans.
 pub fn unnormalized_obligations<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+) -> Vec<traits::PredicateObligation<'tcx>> {
     if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
-        return Some(vec![]);
+        return vec![];
     }
 
-    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
-
     let mut wf = WfPredicates {
-        tcx: infcx.tcx,
+        tcx,
         param_env,
         body_id: CRATE_DEF_ID,
         span: DUMMY_SP,
@@ -100,7 +99,7 @@ pub fn unnormalized_obligations<'tcx>(
         item: None,
     };
     wf.compute(arg);
-    Some(wf.out)
+    wf.out
 }
 
 /// Returns the obligations that make this trait reference

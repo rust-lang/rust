@@ -140,19 +140,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn compute_well_formed_goal(
         &mut self,
-        goal: Goal<'tcx, ty::GenericArg<'tcx>>,
+        Goal { predicate, param_env }: Goal<'tcx, ty::GenericArg<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match crate::traits::wf::unnormalized_obligations(
-            self.infcx,
-            goal.param_env,
-            goal.predicate,
-        ) {
-            Some(obligations) => {
-                self.add_goals(obligations.into_iter().map(|o| o.into()));
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-            None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
-        }
+        debug_assert_eq!(predicate, self.infcx.resolve_vars_if_possible(predicate));
+        let obligations =
+            crate::traits::wf::unnormalized_obligations(self.tcx(), param_env, predicate);
+        self.add_goals(obligations.into_iter().map(|o| o.into()));
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     #[instrument(level = "debug", skip(self), ret)]
