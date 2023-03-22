@@ -348,10 +348,6 @@ impl<'a> Parser<'a> {
             lo = self.token.span;
         }
 
-        if self.is_lit_bad_ident() {
-            return Err(self.expected_ident_found());
-        }
-
         let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
             self.parse_pat_deref(expected)?
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
@@ -395,7 +391,13 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Lit(const_expr)
             }
-        } else if self.can_be_ident_pat() {
+        // Don't eagerly error on semantically invalid tokens when matching
+        // declarative macros, as the input to those doesn't have to be
+        // semantically valid. For attribute/derive proc macros this is not the
+        // case, so doing the recovery for them is fine.
+        } else if self.can_be_ident_pat()
+            || (self.is_lit_bad_ident().is_some() && self.may_recover())
+        {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
             // they are dealt with later in resolve.
@@ -594,7 +596,7 @@ impl<'a> Parser<'a> {
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtPat(_) = **nt {
-                self.expected_ident_found().emit();
+                self.expected_ident_found_err().emit();
             }
         }
 

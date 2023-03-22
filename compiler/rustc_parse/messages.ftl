@@ -336,7 +336,7 @@ parse_expected_identifier_found_reserved_keyword = expected identifier, found re
 parse_expected_identifier_found_doc_comment = expected identifier, found doc comment
 parse_expected_identifier = expected identifier
 
-parse_sugg_escape_to_use_as_identifier = escape `{$ident_name}` to use it as an identifier
+parse_sugg_escape_identifier = escape `{$ident_name}` to use it as an identifier
 
 parse_sugg_remove_comma = remove this comma
 

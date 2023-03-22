@@ -795,6 +795,18 @@ impl Span {
         })
     }
 
+    /// Splits a span into two composite spans around a certain position.
+    pub fn split_at(self, pos: u32) -> (Span, Span) {
+        let len = self.hi().0 - self.lo().0;
+        debug_assert!(pos <= len);
+
+        let split_pos = BytePos(self.lo().0 + pos);
+        (
+            Span::new(self.lo(), split_pos, self.ctxt(), self.parent()),
+            Span::new(split_pos, self.hi(), self.ctxt(), self.parent()),
+        )
+    }
+
     /// Returns a `Span` that would enclose both `self` and `end`.
     ///
     /// Note that this can also be used to extend the span "backwards":

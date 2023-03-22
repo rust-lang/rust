@@ -42,8 +42,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::errors::{
-    DocCommentDoesNotDocumentAnything, IncorrectVisibilityRestriction, MismatchedClosingDelimiter,
-    NonStringAbiLiteral,
+    IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
 
 bitflags::bitflags! {
@@ -552,21 +551,11 @@ impl<'a> Parser<'a> {
         self.parse_ident_common(true)
     }
 
-    fn ident_or_err(&mut self) -> PResult<'a, (Ident, /* is_raw */ bool)> {
-        self.token.ident().ok_or_else(|| match self.prev_token.kind {
-            TokenKind::DocComment(..) => DocCommentDoesNotDocumentAnything {
-                span: self.prev_token.span,
-                missing_comma: None,
-            }
-            .into_diagnostic(&self.sess.span_diagnostic),
-            _ => self.expected_ident_found(),
-        })
-    }
-
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err()?;
+        let (ident, is_raw) = self.ident_or_err(recover)?;
+
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found();
+            let mut err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -575,6 +564,21 @@ impl<'a> Parser<'a> {
         }
         self.bump();
         Ok(ident)
+    }
+
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+        let result = self.token.ident().ok_or_else(|| self.expected_ident_found(recover));
+
+        let (ident, is_raw) = match result {
+            Ok(ident) => ident,
+            Err(err) => match err {
+                // we recovered!
+                Ok(ident) => ident,
+                Err(err) => return Err(err),
+            },
+        };
+
+        Ok((ident, is_raw))
     }
 
     /// Checks if the next token is `tok`, and returns `true` if so.
