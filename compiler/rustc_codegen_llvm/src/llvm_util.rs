@@ -424,7 +424,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         .filter_map(|s| {
             let enable_disable = match s.chars().next() {
                 None => return None,
-                Some(c @ '+' | c @ '-') => c,
+                Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
                         sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });

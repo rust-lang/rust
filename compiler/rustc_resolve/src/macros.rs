@@ -703,7 +703,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
                     check_consistency(self, &path, path_span, kind, initial_res, res)
                 }
-                path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed { .. } => {
+                path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
                     let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
                         // try to suggest if it's not a macro, maybe a function
