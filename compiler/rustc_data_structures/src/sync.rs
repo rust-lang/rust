@@ -30,6 +30,8 @@ pub use vec::AppendOnlyVec;
 
 mod vec;
 
+static PARALLEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
@@ -182,33 +184,6 @@ cfg_if! {
 
         use std::cell::Cell;
 
-        #[derive(Debug)]
-        pub struct WorkerLocal<T>(OneThread<T>);
-
-        impl<T> WorkerLocal<T> {
-            /// Creates a new worker local where the `initial` closure computes the
-            /// value this worker local should take for each thread in the thread pool.
-            #[inline]
-            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
-                WorkerLocal(OneThread::new(f(0)))
-            }
-
-            /// Returns the worker-local value for each thread
-            #[inline]
-            pub fn into_inner(self) -> Vec<T> {
-                vec![OneThread::into_inner(self.0)]
-            }
-        }
-
-        impl<T> Deref for WorkerLocal<T> {
-            type Target = T;
-
-            #[inline(always)]
-            fn deref(&self) -> &T {
-                &self.0
-            }
-        }
-
         pub type MTRef<'a, T> = &'a mut T;
 
         #[derive(Debug, Default)]
@@ -328,8 +303,6 @@ cfg_if! {
             };
         }
 
-        pub use rayon_core::WorkerLocal;
-
         pub use rayon::iter::ParallelIterator;
         use rayon::iter::IntoParallelIterator;
 
@@ -363,6 +336,49 @@ cfg_if! {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum WorkerLocal<T> {
+    SingleThread(T),
+    Rayon(rayon_core::WorkerLocal<T>),
+}
+
+impl<T> WorkerLocal<T> {
+    /// Creates a new worker local where the `initial` closure computes the
+    /// value this worker local should take for each thread in the thread pool.
+    #[inline]
+    pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
+        if !PARALLEL.load(Ordering::Relaxed) {
+            WorkerLocal::SingleThread(f(0))
+        } else {
+            WorkerLocal::Rayon(rayon_core::WorkerLocal::new(f))
+        }
+    }
+
+    /// Returns the worker-local value for each thread
+    #[inline]
+    pub fn into_inner(self) -> Vec<T> {
+        match self {
+            WorkerLocal::SingleThread(inner) => vec![inner],
+            WorkerLocal::Rayon(mt_inner) => mt_inner.into_inner(),
+        }
+    }
+}
+
+impl<T> Deref for WorkerLocal<T> {
+    type Target = T;
+
+    #[inline(always)]
+    fn deref(&self) -> &T {
+        match self {
+            WorkerLocal::SingleThread(inner) => inner,
+            WorkerLocal::Rayon(mt_inner) => mt_inner.deref(),
+        }
+    }
+}
+
+// Just for speed test
+unsafe impl<T: Send> std::marker::Sync for WorkerLocal<T> {}
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send<T: ?Sized + Send>() {}
