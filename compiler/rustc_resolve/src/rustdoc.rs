@@ -26,11 +26,13 @@ pub enum DocFragmentKind {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DocFragment {
     pub span: Span,
-    /// The module this doc-comment came from.
-    ///
-    /// This allows distinguishing between the original documentation and a pub re-export.
-    /// If it is `None`, the item was not re-exported.
-    pub parent_module: Option<DefId>,
+    /// The item this doc-comment came from.
+    /// Used to determine the scope in which doc links in this fragment are resolved.
+    /// Typically filled for reexport docs when they are merged into the docs of the
+    /// original reexported item.
+    /// If the id is not filled, which happens for the original reexported item, then
+    /// it has to be taken from somewhere else during doc link resolution.
+    pub item_id: Option<DefId>,
     pub doc: Symbol,
     pub kind: DocFragmentKind,
     pub indent: usize,
@@ -186,7 +188,7 @@ pub fn attrs_to_doc_fragments<'a>(
 ) -> (Vec<DocFragment>, ast::AttrVec) {
     let mut doc_fragments = Vec::new();
     let mut other_attrs = ast::AttrVec::new();
-    for (attr, parent_module) in attrs {
+    for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
             let kind = if attr.is_doc_comment() {
@@ -194,7 +196,7 @@ pub fn attrs_to_doc_fragments<'a>(
             } else {
                 DocFragmentKind::RawDoc
             };
-            let fragment = DocFragment { span: attr.span, doc, kind, parent_module, indent: 0 };
+            let fragment = DocFragment { span: attr.span, doc, kind, item_id, indent: 0 };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -216,7 +218,7 @@ pub fn prepare_to_doc_link_resolution(
 ) -> FxHashMap<Option<DefId>, String> {
     let mut res = FxHashMap::default();
     for fragment in doc_fragments {
-        let out_str = res.entry(fragment.parent_module).or_default();
+        let out_str = res.entry(fragment.item_id).or_default();
         add_doc_fragment(out_str, fragment);
     }
     res
