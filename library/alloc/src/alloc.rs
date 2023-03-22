@@ -397,7 +397,7 @@ fn rust_oom(layout: Layout) -> ! {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !;
 
-        // This symbol is emitted by rustc next to __rust_alloc_error_handler.
+        // This symbol is emitted by rustc .
         // Its value depends on the -Zoom={panic,abort} compiler option.
         static __rust_alloc_error_handler_should_panic: u8;
     }
@@ -426,13 +426,6 @@ fn rust_oom(layout: Layout) -> ! {
 /// Callers of memory allocation APIs wishing to abort computation
 /// in response to an allocation error are encouraged to call this function,
 /// rather than directly invoking `panic!` or similar.
-///
-/// The default behavior of this function is to print a message to standard error
-/// and abort the process.
-/// It can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
-///
-/// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
-/// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
@@ -453,6 +446,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(all(not(no_global_oom_handling), test))]
 pub use std::alloc::handle_alloc_error;
 
+#[cfg(bootstrap)]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
