@@ -1208,7 +1208,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                     fn_sig,
                     Applicability::MachineApplicable,
                 );
-            } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, hir_id, def_id) {
+            } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, def_id) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with an appropriate return type",
@@ -1240,12 +1240,10 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     }
 }
 
-// FIXME(vincenzopalazzo): remove the hir item when the refactoring is stable
 fn suggest_impl_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     ret_ty: Ty<'tcx>,
     span: Span,
-    _hir_id: hir::HirId,
     def_id: LocalDefId,
 ) -> Option<String> {
     let format_as_assoc: fn(_, _, _, _, _) -> _ =
