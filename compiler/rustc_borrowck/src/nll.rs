@@ -2,7 +2,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
-use rustc_data_structures::vec_map::VecMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -44,7 +44,7 @@ pub type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -377,7 +377,7 @@ pub(super) fn dump_annotation<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
-    opaque_type_values: &VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
