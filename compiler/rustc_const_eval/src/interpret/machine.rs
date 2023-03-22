@@ -8,6 +8,7 @@ use std::hash::Hash;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
@@ -145,8 +146,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         check: CheckAlignment,
     ) -> InterpResult<'tcx, ()>;
 
-    /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Whether to enforce the validity invariant for a specific layout.
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {

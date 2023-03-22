@@ -461,7 +461,7 @@ where
     ) -> InterpResult<'tcx> {
         self.write_immediate_no_validate(src, dest)?;
 
-        if M::enforce_validity(self) {
+        if M::enforce_validity(self, dest.layout) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&self.place_to_op(dest)?)?;
         }
@@ -616,7 +616,7 @@ where
     ) -> InterpResult<'tcx> {
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if M::enforce_validity(self) {
+        if M::enforce_validity(self, dest.layout) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&self.place_to_op(dest)?)?;
         }
