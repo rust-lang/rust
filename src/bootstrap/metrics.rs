@@ -51,6 +51,7 @@ impl BuildMetrics {
             duration_excluding_children_sec: Duration::ZERO,
 
             children: Vec::new(),
+            tests: Vec::new(),
         });
     }
 
@@ -70,6 +71,16 @@ impl BuildMetrics {
             state.system_info.refresh_cpu();
             state.timer_start = Some(Instant::now());
         }
+    }
+
+    pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome) {
+        let mut state = self.state.borrow_mut();
+        state
+            .running_steps
+            .last_mut()
+            .unwrap()
+            .tests
+            .push(Test { name: name.to_string(), outcome });
     }
 
     fn collect_stats(&self, state: &mut MetricsState) {
@@ -125,6 +136,14 @@ impl BuildMetrics {
     }
 
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
+        let mut children = Vec::new();
+        children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));
+        children.extend(
+            step.tests
+                .into_iter()
+                .map(|test| JsonNode::Test { name: test.name, outcome: test.outcome }),
+        );
+
         JsonNode::RustbuildStep {
             type_: step.type_,
             debug_repr: step.debug_repr,
@@ -135,11 +154,7 @@ impl BuildMetrics {
                     / step.duration_excluding_children_sec.as_secs_f64(),
             },
 
-            children: step
-                .children
-                .into_iter()
-                .map(|child| self.prepare_json_step(child))
-                .collect(),
+            children,
         }
     }
 }
@@ -161,6 +176,12 @@ struct StepMetrics {
     duration_excluding_children_sec: Duration,
 
     children: Vec<StepMetrics>,
+    tests: Vec<Test>,
+}
+
+struct Test {
+    name: String,
+    outcome: TestOutcome,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -190,6 +211,19 @@ enum JsonNode {
 
         children: Vec<JsonNode>,
     },
+    Test {
+        name: String,
+        #[serde(flatten)]
+        outcome: TestOutcome,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub(crate) enum TestOutcome {
+    Passed,
+    Failed,
+    Ignored { ignore_reason: Option<String> },
 }
 
 #[derive(Serialize, Deserialize)]

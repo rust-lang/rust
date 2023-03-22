@@ -425,7 +425,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         destructure_const,
         thir_abstract_const: |tcx, def_id| {
-            let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.thir_abstract_const_of_const_arg(def)
             } else {

@@ -30,7 +30,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
             continue;
         }
 
-        let naked = tcx.has_attr(def_id.to_def_id(), sym::naked);
+        let naked = tcx.has_attr(def_id, sym::naked);
         if !naked {
             continue;
         }
@@ -59,7 +59,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 
 /// Check that the function isn't inlined.
 fn check_inline(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let attrs = tcx.get_attrs(def_id.to_def_id(), sym::inline);
+    let attrs = tcx.get_attrs(def_id, sym::inline);
     for attr in attrs {
         tcx.sess.emit_err(CannotInlineNakedFunction { span: attr.span });
     }

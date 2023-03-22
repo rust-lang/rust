@@ -246,7 +246,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
-        if !tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
+        if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
             self.visit_body(&body);
         }
 

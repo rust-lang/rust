@@ -15,7 +15,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -1439,8 +1439,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
 }
 
 /// Determines whether an item is annotated with `doc(hidden)`.
-fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    assert!(def_id.is_local());
+fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     tcx.get_attrs(def_id, sym::doc)
         .filter_map(|attr| attr.meta_item_list())
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
@@ -1454,7 +1453,7 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 /// Determines whether an item is an intrinsic by Abi.
-pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 

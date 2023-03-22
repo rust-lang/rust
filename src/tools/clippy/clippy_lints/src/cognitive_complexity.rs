@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if !cx.tcx.has_attr(def_id.to_def_id(), sym::test) {
+        if !cx.tcx.has_attr(def_id, sym::test) {
             let expr = if is_async_fn(kind) {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,

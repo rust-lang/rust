@@ -18,8 +18,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
 }
 
-fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
-    let item = tcx.hir().expect_item(def_id.expect_local());
+fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
+    let item = tcx.hir().expect_item(def_id);
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
@@ -107,27 +107,26 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
         .collect()
 }
 
-fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
-    let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
+    let id = tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_def_id = tcx.hir().get_parent_item(id);
     let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(ref impl_) => {
-            if let Some(impl_item_ref) =
-                impl_.items.iter().find(|i| i.id.owner_id.to_def_id() == def_id)
+            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.owner_id.def_id == def_id)
             {
                 let assoc_item = associated_item_from_impl_item_ref(impl_item_ref);
-                debug_assert_eq!(assoc_item.def_id, def_id);
+                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
                 return assoc_item;
             }
         }
 
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             if let Some(trait_item_ref) =
-                trait_item_refs.iter().find(|i| i.id.owner_id.to_def_id() == def_id)
+                trait_item_refs.iter().find(|i| i.id.owner_id.def_id == def_id)
             {
                 let assoc_item = associated_item_from_trait_item_ref(trait_item_ref);
-                debug_assert_eq!(assoc_item.def_id, def_id);
+                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
                 return assoc_item;
             }
         }
@@ -191,9 +190,9 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
 /// above, synthesize a corresponding associated type in the impl.
 fn associated_types_for_impl_traits_in_associated_fn(
     tcx: TyCtxt<'_>,
-    fn_def_id: DefId,
+    fn_def_id: LocalDefId,
 ) -> &'_ [DefId] {
-    let parent_def_id = tcx.parent(fn_def_id);
+    let parent_def_id = tcx.local_parent(fn_def_id);
 
     match tcx.def_kind(parent_def_id) {
         DefKind::Trait => {
@@ -212,7 +211,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
 
             let mut visitor = RPITVisitor { rpits: Vec::new() };
 
-            if let Some(output) = tcx.hir().get_fn_output(fn_def_id.expect_local()) {
+            if let Some(output) = tcx.hir().get_fn_output(fn_def_id) {
                 visitor.visit_fn_ret_ty(output);
 
                 tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
@@ -232,7 +231,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
                         associated_type_for_impl_trait_in_impl(
                             tcx,
                             trait_assoc_def_id.expect_local(),
-                            fn_def_id.expect_local(),
+                            fn_def_id,
                         )
                         .to_def_id()
                     },
@@ -297,7 +296,7 @@ fn associated_type_for_impl_trait_in_trait(
     // Copy type_of of the opaque.
     trait_assoc_ty.type_of(ty::EarlyBinder(tcx.mk_opaque(
         opaque_ty_def_id.to_def_id(),
-        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id.to_def_id()),
+        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
     )));
 
     trait_assoc_ty.is_type_alias_impl_trait(false);

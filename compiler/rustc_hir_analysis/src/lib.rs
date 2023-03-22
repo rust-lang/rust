@@ -102,7 +102,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_macros::fluent_messages;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
@@ -113,7 +113,7 @@ use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::ops::Not;
 
@@ -160,24 +160,21 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
 fn require_same_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     cause: &ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     expected: Ty<'tcx>,
     actual: Ty<'tcx>,
-) -> bool {
+) {
     let infcx = &tcx.infer_ctxt().build();
-    let param_env = ty::ParamEnv::empty();
-    let errors = match infcx.at(cause, param_env).eq(DefineOpaqueTypes::No, expected, actual) {
-        Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
+    let ocx = ObligationCtxt::new(infcx);
+    match ocx.eq(cause, param_env, expected, actual) {
+        Ok(()) => {
+            let errors = ocx.select_all_or_error();
+            if !errors.is_empty() {
+                infcx.err_ctxt().report_fulfillment_errors(&errors);
+            }
+        }
         Err(err) => {
             infcx.err_ctxt().report_mismatched_types(cause, expected, actual, err).emit();
-            return false;
-        }
-    };
-
-    match &errors[..] {
-        [] => true,
-        errors => {
-            infcx.err_ctxt().report_fulfillment_errors(errors);
-            false
         }
     }
 }
@@ -296,6 +293,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         return;
     }
 
+    // Main should have no WC, so empty param env is OK here.
+    let param_env = ty::ParamEnv::empty();
     let expected_return_type;
     if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();
@@ -306,8 +305,6 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let return_ty = return_ty.skip_binder();
         let infcx = tcx.infer_ctxt().build();
-        // Main should have no WC, so empty param env is OK here.
-        let param_env = ty::ParamEnv::empty();
         let cause = traits::ObligationCause::new(
             return_ty_span,
             main_diagnostics_def_id,
@@ -343,6 +340,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         ),
+        param_env,
         se_ty,
         tcx.mk_fn_ptr(main_fnsig),
     );
@@ -417,6 +415,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     start_def_id,
                     ObligationCauseCode::StartFunctionType,
                 ),
+                ty::ParamEnv::empty(), // start should not have any where bounds.
                 se_ty,
                 tcx.mk_fn_ptr(tcx.fn_sig(start_def_id).subst_identity()),
             );
@@ -513,7 +512,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.def_id);
     item_cx.astconv().ast_ty_to_ty(hir_ty)
 }
 
@@ -526,7 +525,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.def_id);
     let mut bounds = Bounds::default();
     let _ = &item_cx.astconv().instantiate_poly_trait_ref(
         hir_trait,

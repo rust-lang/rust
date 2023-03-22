@@ -46,7 +46,7 @@ use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -597,13 +597,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[_; 4]> = smallvec![traits::predicate_for_trait_def(
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
             self.tcx,
-            self.fcx.param_env,
             cause,
-            coerce_unsized_did,
-            0,
-            [coerce_source, coerce_target]
+            self.fcx.param_env,
+            self.tcx.mk_trait_ref(coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -651,9 +649,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let self_ty = trait_pred.skip_binder().self_ty();
                         let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
-                        match (&self_ty.kind(), &unsize_ty.kind()) {
-                            (ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
-                                if self.type_var_is_sized(*v) =>
+                        match (self_ty.kind(), unsize_ty.kind()) {
+                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
+                                if self.type_var_is_sized(v) =>
                             {
                                 debug!("coerce_unsized: have sized infer {:?}", v);
                                 coercion.obligations.push(obligation);

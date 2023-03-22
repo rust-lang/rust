@@ -120,8 +120,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    pub(crate) fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
+    pub(crate) fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
     }
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T

@@ -189,12 +189,28 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     goal_kind: ty::ClosureKind,
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
     match *self_ty.kind() {
-        ty::FnDef(def_id, substs) => Ok(Some(
-            tcx.fn_sig(def_id)
-                .subst(tcx, substs)
-                .map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output())),
-        )),
-        ty::FnPtr(sig) => Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output())))),
+        // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
+        ty::FnDef(def_id, substs) => {
+            let sig = tcx.fn_sig(def_id);
+            if sig.skip_binder().is_fn_trait_compatible()
+                && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+            {
+                Ok(Some(
+                    sig.subst(tcx, substs)
+                        .map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output())),
+                ))
+            } else {
+                Err(NoSolution)
+            }
+        }
+        // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
+        ty::FnPtr(sig) => {
+            if sig.is_fn_trait_compatible() {
+                Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output()))))
+            } else {
+                Err(NoSolution)
+            }
+        }
         ty::Closure(_, substs) => {
             let closure_substs = substs.as_closure();
             match closure_substs.kind_ty().to_opt_closure_kind() {
@@ -333,7 +349,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
             // FIXME: Technically this folder could be fallible?
             let nested = self
                 .ecx
-                .eq(self.param_env, alias_ty, proj.projection_ty)
+                .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
                 .expect("expected to be able to unify goal projection with dyn's projection");
             // FIXME: Technically we could register these too..
             assert!(nested.is_empty(), "did not expect unification to have any nested goals");

@@ -96,7 +96,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t = self.resolve_vars_if_possible(t);
         t.error_reported()?;
 
-        if self.type_is_sized_modulo_regions(self.param_env, t, span) {
+        if self.type_is_sized_modulo_regions(self.param_env, t) {
             return Ok(Some(PointerKind::Thin));
         }
 
@@ -722,7 +722,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
-        if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty, self.span)
+        if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty)
             && !self.cast_ty.has_infer_types()
         {
             self.report_cast_to_unsized_type(fcx);

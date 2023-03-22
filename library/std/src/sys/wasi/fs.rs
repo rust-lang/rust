@@ -441,7 +441,7 @@ impl File {
     }
 
     pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), cursor)
+        self.fd.read_buf(cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

@@ -70,7 +70,7 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -1386,10 +1386,9 @@ fn create_cases<'tcx>(
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn mir_generator_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> GeneratorLayout<'tcx> {
     assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
-    let def_id = def_id.expect_local();
 
     let (body, _) = tcx.mir_promoted(ty::WithOptConstParam::unknown(def_id));
     let body = body.borrow();

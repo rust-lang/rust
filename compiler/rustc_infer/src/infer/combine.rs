@@ -189,10 +189,19 @@ impl<'tcx> InferCtxt<'tcx> {
         // the expected const's type. Specifically, we don't want const infer vars
         // to do any type shapeshifting before and after resolution.
         if let Err(guar) = compatible_types {
-            return Ok(self.tcx.const_error_with_guaranteed(
-                if relation.a_is_expected() { a.ty() } else { b.ty() },
-                guar,
-            ));
+            // HACK: equating both sides with `[const error]` eagerly prevents us
+            // from leaving unconstrained inference vars during things like impl
+            // matching in the solver.
+            let a_error = self.tcx.const_error_with_guaranteed(a.ty(), guar);
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
+                return self.unify_const_variable(vid, a_error);
+            }
+            let b_error = self.tcx.const_error_with_guaranteed(b.ty(), guar);
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
+                return self.unify_const_variable(vid, b_error);
+            }
+
+            return Ok(if relation.a_is_expected() { a_error } else { b_error });
         }
 
         match (a.kind(), b.kind()) {

@@ -78,7 +78,8 @@ pub enum MirPhase {
     ///    MIR, this is UB.
     ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same way
     ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
-    ///    don't document this here. Runtime MIR has all retags explicit.
+    ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
+    ///    can still occur at `Rvalue::{Ref,AddrOf}`).
     ///  - Generator bodies: In analysis MIR, locals may actually be behind a pointer that user code has
     ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
@@ -1165,7 +1166,7 @@ pub enum AggregateKind<'tcx> {
     Tuple,
 
     /// The second field is the variant index. It's equal to 0 for struct
-    /// and union expressions. The fourth field is
+    /// and union expressions. The last field is the
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`

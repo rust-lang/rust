@@ -9,7 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_trait_selection::traits::{
-    self, ImplSource, Obligation, ObligationCause, SelectionContext,
+    self, ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
 };
 
 use super::ConstCx;
@@ -184,7 +184,10 @@ impl Qualif for NeedsNonConstDrop {
         }
 
         // If we had any errors, then it's bad
-        !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_obligations(impl_src.nested_obligations());
+        let errors = ocx.select_all_or_error();
+        !errors.is_empty()
     }
 
     fn in_adt_inherently<'tcx>(

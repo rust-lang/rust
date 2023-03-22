@@ -30,7 +30,7 @@ pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
         return;
     }
 
-    if tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
+    if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
         return;
     }
 

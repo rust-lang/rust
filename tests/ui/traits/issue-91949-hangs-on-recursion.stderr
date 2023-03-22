@@ -12,11 +12,17 @@ LL |       recurse(IteratorOfWrapped(elements).map(|t| t.0))
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error[E0275]: overflow evaluating the requirement `(): Sized`
+error[E0275]: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "512"]` attribute to your crate (`issue_91949_hangs_on_recursion`)
-   = note: required for `std::iter::Empty<()>` to implement `Iterator`
-   = note: 171 redundant requirements hidden
+note: required for `IteratorOfWrapped<(), std::iter::Empty<()>>` to implement `Iterator`
+  --> $DIR/issue-91949-hangs-on-recursion.rs:16:32
+   |
+LL | impl<T, I: Iterator<Item = T>> Iterator for IteratorOfWrapped<T, I> {
+   |                     --------   ^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     unsatisfied trait bound introduced here
+   = note: 256 redundant requirements hidden
    = note: required for `IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<..., ...>>, ...>>, ...>>` to implement `Iterator`
    = note: the full type name has been written to '$TEST_BUILD_DIR/traits/issue-91949-hangs-on-recursion/issue-91949-hangs-on-recursion.long-type-hash.txt'
 

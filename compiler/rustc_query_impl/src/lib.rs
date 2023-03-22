@@ -20,7 +20,7 @@ extern crate rustc_middle;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKindStruct};
-use rustc_middle::query::Key;
+use rustc_middle::query::AsLocalKey;
 use rustc_middle::ty::query::{
     query_keys, query_provided, query_provided_to_value, query_storage, query_values,
 };
