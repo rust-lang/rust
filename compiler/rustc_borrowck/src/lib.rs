@@ -19,7 +19,6 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -141,7 +140,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
         debug!("Skipping borrowck because of injected body");
         // Let's make up a borrowck result! Fun times!
         let result = BorrowCheckResult {
-            concrete_opaque_types: VecMap::new(),
+            concrete_opaque_types: FxIndexMap::default(),
             closure_requirements: None,
             used_mut_upvars: SmallVec::new(),
             tainted_by_errors: None,

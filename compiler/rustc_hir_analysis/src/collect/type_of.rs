@@ -778,7 +778,7 @@ fn find_opaque_ty_constraints_for_rpit(
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            for &(def_id, concrete_type) in concrete_opaque_types {
+            for (&def_id, &concrete_type) in concrete_opaque_types {
                 if def_id != self.def_id {
                     // Ignore constraints for other opaque types.
                     continue;
