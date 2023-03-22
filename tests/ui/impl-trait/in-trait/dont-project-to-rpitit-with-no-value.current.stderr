@@ -1,5 +1,5 @@
 warning: the feature `return_position_impl_trait_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/dont-project-to-rpitit-with-no-value.rs:1:12
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:4:12
    |
 LL | #![feature(return_position_impl_trait_in_trait)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(return_position_impl_trait_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/dont-project-to-rpitit-with-no-value.rs:9:1
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:12:1
    |
 LL |     fn foo(&self) -> impl Sized;
    |     ---------------------------- `foo` from trait
