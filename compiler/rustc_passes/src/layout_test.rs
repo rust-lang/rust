@@ -18,7 +18,7 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
                 tcx.def_kind(id.owner_id),
                 DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union
             ) {
-                for attr in tcx.get_attrs(id.owner_id.to_def_id(), sym::rustc_layout) {
+                for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
                     dump_layout_of(tcx, id.owner_id.def_id, attr);
                 }
             }

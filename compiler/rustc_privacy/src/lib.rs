@@ -920,7 +920,7 @@ pub struct TestReachabilityVisitor<'tcx, 'a> {
 
 impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     fn effective_visibility_diagnostic(&mut self, def_id: LocalDefId) {
-        if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_effective_visibility) {
+        if self.tcx.has_attr(def_id, sym::rustc_effective_visibility) {
             let mut error_msg = String::new();
             let span = self.tcx.def_span(def_id.to_def_id());
             if let Some(effective_vis) = self.effective_visibilities.effective_vis(def_id) {
@@ -2060,8 +2060,8 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility<DefId> {
-    local_visibility(tcx, def_id.expect_local()).to_def_id()
+fn visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility<DefId> {
+    local_visibility(tcx, def_id).to_def_id()
 }
 
 fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {

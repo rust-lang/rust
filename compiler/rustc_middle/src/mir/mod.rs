@@ -2525,7 +2525,7 @@ impl<'tcx> ConstantKind<'tcx> {
         let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
-            InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
+            InternalSubsts::identity_for_item(tcx, parent_did)
         } else {
             List::empty()
         };
@@ -2554,7 +2554,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 Self::Unevaluated(
                     UnevaluatedConst {
                         def: def.to_global(),
-                        substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                        substs: InternalSubsts::identity_for_item(tcx, def.did),
                         promoted: None,
                     },
                     ty,

@@ -274,19 +274,19 @@ macro_rules! hash_result {
     };
 }
 
-macro_rules! get_provider {
-    ([][$tcx:expr, $name:ident, $key:expr]) => {{
-        $tcx.queries.local_providers.$name
+macro_rules! call_provider {
+    ([][$qcx:expr, $name:ident, $key:expr]) => {{
+        ($qcx.queries.local_providers.$name)($qcx.tcx, $key)
     }};
-    ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
-        if $key.query_crate_is_local() {
-            $tcx.queries.local_providers.$name
+    ([(separate_provide_extern) $($rest:tt)*][$qcx:expr, $name:ident, $key:expr]) => {{
+        if let Some(key) = $key.as_local_key() {
+            ($qcx.queries.local_providers.$name)($qcx.tcx, key)
         } else {
-            $tcx.queries.extern_providers.$name
+            ($qcx.queries.extern_providers.$name)($qcx.tcx, $key)
         }
     }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        get_provider!([$($modifiers)*][$($args)*])
+        call_provider!([$($modifiers)*][$($args)*])
     };
 }
 
@@ -516,7 +516,7 @@ macro_rules! define_queries {
             fn compute(self, qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 query_provided_to_value::$name(
                     qcx.tcx,
-                    get_provider!([$($modifiers)*][qcx, $name, key])(qcx.tcx, key)
+                    call_provider!([$($modifiers)*][qcx, $name, key])
                 )
             }
 

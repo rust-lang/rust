@@ -9,10 +9,10 @@ RUN bash /tmp/cross-apt-packages.sh
 # Required for cross-build gcc
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      libgmp-dev \
-      libmpfr-dev \
-      libmpc-dev \
-      && rm -rf /var/lib/apt/lists/*
+    libgmp-dev \
+    libmpfr-dev \
+    libmpc-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/illumos-toolchain.sh /tmp/
 
@@ -28,6 +28,7 @@ RUN /scripts/cmake.sh
 
 ENV \
     AR_x86_64_unknown_illumos=x86_64-illumos-ar \
+    RANLIB_x86_64_unknown_illumos=x86_64-illumos-ranlib \
     CC_x86_64_unknown_illumos=x86_64-illumos-gcc \
     CXX_x86_64_unknown_illumos=x86_64-illumos-g++
 

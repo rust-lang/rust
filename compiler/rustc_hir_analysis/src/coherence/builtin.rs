@@ -11,13 +11,14 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionResolutionError};
 use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,
 };
-use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
@@ -334,19 +335,19 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     ))
                     .emit();
             } else {
-                let errors = traits::fully_solve_obligations(
-                    &infcx,
-                    coerced_fields.into_iter().map(|field| {
-                        predicate_for_trait_def(
-                            tcx,
-                            param_env,
-                            cause.clone(),
+                let ocx = ObligationCtxt::new(&infcx);
+                for field in coerced_fields {
+                    ocx.register_obligation(Obligation::new(
+                        tcx,
+                        cause.clone(),
+                        param_env,
+                        ty::Binder::dummy(tcx.mk_trait_ref(
                             dispatch_from_dyn_trait,
-                            0,
                             [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
-                        )
-                    }),
-                );
+                        )),
+                    ));
+                }
+                let errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
                     infcx.err_ctxt().report_fulfillment_errors(&errors);
                 }
@@ -368,11 +369,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
-
-    // this provider should only get invoked for local def-ids
-    let impl_did = impl_did.expect_local();
     let span = tcx.def_span(impl_did);
 
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
@@ -583,10 +581,12 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     };
 
     // Register an obligation for `A: Trait<B>`.
+    let ocx = ObligationCtxt::new(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
-    let predicate =
-        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
-    let errors = traits::fully_solve_obligation(&infcx, predicate);
+    let obligation =
+        Obligation::new(tcx, cause, param_env, tcx.mk_trait_ref(trait_def_id, [source, target]));
+    ocx.register_obligation(obligation);
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(&errors);
     }

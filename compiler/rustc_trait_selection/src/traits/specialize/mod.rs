@@ -22,7 +22,7 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
@@ -350,6 +350,10 @@ fn report_conflicting_impls<'tcx>(
         impl_span: Span,
         err: &mut Diagnostic,
     ) {
+        if (overlap.trait_ref, overlap.self_ty).references_error() {
+            err.downgrade_to_delayed_bug();
+        }
+
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(span, "first implementation here");

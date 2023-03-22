@@ -1,5 +1,5 @@
 warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/missing-send-bound.rs:3:12
+  --> $DIR/missing-send-bound.rs:5:12
    |
 LL | #![feature(async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^
@@ -8,19 +8,19 @@ LL | #![feature(async_fn_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: future cannot be sent between threads safely
-  --> $DIR/missing-send-bound.rs:15:20
+  --> $DIR/missing-send-bound.rs:17:20
    |
 LL |     assert_is_send(test::<T>());
    |                    ^^^^^^^^^^^ future returned by `test` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `impl Future<Output = ()>`
 note: future is not `Send` as it awaits another future which is not `Send`
-  --> $DIR/missing-send-bound.rs:11:5
+  --> $DIR/missing-send-bound.rs:13:5
    |
 LL |     T::bar().await;
    |     ^^^^^^^^ await occurs here on type `impl Future<Output = ()>`, which is not `Send`
 note: required by a bound in `assert_is_send`
-  --> $DIR/missing-send-bound.rs:19:27
+  --> $DIR/missing-send-bound.rs:21:27
    |
 LL | fn assert_is_send(_: impl Send) {}
    |                           ^^^^ required by this bound in `assert_is_send`

@@ -1,0 +1,56 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/supertrait-object-safety.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/supertrait-object-safety.rs:19:23
+   |
+LL |     let x: &dyn Foo = &();
+   |                       ^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/supertrait-object-safety.rs:4:12
+   |
+LL | trait Foo: for<T> Bar<T> {}
+   |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
+   |       |
+   |       this trait cannot be made into an object...
+   = note: required for `&()` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required by cast to type `&dyn Foo`
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/supertrait-object-safety.rs:19:12
+   |
+LL |     let x: &dyn Foo = &();
+   |            ^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/supertrait-object-safety.rs:4:12
+   |
+LL | trait Foo: for<T> Bar<T> {}
+   |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
+   |       |
+   |       this trait cannot be made into an object...
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/supertrait-object-safety.rs:22:5
+   |
+LL |     needs_bar(x);
+   |     ^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/supertrait-object-safety.rs:4:12
+   |
+LL | trait Foo: for<T> Bar<T> {}
+   |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
+   |       |
+   |       this trait cannot be made into an object...
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0038`.

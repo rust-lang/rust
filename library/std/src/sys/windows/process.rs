@@ -266,11 +266,7 @@ impl Command {
         let (program, mut cmd_str) = if is_batch_file {
             (
                 command_prompt()?,
-                args::make_bat_command_line(
-                    &args::to_user_path(program)?,
-                    &self.args,
-                    self.force_quotes_enabled,
-                )?,
+                args::make_bat_command_line(&program, &self.args, self.force_quotes_enabled)?,
             )
         } else {
             let cmd_str = make_command_line(&self.program, &self.args, self.force_quotes_enabled)?;
@@ -410,7 +406,7 @@ fn resolve_exe<'a>(
         if has_exe_suffix {
             // The application name is a path to a `.exe` file.
             // Let `CreateProcessW` figure out if it exists or not.
-            return path::maybe_verbatim(Path::new(exe_path));
+            return args::to_user_path(Path::new(exe_path));
         }
         let mut path = PathBuf::from(exe_path);
 
@@ -422,7 +418,7 @@ fn resolve_exe<'a>(
             // It's ok to use `set_extension` here because the intent is to
             // remove the extension that was just added.
             path.set_extension("");
-            return path::maybe_verbatim(&path);
+            return args::to_user_path(&path);
         }
     } else {
         ensure_no_nuls(exe_path)?;
@@ -510,7 +506,7 @@ where
 /// Check if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
-        let path = path::maybe_verbatim(path).ok()?;
+        let path = args::to_user_path(path).ok()?;
         // Getting attributes using `GetFileAttributesW` does not follow symlinks
         // and it will almost always be successful if the link exists.
         // There are some exceptions for special system files (e.g. the pagefile)

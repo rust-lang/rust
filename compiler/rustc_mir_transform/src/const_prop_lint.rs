@@ -247,6 +247,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
         ecx.frame_mut().locals[local].value =
             LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+        ecx.machine.written_only_inside_own_block_locals.remove(&local);
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
@@ -484,7 +485,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn ensure_not_propagated(&mut self, local: Local) {
+    fn ensure_not_propagated(&self, local: Local) {
         if cfg!(debug_assertions) {
             assert!(
                 self.get_const(local.into()).is_none()
@@ -691,17 +692,31 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
         // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
-        let can_const_prop = std::mem::take(&mut self.ecx.machine.can_const_prop);
-        for (local, &mode) in can_const_prop.iter_enumerated() {
-            match mode {
-                ConstPropMode::FullConstProp => {}
-                ConstPropMode::NoPropagation => self.ensure_not_propagated(local),
-                ConstPropMode::OnlyInsideOwnBlock => {
-                    Self::remove_const(&mut self.ecx, local);
-                    self.ensure_not_propagated(local);
+        let mut written_only_inside_own_block_locals =
+            std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
+
+        // This loop can get very hot for some bodies: it check each local in each bb.
+        // To avoid this quadratic behaviour, we only clear the locals that were modified inside
+        // the current block.
+        for local in written_only_inside_own_block_locals.drain() {
+            debug_assert_eq!(
+                self.ecx.machine.can_const_prop[local],
+                ConstPropMode::OnlyInsideOwnBlock
+            );
+            Self::remove_const(&mut self.ecx, local);
+        }
+        self.ecx.machine.written_only_inside_own_block_locals =
+            written_only_inside_own_block_locals;
+
+        if cfg!(debug_assertions) {
+            for (local, &mode) in self.ecx.machine.can_const_prop.iter_enumerated() {
+                match mode {
+                    ConstPropMode::FullConstProp => {}
+                    ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {
+                        self.ensure_not_propagated(local);
+                    }
                 }
             }
         }
-        self.ecx.machine.can_const_prop = can_const_prop;
     }
 }

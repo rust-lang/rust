@@ -47,16 +47,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let mut nested_goals =
-                ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
+            ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
                 .instantiate(tcx, impl_substs)
                 .predicates
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
-            nested_goals.extend(where_clause_bounds);
-            ecx.evaluate_all_and_make_canonical_response(nested_goals)
+            ecx.add_goals(where_clause_bounds);
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
@@ -73,13 +72,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             ecx.probe(|ecx| {
                 let assumption_trait_pred =
                     ecx.instantiate_binder_with_infer(poly_trait_pred);
-                let mut nested_goals = ecx.eq(
+                ecx.eq(
                     goal.param_env,
                     goal.predicate.trait_ref,
                     assumption_trait_pred.trait_ref,
                 )?;
-                nested_goals.extend(requirements);
-                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                ecx.add_goals(requirements);
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         } else {
             Err(NoSolution)
@@ -98,7 +97,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             ecx.probe(|ecx| {
                 let assumption_trait_pred =
                     ecx.instantiate_binder_with_infer(poly_trait_pred);
-                let mut nested_goals = ecx.eq(
+                ecx.eq(
                     goal.param_env,
                     goal.predicate.trait_ref,
                     assumption_trait_pred.trait_ref,
@@ -108,9 +107,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
                     bug!("expected object type in `consider_object_bound_candidate`");
                 };
-                nested_goals.extend(
+                ecx.add_goals(
                     structural_traits::predicates_for_object_candidate(
-                        ecx,
+                        &ecx,
                         goal.param_env,
                         goal.predicate.trait_ref,
                         bounds,
@@ -118,8 +117,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     .into_iter()
                     .map(|pred| goal.with(tcx, pred)),
                 );
-
-                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         } else {
             Err(NoSolution)
@@ -166,9 +164,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
                 .instantiate(tcx, goal.predicate.trait_ref.substs);
-            ecx.evaluate_all_and_make_canonical_response(
-                nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)).collect(),
-            )
+            ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
@@ -197,7 +194,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         if goal.predicate.self_ty().has_non_region_infer() {
-            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
 
         let tcx = ecx.tcx();
@@ -209,7 +206,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             && layout.layout.align().abi == usize_layout.align().abi
         {
             // FIXME: We could make this faster by making a no-constraints response
-            ecx.make_canonical_response(Certainty::Yes)
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
         }
@@ -221,14 +218,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
-        let Some(tupled_inputs_and_output) =
-            structural_traits::extract_tupled_inputs_and_output_from_callable(
+        let tupled_inputs_and_output =
+            match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
                 goal.predicate.self_ty(),
                 goal_kind,
-            )? else {
-            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
-        };
+            )? {
+                Some(a) => a,
+                None => {
+                    return ecx
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+            };
         let output_is_sized_pred = tupled_inputs_and_output
             .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
 
@@ -247,7 +248,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         if let ty::Tuple(..) = goal.predicate.self_ty().kind() {
-            ecx.make_canonical_response(Certainty::Yes)
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
         }
@@ -257,7 +258,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         _goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        ecx.make_canonical_response(Certainty::Yes)
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn consider_builtin_future_candidate(
@@ -277,7 +278,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // Async generator unconditionally implement `Future`
         // Technically, we need to check that the future output type is Sized,
         // but that's already proven by the generator being WF.
-        ecx.make_canonical_response(Certainty::Yes)
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn consider_builtin_generator_candidate(
@@ -317,7 +318,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let a_ty = goal.predicate.self_ty();
         let b_ty = goal.predicate.trait_ref.substs.type_at(1);
         if b_ty.is_ty_var() {
-            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
         ecx.probe(|ecx| {
             match (a_ty.kind(), b_ty.kind()) {
@@ -326,7 +327,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Dyn upcasting is handled separately, since due to upcasting,
                     // when there are two supertraits that differ by substs, we
                     // may return more than one query response.
-                    return Err(NoSolution);
+                    Err(NoSolution)
                 }
                 // `T` -> `dyn Trait` unsizing
                 (_, &ty::Dynamic(data, region, ty::Dyn)) => {
@@ -341,29 +342,26 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
                         return Err(NoSolution);
                     };
-                    let nested_goals: Vec<_> = data
-                        .iter()
-                        // Check that the type implements all of the predicates of the def-id.
-                        // (i.e. the principal, all of the associated types match, and any auto traits)
-                        .map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty)))
-                        .chain([
-                            // The type must be Sized to be unsized.
-                            goal.with(
-                                tcx,
-                                ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty])),
-                            ),
-                            // The type must outlive the lifetime of the `dyn` we're unsizing into.
-                            goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
-                        ])
-                        .collect();
-
-                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                    // Check that the type implements all of the predicates of the def-id.
+                    // (i.e. the principal, all of the associated types match, and any auto traits)
+                    ecx.add_goals(
+                        data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
+                    );
+                    // The type must be Sized to be unsized.
+                    ecx.add_goal(
+                        goal.with(tcx, ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty]))),
+                    );
+                    // The type must outlive the lifetime of the `dyn` we're unsizing into.
+                    ecx.add_goal(
+                        goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 // `[T; n]` -> `[T]` unsizing
                 (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
                     // We just require that the element type stays the same
-                    let nested_goals = ecx.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
-                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                    ecx.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
                 (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
@@ -397,15 +395,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
                     // Finally, we require that `TailA: Unsize<TailB>` for the tail field
                     // types.
-                    let mut nested_goals = ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
-                    nested_goals.push(goal.with(
+                    ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+                    ecx.add_goal(goal.with(
                         tcx,
                         ty::Binder::dummy(
                             tcx.mk_trait_ref(goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
                         ),
                     ));
-
-                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
                 (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
@@ -417,17 +414,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Substitute just the tail field of B., and require that they're equal.
                     let unsized_a_ty =
                         tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
-                    let mut nested_goals = ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+                    ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
                     // Similar to ADTs, require that the rest of the fields are equal.
-                    nested_goals.push(goal.with(
+                    ecx.add_goal(goal.with(
                         tcx,
                         ty::Binder::dummy(
                             tcx.mk_trait_ref(goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
                         ),
                     ));
-
-                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 _ => Err(NoSolution),
             }
@@ -477,12 +473,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
 
                 // We also require that A's lifetime outlives B's lifetime.
-                let mut nested_obligations = ecx.eq(goal.param_env, new_a_ty, b_ty)?;
-                nested_obligations.push(
+                ecx.eq(goal.param_env, new_a_ty, b_ty)?;
+                ecx.add_goal(
                     goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))),
                 );
-
-                ecx.evaluate_all_and_make_canonical_response(nested_obligations)
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         };
 
@@ -516,7 +511,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         _goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         // `DiscriminantKind` is automatically implemented for every type.
-        ecx.make_canonical_response(Certainty::Yes)
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
 
@@ -530,21 +525,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(&EvalCtxt<'_, 'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
     ) -> QueryResult<'tcx> {
-        self.probe(|this| {
-            this.evaluate_all_and_make_canonical_response(
-                constituent_tys(this, goal.predicate.self_ty())?
+        self.probe(|ecx| {
+            ecx.add_goals(
+                constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
                     .map(|ty| {
                         goal.with(
-                            this.tcx(),
-                            ty::Binder::dummy(goal.predicate.with_self_ty(this.tcx(), ty)),
+                            ecx.tcx(),
+                            ty::Binder::dummy(goal.predicate.with_self_ty(ecx.tcx(), ty)),
                         )
                     })
-                    .collect(),
-            )
+                    .collect::<Vec<_>>(),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,

@@ -469,9 +469,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-        tcx.has_attr(def_id.to_def_id(), sym::lang)
+        tcx.has_attr(def_id, sym::lang)
             // Stable attribute for #[lang = "panic_impl"]
-            || tcx.has_attr(def_id.to_def_id(), sym::panic_handler)
+            || tcx.has_attr(def_id, sym::panic_handler)
     }
 
     fn has_allow_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

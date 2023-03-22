@@ -59,6 +59,7 @@ fn equate_intrinsic_type<'tcx>(
         require_same_types(
             tcx,
             &cause,
+            ty::ParamEnv::empty(), // FIXME: do all intrinsics have an empty param env?
             tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id).subst_identity()),
             fty,
         );

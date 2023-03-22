@@ -1,7 +1,8 @@
 use crate::io::prelude::*;
 
 use super::{Command, Output, Stdio};
-use crate::io::ErrorKind;
+use crate::io::{BorrowedBuf, ErrorKind};
+use crate::mem::MaybeUninit;
 use crate::str;
 
 fn known_command() -> Command {
@@ -117,6 +118,37 @@ fn stdin_works() {
     p.stdout.as_mut().unwrap().read_to_string(&mut out).unwrap();
     assert!(p.wait().unwrap().success());
     assert_eq!(out, "foobar\n");
+}
+
+#[test]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
+fn child_stdout_read_buf() {
+    let mut cmd = if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg("echo abc");
+        cmd
+    } else {
+        let mut cmd = shell_cmd();
+        cmd.arg("-c").arg("echo abc");
+        cmd
+    };
+    cmd.stdin(Stdio::null());
+    cmd.stdout(Stdio::piped());
+    let child = cmd.spawn().unwrap();
+
+    let mut stdout = child.stdout.unwrap();
+    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    stdout.read_buf(buf.unfilled()).unwrap();
+
+    // ChildStdout::read_buf should omit buffer initialization.
+    if cfg!(target_os = "windows") {
+        assert_eq!(buf.filled(), b"abc\r\n");
+        assert_eq!(buf.init_len(), 5);
+    } else {
+        assert_eq!(buf.filled(), b"abc\n");
+        assert_eq!(buf.init_len(), 4);
+    };
 }
 
 #[test]

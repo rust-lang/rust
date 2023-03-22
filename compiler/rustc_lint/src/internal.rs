@@ -386,7 +386,7 @@ impl LateLintPass<'_> for Diagnostics {
         for (hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
             if let Some(owner_did) = hir_id.as_owner() {
                 found_parent_with_attr = found_parent_with_attr
-                    || cx.tcx.has_attr(owner_did.to_def_id(), sym::rustc_lint_diagnostics);
+                    || cx.tcx.has_attr(owner_did, sym::rustc_lint_diagnostics);
             }
 
             debug!(?parent);

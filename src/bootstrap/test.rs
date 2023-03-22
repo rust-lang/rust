@@ -20,6 +20,7 @@ use crate::dist;
 use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
 use crate::native;
+use crate::render_tests::add_flags_and_try_run_tests;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
@@ -123,7 +124,7 @@ impl Step for CrateJsonDocLint {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -172,7 +173,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
 
         // Build all the default documentation.
         builder.default_doc(&[]);
@@ -333,7 +334,7 @@ impl Step for Cargo {
 
         cargo.env("PATH", &path_for_cargo(builder, compiler));
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -392,7 +393,7 @@ impl Step for RustAnalyzer {
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -445,7 +446,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -496,7 +497,7 @@ impl Step for RustDemangler {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -637,8 +638,7 @@ impl Step for Miri {
         // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        let mut cargo = Command::from(cargo);
-        builder.run(&mut cargo);
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
 
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
@@ -711,7 +711,7 @@ impl Step for CompiletestTest {
         );
         cargo.allow_features("test");
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -1193,7 +1193,7 @@ impl Step for TidySelfTest {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -1620,9 +1620,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--verbose");
         }
 
-        if !builder.config.verbose_tests {
-            cmd.arg("--quiet");
-        }
+        cmd.arg("--json");
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -1773,7 +1771,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             suite, mode, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cmd);
+        crate::render_tests::try_run_tests(builder, &mut cmd);
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -1782,7 +1780,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 suite, mode, compare_mode, &compiler.host, target
             ));
             let _time = util::timeit(&builder);
-            try_run(builder, &mut cmd);
+            crate::render_tests::try_run_tests(builder, &mut cmd);
         }
     }
 }
@@ -2184,9 +2182,8 @@ impl Step for Crate {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if !builder.config.verbose_tests {
-            cargo.arg("--quiet");
-        }
+        cargo.arg("-Z").arg("unstable-options");
+        cargo.arg("--format").arg("json");
 
         if target.contains("emscripten") {
             cargo.env(
@@ -2214,7 +2211,7 @@ impl Step for Crate {
             target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cargo.into());
+        crate::render_tests::try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2334,7 +2331,7 @@ impl Step for CrateRustdoc {
         ));
         let _time = util::timeit(&builder);
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2395,17 +2392,13 @@ impl Step for CrateRustdocJsonTypes {
             cargo.arg("'-Ctarget-feature=-crt-static'");
         }
 
-        if !builder.config.verbose_tests {
-            cargo.arg("--quiet");
-        }
-
         builder.info(&format!(
             "{} rustdoc-json-types stage{} ({} -> {})",
             test_kind, compiler.stage, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2574,7 +2567,7 @@ impl Step for Bootstrap {
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
         cmd.arg("--test-threads=1");
-        try_run(builder, &mut cmd);
+        add_flags_and_try_run_tests(builder, &mut cmd);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2655,7 +2648,7 @@ impl Step for ReplacePlaceholderTest {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

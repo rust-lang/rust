@@ -4,6 +4,37 @@ use rayon::prelude::*;
 use std::{convert::TryFrom, fmt, io::Read, io::Write, path::Path, str::FromStr};
 use xz2::{read::XzDecoder, write::XzEncoder};
 
+#[derive(Default, Debug, Copy, Clone)]
+pub enum CompressionProfile {
+    Fast,
+    #[default]
+    Balanced,
+    Best,
+}
+
+impl FromStr for CompressionProfile {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Error> {
+        Ok(match input {
+            "fast" => Self::Fast,
+            "balanced" => Self::Balanced,
+            "best" => Self::Best,
+            other => anyhow::bail!("invalid compression profile: {other}"),
+        })
+    }
+}
+
+impl fmt::Display for CompressionProfile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CompressionProfile::Fast => f.write_str("fast"),
+            CompressionProfile::Balanced => f.write_str("balanced"),
+            CompressionProfile::Best => f.write_str("best"),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum CompressionFormat {
     Gz,
@@ -26,7 +57,11 @@ impl CompressionFormat {
         }
     }
 
-    pub(crate) fn encode(&self, path: impl AsRef<Path>) -> Result<Box<dyn Encoder>, Error> {
+    pub(crate) fn encode(
+        &self,
+        path: impl AsRef<Path>,
+        profile: CompressionProfile,
+    ) -> Result<Box<dyn Encoder>, Error> {
         let mut os = path.as_ref().as_os_str().to_os_string();
         os.push(format!(".{}", self.extension()));
         let path = Path::new(&os);
@@ -37,49 +72,64 @@ impl CompressionFormat {
         let file = crate::util::create_new_file(path)?;
 
         Ok(match self {
-            CompressionFormat::Gz => Box::new(GzEncoder::new(file, flate2::Compression::best())),
+            CompressionFormat::Gz => Box::new(GzEncoder::new(
+                file,
+                match profile {
+                    CompressionProfile::Fast => flate2::Compression::fast(),
+                    CompressionProfile::Balanced => flate2::Compression::new(6),
+                    CompressionProfile::Best => flate2::Compression::best(),
+                },
+            )),
             CompressionFormat::Xz => {
-                let mut filters = xz2::stream::Filters::new();
-                // the preset is overridden by the other options so it doesn't matter
-                let mut lzma_ops = xz2::stream::LzmaOptions::new_preset(9).unwrap();
-                // This sets the overall dictionary size, which is also how much memory (baseline)
-                // is needed for decompression.
-                lzma_ops.dict_size(64 * 1024 * 1024);
-                // Use the best match finder for compression ratio.
-                lzma_ops.match_finder(xz2::stream::MatchFinder::BinaryTree4);
-                lzma_ops.mode(xz2::stream::Mode::Normal);
-                // Set nice len to the maximum for best compression ratio
-                lzma_ops.nice_len(273);
-                // Set depth to a reasonable value, 0 means auto, 1000 is somwhat high but gives
-                // good results.
-                lzma_ops.depth(1000);
-                // 2 is the default and does well for most files
-                lzma_ops.position_bits(2);
-                // 0 is the default and does well for most files
-                lzma_ops.literal_position_bits(0);
-                // 3 is the default and does well for most files
-                lzma_ops.literal_context_bits(3);
+                let encoder = match profile {
+                    CompressionProfile::Fast => {
+                        xz2::stream::MtStreamBuilder::new().threads(6).preset(1).encoder().unwrap()
+                    }
+                    CompressionProfile::Balanced => {
+                        xz2::stream::MtStreamBuilder::new().threads(6).preset(6).encoder().unwrap()
+                    }
+                    CompressionProfile::Best => {
+                        let mut filters = xz2::stream::Filters::new();
+                        // the preset is overridden by the other options so it doesn't matter
+                        let mut lzma_ops = xz2::stream::LzmaOptions::new_preset(9).unwrap();
+                        // This sets the overall dictionary size, which is also how much memory (baseline)
+                        // is needed for decompression.
+                        lzma_ops.dict_size(64 * 1024 * 1024);
+                        // Use the best match finder for compression ratio.
+                        lzma_ops.match_finder(xz2::stream::MatchFinder::BinaryTree4);
+                        lzma_ops.mode(xz2::stream::Mode::Normal);
+                        // Set nice len to the maximum for best compression ratio
+                        lzma_ops.nice_len(273);
+                        // Set depth to a reasonable value, 0 means auto, 1000 is somwhat high but gives
+                        // good results.
+                        lzma_ops.depth(1000);
+                        // 2 is the default and does well for most files
+                        lzma_ops.position_bits(2);
+                        // 0 is the default and does well for most files
+                        lzma_ops.literal_position_bits(0);
+                        // 3 is the default and does well for most files
+                        lzma_ops.literal_context_bits(3);
 
-                filters.lzma2(&lzma_ops);
+                        filters.lzma2(&lzma_ops);
 
-                let mut builder = xz2::stream::MtStreamBuilder::new();
-                builder.filters(filters);
+                        let mut builder = xz2::stream::MtStreamBuilder::new();
+                        builder.filters(filters);
 
-                // On 32-bit platforms limit ourselves to 3 threads, otherwise we exceed memory
-                // usage this process can take. In the future we'll likely only do super-fast
-                // compression in CI and move this heavyweight processing to promote-release (which
-                // is always 64-bit and can run on big-memory machines) but for now this lets us
-                // move forward.
-                if std::mem::size_of::<usize>() == 4 {
-                    builder.threads(3);
-                } else {
-                    builder.threads(6);
-                }
+                        // On 32-bit platforms limit ourselves to 3 threads, otherwise we exceed memory
+                        // usage this process can take. In the future we'll likely only do super-fast
+                        // compression in CI and move this heavyweight processing to promote-release (which
+                        // is always 64-bit and can run on big-memory machines) but for now this lets us
+                        // move forward.
+                        if std::mem::size_of::<usize>() == 4 {
+                            builder.threads(3);
+                        } else {
+                            builder.threads(6);
+                        }
+                        builder.encoder().unwrap()
+                    }
+                };
 
-                let compressor = XzEncoder::new_stream(
-                    std::io::BufWriter::new(file),
-                    builder.encoder().unwrap(),
-                );
+                let compressor = XzEncoder::new_stream(std::io::BufWriter::new(file), encoder);
                 Box::new(compressor)
             }
         })

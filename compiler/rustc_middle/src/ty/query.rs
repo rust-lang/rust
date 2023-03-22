@@ -17,7 +17,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
-use crate::query::Key;
+use crate::query::{AsLocalKey, Key};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -151,6 +151,20 @@ macro_rules! query_if_arena {
     };
 }
 
+/// If `separate_provide_if_extern`, then the key can be projected to its
+/// local key via `<$K as AsLocalKey>::LocalKey`.
+macro_rules! local_key_if_separate_extern {
+    ([] $($K:tt)*) => {
+        $($K)*
+    };
+    ([(separate_provide_extern) $($rest:tt)*] $($K:tt)*) => {
+        <$($K)* as AsLocalKey>::LocalKey
+    };
+    ([$other:tt $($modifiers:tt)*] $($K:tt)*) => {
+        local_key_if_separate_extern!([$($modifiers)*] $($K)*)
+    };
+}
+
 macro_rules! separate_provide_extern_decl {
     ([][$name:ident]) => {
         ()
@@ -210,6 +224,12 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(pub type $name<'tcx> = $($K)*;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_keys_local {
+            use super::*;
+
+            $(pub type $name<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $($K)*);)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
@@ -385,7 +405,7 @@ macro_rules! define_callbacks {
         pub struct Providers {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
-                query_keys::$name<'tcx>,
+                query_keys_local::$name<'tcx>,
             ) -> query_provided::$name<'tcx>,)*
         }
 
@@ -395,17 +415,14 @@ macro_rules! define_callbacks {
 
         impl Default for Providers {
             fn default() -> Self {
-                use crate::query::Key;
-
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for {} crate;\n\
+                        "`tcx.{}({:?})` is not supported for this key;\n\
                         hint: Queries can be either made to the local crate, or the external crate. \
                         This error means you tried to use it for one that's not supported.\n\
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
-                        if key.query_crate_is_local() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }

@@ -220,6 +220,19 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
 ///
 /// This path may or may not have a verbatim prefix.
 pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+    let path = to_u16s(path)?;
+    get_long_path(path, true)
+}
+
+/// Get a normalized absolute path that can bypass path length limits.
+///
+/// Setting prefer_verbatim to true suggests a stronger preference for verbatim
+/// paths even when not strictly necessary. This allows the Windows API to avoid
+/// repeating our work. However, if the path may be given back to users or
+/// passed to other application then it's preferable to use non-verbatim paths
+/// when possible. Non-verbatim paths are better understood by users and handled
+/// by more software.
+pub(crate) fn get_long_path(mut path: Vec<u16>, prefer_verbatim: bool) -> io::Result<Vec<u16>> {
     // Normally the MAX_PATH is 260 UTF-16 code units (including the NULL).
     // However, for APIs such as CreateDirectory[1], the limit is 248.
     //
@@ -243,7 +256,6 @@ pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
     // \\?\UNC\
     const UNC_PREFIX: &[u16] = &[SEP, SEP, QUERY, SEP, U, N, C, SEP];
 
-    let mut path = to_u16s(path)?;
     if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) || path == &[0] {
         // Early return for paths that are already verbatim or empty.
         return Ok(path);
@@ -275,29 +287,34 @@ pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
         |mut absolute| {
             path.clear();
 
-            // Secondly, add the verbatim prefix. This is easier here because we know the
-            // path is now absolute and fully normalized (e.g. `/` has been changed to `\`).
-            let prefix = match absolute {
-                // C:\ => \\?\C:\
-                [_, COLON, SEP, ..] => VERBATIM_PREFIX,
-                // \\.\ => \\?\
-                [SEP, SEP, DOT, SEP, ..] => {
-                    absolute = &absolute[4..];
-                    VERBATIM_PREFIX
-                }
-                // Leave \\?\ and \??\ as-is.
-                [SEP, SEP, QUERY, SEP, ..] | [SEP, QUERY, QUERY, SEP, ..] => &[],
-                // \\ => \\?\UNC\
-                [SEP, SEP, ..] => {
-                    absolute = &absolute[2..];
-                    UNC_PREFIX
-                }
-                // Anything else we leave alone.
-                _ => &[],
-            };
+            // Only prepend the prefix if needed.
+            if prefer_verbatim || absolute.len() + 1 >= LEGACY_MAX_PATH {
+                // Secondly, add the verbatim prefix. This is easier here because we know the
+                // path is now absolute and fully normalized (e.g. `/` has been changed to `\`).
+                let prefix = match absolute {
+                    // C:\ => \\?\C:\
+                    [_, COLON, SEP, ..] => VERBATIM_PREFIX,
+                    // \\.\ => \\?\
+                    [SEP, SEP, DOT, SEP, ..] => {
+                        absolute = &absolute[4..];
+                        VERBATIM_PREFIX
+                    }
+                    // Leave \\?\ and \??\ as-is.
+                    [SEP, SEP, QUERY, SEP, ..] | [SEP, QUERY, QUERY, SEP, ..] => &[],
+                    // \\ => \\?\UNC\
+                    [SEP, SEP, ..] => {
+                        absolute = &absolute[2..];
+                        UNC_PREFIX
+                    }
+                    // Anything else we leave alone.
+                    _ => &[],
+                };
 
-            path.reserve_exact(prefix.len() + absolute.len() + 1);
-            path.extend_from_slice(prefix);
+                path.reserve_exact(prefix.len() + absolute.len() + 1);
+                path.extend_from_slice(prefix);
+            } else {
+                path.reserve_exact(absolute.len() + 1);
+            }
             path.extend_from_slice(absolute);
             path.push(0);
         },

@@ -384,9 +384,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         match &fk {
             FnKind::Method(ident, sig, ..) => match method_context(cx, id) {
                 MethodLateContext::PlainImpl => {
-                    if sig.header.abi != Abi::Rust
-                        && cx.tcx.has_attr(id.to_def_id(), sym::no_mangle)
-                    {
+                    if sig.header.abi != Abi::Rust && cx.tcx.has_attr(id, sym::no_mangle) {
                         return;
                     }
                     self.check_snake_case(cx, "method", ident);
@@ -398,7 +396,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != Abi::Rust && cx.tcx.has_attr(id.to_def_id(), sym::no_mangle) {
+                if header.abi != Abi::Rust && cx.tcx.has_attr(id, sym::no_mangle) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);

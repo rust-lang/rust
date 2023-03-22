@@ -284,7 +284,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // hidden type is well formed even without those bounds.
         let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
-        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.

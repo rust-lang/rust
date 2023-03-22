@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
 use rustc_middle::ty::{self, List};
 use rustc_span::{sym, Span};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 declare_lint! {
     /// The `for_loops_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.
@@ -136,20 +137,22 @@ fn suggest_question_mark<'tcx>(
 
     let ty = substs.type_at(0);
     let infcx = cx.tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(&infcx);
+
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let cause = ObligationCause::new(
         span,
         body_def_id,
         rustc_infer::traits::ObligationCauseCode::MiscObligation,
     );
-    let errors = rustc_trait_selection::traits::fully_solve_bound(
-        &infcx,
+
+    ocx.register_bound(
         cause,
-        ty::ParamEnv::empty(),
+        cx.param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,
     );
 
-    errors.is_empty()
+    ocx.select_all_or_error().is_empty()
 }

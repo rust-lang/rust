@@ -39,9 +39,7 @@ impl<'tcx> SearchGraph<'tcx> {
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.stack.is_empty()
-            && self.provisional_cache.is_empty()
-            && !self.overflow_data.did_overflow()
+        self.stack.is_empty() && self.provisional_cache.is_empty()
     }
 
     /// Whether we're currently in a cycle. This should only be used

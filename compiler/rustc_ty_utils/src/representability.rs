@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::LocalDefId;
 
 pub fn provide(providers: &mut Providers) {
     *providers =
@@ -85,7 +85,7 @@ fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representab
     Representability::Representable
 }
 
-fn params_in_repr(tcx: TyCtxt<'_>, def_id: DefId) -> BitSet<u32> {
+fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
     let adt_def = tcx.adt_def(def_id);
     let generics = tcx.generics_of(def_id);
     let mut params_in_repr = BitSet::new_empty(generics.params.len());

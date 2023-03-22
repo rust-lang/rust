@@ -5,16 +5,16 @@ use hir::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
+pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir().get(hir_id);
     let parent_def_id = match node {
@@ -121,7 +121,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         Some(parent_def_id.to_def_id())
                     }
                     Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
-                        Some(tcx.typeck_root_def_id(def_id))
+                        Some(tcx.typeck_root_def_id(def_id.to_def_id()))
                     }
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
@@ -140,7 +140,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             }
         }
         Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
-            Some(tcx.typeck_root_def_id(def_id))
+            Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy {
@@ -189,7 +189,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     let opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: kw::SelfUpper,
-                        def_id,
+                        def_id: def_id.to_def_id(),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
@@ -326,7 +326,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
             index: next_index(),
             name: Symbol::intern(arg),
-            def_id,
+            def_id: def_id.to_def_id(),
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
         }));
@@ -339,7 +339,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             params.push(ty::GenericParamDef {
                 index: next_index(),
                 name: Symbol::intern("<const_ty>"),
-                def_id,
+                def_id: def_id.to_def_id(),
                 pure_wrt_drop: false,
                 kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
             });

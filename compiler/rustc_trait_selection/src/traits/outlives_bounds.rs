@@ -1,7 +1,7 @@
 use crate::infer::InferCtxt;
 use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
-use crate::traits::ObligationCause;
+use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{self, ParamEnv, Ty};
 use rustc_span::def_id::LocalDefId;
@@ -71,22 +71,23 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
 
         if let Some(constraints) = constraints {
             debug!(?constraints);
-            // Instantiation may have produced new inference variables and constraints on those
-            // variables. Process these constraints.
-            let cause = ObligationCause::misc(span, body_id);
-            let errors = super::fully_solve_obligations(
-                self,
-                constraints.outlives.iter().map(|constraint| {
-                    self.query_outlives_constraint_to_obligation(
-                        *constraint,
-                        cause.clone(),
-                        param_env,
-                    )
-                }),
-            );
             if !constraints.member_constraints.is_empty() {
                 span_bug!(span, "{:#?}", constraints.member_constraints);
             }
+
+            // Instantiation may have produced new inference variables and constraints on those
+            // variables. Process these constraints.
+            let ocx = ObligationCtxt::new(self);
+            let cause = ObligationCause::misc(span, body_id);
+            for &constraint in &constraints.outlives {
+                ocx.register_obligation(self.query_outlives_constraint_to_obligation(
+                    constraint,
+                    cause.clone(),
+                    param_env,
+                ));
+            }
+
+            let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
                 self.tcx.sess.delay_span_bug(
                     span,
