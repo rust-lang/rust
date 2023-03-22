@@ -57,9 +57,8 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics;
+use core::ptr;
 use core::ptr::NonNull;
-use core::sync::atomic::{AtomicPtr, Ordering};
-use core::{mem, ptr};
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
@@ -284,89 +283,6 @@ unsafe impl Allocator for System {
             },
         }
     }
-}
-
-static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
-
-/// Registers a custom allocation error hook, replacing any that was previously registered.
-///
-/// The allocation error hook is invoked when an infallible memory allocation fails — that is,
-/// as a consequence of calling [`handle_alloc_error`] — before the runtime aborts.
-///
-/// The allocation error hook is a global resource. [`take_alloc_error_hook`] may be used to
-/// retrieve a previously registered hook and wrap or discard it.
-///
-/// # What the provided `hook` function should expect
-///
-/// The hook function is provided with a [`Layout`] struct which contains information
-/// about the allocation that failed.
-///
-/// The hook function may choose to panic or abort; in the event that it returns normally, this
-/// will cause an immediate abort.
-///
-/// Since [`take_alloc_error_hook`] is a safe function that allows retrieving the hook, the hook
-/// function must be _sound_ to call even if no memory allocations were attempted.
-///
-/// # The default hook
-///
-/// The default hook, used if [`set_alloc_error_hook`] is never called, prints a message to
-/// standard error (and then returns, causing the runtime to abort the process).
-/// Compiler options may cause it to panic instead, and the default behavior may be changed
-/// to panicking in future versions of Rust.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(alloc_error_hook)]
-///
-/// use std::alloc::{Layout, set_alloc_error_hook};
-///
-/// fn custom_alloc_error_hook(layout: Layout) {
-///    panic!("memory allocation of {} bytes failed", layout.size());
-/// }
-///
-/// set_alloc_error_hook(custom_alloc_error_hook);
-/// ```
-#[unstable(feature = "alloc_error_hook", issue = "51245")]
-pub fn set_alloc_error_hook(hook: fn(Layout)) {
-    HOOK.store(hook as *mut (), Ordering::SeqCst);
-}
-
-/// Unregisters the current allocation error hook, returning it.
-///
-/// *See also the function [`set_alloc_error_hook`].*
-///
-/// If no custom hook is registered, the default hook will be returned.
-#[unstable(feature = "alloc_error_hook", issue = "51245")]
-pub fn take_alloc_error_hook() -> fn(Layout) {
-    let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
-    if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } }
-}
-
-fn default_alloc_error_hook(layout: Layout) {
-    extern "Rust" {
-        // This symbol is emitted by rustc next to __rust_alloc_error_handler.
-        // Its value depends on the -Zoom={panic,abort} compiler option.
-        static __rust_alloc_error_handler_should_panic: u8;
-    }
-
-    if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
-        panic!("memory allocation of {} bytes failed", layout.size());
-    } else {
-        rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
-    }
-}
-
-#[cfg(not(test))]
-#[doc(hidden)]
-#[alloc_error_handler]
-#[unstable(feature = "alloc_internals", issue = "none")]
-pub fn rust_oom(layout: Layout) -> ! {
-    let hook = HOOK.load(Ordering::SeqCst);
-    let hook: fn(Layout) =
-        if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
-    hook(layout);
-    crate::process::abort()
 }
 
 #[cfg(not(test))]

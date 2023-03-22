@@ -387,7 +387,7 @@ fn rust_oom(layout: Layout) -> ! {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !;
 
-        // This symbol is emitted by rustc next to __rust_alloc_error_handler.
+        // This symbol is emitted by rustc .
         // Its value depends on the -Zoom={panic,abort} compiler option.
         static __rust_alloc_error_handler_should_panic: u8;
     }
@@ -418,24 +418,25 @@ fn rust_oom(layout: Layout) -> ! {
 /// in response to an allocation error are encouraged to call this function,
 /// rather than directly invoking [`panic!`] or similar.
 ///
-/// This function is guaranteed to diverge (not return normally with a value), but depending on
-/// global configuration, it may either panic (resulting in unwinding or aborting as per
-/// configuration for all panics), or abort the process (with no unwinding).
+/// This function triggers a panic with a special payload of [`AllocErrorPanicPayload`] that holds
+/// the [`Layout`] passed into this function.
 ///
-/// The default behavior is:
+/// There are 2 ways in which such panics can be handled:
 ///
 ///  * If the binary links against `std` (typically the case), then
-///   print a message to standard error and abort the process.
-///   This behavior can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
-///   Future versions of Rust may panic by default instead.
+///   the payload is available through [`PanicInfo::payload`][std_payload]. By default, panics caused by this
+///   function will always abort the process instead of unwinding. This can be overridden by 
+///   compiling the program with the `-Z oom=unwind` option, in which case the payload is captured
+///   and can be recovered through the [`catch_unwind`] function.
 ///
 /// * If the binary does not link against `std` (all of its crates are marked
-///   [`#![no_std]`][no_std]), then call [`panic!`] with a message.
-///   [The panic handler] applies as to any panic.
+///   [`#![no_std]`][no_std]), then [the panic handler] is called. The payload is available through
+///   [`PanicInfo::payload`][core_payload].
 ///
-/// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
-/// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
-/// [The panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
+/// [core_payload]: ../../core/panic/struct.PanicInfo.html#method.payload
+/// [std_payload]: ../../std/panic/struct.PanicInfo.html#method.payload
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+/// [the panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
 /// [no_std]: https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
@@ -457,6 +458,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(all(not(no_global_oom_handling), test))]
 pub use std::alloc::handle_alloc_error;
 
+#[cfg(bootstrap)]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]

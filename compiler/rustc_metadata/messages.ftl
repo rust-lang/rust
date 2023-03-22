@@ -19,9 +19,6 @@ metadata_cant_find_crate =
 metadata_compiler_missing_profiler =
     the compiler may have been built without the profiler runtime
 
-metadata_conflicting_alloc_error_handler =
-    the `#[alloc_error_handler]` in {$other_crate_name} conflicts with allocation error handler in: {$crate_name}
-
 metadata_conflicting_global_alloc =
     the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}
 
@@ -202,10 +199,6 @@ metadata_no_dylib_plugin =
 metadata_no_link_mod_override =
     overriding linking modifiers from command line is not supported
 
-metadata_no_multiple_alloc_error_handler =
-    cannot define multiple allocation error handlers
-    .label = cannot define a new allocation error handler
-
 metadata_no_multiple_global_alloc =
     cannot define multiple global allocators
     .label = cannot define a new global allocator
@@ -223,9 +216,6 @@ metadata_not_profiler_runtime =
     the crate `{$crate_name}` is not a profiler runtime
 
 metadata_only_provide_library_name = only provide the library name `{$suggested_name}`, not the full filename
-
-metadata_prev_alloc_error_handler =
-    previous allocation error handler defined here
 
 metadata_prev_global_alloc =
     previous global allocator defined here

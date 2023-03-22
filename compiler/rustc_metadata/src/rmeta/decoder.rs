@@ -760,9 +760,8 @@ impl MetadataBlob {
                     )?;
                     writeln!(
                         out,
-                        "has_global_allocator {} has_alloc_error_handler {} has_panic_handler {} has_default_lib_allocator {}",
+                        "has_global_allocator {} has_panic_handler {} has_default_lib_allocator {}",
                         root.has_global_allocator,
-                        root.has_alloc_error_handler,
                         root.has_panic_handler,
                         root.has_default_lib_allocator
                     )?;
@@ -1892,10 +1891,6 @@ impl CrateMetadata {
 
     pub(crate) fn has_global_allocator(&self) -> bool {
         self.root.has_global_allocator
-    }
-
-    pub(crate) fn has_alloc_error_handler(&self) -> bool {
-        self.root.has_alloc_error_handler
     }
 
     pub(crate) fn has_default_lib_allocator(&self) -> bool {
