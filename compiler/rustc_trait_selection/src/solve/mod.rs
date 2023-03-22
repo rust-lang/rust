@@ -11,6 +11,7 @@
 
 // FIXME: uses of `infcx.at` need to enable deferred projection equality once that's implemented.
 
+use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
@@ -300,9 +301,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         // FIXME(-Ztrait-solver=next): We should instead try to find a `Certainty::Yes` response with
         // a subset of the constraints that all the other responses have.
-        let one = candidates[0];
-        if candidates[1..].iter().all(|resp| resp == &one) {
-            return Ok(one);
+        if candidates.iter().all_equal() {
+            return Ok(candidates[0]);
         }
 
         if let Some(response) = candidates.iter().find(|response| {

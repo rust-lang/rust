@@ -1,5 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use crate::solve::CanonicalResponseExt;
+
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
@@ -18,7 +20,7 @@ use std::fmt::Debug;
 ///
 /// It consists of both the `source`, which describes how that goal would be proven,
 /// and the `result` when using the given `source`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct Candidate<'tcx> {
     pub(super) source: CandidateSource,
     pub(super) result: CanonicalResponse<'tcx>,
@@ -510,10 +512,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         mut candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(candidates.pop().unwrap().result),
+        match &candidates[..] {
+            [] => return Err(NoSolution),
+            [candidate] => return Ok(candidate.result),
             _ => {}
+        }
+
+        if let Some(candidate) = candidates.iter().find(|candidate| {
+            candidate.result.value.certainty == Certainty::Yes
+                && candidate.result.has_no_inference_or_external_constraints()
+        }) {
+            return Ok(candidate.result);
         }
 
         if candidates.len() > 1 {
