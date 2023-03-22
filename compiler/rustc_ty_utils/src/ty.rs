@@ -130,7 +130,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): I don't like this, we should
     // at least be making sure that the generics in RPITITs and their parent fn don't
     // get out of alignment, or else we do actually need to substitute these predicates.
-    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id) {
+    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
+    | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id)
+    {
         predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
     }
 

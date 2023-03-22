@@ -217,7 +217,7 @@ ul.all-items {
 a.anchor,
 .small-section-header a,
 #source-sidebar a,
-pre.rust a,
+.rust a,
 .sidebar h2 a,
 .sidebar h3 a,
 .mobile-topbar h2 a,
@@ -228,43 +228,43 @@ h1 a,
 	color: var(--main-color);
 }
 
-.content span.enum, .content a.enum,
-.content span.struct, .content a.struct,
-.content span.union, .content a.union,
-.content span.primitive, .content a.primitive,
-.content span.type, .content a.type,
-.content span.foreigntype, .content a.foreigntype {
+span.enum, a.enum,
+span.struct, a.struct,
+span.union, a.union,
+span.primitive, a.primitive,
+span.type, a.type,
+span.foreigntype, a.foreigntype {
 	color: var(--type-link-color);
 }
 
-.content span.trait, .content a.trait,
-.content span.traitalias, .content a.traitalias {
+span.trait, a.trait,
+span.traitalias, a.traitalias {
 	color: var(--trait-link-color);
 }
 
-.content span.associatedtype, .content a.associatedtype,
-.content span.constant, .content a.constant,
-.content span.static, .content a.static {
+span.associatedtype, a.associatedtype,
+span.constant, a.constant,
+span.static, a.static {
 	color: var(--assoc-item-link-color);
 }
 
-.content span.fn, .content a.fn,
-.content span.method, .content a.method,
-.content span.tymethod, .content a.tymethod {
+span.fn, a.fn,
+span.method, a.method,
+span.tymethod, a.tymethod {
 	color: var(--function-link-color);
 }
 
-.content span.attr, .content a.attr,
-.content span.derive, .content a.derive,
-.content span.macro, .content a.macro {
+span.attr, a.attr,
+span.derive, a.derive,
+span.macro, a.macro {
 	color: var(--macro-link-color);
 }
 
-.content span.mod, .content a.mod {
+span.mod, a.mod {
 	color: var(--mod-link-color);
 }
 
-.content span.keyword, .content a.keyword {
+span.keyword, a.keyword {
 	color: var(--keyword-link-color);
 }
 
@@ -713,7 +713,7 @@ h2.small-section-header > .anchor {
 }
 
 .main-heading a:hover,
-.example-wrap > pre.rust a:hover,
+.example-wrap > .rust a:hover,
 .all-items a:hover,
 .docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
 .docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,

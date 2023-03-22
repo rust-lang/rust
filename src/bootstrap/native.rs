@@ -309,6 +309,7 @@ impl Step for Llvm {
         cfg.out_dir(&out_dir)
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
+            .define("LLVM_UNREACHABLE_OPTIMIZE", "OFF")
             .define("LLVM_ENABLE_PLUGINS", plugins)
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
             .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)

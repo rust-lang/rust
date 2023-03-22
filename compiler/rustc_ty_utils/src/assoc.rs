@@ -386,10 +386,6 @@ fn associated_type_for_impl_trait_in_impl(
         opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });
 
-    // Copy param_env of the containing function. The synthesized associated type doesn't have
-    // extra predicates to assume.
-    impl_assoc_ty.param_env(tcx.param_env(impl_fn_def_id));
-
     // Copy visility of the containing function.
     impl_assoc_ty.visibility(tcx.visibility(impl_fn_def_id));
 
