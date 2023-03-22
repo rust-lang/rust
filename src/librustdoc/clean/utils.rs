@@ -195,12 +195,12 @@ pub(crate) fn build_deref_target_impls(
         if let Some(prim) = target.primitive_type() {
             let _prof_timer = cx.tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
             for did in prim.impls(tcx).filter(|did| !did.is_local()) {
-                inline::build_impl(cx, None, did, None, ret);
+                inline::build_impl(cx, did, None, ret);
             }
         } else if let Type::Path { path } = target {
             let did = path.def_id();
             if !did.is_local() {
-                inline::build_impls(cx, None, did, None, ret);
+                inline::build_impls(cx, did, None, ret);
             }
         }
     }
