@@ -12,20 +12,20 @@ fn main() {
     foo(42u64.into());
     //~^ ERROR the trait bound `&Foo: From<u64>` is not satisfied
     //~| HELP the trait `From<u64>` is implemented for `Foo`
-    //~| HELP consider borrowing the expression to use `From<u64>`
+    //~| HELP consider borrowing here
     //~| SUGGESTION &
 
     let val = 42u64.into();
     foo(val);
     //~^^ ERROR the trait bound `&Foo: From<u64>` is not satisfied
     //~| HELP the trait `From<u64>` is implemented for `Foo`
-    //~| HELP consider borrowing the expression to use `From<u64>`
+    //~| HELP consider borrowing here
     //~| SUGGESTION &
 
     foo_mut(42u64.into());
     //~^ ERROR the trait bound `&mut Foo: From<u64>` is not satisfied
     //~| HELP the trait `From<u64>` is implemented for `Foo`
-    //~| HELP consider borrowing the expression to use `From<u64>`
+    //~| HELP consider borrowing here
     //~| SUGGESTION &mut
 
     foo(42i32.into());

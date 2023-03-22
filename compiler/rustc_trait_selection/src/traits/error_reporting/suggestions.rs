@@ -351,6 +351,13 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
 
+    fn suggest_borrowing_for_method_call(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
+
     fn suggest_dereferencing_index(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -3495,6 +3502,39 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+    }
+
+    /// Suggests borrowing if there exists a viable impl for the `trait_pred`'s
+    /// dereferenced self type.
+    /// Although it's not specific, this method targets `.into()` conversions.
+    fn suggest_borrowing_for_method_call(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let ty::Ref(_, ty, mutability) = trait_pred.self_ty().skip_binder().kind() else { return };
+
+        let ObligationCauseCode::FunctionArgumentObligation { call_hir_id, .. } = obligation.cause.code() else { return };
+        let Some(hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::MethodCall(_, receiver, _, _),
+            ..
+        })) = self.tcx.hir().find(*call_hir_id) else { return };
+
+        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, *ty)),
+        );
+        if !self.infcx.predicate_must_hold_modulo_regions(&new_obligation) {
+            return;
+        }
+
+        err.span_suggestion_verbose(
+            receiver.span.shrink_to_lo(),
+            "consider borrowing here",
+            format!("&{}", mutability.prefix_str()),
+            Applicability::MachineApplicable,
+        );
     }
 
     fn suggest_dereferencing_index(

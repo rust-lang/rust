@@ -6,7 +6,7 @@ LL |     foo(42u64.into());
    |
    = help: the trait `From<u64>` is implemented for `Foo`
    = note: required for `u64` to implement `Into<&Foo>`
-help: consider borrowing the expression to use `From<u64>`
+help: consider borrowing here
    |
 LL |     foo(&42u64.into());
    |         +
@@ -19,7 +19,7 @@ LL |     let val = 42u64.into();
    |
    = help: the trait `From<u64>` is implemented for `Foo`
    = note: required for `u64` to implement `Into<&Foo>`
-help: consider borrowing the expression to use `From<u64>`
+help: consider borrowing here
    |
 LL |     let val = &42u64.into();
    |               +
@@ -32,7 +32,7 @@ LL |     foo_mut(42u64.into());
    |
    = help: the trait `From<u64>` is implemented for `Foo`
    = note: required for `u64` to implement `Into<&mut Foo>`
-help: consider borrowing the expression to use `From<u64>`
+help: consider borrowing here
    |
 LL |     foo_mut(&mut 42u64.into());
    |             ++++
