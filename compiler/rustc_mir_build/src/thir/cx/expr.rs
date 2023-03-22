@@ -185,7 +185,7 @@ impl<'tcx> Cx<'tcx> {
         if self.typeck_results().is_coercion_cast(source.hir_id) {
             // Convert the lexpr to a vexpr.
             ExprKind::Use { source: self.mirror_expr(source) }
-        } else if self.typeck_results().expr_ty(source).is_region_ptr() {
+        } else if self.typeck_results().expr_ty(source).is_ref() {
             // Special cased so that we can type check that the element
             // type of the source matches the pointed to type of the
             // destination.

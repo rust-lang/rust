@@ -48,9 +48,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
         if let Abi::Scalar(_) = arg.layout().abi {
-            'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr()
-                && !arg.layout().ty.is_region_ptr()
-            {
+            'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
                 for i in 0..arg.layout().fields.count() {
                     let field = arg.value_field(fx, mir::Field::new(i));
                     if !field.layout().is_zst() {
