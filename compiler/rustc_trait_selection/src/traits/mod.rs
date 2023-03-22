@@ -4,7 +4,7 @@
 
 pub mod auto_trait;
 mod chalk_fulfill;
-mod coherence;
+pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod engine;
 pub mod error_reporting;

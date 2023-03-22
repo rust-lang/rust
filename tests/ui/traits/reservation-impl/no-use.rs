@@ -1,5 +1,6 @@
 // check that reservation impls can't be used as normal impls in positive reasoning.
-
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
 #![feature(rustc_attrs)]
 
 trait MyTrait { fn foo(&self); }
