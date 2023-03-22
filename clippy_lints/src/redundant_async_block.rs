@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.69.0"]
     pub REDUNDANT_ASYNC_BLOCK,
-    complexity,
+    nursery,
     "`async { future.await }` can be replaced by `future`"
 }
 declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
@@ -48,6 +48,11 @@ impl EarlyLintPass for RedundantAsyncBlock {
             !future.span.from_expansion() &&
             !await_in_expr(future)
         {
+            if captures_value(last) {
+                // If the async block captures variables then there is no equivalence.
+                return;
+            }
+
             span_lint_and_sugg(
                 cx,
                 REDUNDANT_ASYNC_BLOCK,
@@ -77,6 +82,36 @@ impl<'ast> AstVisitor<'ast> for AwaitDetector {
     fn visit_expr(&mut self, ex: &'ast Expr) {
         match (&ex.kind, self.await_found) {
             (ExprKind::Await(_), _) => self.await_found = true,
+            (_, false) => rustc_ast::visit::walk_expr(self, ex),
+            _ => (),
+        }
+    }
+}
+
+/// Check whether an expression may have captured a local variable.
+/// This is done by looking for paths with only one segment, except as
+/// a prefix of `.await` since this would be captured by value.
+///
+/// This function will sometimes return `true` even tough there are no
+/// captures happening: at the AST level, it is impossible to
+/// dinstinguish a function call from a call to a closure which comes
+/// from the local environment.
+fn captures_value(expr: &Expr) -> bool {
+    let mut detector = CaptureDetector::default();
+    detector.visit_expr(expr);
+    detector.capture_found
+}
+
+#[derive(Default)]
+struct CaptureDetector {
+    capture_found: bool,
+}
+
+impl<'ast> AstVisitor<'ast> for CaptureDetector {
+    fn visit_expr(&mut self, ex: &'ast Expr) {
+        match (&ex.kind, self.capture_found) {
+            (ExprKind::Await(fut), _) if matches!(fut.kind, ExprKind::Path(..)) => (),
+            (ExprKind::Path(_, path), _) if path.segments.len() == 1 => self.capture_found = true,
             (_, false) => rustc_ast::visit::walk_expr(self, ex),
             _ => (),
         }
