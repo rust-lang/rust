@@ -18,6 +18,7 @@ because that's clearly a non-descriptive name.
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
   - [Testing manually](#testing-manually)
+  - [Running directly](#running-directly)
   - [Lint declaration](#lint-declaration)
   - [Lint registration](#lint-registration)
   - [Lint passes](#lint-passes)
@@ -185,6 +186,15 @@ cargo dev lint input.rs
 
 from the working copy root. With tests in place, let's have a look at
 implementing our lint now.
+
+## Running directly
+
+While it's easier to just use `cargo dev lint`, it might be desirable to get
+`target/release/cargo-clippy` and `target/release/clippy-driver` to work as well in some cases.
+By default, they don't work because clippy dynamically links rustc. To help them find rustc,
+add the path printed by`rustc --print target-libdir` (ran inside this workspace so that the rustc version matches)
+to your library search path.
+On linux, this can be done by setting the `LD_LIBRARY_PATH` environment variable to that path.
 
 ## Lint declaration
 
