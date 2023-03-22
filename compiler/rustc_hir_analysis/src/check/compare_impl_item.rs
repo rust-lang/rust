@@ -1958,7 +1958,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let container_id = impl_ty.container_id(tcx);
 
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
-    let impl_ty_value = tcx.type_of(impl_ty.def_id).subst_identity();
+    let impl_ty_value = tcx.type_of(impl_ty.def_id).subst(tcx, impl_ty_substs);
 
     let param_env = tcx.param_env(impl_ty.def_id);
 
