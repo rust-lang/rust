@@ -706,12 +706,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, false)
-    }
-
-    /// Like `freshener`, but does not replace `'static` regions.
-    pub fn freshener_keep_static<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, true)
+        freshen::TypeFreshener::new(self)
     }
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
