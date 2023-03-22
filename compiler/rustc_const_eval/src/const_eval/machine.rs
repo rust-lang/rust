@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
@@ -335,8 +335,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool {
+        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks || layout.abi.is_uninhabited()
     }
 
     fn alignment_check_failed(

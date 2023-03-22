@@ -812,7 +812,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_validity(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
+    fn enforce_validity(ecx: &MiriInterpCx<'mir, 'tcx>, _layout: TyAndLayout<'tcx>) -> bool {
         ecx.machine.validate
     }
 
