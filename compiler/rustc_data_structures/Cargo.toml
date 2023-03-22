@@ -14,7 +14,7 @@ indexmap = { version = "1.9.1" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
 measureme = "10.0.0"
-rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
+rayon-core = { version = "0.4.0", package = "rustc-rayon-core" }
 rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc-hash = "1.1.0"
@@ -43,4 +43,4 @@ winapi = { version = "0.3", features = ["fileapi", "psapi", "winerror"] }
 memmap2 = "0.2.1"
 
 [features]
-rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon"]
