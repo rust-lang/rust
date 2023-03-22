@@ -459,6 +459,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
     }
 
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn sub<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        sub: T,
+        sup: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .sub(DefineOpaqueTypes::No, sub, sup)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to subtype");
+                NoSolution
+            })
+    }
+
     /// Equates two values returning the nested goals without adding them
     /// to the nested goals of the `EvalCtxt`.
     ///

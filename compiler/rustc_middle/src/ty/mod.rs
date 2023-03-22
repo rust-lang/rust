@@ -648,17 +648,6 @@ pub enum PredicateKind<'tcx> {
 pub enum AliasRelationDirection {
     Equate,
     Subtype,
-    Supertype,
-}
-
-impl AliasRelationDirection {
-    pub fn invert(self) -> Self {
-        match self {
-            AliasRelationDirection::Equate => AliasRelationDirection::Equate,
-            AliasRelationDirection::Subtype => AliasRelationDirection::Supertype,
-            AliasRelationDirection::Supertype => AliasRelationDirection::Subtype,
-        }
-    }
 }
 
 impl std::fmt::Display for AliasRelationDirection {
@@ -666,7 +655,6 @@ impl std::fmt::Display for AliasRelationDirection {
         match self {
             AliasRelationDirection::Equate => write!(f, " == "),
             AliasRelationDirection::Subtype => write!(f, " <: "),
-            AliasRelationDirection::Supertype => write!(f, " :> "),
         }
     }
 }

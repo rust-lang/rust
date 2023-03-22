@@ -128,7 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::Alias(AliasKind::Projection, _)) | (ty::Alias(AliasKind::Projection, _), _)
                 if self.tcx.trait_solver_next() =>
             {
-                relation.register_type_equate_obligation(a, b);
+                relation.register_type_relate_obligation(a, b);
                 Ok(a)
             }
 
@@ -848,10 +848,9 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
         })]);
     }
 
-    /// Register an obligation that both types must be equal to each other.
-    ///
-    /// If they aren't equal then the relation doesn't hold.
-    fn register_type_equate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    /// Register an obligation that both types must be related to each other according to
+    /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
             a.into(),
             b.into(),
@@ -859,7 +858,8 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
         ))]);
     }
 
-    /// Relation direction emitted for `AliasRelate` predicates
+    /// Relation direction emitted for `AliasRelate` predicates, corresponding to the direction
+    /// of the relation.
     fn alias_relate_direction(&self) -> ty::AliasRelationDirection;
 }
 
