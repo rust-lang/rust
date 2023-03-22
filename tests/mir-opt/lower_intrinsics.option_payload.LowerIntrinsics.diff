@@ -1,0 +1,54 @@
+- // MIR for `option_payload` before LowerIntrinsics
++ // MIR for `option_payload` after LowerIntrinsics
+  
+  fn option_payload(_1: &Option<usize>, _2: &Option<String>) -> () {
+      debug o => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:23: +0:24
+      debug p => _2;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:42: +0:43
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:62: +0:62
+      let mut _4: *const std::option::Option<usize>; // in scope 0 at $DIR/lower_intrinsics.rs:+2:55: +2:56
+      let mut _6: *const std::option::Option<std::string::String>; // in scope 0 at $DIR/lower_intrinsics.rs:+3:55: +3:56
+      scope 1 {
+          let _3: *const usize;            // in scope 1 at $DIR/lower_intrinsics.rs:+2:13: +2:15
+          scope 2 {
+              debug _x => _3;              // in scope 2 at $DIR/lower_intrinsics.rs:+2:13: +2:15
+              let _5: *const std::string::String; // in scope 2 at $DIR/lower_intrinsics.rs:+3:13: +3:15
+              scope 3 {
+                  debug _y => _5;          // in scope 3 at $DIR/lower_intrinsics.rs:+3:13: +3:15
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:13: +2:15
+          StorageLive(_4);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:55: +2:56
+          _4 = &raw const (*_1);           // scope 1 at $DIR/lower_intrinsics.rs:+2:55: +2:56
+-         _3 = option_payload_ptr::<usize>(move _4) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:+2:18: +2:57
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:99:18: 99:54
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const Option<usize>) -> *const usize {option_payload_ptr::<usize>}, val: Value(<ZST>) }
++         _3 = &raw const (((*_4) as Some).0: usize); // scope 1 at $DIR/lower_intrinsics.rs:+2:18: +2:57
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:18: +2:57
+      }
+  
+      bb1: {
+          StorageDead(_4);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:56: +2:57
+          StorageLive(_5);                 // scope 2 at $DIR/lower_intrinsics.rs:+3:13: +3:15
+          StorageLive(_6);                 // scope 2 at $DIR/lower_intrinsics.rs:+3:55: +3:56
+          _6 = &raw const (*_2);           // scope 2 at $DIR/lower_intrinsics.rs:+3:55: +3:56
+-         _5 = option_payload_ptr::<String>(move _6) -> bb2; // scope 2 at $DIR/lower_intrinsics.rs:+3:18: +3:57
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:100:18: 100:54
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const Option<String>) -> *const String {option_payload_ptr::<String>}, val: Value(<ZST>) }
++         _5 = &raw const (((*_6) as Some).0: std::string::String); // scope 2 at $DIR/lower_intrinsics.rs:+3:18: +3:57
++         goto -> bb2;                     // scope 2 at $DIR/lower_intrinsics.rs:+3:18: +3:57
+      }
+  
+      bb2: {
+          StorageDead(_6);                 // scope 2 at $DIR/lower_intrinsics.rs:+3:56: +3:57
+          _0 = const ();                   // scope 1 at $DIR/lower_intrinsics.rs:+1:5: +4:6
+          StorageDead(_5);                 // scope 2 at $DIR/lower_intrinsics.rs:+4:5: +4:6
+          StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:+4:5: +4:6
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+5:2: +5:2
+      }
+  }
+  
