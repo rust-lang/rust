@@ -570,7 +570,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
-                    is_prelude: self.r.tcx.sess.contains_name(&item.attrs, sym::prelude_import),
+                    is_prelude: attr::contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(None),
                     id,
                 };
@@ -685,7 +685,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude
-                        || self.r.tcx.sess.contains_name(&item.attrs, sym::no_implicit_prelude),
+                        || attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
@@ -750,7 +750,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     let mut ctor_vis = if vis.is_public()
-                        && self.r.tcx.sess.contains_name(&item.attrs, sym::non_exhaustive)
+                        && attr::contains_name(&item.attrs, sym::non_exhaustive)
                     {
                         ty::Visibility::Restricted(CRATE_DEF_ID)
                     } else {
@@ -1168,12 +1168,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
-        if self.r.tcx.sess.contains_name(&item.attrs, sym::proc_macro) {
+        if attr::contains_name(&item.attrs, sym::proc_macro) {
             return Some((MacroKind::Bang, item.ident, item.span));
-        } else if self.r.tcx.sess.contains_name(&item.attrs, sym::proc_macro_attribute) {
+        } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
             return Some((MacroKind::Attr, item.ident, item.span));
-        } else if let Some(attr) = self.r.tcx.sess.find_by_name(&item.attrs, sym::proc_macro_derive)
-        {
+        } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
             if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
                 if let Some(ident) = nested_meta.ident() {
                     return Some((MacroKind::Derive, ident, ident.span));
@@ -1228,7 +1227,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
-            let is_macro_export = self.r.tcx.sess.contains_name(&item.attrs, sym::macro_export);
+            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1488,13 +1487,12 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         self.r.visibilities.insert(def_id, vis);
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
-        let ctor_vis = if vis.is_public()
-            && self.r.tcx.sess.contains_name(&variant.attrs, sym::non_exhaustive)
-        {
-            ty::Visibility::Restricted(CRATE_DEF_ID)
-        } else {
-            vis
-        };
+        let ctor_vis =
+            if vis.is_public() && attr::contains_name(&variant.attrs, sym::non_exhaustive) {
+                ty::Visibility::Restricted(CRATE_DEF_ID)
+            } else {
+                vis
+            };
 
         // Define a constructor name in the value namespace.
         if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {

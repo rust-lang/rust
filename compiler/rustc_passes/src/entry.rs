@@ -1,3 +1,4 @@
+use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::error_code;
 use rustc_hir::def::DefKind;
@@ -37,7 +38,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if tcx.sess.contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
+    if attr::contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 
@@ -57,9 +58,9 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
 // An equivalent optimization was not applied to the duplicated code in test_harness.rs.
 fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> EntryPointType {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    if ctxt.tcx.sess.contains_name(attrs, sym::start) {
+    if attr::contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
+    } else if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else {
         if let Some(name) = ctxt.tcx.opt_item_name(id.owner_id.to_def_id())
@@ -78,7 +79,7 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
 
 fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    ctxt.tcx.sess.find_by_name(attrs, sym).map(|attr| attr.span)
+    attr::find_by_name(attrs, sym).map(|attr| attr.span)
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {

@@ -5,7 +5,7 @@ use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment};
-use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
+use rustc_ast::{self as ast, attr, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
@@ -113,7 +113,7 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
     let krate = tcx.crate_for_resolver(()).borrow();
-    for attr in tcx.sess.filter_by_name(&krate.attrs, sym::register_tool) {
+    for attr in attr::filter_by_name(&krate.attrs, sym::register_tool) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {

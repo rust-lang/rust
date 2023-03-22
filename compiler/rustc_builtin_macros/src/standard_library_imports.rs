@@ -1,4 +1,4 @@
-use rustc_ast as ast;
+use rustc_ast::{self as ast, attr};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::Session;
@@ -16,10 +16,10 @@ pub fn inject(
     let edition = sess.parse_sess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if sess.contains_name(&krate.attrs, sym::no_core) {
+    let names: &[Symbol] = if attr::contains_name(&krate.attrs, sym::no_core) {
         return krate;
-    } else if sess.contains_name(&krate.attrs, sym::no_std) {
-        if sess.contains_name(&krate.attrs, sym::compiler_builtins) {
+    } else if attr::contains_name(&krate.attrs, sym::no_std) {
+        if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &[sym::core]
         } else {
             &[sym::core, sym::compiler_builtins]

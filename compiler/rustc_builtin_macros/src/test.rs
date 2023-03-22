@@ -1,12 +1,11 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, attr};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_expand::base::*;
-use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{FileNameDisplayPreference, Span};
 use std::iter;
@@ -291,14 +290,11 @@ pub fn expand_test_or_bench(
                                         ),
                                     ),
                                     // ignore: true | false
-                                    field(
-                                        "ignore",
-                                        cx.expr_bool(sp, should_ignore(&cx.sess, &item)),
-                                    ),
+                                    field("ignore", cx.expr_bool(sp, should_ignore(&item)),),
                                     // ignore_message: Some("...") | None
                                     field(
                                         "ignore_message",
-                                        if let Some(msg) = should_ignore_message(cx, &item) {
+                                        if let Some(msg) = should_ignore_message(&item) {
                                             cx.expr_some(sp, cx.expr_str(sp, msg))
                                         } else {
                                             cx.expr_none(sp)
@@ -425,12 +421,12 @@ enum ShouldPanic {
     Yes(Option<Symbol>),
 }
 
-fn should_ignore(sess: &Session, i: &ast::Item) -> bool {
-    sess.contains_name(&i.attrs, sym::ignore)
+fn should_ignore(i: &ast::Item) -> bool {
+    attr::contains_name(&i.attrs, sym::ignore)
 }
 
-fn should_ignore_message(cx: &ExtCtxt<'_>, i: &ast::Item) -> Option<Symbol> {
-    match cx.sess.find_by_name(&i.attrs, sym::ignore) {
+fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
+    match attr::find_by_name(&i.attrs, sym::ignore) {
         Some(attr) => {
             match attr.meta_item_list() {
                 // Handle #[ignore(bar = "foo")]
@@ -444,7 +440,7 @@ fn should_ignore_message(cx: &ExtCtxt<'_>, i: &ast::Item) -> Option<Symbol> {
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
-    match cx.sess.find_by_name(&i.attrs, sym::should_panic) {
+    match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
             let sd = &cx.sess.parse_sess.span_diagnostic;
 
@@ -510,7 +506,7 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 }
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_should_panic_attr = cx.sess.contains_name(&i.attrs, sym::should_panic);
+    let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let sd = &cx.sess.parse_sess.span_diagnostic;
     match &i.kind {
         ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {

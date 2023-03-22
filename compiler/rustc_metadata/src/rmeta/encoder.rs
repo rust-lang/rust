@@ -681,17 +681,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: tcx
-                    .sess
-                    .contains_name(&attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: attr::contains_name(&attrs, sym::default_lib_allocator),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
-                needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
-                needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
-                no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
-                panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
-                profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
+                compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
+                needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
+                needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
+                no_builtins: attr::contains_name(&attrs, sym::no_builtins),
+                panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
+                profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -1747,11 +1745,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if tcx.sess.contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
-                } else if tcx.sess.contains_name(attrs, sym::proc_macro_attribute) {
+                } else if attr::contains_name(attrs, sym::proc_macro_attribute) {
                     MacroKind::Attr
-                } else if let Some(attr) = tcx.sess.find_by_name(attrs, sym::proc_macro_derive) {
+                } else if let Some(attr) = attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
                         .meta_item()
