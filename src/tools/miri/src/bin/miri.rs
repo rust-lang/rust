@@ -28,8 +28,8 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    ty::{query::ExternProviders, TyCtxt},
     query::LocalCrate,
+    ty::{query::ExternProviders, TyCtxt},
 };
 use rustc_session::config::OptLevel;
 
