@@ -180,8 +180,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // At this point, we already have all of the bounds we need. FulfillmentContext is used
         // to store all of the necessary region/lifetime bounds in the InferContext, as well as
         // an additional sanity check.
-        let errors =
-            super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_bound(ObligationCause::dummy(), full_env, ty, trait_did);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
         }

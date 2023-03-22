@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // For this suggestion to make sense, the type would need to be `Copy`,
                     // or we have to be moving out of a `Box<T>`
-                    if self.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                    if self.type_is_copy_modulo_regions(self.param_env, expected)
                         // FIXME(compiler-errors): We can actually do this if the checked_ty is
                         // `steps` layers of boxes, not just one, but this is easier and most likely.
                         || (checked_ty.is_box() && steps == 1)

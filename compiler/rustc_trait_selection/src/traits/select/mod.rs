@@ -17,7 +17,7 @@ use super::project;
 use super::project::normalize_with_depth_to;
 use super::project::ProjectionTyObligation;
 use super::util;
-use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
+use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
     ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
@@ -595,7 +595,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.evaluate_predicates_recursively_in_new_solver(predicates)
         } else {
             let mut result = EvaluatedToOk;
-            for obligation in predicates {
+            for mut obligation in predicates {
+                obligation.set_depth_from_parent(stack.depth());
                 let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
                 if let EvaluatedToErr = eval {
                     // fast-path - EvaluatedToErr is the top of the lattice,
@@ -661,12 +662,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { mut obligations, .. })) => {
-                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                            self.evaluate_predicates_recursively(
-                                previous_stack,
-                                obligations.into_iter(),
-                            )
+                        Ok(Ok(InferOk { obligations, .. })) => {
+                            self.evaluate_predicates_recursively(previous_stack, obligations)
                         }
                         Ok(Err(_)) => Ok(EvaluatedToErr),
                         Err(..) => Ok(EvaluatedToAmbig),
@@ -677,12 +674,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { mut obligations, .. })) => {
-                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                            self.evaluate_predicates_recursively(
-                                previous_stack,
-                                obligations.into_iter(),
-                            )
+                        Ok(Ok(InferOk { obligations, .. })) => {
+                            self.evaluate_predicates_recursively(previous_stack, obligations)
                         }
                         Ok(Err(_)) => Ok(EvaluatedToErr),
                         Err(..) => Ok(EvaluatedToAmbig),
@@ -755,9 +748,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         arg,
                         obligation.cause.span,
                     ) {
-                        Some(mut obligations) => {
-                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-
+                        Some(obligations) => {
                             cache.wf_args.borrow_mut().push((arg, previous_stack.depth()));
                             let result =
                                 self.evaluate_predicates_recursively(previous_stack, obligations);
@@ -826,10 +817,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     }
                                 }
 
-                                self.add_depth(
-                                    subobligations.iter_mut(),
-                                    obligation.recursion_depth,
-                                );
+                                // Need to explicitly set the depth of nested goals here as
+                                // projection obligations can cycle by themselves and in
+                                // `evaluate_predicates_recursively` we only add the depth
+                                // for parent trait goals because only these get added to the
+                                // `TraitObligationStackList`.
+                                for subobligation in subobligations.iter_mut() {
+                                    subobligation.set_depth_from_parent(obligation.recursion_depth);
+                                }
                                 let res = self.evaluate_predicates_recursively(
                                     previous_stack,
                                     subobligations,
@@ -909,38 +904,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 if a.def.did == b.def.did
                                     && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
                             {
-                                if let Ok(new_obligations) = self
+                                if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     .trace(c1, c2)
                                     .eq(DefineOpaqueTypes::No, a.substs, b.substs)
                                 {
-                                    let mut obligations = new_obligations.obligations;
-                                    self.add_depth(
-                                        obligations.iter_mut(),
-                                        obligation.recursion_depth,
-                                    );
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
-                                        obligations.into_iter(),
+                                        obligations,
                                     );
                                 }
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
                             (_, _) => {
-                                if let Ok(new_obligations) = self
+                                if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     .eq(DefineOpaqueTypes::No, c1, c2)
                                 {
-                                    let mut obligations = new_obligations.obligations;
-                                    self.add_depth(
-                                        obligations.iter_mut(),
-                                        obligation.recursion_depth,
-                                    );
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
-                                        obligations.into_iter(),
+                                        obligations,
                                     );
                                 }
                             }
@@ -1364,24 +1349,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?trait_pred, ?result, "insert_evaluation_cache");
         self.infcx.evaluation_cache.insert((param_env, trait_pred), dep_node, result);
-    }
-
-    /// For various reasons, it's possible for a subobligation
-    /// to have a *lower* recursion_depth than the obligation used to create it.
-    /// Projection sub-obligations may be returned from the projection cache,
-    /// which results in obligations with an 'old' `recursion_depth`.
-    /// Additionally, methods like `InferCtxt.subtype_predicate` produce
-    /// subobligations without taking in a 'parent' depth, causing the
-    /// generated subobligations to have a `recursion_depth` of `0`.
-    ///
-    /// To ensure that obligation_depth never decreases, we force all subobligations
-    /// to have at least the depth of the original obligation.
-    fn add_depth<T: 'cx, I: Iterator<Item = &'cx mut Obligation<'tcx, T>>>(
-        &self,
-        it: I,
-        min_depth: usize,
-    ) {
-        it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
     }
 
     fn check_recursion_depth<T>(
@@ -2440,15 +2407,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             placeholder_ty,
                         )
                     });
-                let placeholder_obligation = predicate_for_trait_def(
+
+                let obligation = Obligation::new(
                     self.tcx(),
-                    param_env,
                     cause.clone(),
-                    trait_def_id,
-                    recursion_depth,
-                    [normalized_ty],
+                    param_env,
+                    self.tcx().mk_trait_ref(trait_def_id, [normalized_ty]),
                 );
-                obligations.push(placeholder_obligation);
+                obligations.push(obligation);
                 obligations
             })
             .collect()

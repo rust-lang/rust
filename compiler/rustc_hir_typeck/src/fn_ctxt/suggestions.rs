@@ -1011,11 +1011,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suggest_copied_or_cloned = || {
             let expr_inner_ty = substs.type_at(0);
             let expected_inner_ty = expected_substs.type_at(0);
-            if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, *ty, expected_inner_ty)
+            if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
+                && self.can_eq(self.param_env, ty, expected_inner_ty)
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
-                if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
+                if self.type_is_copy_modulo_regions(self.param_env, ty) {
                     diag.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
@@ -1029,9 +1029,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
                         self,
                         self.param_env,
-                        *ty,
+                        ty,
                         clone_did,
-                        expr.span
                     )
                 {
                     diag.span_suggestion_verbose(
