@@ -18,17 +18,27 @@
 //! depending on the value of cfg!(parallel_compiler).
 
 use crate::owning_ref::{Erased, OwningRef};
+use std::cell::Cell;
+use std::cell::UnsafeCell;
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::hash::{BuildHasher, Hash};
+use std::intrinsics::likely;
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::ptr::NonNull;
 
+use parking_lot::lock_api::RawMutex as _;
+use parking_lot::RawMutex;
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
 pub use vec::AppendOnlyVec;
 
 mod vec;
+
+static PARALLEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
@@ -172,15 +182,11 @@ cfg_if! {
         pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
         pub use std::cell::RefMut as MappedWriteGuard;
-        pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
         pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
-        use std::cell::RefCell as InnerLock;
-
-        use std::cell::Cell;
 
         #[derive(Debug)]
         pub struct WorkerLocal<T>(OneThread<T>);
@@ -257,7 +263,6 @@ cfg_if! {
         pub use parking_lot::RwLockWriteGuard as WriteGuard;
         pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 
-        pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::OnceLock as OnceCell;
@@ -299,7 +304,6 @@ cfg_if! {
             }
         }
 
-        use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
         use std::thread;
@@ -381,53 +385,104 @@ impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> 
     }
 }
 
-#[derive(Debug)]
-pub struct Lock<T>(InnerLock<T>);
+pub struct Lock<T> {
+    single_thread: bool,
+    data: UnsafeCell<T>,
+    borrow: Cell<bool>,
+    mutex: RawMutex,
+}
+
+impl<T: Debug> Debug for Lock<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.try_lock() {
+            Some(guard) => f.debug_struct("Lock").field("data", &&*guard).finish(),
+            None => {
+                struct LockedPlaceholder;
+                impl Debug for LockedPlaceholder {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                        f.write_str("<locked>")
+                    }
+                }
+
+                f.debug_struct("Lock").field("data", &LockedPlaceholder).finish()
+            }
+        }
+    }
+}
 
 impl<T> Lock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        Lock(InnerLock::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_lock()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_borrow_mut().ok()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    #[track_caller]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_lock().expect("lock was already held")
-        } else {
-            self.0.lock()
+    #[inline]
+    pub fn new(val: T) -> Self {
+        Lock {
+            single_thread: !PARALLEL.load(Ordering::Relaxed),
+            data: UnsafeCell::new(val),
+            borrow: Cell::new(false),
+            mutex: RawMutex::INIT,
         }
     }
 
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.data.into_inner()
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut T {
+        self.data.get_mut()
+    }
+
+    #[inline]
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
+        // SAFETY: the `&mut T` is accessible as long as self exists.
+        if likely(self.single_thread) {
+            if self.borrow.get() {
+                None
+            } else {
+                self.borrow.set(true);
+                Some(LockGuard {
+                    value: unsafe { NonNull::new_unchecked(self.data.get()) },
+                    lock: &self,
+                    marker: PhantomData,
+                })
+            }
+        } else {
+            if !self.mutex.try_lock() {
+                None
+            } else {
+                Some(LockGuard {
+                    value: unsafe { NonNull::new_unchecked(self.data.get()) },
+                    lock: &self,
+                    marker: PhantomData,
+                })
+            }
+        }
+    }
+
+    #[inline(never)]
+    fn lock_mt(&self) -> LockGuard<'_, T> {
+        self.mutex.lock();
+        LockGuard {
+            value: unsafe { NonNull::new_unchecked(self.data.get()) },
+            lock: &self,
+            marker: PhantomData,
+        }
+    }
+
+    #[inline]
     #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
+        // SAFETY: the `&mut T` is accessible as long as self exists.
+        if likely(self.single_thread) {
+            assert!(!self.borrow.get());
+            self.borrow.set(true);
+            LockGuard {
+                value: unsafe { NonNull::new_unchecked(self.data.get()) },
+                lock: &self,
+                marker: PhantomData,
+            }
+        } else {
+            self.lock_mt()
+        }
     }
 
     #[inline(always)]
@@ -461,6 +516,47 @@ impl<T: Clone> Clone for Lock<T> {
     #[inline]
     fn clone(&self) -> Self {
         Lock::new(self.borrow().clone())
+    }
+}
+
+// Just for speed test
+unsafe impl<T: Send> std::marker::Send for Lock<T> {}
+unsafe impl<T: Send> std::marker::Sync for Lock<T> {}
+
+pub struct LockGuard<'a, T> {
+    value: NonNull<T>,
+    lock: &'a Lock<T>,
+    marker: PhantomData<&'a mut T>,
+}
+
+impl<T> const Deref for LockGuard<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        unsafe { self.value.as_ref() }
+    }
+}
+
+impl<T> const DerefMut for LockGuard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { self.value.as_mut() }
+    }
+}
+
+#[inline(never)]
+unsafe fn unlock_mt<T>(guard: &mut LockGuard<'_, T>) {
+    guard.lock.mutex.unlock()
+}
+
+impl<'a, T> Drop for LockGuard<'a, T> {
+    #[inline]
+    fn drop(&mut self) {
+        if likely(self.lock.single_thread) {
+            debug_assert!(self.lock.borrow.get());
+            self.lock.borrow.set(false);
+        } else {
+            unsafe { unlock_mt(self) }
+        }
     }
 }
 
