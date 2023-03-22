@@ -565,6 +565,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> bool {
         // FIXME: implement this
         match (candidate.source, other.source) {
+            (CandidateSource::ParamEnv(_), CandidateSource::ParamEnv(_)) => false,
+            (_, CandidateSource::ParamEnv(_)) if other.result.has_only_region_constraints() => true,
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound, _)
