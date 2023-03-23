@@ -1533,7 +1533,7 @@ impl<'a> Linker for AixLinker<'a> {
     }
 
     fn framework_path(&mut self, _: &Path) {
-        bug!("frameworks are not supported on L4Re");
+        bug!("frameworks are not supported on AIX");
     }
 
     fn output_filename(&mut self, path: &Path) {
