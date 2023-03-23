@@ -566,41 +566,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Rvalue::Use(Operand::Move(val))
             }
             BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
-                // Consider that the shift overflows if `rhs < 0` or `rhs >= bits`.
-                // This can be encoded as a single operation as `(rhs & -bits) != 0`.
-                let (size, _) = ty.int_size_and_signed(self.tcx);
-                let bits = size.bits();
-                debug_assert!(bits.is_power_of_two());
-                let mask = !((bits - 1) as u128);
-
+                // For an unsigned RHS, the shift is in-range for `rhs < bits`.
+                // For a signed RHS, `IntToInt` cast to the equivalent unsigned
+                // type and do that same comparison.  Because the type is the
+                // same size, there's no negative shift amount that ends up
+                // overlapping with valid ones, thus it catches negatives too.
+                let (lhs_size, _) = ty.int_size_and_signed(self.tcx);
                 let rhs_ty = rhs.ty(&self.local_decls, self.tcx);
                 let (rhs_size, _) = rhs_ty.int_size_and_signed(self.tcx);
-                let mask = Operand::const_from_scalar(
+
+                let (unsigned_rhs, unsigned_ty) = match rhs_ty.kind() {
+                    ty::Uint(_) => (rhs.to_copy(), rhs_ty),
+                    ty::Int(int_width) => {
+                        let uint_ty = self.tcx.mk_mach_uint(int_width.to_unsigned());
+                        let rhs_temp = self.temp(uint_ty, span);
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            rhs_temp,
+                            Rvalue::Cast(CastKind::IntToInt, rhs.to_copy(), uint_ty),
+                        );
+                        (Operand::Move(rhs_temp), uint_ty)
+                    }
+                    _ => unreachable!("only integers are shiftable"),
+                };
+
+                // This can't overflow because the largest shiftable types are 128-bit,
+                // which fits in `u8`, the smallest possible `unsigned_ty`.
+                // (And `from_uint` will `bug!` if that's ever no longer true.)
+                let lhs_bits = Operand::const_from_scalar(
                     self.tcx,
-                    rhs_ty,
-                    Scalar::from_uint(rhs_size.truncate(mask), rhs_size),
+                    unsigned_ty,
+                    Scalar::from_uint(lhs_size.bits(), rhs_size),
                     span,
                 );
 
-                let outer_bits = self.temp(rhs_ty, span);
+                let inbounds = self.temp(bool_ty, span);
                 self.cfg.push_assign(
                     block,
                     source_info,
-                    outer_bits,
-                    Rvalue::BinaryOp(BinOp::BitAnd, Box::new((rhs.to_copy(), mask))),
-                );
-
-                let overflows = self.temp(bool_ty, span);
-                let zero = self.zero_literal(span, rhs_ty);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    overflows,
-                    Rvalue::BinaryOp(BinOp::Ne, Box::new((Operand::Move(outer_bits), zero))),
+                    inbounds,
+                    Rvalue::BinaryOp(BinOp::Lt, Box::new((unsigned_rhs, lhs_bits))),
                 );
 
                 let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
-                block = self.assert(block, Operand::Move(overflows), false, overflow_err, span);
+                block = self.assert(block, Operand::Move(inbounds), true, overflow_err, span);
                 Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
             }
             BinOp::Div | BinOp::Rem if ty.is_integral() => {
