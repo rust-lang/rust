@@ -1180,7 +1180,8 @@ impl<'tcx> Resolver<'_, 'tcx> {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        krate: &Crate,
+        attrs: &[ast::Attribute],
+        crate_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1189,8 +1190,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.spans.inner_span,
-            attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
+            crate_span,
+            attr::contains_name(attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
         let empty_module = arenas.new_module(
@@ -1222,9 +1223,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !attr::contains_name(&krate.attrs, sym::no_core) {
+        if !attr::contains_name(attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !attr::contains_name(&krate.attrs, sym::no_std) {
+            if !attr::contains_name(attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
             }
         }

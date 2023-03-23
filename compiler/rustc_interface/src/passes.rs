@@ -3,7 +3,6 @@ use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
-use ast::CRATE_NODE_ID;
 use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -76,22 +75,14 @@ pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut LintStore),
-    mut krate: ast::Crate,
+    pre_configured_attrs: &[ast::Attribute],
     crate_name: Symbol,
-) -> Result<(ast::Crate, LintStore)> {
-    krate = sess.time("attributes_injection", || {
-        rustc_builtin_macros::cmdline_attrs::inject(
-            krate,
-            &sess.parse_sess,
-            &sess.opts.unstable_opts.crate_attr,
-        )
-    });
-
-    let (krate, features) = rustc_expand::config::features(sess, krate, CRATE_NODE_ID);
+) -> Result<LintStore> {
     // these need to be set "early" so that expansion sees `quote` if enabled.
+    let features = rustc_expand::config::features(sess, pre_configured_attrs);
     sess.init_features(features);
 
-    let crate_types = util::collect_crate_types(sess, &krate.attrs);
+    let crate_types = util::collect_crate_types(sess, pre_configured_attrs);
     sess.init_crate_types(crate_types);
 
     let stable_crate_id = StableCrateId::new(
@@ -117,8 +108,9 @@ pub fn register_plugins<'a>(
     let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
     register_lints(sess, &mut lint_store);
 
-    let registrars =
-        sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
+    let registrars = sess.time("plugin_loading", || {
+        plugin::load::load_plugins(sess, metadata_loader, pre_configured_attrs)
+    });
     sess.time("plugin_registration", || {
         let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
@@ -126,7 +118,7 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, lint_store))
+    Ok(lint_store)
 }
 
 fn pre_expansion_lint<'a>(
@@ -173,19 +165,29 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 #[instrument(level = "trace", skip(krate, resolver))]
-fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) -> ast::Crate {
+fn configure_and_expand(
+    mut krate: ast::Crate,
+    pre_configured_attrs: &[ast::Attribute],
+    resolver: &mut Resolver<'_, '_>,
+) -> ast::Crate {
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), &krate, crate_name);
+    let lint_check_node = (&krate, pre_configured_attrs);
+    pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), lint_check_node, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
-    krate = sess.time("crate_injection", || {
-        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess)
+    let num_standard_library_imports = sess.time("crate_injection", || {
+        rustc_builtin_macros::standard_library_imports::inject(
+            &mut krate,
+            pre_configured_attrs,
+            resolver,
+            sess,
+        )
     });
 
-    util::check_attr_crate_type(sess, &krate.attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, &mut resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -222,7 +224,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let recursion_limit = get_recursion_limit(&krate.attrs, sess);
+        let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(features),
             recursion_limit,
@@ -235,6 +237,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
         let lint_store = LintStoreExpandImpl(lint_store);
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
+        ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
@@ -263,7 +266,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     });
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
+        rustc_builtin_macros::test_harness::inject(&mut krate, sess, resolver)
     });
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
@@ -287,12 +290,12 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         sess.emit_warning(errors::ProcMacroCratePanicAbort);
     }
 
-    krate = sess.time("maybe_create_a_macro_crate", || {
+    sess.time("maybe_create_a_macro_crate", || {
         let is_test_crate = sess.opts.test;
         rustc_builtin_macros::proc_macro_harness::inject(
+            &mut krate,
             sess,
             resolver,
-            krate,
             is_proc_macro_crate,
             has_proc_macro_decls,
             is_test_crate,
@@ -356,7 +359,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         tcx.registered_tools(()),
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-        &**krate,
+        (&**krate, &*krate.attrs),
     )
 }
 
@@ -557,9 +560,9 @@ fn resolver_for_lowering<'tcx>(
 ) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
-    let krate = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(tcx, &krate, &arenas);
-    let krate = configure_and_expand(krate, &mut resolver);
+    let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let mut resolver = Resolver::new(tcx, &pre_configured_attrs, krate.spans.inner_span, &arenas);
+    let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.leak();

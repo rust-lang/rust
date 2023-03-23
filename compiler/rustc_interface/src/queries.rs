@@ -88,8 +88,9 @@ pub struct Queries<'tcx> {
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
+    pre_configure: Query<(ast::Crate, ast::AttrVec)>,
     crate_name: Query<Symbol>,
-    register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
+    register_plugins: Query<(ast::Crate, ast::AttrVec, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
@@ -106,6 +107,7 @@ impl<'tcx> Queries<'tcx> {
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
+            pre_configure: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
             dep_graph: Default::default(),
@@ -133,17 +135,36 @@ impl<'tcx> Queries<'tcx> {
             .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
     }
 
-    pub fn register_plugins(&self) -> Result<QueryResult<'_, (ast::Crate, Lrc<LintStore>)>> {
+    pub fn pre_configure(&self) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec)>> {
+        self.pre_configure.compute(|| {
+            let mut krate = self.parse()?.steal();
+
+            let sess = self.session();
+            rustc_builtin_macros::cmdline_attrs::inject(
+                &mut krate,
+                &sess.parse_sess,
+                &sess.opts.unstable_opts.crate_attr,
+            );
+
+            let pre_configured_attrs =
+                rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
+            Ok((krate, pre_configured_attrs))
+        })
+    }
+
+    pub fn register_plugins(
+        &self,
+    ) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec, Lrc<LintStore>)>> {
         self.register_plugins.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let krate = self.parse()?.steal();
+            let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
-            let (krate, lint_store) = passes::register_plugins(
+            let lint_store = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
                 self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
-                krate,
+                &pre_configured_attrs,
                 crate_name,
             )?;
 
@@ -154,17 +175,17 @@ impl<'tcx> Queries<'tcx> {
             // called, which happens within passes::register_plugins().
             self.dep_graph_future().ok();
 
-            Ok((krate, Lrc::new(lint_store)))
+            Ok((krate, pre_configured_attrs, Lrc::new(lint_store)))
         })
     }
 
     fn crate_name(&self) -> Result<QueryResult<'_, Symbol>> {
         self.crate_name.compute(|| {
             Ok({
-                let parse_result = self.parse()?;
-                let krate = parse_result.borrow();
+                let pre_configure_result = self.pre_configure()?;
+                let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
                 // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-                find_crate_name(self.session(), &krate.attrs)
+                find_crate_name(self.session(), pre_configured_attrs)
             })
         })
     }
@@ -188,7 +209,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let (krate, lint_store) = self.register_plugins()?.steal();
+            let (krate, pre_configured_attrs, lint_store) = self.register_plugins()?.steal();
 
             let sess = self.session();
 
@@ -215,7 +236,7 @@ impl<'tcx> Queries<'tcx> {
                 feed.crate_name(crate_name);
 
                 let feed = tcx.feed_unit_query();
-                feed.crate_for_resolver(tcx.arena.alloc(Steal::new(krate)));
+                feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.metadata_loader(
                     tcx.arena.alloc(Steal::new(self.codegen_backend().metadata_loader())),
                 );
