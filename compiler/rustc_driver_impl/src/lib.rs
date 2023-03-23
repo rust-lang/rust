@@ -20,7 +20,9 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
-use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
+use rustc_data_structures::profiling::{
+    get_resident_set_size, print_time_passes_entry, TimePassesFormat,
+};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{
@@ -161,7 +163,7 @@ pub trait Callbacks {
 
 #[derive(Default)]
 pub struct TimePassesCallbacks {
-    time_passes: bool,
+    time_passes: Option<TimePassesFormat>,
 }
 
 impl Callbacks for TimePassesCallbacks {
@@ -171,7 +173,8 @@ impl Callbacks for TimePassesCallbacks {
         // If a --print=... option has been given, we don't print the "total"
         // time because it will mess up the --print output. See #64339.
         //
-        self.time_passes = config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes;
+        self.time_passes = (config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes)
+            .then(|| config.opts.unstable_opts.time_passes_format);
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
@@ -1354,9 +1357,9 @@ pub fn main() -> ! {
         RunCompiler::new(&args, &mut callbacks).run()
     });
 
-    if callbacks.time_passes {
+    if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();
-        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss, format);
     }
 
     process::exit(exit_code)
