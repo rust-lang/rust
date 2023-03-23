@@ -568,7 +568,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
                 // For an unsigned RHS, the shift is in-range for `rhs < bits`.
                 // For a signed RHS, `IntToInt` cast to the equivalent unsigned
-                // type and do that same comparison.  Because the type is the
+                // type and do that same comparison. Because the type is the
                 // same size, there's no negative shift amount that ends up
                 // overlapping with valid ones, thus it catches negatives too.
                 let (lhs_size, _) = ty.int_size_and_signed(self.tcx);

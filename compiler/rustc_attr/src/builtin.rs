@@ -227,7 +227,7 @@ impl UnstableReason {
 }
 
 /// Collects stability info from `stable`/`unstable`/`rustc_allowed_through_unstable_modules`
-/// attributes in `attrs`.  Returns `None` if no stability attributes are found.
+/// attributes in `attrs`. Returns `None` if no stability attributes are found.
 pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
@@ -281,7 +281,7 @@ pub fn find_stability(
 }
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
-/// attributes in `attrs`.  Returns `None` if no stability attributes are found.
+/// attributes in `attrs`. Returns `None` if no stability attributes are found.
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],

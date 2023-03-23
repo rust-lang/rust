@@ -8,4 +8,3 @@ pub enum MyThing {
     #[doc(hidden)]
     NotShown,
 }
-

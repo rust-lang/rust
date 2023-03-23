@@ -213,7 +213,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example
 
-```rust,ignore
+```rust,ignore (making doc tests pass cross-platform is hard)
 #![feature(naked_functions)]
 
 use std::arch::asm;
