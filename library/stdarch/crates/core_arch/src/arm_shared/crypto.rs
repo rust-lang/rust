@@ -58,6 +58,13 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aese))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     vaeseq_u8_(data, key)
 }
@@ -69,6 +76,13 @@ pub unsafe fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesd))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     vaesdq_u8_(data, key)
 }
@@ -80,6 +94,13 @@ pub unsafe fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesmc))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
     vaesmcq_u8_(data)
 }
@@ -91,6 +112,13 @@ pub unsafe fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesimc))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
     vaesimcq_u8_(data)
 }
@@ -102,6 +130,13 @@ pub unsafe fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1h))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
     vsha1h_u32_(hash_e)
 }
@@ -113,6 +148,13 @@ pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1c))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1cq_u32_(hash_abcd, hash_e, wk)
 }
@@ -124,6 +166,13 @@ pub unsafe fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1m))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1mq_u32_(hash_abcd, hash_e, wk)
 }
@@ -135,6 +184,13 @@ pub unsafe fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1p))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1pq_u32_(hash_abcd, hash_e, wk)
 }
@@ -146,6 +202,13 @@ pub unsafe fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1su0))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t {
     vsha1su0q_u32_(w0_3, w4_7, w8_11)
 }
@@ -157,6 +220,13 @@ pub unsafe fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1su1))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
     vsha1su1q_u32_(tw0_3, w12_15)
 }
@@ -168,6 +238,13 @@ pub unsafe fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256h))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha256hq_u32(
     hash_abcd: uint32x4_t,
     hash_efgh: uint32x4_t,
@@ -183,6 +260,13 @@ pub unsafe fn vsha256hq_u32(
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256h2))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha256h2q_u32(
     hash_efgh: uint32x4_t,
     hash_abcd: uint32x4_t,
@@ -198,6 +282,13 @@ pub unsafe fn vsha256h2q_u32(
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256su0))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
     vsha256su0q_u32_(w0_3, w4_7)
 }
@@ -209,6 +300,13 @@ pub unsafe fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t 
 #[target_feature(enable = "sha2")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256su1))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(
+        feature = "aarch64_neon_crypto_intrinsics",
+        since = "CURRENT_RUSTC_VERSION"
+    )
+)]
 pub unsafe fn vsha256su1q_u32(
     tw0_3: uint32x4_t,
     w8_11: uint32x4_t,
