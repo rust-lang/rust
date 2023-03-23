@@ -704,7 +704,11 @@ pub trait PrettyPrinter<'tcx>:
                 ty::BoundTyKind::Anon(bv) => {
                     self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
                 }
-                ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
+                ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
+                    true if debruijn == ty::INNERMOST => p!(write("^{}", s)),
+                    true => p!(write("^{}_{}", debruijn.index(), s)),
+                    false => p!(write("{}", s)),
+                },
             },
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
