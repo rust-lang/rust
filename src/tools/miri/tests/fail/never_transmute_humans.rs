@@ -7,6 +7,6 @@ struct Human;
 
 fn main() {
     let _x: ! = unsafe {
-        std::mem::transmute::<Human, !>(Human) //~ ERROR: transmuting to uninhabited
+        std::mem::transmute::<Human, !>(Human) //~ ERROR: entering unreachable code
     };
 }

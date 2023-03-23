@@ -13,7 +13,7 @@
           _2 = &raw const (*_1);           // scope 1 at $DIR/lower_intrinsics.rs:+1:46: +1:47
 -         _0 = read_via_copy::<i32>(move _2) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:48
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:85:14: 85:45
+-                                          // + span: $DIR/lower_intrinsics.rs:118:14: 118:45
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const i32) -> i32 {read_via_copy::<i32>}, val: Value(<ZST>) }
 +         _0 = (*_2);                      // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:48
 +         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:48

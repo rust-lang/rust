@@ -11,5 +11,5 @@ impl PrintName {
 }
 
 fn main() {
-    let _ = PrintName::VOID; //~ constant
+    let _ = PrintName::VOID; //~ erroneous constant used
 }

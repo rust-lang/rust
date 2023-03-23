@@ -344,6 +344,14 @@ define!(
     fn Variant<T>(place: T, index: u32) -> ()
 );
 define!(
+    "mir_cast_transmute",
+    /// Emits a `CastKind::Transmute` cast.
+    ///
+    /// Needed to test the UB when `sizeof(T) != sizeof(U)`, which can't be
+    /// generated via the normal `mem::transmute`.
+    fn CastTransmute<T, U>(operand: T) -> U
+);
+define!(
     "mir_make_place",
     #[doc(hidden)]
     fn __internal_make_place<T>(place: T) -> *mut T
