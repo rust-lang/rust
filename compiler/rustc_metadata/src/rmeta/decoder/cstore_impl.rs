@@ -545,10 +545,6 @@ impl CStore {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
-        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
-    }
-
     pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
         self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
     }
@@ -558,14 +554,6 @@ impl CStore {
     /// See <https://github.com/rust-lang/rust/pull/85889> for context.
     pub fn num_def_ids_untracked(&self, cnum: CrateNum) -> usize {
         self.get_crate_data(cnum).num_def_ids()
-    }
-
-    pub fn item_attrs_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(

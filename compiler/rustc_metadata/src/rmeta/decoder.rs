@@ -925,10 +925,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.mk_adt_def(did, adt_kind, variants, repr)
     }
 
-    fn get_generics(self, item_id: DefIndex, sess: &Session) -> ty::Generics {
-        self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
-    }
-
     fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
         self.root
             .tables
