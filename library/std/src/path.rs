@@ -1395,11 +1395,16 @@ impl PathBuf {
     ///
     /// let mut buf = PathBuf::from("/");
     /// assert!(buf.file_name() == None);
-    /// buf.set_file_name("bar");
-    /// assert!(buf == PathBuf::from("/bar"));
+    ///
+    /// buf.set_file_name("foo.txt");
+    /// assert!(buf == PathBuf::from("/foo.txt"));
     /// assert!(buf.file_name().is_some());
-    /// buf.set_file_name("baz.txt");
-    /// assert!(buf == PathBuf::from("/baz.txt"));
+    ///
+    /// buf.set_file_name("bar.txt");
+    /// assert!(buf == PathBuf::from("/bar.txt"));
+    ///
+    /// buf.set_file_name("baz");
+    /// assert!(buf == PathBuf::from("/baz"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
@@ -2562,7 +2567,8 @@ impl Path {
     /// ```
     /// use std::path::{Path, PathBuf};
     ///
-    /// let path = Path::new("/tmp/foo.txt");
+    /// let path = Path::new("/tmp/foo.png");
+    /// assert_eq!(path.with_file_name("bar"), PathBuf::from("/tmp/bar"));
     /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
     ///
     /// let path = Path::new("/tmp");
