@@ -8,29 +8,14 @@
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 
-// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the media query with the same
-// warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 700;
-
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
-    if (settingsElement === null) {
-        return null;
-    }
-    const dataset = settingsElement.dataset;
-    if (dataset === undefined) {
-        return null;
-    }
-    return dataset;
+    return settingsElement && settingsElement.dataset ? settingsElement.dataset : null;
 })();
 
 function getSettingValue(settingName) {
     const current = getCurrentValue(settingName);
-    if (current !== null) {
-        return current;
-    }
-    if (settingsDataset !== null) {
+    if (current === null && settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
         const def = settingsDataset[settingName.replace(/-/g,"_")];
@@ -38,7 +23,7 @@ function getSettingValue(settingName) {
             return def;
         }
     }
-    return null;
+    return current;
 }
 
 const localStoredTheme = getSettingValue("theme");
@@ -49,18 +34,16 @@ function hasClass(elem, className) {
 }
 
 function addClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.add(className);
     }
-    elem.classList.add(className);
 }
 
 // eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.remove(className);
     }
-    elem.classList.remove(className);
 }
 
 /**
@@ -127,11 +110,7 @@ function getCurrentValue(name) {
 // Rust to the JS. If there is no such element, return null.
 const getVar = (function getVar(name) {
     const el = document.getElementById("rustdoc-vars");
-    if (el) {
-        return el.attributes["data-" + name].value;
-    } else {
-        return null;
-    }
+    return el ? el.attributes["data-" + name].value : null;
 });
 
 function switchTheme(newThemeName, saveTheme) {

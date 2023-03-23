@@ -1538,7 +1538,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in storage.js
+in main.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
