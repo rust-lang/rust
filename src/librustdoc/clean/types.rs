@@ -878,10 +878,6 @@ pub(crate) trait AttributesExt {
 
     fn iter<'a>(&'a self) -> Self::Attributes<'a>;
 
-    fn span(&self) -> Option<rustc_span::Span> {
-        self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
-    }
-
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
         let doc_cfg_active = tcx.features().doc_cfg;
