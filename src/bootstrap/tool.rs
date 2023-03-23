@@ -299,7 +299,6 @@ pub fn prepare_tool_cargo(
             || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
-            features.push("rustc-workspace-hack/all-static".to_string());
         }
         if path.ends_with("cargo") {
             features.push("all-static".to_string());
