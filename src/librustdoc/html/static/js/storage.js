@@ -137,6 +137,9 @@ function switchTheme(newThemeName, saveTheme) {
 }
 
 const updateTheme = (function() {
+    // only listen to (prefers-color-scheme: dark) because light is the default
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
     /**
      * Update the current theme to match whatever the current combination of
      * * the preference for using the system theme
@@ -156,7 +159,7 @@ const updateTheme = (function() {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
-            if (isDarkMode()) {
+            if (mql.matches) {
                 use(darkTheme, true);
             } else {
                 // prefers a light theme, or has no preference
@@ -170,37 +173,7 @@ const updateTheme = (function() {
         }
     }
 
-    // This is always updated below to a function () => bool.
-    let isDarkMode;
-
-    // Determine the function for isDarkMode, and if we have
-    // `window.matchMedia`, set up an event listener on the preferred color
-    // scheme.
-    //
-    // Otherwise, fall back to the prefers-color-scheme value CSS captured in
-    // the "content" property.
-    if (window.matchMedia) {
-        // only listen to (prefers-color-scheme: dark) because light is the default
-        const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-        isDarkMode = () => mql.matches;
-
-        if (mql.addEventListener) {
-            mql.addEventListener("change", updateTheme);
-        } else {
-            // This is deprecated, see:
-            // https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList/addListener
-            mql.addListener(updateTheme);
-        }
-    } else {
-        // fallback to the CSS computed value
-        const cssContent = getComputedStyle(document.documentElement)
-            .getPropertyValue("content");
-        // (Note: the double-quotes come from that this is a CSS value, which
-        // might be a length, string, etc.)
-        const cssColorScheme = cssContent || "\"light\"";
-        isDarkMode = () => (cssColorScheme === "\"dark\"");
-    }
+    mql.addEventListener("change", updateTheme);
 
     return updateTheme;
 })();
