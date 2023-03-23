@@ -137,13 +137,21 @@ impl Rewrite for ast::Local {
                     shape,
                 );
                 result.push_str(&else_kw);
-                let allow_single_line = !result.contains('\n');
-                result.push_str(&rewrite_let_else_block(
-                    block,
-                    allow_single_line,
-                    context,
-                    shape,
-                )?);
+
+                let allow_single_line = allow_single_line_let_else_block(&result, block);
+
+                let mut rw_else_block =
+                    rewrite_let_else_block(block, allow_single_line, context, shape)?;
+
+                if allow_single_line && !rw_else_block.contains('\n') {
+                    let available_space = shape.width.saturating_sub(result.len());
+                    if available_space <= rw_else_block.len() {
+                        // writing this on one line would exceed the available width
+                        rw_else_block = rewrite_let_else_block(block, false, context, shape)?;
+                    }
+                }
+
+                result.push_str(&rw_else_block);
             };
         }
 
@@ -191,6 +199,18 @@ fn same_line_else_kw_and_brace(
         .expect("initializer expression is multi-lined")
         .strip_prefix(indent.as_ref())
         .map_or(false, |l| !l.starts_with(char::is_whitespace))
+}
+
+fn allow_single_line_let_else_block(result: &str, block: &ast::Block) -> bool {
+    if result.contains('\n') {
+        return false;
+    }
+
+    if block.stmts.len() <= 1 {
+        return true;
+    }
+
+    false
 }
 
 // FIXME convert to using rewrite style rather than visitor
