@@ -13,8 +13,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
-use crate::universal_regions::UniversalRegions;
-
 use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -60,21 +58,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    #[instrument(skip(self, body, universal_regions), level = "debug")]
-    pub(super) fn equate_inputs_and_outputs(
-        &mut self,
-        body: &Body<'tcx>,
-        universal_regions: &UniversalRegions<'tcx>,
-        normalized_inputs_and_output: &[Ty<'tcx>],
-    ) {
-        let (&normalized_output_ty, normalized_input_tys) =
-            normalized_inputs_and_output.split_last().unwrap();
+    #[instrument(skip(self, body), level = "debug")]
+    pub(super) fn equate_inputs_and_outputs(&mut self, body: &Body<'tcx>) {
+        let universal_regions = self.borrowck_context.universal_regions;
 
-        debug!(?normalized_output_ty);
-        debug!(?normalized_input_tys);
+        debug!(?universal_regions.unnormalized_input_tys, ?body.local_decls);
 
         // Equate expected input tys with those in the MIR.
-        for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
+        for (argument_index, &unnormalized_input_ty) in
+            universal_regions.unnormalized_input_tys.iter().enumerate()
+        {
             if argument_index + 1 >= body.local_decls.len() {
                 self.tcx()
                     .sess
@@ -88,6 +81,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let mir_input_ty = body.local_decls[local].ty;
 
             let mir_input_span = body.local_decls[local].source_info.span;
+            let normalized_input_ty =
+                self.normalize(unnormalized_input_ty, Locations::All(mir_input_span));
             self.equate_normalized_input_or_output(
                 normalized_input_ty,
                 mir_input_ty,
@@ -125,6 +120,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
+        let normalized_output_ty =
+            self.normalize(universal_regions.unnormalized_output_ty, Locations::All(output_span));
         if let Err(terr) = self.eq_types(
             normalized_output_ty,
             mir_output_ty,

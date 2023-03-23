@@ -147,19 +147,14 @@ pub(crate) fn type_check<'mir, 'tcx>(
         universe_causes: FxIndexMap::default(),
     };
 
-    let CreateResult {
-        universal_region_relations,
-        region_bound_pairs,
-        normalized_inputs_and_output,
-    } = free_region_relations::create(
-        infcx,
-        param_env,
-        implicit_region_bound,
-        universal_regions,
-        &mut constraints,
-    );
-
-    debug!(?normalized_inputs_and_output);
+    let CreateResult { universal_region_relations, region_bound_pairs } =
+        free_region_relations::create(
+            infcx,
+            param_env,
+            implicit_region_bound,
+            universal_regions,
+            &mut constraints,
+        );
 
     for u in ty::UniverseIndex::ROOT..=infcx.universe() {
         constraints.universe_causes.insert(u, UniverseInfo::other());
@@ -194,7 +189,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         checker.typeck_mir(body);
     }
 
-    checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
+    checker.equate_inputs_and_outputs(&body);
     checker.check_signature_annotation(&body);
 
     liveness::generate(

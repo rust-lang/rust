@@ -8,7 +8,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
@@ -35,16 +34,9 @@ pub(crate) struct UniversalRegionRelations<'tcx> {
     inverse_outlives: TransitiveRelation<RegionVid>,
 }
 
-/// As part of computing the free region relations, we also have to
-/// normalize the input-output types, which we then need later. So we
-/// return those. This vector consists of first the input types and
-/// then the output type as the last element.
-type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
-
 pub(crate) struct CreateResult<'tcx> {
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) region_bound_pairs: RegionBoundPairs<'tcx>,
-    pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
 pub(crate) fn create<'tcx>(
@@ -222,68 +214,27 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .chain(Some(self.universal_regions.unnormalized_output_ty));
 
         // For each of the input/output types:
-        // - Normalize the type. This will create some region
-        //   constraints, which we buffer up because we are
-        //   not ready to process them yet.
-        // - Then compute the implied bounds. This will adjust
+        // - Compute the implied bounds. This will adjust
         //   the `region_bound_pairs` and so forth.
         // - After this is done, we'll process the constraints, once
         //   the `relations` is built.
-        let mut normalized_inputs_and_output =
-            Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
-        let mut constraints = vec![];
-        for ty in unnormalized_input_output_tys {
-            debug!("build: input_or_output={:?}", ty);
-            // We add implied bounds from both the unnormalized and normalized ty.
-            // See issue #87748
-            let constraints_unnorm = self.add_implied_bounds(ty);
-            if let Some(c) = constraints_unnorm {
-                constraints.push(c)
-            }
-            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
-                .param_env
-                .and(type_op::normalize::Normalize::new(ty))
-                .fully_perform(self.infcx)
-                .unwrap_or_else(|_| {
-                    let guar = self
-                        .infcx
-                        .tcx
-                        .sess
-                        .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
-                    TypeOpOutput {
-                        output: self.infcx.tcx.ty_error(guar),
-                        constraints: None,
-                        error_info: None,
-                    }
-                });
-            if let Some(c) = constraints_normalize {
-                constraints.push(c)
-            }
+        let constraint_sets: Vec<_> =
+            unnormalized_input_output_tys.flat_map(|ty| self.add_implied_bounds(ty)).collect();
 
-            // Note: we need this in examples like
-            // ```
-            // trait Foo {
-            //   type Bar;
-            //   fn foo(&self) -> &Self::Bar;
-            // }
-            // impl Foo for () {
-            //   type Bar = ();
-            //   fn foo(&self) ->&() {}
-            // }
-            // ```
-            // Both &Self::Bar and &() are WF
-            if ty != norm_ty {
-                let constraints_norm = self.add_implied_bounds(norm_ty);
-                if let Some(c) = constraints_norm {
-                    constraints.push(c)
-                }
-            }
-
-            normalized_inputs_and_output.push(norm_ty);
-        }
-
-        for c in constraints {
-            self.push_region_constraints(c, span);
+        // Subtle: We can convert constraints only after the relations are built.
+        for data in &constraint_sets {
+            constraint_conversion::ConstraintConversion::new(
+                self.infcx,
+                &self.universal_regions,
+                &self.region_bound_pairs,
+                self.implicit_region_bound,
+                self.param_env,
+                Locations::All(span),
+                span,
+                ConstraintCategory::Internal,
+                &mut self.constraints,
+            )
+            .convert_all(data);
         }
 
         CreateResult {
@@ -293,26 +244,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 inverse_outlives: self.inverse_outlives.freeze(),
             }),
             region_bound_pairs: self.region_bound_pairs,
-            normalized_inputs_and_output,
         }
-    }
-
-    #[instrument(skip(self, data), level = "debug")]
-    fn push_region_constraints(&mut self, data: &QueryRegionConstraints<'tcx>, span: Span) {
-        debug!("constraints generated: {:#?}", data);
-
-        constraint_conversion::ConstraintConversion::new(
-            self.infcx,
-            &self.universal_regions,
-            &self.region_bound_pairs,
-            self.implicit_region_bound,
-            self.param_env,
-            Locations::All(span),
-            span,
-            ConstraintCategory::Internal,
-            &mut self.constraints,
-        )
-        .convert_all(data);
     }
 
     /// Update the type of a single local, which should represent

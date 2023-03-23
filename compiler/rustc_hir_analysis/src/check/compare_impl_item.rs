@@ -259,10 +259,8 @@ fn compare_method_predicate_entailment<'tcx>(
     // we have to do this before normalization, since the normalized ty may
     // not contain the input parameters. See issue #87748.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
+
     let trait_sig = ocx.normalize(&norm_cause, param_env, trait_sig);
-    // We also have to add the normalized trait signature
-    // as we don't normalize during implied bounds computation.
-    wf_tys.extend(trait_sig.inputs_and_output.iter());
     let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
 
     debug!("compare_impl_method: trait_fty={:?}", trait_fty);
