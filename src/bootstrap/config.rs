@@ -1133,7 +1133,7 @@ impl Config {
             set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
-            config.rustc_parallel = rust.parallel_compiler.unwrap_or(true);
+            config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker;
             config.musl_root = rust.musl_root.map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.map(PathBuf::from);
