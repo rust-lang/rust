@@ -711,6 +711,34 @@ where
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.delegate.register_obligations(obligations);
     }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        unreachable!("manually overridden to handle ty::Variance::Contravariant ambient variance")
+    }
+
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
+            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            // a :> b is b <: a
+            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+                b.into(),
+                a.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Equate,
+            ),
+            // FIXME(deferred_projection_equality): Implement this when we trigger it.
+            // Probably just need to do nothing here.
+            ty::Variance::Bivariant => unreachable!(),
+        })]);
+    }
 }
 
 /// When we encounter a binder like `for<..> fn(..)`, we actually have

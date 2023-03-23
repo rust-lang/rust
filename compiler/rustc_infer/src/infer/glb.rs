@@ -155,4 +155,9 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.fields.register_obligations(obligations);
     }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::AliasRelationDirection::Equate
+    }
 }

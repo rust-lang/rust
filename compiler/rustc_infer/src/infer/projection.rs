@@ -26,7 +26,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // completely change the normalization routine with the new solver.
             //
             // The new solver correctly handles projection equality so this hack
-            // is not necessary. if re-enabled it should emit `PredicateKind::AliasEq`
+            // is not necessary. if re-enabled it should emit `PredicateKind::AliasRelate`
             // not `PredicateKind::Clause(Clause::Projection(..))` as in the new solver
             // `Projection` is used as `normalizes-to` which will fail for `<T as Trait>::Assoc eq ?0`.
             return projection_ty.to_ty(self.tcx);
