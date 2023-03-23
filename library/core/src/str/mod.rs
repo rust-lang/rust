@@ -1011,7 +1011,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn lines(&self) -> Lines<'_> {
-        Lines(self.split_terminator('\n').map(LinesAnyMap))
+        Lines(self.split_inclusive('\n').map(LinesMap))
     }
 
     /// An iterator over the lines of a string.
@@ -2604,10 +2604,10 @@ impl Default for &mut str {
 impl_fn_for_zst! {
     /// A nameable, cloneable fn type
     #[derive(Clone)]
-    struct LinesAnyMap impl<'a> Fn = |line: &'a str| -> &'a str {
-        let l = line.len();
-        if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
-        else { line }
+    struct LinesMap impl<'a> Fn = |line: &'a str| -> &'a str {
+        let Some(line) = line.strip_suffix('\n') else { return line };
+        let Some(line) = line.strip_suffix('\r') else { return line };
+        line
     };
 
     #[derive(Clone)]

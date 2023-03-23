@@ -223,6 +223,21 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
+            sym::option_payload_ptr => {
+                let option_def_id = tcx.require_lang_item(hir::LangItem::Option, None);
+                let p0 = param(0);
+                (
+                    1,
+                    vec![tcx.mk_ptr(ty::TypeAndMut {
+                        ty: tcx.mk_adt(
+                            tcx.adt_def(option_def_id),
+                            tcx.mk_substs_from_iter([ty::GenericArg::from(p0)].into_iter()),
+                        ),
+                        mutbl: hir::Mutability::Not,
+                    })],
+                    tcx.mk_ptr(ty::TypeAndMut { ty: p0, mutbl: hir::Mutability::Not }),
+                )
+            }
             sym::ptr_mask => (
                 1,
                 vec![

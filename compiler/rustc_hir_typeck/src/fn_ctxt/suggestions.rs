@@ -165,8 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
-        self.err_ctxt().extract_callable_info(body_hir_id, self.param_env, ty)
+        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
     pub fn suggest_two_fn_call(

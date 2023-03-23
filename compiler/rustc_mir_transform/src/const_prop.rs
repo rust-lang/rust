@@ -180,7 +180,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
         false // for now, we don't enforce validity
     }
     fn alignment_check_failed(

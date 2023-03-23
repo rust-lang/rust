@@ -9,10 +9,6 @@
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
 
-// FIXME: Instead of using `infcx.canonicalize_query` we have to add a new routine which
-// preserves universes and creates a unique var (in the highest universe) for each
-// appearance of a region.
-
 // FIXME: uses of `infcx.at` need to enable deferred projection equality once that's implemented.
 
 use rustc_hir::def_id::DefId;
@@ -40,6 +36,19 @@ mod trait_goals;
 
 pub use eval_ctxt::{EvalCtxt, InferCtxtEvalExt};
 pub use fulfill::FulfillmentCtxt;
+
+#[derive(Debug, Clone, Copy)]
+enum SolverMode {
+    /// Ordinary trait solving, using everywhere except for coherence.
+    Normal,
+    /// Trait solving during coherence. There are a few notable differences
+    /// between coherence and ordinary trait solving.
+    ///
+    /// Most importantly, trait solving during coherence must not be incomplete,
+    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
+    /// This means that we must not make any guesses or arbitrary choices.
+    Coherence,
+}
 
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
@@ -255,7 +264,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Err(NoSolution);
         }
 
-        // FIXME(-Ztreat-solver=next): We should instead try to find a `Certainty::Yes` response with
+        // FIXME(-Ztrait-solver=next): We should instead try to find a `Certainty::Yes` response with
         // a subset of the constraints that all the other responses have.
         let one = candidates[0];
         if candidates[1..].iter().all(|resp| resp == &one) {

@@ -1709,10 +1709,6 @@ impl CrateMetadata {
         self.root.name
     }
 
-    pub(crate) fn stable_crate_id(&self) -> StableCrateId {
-        self.root.stable_crate_id
-    }
-
     pub(crate) fn hash(&self) -> Svh {
         self.root.hash
     }

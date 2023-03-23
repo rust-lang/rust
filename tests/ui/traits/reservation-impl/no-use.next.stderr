@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): MyTrait` is not satisfied
-  --> $DIR/no-use.rs:10:26
+  --> $DIR/no-use.rs:11:26
    |
 LL |     <() as MyTrait>::foo(&());
    |     -------------------- ^^^ the trait `MyTrait` is not implemented for `()`

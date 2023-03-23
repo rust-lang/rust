@@ -559,6 +559,7 @@ use crate::{
 /// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
+#[cfg_attr(not(bootstrap), lang = "Option")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value.
@@ -735,48 +736,6 @@ impl<T> Option<T> {
         }
     }
 
-    /// This is a guess at how many bytes into the option the payload can be found.
-    ///
-    /// For niche-optimized types it's correct because it's pigeon-holed to only
-    /// one possible place.  For other types, it's usually correct today, but
-    /// tweaks to the layout algorithm (particularly expansions of
-    /// `-Z randomize-layout`) might make it incorrect at any point.
-    ///
-    /// It's guaranteed to be a multiple of alignment (so will always give a
-    /// correctly-aligned location) and to be within the allocated object, so
-    /// is valid to use with `offset` and to use for a zero-sized read.
-    ///
-    /// FIXME: This is a horrible hack, but allows a nice optimization.  It should
-    /// be replaced with `offset_of!` once that works on enum variants.
-    const SOME_BYTE_OFFSET_GUESS: isize = {
-        let some_uninit = Some(mem::MaybeUninit::<T>::uninit());
-        let payload_ref = some_uninit.as_ref().unwrap();
-        // SAFETY: `as_ref` gives an address inside the existing `Option`,
-        // so both pointers are derived from the same thing and the result
-        // cannot overflow an `isize`.
-        let offset = unsafe { <*const _>::byte_offset_from(payload_ref, &some_uninit) };
-
-        // The offset is into the object, so it's guaranteed to be non-negative.
-        assert!(offset >= 0);
-
-        // The payload and the overall option are aligned,
-        // so the offset will be a multiple of the alignment too.
-        assert!((offset as usize) % mem::align_of::<T>() == 0);
-
-        let max_offset = mem::size_of::<Self>() - mem::size_of::<T>();
-        if offset as usize <= max_offset {
-            // There's enough space after this offset for a `T` to exist without
-            // overflowing the bounds of the object, so let's try it.
-            offset
-        } else {
-            // The offset guess is definitely wrong, so use the address
-            // of the original option since we have it already.
-            // This also correctly handles the case of layout-optimized enums
-            // where `max_offset == 0` and thus this is the only possibility.
-            0
-        }
-    };
-
     /// Returns a slice of the contained value, if any. If this is `None`, an
     /// empty slice is returned. This can be useful to have a single type of
     /// iterator over an `Option` or slice.
@@ -809,28 +768,29 @@ impl<T> Option<T> {
     #[must_use]
     #[unstable(feature = "option_as_slice", issue = "108545")]
     pub fn as_slice(&self) -> &[T] {
-        let payload_ptr: *const T =
-            // The goal here is that both arms here are calculating exactly
-            // the same pointer, and thus it'll be folded away when the guessed
-            // offset is correct, but if the guess is wrong for some reason
-            // it'll at least still be sound, just no longer optimal.
-            if let Some(payload) = self {
-                payload
-            } else {
-                let self_ptr: *const Self = self;
-                // SAFETY: `SOME_BYTE_OFFSET_GUESS` guarantees that its value is
-                // such that this will be in-bounds of the object.
-                unsafe { self_ptr.byte_offset(Self::SOME_BYTE_OFFSET_GUESS).cast() }
-            };
-        let len = usize::from(self.is_some());
+        #[cfg(bootstrap)]
+        match self {
+            Some(value) => slice::from_ref(value),
+            None => &[],
+        }
 
+        #[cfg(not(bootstrap))]
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_ref`, and thus is safe.
         // When the `Option` is `None`, the length used is 0, so to be safe it
         // just needs to be aligned, which it is because `&self` is aligned and
         // the offset used is a multiple of alignment.
-        unsafe { slice::from_raw_parts(payload_ptr, len) }
+        //
+        // In the new version, the intrinsic always returns a pointer to an
+        // in-bounds and correctly aligned position for a `T` (even if in the
+        // `None` case it's just padding).
+        unsafe {
+            slice::from_raw_parts(
+                crate::intrinsics::option_payload_ptr(crate::ptr::from_ref(self)),
+                usize::from(self.is_some()),
+            )
+        }
     }
 
     /// Returns a mutable slice of the contained value, if any. If this is
@@ -875,28 +835,32 @@ impl<T> Option<T> {
     #[must_use]
     #[unstable(feature = "option_as_slice", issue = "108545")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        let payload_ptr: *mut T =
-            // The goal here is that both arms here are calculating exactly
-            // the same pointer, and thus it'll be folded away when the guessed
-            // offset is correct, but if the guess is wrong for some reason
-            // it'll at least still be sound, just no longer optimal.
-            if let Some(payload) = self {
-                payload
-            } else {
-                let self_ptr: *mut Self = self;
-                // SAFETY: `SOME_BYTE_OFFSET_GUESS` guarantees that its value is
-                // such that this will be in-bounds of the object.
-                unsafe { self_ptr.byte_offset(Self::SOME_BYTE_OFFSET_GUESS).cast() }
-            };
-        let len = usize::from(self.is_some());
+        #[cfg(bootstrap)]
+        match self {
+            Some(value) => slice::from_mut(value),
+            None => &mut [],
+        }
 
+        #[cfg(not(bootstrap))]
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_mut`, and thus is safe.
         // When the `Option` is `None`, the length used is 0, so to be safe it
         // just needs to be aligned, which it is because `&self` is aligned and
         // the offset used is a multiple of alignment.
-        unsafe { slice::from_raw_parts_mut(payload_ptr, len) }
+        //
+        // In the new version, the intrinsic creates a `*const T` from a
+        // mutable reference  so it is safe to cast back to a mutable pointer
+        // here. As with `as_slice`, the intrinsic always returns a pointer to
+        // an in-bounds and correctly aligned position for a `T` (even if in
+        // the `None` case it's just padding).
+        unsafe {
+            slice::from_raw_parts_mut(
+                crate::intrinsics::option_payload_ptr(crate::ptr::from_mut(self).cast_const())
+                    .cast_mut(),
+                usize::from(self.is_some()),
+            )
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////

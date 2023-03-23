@@ -919,9 +919,9 @@ impl<'a> Builder<'a> {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage2() {
+        if self.build.force_use_stage2(stage) {
             self.compiler(2, self.config.build)
-        } else if self.build.force_use_stage1(Compiler { stage, host }, target) {
+        } else if self.build.force_use_stage1(stage, target) {
             self.compiler(1, self.config.build)
         } else {
             self.compiler(stage, host)

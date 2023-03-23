@@ -1907,7 +1907,7 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Fn => {
                 for attr in attrs {
-                    if self.tcx.sess.is_proc_macro_attr(attr) {
+                    if attr.is_proc_macro_attr() {
                         debug!("Is proc macro attr");
                         return true;
                     }

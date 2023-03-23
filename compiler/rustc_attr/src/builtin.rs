@@ -1,6 +1,6 @@
 //! Parsing and validation of builtin attributes
 
-use rustc_ast as ast;
+use rustc_ast::{self as ast, attr};
 use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -556,8 +556,8 @@ where
     (stab, const_stab, body_stab)
 }
 
-pub fn find_crate_name(sess: &Session, attrs: &[Attribute]) -> Option<Symbol> {
-    sess.first_attr_value_str_by_name(attrs, sym::crate_name)
+pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
+    attr::first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
 #[derive(Clone, Debug)]
@@ -1177,7 +1177,7 @@ fn allow_unstable<'a>(
     attrs: &'a [Attribute],
     symbol: Symbol,
 ) -> impl Iterator<Item = Symbol> + 'a {
-    let attrs = sess.filter_by_name(attrs, symbol);
+    let attrs = attr::filter_by_name(attrs, symbol);
     let list = attrs
         .filter_map(move |attr| {
             attr.meta_item_list().or_else(|| {
