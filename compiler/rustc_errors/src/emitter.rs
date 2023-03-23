@@ -10,8 +10,8 @@
 use Destination::*;
 
 use rustc_span::source_map::SourceMap;
-// use rustc_span::{DesugaringKind, FileLines, SourceFile, Span};
-use rustc_span::{FileLines, SourceFile, Span};
+use rustc_span::{DesugaringKind, FileLines, SourceFile, Span};
+// use rustc_span::{FileLines, SourceFile, Span};
 
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
@@ -406,7 +406,7 @@ pub trait Emitter: Translate {
             for (i, trace) in macro_backtrace.iter().rev().enumerate().filter(|(_, trace)| {
                 !matches!(
                     trace.kind,
-                    ExpnKind::Inlined //| ExpnKind::Desugaring(DesugaringKind::Resize)
+                    ExpnKind::Inlined | ExpnKind::Desugaring(DesugaringKind::Resize)
                 ) && !trace.def_site.is_dummy()
             }) {
                 if always_backtrace {
