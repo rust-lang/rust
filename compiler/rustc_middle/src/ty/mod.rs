@@ -543,7 +543,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -640,7 +640,23 @@ pub enum PredicateKind<'tcx> {
     /// This predicate requires two terms to be equal to eachother.
     ///
     /// Only used for new solver
-    AliasEq(Term<'tcx>, Term<'tcx>),
+    AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, Debug)]
+pub enum AliasRelationDirection {
+    Equate,
+    Subtype,
+}
+
+impl std::fmt::Display for AliasRelationDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AliasRelationDirection::Equate => write!(f, " == "),
+            AliasRelationDirection::Subtype => write!(f, " <: "),
+        }
+    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -976,11 +992,11 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    /// This function returns `None` for `AliasKind::Opaque`.
+    /// This function returns the inner `AliasTy` if this term is a projection.
     ///
     /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
     /// deal with constants.
-    pub fn to_alias_term_no_opaque(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    pub fn to_projection_term(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
             TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(kind, alias_ty) => match kind {
@@ -1206,7 +1222,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1227,7 +1243,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1249,7 +1265,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
-            | PredicateKind::AliasEq(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
