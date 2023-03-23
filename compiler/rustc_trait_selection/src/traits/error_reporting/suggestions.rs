@@ -1367,12 +1367,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         // Issue #109436, we need to add parentheses properly for method calls
                         // for example, `foo.into()` should be `(&foo).into()`
-                        if let Ok(snippet) = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(self.tcx.sess.source_map().next_point(span))
-                        {
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(
+                            self.tcx.sess.source_map().span_look_ahead(span, Some("."), Some(50)),
+                        ) {
                             if snippet == "." {
                                 err.multipart_suggestion_verbose(
                                     sugg_msg,
