@@ -1605,8 +1605,9 @@ impl<'a> Linker for AixLinker<'a> {
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         match strip {
             Strip::None => {}
-            Strip::Debuginfo => {}
-            Strip::Symbols => {
+            // FIXME: -s strips the symbol table, line number information
+            // and relocation information.
+            Strip::Debuginfo | Strip::Symbols => {
                 self.cmd.arg("-s");
             }
         }
