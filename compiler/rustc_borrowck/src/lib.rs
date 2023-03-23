@@ -510,16 +510,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
             .as_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(vid, ctxt);
-
-            // This only makes sense if not called in a canonicalization context. If this
-            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-            // or modify how we track nll region vars for that map.
-            assert!(matches!(prev, None));
+            var_to_origin.insert(vid, ctxt);
         }
 
         next_region
@@ -539,16 +534,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
             .as_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(vid, ctxt);
-
-            // This only makes sense if not called in a canonicalization context. If this
-            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-            // or modify how we track nll region vars for that map.
-            assert!(matches!(prev, None));
+            var_to_origin.insert(vid, ctxt);
         }
 
         next_region
