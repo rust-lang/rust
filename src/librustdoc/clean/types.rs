@@ -232,14 +232,6 @@ impl ExternalCrate {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
-                        hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.owner_id).is_public() =>
-                        {
-                            path.res
-                                .iter()
-                                .find_map(|res| as_keyword(res.expect_non_local()))
-                                .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
-                        }
                         _ => None,
                     }
                 })
@@ -301,15 +293,6 @@ impl ExternalCrate {
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
-                        }
-                        hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.owner_id).is_public() =>
-                        {
-                            path.res
-                                .iter()
-                                .find_map(|res| as_primitive(res.expect_non_local()))
-                                // Pretend the primitive is local.
-                                .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
                         }
                         _ => None,
                     }
