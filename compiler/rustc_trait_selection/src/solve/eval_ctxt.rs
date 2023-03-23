@@ -236,9 +236,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-                ty::PredicateKind::AliasEq(lhs, rhs) => {
-                    self.compute_alias_eq_goal(Goal { param_env, predicate: (lhs, rhs) })
-                }
+                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
+                    .compute_alias_relate_goal(Goal {
+                        param_env,
+                        predicate: (lhs, rhs, direction),
+                    }),
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
@@ -466,6 +468,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
             .map_err(|e| {
                 debug!(?e, "failed to equate");
+                NoSolution
+            })
+    }
+
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn sub<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        sub: T,
+        sup: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .sub(DefineOpaqueTypes::No, sub, sup)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to subtype");
                 NoSolution
             })
     }

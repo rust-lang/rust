@@ -324,7 +324,7 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
         ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::AliasEq(..)
+        | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)

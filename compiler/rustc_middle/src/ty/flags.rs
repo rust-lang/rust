@@ -288,7 +288,7 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
             ty::PredicateKind::Ambiguous => {}
-            ty::PredicateKind::AliasEq(t1, t2) => {
+            ty::PredicateKind::AliasRelate(t1, t2, _) => {
                 self.add_term(t1);
                 self.add_term(t2);
             }

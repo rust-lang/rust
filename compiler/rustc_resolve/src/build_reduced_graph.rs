@@ -27,7 +27,6 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::{bug, ty};
-use rustc_session::cstore::CrateStore;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -116,33 +115,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if !def_id.is_local() {
             let def_kind = self.cstore().def_kind(def_id);
-            match def_kind {
-                DefKind::Mod | DefKind::Enum | DefKind::Trait => {
-                    let def_key = self.cstore().def_key(def_id);
-                    let parent = def_key.parent.map(|index| {
-                        self.get_nearest_non_block_module(DefId { index, krate: def_id.krate })
-                    });
-                    let name = if let Some(cnum) = def_id.as_crate_root() {
-                        self.cstore().crate_name(cnum)
-                    } else {
-                        def_key.disambiguated_data.data.get_opt_name().expect("module without name")
-                    };
-
-                    let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
-                    Some(self.new_module(
-                        parent,
-                        ModuleKind::Def(def_kind, def_id, name),
-                        expn_id,
-                        self.def_span(def_id),
-                        // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                        parent.map_or(false, |module| module.no_implicit_prelude),
-                    ))
-                }
-                _ => None,
+            if let DefKind::Mod | DefKind::Enum | DefKind::Trait = def_kind {
+                let parent = self
+                    .tcx
+                    .opt_parent(def_id)
+                    .map(|parent_id| self.get_nearest_non_block_module(parent_id));
+                let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
+                return Some(self.new_module(
+                    parent,
+                    ModuleKind::Def(def_kind, def_id, self.tcx.item_name(def_id)),
+                    expn_id,
+                    self.def_span(def_id),
+                    // FIXME: Account for `#[no_implicit_prelude]` attributes.
+                    parent.map_or(false, |module| module.no_implicit_prelude),
+                ));
             }
-        } else {
-            None
         }
+
+        None
     }
 
     pub(crate) fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {

@@ -704,7 +704,11 @@ pub trait PrettyPrinter<'tcx>:
                 ty::BoundTyKind::Anon(bv) => {
                     self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
                 }
-                ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
+                ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
+                    true if debruijn == ty::INNERMOST => p!(write("^{}", s)),
+                    true => p!(write("^{}_{}", debruijn.index(), s)),
+                    false => p!(write("{}", s)),
+                },
             },
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
@@ -2847,7 +2851,7 @@ define_print_and_forward_display! {
                 p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
-            ty::PredicateKind::AliasEq(t1, t2) => p!(print(t1), " == ", print(t2)),
+            ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
 
