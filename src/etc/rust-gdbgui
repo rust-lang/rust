@@ -42,6 +42,8 @@ fi
 # Find out where the pretty printer Python module is
 RUSTC_SYSROOT="$("$RUSTC" --print=sysroot)"
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
+# Get the commit hash for path remapping
+RUSTC_COMMIT_HASH="$("$RUSTC" -vV | sed -n 's/commit-hash: \(\w*\)/\1/p')"
 
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).
@@ -53,7 +55,9 @@ RUST_GDBGUI="${RUST_GDBGUI:-gdbgui}"
 
 # These arguments get passed through to GDB and make it load the
 # Rust pretty printers.
-GDB_ARGS="--directory=\"$GDB_PYTHON_MODULE_DIRECTORY\" -iex \"add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY\""
+GDB_ARGS="--directory=\"$GDB_PYTHON_MODULE_DIRECTORY\"" \
+   "-iex \"add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY\"" \
+   "-iex \"set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust\""
 
 # Finally we execute gdbgui.
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" \
