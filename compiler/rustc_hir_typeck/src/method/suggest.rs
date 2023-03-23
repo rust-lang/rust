@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .inputs()
                                 .skip_binder()
                                 .get(0)
-                                .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
+                                .filter(|ty| ty.is_ref() && !rcvr_ty.is_ref())
                                 .copied()
                                 .unwrap_or(rcvr_ty),
                         };

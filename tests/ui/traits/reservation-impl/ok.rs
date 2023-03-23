@@ -3,6 +3,9 @@
 // rpass test for reservation impls. Not 100% required because `From` uses them,
 // but still.
 
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(rustc_attrs)]
 
 use std::mem;

@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, NodeId};
+use rustc_ast::{self as ast, attr, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
@@ -34,7 +34,6 @@ enum ProcMacro {
 }
 
 struct CollectProcMacros<'a> {
-    sess: &'a Session,
     macros: Vec<ProcMacro>,
     in_root: bool,
     handler: &'a rustc_errors::Handler,
@@ -56,7 +55,6 @@ pub fn inject(
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     let mut collect = CollectProcMacros {
-        sess,
         macros: Vec::new(),
         in_root: true,
         handler,
@@ -160,7 +158,7 @@ impl<'a> CollectProcMacros<'a> {
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.kind {
-            if self.is_proc_macro_crate && self.sess.contains_name(&item.attrs, sym::macro_export) {
+            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
@@ -176,7 +174,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         let mut found_attr: Option<&'a ast::Attribute> = None;
 
         for attr in &item.attrs {
-            if self.sess.is_proc_macro_attr(&attr) {
+            if attr.is_proc_macro_attr() {
                 if let Some(prev_attr) = found_attr {
                     let prev_item = prev_attr.get_normal_item();
                     let item = attr.get_normal_item();

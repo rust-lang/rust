@@ -1,8 +1,9 @@
 mod cache;
 mod overflow;
 
+pub(super) use overflow::OverflowHandler;
+
 use self::cache::ProvisionalEntry;
-pub(super) use crate::solve::search_graph::overflow::OverflowHandler;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
@@ -10,6 +11,8 @@ use rustc_middle::dep_graph::DepKind;
 use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
+
+use super::SolverMode;
 
 rustc_index::newtype_index! {
     pub struct StackDepth {}
@@ -21,6 +24,7 @@ struct StackElem<'tcx> {
 }
 
 pub(super) struct SearchGraph<'tcx> {
+    mode: SolverMode,
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
@@ -30,12 +34,17 @@ pub(super) struct SearchGraph<'tcx> {
 }
 
 impl<'tcx> SearchGraph<'tcx> {
-    pub(super) fn new(tcx: TyCtxt<'tcx>) -> SearchGraph<'tcx> {
+    pub(super) fn new(tcx: TyCtxt<'tcx>, mode: SolverMode) -> SearchGraph<'tcx> {
         Self {
+            mode,
             stack: Default::default(),
             overflow_data: OverflowData::new(tcx),
             provisional_cache: ProvisionalCache::empty(),
         }
+    }
+
+    pub(super) fn solver_mode(&self) -> SolverMode {
+        self.mode
     }
 
     pub(super) fn is_empty(&self) -> bool {
@@ -245,7 +254,8 @@ impl<'tcx> SearchGraph<'tcx> {
             // dependencies, our non-root goal may no longer appear as child of the root goal.
             //
             // See https://github.com/rust-lang/rust/pull/108071 for some additional context.
-            let should_cache_globally = !self.overflow_data.did_overflow() || self.stack.is_empty();
+            let should_cache_globally = matches!(self.solver_mode(), SolverMode::Normal)
+                && (!self.overflow_data.did_overflow() || self.stack.is_empty());
             if should_cache_globally {
                 tcx.new_solver_evaluation_cache.insert(
                     current_goal.goal,
