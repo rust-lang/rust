@@ -1,0 +1,31 @@
+error[E0310]: the parameter type `X` may not live long enough
+  --> $DIR/from-trait-impl.rs:17:1
+   |
+LL | fn foo<X>(_: Foo<Vec<X>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | the parameter type `X` must be valid for the static lifetime...
+   | ...so that the type `X` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<X: 'static>(_: Foo<Vec<X>>) {}
+   |         +++++++++
+
+error[E0310]: the parameter type `X` may not live long enough
+  --> $DIR/from-trait-impl.rs:17:14
+   |
+LL | fn foo<X>(_: Foo<Vec<X>>) {}
+   |              ^^^^^^^^^^^
+   |              |
+   |              the parameter type `X` must be valid for the static lifetime...
+   |              ...so that the type `X` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<X: 'static>(_: Foo<Vec<X>>) {}
+   |         +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
