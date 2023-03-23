@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(unused, nonstandard_style, useless_anonymous_reexport)]
+#![allow(unused, nonstandard_style)]
 mod m {
 
     mod p {
