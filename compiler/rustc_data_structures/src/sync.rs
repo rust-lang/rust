@@ -30,6 +30,8 @@ pub use vec::AppendOnlyVec;
 
 mod vec;
 
+pub static PARALLEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
