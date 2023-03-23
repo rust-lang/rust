@@ -595,7 +595,10 @@ impl CrateStore for CStore {
     }
 
     fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum {
-        self.stable_crate_ids[&stable_crate_id]
+        *self
+            .stable_crate_ids
+            .get(&stable_crate_id)
+            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

@@ -1,6 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
+use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
 use rustc_errors::{Applicability, StashKey};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
@@ -232,7 +232,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Fn(..) => {
-                if self.sess.contains_name(&i.attrs, sym::start) {
+                if attr::contains_name(&i.attrs, sym::start) {
                     gate_feature_post!(
                         &self,
                         start,
@@ -245,7 +245,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                for attr in self.sess.filter_by_name(&i.attrs, sym::repr) {
+                for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
                             gate_feature_post!(
@@ -306,7 +306,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
-                let link_name = self.sess.first_attr_value_str_by_name(&i.attrs, sym::link_name);
+                let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
                 let links_to_llvm =
                     link_name.map_or(false, |val| val.as_str().starts_with("llvm."));
                 if links_to_llvm {

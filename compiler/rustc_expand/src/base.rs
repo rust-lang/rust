@@ -776,16 +776,14 @@ impl SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
-        let allow_internal_unsafe = sess.contains_name(attrs, sym::allow_internal_unsafe);
-        let local_inner_macros = sess
-            .find_by_name(attrs, sym::macro_export)
+        let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
+        let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = sess.contains_name(attrs, sym::collapse_debuginfo);
+        let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
         tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = sess
-            .find_by_name(attrs, sym::rustc_builtin_macro)
+        let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.

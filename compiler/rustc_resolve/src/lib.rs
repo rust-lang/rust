@@ -23,7 +23,7 @@ extern crate tracing;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
+use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -1190,7 +1190,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
             krate.spans.inner_span,
-            tcx.sess.contains_name(&krate.attrs, sym::no_implicit_prelude),
+            attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
         let empty_module = arenas.new_module(
@@ -1222,9 +1222,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !tcx.sess.contains_name(&krate.attrs, sym::no_core) {
+        if !attr::contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !tcx.sess.contains_name(&krate.attrs, sym::no_std) {
+            if !attr::contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
             }
         }

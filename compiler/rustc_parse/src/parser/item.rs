@@ -1181,7 +1181,7 @@ impl<'a> Parser<'a> {
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
         let impl_span = self.token.span;
-        let mut err = self.expected_ident_found();
+        let mut err = self.expected_ident_found_err();
 
         // Only try to recover if this is implementing a trait for a type
         let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
@@ -1744,7 +1744,7 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err()?;
+        let (ident, is_raw) = self.ident_or_err(true)?;
         if !is_raw && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
@@ -1776,7 +1776,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
+                        self.expected_ident_found_err()
                     }
                 }
             } else if self.eat_keyword(kw::Struct) {
@@ -1792,11 +1792,11 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
+                        self.expected_ident_found_err()
                     }
                 }
             } else {
-                let mut err = self.expected_ident_found();
+                let mut err = self.expected_ident_found_err();
                 if self.eat_keyword_noexpect(kw::Let)
                     && let removal_span = self.prev_token.span.until(self.token.span)
                     && let Ok(ident) = self.parse_ident_common(false)

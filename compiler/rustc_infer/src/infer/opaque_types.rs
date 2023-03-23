@@ -5,8 +5,8 @@ use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -21,7 +21,7 @@ use std::ops::ControlFlow;
 
 mod table;
 
-pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
+pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
 /// Information about the opaque types whose values we

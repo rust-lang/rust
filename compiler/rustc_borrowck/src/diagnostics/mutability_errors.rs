@@ -120,9 +120,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && !self.upvars.is_empty()
                 {
                     item_msg = access_place_desc;
-                    debug_assert!(
-                        self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_region_ptr()
-                    );
+                    debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
                             the_place_err.local,
@@ -470,11 +468,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             {
                 let local_decl = &self.body.local_decls[local];
 
-                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
-                    ("&", "reference")
-                } else {
-                    ("*const", "pointer")
-                };
+                let (pointer_sigil, pointer_desc) =
+                    if local_decl.ty.is_ref() { ("&", "reference") } else { ("*const", "pointer") };
 
                 match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
@@ -1258,7 +1253,7 @@ fn suggest_ampmut<'tcx>(
     (
         suggestability,
         highlight_span,
-        if local_decl.ty.is_region_ptr() {
+        if local_decl.ty.is_ref() {
             format!("&mut {}", ty_mut.ty)
         } else {
             format!("*mut {}", ty_mut.ty)

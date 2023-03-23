@@ -231,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
-                qpath @ hir::QPath::Resolved(..) | qpath @ hir::QPath::TypeRelative(..),
+                qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
             ) => self.check_expr_path(qpath, expr, args),
             _ => self.check_expr_kind(expr, expected),
         });

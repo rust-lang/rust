@@ -34,7 +34,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // projection cache in the solver.
         if self.term_is_fully_unconstrained(goal) {
             let candidates = self.assemble_and_evaluate_candidates(goal);
-            self.merge_candidates_and_discard_reservation_impls(candidates)
+            self.merge_candidates(candidates)
         } else {
             let predicate = goal.predicate;
             let unconstrained_rhs = self.next_term_infer_of_kind(predicate.term);
@@ -54,6 +54,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
         self.self_ty()
+    }
+
+    fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
+        self.projection_ty.trait_ref(tcx)
     }
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {

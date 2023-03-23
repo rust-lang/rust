@@ -79,7 +79,6 @@ pub mod sync;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;
-pub mod vec_map;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;

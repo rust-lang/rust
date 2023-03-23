@@ -54,11 +54,11 @@
 
 /// [u8::not_found]
 //~^ ERROR unresolved link
-//~| NOTE the builtin type `u8` has no associated item named `not_found`
+//~| NOTE the primitive type `u8` has no associated item named `not_found`
 
 /// [std::primitive::u8::not_found]
 //~^ ERROR unresolved link
-//~| NOTE the builtin type `u8` has no associated item named `not_found`
+//~| NOTE the primitive type `u8` has no associated item named `not_found`
 
 /// [type@Vec::into_iter]
 //~^ ERROR unresolved link

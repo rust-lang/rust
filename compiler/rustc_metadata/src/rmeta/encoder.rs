@@ -681,17 +681,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: tcx
-                    .sess
-                    .contains_name(&attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: attr::contains_name(&attrs, sym::default_lib_allocator),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
-                needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
-                needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
-                no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
-                panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
-                profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
+                compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
+                needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
+                needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
+                no_builtins: attr::contains_name(&attrs, sym::no_builtins),
+                panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
+                profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -1016,7 +1014,6 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Const
         | DefKind::Static(..)
         | DefKind::TyAlias
-        | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocFn
@@ -1026,6 +1023,18 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst => true,
+
+        DefKind::OpaqueTy => {
+            let opaque = tcx.hir().expect_item(def_id).expect_opaque_ty();
+            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = opaque.origin
+                && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
+                && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
+            {
+                false
+            } else {
+                true
+            }
+        }
 
         DefKind::ImplTraitPlaceholder => {
             let parent_def_id = tcx.impl_trait_in_trait_parent_fn(def_id.to_def_id());
@@ -1044,7 +1053,13 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
                 ty::AssocItemContainer::ImplContainer => true,
-                ty::AssocItemContainer::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) always encode RPITITs,
+                // since we need to be able to "project" from an RPITIT associated item
+                // to an opaque when installing the default projection predicates in
+                // default trait methods with RPITITs.
+                ty::AssocItemContainer::TraitContainer => {
+                    assoc_item.defaultness(tcx).has_value() || assoc_item.opt_rpitit_info.is_some()
+                }
             }
         }
         DefKind::TyParam => {
@@ -1730,11 +1745,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if tcx.sess.contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
-                } else if tcx.sess.contains_name(attrs, sym::proc_macro_attribute) {
+                } else if attr::contains_name(attrs, sym::proc_macro_attribute) {
                     MacroKind::Attr
-                } else if let Some(attr) = tcx.sess.find_by_name(attrs, sym::proc_macro_derive) {
+                } else if let Some(attr) = attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
                         .meta_item()

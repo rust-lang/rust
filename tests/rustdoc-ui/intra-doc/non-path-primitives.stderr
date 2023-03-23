@@ -39,25 +39,25 @@ error: unresolved link to `unit::eq`
   --> $DIR/non-path-primitives.rs:28:6
    |
 LL | //! [unit::eq]
-   |      ^^^^^^^^ the builtin type `unit` has no associated item named `eq`
+   |      ^^^^^^^^ the primitive type `unit` has no associated item named `eq`
 
 error: unresolved link to `tuple::eq`
   --> $DIR/non-path-primitives.rs:29:6
    |
 LL | //! [tuple::eq]
-   |      ^^^^^^^^^ the builtin type `tuple` has no associated item named `eq`
+   |      ^^^^^^^^^ the primitive type `tuple` has no associated item named `eq`
 
 error: unresolved link to `fn::eq`
   --> $DIR/non-path-primitives.rs:30:6
    |
 LL | //! [fn::eq]
-   |      ^^^^^^ the builtin type `fn` has no associated item named `eq`
+   |      ^^^^^^ the primitive type `fn` has no associated item named `eq`
 
 error: unresolved link to `reference::deref`
   --> $DIR/non-path-primitives.rs:34:6
    |
 LL | //! [reference::deref]
-   |      ^^^^^^^^^^^^^^^^ the builtin type `reference` has no associated item named `deref`
+   |      ^^^^^^^^^^^^^^^^ the primitive type `reference` has no associated item named `deref`
 
 error: aborting due to 8 previous errors
 

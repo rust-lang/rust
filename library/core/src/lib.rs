@@ -209,6 +209,7 @@
 #![feature(derive_const)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
+#![feature(generic_arg_infer)]
 #![feature(rustdoc_internals)]
 #![feature(exhaustive_patterns)]
 #![feature(doc_cfg_hide)]

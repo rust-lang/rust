@@ -63,14 +63,13 @@ impl Certainty {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
             (Certainty::Yes, Certainty::Maybe(_)) => other,
             (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
-                Certainty::Maybe(MaybeCause::Overflow)
-            }
-            // If at least one of the goals is ambiguous, hide the overflow as the ambiguous goal
-            // may still result in failure.
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(_))
-            | (Certainty::Maybe(_), Certainty::Maybe(MaybeCause::Ambiguity)) => {
+            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Ambiguity)) => {
                 Certainty::Maybe(MaybeCause::Ambiguity)
+            }
+            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Overflow))
+            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Ambiguity))
+            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
+                Certainty::Maybe(MaybeCause::Overflow)
             }
         }
     }

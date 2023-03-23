@@ -17,6 +17,7 @@ use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
 use super::search_graph::{self, OverflowHandler};
+use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 
 pub struct EvalCtxt<'a, 'tcx> {
@@ -78,7 +79,9 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty), NoSolution> {
-        let mut search_graph = search_graph::SearchGraph::new(self.tcx);
+        let mode = if self.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
+
+        let mut search_graph = search_graph::SearchGraph::new(self.tcx, mode);
 
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
@@ -101,6 +104,10 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
 }
 
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+    pub(super) fn solver_mode(&self) -> SolverMode {
+        self.search_graph.solver_mode()
+    }
+
     /// The entry point of the solver.
     ///
     /// This function deals with (coinductive) cycles, overflow, and caching
@@ -120,8 +127,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         //
         // The actual solver logic happens in `ecx.compute_goal`.
         search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
-            let (ref infcx, goal, var_values) =
-                tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
+            let intercrate = match search_graph.solver_mode() {
+                SolverMode::Normal => false,
+                SolverMode::Coherence => true,
+            };
+            let (ref infcx, goal, var_values) = tcx
+                .infer_ctxt()
+                .intercrate(intercrate)
+                .build_with_canonical(DUMMY_SP, &canonical_goal);
             let mut ecx = EvalCtxt {
                 infcx,
                 var_values,

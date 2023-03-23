@@ -13,7 +13,7 @@ use super::from_utf8_unchecked;
 use super::pattern::Pattern;
 use super::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
-use super::LinesAnyMap;
+use super::LinesMap;
 use super::{BytesIsNotEmpty, UnsafeBytesToStr};
 use super::{CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode};
 use super::{IsAsciiWhitespace, IsNotEmpty, IsWhitespace};
@@ -1104,7 +1104,7 @@ generate_pattern_iterators! {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
-pub struct Lines<'a>(pub(super) Map<SplitTerminator<'a, char>, LinesAnyMap>);
+pub struct Lines<'a>(pub(super) Map<SplitInclusive<'a, char>, LinesMap>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Lines<'a> {

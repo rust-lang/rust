@@ -1926,11 +1926,6 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_region_ptr(self) -> bool {
-        matches!(self.kind(), Ref(..))
-    }
-
-    #[inline]
     pub fn is_mutable_ptr(self) -> bool {
         matches!(
             self.kind(),
@@ -1956,7 +1951,7 @@ impl<'tcx> Ty<'tcx> {
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
     #[inline]
     pub fn is_any_ptr(self) -> bool {
-        self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
+        self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
     #[inline]

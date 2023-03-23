@@ -212,7 +212,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn extract_callable_info(
         &self,
-        hir_id: HirId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)>;
@@ -909,9 +909,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             trait_pred.self_ty(),
         );
 
-        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
         let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(
-            body_hir_id,
+            obligation.cause.body_id,
             obligation.param_env,
             self_ty,
         ) else { return false; };
@@ -1113,10 +1112,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// Extracts information about a callable type for diagnostics. This is a
     /// heuristic -- it doesn't necessarily mean that a type is always callable,
     /// because the callable type must also be well-formed to be called.
-    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     fn extract_callable_info(
         &self,
-        hir_id: HirId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
@@ -1168,7 +1166,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     })
                 }
                 ty::Param(param) => {
-                    let generics = self.tcx.generics_of(hir_id.owner.to_def_id());
+                    let generics = self.tcx.generics_of(body_id);
                     let name = if generics.count() > param.index as usize
                         && let def = generics.param_at(param.index as usize, self.tcx)
                         && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
