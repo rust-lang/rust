@@ -1475,8 +1475,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.tcx.sess.time("resolve_crate", || {
             self.tcx.sess.time("finalize_imports", || self.finalize_imports());
-            self.tcx.sess.time("compute_effective_visibilities", || {
+            let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
+            });
+            self.tcx.sess.time("check_reexport_ambiguities", || {
+                self.check_reexport_ambiguities(exported_ambiguities)
             });
             self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));

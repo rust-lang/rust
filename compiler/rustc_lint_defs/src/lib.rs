@@ -529,6 +529,16 @@ pub enum BuiltinLintDiagnostics {
         vis_span: Span,
         ident_span: Span,
     },
+    AmbiguousGlobReexports {
+        /// The name for which collision(s) have occurred.
+        name: String,
+        /// The name space for whihc the collision(s) occurred in.
+        namespace: String,
+        /// Span where the name is first re-exported.
+        first_reexport_span: Span,
+        /// Span where the same name is also re-exported.
+        duplicate_reexport_span: Span,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
