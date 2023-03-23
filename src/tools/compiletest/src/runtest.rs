@@ -1897,6 +1897,10 @@ impl<'test> TestCx<'test> {
         // Use a single thread for efficiency and a deterministic error message order
         rustc.arg("-Zthreads=1");
 
+        if let Some(ref linker) = self.config.linker {
+            rustc.arg(format!("-Clinker={}", linker));
+        }
+
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags.iter().any(|x| x.starts_with("--target"));
 
