@@ -552,6 +552,7 @@ pub enum ArchiveKind {
     K_BSD,
     K_DARWIN,
     K_COFF,
+    K_AIXBIG,
 }
 
 // LLVMRustThinLTOData
