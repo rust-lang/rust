@@ -333,6 +333,7 @@ fn main() {
     } else if target.contains("darwin")
         || target.contains("freebsd")
         || target.contains("windows-gnullvm")
+        || target.contains("aix")
     {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
