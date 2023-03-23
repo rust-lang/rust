@@ -74,7 +74,7 @@ decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!(
-    [TypeFoldable] =>
+    [TypeFoldable, attributes(skip_traversal)] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
     /// Folds will produce a value of the same struct or enum variant as the input, with trivial
@@ -83,7 +83,18 @@ decl_derive!(
     /// both does not reference any generic type parameters and either
     /// - does not reference any `'tcx` lifetime parameter; or
     /// - does not contain anything that could be of interest to folders.
-    /// 
+    ///
+    /// Non-trivial fields (e.g. of type `T`) can instead be left unchanged by applying
+    /// `#[skip_traversal(because_trivial)]` to the field definition (or even to a variant
+    /// definition if it should apply to all fields therein), but the derived implementation will
+    /// only be applicable if `T` does not contain anything that may be of interest to folders
+    /// (thus preventing fields from being so-skipped erroneously).
+    ///
+    /// In some rare situations, it may be desirable to skip folding of an item or field (or
+    /// variant) that might otherwise be of interest to folders: **this is dangerous and could lead
+    /// to miscompilation if user expectations are not met!**  Nevertheless, such can be achieved
+    /// via a `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
+    ///
     /// If the annotated type has a `'tcx` lifetime parameter, then that will be used as the
     /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
     /// will be unrelated to the annotated type. It therefore matters how any lifetime parameters of
@@ -98,7 +109,7 @@ decl_derive!(
     traversable::traversable_derive::<traversable::Foldable>
 );
 decl_derive!(
-    [TypeVisitable] =>
+    [TypeVisitable, attributes(skip_traversal)] =>
     /// Derives `TypeVisitable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
     /// Each non-trivial field of the struct or enum variant will be visited (in definition order)
@@ -107,6 +118,17 @@ decl_derive!(
     /// and either
     /// - does not reference any `'tcx` lifetime parameter; or
     /// - does not contain anything that could be of interest to visitors.
+    ///
+    /// Non-trivial fields (e.g. of type `T`) can instead be ignored by applying
+    /// `#[skip_traversal(because_trivial)]` to the field definition (or even to a variant
+    /// definition if it should apply to all fields therein), but the derived implementation will
+    /// only be applicable if `T` does not contain anything that may be of interest to visitors
+    /// (thus preventing fields from being so-skipped erroneously).
+    ///
+    /// In some rare situations, it may be desirable to skip visiting of an item or field (or
+    /// variant) that might otherwise be of interest to visitors: **this is dangerous and could lead
+    /// to miscompilation if user expectations are not met!**  Nevertheless, such can be achieved
+    /// via a `#[skip_traversal(despite_potential_miscompilation_because = "<reason>"]` attribute.
     ///
     /// If the annotated type has a `'tcx` lifetime parameter, then that will be used as the
     /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
