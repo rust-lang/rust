@@ -432,6 +432,17 @@ impl IntTy {
             _ => *self,
         }
     }
+
+    pub fn to_unsigned(self) -> UintTy {
+        match self {
+            IntTy::Isize => UintTy::Usize,
+            IntTy::I8 => UintTy::U8,
+            IntTy::I16 => UintTy::U16,
+            IntTy::I32 => UintTy::U32,
+            IntTy::I64 => UintTy::U64,
+            IntTy::I128 => UintTy::U128,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
@@ -477,6 +488,17 @@ impl UintTy {
                 _ => unreachable!(),
             },
             _ => *self,
+        }
+    }
+
+    pub fn to_signed(self) -> IntTy {
+        match self {
+            UintTy::Usize => IntTy::Isize,
+            UintTy::U8 => IntTy::I8,
+            UintTy::U16 => IntTy::I16,
+            UintTy::U32 => IntTy::I32,
+            UintTy::U64 => IntTy::I64,
+            UintTy::U128 => IntTy::I128,
         }
     }
 }
