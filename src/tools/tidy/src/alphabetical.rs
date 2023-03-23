@@ -95,7 +95,7 @@ fn check_section<'a>(
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    walk(path, filter_dirs, &mut |entry, contents| {
+    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = &entry.path().display();
 
         let mut lines = contents.lines().enumerate().peekable();
