@@ -4008,14 +4008,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (need FFI)
-    /// #![feature(ffi_unwind_calls)]
+    /// ```rust
     /// #![feature(c_unwind)]
-    ///
-    /// # mod impl {
-    /// #     #[no_mangle]
-    /// #     pub fn "C-unwind" fn foo() {}
-    /// # }
+    /// #![warn(ffi_unwind_calls)]
     ///
     /// extern "C-unwind" {
     ///     fn foo();
