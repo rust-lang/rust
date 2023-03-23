@@ -1,14 +1,17 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
-use rustc_infer::infer::canonical::CanonicalVarValues;
+use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
+use rustc_infer::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarValues};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::solve::{
+    CanonicalGoal, Certainty, ExternalConstraints, ExternalConstraintsData, MaybeCause, QueryResult,
+};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -16,13 +19,31 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
+use crate::traits::specialization_graph;
+
+use super::canonical::{CanonicalizeMode, Canonicalizer};
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 
 pub struct EvalCtxt<'a, 'tcx> {
-    // FIXME: should be private.
-    pub(super) infcx: &'a InferCtxt<'tcx>,
+    /// The inference context that backs (mostly) inference and placeholder terms
+    /// instantiated while solving goals.
+    ///
+    /// NOTE: The `InferCtxt` that backs the `EvalCtxt` is intentionally private,
+    /// because the `InferCtxt` is much more general than `EvalCtxt`. Methods such
+    /// as  `take_registered_region_obligations` can mess up query responses,
+    /// using `At::normalize` is totally wrong, calling `evaluate_root_goal` can
+    /// cause coinductive unsoundness, etc.
+    ///
+    /// Methods that are generally of use for trait solving are *intentionally*
+    /// re-declared through the `EvalCtxt` below, often with cleaner signatures
+    /// since we don't care about things like `ObligationCause`s and `Span`s here.
+    /// If some `InferCtxt` method is missing, please first think defensively about
+    /// the method's compatibility with this solver, or if an existing one does
+    /// the job already.
+    infcx: &'a InferCtxt<'tcx>,
+
     pub(super) var_values: CanonicalVarValues<'tcx>,
     /// The highest universe index nameable by the caller.
     ///
@@ -547,5 +568,88 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     pub(super) fn universe(&self) -> ty::UniverseIndex {
         self.infcx.universe()
+    }
+
+    pub(super) fn create_next_universe(&self) -> ty::UniverseIndex {
+        self.infcx.create_next_universe()
+    }
+
+    pub(super) fn instantiate_canonical_var(
+        &self,
+        cv_info: CanonicalVarInfo<'tcx>,
+        universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
+    ) -> ty::GenericArg<'tcx> {
+        self.infcx.instantiate_canonical_var(DUMMY_SP, cv_info, universe_map)
+    }
+
+    pub(super) fn translate_substs(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        source_impl: DefId,
+        source_substs: ty::SubstsRef<'tcx>,
+        target_node: specialization_graph::Node,
+    ) -> ty::SubstsRef<'tcx> {
+        crate::traits::translate_substs(
+            self.infcx,
+            param_env,
+            source_impl,
+            source_substs,
+            target_node,
+        )
+    }
+
+    pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
+        self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
+    }
+
+    pub(super) fn register_region_outlives(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+        // `b : a` ==> `a <= b`
+        // (inlined from `InferCtxt::region_outlives_predicate`)
+        self.infcx.sub_regions(
+            rustc_infer::infer::SubregionOrigin::RelateRegionParamBound(DUMMY_SP),
+            b,
+            a,
+        );
+    }
+
+    /// Computes the list of goals required for `arg` to be well-formed
+    pub(super) fn well_formed_goals(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        arg: ty::GenericArg<'tcx>,
+    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
+        crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
+            .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn compute_external_query_constraints(
+        &self,
+    ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
+        // Cannot use `take_registered_region_obligations` as we may compute the response
+        // inside of a `probe` whenever we have multiple choices inside of the solver.
+        let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
+        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
+            make_query_region_constraints(
+                self.tcx(),
+                region_obligations
+                    .iter()
+                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
+                region_constraints,
+            )
+        });
+        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        Ok(self
+            .tcx()
+            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
+    }
+
+    pub(super) fn canonicalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        canonicalize_mode: CanonicalizeMode,
+        variables: &mut Vec<ty::GenericArg<'tcx>>,
+        value: T,
+    ) -> Canonical<'tcx, T> {
+        Canonicalizer::canonicalize(self.infcx, canonicalize_mode, variables, value)
     }
 }
