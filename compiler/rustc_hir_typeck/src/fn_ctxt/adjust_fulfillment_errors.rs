@@ -4,7 +4,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{self, Span};
+use rustc_span::{self, symbol::kw, Span};
 use rustc_trait_selection::traits;
 
 use std::ops::ControlFlow;
@@ -25,17 +25,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generics = self.tcx.generics_of(def_id);
         let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => pred.trait_ref.substs,
-            ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => pred.projection_ty.substs,
-            _ => ty::List::empty(),
+            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => pred.trait_ref.substs.to_vec(),
+            ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                pred.projection_ty.substs.to_vec()
+            }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(arg, ty)) => {
+                vec![ty.into(), arg.into()]
+            }
+            ty::PredicateKind::ConstEvaluatable(e) => vec![e.into()],
+            _ => return false,
         };
 
-        let find_param_matching = |matches: &dyn Fn(&ty::ParamTy) -> bool| {
-            predicate_substs.types().find_map(|ty| {
-                ty.walk().find_map(|arg| {
+        let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
+            predicate_substs.iter().find_map(|arg| {
+                arg.walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Param(param_ty) = ty.kind()
-                        && matches(param_ty)
+                        && let ty::Param(param_ty) = *ty.kind()
+                        && matches(ty::ParamTerm::Ty(param_ty))
+                    {
+                        Some(arg)
+                    } else if let ty::GenericArgKind::Const(ct) = arg.unpack()
+                        && let ty::ConstKind::Param(param_ct) = ct.kind()
+                        && matches(ty::ParamTerm::Const(param_ct))
                     {
                         Some(arg)
                     } else {
@@ -47,21 +58,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Prefer generics that are local to the fn item, since these are likely
         // to be the cause of the unsatisfied predicate.
-        let mut param_to_point_at = find_param_matching(&|param_ty| {
-            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) == def_id
+        let mut param_to_point_at = find_param_matching(&|param_term| {
+            self.tcx.parent(generics.param_at(param_term.index(), self.tcx).def_id) == def_id
         });
         // Fall back to generic that isn't local to the fn item. This will come
         // from a trait or impl, for example.
-        let mut fallback_param_to_point_at = find_param_matching(&|param_ty| {
-            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
-                && param_ty.name != rustc_span::symbol::kw::SelfUpper
+        let mut fallback_param_to_point_at = find_param_matching(&|param_term| {
+            self.tcx.parent(generics.param_at(param_term.index(), self.tcx).def_id) != def_id
+                && !matches!(param_term, ty::ParamTerm::Ty(ty) if ty.name == kw::SelfUpper)
         });
         // Finally, the `Self` parameter is possibly the reason that the predicate
         // is unsatisfied. This is less likely to be true for methods, because
         // method probe means that we already kinda check that the predicates due
         // to the `Self` type are true.
-        let mut self_param_to_point_at =
-            find_param_matching(&|param_ty| param_ty.name == rustc_span::symbol::kw::SelfUpper);
+        let mut self_param_to_point_at = find_param_matching(
+            &|param_term| matches!(param_term, ty::ParamTerm::Ty(ty) if ty.name == kw::SelfUpper),
+        );
 
         // Finally, for ambiguity-related errors, we actually want to look
         // for a parameter that is the source of the inference type left
@@ -225,14 +237,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
         let Some((index, _)) = own_substs
             .iter()
-            .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
             .enumerate()
             .find(|(_, arg)| **arg == param_to_point_at) else { return false };
         let Some(arg) = segment
             .args()
             .args
             .iter()
-            .filter(|arg| matches!(arg, hir::GenericArg::Type(_)))
             .nth(index) else { return false; };
         error.obligation.cause.span = arg
             .span()
