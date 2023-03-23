@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
@@ -985,9 +986,11 @@ impl AttributesExt for [ast::Attribute] {
     }
 }
 
-impl AttributesExt for [(ast::Attribute, Option<DefId>)] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
+        where Self: 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
+        where Self: 'a;
 
     fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
         AttributesExt::iter(self)
@@ -997,7 +1000,10 @@ impl AttributesExt for [(ast::Attribute, Option<DefId>)] {
     }
 
     fn iter<'a>(&'a self) -> Self::Attributes<'a> {
-        self.into_iter().map(|(attr, _)| attr)
+        self.into_iter().map(move |(attr, _)| match attr {
+            Cow::Borrowed(attr) => *attr,
+            Cow::Owned(attr) => attr,
+        })
     }
 }
 

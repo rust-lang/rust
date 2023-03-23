@@ -32,6 +32,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
 
 use std::assert_matches::assert_matches;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 use std::default::Default;
@@ -2171,26 +2172,25 @@ fn get_all_import_attributes<'hir>(
     target_def_id: LocalDefId,
     is_inline: bool,
     mut prev_import: LocalDefId,
-) -> Vec<(ast::Attribute, Option<DefId>)> {
-    let mut attributes: Vec<(ast::Attribute, Option<DefId>)> = Vec::new();
+) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
+    let mut attributes: Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> = Vec::new();
     let mut first = true;
     let hir_map = cx.tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
-    let mut import_attrs = Vec::new();
 
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
         let import_parent = cx.tcx.opt_local_parent(prev_import).map(|def_id| def_id.to_def_id());
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
-            attributes = hir_map.attrs(item.hir_id()).iter().cloned().map(|attr| (attr, import_parent)).collect::<Vec<_>>();
+            attributes = hir_map.attrs(item.hir_id())
+                .iter()
+                .map(|attr| (Cow::Borrowed(attr), import_parent))
+                .collect::<Vec<_>>();
             first = false;
         } else {
-            add_without_unwanted_attributes(&mut import_attrs, hir_map.attrs(item.hir_id()), is_inline);
-            for attr in import_attrs.drain(..) {
-                attributes.push((attr, import_parent));
-            }
+            add_without_unwanted_attributes(&mut attributes, hir_map.attrs(item.hir_id()), is_inline, import_parent);
         }
 
         if let Some(i) = visitor.find_target(cx.tcx, item.owner_id.def_id.to_def_id(), path) {
@@ -2246,17 +2246,24 @@ fn filter_tokens_from_list(
 /// * `doc(inline)`
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
-fn add_without_unwanted_attributes(
-    attrs: &mut Vec<ast::Attribute>,
-    new_attrs: &[ast::Attribute],
+fn add_without_unwanted_attributes<'hir>(
+    attrs: &mut Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)>,
+    new_attrs: &'hir [ast::Attribute],
     is_inline: bool,
+    import_parent: Option<DefId>,
 ) {
     // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
     if !is_inline {
-        attrs.extend_from_slice(new_attrs);
+        for attr in new_attrs {
+            attrs.push((Cow::Borrowed(attr), import_parent));
+        }
         return;
     }
     for attr in new_attrs {
+        if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
+            attrs.push((Cow::Borrowed(attr), import_parent));
+            continue;
+        }
         let mut attr = attr.clone();
         match attr.kind {
             ast::AttrKind::Normal(ref mut normal) => {
@@ -2283,18 +2290,15 @@ fn add_without_unwanted_attributes(
                                     )
                                 });
                             args.tokens = TokenStream::new(tokens);
-                            attrs.push(attr);
+                            attrs.push((Cow::Owned(attr), import_parent));
                         }
                         ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
-                            attrs.push(attr);
-                            continue;
+                            attrs.push((Cow::Owned(attr), import_parent));
                         }
                     }
                 }
             }
-            ast::AttrKind::DocComment(..) => {
-                attrs.push(attr);
-            }
+            _ => unreachable!(),
         }
     }
 }
@@ -2397,23 +2401,23 @@ fn clean_maybe_renamed_item<'tcx>(
                 import_id,
             );
 
-            let mut target_attrs = Vec::new();
             add_without_unwanted_attributes(
-                &mut target_attrs,
+                &mut attrs,
                 inline::load_attrs(cx, def_id),
                 is_inline,
+                None
             );
-            for attr in target_attrs.into_iter() {
-                attrs.push((attr, None));
-            }
             attrs
         } else {
             // We only keep the item's attributes.
-            inline::load_attrs(cx, def_id).iter().cloned().map(|attr| (attr, None)).collect::<Vec<_>>()
+            inline::load_attrs(cx, def_id).iter().map(|attr| (Cow::Borrowed(attr), None)).collect::<Vec<_>>()
         };
 
         let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
-        let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (attr, *did)), false);
+        let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| match attr {
+            Cow::Borrowed(attr) => (*attr, *did),
+            Cow::Owned(attr) => (attr, *did)
+        }), false);
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
