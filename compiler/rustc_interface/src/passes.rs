@@ -11,6 +11,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
+use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
@@ -408,12 +409,12 @@ where
 }
 
 fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
-    let input_path = input_path.canonicalize().ok();
+    let input_path = try_canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
     let check = |output_path: &PathBuf| {
-        if output_path.canonicalize().ok() == input_path { Some(()) } else { None }
+        if try_canonicalize(output_path).ok() == input_path { Some(()) } else { None }
     };
     check_output(output_paths, check).is_some()
 }

@@ -1,5 +1,6 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_fs_util::try_canonicalize;
 use std::path::{Path, PathBuf};
 
 impl Session {
@@ -98,7 +99,7 @@ pub struct CanonicalizedPath {
 
 impl CanonicalizedPath {
     pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: std::fs::canonicalize(path).ok() }
+        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {
