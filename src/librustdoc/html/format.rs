@@ -853,7 +853,7 @@ fn fmt_type<'cx>(
     trace!("fmt_type(t = {:?})", t);
 
     match *t {
-        clean::Generic(name) => write!(f, "{}", name),
+        clean::Generic(name) => write!(f, "{}", Escape(name.as_str())),
         clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
