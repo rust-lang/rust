@@ -85,15 +85,20 @@ fn current_dll_path() -> Result<PathBuf, String> {
     #[cfg(target_os = "aix")]
     unsafe {
         let addr = current_dll_path as u64;
-        let mut buffer = vec![0i8; 4096];
+        let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
         loop {
-            if libc::loadquery(libc::L_GETINFO, buffer.as_mut_ptr(), buffer.len() as u32) >= 0 {
+            if libc::loadquery(
+                libc::L_GETINFO,
+                buffer.as_mut_ptr() as *mut i8,
+                (std::mem::size_of::<libc::ld_info>() * buffer.len()) as u32,
+            ) >= 0
+            {
                 break;
             } else {
                 if std::io::Error::last_os_error().raw_os_error().unwrap() != libc::ENOMEM {
                     return Err("loadquery failed".into());
                 }
-                buffer.resize(buffer.len() * 2, 0i8);
+                buffer.resize(buffer.len() * 2, std::mem::zeroed::<libc::ld_info>());
             }
         }
         let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
