@@ -1,11 +1,11 @@
 // run-rustfix
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
 #![warn(clippy::equatable_if_let)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 use std::cmp::Ordering;
 
@@ -44,6 +44,7 @@ impl PartialEq for NotStructuralEq {
     }
 }
 
+#[inline_macros]
 fn main() {
     let a = 2;
     let b = 3;
@@ -78,14 +79,9 @@ fn main() {
     if let Some(NotStructuralEq::A) = Some(g) {}
     if let NoPartialEqStruct { a: 2, b: false } = h {}
 
-    macro_rules! m1 {
-        (x) => {
-            "abc"
-        };
-    }
-    if let m1!(x) = "abc" {
+    if let inline!("abc") = "abc" {
         println!("OK");
     }
 
-    equatable_if_let!(a);
+    external!({ if let 2 = $a {} });
 }

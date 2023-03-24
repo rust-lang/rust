@@ -1,6 +1,6 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
@@ -150,22 +150,25 @@ fn find_sugg_for_if_let<'tcx>(
             // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
             let expr_span = expr.span;
+            let ctxt = expr.span.ctxt();
 
             // if/while let ... = ... { ... }
-            //                 ^^^
-            let op_span = result_expr.span.source_callsite();
+            //                    ^^^
+            let Some(res_span) = walk_span_to_context(result_expr.span.source_callsite(), ctxt) else {
+                return;
+            };
 
             // if/while let ... = ... { ... }
-            // ^^^^^^^^^^^^^^^^^^^
-            let span = expr_span.until(op_span.shrink_to_hi());
+            // ^^^^^^^^^^^^^^^^^^^^^^
+            let span = expr_span.until(res_span.shrink_to_hi());
 
-            let app = if needs_drop {
+            let mut app = if needs_drop {
                 Applicability::MaybeIncorrect
             } else {
                 Applicability::MachineApplicable
             };
 
-            let sugg = Sugg::hir_with_macro_callsite(cx, result_expr, "_")
+            let sugg = Sugg::hir_with_context(cx, result_expr, ctxt, "_", &mut app)
                 .maybe_par()
                 .to_string();
 

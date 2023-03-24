@@ -1,19 +1,13 @@
 // run-rustfix
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![warn(clippy::manual_rem_euclid)]
 #![allow(clippy::let_with_type_underscore)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
-macro_rules! internal_rem_euclid {
-    () => {
-        let value: i32 = 5;
-        let _: i32 = ((value % 4) + 4) % 4;
-    };
-}
-
+#[inline_macros]
 fn main() {
     let value: i32 = 5;
 
@@ -39,10 +33,16 @@ fn main() {
     let _: i32 = ((4 % value) + 4) % 4;
 
     // Lint in internal macros
-    internal_rem_euclid!();
+    inline!(
+        let value: i32 = 5;
+        let _: i32 = ((value % 4) + 4) % 4;
+    );
 
     // Do not lint in external macros
-    manual_rem_euclid!();
+    external!(
+        let value: i32 = 5;
+        let _: i32 = ((value % 4) + 4) % 4;
+    );
 }
 
 // Should lint for params too

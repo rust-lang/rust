@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
 use clippy_utils::{
     any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro, match_def_path, paths,
@@ -160,6 +160,8 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 }
             };
 
+            let init_ctxt = local.span.ctxt();
+
             // find all "later statement"'s where the fields of the binding set as
             // Default::default() get reassigned, unless the reassignment refers to the original binding
             let mut first_assign = None;
@@ -169,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // find out if and which field was set by this `consecutive_statement`
                 if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
-                    if contains_name(binding_name, assign_rhs, cx) {
+                    if contains_name(binding_name, assign_rhs, cx) || init_ctxt != consecutive_statement.span.ctxt() {
                         cancel_lint = true;
                         break;
                     }
@@ -204,11 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .iter()
                     .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.name));
 
+                let mut app = Applicability::Unspecified;
                 let field_list = assigned_fields
                     .into_iter()
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
-                        let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
+                        let value_snippet = snippet_with_context(cx, rhs.span, init_ctxt, "..", &mut app).0;
                         format!("{field}: {value_snippet}")
                     })
                     .collect::<Vec<String>>()
