@@ -4,7 +4,8 @@ use crate::{
         AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
         InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
         OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
-        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
+        VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -172,16 +173,27 @@ fn lint_overflowing_range_endpoint<'tcx>(
         _ => bug!(),
     };
 
+    let sub_sugg = if expr.span.lo() == lit_span.lo() {
+        let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
+        UseInclusiveRange::WithoutParen {
+            sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
+            start,
+            literal: lit_val - 1,
+            suffix,
+        }
+    } else {
+        UseInclusiveRange::WithParen {
+            eq_sugg: expr.span.shrink_to_lo(),
+            lit_sugg: lit_span,
+            literal: lit_val - 1,
+            suffix,
+        }
+    };
+
     cx.emit_spanned_lint(
         OVERFLOWING_LITERALS,
         struct_expr.span,
-        RangeEndpointOutOfRange {
-            ty,
-            eq_suggestion: expr.span.shrink_to_lo(),
-            lit_suggestion: lit_span,
-            literal: lit_val - 1,
-            suffix,
-        },
+        RangeEndpointOutOfRange { ty, sub: sub_sugg },
     );
 
     // We've just emitted a lint, special cased for `(...)..MAX+1` ranges,
