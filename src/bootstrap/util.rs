@@ -185,6 +185,11 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             Ok(s.as_ref().encode_wide().chain(Some(0)).collect())
         }
 
+        if !target.exists() {
+            // Windows requires that the target of a junction exists.
+            fs::create_dir_all(&target)?;
+        }
+
         // We're using low-level APIs to create the junction, and these are more
         // picky about paths. For example, forward slashes cannot be used as a
         // path separator, so we should try to canonicalize the path first.
