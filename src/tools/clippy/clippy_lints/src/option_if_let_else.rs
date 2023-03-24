@@ -12,6 +12,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,10 +96,10 @@ struct OptionOccurrence {
     none_expr: String,
 }
 
-fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
+fn format_option_in_sugg(cond_sugg: Sugg<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
         "{}{}",
-        Sugg::hir_with_macro_callsite(cx, cond_expr, "..").maybe_par(),
+        cond_sugg.maybe_par(),
         if as_mut {
             ".as_mut()"
         } else if as_ref {
@@ -111,6 +112,7 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 
 fn try_get_option_occurrence<'tcx>(
     cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
     pat: &Pat<'tcx>,
     expr: &Expr<'_>,
     if_then: &'tcx Expr<'_>,
@@ -160,11 +162,23 @@ fn try_get_option_occurrence<'tcx>(
                 }
             }
 
+            let mut app = Applicability::Unspecified;
             return Some(OptionOccurrence {
-                option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
+                option: format_option_in_sugg(
+                    Sugg::hir_with_context(cx, cond_expr, ctxt, "..", &mut app),
+                    as_ref,
+                    as_mut,
+                ),
                 method_sugg: method_sugg.to_string(),
-                some_expr: format!("|{capture_mut}{capture_name}| {}", Sugg::hir_with_macro_callsite(cx, some_body, "..")),
-                none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir_with_macro_callsite(cx, none_body, "..")),
+                some_expr: format!(
+                    "|{capture_mut}{capture_name}| {}",
+                    Sugg::hir_with_context(cx, some_body, ctxt, "..", &mut app),
+                ),
+                none_expr: format!(
+                    "{}{}",
+                    if method_sugg == "map_or" { "" } else { "|| " },
+                    Sugg::hir_with_context(cx, none_body, ctxt, "..", &mut app),
+                ),
             });
         }
     }
@@ -194,7 +208,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
     }) = higher::IfLet::hir(cx, expr)
     {
         if !is_else_clause(cx.tcx, expr) {
-            return try_get_option_occurrence(cx, let_pat, let_expr, if_then, if_else);
+            return try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, let_expr, if_then, if_else);
         }
     }
     None
@@ -203,7 +217,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
 fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
         if let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms) {
-            return try_get_option_occurrence(cx, let_pat, ex, if_then, if_else);
+            return try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, ex, if_then, if_else);
         }
     }
     None

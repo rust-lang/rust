@@ -1,6 +1,6 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_macro_callsite};
+use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::{peel_blocks, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -76,11 +76,8 @@ pub(crate) trait BindInsteadOfMap {
             if !contains_return(inner_expr);
             if let Some(msg) = Self::lint_msg(cx);
             then {
-                let some_inner_snip = if inner_expr.span.from_expansion() {
-                    snippet_with_macro_callsite(cx, inner_expr.span, "_")
-                } else {
-                    snippet(cx, inner_expr.span, "_")
-                };
+                let mut app = Applicability::MachineApplicable;
+                let some_inner_snip = snippet_with_context(cx, inner_expr.span, closure_expr.span.ctxt(), "_", &mut app).0;
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
                 let option_snip = snippet(cx, recv.span, "..");
@@ -92,7 +89,7 @@ pub(crate) trait BindInsteadOfMap {
                     &msg,
                     "try this",
                     note,
-                    Applicability::MachineApplicable,
+                    app,
                 );
                 true
             } else {

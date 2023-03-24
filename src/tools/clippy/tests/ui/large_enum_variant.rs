@@ -1,11 +1,11 @@
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::external;
 
 enum LargeEnum {
     A(i32),
@@ -155,5 +155,10 @@ enum LargeEnumOfConst {
 }
 
 fn main() {
-    large_enum_variant!();
+    external!(
+        enum LargeEnumInMacro {
+            A(i32),
+            B([i32; 8000]),
+        }
+    );
 }

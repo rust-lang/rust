@@ -1,5 +1,5 @@
 // run-rustfix
-// aux-build: proc_macro_with_span.rs
+// aux-build: proc_macros.rs
 
 #![allow(
     dead_code,
@@ -10,8 +10,8 @@
     clippy::unusual_byte_groupings
 )]
 
-extern crate proc_macro_with_span;
-use proc_macro_with_span::with_span;
+extern crate proc_macros;
+use proc_macros::with_span;
 
 fn main() {
     let fail14 = 2_32;

@@ -599,9 +599,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Let(&Let { init: e, .. }) => {
                 helper(typeck, false, e, f)?;
             },
-            ExprKind::Block(&Block { expr: Some(e), .. }, _)
-            | ExprKind::Cast(e, _)
-            | ExprKind::Unary(_, e) => {
+            ExprKind::Block(&Block { expr: Some(e), .. }, _) | ExprKind::Cast(e, _) | ExprKind::Unary(_, e) => {
                 helper(typeck, true, e, f)?;
             },
             ExprKind::Call(callee, args) => {

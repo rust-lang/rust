@@ -1,5 +1,5 @@
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:20:18
+  --> $DIR/manual_rem_euclid.rs:14:18
    |
 LL |     let _: i32 = ((value % 4) + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
@@ -7,39 +7,36 @@ LL |     let _: i32 = ((value % 4) + 4) % 4;
    = note: `-D clippy::manual-rem-euclid` implied by `-D warnings`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:21:18
+  --> $DIR/manual_rem_euclid.rs:15:18
    |
 LL |     let _: i32 = (4 + (value % 4)) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:22:18
+  --> $DIR/manual_rem_euclid.rs:16:18
    |
 LL |     let _: i32 = (value % 4 + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:23:18
+  --> $DIR/manual_rem_euclid.rs:17:18
    |
 LL |     let _: i32 = (4 + value % 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:24:22
+  --> $DIR/manual_rem_euclid.rs:18:22
    |
 LL |     let _: i32 = 1 + (4 + value % 4) % 4;
    |                      ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:13:22
+  --> $DIR/manual_rem_euclid.rs:38:22
    |
 LL |         let _: i32 = ((value % 4) + 4) % 4;
    |                      ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
-...
-LL |     internal_rem_euclid!();
-   |     ---------------------- in this macro invocation
    |
-   = note: this error originates in the macro `internal_rem_euclid` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: manual `rem_euclid` implementation
   --> $DIR/manual_rem_euclid.rs:50:5

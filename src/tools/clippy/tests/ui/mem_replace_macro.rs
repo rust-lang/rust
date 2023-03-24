@@ -1,21 +1,12 @@
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 #![warn(clippy::mem_replace_with_default)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
-macro_rules! take {
-    ($s:expr) => {
-        std::mem::replace($s, Default::default())
-    };
-}
-
-fn replace_with_default() {
-    let s = &mut String::from("foo");
-    take!(s);
-    take_external!(s);
-}
-
+#[inline_macros]
 fn main() {
-    replace_with_default();
+    let s = &mut String::from("foo");
+    inline!(std::mem::replace($s, Default::default()));
+    external!(std::mem::replace($s, Default::default()));
 }
