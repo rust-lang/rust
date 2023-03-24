@@ -1,12 +1,12 @@
 // aux-build:proc_macro_derive.rs
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![warn(clippy::field_reassign_with_default)]
 
 #[macro_use]
 extern crate proc_macro_derive;
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 // Don't lint on derives that derive `Default`
 // See https://github.com/rust-lang/rust-clippy/issues/6545
@@ -36,14 +36,6 @@ struct D {
     b: Option<i32>,
 }
 
-macro_rules! m {
-    ($key:ident: $value:tt) => {{
-        let mut data = $crate::D::default();
-        data.$key = Some($value);
-        data
-    }};
-}
-
 /// Implements .next() that returns a different number each time.
 struct SideEffect(i32);
 
@@ -57,6 +49,7 @@ impl SideEffect {
     }
 }
 
+#[inline_macros]
 fn main() {
     // wrong, produces first error in stderr
     let mut a: A = Default::default();
@@ -150,7 +143,18 @@ fn main() {
     a.i = vec![1];
 
     // Don't lint in external macros
-    field_reassign_with_default!();
+    external! {
+        #[derive(Default)]
+        struct A {
+            pub i: i32,
+            pub j: i64,
+        }
+        fn lint() {
+            let mut a: A = Default::default();
+            a.i = 42;
+            a;
+        }
+    }
 
     // be sure suggestion is correct with generics
     let mut a: Wrapper<bool> = Default::default();
@@ -160,9 +164,11 @@ fn main() {
     a.i = 42;
 
     // Don't lint in macros
-    m! {
-        a: 42
-    };
+    inline!(
+        let mut data = $crate::D::default();
+        data.$a = Some($42);
+        data
+    );
 }
 
 mod m {

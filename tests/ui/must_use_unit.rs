@@ -1,11 +1,11 @@
 //run-rustfix
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![warn(clippy::must_use_unit)]
 #![allow(clippy::unused_unit)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::external;
 
 #[must_use]
 pub fn must_use_default() {}
@@ -22,5 +22,8 @@ fn main() {
     must_use_with_note();
 
     // We should not lint in external macros
-    must_use_unit!();
+    external!(
+        #[must_use]
+        fn foo() {}
+    );
 }
