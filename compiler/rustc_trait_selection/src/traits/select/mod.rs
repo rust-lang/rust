@@ -618,6 +618,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
         fulfill_cx.register_predicate_obligations(self.infcx, predicates);
         // True errors
+        // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
         if !fulfill_cx.select_where_possible(self.infcx).is_empty() {
             return Ok(EvaluatedToErr);
         }
