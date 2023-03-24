@@ -125,7 +125,6 @@ impl<'a> Sugg<'a> {
 
         match expr.kind {
             hir::ExprKind::AddrOf(..)
-            | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
             | hir::ExprKind::Let(..)
             | hir::ExprKind::Closure { .. }
@@ -180,7 +179,6 @@ impl<'a> Sugg<'a> {
         match expr.kind {
             _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::AddrOf(..)
-            | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)

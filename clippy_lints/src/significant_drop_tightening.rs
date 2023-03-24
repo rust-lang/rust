@@ -404,7 +404,6 @@ impl<'cx, 'sdt, 'tcx> Visitor<'tcx> for SigDropFinder<'cx, 'sdt, 'tcx> {
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Binary(..)
-            | hir::ExprKind::Box(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::Field(..)
             | hir::ExprKind::If(..)

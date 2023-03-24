@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(box_syntax)]
 #![allow(
     clippy::deref_addrof,
     dead_code,
@@ -63,7 +62,6 @@ fn main() {
     *&get_number();
     &get_number();
     (5, 6, get_number());
-    box get_number();
     get_number()..;
     ..get_number();
     5..get_number();

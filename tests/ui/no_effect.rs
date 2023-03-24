@@ -1,4 +1,4 @@
-#![feature(box_syntax, fn_traits, unboxed_closures)]
+#![feature(fn_traits, unboxed_closures)]
 #![warn(clippy::no_effect_underscore_binding)]
 #![allow(dead_code, path_statements)]
 #![allow(
@@ -107,7 +107,6 @@ fn main() {
     *&42;
     &6;
     (5, 6, 7);
-    box 42;
     ..;
     5..;
     ..5;

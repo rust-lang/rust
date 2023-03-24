@@ -321,7 +321,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
                     self.has_significant_drop = true;
                 }
             }
-            ExprKind::Box(..) |
             ExprKind::Array(..) |
             ExprKind::Call(..) |
             ExprKind::Unary(..) |
