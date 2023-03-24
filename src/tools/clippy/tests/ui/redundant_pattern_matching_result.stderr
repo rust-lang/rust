@@ -88,13 +88,13 @@ error: redundant pattern matching, consider using `is_some()`
   --> $DIR/redundant_pattern_matching_result.rs:84:19
    |
 LL |         while let Some(_) = r#try!(result_opt()) {}
-   |         ----------^^^^^^^----------------------- help: try this: `while (r#try!(result_opt())).is_some()`
+   |         ----------^^^^^^^----------------------- help: try this: `while r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
   --> $DIR/redundant_pattern_matching_result.rs:85:16
    |
 LL |         if let Some(_) = r#try!(result_opt()) {}
-   |         -------^^^^^^^----------------------- help: try this: `if (r#try!(result_opt())).is_some()`
+   |         -------^^^^^^^----------------------- help: try this: `if r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
   --> $DIR/redundant_pattern_matching_result.rs:91:12

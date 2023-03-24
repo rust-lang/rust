@@ -1,5 +1,5 @@
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:18:13
+  --> $DIR/option_env_unwrap.rs:10:13
    |
 LL |     let _ = option_env!("PATH").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = option_env!("PATH").unwrap();
    = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:19:13
+  --> $DIR/option_env_unwrap.rs:11:13
    |
 LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,46 +16,40 @@ LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set
    = help: consider using the `env!` macro instead
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:10:9
+  --> $DIR/option_env_unwrap.rs:12:21
    |
-LL |         option_env!($env).unwrap()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     let _ = option_env_unwrap!("PATH");
-   |             -------------------------- in this macro invocation
+LL |     let _ = inline!(option_env!($"PATH").unwrap());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:13:9
+  --> $DIR/option_env_unwrap.rs:13:21
    |
-LL |         option_env!($env).expect($message)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     let _ = option_env_unwrap!("PATH", "environment variable PATH isn't set");
-   |             ----------------------------------------------------------------- in this macro invocation
+LL |     let _ = inline!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:22:13
+  --> $DIR/option_env_unwrap.rs:14:13
    |
-LL |     let _ = option_env_unwrap_external!("PATH");
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = external!(option_env!($"PATH").unwrap());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in the macro `option_env_unwrap_external` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:23:13
+  --> $DIR/option_env_unwrap.rs:15:13
    |
-LL |     let _ = option_env_unwrap_external!("PATH", "environment variable PATH isn't set");
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = external!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in the macro `option_env_unwrap_external` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 
