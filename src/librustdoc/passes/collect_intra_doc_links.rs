@@ -806,6 +806,20 @@ fn trait_impls_for<'a>(
     iter.collect()
 }
 
+/// Check for resolve collisions between a trait and its derive.
+///
+/// These are common and we should just resolve to the trait in that case.
+fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailure<'_>>>) -> bool {
+    if let (&Ok(ref type_ns), &Ok(ref macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
+        type_ns.iter().any(|(res, _)| matches!(res, Res::Def(DefKind::Trait, _)))
+            && macro_ns
+                .iter()
+                .any(|(res, _)| matches!(res, Res::Def(DefKind::Macro(MacroKind::Derive), _)))
+    } else {
+        false
+    }
+}
+
 impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_links(item);
@@ -1313,9 +1327,22 @@ impl LinkCollector<'_, '_> {
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
+                } else if len == 1 {
+                    candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
+                } else {
+                    let has_derive_trait_collision = is_derive_trait_collision(&candidates);
+                    if len == 2 && has_derive_trait_collision {
+                        candidates.type_ns.unwrap()
+                    } else {
+                        // If we're reporting an ambiguity, don't mention the namespaces that failed
+                        let mut candidates = candidates.map(|candidate| candidate.ok());
+                        // If there a collision between a trait and a derive, we ignore the derive.
+                        if has_derive_trait_collision {
+                            candidates.macro_ns = None;
+                        }
+                        candidates.into_iter().filter_map(|res| res).flatten().collect::<Vec<_>>()
+                    }
                 }
-
-                candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
             }
         }
     }
