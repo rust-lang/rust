@@ -111,7 +111,7 @@ fn split_block(
 
     // Drain every statement after this one and move the current terminator to a new basic block
     let new_block = BasicBlockData {
-        statements: block_data.statements.drain(location.statement_index..).collect(),
+        statements: block_data.statements.split_off(location.statement_index),
         terminator: block_data.terminator.take(),
         is_cleanup: block_data.is_cleanup,
     };
