@@ -540,8 +540,10 @@ mod sealed {
     #[target_feature(enable = "altivec")]
     #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vandc))]
     #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxlandc))]
-    unsafe fn andc(a: u8x16, b: u8x16) -> u8x16 {
-        simd_and(simd_xor(u8x16::splat(0xff), b), a)
+    unsafe fn andc(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
+        let a = transmute(a);
+        let b = transmute(b);
+        transmute(simd_and(simd_xor(u8x16::splat(0xff), b), a))
     }
 
     pub trait VectorAndc<Other> {
@@ -1423,8 +1425,15 @@ mod sealed {
     #[inline]
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vmladduhm))]
-    unsafe fn mladd(a: i16x8, b: i16x8, c: i16x8) -> i16x8 {
-        simd_add(simd_mul(a, b), c)
+    unsafe fn mladd(
+        a: vector_signed_short,
+        b: vector_signed_short,
+        c: vector_signed_short,
+    ) -> vector_signed_short {
+        let a: i16x8 = transmute(a);
+        let b: i16x8 = transmute(b);
+        let c: i16x8 = transmute(c);
+        transmute(simd_add(simd_mul(a, b), c))
     }
 
     macro_rules! vector_mladd {
@@ -1434,9 +1443,9 @@ mod sealed {
                 #[inline]
                 #[target_feature(enable = "altivec")]
                 unsafe fn vec_mladd(self, b: $bc, c: $bc) -> Self::Result {
-                    let a: i16x8 = transmute(self);
-                    let b: i16x8 = transmute(b);
-                    let c: i16x8 = transmute(c);
+                    let a = transmute(self);
+                    let b = transmute(b);
+                    let c = transmute(c);
 
                     transmute(mladd(a, b, c))
                 }

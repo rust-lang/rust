@@ -13,7 +13,7 @@ use crate::core_arch::simd_llvm::*;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use crate::mem;
+use crate::mem::transmute;
 
 types! {
     // pub struct vector_Float16 = f16x8;
@@ -45,13 +45,16 @@ mod sealed {
     #[target_feature(enable = "vsx")]
     #[cfg_attr(all(test, target_endian = "little"), assert_instr(xxmrgld, dm = 0x0))]
     #[cfg_attr(all(test, target_endian = "big"), assert_instr(xxspltd, dm = 0x0))]
-    unsafe fn xxpermdi(a: i64x2, b: i64x2, dm: u8) -> i64x2 {
-        match dm & 0b11 {
+    unsafe fn xxpermdi(a: vector_signed_long, b: vector_signed_long, dm: u8) -> vector_signed_long {
+        let a: i64x2 = transmute(a);
+        let b: i64x2 = transmute(b);
+        let r: i64x2 = match dm & 0b11 {
             0 => simd_shuffle!(a, b, [0b00, 0b10]),
             1 => simd_shuffle!(a, b, [0b01, 0b10]),
             2 => simd_shuffle!(a, b, [0b00, 0b11]),
             _ => simd_shuffle!(a, b, [0b01, 0b11]),
-        }
+        };
+        transmute(r)
     }
 
     macro_rules! vec_xxpermdi {
@@ -60,7 +63,7 @@ mod sealed {
                 #[inline]
                 #[target_feature(enable = "vsx")]
                 unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self {
-                    mem::transmute(xxpermdi(mem::transmute(self), mem::transmute(b), dm))
+                    transmute(xxpermdi(transmute(self), transmute(b), dm))
                 }
             }
         }
@@ -92,21 +95,21 @@ mod tests {
     #[cfg(target_arch = "powerpc64")]
     use crate::core_arch::arch::powerpc64::*;
 
-    use super::mem;
     use crate::core_arch::simd::*;
+    use crate::mem::transmute;
     use stdarch_test::simd_test;
 
     macro_rules! test_vec_xxpermdi {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vsx")]
             unsafe fn $name() {
-                let a: $longtype = mem::transmute($shorttype::new($($a),+, $($b),+));
-                let b = mem::transmute($shorttype::new($($c),+, $($d),+));
+                let a: $longtype = transmute($shorttype::new($($a),+, $($b),+));
+                let b = transmute($shorttype::new($($c),+, $($d),+));
 
-                assert_eq!($shorttype::new($($a),+, $($c),+), mem::transmute(vec_xxpermdi::<_, 0>(a, b)));
-                assert_eq!($shorttype::new($($b),+, $($c),+), mem::transmute(vec_xxpermdi::<_, 1>(a, b)));
-                assert_eq!($shorttype::new($($a),+, $($d),+), mem::transmute(vec_xxpermdi::<_, 2>(a, b)));
-                assert_eq!($shorttype::new($($b),+, $($d),+), mem::transmute(vec_xxpermdi::<_, 3>(a, b)));
+                assert_eq!($shorttype::new($($a),+, $($c),+), transmute(vec_xxpermdi::<_, 0>(a, b)));
+                assert_eq!($shorttype::new($($b),+, $($c),+), transmute(vec_xxpermdi::<_, 1>(a, b)));
+                assert_eq!($shorttype::new($($a),+, $($d),+), transmute(vec_xxpermdi::<_, 2>(a, b)));
+                assert_eq!($shorttype::new($($b),+, $($d),+), transmute(vec_xxpermdi::<_, 3>(a, b)));
             }
         }
     }
