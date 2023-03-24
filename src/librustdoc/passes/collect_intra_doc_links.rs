@@ -70,7 +70,7 @@ impl Res {
     fn descr(self) -> &'static str {
         match self {
             Res::Def(kind, id) => ResolveRes::Def(kind, id).descr(),
-            Res::Primitive(_) => "builtin type",
+            Res::Primitive(_) => "primitive type",
         }
     }
 
