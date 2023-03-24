@@ -4,6 +4,7 @@ use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -70,11 +71,11 @@ impl Resolver<'_, '_> {
 impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// Fills the `Resolver::effective_visibilities` table with public & exported items
     /// For now, this doesn't resolve macros (FIXME) and cannot resolve Impl, as we
-    /// need access to a TyCtxt for that.
+    /// need access to a TyCtxt for that. Returns the set of ambiguous re-exports.
     pub(crate) fn compute_effective_visibilities<'c>(
         r: &'r mut Resolver<'a, 'tcx>,
         krate: &'c Crate,
-    ) {
+    ) -> FxHashSet<Interned<'a, NameBinding<'a>>> {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -93,18 +94,26 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         }
         visitor.r.effective_visibilities = visitor.def_effective_visibilities;
 
+        let mut exported_ambiguities = FxHashSet::default();
+
         // Update visibilities for import def ids. These are not used during the
         // `EffectiveVisibilitiesVisitor` pass, because we have more detailed binding-based
         // information, but are used by later passes. Effective visibility of an import def id
         // is the maximum value among visibilities of bindings corresponding to that def id.
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
             let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
-            if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+            if !binding.is_ambiguity() {
+                if let Some(node_id) = import.id() {
+                    r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+                }
+            } else if binding.ambiguity.is_some() && eff_vis.is_public_at_level(Level::Reexported) {
+                exported_ambiguities.insert(*binding);
             }
         }
 
         info!("resolve::effective_visibilities: {:#?}", r.effective_visibilities);
+
+        exported_ambiguities
     }
 
     /// Update effective visibilities of bindings in the given module,
@@ -115,21 +124,44 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         let resolutions = self.r.resolutions(module);
 
         for (_, name_resolution) in resolutions.borrow().iter() {
-            if let Some(mut binding) = name_resolution.borrow().binding() && !binding.is_ambiguity() {
-                // Set the given effective visibility level to `Level::Direct` and
-                // sets the rest of the `use` chain to `Level::Reexported` until
-                // we hit the actual exported item.
-                let mut parent_id = ParentId::Def(module_id);
-                while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind {
-                    let binding_id = ImportId::new_unchecked(binding);
-                    self.update_import(binding_id, parent_id);
+            if let Some(mut binding) = name_resolution.borrow().binding() {
+                if !binding.is_ambiguity() {
+                    // Set the given effective visibility level to `Level::Direct` and
+                    // sets the rest of the `use` chain to `Level::Reexported` until
+                    // we hit the actual exported item.
+                    let mut parent_id = ParentId::Def(module_id);
+                    while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind
+                    {
+                        let binding_id = ImportId::new_unchecked(binding);
+                        self.update_import(binding_id, parent_id);
 
-                    parent_id = ParentId::Import(binding_id);
-                    binding = nested_binding;
-                }
+                        parent_id = ParentId::Import(binding_id);
+                        binding = nested_binding;
+                    }
 
-                if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
-                    self.update_def(def_id, binding.vis.expect_local(), parent_id);
+                    if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
+                        self.update_def(def_id, binding.vis.expect_local(), parent_id);
+                    }
+                } else {
+                    // Put the root ambiguity binding and all reexports leading to it into the
+                    // table. They are used by the `ambiguous_glob_reexports` lint. For all
+                    // bindings added to the table here `is_ambiguity` returns true.
+                    let mut parent_id = ParentId::Def(module_id);
+                    while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind
+                    {
+                        let binding_id = ImportId::new_unchecked(binding);
+                        self.update_import(binding_id, parent_id);
+
+                        if binding.ambiguity.is_some() {
+                            // Stop at the root ambiguity, further bindings in the chain should not
+                            // be reexported because the root ambiguity blocks any access to them.
+                            // (Those further bindings are most likely not ambiguities themselves.)
+                            break;
+                        }
+
+                        parent_id = ParentId::Import(binding_id);
+                        binding = nested_binding;
+                    }
                 }
             }
         }

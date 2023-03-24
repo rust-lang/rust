@@ -191,8 +191,8 @@ pub fn predicate_obligations<'tcx>(
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }
-        ty::PredicateKind::AliasEq(..) => {
-            bug!("We should only wf check where clauses and `AliasEq` is not a `Clause`")
+        ty::PredicateKind::AliasRelate(..) => {
+            bug!("We should only wf check where clauses and `AliasRelate` is not a `Clause`")
         }
     }
 
@@ -936,7 +936,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasEq(..)
+                | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
                     ref t,

@@ -1336,7 +1336,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Clause::RegionOutlives(_) | ty::Clause::ConstArgHasType(..) => bug!(),
                 },
                 ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::AliasEq(..)
+                | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(_, _, _)
                 | ty::PredicateKind::Subtype(_)

@@ -692,10 +692,10 @@ impl<T> Rc<T> {
     /// it is guaranteed that exactly one of the calls returns the inner value.
     /// This means in particular that the inner value is not dropped.
     ///
-    /// This is equivalent to `Rc::try_unwrap(...).ok()`. (Note that these are not equivalent for
-    /// `Arc`, due to race conditions that do not apply to `Rc`.)
+    /// This is equivalent to `Rc::try_unwrap(this).ok()`. (Note that these are not equivalent for
+    /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`.)
     #[inline]
-    #[unstable(feature = "rc_into_inner", issue = "106894")]
+    #[stable(feature = "rc_into_inner", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_inner(this: Self) -> Option<T> {
         Rc::try_unwrap(this).ok()
     }

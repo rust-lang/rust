@@ -112,8 +112,8 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
-    let krate = tcx.crate_for_resolver(()).borrow();
-    for attr in attr::filter_by_name(&krate.attrs, sym::register_tool) {
+    let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
+    for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {

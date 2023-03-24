@@ -1,55 +1,44 @@
-error: useless anonymous re-export
-  --> $DIR/anonymous-reexport.rs:13:1
+error: unused import: `self::my_mod::TyFoo as _`
+  --> $DIR/anonymous-reexport.rs:12:9
    |
-LL | pub use self::my_mod::Bar as _;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub use self::my_mod::TyFoo as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only anonymous re-exports of traits are useful, this is a `struct`
 note: the lint level is defined here
   --> $DIR/anonymous-reexport.rs:1:9
    |
-LL | #![deny(useless_anonymous_reexport)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
 
-error: useless anonymous re-export
-  --> $DIR/anonymous-reexport.rs:14:1
+error: unused import: `self::my_mod::Bar as _`
+  --> $DIR/anonymous-reexport.rs:13:9
+   |
+LL | pub use self::my_mod::Bar as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `self::my_mod::TyBar as _`
+  --> $DIR/anonymous-reexport.rs:14:9
    |
 LL | pub use self::my_mod::TyBar as _;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: only anonymous re-exports of traits are useful, this is a `type alias`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: useless anonymous re-export
+error: unused import: `Bar as _`
   --> $DIR/anonymous-reexport.rs:15:24
    |
 LL | pub use self::my_mod::{Bar as _};
    |                        ^^^^^^^^
-   |
-   = note: only anonymous re-exports of traits are useful, this is a `struct`
 
-error: useless anonymous re-export
+error: unused import: `Bar as _`
   --> $DIR/anonymous-reexport.rs:16:24
    |
 LL | pub use self::my_mod::{Bar as _, Foo as _};
    |                        ^^^^^^^^
-   |
-   = note: only anonymous re-exports of traits are useful, this is a `struct`
 
-error: useless anonymous re-export
+error: unused imports: `Bar as _`, `TyBar as _`
   --> $DIR/anonymous-reexport.rs:17:24
    |
 LL | pub use self::my_mod::{Bar as _, TyBar as _};
-   |                        ^^^^^^^^
-   |
-   = note: only anonymous re-exports of traits are useful, this is a `struct`
-
-error: useless anonymous re-export
-  --> $DIR/anonymous-reexport.rs:17:34
-   |
-LL | pub use self::my_mod::{Bar as _, TyBar as _};
-   |                                  ^^^^^^^^^^
-   |
-   = note: only anonymous re-exports of traits are useful, this is a `type alias`
+   |                        ^^^^^^^^  ^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

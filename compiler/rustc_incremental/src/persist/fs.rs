@@ -108,7 +108,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
-use rustc_fs_util::{link_or_copy, LinkOrCopy};
+use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
 
@@ -223,7 +223,7 @@ pub fn prepare_session_directory(
     // because, on windows, long paths can cause problems;
     // canonicalization inserts this weird prefix that makes windows
     // tolerate long paths.
-    let crate_dir = match crate_dir.canonicalize() {
+    let crate_dir = match try_canonicalize(&crate_dir) {
         Ok(v) => v,
         Err(err) => {
             return Err(sess.emit_err(errors::CanonicalizePath { path: crate_dir, err }));
@@ -867,7 +867,7 @@ fn all_except_most_recent(
 /// before passing it to std::fs::remove_dir_all(). This will convert the path
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
-    let canonicalized = match std_fs::canonicalize(p) {
+    let canonicalized = match try_canonicalize(p) {
         Ok(canonicalized) => canonicalized,
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
         Err(err) => return Err(err),
@@ -877,7 +877,7 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 }
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
-    let canonicalized = match std_fs::canonicalize(p) {
+    let canonicalized = match try_canonicalize(p) {
         Ok(canonicalized) => canonicalized,
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
         Err(err) => return Err(err),

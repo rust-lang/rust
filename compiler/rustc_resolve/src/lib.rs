@@ -1168,7 +1168,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         if let Some(def_id) = def_id.as_local() {
             self.item_generics_num_lifetimes[&def_id]
         } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.tcx.sess)
+            self.tcx.generics_of(def_id).own_counts().lifetimes
         }
     }
 
@@ -1180,7 +1180,8 @@ impl<'tcx> Resolver<'_, 'tcx> {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        krate: &Crate,
+        attrs: &[ast::Attribute],
+        crate_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1189,8 +1190,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.spans.inner_span,
-            attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
+            crate_span,
+            attr::contains_name(attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
         let empty_module = arenas.new_module(
@@ -1222,9 +1223,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !attr::contains_name(&krate.attrs, sym::no_core) {
+        if !attr::contains_name(attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !attr::contains_name(&krate.attrs, sym::no_std) {
+            if !attr::contains_name(attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
             }
         }
@@ -1474,8 +1475,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.tcx.sess.time("resolve_crate", || {
             self.tcx.sess.time("finalize_imports", || self.finalize_imports());
-            self.tcx.sess.time("compute_effective_visibilities", || {
+            let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
+            });
+            self.tcx.sess.time("check_reexport_ambiguities", || {
+                self.check_reexport_ambiguities(exported_ambiguities)
             });
             self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
@@ -1871,7 +1875,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Span {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
-            None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+            // Query `def_span` is not used because hashing its result span is expensive.
+            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
         }
     }
 
@@ -1906,10 +1911,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return v.clone();
                 }
 
-                let attr = self
-                    .cstore()
-                    .item_attrs_untracked(def_id, self.tcx.sess)
-                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {

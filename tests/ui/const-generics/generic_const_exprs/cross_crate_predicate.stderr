@@ -1,8 +1,8 @@
 error: unconstrained generic constant
-  --> $DIR/cross_crate_predicate.rs:7:13
+  --> $DIR/cross_crate_predicate.rs:7:44
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            ^
    |
    = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 note: required by a bound in `test1`
@@ -12,10 +12,10 @@ LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `test1`
 
 error: unconstrained generic constant
-  --> $DIR/cross_crate_predicate.rs:7:13
+  --> $DIR/cross_crate_predicate.rs:7:44
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            ^
    |
    = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 note: required by a bound in `test1`

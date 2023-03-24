@@ -38,6 +38,39 @@ pub fn non_const<T>() -> usize {
     size_of_t()
 }
 
+// EMIT_MIR lower_intrinsics.transmute_inhabited.LowerIntrinsics.diff
+pub fn transmute_inhabited(c: std::cmp::Ordering) -> i8 {
+    unsafe { std::mem::transmute(c) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_uninhabited(u: ()) -> Never {
+    unsafe { std::mem::transmute::<(), Never>(u) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_ref_dst.LowerIntrinsics.diff
+pub unsafe fn transmute_ref_dst<T: ?Sized>(u: &T) -> *const T {
+    unsafe { std::mem::transmute(u) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_ref_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_ref_uninhabited() -> ! {
+    let x: &Never = std::mem::transmute(1usize);
+    match *x {}
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_mut_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_mut_uninhabited() -> ! {
+    let x: &mut Never = std::mem::transmute(1usize);
+    match *x {}
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_box_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_box_uninhabited() -> ! {
+    let x: Box<Never> = std::mem::transmute(1usize);
+    match *x {}
+}
+
 pub enum E {
     A,
     B,

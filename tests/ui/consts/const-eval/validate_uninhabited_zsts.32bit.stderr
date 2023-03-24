@@ -11,7 +11,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/validate_uninhabited_zsts.rs:4:14
    |
 LL |     unsafe { std::mem::transmute(()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of the never type `!`
    |
 note: inside `foo`
   --> $DIR/validate_uninhabited_zsts.rs:4:14

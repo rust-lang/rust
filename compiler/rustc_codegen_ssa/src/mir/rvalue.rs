@@ -13,7 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{self, VariantIdx};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -70,6 +70,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bug!("unsized coercion on an unsized rvalue");
                     }
                 }
+            }
+
+            mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, _ty) => {
+                let src = self.codegen_operand(bx, operand);
+                self.codegen_transmute(bx, src, dest);
             }
 
             mir::Rvalue::Repeat(ref elem, count) => {
@@ -139,6 +144,52 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(bx, dest);
+            }
+        }
+    }
+
+    fn codegen_transmute(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        // The MIR validator enforces no unsized transmutes.
+        debug_assert!(src.layout.is_sized());
+        debug_assert!(dst.layout.is_sized());
+
+        if src.layout.size != dst.layout.size
+            || src.layout.abi == abi::Abi::Uninhabited
+            || dst.layout.abi == abi::Abi::Uninhabited
+        {
+            // In all of these cases it's UB to run this transmute, but that's
+            // known statically so might as well trap for it, rather than just
+            // making it unreachable.
+            bx.abort();
+            return;
+        }
+
+        let size_in_bytes = src.layout.size.bytes();
+        if size_in_bytes == 0 {
+            // Nothing to write
+            return;
+        }
+
+        match src.val {
+            OperandValue::Ref(src_llval, meta, src_align) => {
+                debug_assert_eq!(meta, None);
+                // For a place-to-place transmute, call `memcpy` directly so that
+                // both arguments get the best-available alignment information.
+                let bytes = bx.cx().const_usize(size_in_bytes);
+                let flags = MemFlags::empty();
+                bx.memcpy(dst.llval, dst.align, src_llval, src_align, bytes, flags);
+            }
+            OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
+                // When we have immediate(s), the alignment of the source is irrelevant,
+                // so we can store them using the destination's alignment.
+                let llty = bx.backend_type(src.layout);
+                let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
+                src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, dst.align));
             }
         }
     }
@@ -343,6 +394,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("unsupported cast: {:?} to {:?}", operand.layout.ty, cast.ty),
                         };
                         OperandValue::Immediate(newval)
+                    }
+                    mir::CastKind::Transmute => {
+                        bug!("Transmute operand {:?} in `codegen_rvalue_operand`", operand);
                     }
                 };
                 OperandRef { val, layout: cast }
@@ -673,6 +727,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
+            mir::Rvalue::Cast(mir::CastKind::Transmute, ..) =>
+                // FIXME: Now that transmute is an Rvalue, it would be nice if
+                // it could create `Immediate`s for scalars, where possible.
+                false,
             mir::Rvalue::Ref(..) |
             mir::Rvalue::CopyForDeref(..) |
             mir::Rvalue::AddressOf(..) |

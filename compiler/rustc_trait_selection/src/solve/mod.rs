@@ -13,7 +13,6 @@
 
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     CanonicalGoal, CanonicalResponse, Certainty, ExternalConstraints, ExternalConstraintsData,
@@ -110,11 +109,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             // That won't actually reflect in the query response, so it seems moot.
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
-            let InferOk { value: (), obligations } = self
-                .infcx
-                .at(&ObligationCause::dummy(), goal.param_env)
-                .sub(DefineOpaqueTypes::No, goal.predicate.a, goal.predicate.b)?;
-            self.add_goals(obligations.into_iter().map(|pred| pred.into()));
+            self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
@@ -165,55 +160,94 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn compute_alias_eq_goal(
+    fn compute_alias_relate_goal(
         &mut self,
-        goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>)>,
+        goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
+        // We may need to invert the alias relation direction if dealing an alias on the RHS.
+        enum Invert {
+            No,
+            Yes,
+        }
+        let evaluate_normalizes_to =
+            |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other, direction, invert| {
+                debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
+                let result = ecx.probe(|ecx| {
+                    let other = match direction {
+                        // This is purely an optimization.
+                        ty::AliasRelationDirection::Equate => other,
 
-        let evaluate_normalizes_to = |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other| {
-            debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
-            let r = ecx.probe(|ecx| {
-                ecx.add_goal(goal.with(
-                    tcx,
-                    ty::Binder::dummy(ty::ProjectionPredicate {
-                        projection_ty: alias,
-                        term: other,
-                    }),
-                ));
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            });
-            debug!("evaluate_normalizes_to(..) -> {:?}", r);
-            r
-        };
+                        ty::AliasRelationDirection::Subtype => {
+                            let fresh = ecx.next_term_infer_of_kind(other);
+                            let (sub, sup) = match invert {
+                                Invert::No => (fresh, other),
+                                Invert::Yes => (other, fresh),
+                            };
+                            ecx.sub(goal.param_env, sub, sup)?;
+                            fresh
+                        }
+                    };
+                    ecx.add_goal(goal.with(
+                        tcx,
+                        ty::Binder::dummy(ty::ProjectionPredicate {
+                            projection_ty: alias,
+                            term: other,
+                        }),
+                    ));
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                });
+                debug!("evaluate_normalizes_to({alias}, {other}, {direction:?}) -> {result:?}");
+                result
+            };
 
-        if goal.predicate.0.is_infer() || goal.predicate.1.is_infer() {
+        let (lhs, rhs, direction) = goal.predicate;
+
+        if lhs.is_infer() || rhs.is_infer() {
             bug!(
-                "`AliasEq` goal with an infer var on lhs or rhs which should have been instantiated"
+                "`AliasRelate` goal with an infer var on lhs or rhs which should have been instantiated"
             );
         }
 
-        match (
-            goal.predicate.0.to_alias_term_no_opaque(tcx),
-            goal.predicate.1.to_alias_term_no_opaque(tcx),
-        ) {
-            (None, None) => bug!("`AliasEq` goal without an alias on either lhs or rhs"),
-            (Some(alias), None) => evaluate_normalizes_to(self, alias, goal.predicate.1),
-            (None, Some(alias)) => evaluate_normalizes_to(self, alias, goal.predicate.0),
+        match (lhs.to_projection_term(tcx), rhs.to_projection_term(tcx)) {
+            (None, None) => bug!("`AliasRelate` goal without an alias on either lhs or rhs"),
+
+            // RHS is not a projection, only way this is true is if LHS normalizes-to RHS
+            (Some(alias_lhs), None) => {
+                evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No)
+            }
+
+            // LHS is not a projection, only way this is true is if RHS normalizes-to LHS
+            (None, Some(alias_rhs)) => {
+                evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes)
+            }
+
             (Some(alias_lhs), Some(alias_rhs)) => {
-                debug!("compute_alias_eq_goal: both sides are aliases");
+                debug!("compute_alias_relate_goal: both sides are aliases");
 
-                let mut candidates = Vec::with_capacity(3);
+                let candidates = vec![
+                    // LHS normalizes-to RHS
+                    evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No),
+                    // RHS normalizes-to RHS
+                    evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes),
+                    // Relate via substs
+                    self.probe(|ecx| {
+                        debug!(
+                            "compute_alias_relate_goal: alias defids are equal, equating substs"
+                        );
 
-                // Evaluate all 3 potential candidates for the alias' being equal
-                candidates.push(evaluate_normalizes_to(self, alias_lhs, goal.predicate.1));
-                candidates.push(evaluate_normalizes_to(self, alias_rhs, goal.predicate.0));
-                candidates.push(self.probe(|ecx| {
-                    debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
-                    ecx.eq(goal.param_env, alias_lhs, alias_rhs)?;
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }));
+                        match direction {
+                            ty::AliasRelationDirection::Equate => {
+                                ecx.eq(goal.param_env, alias_lhs, alias_rhs)?;
+                            }
+                            ty::AliasRelationDirection::Subtype => {
+                                ecx.sub(goal.param_env, alias_lhs, alias_rhs)?;
+                            }
+                        }
 
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }),
+                ];
                 debug!(?candidates);
 
                 self.try_merge_responses(candidates.into_iter())

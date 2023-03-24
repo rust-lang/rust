@@ -133,8 +133,8 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
 
-        tcx.sess.time("unsafety_checking", || unsafety::check_item(tcx, impl_def_id));
-        tcx.sess.time("orphan_checking", || tcx.ensure().orphan_check_impl(impl_def_id));
+        unsafety::check_item(tcx, impl_def_id);
+        tcx.ensure().orphan_check_impl(impl_def_id);
     }
 
     builtin::check_trait(tcx, def_id);

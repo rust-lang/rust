@@ -222,6 +222,7 @@ use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{DiagnosticArgValue, FatalError, IntoDiagnosticArg};
+use rustc_fs_util::try_canonicalize;
 use rustc_session::config::{self, CrateType};
 use rustc_session::cstore::{CrateSource, MetadataLoader};
 use rustc_session::filesearch::FileSearch;
@@ -236,7 +237,7 @@ use snap::read::FrameDecoder;
 use std::borrow::Cow;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
-use std::{cmp, fmt, fs};
+use std::{cmp, fmt};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -441,7 +442,7 @@ impl<'a> CrateLocator<'a> {
                 info!("lib candidate: {}", spf.path.display());
 
                 let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
-                let path = fs::canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
+                let path = try_canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
                 if seen_paths.contains(&path) {
                     continue;
                 };
@@ -636,7 +637,7 @@ impl<'a> CrateLocator<'a> {
             // as well.
             if let Some((prev, _)) = &ret {
                 let sysroot = self.sysroot;
-                let sysroot = sysroot.canonicalize().unwrap_or_else(|_| sysroot.to_path_buf());
+                let sysroot = try_canonicalize(sysroot).unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
                     continue;
                 }

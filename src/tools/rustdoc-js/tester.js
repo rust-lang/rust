@@ -79,11 +79,18 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
             "foundElems",
             "original",
             "returned",
-            "typeFilter",
             "userQuery",
             "error",
         ];
-    } else if (fullPath.endsWith("elems") || fullPath.endsWith("generics")) {
+    } else if (fullPath.endsWith("elems") || fullPath.endsWith("returned")) {
+        fieldsToCheck = [
+            "name",
+            "fullPath",
+            "pathWithoutLast",
+            "pathLast",
+            "generics",
+        ];
+    } else if (fullPath.endsWith("generics")) {
         fieldsToCheck = [
             "name",
             "fullPath",
