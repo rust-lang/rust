@@ -99,6 +99,13 @@ impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
             return;
         }
 
+        if [self.tcx.types.bool, self.tcx.types.i8, self.tcx.types.u8, self.tcx.types.str_]
+            .contains(&pointee_ty)
+        {
+            debug!("Trivially aligned pointee type: {:?}", pointer_ty);
+            return;
+        }
+
         self.pointers.push((pointer, pointee_ty))
     }
 }
