@@ -618,10 +618,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     let last_lt = &self.gen_args.args[self.num_provided_lifetime_args() - 1];
                     (self.tcx.mark_span_for_resize(last_lt.span()).shrink_to_hi(), false)
                 };
-                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                let path_sp = self.path_segment.ident.span;
                 if !self.gen_args.args.iter().all(|arg| {
                     arg.span().can_be_used_for_suggestions()
-                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                        && arg.span().peel_ctxt() == path_sp.peel_ctxt()
                 }) || !path_sp.can_be_used_for_suggestions()
                 {
                     // Do not suggest syntax when macros are involved. (#90557)
@@ -670,10 +670,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 );
             }
             AngleBrackets::Available => {
-                let path_sp = self.path_segment.ident.span.peel_ctxt();
+                let path_sp = self.path_segment.ident.span;
                 if !self.gen_args.args.iter().all(|arg| {
                     arg.span().can_be_used_for_suggestions()
-                        && arg.span().peel_ctxt().ctxt() == path_sp.ctxt()
+                        && arg.span().peel_ctxt() == path_sp.peel_ctxt()
                 }) || !path_sp.can_be_used_for_suggestions()
                 {
                     // Do not suggest syntax when macros are involved. (#90557)

@@ -466,7 +466,7 @@ pub fn struct_lint_level(
 /// This is used to test whether a lint should not even begin to figure out whether it should
 /// be reported on the current node.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
-    let expn_data = span.peel_ctxt().ctxt().outer_expn_data();
+    let expn_data = span.peel_ctxt().outer_expn_data();
     match expn_data.kind {
         ExpnKind::Inlined
         | ExpnKind::Root

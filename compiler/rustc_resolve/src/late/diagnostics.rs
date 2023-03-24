@@ -211,9 +211,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 suggestion: None,
             }
         } else {
-            let item_span = path.last().unwrap().ident.span;
-            let sp = item_span.peel_ctxt();
-            let ctxt_kind = sp.ctxt().outer_expn_data().kind;
+            let sp = path.last().unwrap().ident.span;
+            let ctxt_kind = sp.peel_ctxt().outer_expn_data().kind;
             let (mod_prefix, mod_str, name, mod_label, suggestion) =
                 if let ExpnKind::Macro(MacroKind::Attr | MacroKind::Bang, name) = ctxt_kind
                     && sp.parent_callsite().map(|p| (p.lo(), p.hi())) == Some((sp.lo(), sp.hi()))
@@ -260,7 +259,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     };
 
                     Some((
-                        item_span.shrink_to_lo(),
+                        sp.shrink_to_lo(),
                         match &item.kind {
                             AssocItemKind::Fn(..) => "consider using the associated function",
                             AssocItemKind::Const(..) => "consider using the associated constant",
@@ -304,28 +303,25 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
             } else {
                 // check if we are in situation of typo like `True` instead of `true`.
-                let override_suggestion =
-                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
-                        let item_typo = item_str.to_string().to_lowercase();
-                        Some((item_span, "you may want to use a bool value instead", item_typo))
-                    // FIXME(vincenzopalazzo): make the check smarter,
-                    // and maybe expand with levenshtein distance checks
-                    } else if item_str.as_str() == "printf" {
-                        Some((
-                            item_span,
-                            "you may have meant to use the `print` macro",
-                            "print!".to_owned(),
-                        ))
-                    } else {
-                        suggestion
-                    };
+                let override_suggestion = if ["true", "false"]
+                    .contains(&item_str.to_string().to_lowercase().as_str())
+                {
+                    let item_typo = item_str.to_string().to_lowercase();
+                    Some((sp, "you may want to use a bool value instead", item_typo))
+                // FIXME(vincenzopalazzo): make the check smarter,
+                // and maybe expand with levenshtein distance checks
+                } else if item_str.as_str() == "printf" {
+                    Some((sp, "you may have meant to use the `print` macro", "print!".to_owned()))
+                } else {
+                    suggestion
+                };
                 (format!("{name}not found in {mod_label}"), override_suggestion)
             };
 
             BaseError {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
                 fallback_label,
-                span: item_span,
+                span: sp,
                 span_label: None,
                 could_be_expr: false,
                 suggestion,

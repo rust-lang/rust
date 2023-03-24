@@ -511,11 +511,11 @@ fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<Span> {
             rhs,
         ) => {
             if is_integer_const(cx, lhs, 1)
-                && lhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+                && lhs.span.peel_ctxt() == span.peel_ctxt()
             {
                 Some(lhs.span.to(span))
             } else if is_integer_const(cx, rhs, 1)
-                && rhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+                && rhs.span.peel_ctxt() == span.peel_ctxt()
             {
                 Some(span.to(rhs.span))
             } else {
@@ -536,7 +536,7 @@ fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<Span> {
             _,
             rhs,
         ) if is_integer_const(cx, rhs, 1)
-            && rhs.span.peel_ctxt().ctxt() == span.peel_ctxt().ctxt()
+            && rhs.span.peel_ctxt() == span.peel_ctxt()
             => Some(span.to(rhs.span)),
         _ => None,
     }
