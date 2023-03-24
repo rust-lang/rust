@@ -114,13 +114,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if !def_id.is_local() {
-            let def_kind = self.cstore().def_kind(def_id);
+            // Query `def_kind` is not used because query system overhead is too expensive here.
+            let def_kind = self.cstore().def_kind_untracked(def_id);
             if let DefKind::Mod | DefKind::Enum | DefKind::Trait = def_kind {
                 let parent = self
                     .tcx
                     .opt_parent(def_id)
                     .map(|parent_id| self.get_nearest_non_block_module(parent_id));
-                let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
+                // Query `expn_that_defined` is not used because
+                // hashing spans in its result is expensive.
+                let expn_id = self.cstore().expn_that_defined_untracked(def_id, &self.tcx.sess);
                 return Some(self.new_module(
                     parent,
                     ModuleKind::Def(def_kind, def_id, self.tcx.item_name(def_id)),
@@ -194,6 +197,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
+        // Query `module_children` is not used because hashing spans in its result is expensive.
         let children =
             Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.tcx.sess));
         for child in children {

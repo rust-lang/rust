@@ -490,6 +490,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
         crates: |tcx, ()| {
+            // The list of loaded crates is now frozen in query cache,
+            // so make sure cstore is not mutably accessed from here on.
+            tcx.untracked().cstore.leak();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         ..*providers
@@ -537,16 +540,16 @@ impl CStore {
         )
     }
 
-    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
+    pub fn def_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
 
-    pub fn def_kind(&self, def: DefId) -> DefKind {
+    pub fn def_kind_untracked(&self, def: DefId) -> DefKind {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
-        self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
+    pub fn expn_that_defined_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
+        self.get_crate_data(def_id.krate).get_expn_that_defined(def_id.index, sess)
     }
 
     /// Only public-facing way to traverse all the definitions in a non-local crate.

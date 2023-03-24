@@ -202,7 +202,7 @@ impl OpenOptions {
             create: false,
             create_new: false,
             // system-specific
-            mode: 0x777,
+            mode: 0o777,
         }
     }
 

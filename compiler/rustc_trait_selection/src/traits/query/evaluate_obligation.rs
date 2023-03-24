@@ -1,9 +1,8 @@
-use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
+use rustc_infer::traits::{TraitEngine, TraitEngineExt};
 use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::solve::InferCtxtEvalExt;
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
@@ -81,27 +80,20 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         if self.tcx.trait_solver_next() {
             self.probe(|snapshot| {
-                if let Ok((_, certainty)) =
-                    self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
-                {
-                    match certainty {
-                        Certainty::Yes => {
-                            if self.opaque_types_added_in_snapshot(snapshot) {
-                                Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
-                            } else if self.region_constraints_added_in_snapshot(snapshot).is_some()
-                            {
-                                Ok(EvaluationResult::EvaluatedToOkModuloRegions)
-                            } else {
-                                Ok(EvaluationResult::EvaluatedToOk)
-                            }
-                        }
-                        Certainty::Maybe(MaybeCause::Ambiguity) => {
-                            Ok(EvaluationResult::EvaluatedToAmbig)
-                        }
-                        Certainty::Maybe(MaybeCause::Overflow) => Err(OverflowError::Canonical),
-                    }
-                } else {
+                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
+                fulfill_cx.register_predicate_obligation(self, obligation.clone());
+                // True errors
+                // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
+                if !fulfill_cx.select_where_possible(self).is_empty() {
                     Ok(EvaluationResult::EvaluatedToErr)
+                } else if !fulfill_cx.select_all_or_error(self).is_empty() {
+                    Ok(EvaluationResult::EvaluatedToAmbig)
+                } else if self.opaque_types_added_in_snapshot(snapshot) {
+                    Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
+                } else if self.region_constraints_added_in_snapshot(snapshot).is_some() {
+                    Ok(EvaluationResult::EvaluatedToOkModuloRegions)
+                } else {
+                    Ok(EvaluationResult::EvaluatedToOk)
                 }
             })
         } else {
