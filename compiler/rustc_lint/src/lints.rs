@@ -1210,9 +1210,10 @@ impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
 #[diag(lint_range_endpoint_out_of_range)]
 pub struct RangeEndpointOutOfRange<'a> {
     pub ty: &'a str,
-    #[suggestion(code = "{start}..={literal}{suffix}", applicability = "machine-applicable")]
-    pub suggestion: Span,
-    pub start: String,
+    #[suggestion(code = "=", applicability = "machine-applicable")]
+    pub eq_suggestion: Span,
+    #[suggestion(code = "{literal}{suffix}", applicability = "machine-applicable")]
+    pub lit_suggestion: Span,
     pub literal: u128,
     pub suffix: &'a str,
 }

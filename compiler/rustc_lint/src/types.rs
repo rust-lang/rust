@@ -136,11 +136,12 @@ fn lint_overflowing_range_endpoint<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
-    let (expr, cast_ty) = if let Node::Expr(par_expr) = cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
-      && let ExprKind::Cast(_, ty) = par_expr.kind {
-        (par_expr, Some(ty))
+    // Look past casts to support cases like `0..256 as u8`
+    let (expr, lit_span) = if let Node::Expr(par_expr) = cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
+      && let ExprKind::Cast(_, _) = par_expr.kind {
+        (par_expr, expr.span)
     } else {
-        (expr, None)
+        (expr, expr.span)
     };
 
     // We only want to handle exclusive (`..`) ranges,
@@ -162,19 +163,13 @@ fn lint_overflowing_range_endpoint<'tcx>(
     if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
         return false;
     };
-    let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
 
-    let suffix = if let Some(cast_ty) = cast_ty {
-        let Ok(ty) = cx.sess().source_map().span_to_snippet(cast_ty.span) else { return false };
-        format!(" as {}", ty)
-    } else {
-        use rustc_ast::{LitIntType, LitKind};
-        match lit.node {
-            LitKind::Int(_, LitIntType::Signed(s)) => s.name_str().to_owned(),
-            LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str().to_owned(),
-            LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
-            _ => bug!(),
-        }
+    use rustc_ast::{LitIntType, LitKind};
+    let suffix = match lit.node {
+        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+        LitKind::Int(_, LitIntType::Unsuffixed) => "",
+        _ => bug!(),
     };
 
     cx.emit_spanned_lint(
@@ -182,10 +177,10 @@ fn lint_overflowing_range_endpoint<'tcx>(
         struct_expr.span,
         RangeEndpointOutOfRange {
             ty,
-            suggestion: struct_expr.span,
-            start,
+            eq_suggestion: expr.span.shrink_to_lo(),
+            lit_suggestion: lit_span,
             literal: lit_val - 1,
-            suffix: &suffix,
+            suffix,
         },
     );
 
