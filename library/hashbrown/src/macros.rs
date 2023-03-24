@@ -37,7 +37,7 @@ macro_rules! cfg_if {
     // semicolon is all the remaining items
     (@__items ($($not:meta,)*) ; ) => {};
     (@__items ($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
-        // Emit all items within one block, applying an approprate #[cfg]. The
+        // Emit all items within one block, applying an appropriate #[cfg]. The
         // #[cfg] will require all `$m` matchers specified and must also negate
         // all previous matchers.
         cfg_if! { @__apply cfg(all($($m,)* not(any($($not),*)))), $($it)* }
