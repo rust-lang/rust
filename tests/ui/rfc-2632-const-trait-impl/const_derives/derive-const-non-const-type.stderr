@@ -1,3 +1,24 @@
+error[E0277]: the trait bound `A: Default` is not satisfied
+  --> $DIR/derive-const-non-const-type.rs:10:14
+   |
+LL | #[derive_const(Default)]
+   |                ------- in this derive macro expansion
+LL | pub struct S(A);
+   |              ^ the trait `~const Default` is not implemented for `A`
+   |
+note: the trait `Default` is implemented for `A`, but that implementation is not `const`
+  --> $DIR/derive-const-non-const-type.rs:10:14
+   |
+LL | #[derive_const(Default)]
+   |                ------- in this derive macro expansion
+LL | pub struct S(A);
+   |              ^
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `A` with `#[derive(Default)]`
+   |
+LL | #[derive(Default)]
+   |
+
 error[E0015]: cannot call non-const fn `<A as Default>::default` in constant functions
   --> $DIR/derive-const-non-const-type.rs:10:14
    |
@@ -10,6 +31,7 @@ LL | pub struct S(A);
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

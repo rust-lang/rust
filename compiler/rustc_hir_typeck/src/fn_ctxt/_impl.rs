@@ -1416,41 +1416,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let remap = match self.tcx.def_kind(def_id) {
-            // Associated consts have `Self: ~const Trait` bounds that should be satisfiable when
-            // `Self: Trait` is satisfied because it does not matter whether the impl is `const`.
-            // Therefore we have to remap the param env here to be non-const.
-            hir::def::DefKind::AssocConst => true,
-            hir::def::DefKind::AssocFn
-                if self.tcx.def_kind(self.tcx.parent(def_id)) == hir::def::DefKind::Trait =>
-            {
-                // N.B.: All callsites to this function involve checking a path expression.
-                //
-                // When instantiating a trait method as a function item, it does not actually matter whether
-                // the trait is `const` or not, or whether `where T: ~const Tr` needs to be satisfied as
-                // `const`. If we were to introduce instantiating trait methods as `const fn`s, we would
-                // check that after this, either via a bound `where F: ~const FnOnce` or when coercing to a
-                // `const fn` pointer.
-                //
-                // FIXME(fee1-dead) FIXME(const_trait_impl): update this doc when trait methods can satisfy
-                // `~const FnOnce` or can be coerced to `const fn` pointer.
-                true
-            }
-            _ => false,
-        };
         let bounds = self.instantiate_bounds(span, def_id, &substs);
 
-        for mut obligation in traits::predicates_for_generics(
+        for obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
                 traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
             },
             param_env,
             bounds,
         ) {
-            if remap {
-                obligation = obligation.without_const(self.tcx);
-            }
-            self.register_predicate(obligation);
+            // N.B. We are remapping all predicates to non-const since we don't know if we just
+            // want them as function pointers or we are calling them from a const-context. The
+            // actual checking will occur in `rustc_const_eval::transform::check_consts`.
+            self.register_predicate(obligation.without_const(self.tcx));
         }
     }
 

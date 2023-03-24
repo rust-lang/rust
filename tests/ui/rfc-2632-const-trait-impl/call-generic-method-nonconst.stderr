@@ -1,21 +1,14 @@
 error[E0277]: the trait bound `S: ~const Foo` is not satisfied
-  --> $DIR/call-generic-method-nonconst.rs:23:34
+  --> $DIR/call-generic-method-nonconst.rs:23:22
    |
 LL | pub const EQ: bool = equals_self(&S);
-   |                      ----------- ^^ the trait `~const Foo` is not implemented for `S`
-   |                      |
-   |                      required by a bound introduced by this call
+   |                      ^^^^^^^^^^^^^^^ the trait `~const Foo` is not implemented for `S`
    |
 note: the trait `Foo` is implemented for `S`, but that implementation is not `const`
-  --> $DIR/call-generic-method-nonconst.rs:23:34
+  --> $DIR/call-generic-method-nonconst.rs:23:22
    |
 LL | pub const EQ: bool = equals_self(&S);
-   |                                  ^^
-note: required by a bound in `equals_self`
-  --> $DIR/call-generic-method-nonconst.rs:16:25
-   |
-LL | const fn equals_self<T: ~const Foo>(t: &T) -> bool {
-   |                         ^^^^^^^^^^ required by this bound in `equals_self`
+   |                      ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

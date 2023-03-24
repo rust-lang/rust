@@ -1,3 +1,17 @@
+error[E0277]: the trait bound `[closure@$DIR/issue-56164.rs:1:19: 1:21]: Fn<()>` is not satisfied
+  --> $DIR/issue-56164.rs:1:18
+   |
+LL | const fn foo() { (||{})() }
+   |                  ^^^^^^^^ expected an `Fn<()>` closure, found `[closure@$DIR/issue-56164.rs:1:19: 1:21]`
+   |
+   = help: the trait `~const Fn<()>` is not implemented for closure `[closure@$DIR/issue-56164.rs:1:19: 1:21]`
+note: the trait `Fn<()>` is implemented for `[closure@$DIR/issue-56164.rs:1:19: 1:21]`, but that implementation is not `const`
+  --> $DIR/issue-56164.rs:1:18
+   |
+LL | const fn foo() { (||{})() }
+   |                  ^^^^^^^^
+   = note: wrap the `[closure@$DIR/issue-56164.rs:1:19: 1:21]` in a closure with no arguments: `|| { /* code */ }`
+
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/issue-56164.rs:1:18
    |
@@ -9,7 +23,7 @@ LL | const fn foo() { (||{})() }
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
 error: function pointer calls are not allowed in constant functions
-  --> $DIR/issue-56164.rs:5:5
+  --> $DIR/issue-56164.rs:6:5
    |
 LL |     input()
    |     ^^^^^^^
@@ -26,6 +40,7 @@ note: erroneous constant used
 LL | const fn foo() { (||{})() }
    |                  ^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

@@ -1,44 +1,30 @@
 error[E0277]: can't drop `UnconstDrop` in const contexts
-  --> $DIR/const-block-const-bound.rs:20:11
+  --> $DIR/const-block-const-bound.rs:20:9
    |
 LL |         f(UnconstDrop);
-   |         - ^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
-   |         |
-   |         required by a bound introduced by this call
+   |         ^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
    |
    = note: the trait bound `UnconstDrop: ~const Destruct` is not satisfied
-note: required by a bound in `f`
-  --> $DIR/const-block-const-bound.rs:6:15
-   |
-LL | const fn f<T: ~const Destruct>(x: T) {}
-   |               ^^^^^^^^^^^^^^^ required by this bound in `f`
 help: consider borrowing here
    |
-LL |         f(&UnconstDrop);
-   |           +
-LL |         f(&mut UnconstDrop);
-   |           ++++
+LL |         &f(UnconstDrop);
+   |         +
+LL |         &mut f(UnconstDrop);
+   |         ++++
 
 error[E0277]: can't drop `NonDrop` in const contexts
-  --> $DIR/const-block-const-bound.rs:22:11
+  --> $DIR/const-block-const-bound.rs:22:9
    |
 LL |         f(NonDrop);
-   |         - ^^^^^^^ the trait `~const Destruct` is not implemented for `NonDrop`
-   |         |
-   |         required by a bound introduced by this call
+   |         ^^^^^^^^^^ the trait `~const Destruct` is not implemented for `NonDrop`
    |
    = note: the trait bound `NonDrop: ~const Destruct` is not satisfied
-note: required by a bound in `f`
-  --> $DIR/const-block-const-bound.rs:6:15
-   |
-LL | const fn f<T: ~const Destruct>(x: T) {}
-   |               ^^^^^^^^^^^^^^^ required by this bound in `f`
 help: consider borrowing here
    |
-LL |         f(&NonDrop);
-   |           +
-LL |         f(&mut NonDrop);
-   |           ++++
+LL |         &f(NonDrop);
+   |         +
+LL |         &mut f(NonDrop);
+   |         ++++
 
 error: aborting due to 2 previous errors
 

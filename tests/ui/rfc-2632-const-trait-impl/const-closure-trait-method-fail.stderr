@@ -1,22 +1,15 @@
 error[E0277]: the trait bound `(): ~const Tr` is not satisfied in `fn(()) -> i32 {<() as Tr>::a}`
-  --> $DIR/const-closure-trait-method-fail.rs:16:42
+  --> $DIR/const-closure-trait-method-fail.rs:16:23
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
-   |                       ------------------ ^^^^^ within `fn(()) -> i32 {<() as Tr>::a}`, the trait `~const Tr` is not implemented for `()`
-   |                       |
-   |                       required by a bound introduced by this call
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ within `fn(()) -> i32 {<() as Tr>::a}`, the trait `~const Tr` is not implemented for `()`
    |
 note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/const-closure-trait-method-fail.rs:16:42
+  --> $DIR/const-closure-trait-method-fail.rs:16:23
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
-   |                                          ^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: required because it appears within the type `fn(()) -> i32 {<() as Tr>::a}`
-note: required by a bound in `need_const_closure`
-  --> $DIR/const-closure-trait-method-fail.rs:12:32
-   |
-LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `need_const_closure`
 
 error: aborting due to previous error
 
