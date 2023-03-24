@@ -136,6 +136,13 @@ fn lint_overflowing_range_endpoint<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
+    let (expr, cast_ty) = if let Node::Expr(par_expr) = cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
+      && let ExprKind::Cast(_, ty) = par_expr.kind {
+        (par_expr, Some(ty))
+    } else {
+        (expr, None)
+    };
+
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
     let par_id = cx.tcx.hir().parent_id(expr.hir_id);
@@ -157,13 +164,19 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
     let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
 
-    use rustc_ast::{LitIntType, LitKind};
-    let suffix = match lit.node {
-        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
-        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
-        LitKind::Int(_, LitIntType::Unsuffixed) => "",
-        _ => bug!(),
+    let suffix = if let Some(cast_ty) = cast_ty {
+        let Ok(ty) = cx.sess().source_map().span_to_snippet(cast_ty.span) else { return false };
+        format!(" as {}", ty)
+    } else {
+        use rustc_ast::{LitIntType, LitKind};
+        match lit.node {
+            LitKind::Int(_, LitIntType::Signed(s)) => s.name_str().to_owned(),
+            LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str().to_owned(),
+            LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+            _ => bug!(),
+        }
     };
+
     cx.emit_spanned_lint(
         OVERFLOWING_LITERALS,
         struct_expr.span,
@@ -172,7 +185,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
             suggestion: struct_expr.span,
             start,
             literal: lit_val - 1,
-            suffix,
+            suffix: &suffix,
         },
     );
 

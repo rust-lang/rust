@@ -1,0 +1,10 @@
+error: range endpoint is out of range for `u8`
+  --> $DIR/issue-109529.rs:2:14
+   |
+LL |     for i in 0..256 as u8 {
+   |              ^^^^^^^^^^^^ help: use an inclusive range instead: `0..=255 as u8`
+   |
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: aborting due to previous error
+
