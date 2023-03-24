@@ -2,6 +2,8 @@
 
 const QUERY = [
     'R<P>',
+    'R<struct:P>',
+    'R<enum:P>',
     '"P"',
     'P',
     'ExtraCreditStructMulti<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
@@ -19,6 +21,20 @@ const EXPECTED = [
         'in_args': [
             { 'path': 'generics', 'name': 'alpha' },
         ],
+    },
+    {
+        // R<struct:P>
+        'returned': [
+            { 'path': 'generics', 'name': 'alef' },
+        ],
+        'in_args': [
+            { 'path': 'generics', 'name': 'alpha' },
+        ],
+    },
+    {
+        // R<enum:P>
+        'returned': [],
+        'in_args': [],
     },
     {
         // "P"
