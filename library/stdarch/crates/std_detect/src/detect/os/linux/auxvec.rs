@@ -189,13 +189,12 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
     let file = super::read_file(file)?;
 
-    // See <https://github.com/torvalds/linux/blob/v3.19/include/uapi/linux/auxvec.h>.
+    // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
     //
-    // The auxiliary vector contains at most 32 (key,value) fields: from
-    // `AT_EXECFN = 31` to `AT_NULL = 0`. That is, a buffer of
-    // 2*32 `usize` elements is enough to read the whole vector.
-    let mut buf = [0_usize; 64];
-    let len = core::mem::size_of_val(&buf).max(file.len());
+    // The auxiliary vector contains at most 34 (key,value) fields: from
+    // `AT_MINSIGSTKSZ` to `AT_NULL`, but its number may increase.
+    let len = file.len();
+    let mut buf = alloc::vec![0_usize; 1 + len / core::mem::size_of::<usize>()];
     unsafe {
         core::ptr::copy_nonoverlapping(file.as_ptr(), buf.as_mut_ptr() as *mut u8, len);
     }
@@ -206,7 +205,7 @@ pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 /// Tries to interpret the `buffer` as an auxiliary vector. If that fails, this
 /// function returns `Err`.
 #[cfg(feature = "std_detect_file_io")]
-fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
+fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
     // Targets with only AT_HWCAP:
     #[cfg(any(
         target_arch = "riscv32",
