@@ -346,7 +346,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
-                            let val = OperandValue::Immediate(bx.cx().const_undef(ll_t_out));
+                            let val = OperandValue::Immediate(bx.cx().const_poison(ll_t_out));
                             return OperandRef { val, layout: cast };
                         }
                         let r_t_in =
