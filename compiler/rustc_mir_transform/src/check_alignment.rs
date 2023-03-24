@@ -136,7 +136,7 @@ fn insert_alignment_check<'tcx>(
         .statements
         .push(Statement { source_info, kind: StatementKind::Assign(Box::new((thin_ptr, rvalue))) });
 
-    // Cast the pointer to a usize
+    // Transmute the pointer to a usize (equivalent to `ptr.addr()`)
     let rvalue = Rvalue::Cast(CastKind::Transmute, Operand::Copy(thin_ptr), tcx.types.usize);
     let addr = local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
     block_data
