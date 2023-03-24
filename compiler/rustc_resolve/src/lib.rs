@@ -1875,7 +1875,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Span {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
-            None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+            // Query `def_span` is not used because hashing its result span is expensive.
+            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
         }
     }
 
