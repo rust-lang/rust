@@ -880,8 +880,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             local.iter().partition(|i| i.inner_impl().kind.is_auto());
 
-        synthetic.sort_by(|a, b| compare_impl(a, b, cx));
-        concrete.sort_by(|a, b| compare_impl(a, b, cx));
+        synthetic.sort_by_cached_key(|i| ImplString::new(i, cx));
+        concrete.sort_by_cached_key(|i| ImplString::new(i, cx));
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
@@ -1597,12 +1597,25 @@ where
     w.write_str("</code></pre>");
 }
 
-fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
-    let lhss = format!("{}", lhs.inner_impl().print(false, cx));
-    let rhss = format!("{}", rhs.inner_impl().print(false, cx));
+#[derive(PartialEq, Eq)]
+struct ImplString(String);
 
-    // lhs and rhs are formatted as HTML, which may be unnecessary
-    compare_names(&lhss, &rhss)
+impl ImplString {
+    fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
+        ImplString(format!("{}", i.inner_impl().print(false, cx)))
+    }
+}
+
+impl PartialOrd for ImplString {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl Ord for ImplString {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare_names(&self.0, &other.0)
+    }
 }
 
 fn render_implementor(
