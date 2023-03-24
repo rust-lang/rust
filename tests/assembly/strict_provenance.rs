@@ -1,6 +1,7 @@
 // assembly-output: emit-asm
 // compile-flags: -Copt-level=1
 // only-x86_64
+// ignore-sgx
 // min-llvm-version: 15.0
 #![crate_type = "rlib"]
 
