@@ -9,14 +9,10 @@ use std::mem;
 #[cfg_attr(parallel_compiler, repr(align(64)))]
 struct CacheAligned<T>(T);
 
-#[cfg(parallel_compiler)]
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
 // but this should be tested on higher core count CPUs. How the `Sharded` type gets used
 // may also affect the ideal number of shards.
 const SHARD_BITS: usize = 5;
-
-#[cfg(not(parallel_compiler))]
-const SHARD_BITS: usize = 0;
 
 pub const SHARDS: usize = 1 << SHARD_BITS;
 

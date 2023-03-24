@@ -2,7 +2,6 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
@@ -37,10 +36,7 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelecto
 }
 
 pub struct DefaultCache<K, V> {
-    #[cfg(parallel_compiler)]
     cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
-    #[cfg(not(parallel_compiler))]
-    cache: Lock<FxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -60,10 +56,8 @@ where
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
-        #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key_hash).lock();
-        #[cfg(not(parallel_compiler))]
-        let lock = self.cache.lock();
+
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result { Some(*value) } else { None }
@@ -71,29 +65,17 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        #[cfg(parallel_compiler)]
         let mut lock = self.cache.get_shard_by_value(&key).lock();
-        #[cfg(not(parallel_compiler))]
-        let mut lock = self.cache.lock();
+
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        #[cfg(parallel_compiler)]
-        {
-            let shards = self.cache.lock_shards();
-            for shard in shards.iter() {
-                for (k, v) in shard.iter() {
-                    f(k, &v.0, v.1);
-                }
-            }
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            let map = self.cache.lock();
-            for (k, v) in map.iter() {
+        let shards = self.cache.lock_shards();
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
             }
         }
@@ -151,10 +133,7 @@ impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
 }
 
 pub struct VecCache<K: Idx, V> {
-    #[cfg(parallel_compiler)]
     cache: Sharded<IndexVec<K, Option<(V, DepNodeIndex)>>>,
-    #[cfg(not(parallel_compiler))]
-    cache: Lock<IndexVec<K, Option<(V, DepNodeIndex)>>>,
 }
 
 impl<K: Idx, V> Default for VecCache<K, V> {
@@ -173,38 +152,22 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
-        #[cfg(not(parallel_compiler))]
-        let lock = self.cache.lock();
+
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        #[cfg(parallel_compiler)]
         let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
-        #[cfg(not(parallel_compiler))]
-        let mut lock = self.cache.lock();
+
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        #[cfg(parallel_compiler)]
-        {
-            let shards = self.cache.lock_shards();
-            for shard in shards.iter() {
-                for (k, v) in shard.iter_enumerated() {
-                    if let Some(v) = v {
-                        f(&k, &v.0, v.1);
-                    }
-                }
-            }
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            let map = self.cache.lock();
-            for (k, v) in map.iter_enumerated() {
+        let shards = self.cache.lock_shards();
+        for shard in shards.iter() {
+            for (k, v) in shard.iter_enumerated() {
                 if let Some(v) = v {
                     f(&k, &v.0, v.1);
                 }
