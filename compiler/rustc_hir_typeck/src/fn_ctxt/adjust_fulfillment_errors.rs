@@ -310,7 +310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter(|field| {
                 let field_ty = field.ty(self.tcx, identity_substs);
-                Self::find_param_in_ty(field_ty.into(), param_to_point_at)
+                find_param_in_ty(field_ty.into(), param_to_point_at)
             })
             .collect();
 
@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .inputs()
             .iter()
             .enumerate()
-            .filter(|(_, ty)| Self::find_param_in_ty((**ty).into(), param_to_point_at))
+            .filter(|(_, ty)| find_param_in_ty((**ty).into(), param_to_point_at))
             .collect();
         // If there's one field that references the given generic, great!
         if let [(idx, _)] = args_referencing_param.as_slice()
@@ -579,8 +579,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Find out which of `in_ty_elements` refer to `param`.
             // FIXME: It may be better to take the first if there are multiple,
             // just so that the error points to a smaller expression.
-            let Some((drill_expr, drill_ty)) = Self::is_iterator_singleton(expr_elements.iter().zip( in_ty_elements.iter()).filter(|(_expr_elem, in_ty_elem)| {
-                Self::find_param_in_ty((*in_ty_elem).into(), param)
+            let Some((drill_expr, drill_ty)) = is_iterator_singleton(expr_elements.iter().zip( in_ty_elements.iter()).filter(|(_expr_elem, in_ty_elem)| {
+                find_param_in_ty((*in_ty_elem).into(), param)
             })) else {
                 // The param is not mentioned, or it is mentioned in multiple indexes.
                 return Err(expr);
@@ -628,10 +628,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to know which of the generic parameters mentions our target param.
             // We expect that at least one of them does, since it is expected to be mentioned.
             let Some((drill_generic_index, generic_argument_type)) =
-                Self::is_iterator_singleton(
+                is_iterator_singleton(
                     in_ty_adt_generic_args.iter().enumerate().filter(
                         |(_index, in_ty_generic)| {
-                            Self::find_param_in_ty(*in_ty_generic, param)
+                            find_param_in_ty(*in_ty_generic, param)
                         },
                     ),
                 ) else {
@@ -751,10 +751,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to know which of the generic parameters mentions our target param.
             // We expect that at least one of them does, since it is expected to be mentioned.
             let Some((drill_generic_index, generic_argument_type)) =
-                Self::is_iterator_singleton(
+                is_iterator_singleton(
                     in_ty_adt_generic_args.iter().enumerate().filter(
                         |(_index, in_ty_generic)| {
-                            Self::find_param_in_ty(*in_ty_generic, param)
+                            find_param_in_ty(*in_ty_generic, param)
                         },
                     ),
                 ) else {
@@ -793,14 +793,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //     outer contextual information.
 
             // (1) Find the (unique) field index which mentions the type in our constraint:
-            let Some((field_index, field_type)) = Self::is_iterator_singleton(
+            let Some((field_index, field_type)) = is_iterator_singleton(
                 in_ty_adt
                     .variant_with_id(variant_def_id)
                     .fields
                     .iter()
                     .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args))
                     .enumerate()
-                    .filter(|(_index, field_type)| Self::find_param_in_ty((*field_type).into(), param))
+                    .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param))
             ) else {
                 return Err(expr);
             };
@@ -833,20 +833,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Err(expr)
     }
+}
 
-    // FIXME: This can be made into a private, non-impl function later.
-    /// Traverses the given ty (either a `ty::Ty` or a `ty::GenericArg`) and searches for references
-    /// to the given `param_to_point_at`. Returns `true` if it finds any use of the param.
-    pub fn find_param_in_ty(
-        ty: ty::GenericArg<'tcx>,
-        param_to_point_at: ty::GenericArg<'tcx>,
-    ) -> bool {
-        let mut walk = ty.walk();
-        while let Some(arg) = walk.next() {
-            if arg == param_to_point_at {
-                return true;
-            }
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+/// Traverses the given ty (either a `ty::Ty` or a `ty::GenericArg`) and searches for references
+/// to the given `param_to_point_at`. Returns `true` if it finds any use of the param.
+fn find_param_in_ty<'tcx>(
+    ty: ty::GenericArg<'tcx>,
+    param_to_point_at: ty::GenericArg<'tcx>,
+) -> bool {
+    let mut walk = ty.walk();
+    while let Some(arg) = walk.next() {
+        if arg == param_to_point_at {
+            return true;
+        }
+        if let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Alias(ty::Projection, ..) = ty.kind()
             {
                 // This logic may seem a bit strange, but typically when
@@ -857,16 +857,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // in some UI tests.
                 walk.skip_current_subtree();
             }
-        }
-        false
     }
+    false
+}
 
-    // FIXME: This can be made into a private, non-impl function later.
-    /// Returns `Some(iterator.next())` if it has exactly one item, and `None` otherwise.
-    pub fn is_iterator_singleton<T>(mut iterator: impl Iterator<Item = T>) -> Option<T> {
-        match (iterator.next(), iterator.next()) {
-            (_, Some(_)) => None,
-            (first, _) => first,
-        }
+/// Returns `Some(iterator.next())` if it has exactly one item, and `None` otherwise.
+fn is_iterator_singleton<T>(mut iterator: impl Iterator<Item = T>) -> Option<T> {
+    match (iterator.next(), iterator.next()) {
+        (_, Some(_)) => None,
+        (first, _) => first,
     }
 }
