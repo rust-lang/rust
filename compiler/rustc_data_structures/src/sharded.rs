@@ -3,6 +3,7 @@ use crate::sync::{Lock, LockGuard, PARALLEL};
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
+use std::intrinsics::likely;
 use std::mem;
 use std::sync::atomic::Ordering;
 
@@ -20,8 +21,9 @@ pub const SHARDS: usize = 1 << SHARD_BITS;
 /// An array of cache-line aligned inner locked structures with convenience methods.
 #[derive(Clone)]
 pub struct Sharded<T> {
-    shards: [CacheAligned<Lock<T>>; SHARDS],
     single_thread: bool,
+    shard: Lock<T>,
+    shards: [CacheAligned<Lock<T>>; SHARDS],
 }
 
 impl<T: Default> Default for Sharded<T> {
@@ -35,37 +37,42 @@ impl<T> Sharded<T> {
     #[inline]
     pub fn new(mut value: impl FnMut() -> T) -> Self {
         Sharded {
-            shards: [(); SHARDS].map(|()| CacheAligned(Lock::new(value()))),
             single_thread: !PARALLEL.load(Ordering::Relaxed),
+            shard: Lock::new(value()),
+            shards: [(); SHARDS].map(|()| CacheAligned(Lock::new(value()))),
         }
     }
 
     /// The shard is selected by hashing `val` with `FxHasher`.
     #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
-        if self.single_thread { &self.shards[0].0 } else { self.get_shard_by_hash(make_hash(val)) }
+        if likely(self.single_thread) {
+            &self.shard
+        } else {
+            &self.shards[get_shard_index_by_hash(make_hash(val))].0
+        }
     }
 
     #[inline]
     pub fn get_shard_by_hash(&self, hash: u64) -> &Lock<T> {
-        if self.single_thread {
-            &self.shards[0].0
+        if likely(self.single_thread) {
+            &self.shard
         } else {
             &self.shards[get_shard_index_by_hash(hash)].0
         }
     }
 
     pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
-        if self.single_thread {
-            vec![self.shards[0].0.lock()]
+        if likely(self.single_thread) {
+            vec![self.shard.lock()]
         } else {
             (0..SHARDS).map(|i| self.shards[i].0.lock()).collect()
         }
     }
 
     pub fn try_lock_shards(&self) -> Option<Vec<LockGuard<'_, T>>> {
-        if self.single_thread {
-            Some(vec![self.shards[0].0.try_lock()?])
+        if likely(self.single_thread) {
+            Some(vec![self.shard.try_lock()?])
         } else {
             (0..SHARDS).map(|i| self.shards[i].0.try_lock()).collect()
         }
