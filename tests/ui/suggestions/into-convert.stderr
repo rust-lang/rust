@@ -33,11 +33,6 @@ LL |     let z: AtomicU32 = 1;
    |            ---------   ^ expected `AtomicU32`, found integer
    |            |
    |            expected due to this
-   |
-help: call `Into::into` on this expression to convert `{integer}` into `AtomicU32`
-   |
-LL |     let z: AtomicU32 = 1.into();
-   |                         +++++++
 
 error: aborting due to 3 previous errors
 

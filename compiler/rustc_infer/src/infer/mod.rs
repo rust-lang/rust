@@ -1603,6 +1603,73 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Replaces substs that reference param or infer variables with suitable
+    /// placeholders. This function is meant to remove these param and infer
+    /// substs when they're not actually needed to evaluate a constant.
+    ///
+    /// This loses information about inference variables so it should only be used
+    /// if incorrectly failing to prove or equate something is acceptable.
+    pub fn replace_infer_vars_with_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        value: T,
+    ) -> T {
+        struct ReplaceInferVarsWithPlaceholders<'a, 'tcx> {
+            infcx: &'a InferCtxt<'tcx>,
+            map: FxHashMap<ty::GenericArg<'tcx>, u32>,
+        }
+
+        impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceInferVarsWithPlaceholders<'a, 'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
+                self.infcx.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                // This replaces integer and float inference vars with placeholders, losing
+                // information.
+                if let ty::Infer(_) = t.kind() {
+                    let new_idx = self.map.len() as u32;
+                    let idx = *self.map.entry(t.into()).or_insert(new_idx);
+                    self.interner().mk_placeholder(ty::PlaceholderType {
+                        universe: ty::UniverseIndex::ROOT,
+                        name: ty::BoundTyKind::Anon(idx),
+                    })
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+
+            fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+                if let ty::ConstKind::Infer(_) = c.kind() {
+                    let ty = c.ty();
+                    if !ty.is_global() {
+                        bug!("const `{c}`'s type should not reference params or types");
+                    }
+                    let new_idx = self.map.len() as u32;
+                    let idx = *self.map.entry(c.into()).or_insert(new_idx);
+                    self.interner().mk_const(
+                        ty::PlaceholderConst {
+                            universe: ty::UniverseIndex::ROOT,
+                            name: ty::BoundVar::from_u32(idx),
+                        },
+                        ty,
+                    )
+                } else {
+                    c.super_fold_with(self)
+                }
+            }
+        }
+
+        let value = self.resolve_vars_if_possible(value);
+        if value.has_non_region_infer() {
+            value.fold_with(&mut ReplaceInferVarsWithPlaceholders {
+                infcx: self,
+                map: Default::default(),
+            })
+        } else {
+            value
+        }
+    }
+
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
@@ -1636,7 +1703,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
                     return Err(ErrorHandled::TooGeneric);
                 } else {
-                    substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
+                    substs = self.replace_infer_vars_with_placeholders(substs);
                 }
             } else {
                 substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
@@ -2086,63 +2153,4 @@ impl RegionVariableOrigin {
             Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
-}
-
-/// Replaces substs that reference param or infer variables with suitable
-/// placeholders. This function is meant to remove these param and infer
-/// substs when they're not actually needed to evaluate a constant.
-fn replace_param_and_infer_substs_with_placeholder<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
-) -> SubstsRef<'tcx> {
-    struct ReplaceParamAndInferWithPlaceholder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        idx: u32,
-    }
-
-    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn interner(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            if let ty::Infer(_) = t.kind() {
-                self.tcx.mk_placeholder(ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    name: ty::BoundTyKind::Anon({
-                        let idx = self.idx;
-                        self.idx += 1;
-                        idx
-                    }),
-                })
-            } else {
-                t.super_fold_with(self)
-            }
-        }
-
-        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-            if let ty::ConstKind::Infer(_) = c.kind() {
-                let ty = c.ty();
-                // If the type references param or infer then ICE ICE ICE
-                if ty.has_non_region_param() || ty.has_non_region_infer() {
-                    bug!("const `{c}`'s type should not reference params or types");
-                }
-                self.tcx.mk_const(
-                    ty::PlaceholderConst {
-                        universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundVar::from_u32({
-                            let idx = self.idx;
-                            self.idx += 1;
-                            idx
-                        }),
-                    },
-                    ty,
-                )
-            } else {
-                c.super_fold_with(self)
-            }
-        }
-    }
-
-    substs.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }

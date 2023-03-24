@@ -119,61 +119,19 @@ pub fn predicates_for_generics<'tcx>(
     })
 }
 
-/// Determines whether the type `ty` is known to meet `bound` and
-/// returns true if so. Returns false if `ty` either does not meet
-/// `bound` or is not known to meet bound (note that this is
-/// conservative towards *no impl*, which is the opposite of the
-/// `evaluate` methods).
+/// Returns whether the type `ty` is known to meet `bound`.
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     def_id: DefId,
 ) -> bool {
-    let trait_ref = ty::Binder::dummy(infcx.tcx.mk_trait_ref(def_id, [ty]));
-    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref.without_const())
-}
-
-/// FIXME(@lcnr): this function doesn't seem right and shouldn't exist?
-///
-/// Ping me on zulip if you want to use this method and need help with finding
-/// an appropriate replacement.
-#[instrument(level = "debug", skip(infcx, param_env, pred), ret)]
-fn pred_known_to_hold_modulo_regions<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    pred: impl ToPredicate<'tcx> + TypeVisitable<TyCtxt<'tcx>>,
-) -> bool {
-    let has_non_region_infer = pred.has_non_region_infer();
-    let obligation = Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, pred);
-
-    let result = infcx.evaluate_obligation_no_overflow(&obligation);
-    debug!(?result);
-
-    if result.must_apply_modulo_regions() && !has_non_region_infer {
-        true
-    } else if result.may_apply() {
-        // Because of inference "guessing", selection can sometimes claim
-        // to succeed while the success requires a guess. To ensure
-        // this function's result remains infallible, we must confirm
-        // that guess. While imperfect, I believe this is sound.
-
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let ocx = ObligationCtxt::new(infcx);
-        ocx.register_obligation(obligation);
-        let errors = ocx.select_all_or_error();
-        match errors.as_slice() {
-            [] => true,
-            errors => {
-                debug!(?errors);
-                false
-            }
-        }
-    } else {
-        false
-    }
+    infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+        infcx.tcx,
+        ObligationCause::dummy(),
+        param_env,
+        infcx.tcx.mk_trait_ref(def_id, [ty]),
+    ))
 }
 
 #[instrument(level = "debug", skip(tcx, elaborated_env))]

@@ -1,4 +1,3 @@
-// run-pass
 #![allow(dead_code)]
 // "guessing" in trait selection can affect `copy_or_move`. Check that this
 // is correctly handled. I am not sure what is the "correct" behaviour,
@@ -10,7 +9,10 @@ struct U([u8; 1337]);
 
 struct S<'a,T:'a>(&'a T);
 impl<'a, T> Clone for S<'a, T> { fn clone(&self) -> Self { S(self.0) } }
-/// This impl triggers inference "guessing" - S<_>: Copy => _ = U
+/// This impl could trigger inference "guessing" - S<_>: Copy => _ = U
+///
+/// The current behavior is that due to inference fallback we end up with
+/// `S<Option<()>>` instead.
 impl<'a> Copy for S<'a, Option<U>> {}
 
 fn assert_impls_fn<R,T: Fn()->R>(_: &T){}
@@ -18,7 +20,7 @@ fn assert_impls_fn<R,T: Fn()->R>(_: &T){}
 fn main() {
     let n = None;
     let e = S(&n);
-    let f = || {
+    let f = || { //~ ERROR expected a closure that implements the `Fn` trait
         // S being copy is critical for this to work
         drop(e);
         mem::size_of_val(e.0)

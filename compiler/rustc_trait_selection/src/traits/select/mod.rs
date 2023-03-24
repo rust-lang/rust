@@ -2250,11 +2250,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Closure(_, substs) => {
                 // (*) binder moved here
                 let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    Ambiguous
-                } else {
-                    Where(obligation.predicate.rebind(substs.as_closure().upvar_tys().collect()))
+                match ty.kind() {
+                    ty::Infer(ty::TyVar(_)) => Ambiguous,
+                    ty::Placeholder(_) => None,
+                    _ => Where(
+                        obligation.predicate.rebind(substs.as_closure().upvar_tys().collect()),
+                    ),
                 }
             }
 

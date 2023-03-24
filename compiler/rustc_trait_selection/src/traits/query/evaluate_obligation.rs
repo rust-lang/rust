@@ -39,8 +39,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     }
 
     /// Evaluates whether the predicate can be satisfied in the given
-    /// `ParamEnv`, and returns `false` if not certain. However, this is
-    /// not entirely accurate if inference variables are involved.
+    /// `ParamEnv`, and returns `false` if not certain. If this returns
+    /// true then the given `obligation` is guaranteed to hold.
     ///
     /// This version may conservatively fail when outlives obligations
     /// are required.
@@ -48,16 +48,18 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
-        self.evaluate_obligation_no_overflow(obligation).must_apply_considering_regions()
+        let obligation = obligation
+            .with(self.tcx, self.replace_infer_vars_with_placeholders(obligation.predicate));
+        self.evaluate_obligation_no_overflow(&obligation).must_apply_considering_regions()
     }
 
     /// Evaluates whether the predicate can be satisfied in the given
-    /// `ParamEnv`, and returns `false` if not certain. However, this is
-    /// not entirely accurate if inference variables are involved.
-    ///
-    /// This version ignores all outlives constraints.
+    /// `ParamEnv`. If this returns true then the given `obligation` is
+    /// guaranteed to hold except for region constraints.
     fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'tcx>) -> bool {
-        self.evaluate_obligation_no_overflow(obligation).must_apply_modulo_regions()
+        let obligation = obligation
+            .with(self.tcx, self.replace_infer_vars_with_placeholders(obligation.predicate));
+        self.evaluate_obligation_no_overflow(&obligation).must_apply_modulo_regions()
     }
 
     /// Evaluate a given predicate, capturing overflow and propagating it back.

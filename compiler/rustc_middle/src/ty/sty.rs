@@ -2339,9 +2339,7 @@ impl<'tcx> Ty<'tcx> {
                 _ => bug!("cannot convert type `{:?}` to a closure kind", self),
             },
 
-            // "Bound" types appear in canonical queries when the
-            // closure type is not yet known
-            Bound(..) | Infer(_) => None,
+            Infer(_) | Placeholder(_) => None,
 
             Error(_) => Some(ty::ClosureKind::Fn),
 
