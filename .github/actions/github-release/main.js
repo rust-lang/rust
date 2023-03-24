@@ -108,20 +108,20 @@ async function runOnce() {
   }
   console.log("found release: ", JSON.stringify(release.data, null, 2));
 
+  // Delete all assets from a previous run
+  for (const asset of release.data.assets) {
+    console.log(`deleting prior asset ${asset.id}`);
+    await octokit.rest.repos.deleteReleaseAsset({
+      owner,
+      repo,
+      asset_id: asset.id,
+    });
+  }
+
   // Upload all the relevant assets for this release as just general blobs.
   for (const file of glob.sync(files)) {
     const size = fs.statSync(file).size;
     const name = path.basename(file);
-    for (const asset of release.data.assets) {
-      if (asset.name !== name)
-        continue;
-      console.log(`deleting prior asset ${asset.id}`);
-      await octokit.rest.repos.deleteReleaseAsset({
-        owner,
-        repo,
-        asset_id: asset.id,
-      });
-    }
     core.info(`upload ${file}`);
     await octokit.rest.repos.uploadReleaseAsset({
       data: fs.createReadStream(file),
