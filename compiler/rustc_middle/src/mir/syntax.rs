@@ -1156,6 +1156,13 @@ pub enum CastKind {
     IntToFloat,
     PtrToPtr,
     FnPtrToPtr,
+    /// Reinterpret the bits of the input as a different type.
+    ///
+    /// MIR is well-formed if the input and output types have different sizes,
+    /// but running a transmute between differently-sized types is UB.
+    ///
+    /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
+    Transmute,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

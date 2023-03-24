@@ -2,6 +2,7 @@
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
 use rustc_session::config::Input;
@@ -699,6 +700,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(threads, 99);
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
+    untracked!(time_passes_format, TimePassesFormat::Json);
     untracked!(trace_macros, true);
     untracked!(track_diagnostics, true);
     untracked!(trim_diagnostic_paths, false);

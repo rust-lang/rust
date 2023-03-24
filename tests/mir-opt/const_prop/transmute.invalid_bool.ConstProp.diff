@@ -1,0 +1,14 @@
+- // MIR for `invalid_bool` before ConstProp
++ // MIR for `invalid_bool` after ConstProp
+  
+  fn invalid_bool() -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/transmute.rs:+0:33: +0:37
+      scope 1 {
+      }
+  
+      bb0: {
+          _0 = const -1_i8 as bool (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:30
+          return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
+      }
+  }
+  

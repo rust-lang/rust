@@ -925,10 +925,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.mk_adt_def(did, adt_kind, variants, repr)
     }
 
-    fn get_generics(self, item_id: DefIndex, sess: &Session) -> ty::Generics {
-        self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
-    }
-
     fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
         self.root
             .tables
@@ -1043,13 +1039,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn is_item_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.optimized_mir.get(self, id).is_some()
-    }
-
-    fn module_expansion(self, id: DefIndex, sess: &Session) -> ExpnId {
-        match self.def_kind(id) {
-            DefKind::Mod | DefKind::Enum | DefKind::Trait => self.get_expn_that_defined(id, sess),
-            _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
-        }
     }
 
     fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {

@@ -662,20 +662,17 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
-    // FIXME: when `Arc::into_inner` is stabilized, add this paragraph:
-    /*
     /// It is strongly recommended to use [`Arc::into_inner`] instead if you don't
     /// want to keep the `Arc` in the [`Err`] case.
     /// Immediately dropping the [`Err`] payload, like in the expression
     /// `Arc::try_unwrap(this).ok()`, can still cause the strong count to
     /// drop to zero and the inner value of the `Arc` to be dropped:
-    /// For instance if two threads execute this expression in parallel, then
+    /// For instance if two threads each execute this expression in parallel, then
     /// there is a race condition. The threads could first both check whether they
     /// have the last clone of their `Arc` via `Arc::try_unwrap`, and then
     /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
     /// taking the strong count from two down to zero.
     ///
-     */
     /// # Examples
     ///
     /// ```
@@ -719,20 +716,13 @@ impl<T> Arc<T> {
     /// This means in particular that the inner value is not dropped.
     ///
     /// The similar expression `Arc::try_unwrap(this).ok()` does not
-    /// offer such a guarantee. See the last example below.
-    //
-    // FIXME: when `Arc::into_inner` is stabilized, add this to end
-    // of the previous sentence:
-    /*
+    /// offer such a guarantee. See the last example below
     /// and the documentation of [`Arc::try_unwrap`].
-     */
     ///
     /// # Examples
     ///
     /// Minimal example demonstrating the guarantee that `Arc::into_inner` gives.
     /// ```
-    /// #![feature(arc_into_inner)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -756,8 +746,6 @@ impl<T> Arc<T> {
     ///
     /// A more practical example demonstrating the need for `Arc::into_inner`:
     /// ```
-    /// #![feature(arc_into_inner)]
-    ///
     /// use std::sync::Arc;
     ///
     /// // Definition of a simple singly linked list using `Arc`:
@@ -807,13 +795,8 @@ impl<T> Arc<T> {
     /// x_thread.join().unwrap();
     /// y_thread.join().unwrap();
     /// ```
-
-    // FIXME: when `Arc::into_inner` is stabilized, adjust above documentation
-    // and the documentation of `Arc::try_unwrap` according to the `FIXME`s. Also
-    // open an issue on rust-lang/rust-clippy, asking for a lint against
-    // `Arc::try_unwrap(...).ok()`.
     #[inline]
-    #[unstable(feature = "arc_into_inner", issue = "106894")]
+    #[stable(feature = "arc_into_inner", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_inner(this: Self) -> Option<T> {
         // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = mem::ManuallyDrop::new(this);

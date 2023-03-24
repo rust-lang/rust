@@ -1002,6 +1002,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
+    pub num_standard_library_imports: usize,
     pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn ResolverExpand,
@@ -1030,6 +1031,7 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             sess,
             ecfg,
+            num_standard_library_imports: 0,
             reduced_recursion_limit: None,
             resolver,
             lint_store,

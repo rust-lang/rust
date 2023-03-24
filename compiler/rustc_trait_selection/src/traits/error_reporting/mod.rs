@@ -1276,16 +1276,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
 
-                    ty::PredicateKind::AliasEq(..) => span_bug!(
+                    ty::PredicateKind::AliasRelate(..) => span_bug!(
                         span,
-                        "AliasEq predicate should never be the predicate cause of a SelectionError"
+                        "AliasRelate predicate should never be the predicate cause of a SelectionError"
                     ),
 
                     ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
-                        self.tcx.sess.struct_span_err(
+                        let mut diag = self.tcx.sess.struct_span_err(
                             span,
                             &format!("the constant `{}` is not of type `{}`", ct, ty),
-                        )
+                        );
+                        self.note_type_err(
+                            &mut diag,
+                            &obligation.cause,
+                            None,
+                            None,
+                            TypeError::Sorts(ty::error::ExpectedFound::new(true, ty, ct.ty())),
+                            false,
+                            false,
+                        );
+                        diag
                     }
                 }
             }

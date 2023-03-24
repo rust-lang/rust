@@ -107,8 +107,8 @@ use crate::sys::locks as sys;
 /// *guard += 1;
 /// ```
 ///
-/// It is sometimes necessary to manually drop the mutex guard to unlock it
-/// sooner than the end of the enclosing scope.
+/// To unlock a mutex guard sooner than the end of the enclosing scope,
+/// either create an inner scope or drop the guard manually.
 ///
 /// ```
 /// use std::sync::{Arc, Mutex};
@@ -125,11 +125,18 @@ use crate::sys::locks as sys;
 ///     let res_mutex_clone = Arc::clone(&res_mutex);
 ///
 ///     threads.push(thread::spawn(move || {
-///         let mut data = data_mutex_clone.lock().unwrap();
-///         // This is the result of some important and long-ish work.
-///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
-///         data.push(result);
-///         drop(data);
+///         // Here we use a block to limit the lifetime of the lock guard.
+///         let result = {
+///             let mut data = data_mutex_clone.lock().unwrap();
+///             // This is the result of some important and long-ish work.
+///             let result = data.iter().fold(0, |acc, x| acc + x * 2);
+///             data.push(result);
+///             result
+///             // The mutex guard gets dropped here, together with any other values
+///             // created in the critical section.
+///         };
+///         // The guard created here is a temporary dropped at the end of the statement, i.e.
+///         // the lock would not remain being held even if the thread did some additional work.
 ///         *res_mutex_clone.lock().unwrap() += result;
 ///     }));
 /// });
@@ -146,6 +153,8 @@ use crate::sys::locks as sys;
 /// // It's even more important here than in the threads because we `.join` the
 /// // threads after that. If we had not dropped the mutex guard, a thread could
 /// // be waiting forever for it, causing a deadlock.
+/// // As in the threads, a block could have been used instead of calling the
+/// // `drop` function.
 /// drop(data);
 /// // Here the mutex guard is not assigned to a variable and so, even if the
 /// // scope does not end after this line, the mutex is still released: there is
@@ -160,6 +169,7 @@ use crate::sys::locks as sys;
 ///
 /// assert_eq!(*res_mutex.lock().unwrap(), 800);
 /// ```
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
 pub struct Mutex<T: ?Sized> {

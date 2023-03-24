@@ -180,7 +180,7 @@ where
             | ty::PredicateKind::ConstEquate(_, _)
             | ty::PredicateKind::TypeWellFormedFromEnv(_)
             | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::AliasEq(_, _) => bug!("unexpected predicate: {:?}", predicate),
+            | ty::PredicateKind::AliasRelate(..) => bug!("unexpected predicate: {:?}", predicate),
         }
     }
 

@@ -1453,7 +1453,10 @@ pub fn build_session(
         CguReuseTracker::new_disabled()
     };
 
-    let prof = SelfProfilerRef::new(self_profiler, sopts.unstable_opts.time_passes);
+    let prof = SelfProfilerRef::new(
+        self_profiler,
+        sopts.unstable_opts.time_passes.then(|| sopts.unstable_opts.time_passes_format),
+    );
 
     let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
         Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,

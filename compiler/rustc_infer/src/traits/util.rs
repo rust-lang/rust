@@ -293,7 +293,7 @@ impl<'tcx> Elaborator<'tcx> {
                 // Nothing to elaborate
             }
             ty::PredicateKind::Ambiguous => {}
-            ty::PredicateKind::AliasEq(..) => {
+            ty::PredicateKind::AliasRelate(..) => {
                 // No
             }
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {

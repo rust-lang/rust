@@ -56,7 +56,15 @@ pub enum TreatParams {
     AsCandidateKey,
     /// Treat parameters as placeholders in the given environment. This is the
     /// correct mode for *lookup*, as during candidate selection.
+    ///
+    /// This also treats projections with inference variables as infer vars
+    /// since they could be further normalized.
     ForLookup,
+    /// Treat parameters as placeholders in the given environment. This is the
+    /// correct mode for *lookup*, as during candidate selection.
+    ///
+    /// N.B. during deep rejection, this acts identically to `ForLookup`.
+    NextSolverLookup,
 }
 
 /// During fast-rejection, we have the choice of treating projection types
@@ -64,13 +72,6 @@ pub enum TreatParams {
 /// to be normalized/rigid.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatProjections {
-    /// In candidates, we may be able to normalize the projection
-    /// after instantiating the candidate and equating it with a goal.
-    ///
-    /// We must assume that the `impl<T> Trait<T> for <T as Id>::This`
-    /// can apply to all self types so we don't return a simplified type
-    /// for `<T as Id>::This`.
-    AsCandidateKey,
     /// In the old solver we don't try to normalize projections
     /// when looking up impls and only access them by using the
     /// current self type. This means that if the self type is
@@ -107,7 +108,6 @@ pub fn simplify_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     treat_params: TreatParams,
-    treat_projections: TreatProjections,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -136,13 +136,20 @@ pub fn simplify_type<'tcx>(
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::Placeholder(..) => Some(PlaceholderSimplifiedType),
         ty::Param(_) => match treat_params {
-            TreatParams::ForLookup => Some(PlaceholderSimplifiedType),
+            TreatParams::ForLookup | TreatParams::NextSolverLookup => {
+                Some(PlaceholderSimplifiedType)
+            }
             TreatParams::AsCandidateKey => None,
         },
-        ty::Alias(..) => match treat_projections {
-            TreatProjections::ForLookup if !ty.needs_infer() => Some(PlaceholderSimplifiedType),
-            TreatProjections::NextSolverLookup => Some(PlaceholderSimplifiedType),
-            TreatProjections::AsCandidateKey | TreatProjections::ForLookup => None,
+        ty::Alias(..) => match treat_params {
+            // When treating `ty::Param` as a placeholder, projections also
+            // don't unify with anything else as long as they are fully normalized.
+            //
+            // We will have to be careful with lazy normalization here.
+            // FIXME(lazy_normalization): This is probably not right...
+            TreatParams::ForLookup if !ty.has_non_region_infer() => Some(PlaceholderSimplifiedType),
+            TreatParams::NextSolverLookup => Some(PlaceholderSimplifiedType),
+            TreatParams::ForLookup | TreatParams::AsCandidateKey => None,
         },
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
@@ -310,7 +317,7 @@ impl DeepRejectCtxt {
             // Depending on the value of `treat_obligation_params`, we either
             // treat generic parameters like placeholders or like inference variables.
             ty::Param(_) => match self.treat_obligation_params {
-                TreatParams::ForLookup => false,
+                TreatParams::ForLookup | TreatParams::NextSolverLookup => false,
                 TreatParams::AsCandidateKey => true,
             },
 
@@ -348,7 +355,7 @@ impl DeepRejectCtxt {
         let k = impl_ct.kind();
         match obligation_ct.kind() {
             ty::ConstKind::Param(_) => match self.treat_obligation_params {
-                TreatParams::ForLookup => false,
+                TreatParams::ForLookup | TreatParams::NextSolverLookup => false,
                 TreatParams::AsCandidateKey => true,
             },
 
