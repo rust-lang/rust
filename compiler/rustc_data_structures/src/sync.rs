@@ -246,8 +246,6 @@ cfg_if! {
 
         pub type MetadataRef = OwnedSlice;
 
-        pub use std::rc::Rc as Lrc;
-        pub use std::rc::Weak as Weak;
         pub use std::cell::Ref as ReadGuard;
         pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
@@ -311,9 +309,6 @@ cfg_if! {
         pub use std::sync::OnceLock as OnceCell;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
-
-        pub use std::sync::Arc as Lrc;
-        pub use std::sync::Weak as Weak;
 
         pub type MTLockRef<'a, T> = &'a MTLock<T>;
 
@@ -518,6 +513,8 @@ cfg_if! {
         const ERROR_CHECKING: bool = false;
     }
 }
+
+pub use std::sync::Arc as Lrc;
 
 pub unsafe trait DynSend {}
 pub unsafe trait DynSync {}
