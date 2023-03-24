@@ -22,7 +22,8 @@
         slice_ptr_get,
         nonnull_slice_from_raw_parts,
         maybe_uninit_array_assume_init,
-        build_hasher_simple_hash_one
+        build_hasher_simple_hash_one,
+        strict_provenance
     )
 )]
 #![allow(
@@ -37,6 +38,7 @@
 )]
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
+#![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
 
 #[cfg(test)]
 #[macro_use]
