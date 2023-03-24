@@ -396,7 +396,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Immediate(newval)
                     }
                     mir::CastKind::Transmute => {
-                        bug!("Transmute operand {:?} in `codegen_rvalue_operand`", operand);
+                        // `rvalue_creates_operand` checked that the immediate matches
+                        OperandValue::Immediate(operand.immediate())
                     }
                 };
                 OperandRef { val, layout: cast }
@@ -726,11 +727,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
-        match *rvalue {
-            mir::Rvalue::Cast(mir::CastKind::Transmute, ..) =>
-                // FIXME: Now that transmute is an Rvalue, it would be nice if
-                // it could create `Immediate`s for scalars, where possible.
-                false,
+        match rvalue {
+            mir::Rvalue::Cast(mir::CastKind::Transmute, operand, dst_ty) => {
+                let dst_ty = self.cx.layout_of(self.monomorphize(*dst_ty));
+                if !self.cx.is_backend_immediate(dst_ty) {
+                    return false;
+                }
+
+                let src_ty = operand.ty(self.mir, self.cx.tcx());
+                let src_ty = self.cx.layout_of(self.monomorphize(src_ty));
+                if !self.cx.is_backend_immediate(src_ty) {
+                    return false;
+                }
+
+                // FIXME: This only handles the easy exact matches for now;
+                // future work could also support `bitcast`s and such.
+                self.cx.immediate_backend_type(src_ty) == self.cx.immediate_backend_type(dst_ty)
+            }
             mir::Rvalue::Ref(..) |
             mir::Rvalue::CopyForDeref(..) |
             mir::Rvalue::AddressOf(..) |

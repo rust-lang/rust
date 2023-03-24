@@ -79,20 +79,16 @@ pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
 // CHECK-LABEL: @check_to_newtype(
 #[no_mangle]
 pub unsafe fn check_to_newtype(x: u64) -> Scalar64 {
-    // CHECK: %0 = alloca i64
-    // CHECK: store i64 %x, ptr %0
-    // CHECK: %1 = load i64, ptr %0
-    // CHECK: ret i64 %1
+    // CHECK-NOT: alloca
+    // CHECK: ret i64 %x
     transmute(x)
 }
 
 // CHECK-LABEL: @check_from_newtype(
 #[no_mangle]
 pub unsafe fn check_from_newtype(x: Scalar64) -> u64 {
-    // CHECK: %0 = alloca i64
-    // CHECK: store i64 %x, ptr %0
-    // CHECK: %1 = load i64, ptr %0
-    // CHECK: ret i64 %1
+    // CHECK-NOT: alloca
+    // CHECK: ret i64 %x
     transmute(x)
 }
 
@@ -193,4 +189,16 @@ pub unsafe fn check_long_array_more_aligned(x: [u8; 100]) -> [u32; 25] {
     // CHECK-NEXT: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %0, ptr align 1 %x, i64 100, i1 false)
     // CHECK-NEXT: ret void
     transmute(x)
+}
+
+// CHECK-LABEL: @check_intermediate_passthrough(
+#[no_mangle]
+pub unsafe fn check_intermediate_passthrough(x: u32) -> i32 {
+    // CHECK: start
+    // CHECK: %[[TMP:.+]] = add i32 1, %x
+    // CHECK: %[[RET:.+]] = add i32 %[[TMP]], 1
+    // CHECK: ret i32 %[[RET]]
+    unsafe {
+        transmute::<u32, i32>(1 + x) + 1
+    }
 }
