@@ -469,7 +469,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // will be checked in the code below.
         for super_trait in tcx
             .super_predicates_of(trait_predicate.def_id())
-            .instantiate(tcx, trait_predicate.trait_ref.substs)
+            .instantiate_without_spans(tcx, trait_predicate.trait_ref.substs)
             .predicates
             .into_iter()
         {

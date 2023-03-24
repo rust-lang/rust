@@ -880,7 +880,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .infcx
             .tcx
             .predicates_of(self.body.source.def_id())
-            .instantiate_identity(self.infcx.tcx)
+            .instantiate_identity_without_spans(self.infcx.tcx)
             .predicates;
 
         if let Some(upvar_index) = self

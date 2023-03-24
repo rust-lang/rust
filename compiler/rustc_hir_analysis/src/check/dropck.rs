@@ -141,7 +141,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // hold.
     let generic_assumptions = tcx.predicates_of(self_type_did);
 
-    let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
+    let assumptions_in_impl_context =
+        generic_assumptions.instantiate_without_spans(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
     debug!(?assumptions_in_impl_context, ?dtor_predicates.predicates);

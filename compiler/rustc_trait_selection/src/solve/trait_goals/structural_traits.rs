@@ -294,7 +294,9 @@ pub(crate) fn predicates_for_object_candidate<'tcx>(
     let tcx = ecx.tcx();
     let mut requirements = vec![];
     requirements.extend(
-        tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.substs).predicates,
+        tcx.super_predicates_of(trait_ref.def_id)
+            .instantiate_without_spans(tcx, trait_ref.substs)
+            .predicates,
     );
     for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
         // FIXME(associated_const_equality): Also add associated consts to

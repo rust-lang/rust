@@ -1301,13 +1301,38 @@ impl<'tcx> Predicate<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Predicate<'tcx>>,
+    /// If you only need to use `predicates` and not `spans`,
+    /// call a `*_without_spans` version of the function you used to get this value.
+    pub predicates_alongside_spans: Vec<Predicate<'tcx>>,
     pub spans: Vec<Span>,
+}
+
+/// Represents the bounds declared on a particular set of type
+/// parameters. See `InstantiatedPredicates`; this type is the same,
+/// except that it does not store any `spans`, for cases where those
+/// are not needed.
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub struct InstantiatedPredicatesWithoutSpans<'tcx> {
+    pub predicates: Vec<Predicate<'tcx>>,
 }
 
 impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: vec![], spans: vec![] }
+        InstantiatedPredicates { predicates_alongside_spans: vec![], spans: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.predicates_alongside_spans.is_empty()
+    }
+
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        (&self).into_iter()
+    }
+}
+
+impl<'tcx> InstantiatedPredicatesWithoutSpans<'tcx> {
+    pub fn empty() -> InstantiatedPredicatesWithoutSpans<'tcx> {
+        InstantiatedPredicatesWithoutSpans { predicates: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -1325,8 +1350,18 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates, self.spans)
+        debug_assert_eq!(self.predicates_alongside_spans.len(), self.spans.len());
+        std::iter::zip(self.predicates_alongside_spans, self.spans)
+    }
+}
+
+impl<'tcx> IntoIterator for InstantiatedPredicatesWithoutSpans<'tcx> {
+    type Item = Predicate<'tcx>;
+
+    type IntoIter = std::vec::IntoIter<Predicate<'tcx>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.predicates.into_iter()
     }
 }
 
@@ -1339,8 +1374,18 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+        debug_assert_eq!(self.predicates_alongside_spans.len(), self.spans.len());
+        std::iter::zip(self.predicates_alongside_spans.iter().copied(), self.spans.iter().copied())
+    }
+}
+
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicatesWithoutSpans<'tcx> {
+    type Item = Predicate<'tcx>;
+
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.predicates.iter().copied()
     }
 }
 

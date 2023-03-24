@@ -378,7 +378,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
-    let predicates = predicates.instantiate_identity(tcx).predicates;
+    let predicates = predicates.instantiate_identity_without_spans(tcx).predicates;
     elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {

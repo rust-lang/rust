@@ -119,8 +119,8 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
-    let ty::InstantiatedPredicates { mut predicates, .. } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let ty::InstantiatedPredicatesWithoutSpans { mut predicates } =
+        tcx.predicates_of(def_id).instantiate_identity_without_spans(tcx);
 
     // When computing the param_env of an RPITIT, use predicates of the containing function,
     // *except* for the additional assumption that the RPITIT normalizes to the trait method's
@@ -133,7 +133,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
     | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id)
     {
-        predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
+        predicates =
+            tcx.predicates_of(fn_def_id).instantiate_identity_without_spans(tcx).predicates;
     }
 
     // Finally, we have to normalize the bounds in the environment, in
@@ -352,8 +353,8 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
     }
 
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates, .. } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let ty::InstantiatedPredicatesWithoutSpans { predicates } =
+        tcx.predicates_of(def_id).instantiate_identity_without_spans(tcx);
 
     let clauses = predicates.into_iter();
 

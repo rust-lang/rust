@@ -20,7 +20,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };
 
         let Some(unsubstituted_pred) =
-            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx)
+            self.tcx.predicates_of(def_id).instantiate_identity_without_spans(self.tcx).predicates.into_iter().nth(idx)
             else { return false; };
 
         let generics = self.tcx.generics_of(def_id);

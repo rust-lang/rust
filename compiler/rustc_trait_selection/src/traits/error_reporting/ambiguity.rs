@@ -36,7 +36,8 @@ pub fn recompute_applicable_impls<'tcx>(
             return false;
         }
 
-        let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs);
+        let impl_predicates =
+            tcx.predicates_of(impl_def_id).instantiate_without_spans(tcx, impl_substs);
         ocx.register_obligations(impl_predicates.predicates.iter().map(|&predicate| {
             Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
         }));

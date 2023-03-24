@@ -574,28 +574,27 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
-            // We don't care about regions here.
-            .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
-                    if trait_pred.def_id() == sized_def_id =>
-                {
-                    let span = predicates
-                        .iter()
-                        .find_map(
-                            |(p, span)| {
-                                if p == obligation.predicate { Some(span) } else { None }
-                            },
-                        )
-                        .unwrap_or(rustc_span::DUMMY_SP);
-                    Some((trait_pred, span))
-                }
-                _ => None,
-            })
-            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
-                ty::Dynamic(..) => Some(span),
-                _ => None,
-            })
+        traits::elaborate_predicates(
+            self.tcx,
+            predicates.predicates_alongside_spans.iter().copied(),
+        )
+        // We don't care about regions here.
+        .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                if trait_pred.def_id() == sized_def_id =>
+            {
+                let span = predicates
+                    .iter()
+                    .find_map(|(p, span)| if p == obligation.predicate { Some(span) } else { None })
+                    .unwrap_or(rustc_span::DUMMY_SP);
+                Some((trait_pred, span))
+            }
+            _ => None,
+        })
+        .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
+            ty::Dynamic(..) => Some(span),
+            _ => None,
+        })
     }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {

@@ -6,7 +6,10 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predicate, TyCtxt};
+use super::{
+    EarlyBoundRegion, InstantiatedPredicates, InstantiatedPredicatesWithoutSpans, ParamConst,
+    ParamTy, Predicate, TyCtxt,
+};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -337,6 +340,16 @@ impl<'tcx> GenericPredicates<'tcx> {
         instantiated
     }
 
+    pub fn instantiate_without_spans(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) -> InstantiatedPredicatesWithoutSpans<'tcx> {
+        let mut instantiated = InstantiatedPredicatesWithoutSpans::empty();
+        self.instantiate_into_without_spans(tcx, &mut instantiated, substs);
+        instantiated
+    }
+
     pub fn instantiate_own(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -357,14 +370,37 @@ impl<'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated
-            .predicates
+            .predicates_alongside_spans
             .extend(self.predicates.iter().map(|(p, _)| EarlyBinder(*p).subst(tcx, substs)));
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
+    }
+
+    fn instantiate_into_without_spans(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut InstantiatedPredicatesWithoutSpans<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.predicates_of(def_id).instantiate_into_without_spans(tcx, instantiated, substs);
+        }
+        instantiated
+            .predicates
+            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder(*p).subst(tcx, substs)));
     }
 
     pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
         self.instantiate_identity_into(tcx, &mut instantiated);
+        instantiated
+    }
+
+    pub fn instantiate_identity_without_spans(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> InstantiatedPredicatesWithoutSpans<'tcx> {
+        let mut instantiated = InstantiatedPredicatesWithoutSpans::empty();
+        self.instantiate_identity_into_without_spans(tcx, &mut instantiated);
         instantiated
     }
 
@@ -376,7 +412,18 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
+        instantiated.predicates_alongside_spans.extend(self.predicates.iter().map(|(p, _)| p));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+    }
+
+    fn instantiate_identity_into_without_spans(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut InstantiatedPredicatesWithoutSpans<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.predicates_of(def_id).instantiate_identity_into_without_spans(tcx, instantiated);
+        }
+        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
     }
 }

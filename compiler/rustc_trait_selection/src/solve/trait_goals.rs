@@ -70,7 +70,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
-                .instantiate(tcx, impl_substs)
+                .instantiate_without_spans(tcx, impl_substs)
                 .predicates
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
@@ -184,7 +184,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.probe(|ecx| {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
-                .instantiate(tcx, goal.predicate.trait_ref.substs);
+                .instantiate_without_spans(tcx, goal.predicate.trait_ref.substs);
             ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

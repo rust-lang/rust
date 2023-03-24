@@ -770,7 +770,7 @@ impl<'tcx> WfPredicates<'tcx> {
 
         let predicates = predicates.instantiate(self.tcx, substs);
         trace!("{:#?}", predicates);
-        debug_assert_eq!(predicates.predicates.len(), origins.len());
+        debug_assert_eq!(predicates.predicates_alongside_spans.len(), origins.len());
 
         iter::zip(predicates, origins.into_iter().rev())
             .map(|((mut pred, span), origin_def_id)| {

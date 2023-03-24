@@ -321,7 +321,7 @@ fn check_predicates<'tcx>(
     let impl1_predicates: Vec<_> = traits::elaborate_predicates_with_span(
         tcx,
         std::iter::zip(
-            instantiated.predicates,
+            instantiated.predicates_alongside_spans,
             // Don't drop predicates (unsound!) because `spans` is too short
             instantiated.spans.into_iter().chain(std::iter::repeat(span)),
         ),
@@ -337,7 +337,7 @@ fn check_predicates<'tcx>(
         traits::elaborate_predicates(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
-                .instantiate(tcx, impl2_substs)
+                .instantiate_without_spans(tcx, impl2_substs)
                 .predicates
                 .into_iter(),
         )
