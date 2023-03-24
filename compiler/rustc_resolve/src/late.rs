@@ -4236,7 +4236,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             {
                 return;
             }
-            ResolveDocLinks::Exported if !maybe_exported.eval(self.r) => {
+            ResolveDocLinks::Exported
+                if !maybe_exported.eval(self.r)
+                    && !rustdoc::has_primitive_or_keyword_docs(attrs) =>
+            {
                 return;
             }
             ResolveDocLinks::ExportedMetadata
