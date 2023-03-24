@@ -1,7 +1,13 @@
 // run-rustfix
 
 #![feature(box_syntax)]
-#![allow(clippy::deref_addrof, dead_code, unused, clippy::no_effect)]
+#![allow(
+    clippy::deref_addrof,
+    dead_code,
+    unused,
+    clippy::no_effect,
+    clippy::unnecessary_struct_initialization
+)]
 #![warn(clippy::unnecessary_operation)]
 
 struct Tuple(i32);
