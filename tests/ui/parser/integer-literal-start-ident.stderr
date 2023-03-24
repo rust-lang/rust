@@ -4,7 +4,11 @@ error: expected identifier, found `1main`
 LL | fn 1main() {}
    |    ^^^^^ expected identifier
    |
-   = help: identifiers cannot start with a number
+help: identifiers cannot start with a number
+  --> $DIR/integer-literal-start-ident.rs:1:4
+   |
+LL | fn 1main() {}
+   |    ^
 
 error: aborting due to previous error
 

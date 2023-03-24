@@ -39,6 +39,7 @@ use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::ops::Drop;
 
 use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
@@ -342,6 +343,11 @@ pub struct InferCtxt<'tcx> {
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     pub intercrate: bool,
+
+    /// Flag that is set when we enter canonicalization. Used for debugging to ensure
+    /// that we only collect region information for `BorrowckInferCtxt::reg_var_to_origin`
+    /// inside non-canonicalization contexts.
+    inside_canonicalization_ctxt: Cell<bool>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -585,8 +591,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
-    pub fn intercrate(mut self) -> Self {
-        self.intercrate = true;
+    pub fn intercrate(mut self, intercrate: bool) -> Self {
+        self.intercrate = intercrate;
         self
     }
 
@@ -633,6 +639,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
+            inside_canonicalization_ctxt: Cell::new(false),
         }
     }
 }
@@ -1727,6 +1734,31 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         }
+    }
+
+    pub fn inside_canonicalization_ctxt(&self) -> bool {
+        self.inside_canonicalization_ctxt.get()
+    }
+
+    pub fn set_canonicalization_ctxt(&self) -> CanonicalizationCtxtGuard<'_, 'tcx> {
+        let prev_ctxt = self.inside_canonicalization_ctxt();
+        self.inside_canonicalization_ctxt.set(true);
+        CanonicalizationCtxtGuard { prev_ctxt, infcx: self }
+    }
+
+    fn set_canonicalization_ctxt_to(&self, ctxt: bool) {
+        self.inside_canonicalization_ctxt.set(ctxt);
+    }
+}
+
+pub struct CanonicalizationCtxtGuard<'cx, 'tcx> {
+    prev_ctxt: bool,
+    infcx: &'cx InferCtxt<'tcx>,
+}
+
+impl<'cx, 'tcx> Drop for CanonicalizationCtxtGuard<'cx, 'tcx> {
+    fn drop(&mut self) {
+        self.infcx.set_canonicalization_ctxt_to(self.prev_ctxt)
     }
 }
 

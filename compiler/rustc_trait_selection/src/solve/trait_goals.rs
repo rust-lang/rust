@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use super::{assembly, EvalCtxt};
+use super::{assembly, EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
@@ -18,6 +18,10 @@ pub mod structural_traits;
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
         self.self_ty()
+    }
+
+    fn trait_ref(self, _: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
+        self.trait_ref
     }
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
@@ -43,6 +47,22 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
+        let impl_polarity = tcx.impl_polarity(impl_def_id);
+        // An upper bound of the certainty of this goal, used to lower the certainty
+        // of reservation impl to ambiguous during coherence.
+        let maximal_certainty = match impl_polarity {
+            ty::ImplPolarity::Positive | ty::ImplPolarity::Negative => {
+                match impl_polarity == goal.predicate.polarity {
+                    true => Certainty::Yes,
+                    false => return Err(NoSolution),
+                }
+            }
+            ty::ImplPolarity::Reservation => match ecx.solver_mode() {
+                SolverMode::Normal => return Err(NoSolution),
+                SolverMode::Coherence => Certainty::AMBIGUOUS,
+            },
+        };
+
         ecx.probe(|ecx| {
             let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
@@ -55,7 +75,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
             ecx.add_goals(where_clause_bounds);
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+
+            ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
         })
     }
 
@@ -513,6 +534,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // `DiscriminantKind` is automatically implemented for every type.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
+
+    fn consider_builtin_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if !goal.param_env.is_const() {
+            // `Destruct` is automatically implemented for every type in
+            // non-const environments.
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
+            Err(NoSolution)
+        }
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -547,6 +582,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_candidates_and_discard_reservation_impls(candidates)
+        self.merge_candidates(candidates)
     }
 }

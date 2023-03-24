@@ -80,12 +80,19 @@ functions, and "In Return Types" shows matches in the return types of functions.
 Both are very useful when looking for a function whose name you can't quite
 bring to mind when you know the type you have or want.
 
-When typing in the search bar, you can prefix your search term with a type
-followed by a colon (such as `mod:`) to restrict the results to just that
-kind of item. (The available items are listed in the help popup.)
-
-Searching for `println!` will search for a macro named `println`, just like
+Names in the search interface can be prefixed with an item type followed by a
+colon (such as `mod:`) to restrict the results to just that kind of item. Also,
+searching for `println!` will search for a macro named `println`, just like
 searching for `macro:println` does.
+
+Function signature searches can query generics, wrapped in angle brackets, and
+traits are normalized like types in the search engine. For example, a function
+with the signature `fn my_function<I: Iterator<Item=u32>>(input: I) -> usize`
+can be matched with the following queries:
+
+* `Iterator<u32> -> usize`
+* `trait:Iterator<primitive:u32> -> primitive:usize`
+* `Iterator -> usize`
 
 ### Changing displayed theme
 

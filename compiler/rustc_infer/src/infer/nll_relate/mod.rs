@@ -28,6 +28,7 @@ use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
@@ -55,21 +56,6 @@ where
     ambient_variance: ty::Variance,
 
     ambient_variance_info: ty::VarianceDiagInfo<'tcx>,
-
-    /// When we pass through a set of binders (e.g., when looking into
-    /// a `fn` type), we push a new bound region scope onto here. This
-    /// will contain the instantiated region for each region in those
-    /// binders. When we then encounter a `ReLateBound(d, br)`, we can
-    /// use the De Bruijn index `d` to find the right scope, and then
-    /// bound region name `br` to find the specific instantiation from
-    /// within that scope. See `replace_bound_region`.
-    ///
-    /// This field stores the instantiations for late-bound regions in
-    /// the `a` type.
-    a_scopes: Vec<BoundRegionScope<'tcx>>,
-
-    /// Same as `a_scopes`, but for the `b` type.
-    b_scopes: Vec<BoundRegionScope<'tcx>>,
 }
 
 pub trait TypeRelatingDelegate<'tcx> {
@@ -147,8 +133,6 @@ where
             delegate,
             ambient_variance,
             ambient_variance_info: ty::VarianceDiagInfo::default(),
-            a_scopes: vec![],
-            b_scopes: vec![],
         }
     }
 
@@ -163,88 +147,6 @@ where
         match self.ambient_variance {
             ty::Variance::Contravariant | ty::Variance::Invariant => true,
             ty::Variance::Covariant | ty::Variance::Bivariant => false,
-        }
-    }
-
-    fn create_scope(
-        &mut self,
-        value: ty::Binder<'tcx, impl Relate<'tcx>>,
-        universally_quantified: UniversallyQuantified,
-    ) -> BoundRegionScope<'tcx> {
-        let mut scope = BoundRegionScope::default();
-
-        // Create a callback that creates (via the delegate) either an
-        // existential or placeholder region as needed.
-        let mut next_region = {
-            let delegate = &mut self.delegate;
-            let mut lazy_universe = None;
-            move |br: ty::BoundRegion| {
-                if universally_quantified.0 {
-                    // The first time this closure is called, create a
-                    // new universe for the placeholders we will make
-                    // from here out.
-                    let universe = lazy_universe.unwrap_or_else(|| {
-                        let universe = delegate.create_next_universe();
-                        lazy_universe = Some(universe);
-                        universe
-                    });
-
-                    let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
-                    delegate.next_placeholder_region(placeholder)
-                } else {
-                    delegate.next_existential_region_var(true, br.kind.get_name())
-                }
-            }
-        };
-
-        value.skip_binder().visit_with(&mut ScopeInstantiator {
-            next_region: &mut next_region,
-            target_index: ty::INNERMOST,
-            bound_region_scope: &mut scope,
-        });
-
-        scope
-    }
-
-    /// When we encounter binders during the type traversal, we record
-    /// the value to substitute for each of the things contained in
-    /// that binder. (This will be either a universal placeholder or
-    /// an existential inference variable.) Given the De Bruijn index
-    /// `debruijn` (and name `br`) of some binder we have now
-    /// encountered, this routine finds the value that we instantiated
-    /// the region with; to do so, it indexes backwards into the list
-    /// of ambient scopes `scopes`.
-    fn lookup_bound_region(
-        debruijn: ty::DebruijnIndex,
-        br: &ty::BoundRegion,
-        first_free_index: ty::DebruijnIndex,
-        scopes: &[BoundRegionScope<'tcx>],
-    ) -> ty::Region<'tcx> {
-        // The debruijn index is a "reverse index" into the
-        // scopes listing. So when we have INNERMOST (0), we
-        // want the *last* scope pushed, and so forth.
-        let debruijn_index = debruijn.index() - first_free_index.index();
-        let scope = &scopes[scopes.len() - debruijn_index - 1];
-
-        // Find this bound region in that scope to map to a
-        // particular region.
-        scope.map[br]
-    }
-
-    /// If `r` is a bound region, find the scope in which it is bound
-    /// (from `scopes`) and return the value that we instantiated it
-    /// with. Otherwise just return `r`.
-    fn replace_bound_region(
-        &self,
-        r: ty::Region<'tcx>,
-        first_free_index: ty::DebruijnIndex,
-        scopes: &[BoundRegionScope<'tcx>],
-    ) -> ty::Region<'tcx> {
-        debug!("replace_bound_regions(scopes={:?})", scopes);
-        if let ty::ReLateBound(debruijn, br) = *r {
-            Self::lookup_bound_region(debruijn, &br, first_free_index, scopes)
-        } else {
-            r
         }
     }
 
@@ -314,17 +216,8 @@ where
 
         self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
 
-        // The generalized values we extract from `canonical_var_values` have
-        // been fully instantiated and hence the set of scopes we have
-        // doesn't matter -- just to be sure, put an empty vector
-        // in there.
-        let old_a_scopes = std::mem::take(pair.vid_scopes(self));
-
         // Relate the generalized kind to the original one.
         let result = pair.relate_generalized_ty(self, generalized_ty);
-
-        // Restore the old scopes now.
-        *pair.vid_scopes(self) = old_a_scopes;
 
         debug!("relate_ty_var: complete, result = {:?}", result);
         result
@@ -379,6 +272,97 @@ where
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
         Ok(a)
     }
+
+    #[instrument(skip(self), level = "debug")]
+    fn instantiate_binder_with_placeholders<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    where
+        T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        if let Some(inner) = binder.no_bound_vars() {
+            return inner;
+        }
+
+        let mut next_region = {
+            let nll_delegate = &mut self.delegate;
+            let mut lazy_universe = None;
+
+            move |br: ty::BoundRegion| {
+                // The first time this closure is called, create a
+                // new universe for the placeholders we will make
+                // from here out.
+                let universe = lazy_universe.unwrap_or_else(|| {
+                    let universe = nll_delegate.create_next_universe();
+                    lazy_universe = Some(universe);
+                    universe
+                });
+
+                let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
+                debug!(?placeholder);
+                let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
+                debug!(?placeholder_reg);
+
+                placeholder_reg
+            }
+        };
+
+        let delegate = FnMutDelegate {
+            regions: &mut next_region,
+            types: &mut |_bound_ty: ty::BoundTy| {
+                unreachable!("we only replace regions in nll_relate, not types")
+            },
+            consts: &mut |_bound_var: ty::BoundVar, _ty| {
+                unreachable!("we only replace regions in nll_relate, not consts")
+            },
+        };
+
+        let replaced = self.infcx.tcx.replace_bound_vars_uncached(binder, delegate);
+        debug!(?replaced);
+
+        replaced
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn instantiate_binder_with_existentials<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    where
+        T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        if let Some(inner) = binder.no_bound_vars() {
+            return inner;
+        }
+
+        let mut next_region = {
+            let nll_delegate = &mut self.delegate;
+            let mut reg_map = FxHashMap::default();
+
+            move |br: ty::BoundRegion| {
+                if let Some(ex_reg_var) = reg_map.get(&br) {
+                    return *ex_reg_var;
+                } else {
+                    let ex_reg_var =
+                        nll_delegate.next_existential_region_var(true, br.kind.get_name());
+                    debug!(?ex_reg_var);
+                    reg_map.insert(br, ex_reg_var);
+
+                    ex_reg_var
+                }
+            }
+        };
+
+        let delegate = FnMutDelegate {
+            regions: &mut next_region,
+            types: &mut |_bound_ty: ty::BoundTy| {
+                unreachable!("we only replace regions in nll_relate, not types")
+            },
+            consts: &mut |_bound_var: ty::BoundVar, _ty| {
+                unreachable!("we only replace regions in nll_relate, not consts")
+            },
+        };
+
+        let replaced = self.infcx.tcx.replace_bound_vars_uncached(binder, delegate);
+        debug!(?replaced);
+
+        replaced
+    }
 }
 
 /// When we instantiate an inference variable with a value in
@@ -395,14 +379,6 @@ trait VidValuePair<'tcx>: Debug {
     /// Extract the value it is being related to (which will be the
     /// opposite part of the tuple from the vid).
     fn value_ty(&self) -> Ty<'tcx>;
-
-    /// Extract the scopes that apply to whichever side of the tuple
-    /// the vid was found on. See the comment where this is called
-    /// for more details on why we want them.
-    fn vid_scopes<'r, D: TypeRelatingDelegate<'tcx>>(
-        &self,
-        relate: &'r mut TypeRelating<'_, 'tcx, D>,
-    ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
 
     /// Given a generalized type G that should replace the vid, relate
     /// G to the value, putting G on whichever side the vid would have
@@ -425,16 +401,6 @@ impl<'tcx> VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
         self.1
     }
 
-    fn vid_scopes<'r, D>(
-        &self,
-        relate: &'r mut TypeRelating<'_, 'tcx, D>,
-    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
-    where
-        D: TypeRelatingDelegate<'tcx>,
-    {
-        &mut relate.a_scopes
-    }
-
     fn relate_generalized_ty<D>(
         &self,
         relate: &mut TypeRelating<'_, 'tcx, D>,
@@ -455,16 +421,6 @@ impl<'tcx> VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
 
     fn value_ty(&self) -> Ty<'tcx> {
         self.0
-    }
-
-    fn vid_scopes<'r, D>(
-        &self,
-        relate: &'r mut TypeRelating<'_, 'tcx, D>,
-    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
-    where
-        D: TypeRelatingDelegate<'tcx>,
-    {
-        &mut relate.b_scopes
     }
 
     fn relate_generalized_ty<D>(
@@ -602,20 +558,14 @@ where
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!(?self.ambient_variance);
 
-        let v_a = self.replace_bound_region(a, ty::INNERMOST, &self.a_scopes);
-        let v_b = self.replace_bound_region(b, ty::INNERMOST, &self.b_scopes);
-
-        debug!(?v_a);
-        debug!(?v_b);
-
         if self.ambient_covariance() {
             // Covariant: &'a u8 <: &'b u8. Hence, `'a: 'b`.
-            self.push_outlives(v_a, v_b, self.ambient_variance_info);
+            self.push_outlives(a, b, self.ambient_variance_info);
         }
 
         if self.ambient_contravariance() {
             // Contravariant: &'b u8 <: &'a u8. Hence, `'b: 'a`.
-            self.push_outlives(v_b, v_a, self.ambient_variance_info);
+            self.push_outlives(b, a, self.ambient_variance_info);
         }
 
         Ok(a)
@@ -689,15 +639,6 @@ where
             // instantiation of B (i.e., B instantiated with
             // universals).
 
-            let b_scope = self.create_scope(b, UniversallyQuantified(true));
-            let a_scope = self.create_scope(a, UniversallyQuantified(false));
-
-            debug!(?a_scope, "(existential)");
-            debug!(?b_scope, "(universal)");
-
-            self.b_scopes.push(b_scope);
-            self.a_scopes.push(a_scope);
-
             // Reset the ambient variance to covariant. This is needed
             // to correctly handle cases like
             //
@@ -718,12 +659,14 @@ where
             //   subtyping (i.e., `&'b u32 <: &{P} u32`).
             let variance = std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
-            self.relate(a.skip_binder(), b.skip_binder())?;
+            // Note: the order here is important. Create the placeholders first, otherwise
+            // we assign the wrong universe to the existential!
+            let b_replaced = self.instantiate_binder_with_placeholders(b);
+            let a_replaced = self.instantiate_binder_with_existentials(a);
+
+            self.relate(a_replaced, b_replaced)?;
 
             self.ambient_variance = variance;
-
-            self.b_scopes.pop().unwrap();
-            self.a_scopes.pop().unwrap();
         }
 
         if self.ambient_contravariance() {
@@ -733,26 +676,17 @@ where
             // instantiation of B (i.e., B instantiated with
             // existentials). Opposite of above.
 
-            let a_scope = self.create_scope(a, UniversallyQuantified(true));
-            let b_scope = self.create_scope(b, UniversallyQuantified(false));
-
-            debug!(?a_scope, "(universal)");
-            debug!(?b_scope, "(existential)");
-
-            self.a_scopes.push(a_scope);
-            self.b_scopes.push(b_scope);
-
             // Reset ambient variance to contravariance. See the
             // covariant case above for an explanation.
             let variance =
                 std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
-            self.relate(a.skip_binder(), b.skip_binder())?;
+            let a_replaced = self.instantiate_binder_with_placeholders(a);
+            let b_replaced = self.instantiate_binder_with_existentials(b);
+
+            self.relate(a_replaced, b_replaced)?;
 
             self.ambient_variance = variance;
-
-            self.b_scopes.pop().unwrap();
-            self.a_scopes.pop().unwrap();
         }
 
         Ok(a)
@@ -776,6 +710,34 @@ where
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.delegate.register_obligations(obligations);
+    }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        unreachable!("manually overridden to handle ty::Variance::Contravariant ambient variance")
+    }
+
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
+            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            // a :> b is b <: a
+            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+                b.into(),
+                a.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Equate,
+            ),
+            // FIXME(deferred_projection_equality): Implement this when we trigger it.
+            // Probably just need to do nothing here.
+            ty::Variance::Bivariant => unreachable!(),
+        })]);
     }
 }
 

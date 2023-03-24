@@ -6,11 +6,11 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, WriteGuard};
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
@@ -46,9 +46,8 @@ pub struct CStore {
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
 
-    /// This map is used to verify we get no hash conflicts between
-    /// `StableCrateId` values.
-    pub(crate) stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
+    /// The interned [StableCrateId]s.
+    pub(crate) stable_crate_ids: StableCrateIdMap,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -144,9 +143,21 @@ impl CStore {
         })
     }
 
-    fn alloc_new_crate_num(&mut self) -> CrateNum {
-        self.metas.push(None);
-        CrateNum::new(self.metas.len() - 1)
+    fn intern_stable_crate_id(&mut self, root: &CrateRoot) -> Result<CrateNum, CrateError> {
+        assert_eq!(self.metas.len(), self.stable_crate_ids.len());
+        let num = CrateNum::new(self.stable_crate_ids.len());
+        if let Some(&existing) = self.stable_crate_ids.get(&root.stable_crate_id()) {
+            let crate_name0 = root.name();
+            if let Some(crate_name1) = self.metas[existing].as_ref().map(|data| data.name()) {
+                Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1))
+            } else {
+                Err(CrateError::SymbolConflictsCurrent(crate_name0))
+            }
+        } else {
+            self.metas.push(None);
+            self.stable_crate_ids.insert(root.stable_crate_id(), num);
+            Ok(num)
+        }
     }
 
     pub fn has_crate_data(&self, cnum: CrateNum) -> bool {
@@ -247,7 +258,7 @@ impl CStore {
     }
 
     pub fn new(sess: &Session) -> CStore {
-        let mut stable_crate_ids = FxHashMap::default();
+        let mut stable_crate_ids = StableCrateIdMap::default();
         stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
@@ -342,42 +353,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         None
     }
 
-    fn verify_no_symbol_conflicts(&self, root: &CrateRoot) -> Result<(), CrateError> {
-        // Check for (potential) conflicts with the local crate
-        if self.sess.local_stable_crate_id() == root.stable_crate_id() {
-            return Err(CrateError::SymbolConflictsCurrent(root.name()));
-        }
-
-        // Check for conflicts with any crate loaded so far
-        for (_, other) in self.cstore.iter_crate_data() {
-            // Same stable crate id but different SVH
-            if other.stable_crate_id() == root.stable_crate_id() && other.hash() != root.hash() {
-                bug!(
-                    "Previously returned E0523 here. \
-                     See https://github.com/rust-lang/rust/pull/100599 for additional discussion.\
-                     root.name() = {}.",
-                    root.name()
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    fn verify_no_stable_crate_id_hash_conflicts(
-        &mut self,
-        root: &CrateRoot,
-        cnum: CrateNum,
-    ) -> Result<(), CrateError> {
-        if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
-            let crate_name0 = root.name();
-            let crate_name1 = self.cstore.get_crate_data(existing).name();
-            return Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1));
-        }
-
-        Ok(())
-    }
-
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -396,7 +371,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             self.sess.opts.externs.get(name.as_str()).map_or(false, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
-        let cnum = self.cstore.alloc_new_crate_num();
+        let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",
@@ -431,14 +406,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         } else {
             None
         };
-
-        // Perform some verification *after* resolve_crate_deps() above is
-        // known to have been successful. It seems that - in error cases - the
-        // cstore can be in a temporarily invalid state between cnum allocation
-        // and dependency resolution and the verification code would produce
-        // ICEs in that case (see #83045).
-        self.verify_no_symbol_conflicts(&crate_root)?;
-        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
@@ -720,8 +687,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // compilation mode also comes into play.
         let desired_strategy = self.sess.panic_strategy();
         let mut runtime_found = false;
-        let mut needs_panic_runtime =
-            self.sess.contains_name(&krate.attrs, sym::needs_panic_runtime);
+        let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
 
         for (cnum, data) in self.cstore.iter_crate_data() {
             needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
@@ -789,7 +755,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         info!("loading profiler");
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
-        if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
+        if name == sym::profiler_builtins && attr::contains_name(&krate.attrs, sym::no_core) {
             self.sess.emit_err(errors::ProfilerBuiltinsNeedsCore);
         }
 
@@ -803,14 +769,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        self.cstore.has_global_allocator = match &*global_allocator_spans(&self.sess, krate) {
+        self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
             [span1, span2, ..] => {
                 self.sess.emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
                 true
             }
             spans => !spans.is_empty(),
         };
-        self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(&self.sess, krate) {
+        self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(krate) {
             [span1, span2, ..] => {
                 self.sess
                     .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
@@ -822,7 +788,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
         // written down in liballoc.
-        if !self.sess.contains_name(&krate.attrs, sym::needs_allocator)
+        if !attr::contains_name(&krate.attrs, sym::needs_allocator)
             && !self.cstore.iter_crate_data().any(|(_, data)| data.needs_allocator())
         {
             return;
@@ -881,7 +847,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             // allocator. At this point our allocator request is typically fulfilled
             // by the standard library, denoted by the `#![default_lib_allocator]`
             // attribute.
-            if !self.sess.contains_name(&krate.attrs, sym::default_lib_allocator)
+            if !attr::contains_name(&krate.attrs, sym::default_lib_allocator)
                 && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
             {
                 self.sess.emit_err(errors::GlobalAllocRequired);
@@ -1003,7 +969,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     }
                     None => item.ident.name,
                 };
-                let dep_kind = if self.sess.contains_name(&item.attrs, sym::no_link) {
+                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
                 } else {
                     CrateDepKind::Explicit
@@ -1049,16 +1015,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 }
 
-fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
-    struct Finder<'a> {
-        sess: &'a Session,
+fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
+    struct Finder {
         name: Symbol,
         spans: Vec<Span>,
     }
-    impl<'ast, 'a> visit::Visitor<'ast> for Finder<'a> {
+    impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
             if item.ident.name == self.name
-                && self.sess.contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
             {
                 self.spans.push(item.span);
             }
@@ -1067,21 +1032,20 @@ fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
     }
 
     let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::alloc));
-    let mut f = Finder { sess, name, spans: Vec::new() };
+    let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
 }
 
-fn alloc_error_handler_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
-    struct Finder<'a> {
-        sess: &'a Session,
+fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
+    struct Finder {
         name: Symbol,
         spans: Vec<Span>,
     }
-    impl<'ast, 'a> visit::Visitor<'ast> for Finder<'a> {
+    impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
             if item.ident.name == self.name
-                && self.sess.contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
             {
                 self.spans.push(item.span);
             }
@@ -1090,7 +1054,7 @@ fn alloc_error_handler_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
     }
 
     let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::oom));
-    let mut f = Finder { sess, name, spans: Vec::new() };
+    let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
 }

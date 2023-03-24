@@ -1356,6 +1356,31 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
+                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
+                        let sugg_prefix = format!("&{}", if is_mut { "mut " } else { "" });
+                        let sugg_msg = &format!(
+                            "consider{} borrowing here",
+                            if is_mut { " mutably" } else { "" }
+                        );
+
+                        // Issue #109436, we need to add parentheses properly for method calls
+                        // for example, `foo.into()` should be `(&foo).into()`
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(
+                            self.tcx.sess.source_map().span_look_ahead(span, Some("."), Some(50)),
+                        ) {
+                            if snippet == "." {
+                                err.multipart_suggestion_verbose(
+                                    sugg_msg,
+                                    vec![
+                                        (span.shrink_to_lo(), format!("({}", sugg_prefix)),
+                                        (span.shrink_to_hi(), ")".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
+                                return true;
+                            }
+                        }
+
                         // Issue #104961, we need to add parentheses properly for compond expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
@@ -1372,14 +1397,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             _ => false,
                         };
 
-                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
                         let span = if needs_parens { span } else { span.shrink_to_lo() };
-                        let sugg_prefix = format!("&{}", if is_mut { "mut " } else { "" });
-                        let sugg_msg = &format!(
-                            "consider{} borrowing here",
-                            if is_mut { " mutably" } else { "" }
-                        );
-
                         let suggestions = if !needs_parens {
                             vec![(span.shrink_to_lo(), format!("{}", sugg_prefix))]
                         } else {

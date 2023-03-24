@@ -1,4 +1,5 @@
 #![feature(decl_macro)]
+#![allow(ambiguous_glob_reexports)]
 
 macro_rules! define_exported { () => {
     #[macro_export]

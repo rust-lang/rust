@@ -256,11 +256,12 @@ fn sccs_info<'cx, 'tcx>(
 
     let mut var_to_origin_sorted = var_to_origin.clone().into_iter().collect::<Vec<_>>();
     var_to_origin_sorted.sort_by_key(|vto| vto.0);
-    let mut debug_str = "region variables to origins:\n".to_string();
+
+    let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
-        debug_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
+        reg_vars_to_origins_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
     }
-    debug!(debug_str);
+    debug!("{}", reg_vars_to_origins_str);
 
     let num_components = sccs.scc_data().ranges().len();
     let mut components = vec![FxIndexSet::default(); num_components];
@@ -275,12 +276,12 @@ fn sccs_info<'cx, 'tcx>(
     for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
         let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
         components_str.push_str(&format!(
-            "{:?}: {:?})",
+            "{:?}: {:?},\n)",
             ConstraintSccIndex::from_usize(scc_idx),
             regions_info,
         ))
     }
-    debug!(components_str);
+    debug!("{}", components_str);
 
     // calculate the best representative for each component
     let components_representatives = components

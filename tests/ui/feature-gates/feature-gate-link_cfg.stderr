@@ -4,7 +4,6 @@ error[E0658]: link cfg is unstable
 LL | #[link(name = "foo", cfg(foo))]
    |                      ^^^^^^^^
    |
-   = note: see issue #37406 <https://github.com/rust-lang/rust/issues/37406> for more information
    = help: add `#![feature(link_cfg)]` to the crate attributes to enable
 
 error: aborting due to previous error

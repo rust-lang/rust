@@ -1,3 +1,4 @@
+// compile-flags: -Ztrait-solver=next
 // check-pass
 
 trait Mirror {

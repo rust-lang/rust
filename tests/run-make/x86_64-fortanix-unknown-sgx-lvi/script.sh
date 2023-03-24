@@ -20,39 +20,38 @@ function build {
 }
 
 function check {
-    local func=$1
+    local func_re="$1"
     local checks="${TEST_DIR}/$2"
     local asm=$(mktemp)
-    local objdump="${BUILD_DIR}/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-objdump"
-    local filecheck="${BUILD_DIR}/x86_64-unknown-linux-gnu/llvm/build/bin/FileCheck"
+    local objdump="${LLVM_BIN_DIR}/llvm-objdump"
+    local filecheck="${LLVM_BIN_DIR}/FileCheck"
+    local enclave=${WORK_DIR}/enclave/target/x86_64-fortanix-unknown-sgx/debug/enclave
 
-    ${objdump} --disassemble-symbols=${func} --demangle \
-      ${WORK_DIR}/enclave/target/x86_64-fortanix-unknown-sgx/debug/enclave > ${asm}
+    func="$(${objdump} --syms --demangle ${enclave} | \
+            grep --only-matching -E "[[:blank:]]+${func_re}\$" | \
+            sed -e 's/^[[:space:]]*//' )"
+    ${objdump} --disassemble-symbols="${func}" --demangle \
+      ${enclave} > ${asm}
     ${filecheck} --input-file ${asm} ${checks}
 }
 
 build
 
-check unw_getcontext unw_getcontext.checks
-check "libunwind::Registers_x86_64::jumpto()" jumpto.checks
-check "std::io::stdio::_print::h87f0c238421c45bc" print.checks
-check rust_plus_one_global_asm rust_plus_one_global_asm.checks \
-  || echo "warning: module level assembly currently not hardened"
+check "unw_getcontext" unw_getcontext.checks
+check "__libunwind_Registers_x86_64_jumpto" jumpto.checks
+check 'std::io::stdio::_print::[[:alnum:]]+' print.checks
+check rust_plus_one_global_asm rust_plus_one_global_asm.checks
 
 check cc_plus_one_c cc_plus_one_c.checks
 check cc_plus_one_c_asm cc_plus_one_c_asm.checks
 check cc_plus_one_cxx cc_plus_one_cxx.checks
 check cc_plus_one_cxx_asm cc_plus_one_cxx_asm.checks
-check cc_plus_one_asm cc_plus_one_asm.checks \
-  || echo "warning: the cc crate forwards assembly files to the CC compiler." \
-           "Clang uses its own integrated assembler, which does not include the LVI passes."
+check cc_plus_one_asm cc_plus_one_asm.checks
 
 check cmake_plus_one_c cmake_plus_one_c.checks
 check cmake_plus_one_c_asm cmake_plus_one_c_asm.checks
-check cmake_plus_one_c_global_asm cmake_plus_one_c_global_asm.checks \
-  || echo "warning: module level assembly currently not hardened"
+check cmake_plus_one_c_global_asm cmake_plus_one_c_global_asm.checks
 check cmake_plus_one_cxx cmake_plus_one_cxx.checks
 check cmake_plus_one_cxx_asm cmake_plus_one_cxx_asm.checks
-check cmake_plus_one_cxx_global_asm cmake_plus_one_cxx_global_asm.checks \
-  || echo "warning: module level assembly currently not hardened"
+check cmake_plus_one_cxx_global_asm cmake_plus_one_cxx_global_asm.checks
 check cmake_plus_one_asm cmake_plus_one_asm.checks

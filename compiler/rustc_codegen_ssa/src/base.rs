@@ -786,6 +786,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             total_codegen_time,
             start_rss.unwrap(),
             end_rss,
+            tcx.sess.opts.unstable_opts.time_passes_format,
         );
     }
 
@@ -809,7 +810,7 @@ impl CrateInfo {
             .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
                 tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });

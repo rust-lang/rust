@@ -1,0 +1,29 @@
+- // MIR for `transmute_to_box_uninhabited` before LowerIntrinsics
++ // MIR for `transmute_to_box_uninhabited` after LowerIntrinsics
+  
+  fn transmute_to_box_uninhabited() -> ! {
+      let mut _0: !;                       // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:49: +0:50
+      let mut _1: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:51: +3:2
+      let _2: std::boxed::Box<Never>;      // in scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:10
+      let mut _3: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:16
+      scope 1 {
+          debug x => _2;                   // in scope 1 at $DIR/lower_intrinsics.rs:+1:9: +1:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:+0:51: +3:2
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:10
+-         _2 = transmute::<usize, Box<Never>>(const 1_usize) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:70:25: 70:44
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(usize) -> Box<Never> {transmute::<usize, Box<Never>>}, val: Value(<ZST>) }
++         _2 = const 1_usize as std::boxed::Box<Never> (Transmute); // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52
+      }
+  
+      bb1: {
+          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:5: +2:16
+          unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:11: +2:13
+      }
+  }
+  

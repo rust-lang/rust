@@ -1,5 +1,6 @@
 //! A module for searching for libraries
 
+use rustc_fs_util::try_canonicalize;
 use smallvec::{smallvec, SmallVec};
 use std::env;
 use std::fs;
@@ -125,7 +126,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_triple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
-    let path = current_dll_path().and_then(|s| s.canonicalize().map_err(|e| e.to_string()));
+    let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
     if let Ok(dll) = path {
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll which should be either `lib` or `bin`.
@@ -160,7 +161,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
     // Follow symlinks. If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
-        let path = fs::canonicalize(&path).unwrap_or(path);
+        let path = try_canonicalize(&path).unwrap_or(path);
         // See comments on this target function, but the gist is that
         // gcc chokes on verbatim paths which fs::canonicalize generates
         // so we try to avoid those kinds of paths.

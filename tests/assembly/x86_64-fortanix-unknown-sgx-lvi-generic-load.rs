@@ -11,7 +11,7 @@ pub extern fn plus_one(r: &mut u64) {
 
 // CHECK: plus_one
 // CHECK: lfence
-// CHECK-NEXT: addq
+// CHECK-NEXT: incq
 // CHECK: popq [[REGISTER:%[a-z]+]]
 // CHECK-NEXT: lfence
 // CHECK-NEXT: jmpq *[[REGISTER]]

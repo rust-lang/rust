@@ -28,7 +28,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
+        } else if is_public && !is_proc_macro(attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -51,7 +51,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if is_public
-            && !is_proc_macro(cx.sess(), attrs)
+            && !is_proc_macro(attrs)
             && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
         {
             check_must_use_candidate(
@@ -78,7 +78,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if let hir::TraitFn::Provided(eid) = *eid {
             let body = cx.tcx.hir().body(eid);
-            if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
+            if attr.is_none() && is_public && !is_proc_macro(attrs) {
                 check_must_use_candidate(
                     cx,
                     sig.decl,

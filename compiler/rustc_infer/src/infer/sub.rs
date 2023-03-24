@@ -236,4 +236,8 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Sub<'_, '_, 'tcx> {
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.fields.register_obligations(obligations);
     }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        ty::AliasRelationDirection::Subtype
+    }
 }

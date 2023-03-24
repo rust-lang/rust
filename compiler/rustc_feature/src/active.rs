@@ -160,6 +160,8 @@ declare_features! (
     (active, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (active, lang_items, "1.0.0", None, None),
+    /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
+    (active, link_cfg, "1.14.0", None, None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (active, multiple_supertrait_upcastable, "1.69.0", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
@@ -432,8 +434,6 @@ declare_features! (
     (active, large_assignments, "1.52.0", Some(83518), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
-    /// Allows `#[link(..., cfg(..))]`.
-    (active, link_cfg, "1.14.0", Some(37406), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
     /// Give access to additional metadata about declarative macro meta-variables.

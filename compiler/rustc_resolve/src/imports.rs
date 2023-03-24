@@ -19,7 +19,9 @@ use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
+use rustc_session::lint::builtin::{
+    AMBIGUOUS_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS,
+};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
@@ -507,6 +509,34 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.throw_unresolved_import_error(errors);
+        }
+    }
+
+    pub(crate) fn check_reexport_ambiguities(
+        &mut self,
+        exported_ambiguities: FxHashSet<Interned<'a, NameBinding<'a>>>,
+    ) {
+        for module in self.arenas.local_modules().iter() {
+            module.for_each_child(self, |this, ident, ns, binding| {
+                if let NameBindingKind::Import { import, .. } = binding.kind
+                && let Some((amb_binding, _)) = binding.ambiguity
+                && binding.res() != Res::Err
+                && exported_ambiguities.contains(&Interned::new_unchecked(binding))
+                {
+                    this.lint_buffer.buffer_lint_with_diagnostic(
+                        AMBIGUOUS_GLOB_REEXPORTS,
+                        import.root_id,
+                        import.root_span,
+                        "ambiguous glob re-exports",
+                        BuiltinLintDiagnostics::AmbiguousGlobReexports {
+                            name: ident.to_string(),
+                            namespace: ns.descr().to_string(),
+                            first_reexport_span: import.root_span,
+                            duplicate_reexport_span: amb_binding.span,
+                        },
+                    );
+                }
+            });
         }
     }
 

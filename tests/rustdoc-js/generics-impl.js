@@ -5,6 +5,8 @@ const QUERY = [
     'Aaaaaaa -> bool',
     'Aaaaaaa -> usize',
     'Read -> u64',
+    'trait:Read -> u64',
+    'struct:Read -> u64',
     'bool -> u64',
     'Ddddddd -> u64',
     '-> Ddddddd'
@@ -35,6 +37,17 @@ const EXPECTED = [
             { 'path': 'generics_impl::Ddddddd', 'name': 'eeeeeee' },
             { 'path': 'generics_impl::Ddddddd', 'name': 'ggggggg' },
         ],
+    },
+    {
+        // trait:Read -> u64
+        'others': [
+            { 'path': 'generics_impl::Ddddddd', 'name': 'eeeeeee' },
+            { 'path': 'generics_impl::Ddddddd', 'name': 'ggggggg' },
+        ],
+    },
+    {
+        // struct:Read -> u64
+        'others': [],
     },
     {
         // bool -> u64

@@ -712,10 +712,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                unreachable!(
-                    "we captured two identical projections: capture1 = {:?}, capture2 = {:?}",
-                    capture1, capture2
+                self.tcx.sess.delay_span_bug(
+                    closure_span,
+                    &format!(
+                        "two identical projections: ({:?}, {:?})",
+                        capture1.place.projections, capture2.place.projections
+                    ),
                 );
+                std::cmp::Ordering::Equal
             });
         }
 

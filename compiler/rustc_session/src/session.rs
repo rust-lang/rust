@@ -30,7 +30,7 @@ use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap, Span};
-use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
+use rustc_span::{SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
@@ -1003,40 +1003,6 @@ impl Session {
         || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
-    pub fn is_proc_macro_attr(&self, attr: &Attribute) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| attr.has_name(*kind))
-    }
-
-    pub fn contains_name(&self, attrs: &[Attribute], name: Symbol) -> bool {
-        attrs.iter().any(|item| item.has_name(name))
-    }
-
-    pub fn find_by_name<'a>(
-        &'a self,
-        attrs: &'a [Attribute],
-        name: Symbol,
-    ) -> Option<&'a Attribute> {
-        attrs.iter().find(|attr| attr.has_name(name))
-    }
-
-    pub fn filter_by_name<'a>(
-        &'a self,
-        attrs: &'a [Attribute],
-        name: Symbol,
-    ) -> impl Iterator<Item = &'a Attribute> {
-        attrs.iter().filter(move |attr| attr.has_name(name))
-    }
-
-    pub fn first_attr_value_str_by_name(
-        &self,
-        attrs: &[Attribute],
-        name: Symbol,
-    ) -> Option<Symbol> {
-        attrs.iter().find(|at| at.has_name(name)).and_then(|at| at.value_str())
-    }
-
     pub fn diagnostic_width(&self) -> usize {
         let default_column_width = 140;
         if let Some(width) = self.opts.diagnostic_width {
@@ -1487,7 +1453,10 @@ pub fn build_session(
         CguReuseTracker::new_disabled()
     };
 
-    let prof = SelfProfilerRef::new(self_profiler, sopts.unstable_opts.time_passes);
+    let prof = SelfProfilerRef::new(
+        self_profiler,
+        sopts.unstable_opts.time_passes.then(|| sopts.unstable_opts.time_passes_format),
+    );
 
     let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
         Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,

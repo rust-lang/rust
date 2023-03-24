@@ -1,0 +1,27 @@
+- // MIR for `transmute_ref_dst` before LowerIntrinsics
++ // MIR for `transmute_ref_dst` after LowerIntrinsics
+  
+  fn transmute_ref_dst(_1: &T) -> *const T {
+      debug u => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:44: +0:45
+      let mut _0: *const T;                // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:54: +0:62
+      let mut _2: &T;                      // in scope 0 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+          _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+-         _0 = transmute::<&T, *const T>(move _2) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:53:14: 53:33
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&T) -> *const T {transmute::<&T, *const T>}, val: Value(<ZST>) }
++         _0 = move _2 as *const T (Transmute); // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:35: +1:36
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+2:2: +2:2
+      }
+  }
+  

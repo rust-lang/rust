@@ -335,7 +335,7 @@ fn predicate_references_self<'tcx>(
             has_self_ty(&ty.into()).then_some(sp)
         }
 
-        ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
+        ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
 
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
@@ -395,7 +395,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::AliasEq(..)
+            | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }

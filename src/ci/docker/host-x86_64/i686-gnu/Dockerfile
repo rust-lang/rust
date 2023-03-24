@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   lib32z1-dev \
   xz-utils \
+  mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
 

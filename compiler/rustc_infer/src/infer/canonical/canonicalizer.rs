@@ -561,6 +561,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
+        let _inside_canonical_ctxt_guard = infcx.set_canonicalization_ctxt();
+
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::NEEDS_INFER |
             TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
