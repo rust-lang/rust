@@ -1,4 +1,4 @@
-error: `true` is both a module and a builtin type
+error: `true` is both a module and a primitive type
   --> $DIR/ambiguity.rs:38:6
    |
 LL | /// [true]
@@ -13,7 +13,7 @@ help: to link to the module, prefix with `mod@`
    |
 LL | /// [mod@true]
    |      ++++
-help: to link to the builtin type, prefix with `prim@`
+help: to link to the primitive type, prefix with `prim@`
    |
 LL | /// [prim@true]
    |      +++++

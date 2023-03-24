@@ -1,4 +1,4 @@
-error: `u32::MAX` is both an associated constant and a builtin type
+error: `u32::MAX` is both an associated constant and a primitive type
   --> $DIR/issue-108653-associated-items-6.rs:4:7
    |
 LL | /// [`u32::MAX`]
@@ -13,7 +13,7 @@ help: to link to the associated constant, prefix with `const@`
    |
 LL | /// [`const@u32::MAX`]
    |       ++++++
-help: to link to the builtin type, prefix with `prim@`
+help: to link to the primitive type, prefix with `prim@`
    |
 LL | /// [`prim@u32::MAX`]
    |       +++++
