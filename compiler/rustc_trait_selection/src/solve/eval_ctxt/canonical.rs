@@ -8,19 +8,18 @@
 /// section of the [rustc-dev-guide][c].
 ///
 /// [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
-pub use self::canonicalize::{CanonicalizeMode, Canonicalizer};
-
 use super::{CanonicalGoal, Certainty, EvalCtxt, Goal};
-use super::{CanonicalResponse, QueryResult, Response};
+use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
+use crate::solve::{CanonicalResponse, QueryResult, Response};
+use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::ExternalConstraintsData;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
 use rustc_middle::ty::{self, GenericArgKind};
+use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
-
-mod canonicalize;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
@@ -30,7 +29,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalGoal<'tcx>) {
         let mut orig_values = Default::default();
-        let canonical_goal = self.canonicalize(CanonicalizeMode::Input, &mut orig_values, goal);
+        let canonical_goal = Canonicalizer::canonicalize(
+            self.infcx,
+            CanonicalizeMode::Input,
+            &mut orig_values,
+            goal,
+        );
         (orig_values, canonical_goal)
     }
 
@@ -41,7 +45,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// - `external_constraints`: additional constraints which aren't expressable
     ///   using simple unification of inference variables.
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn evaluate_added_goals_and_make_canonical_response(
+    pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
@@ -51,12 +55,33 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let external_constraints = self.compute_external_query_constraints()?;
 
         let response = Response { var_values: self.var_values, external_constraints, certainty };
-        let canonical = self.canonicalize(
+        let canonical = Canonicalizer::canonicalize(
+            self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
             response,
         );
         Ok(canonical)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
+        // Cannot use `take_registered_region_obligations` as we may compute the response
+        // inside of a `probe` whenever we have multiple choices inside of the solver.
+        let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
+        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
+            make_query_region_constraints(
+                self.tcx(),
+                region_obligations
+                    .iter()
+                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
+                region_constraints,
+            )
+        });
+        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        Ok(self
+            .tcx()
+            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -98,10 +123,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
         // caller.
-        let prev_universe = self.universe();
+        let prev_universe = self.infcx.universe();
         let universes_created_in_query = response.max_universe.index() + 1;
         for _ in 0..universes_created_in_query {
-            self.create_next_universe();
+            self.infcx.create_next_universe();
         }
 
         let var_values = response.value.var_values;
@@ -144,7 +169,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
-                    self.instantiate_canonical_var(info, |idx| {
+                    self.infcx.instantiate_canonical_var(DUMMY_SP, info, |idx| {
                         ty::UniverseIndex::from(prev_universe.index() + idx.index())
                     })
                 } else if info.is_existential() {
@@ -158,7 +183,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     if let Some(v) = opt_values[index] {
                         v
                     } else {
-                        self.instantiate_canonical_var(info, |_| prev_universe)
+                        self.infcx.instantiate_canonical_var(DUMMY_SP, info, |_| prev_universe)
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this

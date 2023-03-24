@@ -15,8 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    CanonicalGoal, CanonicalResponse, Certainty, ExternalConstraintsData, Goal, QueryResult,
-    Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, QueryResult, Response,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{
@@ -24,7 +23,7 @@ use rustc_middle::ty::{
 };
 
 mod assembly;
-mod canonical;
+mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
 mod project_goals;

@@ -1,7 +1,6 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
-use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
-use rustc_infer::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarValues};
+use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
@@ -9,9 +8,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::solve::{
-    CanonicalGoal, Certainty, ExternalConstraints, ExternalConstraintsData, MaybeCause, QueryResult,
-};
+use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -21,10 +18,11 @@ use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
 
-use super::canonical::{CanonicalizeMode, Canonicalizer};
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
+
+mod canonical;
 
 pub struct EvalCtxt<'a, 'tcx> {
     /// The inference context that backs (mostly) inference and placeholder terms
@@ -414,7 +412,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
                     match self.infcx.probe_ty_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -424,7 +422,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
                     match self.infcx.probe_const_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -566,22 +564,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.fresh_substs_for_item(DUMMY_SP, def_id)
     }
 
-    pub(super) fn universe(&self) -> ty::UniverseIndex {
-        self.infcx.universe()
-    }
-
-    pub(super) fn create_next_universe(&self) -> ty::UniverseIndex {
-        self.infcx.create_next_universe()
-    }
-
-    pub(super) fn instantiate_canonical_var(
-        &self,
-        cv_info: CanonicalVarInfo<'tcx>,
-        universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
-    ) -> ty::GenericArg<'tcx> {
-        self.infcx.instantiate_canonical_var(DUMMY_SP, cv_info, universe_map)
-    }
-
     pub(super) fn translate_substs(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -620,36 +602,5 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
         crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
             .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
-    }
-
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn compute_external_query_constraints(
-        &self,
-    ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
-        // Cannot use `take_registered_region_obligations` as we may compute the response
-        // inside of a `probe` whenever we have multiple choices inside of the solver.
-        let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
-        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(
-                self.tcx(),
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
-                region_constraints,
-            )
-        });
-        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
-        Ok(self
-            .tcx()
-            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
-    }
-
-    pub(super) fn canonicalize<T: TypeFoldable<TyCtxt<'tcx>>>(
-        &self,
-        canonicalize_mode: CanonicalizeMode,
-        variables: &mut Vec<ty::GenericArg<'tcx>>,
-        value: T,
-    ) -> Canonical<'tcx, T> {
-        Canonicalizer::canonicalize(self.infcx, canonicalize_mode, variables, value)
     }
 }
