@@ -123,7 +123,11 @@ enum LocalRef<'tcx, V> {
     /// Every time it is initialized, we have to reallocate the place
     /// and update the fat pointer. That's the reason why it is indirect.
     UnsizedPlace(PlaceRef<'tcx, V>),
-    Operand(Option<OperandRef<'tcx, V>>),
+    /// `Operand(o)`: `o` has the backend [`OperandValue`] already generated.
+    Operand(OperandRef<'tcx, V>),
+    /// `PendingOperand(l)`: codegen has not yet run for this local.
+    /// `l` is the expected layout, to save recomputing it later.
+    PendingOperand(TyAndLayout<'tcx>),
 }
 
 impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
@@ -135,9 +139,9 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(Some(OperandRef::new_zst(bx, layout)))
+            LocalRef::Operand(OperandRef::new_zst(bx, layout))
         } else {
-            LocalRef::Operand(None)
+            LocalRef::PendingOperand(layout)
         }
     }
 }
@@ -337,7 +341,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // We don't have to cast or keep the argument in the alloca.
                 // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
                 // of putting everything in allocas just so we can use llvm.dbg.declare.
-                let local = |op| LocalRef::Operand(Some(op));
+                let local = |op| LocalRef::Operand(op);
                 match arg.mode {
                     PassMode::Ignore => {
                         return local(OperandRef::new_zst(bx, arg.layout));

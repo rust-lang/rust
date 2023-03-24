@@ -546,7 +546,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut cg_base = match self.locals[place_ref.local] {
             LocalRef::Place(place) => place,
             LocalRef::UnsizedPlace(place) => bx.load_operand(place).deref(cx),
-            LocalRef::Operand(..) => {
+            LocalRef::Operand(..) | LocalRef::PendingOperand(..) => {
                 if place_ref.has_deref() {
                     base = 1;
                     let cg_base = self.codegen_consume(

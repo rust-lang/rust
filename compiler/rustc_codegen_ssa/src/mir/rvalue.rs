@@ -10,9 +10,8 @@ use crate::MemFlags;
 use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
-use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_target::abi::{self, VariantIdx};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -37,7 +36,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
                     // Into-coerce of a thin pointer to a fat pointer -- just
                     // use the operand path.
-                    let temp = self.codegen_rvalue_operand(bx, rvalue);
+                    let temp = self.codegen_rvalue_operand(bx, rvalue, dest.layout);
                     temp.val.store(bx, dest);
                     return;
                 }
@@ -141,8 +140,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
-                let temp = self.codegen_rvalue_operand(bx, rvalue);
+                let temp = self.codegen_rvalue_operand(bx, rvalue, dest.layout);
                 temp.val.store(bx, dest);
             }
         }
@@ -219,18 +217,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
+        output_ty: TyAndLayout<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
         assert!(
-            self.rvalue_creates_operand(rvalue, DUMMY_SP),
+            self.rvalue_creates_operand(rvalue, output_ty),
             "cannot codegen {:?} to operand",
             rvalue,
+        );
+
+        // Our callers reliably know what the `TyAndLayout` of the eventual
+        // `OperandRef` will be, thanks to the local or place reference.
+        // But very strange things would happen in codegen were it ever wrong
+        // somehow, so double-check them in debug-assertions CI just in case.
+        debug_assert_eq!(
+            output_ty,
+            bx.cx().layout_of(self.monomorphize(rvalue.ty(self.mir, bx.tcx()))),
         );
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(bx, source);
                 debug!("cast operand is {:?}", operand);
-                let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
+                let cast = output_ty;
+                debug_assert_eq!(cast, bx.cx().layout_of(self.monomorphize(mir_cast_ty)));
 
                 let val = match *kind {
                     mir::CastKind::PointerExposeAddress => {
@@ -422,10 +431,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Len(place) => {
                 let size = self.evaluate_array_len(bx, place);
-                OperandRef {
-                    val: OperandValue::Immediate(size),
-                    layout: bx.cx().layout_of(bx.tcx().types.usize),
-                }
+                OperandRef { val: OperandValue::Immediate(size), layout: output_ty }
             }
 
             mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
@@ -451,10 +457,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     _ => bug!(),
                 };
-                OperandRef {
-                    val: OperandValue::Immediate(llresult),
-                    layout: bx.cx().layout_of(op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty)),
-                }
+
+                OperandRef { val: OperandValue::Immediate(llresult), layout: output_ty }
             }
             mir::Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(bx, lhs);
@@ -466,13 +470,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     rhs.immediate(),
                     lhs.layout.ty,
                 );
-                let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().mk_tup(&[val_ty, bx.tcx().types.bool]);
-                OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
+                OperandRef { val: result, layout: output_ty }
             }
 
             mir::Rvalue::UnaryOp(op, ref operand) => {
                 let operand = self.codegen_operand(bx, operand);
+                debug_assert_eq!(operand.layout, output_ty);
                 let lloperand = operand.immediate();
                 let is_float = operand.layout.ty.is_floating_point();
                 let llval = match op {
@@ -485,17 +488,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 };
-                OperandRef { val: OperandValue::Immediate(llval), layout: operand.layout }
+                OperandRef { val: OperandValue::Immediate(llval), layout: output_ty }
             }
 
             mir::Rvalue::Discriminant(ref place) => {
-                let discr_ty = rvalue.ty(self.mir, bx.tcx());
-                let discr_ty = self.monomorphize(discr_ty);
-                let discr = self.codegen_place(bx, place.as_ref()).codegen_get_discr(bx, discr_ty);
-                OperandRef {
-                    val: OperandValue::Immediate(discr),
-                    layout: self.cx.layout_of(discr_ty),
-                }
+                let place_ref = self.codegen_place(bx, place.as_ref());
+                let discr = place_ref.codegen_get_discr(bx, output_ty.ty);
+                OperandRef { val: OperandValue::Immediate(discr), layout: output_ty }
             }
 
             mir::Rvalue::NullaryOp(null_op, ty) => {
@@ -507,36 +506,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
                 };
                 let val = bx.cx().const_usize(val);
-                let tcx = self.cx.tcx();
-                OperandRef {
-                    val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(tcx.types.usize),
-                }
+                OperandRef { val: OperandValue::Immediate(val), layout: output_ty }
             }
 
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let static_ = bx.get_static(def_id);
-                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
-                OperandRef { val: OperandValue::Immediate(static_), layout }
+                OperandRef { val: OperandValue::Immediate(static_), layout: output_ty }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                OperandRef::new_zst(bx, self.cx.layout_of(self.monomorphize(ty)))
+                OperandRef::new_zst(bx, output_ty)
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
                 let lloperand = operand.immediate();
 
-                let content_ty = self.monomorphize(content_ty);
-                let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
-                let llty_ptr = bx.cx().backend_type(box_layout);
+                debug_assert_eq!(output_ty, {
+                    let content_ty = self.monomorphize(content_ty);
+                    bx.cx().layout_of(bx.tcx().mk_box(content_ty))
+                });
+                let llty_ptr = bx.cx().backend_type(output_ty);
 
                 let val = bx.pointercast(lloperand, llty_ptr);
-                OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
+                OperandRef { val: OperandValue::Immediate(val), layout: output_ty }
             }
         }
     }
@@ -545,7 +540,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
         if let Some(index) = place.as_local() {
-            if let LocalRef::Operand(Some(op)) = self.locals[index] {
+            if let LocalRef::Operand(op) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind() {
                     let n = n.eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);
@@ -725,7 +720,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    pub fn rvalue_creates_operand(
+        &self,
+        rvalue: &mir::Rvalue<'tcx>,
+        output_ty: TyAndLayout<'tcx>,
+    ) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ..) =>
                 // FIXME: Now that transmute is an Rvalue, it would be nice if
@@ -747,9 +746,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let ty = self.monomorphize(ty);
-                self.cx.spanned_layout_of(ty, span).is_zst()
+                output_ty.is_zst()
             }
         }
 

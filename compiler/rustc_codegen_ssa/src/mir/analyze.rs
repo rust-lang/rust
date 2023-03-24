@@ -9,7 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
@@ -22,13 +22,14 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .map(|decl| {
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-            if layout.is_zst() {
+            let kind = if layout.is_zst() {
                 LocalKind::ZST
             } else if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
                 LocalKind::Unused
             } else {
                 LocalKind::Memory
-            }
+            };
+            (kind, layout)
         })
         .collect();
 
@@ -48,7 +49,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut non_ssa_locals = BitSet::new_empty(analyzer.locals.len());
     for (local, kind) in analyzer.locals.iter_enumerated() {
-        if matches!(kind, LocalKind::Memory) {
+        if matches!(kind.0, LocalKind::Memory) {
             non_ssa_locals.insert(local);
         }
     }
@@ -85,12 +86,12 @@ impl DefLocation {
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
-    locals: IndexVec<mir::Local, LocalKind>,
+    locals: IndexVec<mir::Local, (LocalKind, TyAndLayout<'tcx>)>,
 }
 
 impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn assign(&mut self, local: mir::Local, location: DefLocation) {
-        let kind = &mut self.locals[local];
+        let kind = &mut self.locals[local].0;
         match *kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
@@ -178,10 +179,9 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
         if let Some(local) = place.as_local() {
             self.assign(local, DefLocation::Body(location));
-            if self.locals[local] != LocalKind::Memory {
-                let decl_span = self.fx.mir.local_decls[local].source_info.span;
-                if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
-                    self.locals[local] = LocalKind::Memory;
+            if self.locals[local].0 != LocalKind::Memory {
+                if !self.fx.rvalue_creates_operand(rvalue, self.locals[local].1) {
+                    self.locals[local].0 = LocalKind::Memory;
                 }
             }
         } else {
@@ -207,7 +207,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-            ) => match &mut self.locals[local] {
+            ) => match &mut self.locals[local].0 {
                 LocalKind::ZST => {}
                 LocalKind::Memory => {}
                 LocalKind::SSA(def) if def.dominates(location, &self.dominators) => {}
@@ -237,17 +237,16 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Projection,
             ) => {
-                self.locals[local] = LocalKind::Memory;
+                self.locals[local].0 = LocalKind::Memory;
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let kind = &mut self.locals[local];
-                if *kind != LocalKind::Memory {
-                    let ty = self.fx.mir.local_decls[local].ty;
-                    let ty = self.fx.monomorphize(ty);
+                let kind_and_ty = &mut self.locals[local];
+                if kind_and_ty.0 != LocalKind::Memory {
+                    let ty = kind_and_ty.1.ty;
                     if self.fx.cx.type_needs_drop(ty) {
                         // Only need the place if we're actually dropping it.
-                        *kind = LocalKind::Memory;
+                        kind_and_ty.0 = LocalKind::Memory;
                     }
                 }
             }
