@@ -226,8 +226,8 @@ impl UnstableReason {
     }
 }
 
-/// Collects stability info from all stability attributes in `attrs`.
-/// Returns `None` if no stability attributes are found.
+/// Collects stability info from `stable`/`unstable`/`rustc_allowed_through_unstable_modules`
+/// attributes in `attrs`.  Returns `None` if no stability attributes are found.
 pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
@@ -280,8 +280,8 @@ pub fn find_stability(
     stab
 }
 
-/// Collects stability info from all stability attributes in `attrs`.
-/// Returns `None` if no stability attributes are found.
+/// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
+/// attributes in `attrs`.  Returns `None` if no stability attributes are found.
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
@@ -329,7 +329,7 @@ pub fn find_const_stability(
     const_stab
 }
 
-/// Collects stability info from all stability attributes in `attrs`.
+/// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
 /// Returns `None` if no stability attributes are found.
 pub fn find_body_stability(
     sess: &Session,
@@ -353,10 +353,12 @@ pub fn find_body_stability(
     body_stab
 }
 
+/// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
+/// its stability information.
 fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
-    let insert = |meta: &MetaItem, item: &mut Option<Symbol>| {
+    let insert_or_error = |meta: &MetaItem, item: &mut Option<Symbol>| {
         if item.is_some() {
             handle_errors(
                 &sess.parse_sess,
@@ -388,12 +390,12 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
         match mi.name_or_empty() {
             sym::feature => {
-                if !insert(mi, &mut feature) {
+                if !insert_or_error(mi, &mut feature) {
                     return None;
                 }
             }
             sym::since => {
-                if !insert(mi, &mut since) {
+                if !insert_or_error(mi, &mut since) {
                     return None;
                 }
             }
@@ -431,10 +433,12 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
     }
 }
 
+/// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// attribute, and return the feature name and its stability information.
 fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
-    let insert = |meta: &MetaItem, item: &mut Option<Symbol>| {
+    let insert_or_error = |meta: &MetaItem, item: &mut Option<Symbol>| {
         if item.is_some() {
             handle_errors(
                 &sess.parse_sess,
@@ -470,21 +474,21 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
 
         match mi.name_or_empty() {
             sym::feature => {
-                if !insert(mi, &mut feature) {
+                if !insert_or_error(mi, &mut feature) {
                     return None;
                 }
             }
             sym::reason => {
-                if !insert(mi, &mut reason) {
+                if !insert_or_error(mi, &mut reason) {
                     return None;
                 }
             }
             sym::issue => {
-                if !insert(mi, &mut issue) {
+                if !insert_or_error(mi, &mut issue) {
                     return None;
                 }
 
-                // These unwraps are safe because `insert` ensures the meta item
+                // These unwraps are safe because `insert_or_error` ensures the meta item
                 // is a name/value pair string literal.
                 issue_num = match issue.unwrap().as_str() {
                     "none" => None,
@@ -512,7 +516,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                 is_soft = true;
             }
             sym::implied_by => {
-                if !insert(mi, &mut implied_by) {
+                if !insert_or_error(mi, &mut implied_by) {
                     return None;
                 }
             }
