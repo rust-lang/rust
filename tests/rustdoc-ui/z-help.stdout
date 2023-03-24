@@ -17,7 +17,6 @@
     -Z                dep-info-omit-d-target=val -- in dep-info output, omit targets for tracking dependencies of the dep-info files themselves (default: no)
     -Z                             dep-tasks=val -- print tasks that execute and the color their dep node gets (requires debug build) (default: no)
     -Z                      diagnostic-width=val -- set the current output width for diagnostic truncation
-    -Z                               dlltool=val -- import library generation tool (windows-gnu only)
     -Z               dont-buffer-diagnostics=val -- emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) (default: no)
     -Z                         drop-tracking=val -- enables drop tracking in generators (default: no)
     -Z                     drop-tracking-mir=val -- enables drop tracking on MIR in generators (default: no)

@@ -976,6 +976,15 @@ pub fn make_test_description<R: Read>(
     #[cfg(not(windows))]
     let (has_i686_dlltool, has_x86_64_dlltool) =
         (is_on_path("i686-w64-mingw32-dlltool"), is_on_path("x86_64-w64-mingw32-dlltool"));
+    let has_dlltool = || {
+        if config.matches_arch("x86") {
+            has_i686_dlltool()
+        } else if config.matches_arch("x86_64") {
+            has_x86_64_dlltool()
+        } else {
+            false
+        }
+    };
 
     iter_header(path, src, &mut |revision, ln| {
         if revision.is_some() && revision != cfg {
@@ -1046,6 +1055,7 @@ pub fn make_test_description<R: Read>(
         reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
         reason!(config.parse_name_directive(ln, "needs-i686-dlltool") && !has_i686_dlltool());
         reason!(config.parse_name_directive(ln, "needs-x86_64-dlltool") && !has_x86_64_dlltool());
+        reason!(config.parse_name_directive(ln, "needs-dlltool") && !has_dlltool());
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 

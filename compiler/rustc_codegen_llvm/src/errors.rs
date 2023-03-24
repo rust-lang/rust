@@ -67,15 +67,15 @@ pub(crate) struct ErrorWritingDEFFile {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_calling_dlltool)]
-pub(crate) struct ErrorCallingDllTool {
+pub(crate) struct ErrorCallingDllTool<'a> {
+    pub dlltool_path: Cow<'a, str>,
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dlltool_fail_import_library)]
 pub(crate) struct DlltoolFailImportLibrary<'a> {
-    pub stdout: Cow<'a, str>,
-    pub stderr: Cow<'a, str>,
+    pub error: Cow<'a, str>,
 }
 
 #[derive(Diagnostic)]
