@@ -487,6 +487,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
+
+    fn consider_builtin_destruct_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Destruct` does not have an associated type: {:?}", goal);
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

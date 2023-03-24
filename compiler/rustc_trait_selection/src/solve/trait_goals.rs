@@ -534,6 +534,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // `DiscriminantKind` is automatically implemented for every type.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
+
+    fn consider_builtin_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if !goal.param_env.is_const() {
+            // `Destruct` is automatically implemented for every type in
+            // non-const environments.
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
+            Err(NoSolution)
+        }
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {

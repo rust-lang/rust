@@ -13,7 +13,6 @@ pub mod set;
 mod set_val;
 mod split;
 
-#[doc(hidden)]
 trait Recover<Q: ?Sized> {
     type Key;
 

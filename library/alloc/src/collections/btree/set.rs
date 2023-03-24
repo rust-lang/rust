@@ -1,6 +1,3 @@
-// This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
-// to TreeMap
-
 use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
@@ -17,8 +14,6 @@ use super::set_val::SetValZST;
 use super::Recover;
 
 use crate::alloc::{Allocator, Global};
-
-// FIXME(conventions): implement bounded iterators
 
 /// An ordered set based on a B-Tree.
 ///
