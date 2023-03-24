@@ -1015,8 +1015,8 @@ impl LinkCollector<'_, '_> {
                     res = prim;
                 } else {
                     // `[char]` when a `char` module is in scope
-                    let candidates = vec![(res, res.def_id(self.cx.tcx)), (prim, None)];
-                    ambiguity_error(self.cx, &diag_info, path_str, &candidates);
+                    let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
+                    ambiguity_error(self.cx, &diag_info, path_str, candidates);
                     return None;
                 }
             }
@@ -1206,6 +1206,10 @@ impl LinkCollector<'_, '_> {
             }
         }
 
+        // If there are multiple items with the same "kind" (for example, both "associated types")
+        // and after removing duplicated kinds, only one remains, the `ambiguity_error` function
+        // won't emit an error. So at this point, we can just take the first candidate as it was
+        // the first retrieved and use it to generate the link.
         if candidates.len() > 1 && !ambiguity_error(self.cx, &diag, &key.path_str, &candidates) {
             candidates = vec![candidates[0]];
         }
@@ -1901,14 +1905,15 @@ fn report_malformed_generics(
 /// Report an ambiguity error, where there were multiple possible resolutions.
 ///
 /// If all `candidates` have the same kind, it's not possible to disambiguate so in this case,
-/// the function returns `false`. Otherwise, it'll emit the error and return `true`.
+/// the function won't emit an error and will return `false`. Otherwise, it'll emit the error and
+/// return `true`.
 fn ambiguity_error(
     cx: &DocContext<'_>,
     diag_info: &DiagnosticInfo<'_>,
     path_str: &str,
     candidates: &[(Res, Option<DefId>)],
 ) -> bool {
-    let mut msg = format!("`{}` is ", path_str);
+    let mut descrs = FxHashSet::default();
     let kinds = candidates
         .iter()
         .map(
@@ -1916,14 +1921,15 @@ fn ambiguity_error(
                 if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res }
             },
         )
+        .filter(|res| descrs.insert(res.descr()))
         .collect::<Vec<_>>();
-    let descrs = kinds.iter().map(|res| res.descr()).collect::<FxHashSet<&'static str>>();
     if descrs.len() == 1 {
         // There is no way for users to disambiguate at this point, so better return the first
         // candidate and not show a warning.
         return false;
     }
 
+    let mut msg = format!("`{}` is ", path_str);
     match kinds.as_slice() {
         [res1, res2] => {
             msg += &format!(
