@@ -51,3 +51,20 @@ fn semicolon() {
 
     let _ = S::new(3);
 }
+
+fn item_from_macro() {
+    macro_rules! static_assert_size {
+        ($ty:ty, $size:expr) => {
+            const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];
+        };
+    }
+
+    let _ = 1;
+    static_assert_size!(u32, 4);
+}
+
+fn allow_attribute() {
+    let _ = 1;
+    #[allow(clippy::items_after_statements)]
+    const _: usize = 1;
+}
