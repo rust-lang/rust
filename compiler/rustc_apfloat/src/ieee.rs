@@ -1001,6 +1001,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
             (Category::Infinity, _) | (_, Category::Zero) => Status::INVALID_OP.and(Self::NAN),
 
             (Category::Normal, Category::Normal) => {
+                let sign = self.sign;
                 while self.is_finite_non_zero()
                     && rhs.is_finite_non_zero()
                     && self.cmp_abs_normal(rhs) != Ordering::Less
@@ -1014,6 +1015,10 @@ impl<S: Semantics> Float for IeeeFloat<S> {
                     let status;
                     self = unpack!(status=, self - v);
                     assert_eq!(status, Status::OK);
+                }
+                // IEEE754 requires this
+                if self.is_zero() {
+                    self.sign = sign;
                 }
                 Status::OK.and(self)
             }
