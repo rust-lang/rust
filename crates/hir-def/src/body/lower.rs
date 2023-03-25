@@ -37,6 +37,7 @@ use crate::{
         RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
+    item_tree::ItemTree,
     lang_item::LangItem,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
@@ -888,16 +889,24 @@ impl ExprCollector<'_> {
     fn collect_block_(
         &mut self,
         block: ast::BlockExpr,
-        mk_block: impl FnOnce(BlockId, Box<[Statement]>, Option<ExprId>) -> Expr,
+        mk_block: impl FnOnce(Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
     ) -> ExprId {
         let file_local_id = self.ast_id_map.ast_id(&block);
         let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
-        let block_loc =
-            BlockLoc { ast_id, module: self.expander.def_map.module_id(self.expander.module) };
-        let block_id = self.db.intern_block(block_loc);
 
-        let (module, def_map) = match self.db.block_def_map(block_id) {
-            Some(def_map) => {
+        let block_id = if ItemTree::block_has_items(self.db, ast_id.file_id, &block) {
+            Some(self.db.intern_block(BlockLoc {
+                ast_id,
+                module: self.expander.def_map.module_id(self.expander.module),
+            }))
+        } else {
+            None
+        };
+
+        let (module, def_map) = match block_id
+            .and_then(|block_id| self.db.block_def_map(block_id).zip(Some(block_id)))
+        {
+            Some((def_map, block_id)) => {
                 self.body.block_scopes.push(block_id);
                 (def_map.root(), def_map)
             }

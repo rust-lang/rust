@@ -117,23 +117,23 @@ pub enum Expr {
         expr: ExprId,
     },
     Block {
-        id: BlockId,
+        id: Option<BlockId>,
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
     Async {
-        id: BlockId,
+        id: Option<BlockId>,
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
     },
     Const {
-        id: BlockId,
+        id: Option<BlockId>,
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
     },
     Unsafe {
-        id: BlockId,
+        id: Option<BlockId>,
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
     },
