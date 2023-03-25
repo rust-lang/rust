@@ -52,6 +52,14 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     Ok(())
 }
 
+pub(crate) fn handle_proc_macros_reload(state: &mut GlobalState, _: ()) -> Result<()> {
+    state.proc_macro_clients.clear();
+    state.proc_macro_changed = false;
+
+    state.fetch_build_data_queue.request_op("reload proc macros request".to_string());
+    Ok(())
+}
+
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> Result<()> {
     let _p = profile::span("handle_stop_flycheck");
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());

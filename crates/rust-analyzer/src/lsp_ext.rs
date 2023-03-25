@@ -51,6 +51,14 @@ impl Request for ReloadWorkspace {
     const METHOD: &'static str = "rust-analyzer/reloadWorkspace";
 }
 
+pub enum ReloadProcMacros {}
+
+impl Request for ReloadProcMacros {
+    type Params = ();
+    type Result = ();
+    const METHOD: &'static str = "rust-analyzer/reloadProcMacros";
+}
+
 pub enum SyntaxTree {}
 
 impl Request for SyntaxTree {

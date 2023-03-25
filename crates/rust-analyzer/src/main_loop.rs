@@ -633,6 +633,7 @@ impl GlobalState {
 
         dispatcher
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
+            .on_sync_mut::<lsp_ext::ReloadProcMacros>(handlers::handle_proc_macros_reload)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
