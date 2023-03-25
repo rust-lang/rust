@@ -51,6 +51,7 @@ macro_rules! arena_types {
             [] type_binding: rustc_hir::TypeBinding<'tcx>,
             [] variant: rustc_hir::Variant<'tcx>,
             [] where_predicate: rustc_hir::WherePredicate<'tcx>,
+            [] lit: rustc_hir::Lit,
         ]);
     )
 }

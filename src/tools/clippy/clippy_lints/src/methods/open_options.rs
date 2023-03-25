@@ -48,7 +48,7 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                         ..
                     } = *span
                     {
-                        if lit { Argument::True } else { Argument::False }
+                        if *lit { Argument::True } else { Argument::False }
                     } else {
                         // The function is called with a literal which is not a boolean literal.
                         // This is theoretically possible, but not very likely.

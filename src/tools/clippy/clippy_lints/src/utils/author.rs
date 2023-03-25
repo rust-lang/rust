@@ -430,7 +430,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Unary(UnOp::{op:?}, {inner})");
                 self.expr(inner);
             },
-            ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(lit) => {
                 bind!(self, lit);
                 kind!("Lit(ref {lit})");
                 self.lit(lit);
