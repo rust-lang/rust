@@ -19,6 +19,12 @@ impl<'a, K: 'a, V: 'a> Clone for LeafRange<marker::Immut<'a>, K, V> {
     }
 }
 
+impl<B, K, V> Default for LeafRange<B, K, V> {
+    fn default() -> Self {
+        LeafRange { front: None, back: None }
+    }
+}
+
 impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
     pub fn none() -> Self {
         LeafRange { front: None, back: None }
@@ -122,6 +128,12 @@ impl<BorrowType, K, V> LazyLeafHandle<BorrowType, K, V> {
 pub struct LazyLeafRange<BorrowType, K, V> {
     front: Option<LazyLeafHandle<BorrowType, K, V>>,
     back: Option<LazyLeafHandle<BorrowType, K, V>>,
+}
+
+impl<B, K, V> Default for LazyLeafRange<B, K, V> {
+    fn default() -> Self {
+        LazyLeafRange { front: None, back: None }
+    }
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LazyLeafRange<marker::Immut<'a>, K, V> {

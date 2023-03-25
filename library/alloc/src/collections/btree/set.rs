@@ -1539,6 +1539,21 @@ impl<T, A: Allocator + Clone> Iterator for IntoIter<T, A> {
         self.iter.size_hint()
     }
 }
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `btree_set::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { iter: Default::default() }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> DoubleEndedIterator for IntoIter<T, A> {
     fn next_back(&mut self) -> Option<T> {
@@ -1554,6 +1569,23 @@ impl<T, A: Allocator + Clone> ExactSizeIterator for IntoIter<T, A> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator + Clone> FusedIterator for IntoIter<T, A> {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<T, A> Default for IntoIter<T, A>
+where
+    A: Allocator + Default + Clone,
+{
+    /// Creates an empty `btree_set::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoIter { iter: Default::default() }
+    }
+}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<T> Clone for Range<'_, T> {
@@ -1592,6 +1624,20 @@ impl<'a, T> DoubleEndedIterator for Range<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Range<'_, T> {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Range<'_, T> {
+    /// Creates an empty `btree_set::Range`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::Range<'_, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Range { iter: Default::default() }
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> Clone for Difference<'_, T, A> {

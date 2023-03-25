@@ -264,3 +264,17 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Default> Default for Enumerate<I> {
+    /// Creates an `Enumerate` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Enumerate;
+    /// let iter: Enumerate<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Enumerate::new(Default::default())
+    }
+}

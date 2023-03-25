@@ -347,6 +347,24 @@ impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<T, A> Default for IntoIter<T, A>
+where
+    A: Allocator + Default,
+{
+    /// Creates an empty `vec::IntoIter`.
+    ///
+    /// ```
+    /// # use std::vec;
+    /// let iter: vec::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// assert_eq!(iter.as_slice(), &[]);
+    /// ```
+    fn default() -> Self {
+        super::Vec::new_in(Default::default()).into_iter()
+    }
+}
+
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
 #[rustc_unsafe_specialization_marker]
