@@ -100,18 +100,13 @@ impl<'a> Renderer<'a> {
                 break;
             }
 
-            let trimmed = line.trim();
-            if trimmed.starts_with("{") && trimmed.ends_with("}") {
-                self.render_message(match serde_json::from_str(&trimmed) {
-                    Ok(parsed) => parsed,
-                    Err(err) => {
-                        panic!("failed to parse libtest json output; error: {err}, line: {line:?}");
-                    }
-                });
-            } else {
-                // Handle non-JSON output, for example when --nocapture is passed.
-                print!("{line}");
-                let _ = std::io::stdout().flush();
+            match serde_json::from_str(&line) {
+                Ok(parsed) => self.render_message(parsed),
+                Err(_err) => {
+                    // Handle non-JSON output, for example when --nocapture is passed.
+                    print!("{line}");
+                    let _ = std::io::stdout().flush();
+                }
             }
         }
     }
