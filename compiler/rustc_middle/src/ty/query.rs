@@ -202,6 +202,40 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+#[inline]
+fn query_get_at<'tcx, Cache>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
+    query_cache: &Cache,
+    span: Span,
+    key: Cache::Key,
+) -> Cache::Value
+where
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    match try_get_cached(tcx, query_cache, &key) {
+        Some(value) => value,
+        None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
+    }
+}
+
+#[inline]
+fn query_ensure<'tcx, Cache>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
+    query_cache: &Cache,
+    key: Cache::Key,
+    check_cache: bool,
+) where
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    if try_get_cached(tcx, query_cache, &key).is_none() {
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
+    }
+}
+
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
@@ -407,17 +441,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let key = key.into_query_param();
-
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(_) => return,
-                    None => (self.tcx.query_system.fns.engine.$name)(
-                        self.tcx,
-                        DUMMY_SP,
-                        key,
-                        QueryMode::Ensure { check_cache: false },
-                    ),
-                };
+                query_ensure(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    key.into_query_param(),
+                    false,
+                );
             })*
         }
 
@@ -425,17 +455,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let key = key.into_query_param();
-
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(_) => return,
-                    None => (self.tcx.query_system.fns.engine.$name)(
-                        self.tcx,
-                        DUMMY_SP,
-                        key,
-                        QueryMode::Ensure { check_cache: true },
-                    ),
-                };
+                query_ensure(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    key.into_query_param(),
+                    true,
+                );
             })*
         }
 
@@ -454,16 +480,13 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                let key = key.into_query_param();
-
-                restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(value) => value,
-                    None => (self.tcx.query_system.fns.engine.$name)(
-                        self.tcx,
-                        self.span,
-                        key, QueryMode::Get
-                    ).unwrap(),
-                })
+                restore::<$V>(query_get_at(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    self.span,
+                    key.into_query_param(),
+                ))
             })*
         }
 
