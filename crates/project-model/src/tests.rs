@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use base_db::{CrateGraph, FileId};
+use base_db::{CrateGraph, FileId, ProcMacros};
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect, Expect};
 use paths::{AbsPath, AbsPathBuf};
@@ -14,11 +14,11 @@ use crate::{
     WorkspaceBuildScripts,
 };
 
-fn load_cargo(file: &str) -> CrateGraph {
+fn load_cargo(file: &str) -> (CrateGraph, ProcMacros) {
     load_cargo_with_overrides(file, CfgOverrides::default())
 }
 
-fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGraph {
+fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> (CrateGraph, ProcMacros) {
     let meta = get_test_json_file(file);
     let cargo_workspace = CargoWorkspace::new(meta);
     let project_workspace = ProjectWorkspace::Cargo {
@@ -34,7 +34,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
     to_crate_graph(project_workspace)
 }
 
-fn load_rust_project(file: &str) -> CrateGraph {
+fn load_rust_project(file: &str) -> (CrateGraph, ProcMacros) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = Ok(get_fake_sysroot());
@@ -92,7 +92,7 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
     ProjectJson::new(base, data)
 }
 
-fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
+fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacros) {
     project_workspace.to_crate_graph(
         &mut |_, _| Ok(Vec::new()),
         &mut {
@@ -117,7 +117,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
     let cfg_overrides = CfgOverrides::Wildcard(
         CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
     );
-    let crate_graph = load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
+    let (crate_graph, _proc_macros) =
+        load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
     check_crate_graph(
         crate_graph,
         expect![[r#"
@@ -184,9 +185,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -265,9 +263,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -346,9 +341,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -427,9 +419,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -498,9 +487,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -527,7 +513,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
             .collect(),
         )
     };
-    let crate_graph = load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
+    let (crate_graph, _proc_macros) =
+        load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
     check_crate_graph(
         crate_graph,
         expect![[r#"
@@ -596,9 +583,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -679,9 +663,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -762,9 +743,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -845,9 +823,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -916,9 +891,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -936,7 +908,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
 
 #[test]
 fn cargo_hello_world_project_model() {
-    let crate_graph = load_cargo("hello-world-metadata.json");
+    let (crate_graph, _proc_macros) = load_cargo("hello-world-metadata.json");
     check_crate_graph(
         crate_graph,
         expect![[r#"
@@ -1005,9 +977,6 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -1088,9 +1057,6 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -1171,9 +1137,6 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -1254,9 +1217,6 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -1325,9 +1285,6 @@ fn cargo_hello_world_project_model() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "crate has not (yet) been built",
-                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -1345,7 +1302,7 @@ fn cargo_hello_world_project_model() {
 
 #[test]
 fn rust_project_hello_world_project_model() {
-    let crate_graph = load_rust_project("hello-world-project.json");
+    let (crate_graph, _proc_macros) = load_rust_project("hello-world-project.json");
     check_crate_graph(
         crate_graph,
         expect![[r#"
@@ -1390,9 +1347,6 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Alloc,
                         ),
@@ -1427,9 +1381,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Core,
                         ),
@@ -1464,9 +1415,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1501,9 +1449,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1557,9 +1502,6 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1594,9 +1536,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1704,9 +1643,6 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Std,
                         ),
@@ -1741,9 +1677,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1778,9 +1711,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Test,
                         ),
@@ -1815,9 +1745,6 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1889,9 +1816,6 @@ fn rust_project_hello_world_project_model() {
                                 prelude: false,
                             },
                         ],
-                        proc_macro: Err(
-                            "no proc macro dylib present",
-                        ),
                         origin: CratesIo {
                             repo: None,
                             name: Some(
@@ -1907,7 +1831,7 @@ fn rust_project_hello_world_project_model() {
 
 #[test]
 fn rust_project_is_proc_macro_has_proc_macro_dep() {
-    let crate_graph = load_rust_project("is-proc-macro-project.json");
+    let (crate_graph, _proc_macros) = load_rust_project("is-proc-macro-project.json");
     // Since the project only defines one crate (outside the sysroot crates),
     // it should be the one with the biggest Id.
     let crate_id = crate_graph.iter().max().unwrap();

@@ -6,7 +6,10 @@ use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
-use ide_db::{base_db::CrateGraph, FxHashMap};
+use ide_db::{
+    base_db::{CrateGraph, ProcMacros},
+    FxHashMap,
+};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
@@ -79,7 +82,7 @@ pub fn load_workspace(
         ProcMacroServerChoice::None => Err("proc macro server disabled".to_owned()),
     };
 
-    let crate_graph = ws.to_crate_graph(
+    let (crate_graph, proc_macros) = ws.to_crate_graph(
         &mut |_, path: &AbsPath| {
             load_proc_macro(proc_macro_client.as_ref().map_err(|e| &**e), path, &[])
         },
@@ -100,8 +103,13 @@ pub fn load_workspace(
     });
 
     tracing::debug!("crate graph: {:?}", crate_graph);
-    let host =
-        load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
+    let host = load_crate_graph(
+        crate_graph,
+        proc_macros,
+        project_folders.source_root_config,
+        &mut vfs,
+        &receiver,
+    );
 
     if load_config.prefill_caches {
         host.analysis().parallel_prime_caches(1, |_| {})?;
@@ -111,6 +119,7 @@ pub fn load_workspace(
 
 fn load_crate_graph(
     crate_graph: CrateGraph,
+    proc_macros: ProcMacros,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
@@ -149,6 +158,7 @@ fn load_crate_graph(
     analysis_change.set_roots(source_roots);
 
     analysis_change.set_crate_graph(crate_graph);
+    analysis_change.set_proc_macros(proc_macros);
 
     host.apply_change(analysis_change);
     host

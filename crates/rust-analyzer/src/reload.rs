@@ -20,7 +20,7 @@ use ide::Change;
 use ide_db::{
     base_db::{
         CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-        ProcMacroLoadResult, SourceRoot, VfsPath,
+        ProcMacroLoadResult, ProcMacros, SourceRoot, VfsPath,
     },
     FxHashMap,
 };
@@ -355,7 +355,7 @@ impl GlobalState {
         });
 
         // Create crate graph from all the workspaces
-        let crate_graph = {
+        let (crate_graph, proc_macros) = {
             let dummy_replacements = self.config.dummy_replacements();
 
             let vfs = &mut self.vfs.write().0;
@@ -376,6 +376,7 @@ impl GlobalState {
             };
 
             let mut crate_graph = CrateGraph::default();
+            let mut proc_macros = ProcMacros::default();
             for (idx, ws) in self.workspaces.iter().enumerate() {
                 let proc_macro_client = match self.proc_macro_clients.get(idx) {
                     Some(res) => res.as_ref().map_err(|e| &**e),
@@ -388,15 +389,17 @@ impl GlobalState {
                         dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
                     )
                 };
-                crate_graph.extend(ws.to_crate_graph(
+                let (other, other_proc_macros) = ws.to_crate_graph(
                     &mut load_proc_macro,
                     &mut load,
                     &self.config.cargo().extra_env,
-                ));
+                );
+                crate_graph.extend(other, &mut proc_macros, other_proc_macros);
             }
-            crate_graph
+            (crate_graph, proc_macros)
         };
         change.set_crate_graph(crate_graph);
+        change.set_proc_macros(proc_macros);
 
         self.source_root_config = project_folders.source_root_config;
 

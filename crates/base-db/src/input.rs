@@ -15,6 +15,8 @@ use syntax::SmolStr;
 use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AnchoredPath, FileId, VfsPath};
 
+pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
+
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -269,7 +271,6 @@ pub struct CrateData {
     pub target_layout: TargetLayoutLoadResult,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
-    pub proc_macro: ProcMacroLoadResult,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
 }
@@ -322,7 +323,6 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         potential_cfg_options: CfgOptions,
         env: Env,
-        proc_macro: ProcMacroLoadResult,
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
@@ -335,7 +335,6 @@ impl CrateGraph {
             cfg_options,
             potential_cfg_options,
             env,
-            proc_macro,
             dependencies: Vec::new(),
             origin,
             target_layout,
@@ -460,7 +459,12 @@ impl CrateGraph {
     ///
     /// The ids of the crates in the `other` graph are shifted by the return
     /// amount.
-    pub fn extend(&mut self, other: CrateGraph) -> u32 {
+    pub fn extend(
+        &mut self,
+        other: CrateGraph,
+        proc_macros: &mut ProcMacros,
+        other_proc_macros: ProcMacros,
+    ) -> u32 {
         let start = self.arena.len() as u32;
         self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
             let new_id = id.shift(start);
@@ -469,6 +473,8 @@ impl CrateGraph {
             }
             (new_id, data)
         }));
+        proc_macros
+            .extend(other_proc_macros.into_iter().map(|(id, macros)| (id.shift(start), macros)));
         start
     }
 
@@ -645,7 +651,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -658,7 +663,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -671,7 +675,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -698,7 +701,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -711,7 +713,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -735,7 +736,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -748,7 +748,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -761,7 +760,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -785,7 +783,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),
@@ -798,7 +795,6 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("".into()),

@@ -16,7 +16,7 @@ pub use crate::{
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
         Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, SourceRoot, SourceRootId,
+        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacros, SourceRoot, SourceRootId,
         TargetLayoutLoadResult,
     },
 };
@@ -73,6 +73,10 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+
+    /// The crate graph.
+    #[salsa::input]
+    fn proc_macros(&self) -> Arc<ProcMacros>;
 }
 
 fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {

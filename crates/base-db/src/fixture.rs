@@ -12,8 +12,8 @@ use vfs::{file_set::FileSet, VfsPath};
 use crate::{
     input::{CrateName, CrateOrigin, LangCrateOrigin},
     Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
-    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, SourceDatabaseExt,
-    SourceRoot, SourceRootId,
+    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros,
+    SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -100,7 +100,7 @@ impl ChangeFixture {
 
     pub fn parse_with_proc_macros(
         ra_fixture: &str,
-        mut proc_macros: Vec<(String, ProcMacro)>,
+        mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
         let (mini_core, proc_macro_names, fixture) = Fixture::parse(ra_fixture);
         let mut change = Change::new();
@@ -160,7 +160,6 @@ impl ChangeFixture {
                     meta.cfg.clone(),
                     meta.cfg,
                     meta.env,
-                    Ok(Vec::new()),
                     false,
                     origin,
                     meta.target_data_layout
@@ -200,7 +199,6 @@ impl ChangeFixture {
                 default_cfg.clone(),
                 default_cfg,
                 Env::default(),
-                Ok(Vec::new()),
                 false,
                 CrateOrigin::CratesIo { repo: None, name: None },
                 default_target_data_layout
@@ -244,7 +242,6 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 CfgOptions::default(),
                 Env::default(),
-                Ok(Vec::new()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 target_layout.clone(),
@@ -257,12 +254,13 @@ impl ChangeFixture {
             }
         }
 
+        let mut proc_macros = ProcMacros::default();
         if !proc_macro_names.is_empty() {
             let proc_lib_file = file_id;
             file_id.0 += 1;
 
-            proc_macros.extend(default_test_proc_macros());
-            let (proc_macro, source) = filter_test_proc_macros(&proc_macro_names, proc_macros);
+            proc_macro_defs.extend(default_test_proc_macros());
+            let (proc_macro, source) = filter_test_proc_macros(&proc_macro_names, proc_macro_defs);
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
@@ -282,11 +280,11 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 CfgOptions::default(),
                 Env::default(),
-                Ok(proc_macro),
                 true,
                 CrateOrigin::CratesIo { repo: None, name: None },
                 target_layout,
             );
+            proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 
             for krate in all_crates {
                 crate_graph
@@ -305,6 +303,7 @@ impl ChangeFixture {
         roots.push(root);
         change.set_roots(roots);
         change.set_crate_graph(crate_graph);
+        change.set_proc_macros(proc_macros);
 
         ChangeFixture { file_position, files, change }
     }

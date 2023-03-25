@@ -235,7 +235,6 @@ impl Analysis {
             cfg_options.clone(),
             cfg_options,
             Env::default(),
-            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
             Err("Analysis::from_single_file has no target layout".into()),
