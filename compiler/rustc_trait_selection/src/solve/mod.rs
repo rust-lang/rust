@@ -9,8 +9,6 @@
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
 
-// FIXME: uses of `infcx.at` need to enable deferred projection equality once that's implemented.
-
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
@@ -105,8 +103,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, SubtypePredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
-            // FIXME: Do we want to register a subtype relation between these vars?
-            // That won't actually reflect in the query response, so it seems moot.
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
             self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
