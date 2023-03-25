@@ -115,15 +115,10 @@ impl ExprScopes {
     fn new_block_scope(
         &mut self,
         parent: ScopeId,
-        block: BlockId,
+        block: Option<BlockId>,
         label: Option<(LabelId, Name)>,
     ) -> ScopeId {
-        self.scopes.alloc(ScopeData {
-            parent: Some(parent),
-            block: Some(block),
-            label,
-            entries: vec![],
-        })
+        self.scopes.alloc(ScopeData { parent: Some(parent), block, label, entries: vec![] })
     }
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, binding: BindingId) {
