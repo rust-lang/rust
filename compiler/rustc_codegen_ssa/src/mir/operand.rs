@@ -370,7 +370,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
         match self.locals[place_ref.local] {
-            LocalRef::Operand(Some(mut o)) => {
+            LocalRef::Operand(mut o) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
                     match elem {
@@ -395,7 +395,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 Some(o)
             }
-            LocalRef::Operand(None) => {
+            LocalRef::PendingOperand => {
                 bug!("use of {:?} before def", place_ref);
             }
             LocalRef::Place(..) | LocalRef::UnsizedPlace(..) => {

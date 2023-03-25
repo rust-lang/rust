@@ -558,6 +558,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bug!("using operand local {:?} as place", place_ref);
                 }
             }
+            LocalRef::PendingOperand => {
+                bug!("using still-pending operand local {:?} as place", place_ref);
+            }
         };
         for elem in place_ref.projection[base..].iter() {
             cg_base = match *elem {
