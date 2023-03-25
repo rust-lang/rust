@@ -89,14 +89,12 @@ where
             let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
         }
-        // TODO: Simplify below to just one big match arm?
-        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str_or_f_str(src, mode, callback),
+        Mode::Str | Mode::ByteStr | Mode::FStr => unescape_str_or_byte_str_or_f_str(src, mode, callback),
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => {
-            unescape_str_or_byte_str_or_f_str(src, mode, callback)
+            unescape_raw_str_or_raw_byte_str(src, mode, callback)
         }
-        Mode::FStr => unescape_str_or_byte_str_or_f_str(src, mode, callback),
     }
 }
 

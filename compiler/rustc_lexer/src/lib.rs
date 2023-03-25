@@ -259,17 +259,13 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 /// problem with a `RawStr`/`RawByteStr` with a `None` field.
 #[inline]
 pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError> {
-    // FIXME!
-    if true {
-        todo!("IMPLEMENT ME");
-    }
     debug_assert!(!input.is_empty());
-    let mut cursor = Cursor::new(input);
+    let mut lexer = Lexer::new(input);
     // Move past the leading `r` or `br`.
     for _ in 0..prefix_len {
-        cursor.bump().unwrap();
+        lexer.cursor.bump().unwrap();
     }
-    cursor.raw_double_quoted_string(prefix_len).map(|_| ())
+    lexer.raw_double_quoted_string(prefix_len).map(|_| ())
 }
 
 /// Creates an iterator that produces tokens from the input string.
@@ -421,7 +417,7 @@ impl<'a> Lexer<'a> {
                     self.cursor.bump();
                     self.f_string(FStrDelimiter::Quote)
                 }
-                _ => self.ident(),
+                _ => self.ident_or_unknown_prefix(),
             },
 
             // Identifier (this should be checked after other variant that can
@@ -578,7 +574,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn ident_or_unknown_prefix(&mut self) -> TokenKind {
-        debug_assert!(is_id_start(self.prev()));
+        debug_assert!(is_id_start(self.cursor.prev()));
         // Start is already eaten, eat the rest of identifier.
         self.cursor.eat_while(is_id_continue);
         // Known prefixes must have been handled earlier. So if
@@ -819,7 +815,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
-        debug_assert!(self.prev() == 'r');
+        debug_assert!(self.cursor.prev() == 'r');
         let start_pos = self.cursor.pos_within_token();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
