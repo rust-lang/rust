@@ -13,6 +13,14 @@ note: the lint level is defined here
 LL | #![warn(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
+warning: unreachable call
+  --> $DIR/unreachable-try-pattern.rs:30:50
+   |
+LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
+   |                                                  ^^^ - this expression has type `Void`, which is uninhabited
+   |                                                  |
+   |                                                  unreachable call
+
 warning: unreachable pattern
   --> $DIR/unreachable-try-pattern.rs:19:24
    |
@@ -31,5 +39,5 @@ warning: unreachable pattern
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
    |                                        ^^^^^^
 
-warning: 3 warnings emitted
+warning: 4 warnings emitted
 
