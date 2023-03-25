@@ -1942,7 +1942,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     escaped
                 }
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
-                if let Some((expected, found)) = trace.values.ty() {
+                let values = self.resolve_vars_if_possible(trace.values);
+                if let Some((expected, found)) = values.ty() {
                     match (expected.kind(), found.kind()) {
                         (ty::Tuple(_), ty::Tuple(_)) => {}
                         // If a tuple of length one was expected and the found expression has

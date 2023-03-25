@@ -10,3 +10,12 @@ fn main() {
     let _: char = "人"; //~ ERROR mismatched types
     let _: char = "'"; //~ ERROR mismatched types
 }
+
+// regression test for https://github.com/rust-lang/rust/issues/109586
+#[allow(dead_code)]
+fn convert_c_to_str(c: char) {
+    match c {
+        "A" => {} //~ ERROR mismatched types
+        _ => {}
+    }
+}
