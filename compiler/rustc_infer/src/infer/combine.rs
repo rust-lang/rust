@@ -128,7 +128,12 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::Alias(AliasKind::Projection, _)) | (ty::Alias(AliasKind::Projection, _), _)
                 if self.tcx.trait_solver_next() =>
             {
-                relation.register_type_relate_obligation(a, b);
+                // The new solver can be somewhat lazy with resolving nested variables,
+                // so we want to avoid emitting a trivial alias-eq goal (which becomes
+                // non-trivial after canonicalization) if the types are identical.
+                if self.resolve_vars_if_possible(a) != self.resolve_vars_if_possible(b) {
+                    relation.register_type_relate_obligation(a, b);
+                }
                 Ok(a)
             }
 
