@@ -153,13 +153,22 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
         // We may need to invert the alias relation direction if dealing an alias on the RHS.
+        #[derive(Debug)]
         enum Invert {
             No,
             Yes,
         }
         let evaluate_normalizes_to =
             |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other, direction, invert| {
-                debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
+                let span = tracing::span!(
+                    tracing::Level::DEBUG,
+                    "compute_alias_relate_goal(evaluate_normalizes_to)",
+                    ?alias,
+                    ?other,
+                    ?direction,
+                    ?invert
+                );
+                let _enter = span.enter();
                 let result = ecx.probe(|ecx| {
                     let other = match direction {
                         // This is purely an optimization.
@@ -184,7 +193,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     ));
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 });
-                debug!("evaluate_normalizes_to({alias}, {other}, {direction:?}) -> {result:?}");
+                debug!(?result);
                 result
             };
 
@@ -210,7 +219,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             }
 
             (Some(alias_lhs), Some(alias_rhs)) => {
-                debug!("compute_alias_relate_goal: both sides are aliases");
+                debug!("both sides are aliases");
 
                 let candidates = vec![
                     // LHS normalizes-to RHS
@@ -219,9 +228,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes),
                     // Relate via substs
                     self.probe(|ecx| {
-                        debug!(
-                            "compute_alias_relate_goal: alias defids are equal, equating substs"
+                        let span = tracing::span!(
+                            tracing::Level::DEBUG,
+                            "compute_alias_relate_goal(relate_via_substs)",
+                            ?alias_lhs,
+                            ?alias_rhs,
+                            ?direction
                         );
+                        let _enter = span.enter();
 
                         match direction {
                             ty::AliasRelationDirection::Equate => {
@@ -275,6 +289,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         debug!("added_goals={:?}", &self.nested_goals.goals[current_len..]);
     }
 
+    #[instrument(level = "debug", skip(self, responses))]
     fn try_merge_responses(
         &mut self,
         responses: impl Iterator<Item = QueryResult<'tcx>>,
@@ -304,6 +319,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         });
         // FIXME(-Ztrait-solver=next): We should take the intersection of the constraints on all the
         // responses and use that for the constraints of this ambiguous response.
+        debug!(">1 response, bailing with {certainty:?}");
         let response = self.evaluate_added_goals_and_make_canonical_response(certainty);
         if let Ok(response) = &response {
             assert!(response.has_no_inference_or_external_constraints());

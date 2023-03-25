@@ -270,6 +270,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
     /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
     /// projection as a self type as well
+    #[instrument(level = "debug", skip_all)]
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -315,6 +316,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -333,6 +335,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         );
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_builtin_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -390,6 +393,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_param_env_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -405,6 +409,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_alias_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -452,6 +457,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_object_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -514,6 +520,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
