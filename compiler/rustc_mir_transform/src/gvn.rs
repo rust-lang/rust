@@ -817,6 +817,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Rvalue::UnaryOp(op, ref mut arg) => {
                 let arg = self.simplify_operand(arg, location)?;
+                if let Some(value) = self.simplify_unary(op, arg) {
+                    return Some(value);
+                }
                 Value::UnaryOp(op, arg)
             }
             Rvalue::Discriminant(ref mut place) => {
@@ -914,6 +917,23 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn simplify_unary(&mut self, op: UnOp, value: VnIndex) -> Option<VnIndex> {
+        let value = match (op, self.get(value)) {
+            (UnOp::Not, Value::UnaryOp(UnOp::Not, inner)) => return Some(*inner),
+            (UnOp::Neg, Value::UnaryOp(UnOp::Neg, inner)) => return Some(*inner),
+            (UnOp::Not, Value::BinaryOp(BinOp::Eq, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Ne, *lhs, *rhs)
+            }
+            (UnOp::Not, Value::BinaryOp(BinOp::Ne, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Eq, *lhs, *rhs)
+            }
+            _ => return None,
+        };
+
+        Some(self.insert(value))
     }
 
     #[instrument(level = "trace", skip(self), ret)]

@@ -166,6 +166,31 @@ fn repeated_index<T: Copy, const N: usize>(x: T, idx: usize) {
     opaque(a[idx]);
 }
 
+fn unary(x: i64) {
+    // CHECK-LABEL: fn unary(
+    // CHECK: opaque::<i64>(_1)
+    opaque(--x); // This is `x`.
+
+    // CHECK: [[b:_.*]] = Lt(_1, const 13_i64);
+    // CHECK: opaque::<bool>([[b]])
+    let b = x < 13;
+    opaque(!!b); // This is `b`.
+
+    // Both lines should test the same thing.
+    // CHECK: [[c:_.*]] = Ne(_1, const 15_i64);
+    // CHECK: opaque::<bool>([[c]])
+    // CHECK: opaque::<bool>([[c]])
+    opaque(x != 15);
+    opaque(!(x == 15));
+
+    // Both lines should test the same thing.
+    // CHECK: [[d:_.*]] = Eq(_1, const 35_i64);
+    // CHECK: opaque::<bool>([[d]])
+    // CHECK: opaque::<bool>([[d]])
+    opaque(x == 35);
+    opaque(!(x != 35));
+}
+
 /// Verify symbolic integer arithmetic simplifications.
 fn arithmetic(x: u64) {
     // CHECK-LABEL: fn arithmetic(
@@ -623,6 +648,7 @@ fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
     repeated_index::<u32, 7>(5, 3);
+    unary(i64::MIN);
     arithmetic(5);
     comparison(5, 6);
     arithmetic_checked(5);
@@ -651,6 +677,7 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
 // EMIT_MIR gvn.repeated_index.GVN.diff
+// EMIT_MIR gvn.unary.GVN.diff
 // EMIT_MIR gvn.arithmetic.GVN.diff
 // EMIT_MIR gvn.comparison.GVN.diff
 // EMIT_MIR gvn.arithmetic_checked.GVN.diff
