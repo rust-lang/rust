@@ -16,7 +16,7 @@ This feature allows for use of one of following sanitizers:
   * [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
   * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
   * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
-* Those that apart from testing, may be used on production:
+* Those that apart from testing, may be used in production:
   * [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity (CFI) provides
     forward-edge control flow protection.
   * [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel Control
