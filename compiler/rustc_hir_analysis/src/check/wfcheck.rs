@@ -1544,42 +1544,81 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
     span: Span,
 ) {
     let tcx = wfcx.tcx();
-    if let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id())
-        && assoc_item.container == ty::AssocItemContainer::TraitContainer
-    {
-        // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
-        // strategy, we can't just call `check_associated_item` on the new RPITITs,
-        // because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
-        // That's because we need to check that the bounds of the RPITIT hold using
-        // the special substs that we create during opaque type lowering, otherwise we're
-        // getting a bunch of early bound and free regions mixed up... Haven't looked too
-        // deep into this, though.
-        for arg in fn_output.walk() {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                // RPITITs are always eagerly normalized into opaques, so always look for an
-                // opaque here.
-                && let ty::Alias(ty::Opaque, opaque_ty) = ty.kind()
-                && let Some(opaque_def_id) = opaque_ty.def_id.as_local()
-                && let opaque = tcx.hir().expect_item(opaque_def_id).expect_opaque_ty()
-                && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
-                && source == fn_def_id
+    let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id()) else {
+        return;
+    };
+    if assoc_item.container != ty::AssocItemContainer::TraitContainer {
+        return;
+    }
+    fn_output.visit_with(&mut ImplTraitInTraitFinder {
+        wfcx,
+        fn_def_id,
+        depth: ty::INNERMOST,
+        seen: FxHashSet::default(),
+    });
+}
+
+// FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
+// strategy, we can't just call `check_associated_item` on the new RPITITs,
+// because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
+// That's because we need to check that the bounds of the RPITIT hold using
+// the special substs that we create during opaque type lowering, otherwise we're
+// getting a bunch of early bound and free regions mixed up... Haven't looked too
+// deep into this, though.
+struct ImplTraitInTraitFinder<'a, 'tcx> {
+    wfcx: &'a WfCheckingCtxt<'a, 'tcx>,
+    fn_def_id: LocalDefId,
+    depth: ty::DebruijnIndex,
+    seen: FxHashSet<DefId>,
+}
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+    type BreakTy = !;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<!> {
+        let tcx = self.wfcx.tcx();
+        if let ty::Alias(ty::Opaque, unshifted_opaque_ty) = *ty.kind()
+            && self.seen.insert(unshifted_opaque_ty.def_id)
+            && let Some(opaque_def_id) = unshifted_opaque_ty.def_id.as_local()
+            && let opaque = tcx.hir().expect_item(opaque_def_id).expect_opaque_ty()
+            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
+            && source == self.fn_def_id
+        {
+            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, depth| {
+                if let ty::ReLateBound(index, bv) = re.kind() {
+                    if depth != ty::INNERMOST {
+                        return tcx.mk_re_error_with_message(
+                            DUMMY_SP,
+                            "we shouldn't walk non-predicate binders with `impl Trait`...",
+                        );
+                    }
+                    tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                } else {
+                    re
+                }
+            });
+            for (bound, bound_span) in tcx
+                .bound_explicit_item_bounds(opaque_ty.def_id)
+                .subst_iter_copied(tcx, opaque_ty.substs)
             {
-                let span = tcx.def_span(opaque_ty.def_id);
-                let bounds = wfcx.tcx().explicit_item_bounds(opaque_ty.def_id);
-                let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
-                    let bound = ty::EarlyBinder(bound).subst(tcx, opaque_ty.substs);
-                    let normalized_bound = wfcx.normalize(span, None, bound);
-                    traits::wf::predicate_obligations(
-                        wfcx.infcx,
-                        wfcx.param_env,
-                        wfcx.body_def_id,
-                        normalized_bound,
-                        bound_span,
-                    )
-                });
-                wfcx.register_obligations(wf_obligations);
+                let bound = self.wfcx.normalize(bound_span, None, bound);
+                self.wfcx.register_obligations(traits::wf::predicate_obligations(
+                    self.wfcx.infcx,
+                    self.wfcx.param_env,
+                    self.wfcx.body_def_id,
+                    bound,
+                    bound_span,
+                ));
+                // Set the debruijn index back to innermost here, since we already eagerly
+                // shifted the substs that we use to generate these bounds. This is unfortunately
+                // subtly different behavior than the `ImplTraitInTraitFinder` we use in `param_env`,
+                // but that function doesn't actually need to normalize the bound it's visiting
+                // (whereas we have to do so here)...
+                let old_depth = std::mem::replace(&mut self.depth, ty::INNERMOST);
+                bound.visit_with(self);
+                self.depth = old_depth;
             }
         }
+        ty.super_visit_with(self)
     }
 }
 
