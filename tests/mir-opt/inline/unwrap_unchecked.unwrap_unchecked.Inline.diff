@@ -5,7 +5,7 @@
       debug slf => _1;                     // in scope 0 at $DIR/unwrap_unchecked.rs:+0:35: +0:38
       let mut _0: T;                       // return place in scope 0 at $DIR/unwrap_unchecked.rs:+0:54: +0:55
       let mut _2: std::option::Option<T>;  // in scope 0 at $DIR/unwrap_unchecked.rs:+1:5: +1:8
-+     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) { // at $DIR/unwrap_unchecked.rs:9:9: 9:27
++     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) { // at $DIR/unwrap_unchecked.rs:10:9: 10:27
 +         debug self => _2;                // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
 +         let mut _3: &std::option::Option<T>; // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
 +         let mut _4: isize;               // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
@@ -30,7 +30,7 @@
           _2 = move _1;                    // scope 0 at $DIR/unwrap_unchecked.rs:+1:5: +1:8
 -         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/unwrap_unchecked.rs:+1:5: +1:27
 -                                          // mir::Constant
--                                          // + span: $DIR/unwrap_unchecked.rs:9:9: 9:25
+-                                          // + span: $DIR/unwrap_unchecked.rs:10:9: 10:25
 -                                          // + literal: Const { ty: unsafe fn(Option<T>) -> T {Option::<T>::unwrap_unchecked}, val: Value(<ZST>) }
 +         StorageLive(_3);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
 +         _4 = discriminant(_2);           // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL

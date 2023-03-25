@@ -3,7 +3,7 @@
 fn unwrap_unchecked(_1: Option<T>) -> T {
     debug slf => _1;                     // in scope 0 at $DIR/unwrap_unchecked.rs:+0:35: +0:38
     let mut _0: T;                       // return place in scope 0 at $DIR/unwrap_unchecked.rs:+0:54: +0:55
-    scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) { // at $DIR/unwrap_unchecked.rs:9:9: 9:27
+    scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) { // at $DIR/unwrap_unchecked.rs:10:9: 10:27
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         let mut _2: &std::option::Option<T>; // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         let mut _3: isize;               // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
