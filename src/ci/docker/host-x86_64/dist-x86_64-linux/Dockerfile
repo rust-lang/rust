@@ -84,6 +84,7 @@ ENV RUST_CONFIGURE_ARGS \
 ENV SCRIPT python3 ../src/ci/stage-build.py python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
+    --exclude clippy \
     build-manifest bootstrap
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
