@@ -9,12 +9,18 @@
 //! - Protocols are produced and consumed.
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
-use r_efi::efi::Guid;
+use r_efi::efi::{self, Guid};
 
-use crate::io::{self, const_io_error};
 use crate::mem::{size_of, MaybeUninit};
 use crate::os::uefi;
 use crate::ptr::NonNull;
+use crate::{
+    io::{self, const_io_error},
+    os::uefi::env::boot_services,
+};
+
+const BOOT_SERVICES_UNAVAILABLE: io::Error =
+    const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
 
 /// Locate Handles with a particular Protocol GUID
 /// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
@@ -40,7 +46,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    let boot_services = boot_services();
+    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
     let mut buf_len = 0usize;
 
     // This should always fail since the size of buffer is 0. This call should update the buf_len
@@ -76,7 +82,7 @@ pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
-    let boot_services = boot_services();
+    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
     let system_handle = uefi::env::image_handle();
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
@@ -267,14 +273,32 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
     }
 }
 
-/// Get the BootServices Pointer.
-pub(crate) fn boot_services() -> NonNull<r_efi::efi::BootServices> {
-    try_boot_services().unwrap()
+pub(crate) fn create_event(
+    signal: u32,
+    tpl: efi::Tpl,
+    handler: Option<efi::EventNotify>,
+    context: *mut crate::ffi::c_void,
+) -> io::Result<NonNull<crate::ffi::c_void>> {
+    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let mut exit_boot_service_event: r_efi::efi::Event = crate::ptr::null_mut();
+    let r = unsafe {
+        let create_event = (*boot_services.as_ptr()).create_event;
+        (create_event)(signal, tpl, handler, context, &mut exit_boot_service_event)
+    };
+    if r.is_error() {
+        Err(status_to_io_error(r))
+    } else {
+        NonNull::new(exit_boot_service_event)
+            .ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+    }
 }
-/// Get the BootServices Pointer.
-/// This function is mostly intended for places where panic is not an option
-pub(crate) fn try_boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
-    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::try_system_table()?.cast();
-    let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
-    NonNull::new(boot_services)
+
+pub(crate) fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result<()> {
+    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let r = unsafe {
+        let close_event = (*boot_services.as_ptr()).close_event;
+        (close_event)(evt.as_ptr())
+    };
+
+    if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
 }

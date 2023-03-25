@@ -2,14 +2,17 @@
 
 #![unstable(feature = "uefi_std", issue = "100499")]
 
-use crate::ffi::c_void;
-use crate::ptr::NonNull;
-use crate::sync::atomic::{AtomicPtr, Ordering};
-use crate::sync::OnceLock;
+use crate::{cell::Cell, ffi::c_void, ptr::NonNull};
 
-// Position 0 = SystemTable
-// Position 1 = ImageHandle
-static GLOBALS: OnceLock<(AtomicPtr<c_void>, AtomicPtr<c_void>)> = OnceLock::new();
+// Since UEFI is single-threaded, making the global variables thread local should be safe.
+thread_local! {
+    // Flag to check if BootServices are still valid.
+    // Start with assuming that they are not available
+    static BOOT_SERVICES_FLAG: Cell<bool> = Cell::new(false);
+    // Position 0 = SystemTable
+    // Position 1 = ImageHandle
+    static GLOBALS: Cell<Option<(NonNull<c_void>, NonNull<c_void>)>> = Cell::new(None);
+}
 
 /// Initializes the global System Table and Image Handle pointers.
 ///
@@ -25,7 +28,7 @@ static GLOBALS: OnceLock<(AtomicPtr<c_void>, AtomicPtr<c_void>)> = OnceLock::new
 ///
 /// This function must not be called more than once.
 pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
-    GLOBALS.set((AtomicPtr::new(system_table.as_ptr()), AtomicPtr::new(handle.as_ptr()))).unwrap()
+    GLOBALS.set(Some((system_table, handle)));
 }
 
 /// Get the SystemTable Pointer.
@@ -43,11 +46,31 @@ pub fn image_handle() -> NonNull<c_void> {
 /// Get the SystemTable Pointer.
 /// This function is mostly intended for places where panic is not an option
 pub(crate) fn try_system_table() -> Option<NonNull<crate::ffi::c_void>> {
-    NonNull::new(GLOBALS.get()?.0.load(Ordering::Acquire))
+    GLOBALS.get().map(|x| x.0)
 }
 
 /// Get the SystemHandle Pointer.
 /// This function is mostly intended for places where panic is not an option
 pub(crate) fn try_image_handle() -> Option<NonNull<crate::ffi::c_void>> {
-    NonNull::new(GLOBALS.get()?.1.load(Ordering::Acquire))
+    GLOBALS.get().map(|x| x.1)
+}
+
+/// Get the BootServices Pointer.
+/// This function also checks if `ExitBootServices` has already been called.
+pub(crate) fn boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
+    if BOOT_SERVICES_FLAG.get() {
+        let system_table: NonNull<r_efi::efi::SystemTable> = try_system_table()?.cast();
+        let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
+        NonNull::new(boot_services)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn enable_boot_services() {
+    BOOT_SERVICES_FLAG.set(true);
+}
+
+pub(crate) fn disable_boot_services() {
+    BOOT_SERVICES_FLAG.set(false);
 }

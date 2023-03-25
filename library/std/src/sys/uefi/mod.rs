@@ -52,12 +52,17 @@ pub(crate) mod helpers;
 #[cfg(test)]
 mod tests;
 
+use crate::cell::Cell;
 use crate::io as std_io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 
 pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
+}
+
+thread_local! {
+    static EXIT_BOOT_SERVICE_EVENT: Cell<Option<NonNull<crate::ffi::c_void>>> = Cell::new(None);
 }
 
 /// # SAFETY
@@ -68,13 +73,32 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     assert_eq!(argc, 2);
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
     let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };
-    unsafe { crate::os::uefi::env::init_globals(image_handle, system_table) };
+    unsafe { uefi::env::init_globals(image_handle, system_table) };
+    // Enable boot services once GLOBALS are initialized
+    uefi::env::enable_boot_services();
+
+    // Register exit boot services handler
+    match helpers::create_event(
+        r_efi::efi::EVT_SIGNAL_EXIT_BOOT_SERVICES,
+        r_efi::efi::TPL_NOTIFY,
+        Some(exit_boot_service_handler),
+        crate::ptr::null_mut(),
+    ) {
+        Ok(x) => {
+            EXIT_BOOT_SERVICE_EVENT.set(Some(x));
+        }
+        Err(_) => abort_internal(),
+    }
 }
 
 /// # SAFETY
 /// this is not guaranteed to run, for example when the program aborts.
 /// - must be called only once during runtime cleanup.
-pub unsafe fn cleanup() {}
+pub unsafe fn cleanup() {
+    if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
+        let _ = helpers::close_event(exit_boot_service_event);
+    }
+}
 
 #[inline]
 pub const fn unsupported<T>() -> std_io::Result<T> {
@@ -98,8 +122,12 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
+    if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
+        let _ = helpers::close_event(exit_boot_service_event);
+    }
+
     if let (Some(boot_services), Some(handle)) =
-        (helpers::try_boot_services(), uefi::env::try_image_handle())
+        (uefi::env::boot_services(), uefi::env::try_image_handle())
     {
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
@@ -154,4 +182,9 @@ fn get_random() -> Option<(u64, u64)> {
         }
     }
     None
+}
+
+/// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
+extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
+    uefi::env::disable_boot_services();
 }
