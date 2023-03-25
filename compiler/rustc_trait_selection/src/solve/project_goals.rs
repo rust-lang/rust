@@ -174,7 +174,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 goal.predicate.def_id(),
                 impl_def_id
             )? else {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
