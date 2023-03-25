@@ -52,7 +52,34 @@ If you have already built `rustc` and you change settings related to LLVM, then 
 execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
 clean` will not cause a rebuild of LLVM.
 
-## Building the compiler
+## Common `x.py` commands
+
+Here are the basic invocations of the `x.py` commands most commonly used when
+working on `rustc`, `std`, `rustdoc`, and other tools.
+
+| Command | When to use it |
+| --- | --- |
+| `./x.py check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
+| `./x.py build` | Builds `rustc`, `std`, and `rustdoc` |
+| `./x.py test` | Runs all tests |
+| `./x.py fmt` | Formats all code |
+
+As written, these commands are reasonable starting points. However, there are
+additional options and arguments for each of them that are worth learning for
+serious development work. In particular, `./x.py build` and `./x.py test`
+provide many ways to compile or test a subset of the code, which can save a lot
+of time.
+
+Also, note that `x.py` supports all kinds of path suffixes for `compiler`, `library`,
+and `src/tools` directories. So, you can simply run `x.py test tidy` instead of
+`x.py test src/tools/tidy`. Or, `x.py build std` instead of `x.py build library/std`.
+
+[rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
+
+See the chapters on [building](./building/how-to-build-and-run.md),
+[testing](./tests/intro.md), and [rustdoc](./rustdoc.md) for more details.
+
+### Building the compiler
 
 Note that building will require a relatively large amount of storage space.
 You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
@@ -98,7 +125,7 @@ build. The **full** `rustc` build (what you get with `./x.py build
 
 You almost never need to do this.
 
-## Build specific components
+### Build specific components
 
 If you are working on the standard library, you probably don't need to build
 the compiler unless you are planning to use a recently added nightly feature.

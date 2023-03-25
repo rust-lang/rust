@@ -44,86 +44,9 @@ just create noise, so we ask that you be mindful of the fact that the
 
 ## Cloning and Building
 
-### System Requirements
+See ["How to build and run the compiler"](./building//how-to-build-and-run.md).
 
-Internet access is required.
-
-The most notable software requirement is that you will need Python 2 or 3, but
-there are various others.
-
-The following hardware is recommended.
-* 30GB+ of free disk space.
-* 8GB+ RAM
-* 2+ cores
-
-More powerful machines will lead to much faster builds. There are various
-strategies to work around lesser hardware in the following chapters.
-
-See [this chapter][prereqs] for more details about software and hardware prerequisites.
-
-[prereqs]: ./building/prerequisites.md
-
-### Cloning
-
-You can just do a normal git clone:
-
-```sh
-git clone https://github.com/rust-lang/rust.git
-cd rust
-```
-
-### `x.py` Intro
-
-`rustc` is a [bootstrapping] compiler, which makes it more complex than a
-typical Rust program. As a result, you cannot use Cargo to build it. Instead
-you must use the special tool `x.py`. It is used for the things Cargo is
-normally used for: building, testing, creating releases, formatting, etc.
-
-[bootstrapping]: ./building/bootstrapping.md
-
-### Configuring the compiler
-
-In the top level of the repo:
-
-```sh
-$ ./x.py setup
-```
-
-This will do some initialization and walk you through an interactive setup to
-create `config.toml`, the primary configuration file.
-
-See [this chapter][config] for more info about configuration.
-
-[config]: ./building/how-to-build-and-run.md#create-a-configtoml
-
-### Common `x.py` commands
-
-Here are the basic invocations of the `x.py` commands most commonly used when
-working on `rustc`, `std`, `rustdoc`, and other tools.
-
-| Command | When to use it |
-| --- | --- |
-| `./x.py check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
-| `./x.py build` | Builds `rustc`, `std`, and `rustdoc` |
-| `./x.py test` | Runs all tests |
-| `./x.py fmt` | Formats all code |
-
-As written, these commands are reasonable starting points. However, there are
-additional options and arguments for each of them that are worth learning for
-serious development work. In particular, `./x.py build` and `./x.py test`
-provide many ways to compile or test a subset of the code, which can save a lot
-of time.
-
-Also, note that `x.py` supports all kinds of path suffixes for `compiler`, `library`,
-and `src/tools` directories. So, you can simply run `x.py test tidy` instead of
-`x.py test src/tools/tidy`. Or, `x.py build std` instead of `x.py build library/std`.
-
-[rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
-
-See the chapters on [building](./building/how-to-build-and-run.md),
-[testing](./tests/intro.md), and [rustdoc](./rustdoc.md) for more details.
-
-### Contributing code to other Rust projects
+## Contributing code to other Rust projects
 
 There are a bunch of other projects that you can contribute to outside of the
 `rust-lang/rust` repo, including `clippy`, `miri`, `chalk`, and many others.
@@ -132,7 +55,7 @@ These repos might have their own contributing guidelines and procedures. Many
 of them are owned by working groups (e.g. `chalk` is largely owned by
 WG-traits). For more info, see the documentation in those repos' READMEs.
 
-### Other ways to contribute
+## Other ways to contribute
 
 There are a bunch of other ways you can contribute, especially if you don't
 feel comfortable jumping straight into the large `rust-lang/rust` codebase.
@@ -311,8 +234,7 @@ which would also be useful in rustc development, see [The Rust Performance Book]
 
 ## Other Resources
 
-- This guide: talks about how `rustc` works
 - [The t-compiler zulip][z]
 - [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 - [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
-- `#contribute` and `#rustdoc` on [Discord](https://discord.gg/rust-lang).
+- `#contribute` and `#wg-rustup` on [Discord](https://discord.gg/rust-lang).
