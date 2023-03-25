@@ -7,7 +7,7 @@ use std::{collections::VecDeque, fmt, fs, process::Command, sync::Arc};
 use anyhow::{bail, format_err, Context, Result};
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileId, LangCrateOrigin, ProcMacroLoadResult, ProcMacros, TargetLayoutLoadResult,
+    FileId, LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
@@ -576,16 +576,14 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
         extra_env: &FxHashMap<String, String>,
-    ) -> (CrateGraph, ProcMacros) {
+    ) -> (CrateGraph, ProcMacroPaths) {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
 
         let (mut crate_graph, proc_macros) = match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => project_json_to_crate_graph(
                 rustc_cfg.clone(),
-                load_proc_macro,
                 load,
                 project,
                 sysroot.as_ref().ok(),
@@ -602,7 +600,6 @@ impl ProjectWorkspace {
                 toolchain: _,
                 target_layout,
             } => cargo_to_crate_graph(
-                load_proc_macro,
                 load,
                 rustc.as_ref().ok(),
                 cargo,
@@ -679,15 +676,14 @@ impl ProjectWorkspace {
 
 fn project_json_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
-    load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     project: &ProjectJson,
     sysroot: Option<&Sysroot>,
     extra_env: &FxHashMap<String, String>,
     target_layout: TargetLayoutLoadResult,
-) -> (CrateGraph, ProcMacros) {
+) -> (CrateGraph, ProcMacroPaths) {
     let mut crate_graph = CrateGraph::default();
-    let mut proc_macros = FxHashMap::<_, _>::default();
+    let mut proc_macros = FxHashMap::default();
     let sysroot_deps = sysroot.as_ref().map(|sysroot| {
         sysroot_to_crate_graph(
             &mut crate_graph,
@@ -708,16 +704,15 @@ fn project_json_to_crate_graph(
         })
         .map(|(crate_id, krate, file_id)| {
             let env = krate.env.clone().into_iter().collect();
-            if let Some(it) = krate.proc_macro_dylib_path.clone() {
+            if let Some(path) = krate.proc_macro_dylib_path.clone() {
                 proc_macros.insert(
                     crate_id,
-                    load_proc_macro(
-                        krate.display_name.as_ref().map(|it| it.canonical_name()).unwrap_or(""),
-                        &it,
-                    ),
+                    Ok((
+                        krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
+                        path,
+                    )),
                 );
             }
-
             let target_cfgs = match krate.target.as_deref() {
                 Some(target) => cfg_cache
                     .entry(target)
@@ -782,7 +777,6 @@ fn project_json_to_crate_graph(
 }
 
 fn cargo_to_crate_graph(
-    load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     rustc: Option<&(CargoWorkspace, WorkspaceBuildScripts)>,
     cargo: &CargoWorkspace,
@@ -791,7 +785,7 @@ fn cargo_to_crate_graph(
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
     target_layout: TargetLayoutLoadResult,
-) -> (CrateGraph, ProcMacros) {
+) -> (CrateGraph, ProcMacroPaths) {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let mut proc_macros = FxHashMap::default();
@@ -862,7 +856,6 @@ fn cargo_to_crate_graph(
                     &cargo[pkg],
                     build_scripts.get_output(pkg),
                     cfg_options.clone(),
-                    &mut |path| load_proc_macro(&cargo[tgt].name, path),
                     file_id,
                     &cargo[tgt].name,
                     cargo[tgt].is_proc_macro,
@@ -938,7 +931,6 @@ fn cargo_to_crate_graph(
                 &mut proc_macros,
                 &mut pkg_to_lib_crate,
                 load,
-                load_proc_macro,
                 rustc_workspace,
                 cargo,
                 &public_deps,
@@ -966,7 +958,7 @@ fn detached_files_to_crate_graph(
     detached_files: &[AbsPathBuf],
     sysroot: Option<&Sysroot>,
     target_layout: TargetLayoutLoadResult,
-) -> (CrateGraph, ProcMacros) {
+) -> (CrateGraph, ProcMacroPaths) {
     let _p = profile::span("detached_files_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let (public_deps, _libproc_macro) = match sysroot {
@@ -1018,10 +1010,9 @@ fn detached_files_to_crate_graph(
 
 fn handle_rustc_crates(
     crate_graph: &mut CrateGraph,
-    proc_macros: &mut ProcMacros,
+    proc_macros: &mut ProcMacroPaths,
     pkg_to_lib_crate: &mut FxHashMap<Package, CrateId>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-    load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
     rustc_workspace: &CargoWorkspace,
     cargo: &CargoWorkspace,
     public_deps: &SysrootPublicDeps,
@@ -1084,7 +1075,6 @@ fn handle_rustc_crates(
                         &rustc_workspace[pkg],
                         build_scripts.get_output(pkg),
                         cfg_options.clone(),
-                        &mut |path| load_proc_macro(&rustc_workspace[tgt].name, path),
                         file_id,
                         &rustc_workspace[tgt].name,
                         rustc_workspace[tgt].is_proc_macro,
@@ -1146,11 +1136,10 @@ fn handle_rustc_crates(
 
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
-    proc_macros: &mut ProcMacros,
+    proc_macros: &mut ProcMacroPaths,
     pkg: &PackageData,
     build_data: Option<&BuildScriptOutput>,
     cfg_options: CfgOptions,
-    load_proc_macro: &mut dyn FnMut(&AbsPath) -> ProcMacroLoadResult,
     file_id: FileId,
     cargo_name: &str,
     is_proc_macro: bool,
@@ -1197,11 +1186,11 @@ fn add_target_crate_root(
         target_layout,
     );
     let proc_macro = match build_data.as_ref().map(|it| &it.proc_macro_dylib_path) {
-        Some(it) => it.as_deref().map(load_proc_macro),
+        Some(it) => it.clone().map(Ok),
         None => Some(Err("crate has not (yet) been built".into())),
     };
     if let Some(proc_macro) = proc_macro {
-        proc_macros.insert(crate_id, proc_macro);
+        proc_macros.insert(crate_id, proc_macro.map(|path| (Some(cargo_name.to_owned()), path)));
     }
 
     crate_id

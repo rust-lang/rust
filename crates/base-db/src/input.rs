@@ -6,15 +6,16 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
+use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use stdx::hash::{NoHashHashMap, NoHashHashSet};
 use syntax::SmolStr;
 use tt::token_id::Subtree;
-use vfs::{file_set::FileSet, AnchoredPath, FileId, VfsPath};
+use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
+pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
 pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -455,16 +456,11 @@ impl CrateGraph {
     }
 
     /// Extends this crate graph by adding a complete disjoint second crate
-    /// graph.
+    /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
     /// The ids of the crates in the `other` graph are shifted by the return
     /// amount.
-    pub fn extend(
-        &mut self,
-        other: CrateGraph,
-        proc_macros: &mut ProcMacros,
-        other_proc_macros: ProcMacros,
-    ) -> u32 {
+    pub fn extend(&mut self, other: CrateGraph, proc_macros: &mut ProcMacroPaths) -> u32 {
         let start = self.arena.len() as u32;
         self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
             let new_id = id.shift(start);
@@ -473,8 +469,11 @@ impl CrateGraph {
             }
             (new_id, data)
         }));
-        proc_macros
-            .extend(other_proc_macros.into_iter().map(|(id, macros)| (id.shift(start), macros)));
+
+        *proc_macros = mem::take(proc_macros)
+            .into_iter()
+            .map(|(id, macros)| (id.shift(start), macros))
+            .collect();
         start
     }
 

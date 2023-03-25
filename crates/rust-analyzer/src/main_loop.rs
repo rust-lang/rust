@@ -24,7 +24,7 @@ use crate::{
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, notification_is, Progress},
     mem_docs::DocumentData,
-    reload::{self, BuildDataProgress, ProjectWorkspaceProgress},
+    reload::{self, BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
     Result,
 };
 
@@ -68,6 +68,7 @@ pub(crate) enum Task {
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
+    LoadProcMacros(ProcMacroProgress),
 }
 
 #[derive(Debug)]
@@ -482,6 +483,21 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_string());
+
+                        (Some(Progress::End), None)
+                    }
+                };
+
+                if let Some(state) = state {
+                    self.report_progress("Building", state, msg, None, None);
+                }
+            }
+            Task::LoadProcMacros(progress) => {
+                let (state, msg) = match progress {
+                    ProcMacroProgress::Begin => (Some(Progress::Begin), None),
+                    ProcMacroProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
+                    ProcMacroProgress::End(proc_macro_load_result) => {
+                        self.set_proc_macros(proc_macro_load_result);
 
                         (Some(Progress::End), None)
                     }

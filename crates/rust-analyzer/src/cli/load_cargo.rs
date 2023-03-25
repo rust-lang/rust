@@ -69,7 +69,7 @@ pub fn load_workspace(
         Box::new(loader)
     };
 
-    let proc_macro_client = match &load_config.with_proc_macro_server {
+    let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
             .ok_or_else(|| "failed to find sysroot proc-macro server".to_owned())
@@ -83,9 +83,6 @@ pub fn load_workspace(
     };
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
-        &mut |_, path: &AbsPath| {
-            load_proc_macro(proc_macro_client.as_ref().map_err(|e| &**e), path, &[])
-        },
         &mut |path: &AbsPath| {
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
@@ -94,6 +91,21 @@ pub fn load_workspace(
         },
         extra_env,
     );
+    let proc_macros = {
+        let proc_macro_server = match &proc_macro_server {
+            Ok(it) => Ok(it),
+            Err(e) => Err(e.as_str()),
+        };
+        proc_macros
+            .into_iter()
+            .map(|(crate_id, path)| {
+                (
+                    crate_id,
+                    path.and_then(|(_, path)| load_proc_macro(proc_macro_server, &path, &[])),
+                )
+            })
+            .collect()
+    };
 
     let project_folders = ProjectFolders::new(&[ws], &[]);
     loader.set_config(vfs::loader::Config {
@@ -114,7 +126,7 @@ pub fn load_workspace(
     if load_config.prefill_caches {
         host.analysis().parallel_prime_caches(1, |_| {})?;
     }
-    Ok((host, vfs, proc_macro_client.ok()))
+    Ok((host, vfs, proc_macro_server.ok()))
 }
 
 fn load_crate_graph(

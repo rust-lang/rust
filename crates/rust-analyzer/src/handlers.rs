@@ -5,6 +5,7 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
+    sync::Arc,
 };
 
 use anyhow::Context;
@@ -44,7 +45,7 @@ use crate::{
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
-    state.proc_macro_clients.clear();
+    state.proc_macro_clients = Arc::new([]);
     state.proc_macro_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string());
@@ -53,7 +54,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
 }
 
 pub(crate) fn handle_proc_macros_reload(state: &mut GlobalState, _: ()) -> Result<()> {
-    state.proc_macro_clients.clear();
+    state.proc_macro_clients = Arc::new([]);
     state.proc_macro_changed = false;
 
     state.fetch_build_data_queue.request_op("reload proc macros request".to_string());

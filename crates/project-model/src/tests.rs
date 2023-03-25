@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use base_db::{CrateGraph, FileId, ProcMacros};
+use base_db::{CrateGraph, FileId, ProcMacroPaths};
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect, Expect};
 use paths::{AbsPath, AbsPathBuf};
@@ -14,11 +14,14 @@ use crate::{
     WorkspaceBuildScripts,
 };
 
-fn load_cargo(file: &str) -> (CrateGraph, ProcMacros) {
+fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
     load_cargo_with_overrides(file, CfgOverrides::default())
 }
 
-fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> (CrateGraph, ProcMacros) {
+fn load_cargo_with_overrides(
+    file: &str,
+    cfg_overrides: CfgOverrides,
+) -> (CrateGraph, ProcMacroPaths) {
     let meta = get_test_json_file(file);
     let cargo_workspace = CargoWorkspace::new(meta);
     let project_workspace = ProjectWorkspace::Cargo {
@@ -34,7 +37,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> (CrateG
     to_crate_graph(project_workspace)
 }
 
-fn load_rust_project(file: &str) -> (CrateGraph, ProcMacros) {
+fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = Ok(get_fake_sysroot());
@@ -92,9 +95,8 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
     ProjectJson::new(base, data)
 }
 
-fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacros) {
+fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacroPaths) {
     project_workspace.to_crate_graph(
-        &mut |_, _| Ok(Vec::new()),
         &mut {
             let mut counter = 0;
             move |_path| {

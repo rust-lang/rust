@@ -12,7 +12,7 @@
 //! correct. Instead, we try to provide a best-effort service. Even if the
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
-use std::{collections::hash_map::Entry, mem, sync::Arc};
+use std::{collections::hash_map::Entry, iter, mem, sync::Arc};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
@@ -20,7 +20,7 @@ use ide::Change;
 use ide_db::{
     base_db::{
         CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-        ProcMacroLoadResult, ProcMacros, SourceRoot, VfsPath,
+        ProcMacroLoadResult, ProcMacroPaths, ProcMacros, SourceRoot, VfsPath,
     },
     FxHashMap,
 };
@@ -52,6 +52,13 @@ pub(crate) enum BuildDataProgress {
     Begin,
     Report(String),
     End((Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)),
+}
+
+#[derive(Debug)]
+pub(crate) enum ProcMacroProgress {
+    Begin,
+    Report(String),
+    End(ProcMacros),
 }
 
 impl GlobalState {
@@ -216,6 +223,59 @@ impl GlobalState {
         });
     }
 
+    pub(crate) fn load_proc_macros(&mut self, paths: Vec<ProcMacroPaths>) {
+        tracing::info!("will load proc macros");
+        let dummy_replacements = self.config.dummy_replacements().clone();
+        let proc_macro_clients = self.proc_macro_clients.clone();
+
+        self.task_pool.handle.spawn_with_sender(move |sender| {
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
+
+            let dummy_replacements = &dummy_replacements;
+            let progress = {
+                let sender = sender.clone();
+                &move |msg| {
+                    sender.send(Task::LoadProcMacros(ProcMacroProgress::Report(msg))).unwrap()
+                }
+            };
+
+            let mut res = FxHashMap::default();
+            for (client, paths) in proc_macro_clients
+                .iter()
+                .map(|res| res.as_ref().map_err(|e| &**e))
+                .chain(iter::repeat_with(|| Err("Proc macros are disabled")))
+                .zip(paths)
+            {
+                res.extend(paths.into_iter().map(move |(crate_id, res)| {
+                    (
+                        crate_id,
+                        res.and_then(|(crate_name, path)| {
+                            progress(path.display().to_string());
+                            load_proc_macro(
+                                client,
+                                &path,
+                                crate_name
+                                    .as_deref()
+                                    .and_then(|crate_name| {
+                                        dummy_replacements.get(crate_name).map(|v| &**v)
+                                    })
+                                    .unwrap_or_default(),
+                            )
+                        }),
+                    )
+                }));
+            }
+
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(res))).unwrap();
+        });
+    }
+
+    pub(crate) fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
+        let mut change = Change::new();
+        change.set_proc_macros(proc_macros);
+        self.analysis_host.apply_change(change);
+    }
+
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
         let _p = profile::span("GlobalState::switch_workspaces");
         tracing::info!(%cause, "will switch workspaces");
@@ -303,8 +363,6 @@ impl GlobalState {
             );
         }
 
-        let mut change = Change::new();
-
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
@@ -353,11 +411,10 @@ impl GlobalState {
             watch,
             version: self.vfs_config_version,
         });
+        self.source_root_config = project_folders.source_root_config;
 
         // Create crate graph from all the workspaces
-        let (crate_graph, proc_macros) = {
-            let dummy_replacements = self.config.dummy_replacements();
-
+        let (crate_graph, proc_macro_paths) = {
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
             let mem_docs = &self.mem_docs;
@@ -376,34 +433,22 @@ impl GlobalState {
             };
 
             let mut crate_graph = CrateGraph::default();
-            let mut proc_macros = ProcMacros::default();
-            for (idx, ws) in self.workspaces.iter().enumerate() {
-                let proc_macro_client = match self.proc_macro_clients.get(idx) {
-                    Some(res) => res.as_ref().map_err(|e| &**e),
-                    None => Err("Proc macros are disabled"),
-                };
-                let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
-                    load_proc_macro(
-                        proc_macro_client,
-                        path,
-                        dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
-                    )
-                };
-                let (other, other_proc_macros) = ws.to_crate_graph(
-                    &mut load_proc_macro,
-                    &mut load,
-                    &self.config.cargo().extra_env,
-                );
-                crate_graph.extend(other, &mut proc_macros, other_proc_macros);
+            let mut proc_macros = Vec::default();
+            for ws in &**self.workspaces {
+                let (other, mut crate_proc_macros) =
+                    ws.to_crate_graph(&mut load, &self.config.cargo().extra_env);
+                crate_graph.extend(other, &mut crate_proc_macros);
+                proc_macros.push(crate_proc_macros);
             }
             (crate_graph, proc_macros)
         };
+        let mut change = Change::new();
         change.set_crate_graph(crate_graph);
-        change.set_proc_macros(proc_macros);
-
-        self.source_root_config = project_folders.source_root_config;
-
         self.analysis_host.apply_change(change);
+
+        if same_workspaces {
+            self.load_proc_macros(proc_macro_paths);
+        }
         self.process_changes();
         self.reload_flycheck();
         tracing::info!("did switch workspaces");
