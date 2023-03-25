@@ -3,10 +3,12 @@
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
-    SourceInfo, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
+    BinOp, Body, CastKind, Constant, ConstantKind, Field, LocalDecls, Operand, Place,
+    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, SwitchTargets, Terminator,
+    TerminatorKind, UnOp,
 };
 use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 
@@ -145,9 +147,53 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     }
 
     fn combine_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
-        if let Rvalue::Cast(_kind, operand, ty) = rvalue {
-            if operand.ty(self.local_decls, self.tcx) == *ty {
+        if let Rvalue::Cast(kind, operand, cast_ty) = rvalue {
+            let operand_ty = operand.ty(self.local_decls, self.tcx);
+            if operand_ty == *cast_ty {
                 *rvalue = Rvalue::Use(operand.clone());
+            } else if *kind == CastKind::Transmute {
+                // Transmuting an integer to another integer is just a signedness cast
+                if let (ty::Int(int), ty::Uint(uint)) | (ty::Uint(uint), ty::Int(int)) = (operand_ty.kind(), cast_ty.kind())
+                    && int.bit_width() == uint.bit_width()
+                {
+                    // The width check isn't strictly necessary, as different widths
+                    // are UB and thus we'd be allowed to turn it into a cast anyway.
+                    // But let's keep the UB around for codegen to exploit later.
+                    // (If `CastKind::Transmute` ever becomes *not* UB for mismatched sizes,
+                    // then the width check is necessary for big-endian correctness.)
+                    *kind = CastKind::IntToInt;
+                    return;
+                }
+
+                // Transmuting a fieldless enum to its repr is a discriminant read
+                if let ty::Adt(adt_def, ..) = operand_ty.kind()
+                    && adt_def.is_enum()
+                    && adt_def.is_payloadfree()
+                    && let Some(place) = operand.place()
+                    && let Some(repr_int) = adt_def.repr().int
+                    && repr_int.to_ty(self.tcx) == *cast_ty
+                {
+                    *rvalue = Rvalue::Discriminant(place);
+                    return;
+                }
+
+                // Transmuting a transparent struct/union to a field's type is a projection
+                if let ty::Adt(adt_def, substs) = operand_ty.kind()
+                    && adt_def.repr().transparent()
+                    && (adt_def.is_struct() || adt_def.is_union())
+                    && let Some(place) = operand.place()
+                {
+                    let variant = adt_def.non_enum_variant();
+                    for (i, field) in variant.fields.iter().enumerate() {
+                        let field_ty = field.ty(self.tcx, substs);
+                        if field_ty == *cast_ty {
+                            let place = place.project_deeper(&[ProjectionElem::Field(Field::from_usize(i), *cast_ty)], self.tcx);
+                            let operand = if operand.is_move() { Operand::Move(place) } else { Operand::Copy(place) };
+                            *rvalue = Rvalue::Use(operand);
+                            return;
+                        }
+                    }
+                }
             }
         }
     }
