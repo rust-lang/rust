@@ -83,30 +83,28 @@ async function runOnce() {
     }
   }
 
-  // Try to load the release for this tag, and if it doesn't exist then make a
-  // new one. We might race with other builders on creation, though, so if the
-  // creation fails try again to get the release by the tag.
-  let release = null;
+  // Delete a previous release
   try {
     core.info(`fetching release`);
-    release = await octokit.rest.repos.getReleaseByTag({ owner, repo, tag: name });
+    let release = await octokit.rest.repos.getReleaseByTag({ owner, repo, tag: name });
+    console.log("found release: ", JSON.stringify(release.data, null, 2));
+    await octokit.rest.repos.deleteRelease({
+      owner,
+      repo,
+      release_id: release.data.id,
+    });
+    console.log("deleted release");
   } catch (e) {
     console.log("ERROR: ", JSON.stringify(e, null, 2));
-    core.info(`creating a release`);
-    try {
-      release = await octokit.rest.repos.createRelease({
-        owner,
-        repo,
-        tag_name: name,
-        prerelease: name === 'dev',
-      });
-    } catch (e) {
-      console.log("ERROR: ", JSON.stringify(e, null, 2));
-      core.info(`fetching one more time`);
-      release = await octokit.rest.repos.getReleaseByTag({ owner, repo, tag: name });
-    }
   }
-  console.log("found release: ", JSON.stringify(release.data, null, 2));
+
+  console.log("creating a release");
+  let release = await octokit.rest.repos.createRelease({
+    owner,
+    repo,
+    tag_name: name,
+    prerelease: name === 'dev',
+  });
 
   // Delete all assets from a previous run
   for (const asset of release.data.assets) {
