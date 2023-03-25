@@ -19,11 +19,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
         if (local.ty.map_or(false, |ty| !matches!(ty.kind, TyKind::Infer))
-            || matches!(local.pat.kind, PatKind::Tuple([], ddpos) if ddpos.as_opt_usize().is_none()))
+            || matches!(local.pat.kind, PatKind::Tuple(pats, ddpos) if pats.is_empty() && ddpos.as_opt_usize().is_none()))
             && expr_needs_inferred_result(cx, init)
         {
             if !matches!(local.pat.kind, PatKind::Wild)
-               && !matches!(local.pat.kind, PatKind::Tuple([], ddpos) if ddpos.as_opt_usize().is_none())
+               && !matches!(local.pat.kind, PatKind::Tuple(args, ddpos) if args.is_empty() && ddpos.as_opt_usize().is_none())
             {
                 span_lint_and_then(
                     cx,

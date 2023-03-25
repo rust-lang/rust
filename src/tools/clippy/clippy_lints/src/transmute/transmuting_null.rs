@@ -33,8 +33,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
 
     // Catching:
     // `std::mem::transmute(std::ptr::null::<i32>())`
-    if let ExprKind::Call(func1, []) = arg.kind &&
-        is_path_diagnostic_item(cx, func1, sym::ptr_null)
+    if let ExprKind::Call(func1, args) = arg.kind
+        && args.is_empty()
+        && is_path_diagnostic_item(cx, func1, sym::ptr_null)
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;

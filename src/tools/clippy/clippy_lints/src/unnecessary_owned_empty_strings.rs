@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
                 } else {
                     if_chain! {
                         if cx.tcx.is_diagnostic_item(sym::from_fn, fun_def_id);
-                        if let [.., last_arg] = args;
+                        if let [.., last_arg] = args.as_slice();
                         if let ExprKind::Lit(spanned) = &last_arg.kind;
                         if let LitKind::Str(symbol, _) = spanned.node;
                         if symbol.is_empty();

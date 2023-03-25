@@ -343,9 +343,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, recv, [], _) = &e.kind;
+            if let ExprKind::MethodCall(path, recv, args, _) = &e.kind;
+            if args.is_empty();
             if path.ident.name == sym!(into_bytes);
-            if let ExprKind::MethodCall(path, recv, [], _) = &recv.kind;
+            if let ExprKind::MethodCall(path, recv, args, _) = &recv.kind;
+            if args.is_empty();
             if matches!(path.ident.name.as_str(), "to_owned" | "to_string");
             if let ExprKind::Lit(lit) = &recv.kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
@@ -497,11 +499,13 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();
         if_chain! {
-            if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind;
+            if let ExprKind::MethodCall(path, split_recv, args, split_ws_span) = expr.kind;
+            if args.is_empty();
             if path.ident.name == sym!(split_whitespace);
             if let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id);
             if cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id);
-            if let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind;
+            if let ExprKind::MethodCall(path, _trim_recv, args, trim_span) = split_recv.kind;
+            if args.is_empty();
             if let trim_fn_name @ ("trim" | "trim_start" | "trim_end") = path.ident.name.as_str();
             if let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id);
             if is_one_of_trim_diagnostic_items(cx, trim_def_id);

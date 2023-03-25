@@ -58,7 +58,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 let (ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e))) = arms[0].body.kind else {
                      return
                 };
-                if let ExprKind::Call(_, [arg, ..]) = e.kind {
+                if let ExprKind::Call(_, args) = e.kind
+                    && let [arg, ..] = args.as_slice()
+                {
                     self.try_desugar_arm.push(arg.hir_id);
                 }
             },
@@ -134,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
             },
 
-            ExprKind::Call(path, [arg]) => {
+            ExprKind::Call(path, args) if let [arg] = args.as_slice() => {
                 if_chain! {
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();

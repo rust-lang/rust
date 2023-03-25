@@ -2,6 +2,7 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
+#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -81,6 +82,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -856,8 +858,8 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
-        ExprKind::Call(from_func, [ref arg]) => is_default_equivalent_from(cx, from_func, arg),
+        ExprKind::Call(repl_func, args) if args.is_empty() => is_default_equivalent_call(cx, repl_func),
+        ExprKind::Call(from_func, args) if let [ref arg] = args.as_slice() => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
@@ -1173,7 +1175,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
 }
 
 /// Arguments of a method: the receiver and all the additional arguments.
-pub type MethodArguments<'tcx> = Vec<(&'tcx Expr<'tcx>, &'tcx [Expr<'tcx>])>;
+pub type MethodArguments<'tcx> = Vec<(&'tcx Expr<'tcx>, &'tcx ThinSlice<Expr<'tcx>>)>;
 
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
@@ -1206,7 +1208,7 @@ pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symb
 /// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
+pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<MethodArguments<'a>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {

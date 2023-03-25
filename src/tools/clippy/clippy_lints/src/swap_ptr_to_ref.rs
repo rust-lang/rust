@@ -40,7 +40,8 @@ declare_lint_pass!(SwapPtrToRef => [SWAP_PTR_TO_REF]);
 
 impl LateLintPass<'_> for SwapPtrToRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
-        if let ExprKind::Call(fn_expr, [arg1, arg2]) = e.kind
+        if let ExprKind::Call(fn_expr, args) = e.kind
+            && let [arg1, arg2] = args.as_slice()
             && let Some(fn_id) = path_def_id(cx, fn_expr)
             && match_def_path(cx, fn_id, &paths::MEM_SWAP)
             && let ctxt = e.span.ctxt()

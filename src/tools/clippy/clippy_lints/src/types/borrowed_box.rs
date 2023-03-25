@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();
                 if let QPath::Resolved(None, path) = *qpath;
-                if let [ref bx] = *path.segments;
+                if let [ref bx] = *path.segments.as_slice();
                 if let Some(params) = bx.args;
                 if !params.parenthesized;
                 if let Some(inner) = params.args.iter().find_map(|arg| match arg {

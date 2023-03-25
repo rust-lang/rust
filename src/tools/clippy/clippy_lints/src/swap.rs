@@ -225,7 +225,7 @@ fn is_same(cx: &LateContext<'_>, lhs: ExprOrIdent<'_>, rhs: &Expr<'_>) -> bool {
         ExprOrIdent::Expr(expr) => eq_expr_value(cx, expr, rhs),
         ExprOrIdent::Ident(ident) => {
             if let ExprKind::Path(QPath::Resolved(None, path)) = rhs.kind
-                && let [segment] = &path.segments
+                && let [segment] = &path.segments.as_slice()
                 && segment.ident == ident
             {
                 true

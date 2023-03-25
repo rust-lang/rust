@@ -33,12 +33,14 @@ impl<'tcx> ForLoop<'tcx> {
         if_chain! {
             if let hir::ExprKind::DropTemps(e) = expr.kind;
             if let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind;
-            if let hir::ExprKind::Call(_, [arg]) = iterexpr.kind;
+            if let hir::ExprKind::Call(_, args) = iterexpr.kind;
+            if let [arg] = args.as_slice();
             if let hir::ExprKind::Loop(block, ..) = arm.body.kind;
             if let [stmt] = block.stmts;
             if let hir::StmtKind::Expr(e) = stmt.kind;
             if let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind;
-            if let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind;
+            if let hir::PatKind::Struct(_, fields, _) = some_arm.pat.kind;
+            if let [field] = fields.as_slice();
             then {
                 return Some(Self {
                     pat: field.pat,
@@ -287,7 +289,8 @@ impl<'a> VecArgs<'a> {
                     Some(VecArgs::Repeat(&args[0], &args[1]))
                 } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
-                    if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
+                    if let hir::ExprKind::Call(_, inner_args) = &args[0].kind
+                        && let [arg] = inner_args.as_slice()
                         && let hir::ExprKind::Array(args) = arg.kind {
                         Some(VecArgs::Vec(args))
                     } else {

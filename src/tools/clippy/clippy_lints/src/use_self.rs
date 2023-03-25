@@ -312,7 +312,7 @@ fn check_path(cx: &LateContext<'_>, path: &Path<'_>) {
 }
 
 fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
-    if let [.., self_seg, _variant] = path.segments {
+    if let [.., self_seg, _variant] = path.segments.as_slice() {
         let span = path
             .span
             .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());

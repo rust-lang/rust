@@ -119,10 +119,12 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
         ExprKind::Lit(ref lit) => lit_search_pat(&lit.node),
         ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
-        ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
-        ExprKind::Call(first, [.., last])
-        | ExprKind::MethodCall(_, first, [.., last], _)
-        | ExprKind::Binary(_, first, last)
+        ExprKind::Call(e, args) | ExprKind::MethodCall(_, e, args, _)
+            if args.is_empty() => (expr_search_pat(tcx, e).0, Pat::Str("(")),
+        ExprKind::Call(first, args)
+        | ExprKind::MethodCall(_, first, args, _)
+            if let [.., last] = args.as_slice() => (expr_search_pat(tcx, first).0, expr_search_pat(tcx, last).1),
+        ExprKind::Binary(_, first, last)
         | ExprKind::Tup([first, .., last])
         | ExprKind::Assign(first, last, _)
         | ExprKind::AssignOp(_, first, last) => (expr_search_pat(tcx, first).0, expr_search_pat(tcx, last).1),

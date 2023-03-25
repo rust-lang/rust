@@ -495,7 +495,8 @@ impl Transmute {
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(path_expr, [arg]) = e.kind;
+            if let ExprKind::Call(path_expr, args) = e.kind;
+            if let [arg] = args.as_slice();
             if let ExprKind::Path(QPath::Resolved(None, path)) = path_expr.kind;
             if let Some(def_id) = path.res.opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::transmute, def_id);

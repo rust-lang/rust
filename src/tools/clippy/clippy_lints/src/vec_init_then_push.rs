@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
         if self.searcher.is_none()
             && let ExprKind::Assign(left, right, _) = expr.kind
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
-            && let [name] = &path.segments
+            && let [name] = &path.segments.as_slice()
             && let Res::Local(id) = path.res
             && !in_external_macro(cx.sess(), expr.span)
             && let Some(init) = get_vec_init_kind(cx, right)
@@ -201,7 +201,8 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let Some(searcher) = self.searcher.take() {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
-                && let ExprKind::MethodCall(name, self_arg, [_], _) = expr.kind
+                && let ExprKind::MethodCall(name, self_arg, args, _) = expr.kind
+                && let [_] = args.as_slice()
                 && path_to_local_id(self_arg, searcher.local_id)
                 && name.ident.as_str() == "push"
             {

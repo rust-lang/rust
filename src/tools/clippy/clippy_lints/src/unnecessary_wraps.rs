@@ -121,7 +121,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if_chain! {
                 if !ret_expr.span.from_expansion();
                 // Check if a function call.
-                if let ExprKind::Call(func, [arg]) = ret_expr.kind;
+                if let ExprKind::Call(func, args) = ret_expr.kind;
+                if let [arg] = args.as_slice();
                 if is_res_lang_ctor(cx, path_res(cx, func), lang_item);
                 // Make sure the function argument does not contain a return expression.
                 if !contains_return(arg);

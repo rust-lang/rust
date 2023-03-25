@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
 
         // Catching:
         // `std::mem::transmute(std::ptr::null::<i32>())`
-        ExprKind::Call(func1, []) if is_path_diagnostic_item(cx, func1, sym::ptr_null) => {
+        ExprKind::Call(func1, args) if args.is_empty() && is_path_diagnostic_item(cx, func1, sym::ptr_null) => {
             lint_expr(cx, expr);
             true
         },

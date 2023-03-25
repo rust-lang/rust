@@ -39,11 +39,14 @@ declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
 impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, [], _) = &expr.kind;
+            if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, args, _) = &expr.kind;
+            if args.is_empty();
             if is_some_path.ident.name.as_str() == "is_some";
             then {
                 let match_result = match &to_digit_expr.kind {
-                    hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
+                    hir::ExprKind::MethodCall(to_digits_path, char_arg, args, _)
+                        if let [radix_arg] = args.as_slice() =>
+                    {
                         if_chain! {
                             if to_digits_path.ident.name.as_str() == "to_digit";
                             let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg);
@@ -57,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                     }
                     hir::ExprKind::Call(to_digits_call, to_digit_args) => {
                         if_chain! {
-                            if let [char_arg, radix_arg] = *to_digit_args;
+                            if let [char_arg, radix_arg] = *to_digit_args.as_slice();
                             if let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind;
                             if let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id);
                             if let Some(to_digits_def_id) = to_digits_call_res.opt_def_id();

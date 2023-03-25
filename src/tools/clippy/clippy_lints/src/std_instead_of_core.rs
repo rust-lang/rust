@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
 /// If this is a global path (such as `::std::fmt::Debug`), then the segment after [`kw::PathRoot`]
 /// is returned.
 fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    match path.segments {
+    match path.segments.as_slice() {
         // A global path will have PathRoot as the first segment. In this case, return the segment after.
         [x, y, ..] if x.ident.name == kw::PathRoot => Some(y),
         [x, ..] => Some(x),

@@ -53,7 +53,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 
         match expr.kind {
             hir::ExprKind::Match(res, _, _) if is_try(cx, expr).is_some() => {
-                if let hir::ExprKind::Call(func, [ref arg_0, ..]) = res.kind {
+                if let hir::ExprKind::Call(func, args) = res.kind
+                    && let [ref arg_0, ..] = args.as_slice()
+                {
                     if matches!(
                         func.kind,
                         hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
@@ -79,7 +81,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 /// waited on.  Otherwise return None.
 fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&hir::Expr<'a>> {
     if let hir::ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
-        if let hir::ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
+        if let hir::ExprKind::Call(func, args) = expr.kind
+            && let [ref arg_0, ..] = args.as_slice()
+        {
             if matches!(
                 func.kind,
                 hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))

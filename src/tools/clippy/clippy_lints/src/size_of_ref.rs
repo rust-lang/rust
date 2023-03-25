@@ -54,7 +54,8 @@ declare_lint_pass!(SizeOfRef => [SIZE_OF_REF]);
 
 impl LateLintPass<'_> for SizeOfRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if let ExprKind::Call(path, [arg]) = expr.kind
+        if let ExprKind::Call(path, args) = expr.kind
+            && let [arg] = args.as_slice()
             && let Some(def_id) = path_def_id(cx, path)
             && cx.tcx.is_diagnostic_item(sym::mem_size_of_val, def_id)
             && let arg_ty = cx.typeck_results().expr_ty(arg)

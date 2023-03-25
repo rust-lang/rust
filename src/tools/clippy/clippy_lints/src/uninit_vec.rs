@@ -177,7 +177,7 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
                     });
                 }
             },
-            ExprKind::MethodCall(path, self_expr, [_], _) if is_reserve(cx, path, self_expr) => {
+            ExprKind::MethodCall(path, self_expr, args, _) if args.len() == 1 && is_reserve(cx, path, self_expr) => {
                 return Some(TargetVec {
                     location: VecLocation::Expr(self_expr),
                     init_kind: None,
@@ -211,7 +211,9 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
         }
     });
     match expr.kind {
-        ExprKind::MethodCall(path, self_expr, [arg], _) => {
+        ExprKind::MethodCall(path, self_expr, args, _)
+            if let [arg] = args.as_slice() =>
+        {
             let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
             if is_type_diagnostic_item(cx, self_type, sym::Vec)
                 && path.ident.name.as_str() == "set_len"

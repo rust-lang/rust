@@ -231,7 +231,8 @@ pub enum PanicExpn<'a> {
 
 impl<'a> PanicExpn<'a> {
     pub fn parse(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Self> {
-        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else { return None };
+        let ExprKind::Call(callee, args) = &expr.kind else { return None };
+        let [arg, rest @ ..] = args.as_slice() else { return None };
         let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else { return None };
         let result = match path.segments.last().unwrap().ident.as_str() {
             "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
@@ -252,7 +253,8 @@ impl<'a> PanicExpn<'a> {
                 // `msg_arg` is either `None` (no custom message) or `Some(format_args!(..))` (custom message)
                 let msg_arg = &rest[2];
                 match msg_arg.kind {
-                    ExprKind::Call(_, [fmt_arg]) => Self::Format(FormatArgsExpn::parse(cx, fmt_arg)?),
+                    ExprKind::Call(_, args)
+                        if let [fmt_arg] = args.as_slice() => Self::Format(FormatArgsExpn::parse(cx, fmt_arg)?),
                     _ => Self::Empty,
                 }
             },
@@ -548,7 +550,8 @@ impl<'tcx> FormatArgsValues<'tcx> {
             if expr.span.ctxt() == args.span.ctxt() {
                 // ArgumentV1::new_<format_trait>(<val>)
                 // ArgumentV1::from_usize(<val>)
-                if let ExprKind::Call(callee, [val]) = expr.kind
+                if let ExprKind::Call(callee, args) = expr.kind
+                    && let [val] = args.as_slice()
                     && let ExprKind::Path(QPath::TypeRelative(ty, _)) = callee.kind
                     && let TyKind::Path(QPath::LangItem(LangItem::FormatArgument, _, _)) = ty.kind
                 {
@@ -617,7 +620,8 @@ impl<'tcx> Visitor<'tcx> for ParamPosition {
 
 fn parse_count(expr: &Expr<'_>) -> Option<usize> {
     // <::core::fmt::rt::v1::Count>::Param(1usize),
-    if let ExprKind::Call(ctor, [val]) = expr.kind
+    if let ExprKind::Call(ctor, args) = expr.kind
+        && let [val] = args.as_slice()
         && let ExprKind::Path(QPath::TypeRelative(_, path)) = ctor.kind
             && path.ident.name == sym::Param
             && let ExprKind::Lit(lit) = &val.kind
@@ -639,7 +643,7 @@ fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = 
                 && let ExprKind::Path(QPath::TypeRelative(ty, f)) = f.kind
                 && let TyKind::Path(QPath::LangItem(LangItem::FormatPlaceholder, _, _)) = ty.kind
                 && f.ident.name == sym::new
-                && let [position, _fill, _align, _flags, precision, width] = args
+                && let [position, _fill, _align, _flags, precision, width] = args.as_slice()
                 && let ExprKind::Lit(position) = &position.kind
                 && let LitKind::Int(position, _) = position.node {
                     ParamPosition {
@@ -1008,7 +1012,8 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         // ::core::fmt::Arguments::new_const(pieces)
         // ::core::fmt::Arguments::new_v1(pieces, args)
         // ::core::fmt::Arguments::new_v1_formatted(pieces, args, fmt, _unsafe_arg)
-        if let ExprKind::Call(callee, [pieces, rest @ ..]) = expr.kind
+        if let ExprKind::Call(callee, args) = expr.kind
+            && let [pieces, rest @ ..] = args.as_slice()
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind
             && let TyKind::Path(QPath::LangItem(LangItem::FormatArguments, _, _)) = ty.kind
             && matches!(seg.ident.as_str(), "new_const" | "new_v1" | "new_v1_formatted")

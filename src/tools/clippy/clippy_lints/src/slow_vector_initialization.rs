@@ -122,7 +122,8 @@ impl SlowVectorInit {
     /// of the first argument of `with_capacity` call if it matches or `None` if it does not.
     fn is_vec_with_capacity<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
         if_chain! {
-            if let ExprKind::Call(func, [arg]) = expr.kind;
+            if let ExprKind::Call(func, args) = expr.kind;
+            if let [arg] = args.as_slice();
             if let ExprKind::Path(QPath::TypeRelative(ty, name)) = func.kind;
             if name.ident.as_str() == "with_capacity";
             if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec);
@@ -202,7 +203,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(path, self_arg, args, _) = expr.kind;
+            if let [extend_arg] = args.as_slice();
             if path_to_local_id(self_arg, self.vec_alloc.local_id);
             if path.ident.name == sym!(extend);
             if self.is_repeat_take(extend_arg);
@@ -216,7 +218,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Checks if the given expression is resizing a vector with 0
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
-            && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
+            && let ExprKind::MethodCall(path, self_arg, args, _) = expr.kind
+            && let [len_arg, fill_arg] = args.as_slice()
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
             && path.ident.name == sym!(resize)
             // Check that is filled with 0
@@ -253,7 +256,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if given expression is `repeat(0)`
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind;
+            if let ExprKind::Call(fn_expr, args) = expr.kind;
+            if let [repeat_arg] = args.as_slice();
             if is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat);
             if is_integer_literal(repeat_arg, 0);
             then {

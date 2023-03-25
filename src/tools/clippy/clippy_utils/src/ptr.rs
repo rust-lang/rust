@@ -32,7 +32,8 @@ fn extract_clone_suggestions<'tcx>(
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     let mut spans = Vec::new();
     for_each_expr(body, |e| {
-        if let ExprKind::MethodCall(seg, recv, [], _) = e.kind
+        if let ExprKind::MethodCall(seg, recv, args, _) = e.kind
+            && args.is_empty()
             && path_to_local_id(recv, id)
         {
             if seg.ident.as_str() == "capacity" {

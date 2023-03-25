@@ -43,11 +43,13 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if let ExprKind::Call(func, [recv]) = expr.kind;
+            if let ExprKind::Call(func, args) = expr.kind;
+            if let [recv] = args.as_slice();
             if let ExprKind::Path(path) = &func.kind;
             if let Some(did) = cx.qpath_res(path, func.hir_id).opt_def_id();
             if match_libc_symbol(cx, did, "strlen");
-            if let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind;
+            if let ExprKind::MethodCall(path, self_arg, args, _) = recv.kind;
+            if args.is_empty();
             if !recv.span.from_expansion();
             if path.ident.name == sym::as_ptr;
             then {
