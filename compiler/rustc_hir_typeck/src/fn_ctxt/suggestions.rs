@@ -983,13 +983,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
                 .must_apply_modulo_regions()
           {
-              diag.span_suggestion_verbose(
-                  expr.span.shrink_to_hi(),
-                  "consider using clone here",
-                  ".clone()",
-                  Applicability::MachineApplicable,
-              );
-              return true;
+            let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                Some(ident) => format!(": {}.clone()", ident),
+                None => ".clone()".to_string()
+            };
+
+            diag.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                "consider using clone here",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+            return true;
           }
         false
     }
@@ -1150,13 +1155,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        diag.span_suggestion(
+        let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(ident) => format!(": {}.is_some()", ident),
+            None => ".is_some()".to_string(),
+        };
+
+        diag.span_suggestion_verbose(
             expr.span.shrink_to_hi(),
             "use `Option::is_some` to test if the `Option` has a value",
-            ".is_some()",
+            suggestion,
             Applicability::MachineApplicable,
         );
-
         true
     }
 
