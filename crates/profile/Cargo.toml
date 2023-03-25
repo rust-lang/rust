@@ -20,7 +20,7 @@ countme = { version = "3.0.1", features = ["enable"] }
 jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-perf-event = "0.4.7"
+perf-event = "=0.4.7"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["processthreadsapi", "psapi"] }

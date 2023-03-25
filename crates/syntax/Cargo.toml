@@ -16,7 +16,7 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 either = "1.7.0"
 itertools = "0.10.5"
-rowan = "0.15.10"
+rowan = "0.15.11"
 rustc_lexer = { version = "727.0.0", package = "rustc-ap-rustc_lexer" }
 rustc-hash = "1.1.0"
 once_cell = "1.17.0"
