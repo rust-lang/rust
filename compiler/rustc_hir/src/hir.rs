@@ -1941,7 +1941,7 @@ pub enum ExprKind<'hir> {
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, &'hir Expr<'hir>),
     /// A literal (e.g., `1`, `"foo"`).
-    Lit(Lit),
+    Lit(&'hir Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(&'hir Expr<'hir>, &'hir Ty<'hir>),
     /// A type reference (e.g., `Foo`).
@@ -3995,6 +3995,22 @@ mod size_asserts {
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
+}
+
+mod dropless {
+    use super::*;
+
+    macro_rules! static_assert_no_destructor {
+        ($ty:ty) => {
+            const _: () = {
+                if std::mem::needs_drop::<$ty>() {
+                    panic!(concat!(stringify!($ty), " has a destructor"));
+                }
+            };
+        };
+    }
+
+    static_assert_no_destructor!(Expr<'_>);
 }
 
 fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
