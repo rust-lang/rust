@@ -648,8 +648,7 @@ pub(crate) fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let server = server.map_err(ToOwned::to_owned)?;
     let res: Result<Vec<_>, String> = (|| {
-        let dylib = MacroDylib::new(path.to_path_buf())
-            .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
+        let dylib = MacroDylib::new(path.to_path_buf());
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
             return Err("proc macro library returned no proc macros".to_string());

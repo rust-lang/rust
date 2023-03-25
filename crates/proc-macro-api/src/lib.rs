@@ -54,18 +54,8 @@ pub struct MacroDylib {
 }
 
 impl MacroDylib {
-    // FIXME: this is buggy due to TOCTOU, we should check the version in the
-    // macro process instead.
-    pub fn new(path: AbsPathBuf) -> io::Result<MacroDylib> {
-        let _p = profile::span("MacroDylib::new");
-
-        let info = version::read_dylib_info(&path)?;
-        if info.version.0 < 1 || info.version.1 < 47 {
-            let msg = format!("proc-macro {} built by {info:#?} is not supported by rust-analyzer, please update your Rust version.", path.display());
-            return Err(io::Error::new(io::ErrorKind::InvalidData, msg));
-        }
-
-        Ok(MacroDylib { path })
+    pub fn new(path: AbsPathBuf) -> MacroDylib {
+        MacroDylib { path }
     }
 }
 
