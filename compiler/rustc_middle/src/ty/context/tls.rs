@@ -51,7 +51,7 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
 
 // Import the thread-local variable from Rayon, which is preserved for Rayon jobs.
 #[cfg(parallel_compiler)]
-use rustc_rayon_core::tlv::TLV;
+use rayon_core::tlv::TLV;
 
 // Otherwise define our own
 #[cfg(not(parallel_compiler))]
