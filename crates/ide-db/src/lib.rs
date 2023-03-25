@@ -137,6 +137,7 @@ impl RootDatabase {
     pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
         let mut db = RootDatabase { storage: ManuallyDrop::new(salsa::Storage::default()) };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
+        db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_enable_proc_attr_macros(false);

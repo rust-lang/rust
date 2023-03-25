@@ -445,12 +445,14 @@ impl GlobalState {
         let mut change = Change::new();
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
+        self.process_changes();
 
-        if same_workspaces {
+        if same_workspaces && !self.fetch_workspaces_queue.op_requested() {
             self.load_proc_macros(proc_macro_paths);
         }
-        self.process_changes();
+
         self.reload_flycheck();
+
         tracing::info!("did switch workspaces");
     }
 
