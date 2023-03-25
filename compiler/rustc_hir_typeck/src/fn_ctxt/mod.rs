@@ -49,6 +49,9 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
+    /// The module in which the current function is defined. This
+    /// is used to compute type inhabitedness, which accounts for
+    /// visibility information.
     pub(super) parent_module: DefId,
 
     /// If `Some`, this stores coercion information for returned

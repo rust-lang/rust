@@ -50,6 +50,7 @@ fn test_try_block_after_divergent_stmt() {
 fn test_wrapped_divergent_expr() {
     let _: Result<u32, ()> = {
         Err(return)
+        //~^ WARN unreachable call
     };
 }
 

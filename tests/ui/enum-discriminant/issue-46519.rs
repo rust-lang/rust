@@ -19,7 +19,7 @@ pub enum SystemFont {}
 
 impl FontLanguageOverride {
     fn system_font(f: SystemFont) -> Self {
-        FontLanguageOverride::System(f)
+        FontLanguageOverride::System(f) //~ unreachable call
     }
 }
 

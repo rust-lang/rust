@@ -8,5 +8,13 @@ LL |     FontLanguageOverride::system_font(SystemFont::new());
    |
    = note: `#[warn(unreachable_code)]` on by default
 
-warning: 1 warning emitted
+warning: unreachable call
+  --> $DIR/issue-46519.rs:22:9
+   |
+LL |         FontLanguageOverride::System(f)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - this expression has type `SystemFont`, which is uninhabited
+   |         |
+   |         unreachable call
+
+warning: 2 warnings emitted
 
