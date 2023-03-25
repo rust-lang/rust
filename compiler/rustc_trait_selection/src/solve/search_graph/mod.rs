@@ -194,6 +194,7 @@ impl<'tcx> SearchGraph<'tcx> {
         mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_goal, tcx) {
+            debug!(?canonical_goal, ?result, "cache hit");
             return result;
         }
 

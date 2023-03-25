@@ -20,8 +20,8 @@ pub type EvaluationCache<'tcx> = Cache<CanonicalGoal<'tcx>, QueryResult<'tcx>>;
 /// we're currently typechecking while the `predicate` is some trait bound.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
 pub struct Goal<'tcx, P> {
-    pub param_env: ty::ParamEnv<'tcx>,
     pub predicate: P,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx, P> Goal<'tcx, P> {
@@ -41,10 +41,10 @@ impl<'tcx, P> Goal<'tcx, P> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
+    pub certainty: Certainty,
     pub var_values: CanonicalVarValues<'tcx>,
     /// Additional constraints returned by this query.
     pub external_constraints: ExternalConstraints<'tcx>,
-    pub certainty: Certainty,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
