@@ -273,6 +273,8 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
 
         fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
             for target in terminator.successors_mut() {
+                // We don't have to check whether `target` is a cleanup block, because have
+                // entirely excluded cleanup blocks in building the set of duplicates.
                 if self.duplicates.contains(target) {
                     *target = self.duplicates[0];
                 }
