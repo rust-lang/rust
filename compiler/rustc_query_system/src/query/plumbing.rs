@@ -641,7 +641,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     Tcx: DepContext,
 {
     if !dep_graph_data.is_index_green(prev_index) {
-        incremental_verify_ich_not_green::<Tcx>(prev_index)
+        incremental_verify_ich_not_green(tcx, prev_index)
     }
 
     let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
@@ -651,22 +651,20 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed::<Tcx>(prev_index, result);
+        incremental_verify_ich_failed(tcx, prev_index, result);
     }
 }
 
 #[cold]
 #[inline(never)]
-fn incremental_verify_ich_not_green<Tcx>(prev_index: SerializedDepNodeIndex)
+fn incremental_verify_ich_not_green<Tcx>(tcx: Tcx, prev_index: SerializedDepNodeIndex)
 where
     Tcx: DepContext,
 {
-    Tcx::with_context(|tcx| {
-        panic!(
-            "fingerprint for green query instance not loaded from cache: {:?}",
-            tcx.dep_graph().data().unwrap().prev_node_of(prev_index)
-        )
-    })
+    panic!(
+        "fingerprint for green query instance not loaded from cache: {:?}",
+        tcx.dep_graph().data().unwrap().prev_node_of(prev_index)
+    )
 }
 
 // Note that this is marked #[cold] and intentionally takes `dyn Debug` for `result`,
@@ -674,8 +672,11 @@ where
 // chew on (and filling up the final binary, too).
 #[cold]
 #[inline(never)]
-fn incremental_verify_ich_failed<Tcx>(prev_index: SerializedDepNodeIndex, result: &dyn Debug)
-where
+fn incremental_verify_ich_failed<Tcx>(
+    tcx: Tcx,
+    prev_index: SerializedDepNodeIndex,
+    result: &dyn Debug,
+) where
     Tcx: DepContext,
 {
     // When we emit an error message and panic, we try to debug-print the `DepNode`
@@ -690,25 +691,23 @@ where
 
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
-    Tcx::with_context(|tcx| {
-        if old_in_panic {
-            tcx.sess().emit_err(crate::error::Reentrant);
+    if old_in_panic {
+        tcx.sess().emit_err(crate::error::Reentrant);
+    } else {
+        let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
+            format!("`cargo clean -p {crate_name}` or `cargo clean`")
         } else {
-            let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
-                format!("`cargo clean -p {crate_name}` or `cargo clean`")
-            } else {
-                "`cargo clean`".to_string()
-            };
+            "`cargo clean`".to_string()
+        };
 
-            let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
+        let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
 
-            let dep_node = tcx.sess().emit_err(crate::error::IncrementCompilation {
-                run_cmd,
-                dep_node: format!("{dep_node:?}"),
-            });
-            panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
-        }
-    });
+        let dep_node = tcx.sess().emit_err(crate::error::IncrementCompilation {
+            run_cmd,
+            dep_node: format!("{dep_node:?}"),
+        });
+        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
+    }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
 }
