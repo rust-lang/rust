@@ -64,6 +64,24 @@ pub enum Delimiter {
 // as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
 // given the `Float` kind.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum FStrDelimiter {
+    /// `f"` at the start, `"` at the end
+    Quote,
+    /// `}` at the start, `{` at the end
+    Brace,
+}
+impl FStrDelimiter {
+    pub fn display(&self, is_start: bool) -> &'static str {
+        match (self, is_start) {
+            (FStrDelimiter::Quote, true) => "f\"",
+            (FStrDelimiter::Quote, false) => "\"",
+            (FStrDelimiter::Brace, true) => "{",
+            (FStrDelimiter::Brace, false) => "}",
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -74,6 +92,8 @@ pub enum LitKind {
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
+    /// F-string, delimited at the start and end by the specified delimiters.
+    FStr(FStrDelimiter, FStrDelimiter), // AST only, must never appear in a `Token`
     Err,
 }
 
@@ -142,6 +162,9 @@ impl fmt::Display for Lit {
                 string = symbol
             )?,
             Integer | Float | Bool | Err => write!(f, "{symbol}")?,
+            FStr(start, end) => {
+                write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?
+            }
         }
 
         if let Some(suffix) = suffix {
@@ -170,6 +193,7 @@ impl LitKind {
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
+            FStr(..) => "format string", // TODO: an f-string, rather than a "format string"? Will have to change `article()` as well.
             Err => "error",
         }
     }

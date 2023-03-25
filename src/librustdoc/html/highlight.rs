@@ -13,7 +13,7 @@ use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lexer::{Cursor, LiteralKind, TokenKind};
+use rustc_lexer::{Lexer, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span, DUMMY_SP};
@@ -400,13 +400,18 @@ enum Highlight<'a> {
 
 struct TokenIter<'a> {
     src: &'a str,
-    cursor: Cursor<'a>,
+    lexer: Lexer<'a>,
+}
+impl<'a> TokenIter<'a> {
+    pub fn new(src: &'a str) -> TokenIter<'a> {
+        TokenIter { src, lexer: Lexer::new(src) }
+    }
 }
 
 impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
-        let token = self.cursor.advance_token();
+        let token = self.lexer.advance_token();
         if token.kind == TokenKind::Eof {
             return None;
         }
@@ -516,7 +521,7 @@ impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
     fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
-        let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
+        let tokens = TokenIter::new(src).peekable();
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
             tokens,
@@ -811,7 +816,8 @@ impl<'src> Classifier<'src> {
                 | LiteralKind::Str { .. }
                 | LiteralKind::ByteStr { .. }
                 | LiteralKind::RawStr { .. }
-                | LiteralKind::RawByteStr { .. } => Class::String,
+                | LiteralKind::RawByteStr { .. }
+                | LiteralKind::FStr { .. } => Class::String, // TODO: Improve f-string support?
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },

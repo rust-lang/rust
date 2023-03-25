@@ -6,7 +6,7 @@ use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
-use rustc_lexer::unescape::{self, Mode};
+use rustc_lexer::unescape::{self, Mode, Lexer};
 use rustc_lexer::Cursor;
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
@@ -52,13 +52,12 @@ pub(crate) fn parse_token_trees<'a>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    let cursor = Cursor::new(src);
     let string_reader = StringReader {
         sess,
         start_pos,
         pos: start_pos,
         src,
-        cursor,
+        lexer: Lexer::new(src),
         override_span,
         nbsp_is_whitespace: false,
     };
@@ -95,8 +94,7 @@ struct StringReader<'a> {
     pos: BytePos,
     /// Source text to tokenize.
     src: &'a str,
-    /// Cursor for getting lexer tokens.
-    cursor: Cursor<'a>,
+    lexer: Lexer<'a>,
     override_span: Option<Span>,
     /// When a "unknown start of token: \u{a0}" has already been emitted earlier
     /// in this file, it's safe to treat further occurrences of the non-breaking
@@ -116,7 +114,7 @@ impl<'a> StringReader<'a> {
         let mut swallow_next_invalid = 0;
         // Skip trivial (whitespace & comments) tokens
         loop {
-            let token = self.cursor.advance_token();
+            let token = self.lexer.advance_token();
             let start = self.pos;
             self.pos = self.pos + BytePos(token.len);
 
@@ -442,6 +440,32 @@ impl<'a> StringReader<'a> {
                     self.report_raw_str_error(start, 2);
                 }
             }
+            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter } => {
+                let start_delimiter = translate_f_str_delimiter(start_delimiter);
+                let end_delimiter = end_delimiter.map(translate_f_str_delimiter);
+
+                let prefix_len = start_delimiter.display(true).len();
+                let end_delimiter = if let Some(end_delimiter) = end_delimiter {
+                    end_delimiter
+                } else {
+                    let lo = start + BytePos::from_usize(prefix_len - 1);
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(lo, suffix_start),
+                            "unterminated double quote format string",
+                            error_code!(E0766),
+                        )
+                        .emit();
+                    FatalError.raise();
+                };
+                (
+                    token::FStr(start_delimiter, end_delimiter),
+                    Mode::FStr,
+                    prefix_len as u32,
+                    end_delimiter.display(false).len() as u32,
+                )
+            }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 if empty_int {
                     let span = self.mk_sp(start, end);
@@ -700,6 +724,13 @@ impl<'a> StringReader<'a> {
         } else {
             (token::Err, self.symbol_from_to(start, end))
         }
+    }
+}
+
+fn translate_f_str_delimiter(delimiter: rustc_lexer::FStrDelimiter) -> token::FStrDelimiter {
+    match delimiter {
+        rustc_lexer::FStrDelimiter::Quote => token::FStrDelimiter::Quote,
+        rustc_lexer::FStrDelimiter::Brace => token::FStrDelimiter::Brace,
     }
 }
 

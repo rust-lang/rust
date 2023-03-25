@@ -210,6 +210,9 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
+        token::FStr(start, end) => {
+            format!("{}{}{}", start.display(true), symbol, end.display(false))
+        }
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
     };
 
@@ -980,6 +983,33 @@ impl<'a> State<'a> {
             self.print_lifetime(lt);
             self.nbsp();
         }
+    }
+
+    fn print_f_str(&mut self, f_str: &ast::FStr) {
+        // TODO? self.maybe_print_comment(lit.span.lo());
+        let mut buffer = "f\"".to_string();
+        for segment in &f_str.segments {
+            match segment {
+                ast::FStrSegment::Str(symbol) => {
+                    let st = symbol
+                        .to_string()
+                        .escape_debug()
+                        .to_string()
+                        .replace("{", "{{")
+                        .replace("}", "}}");
+                    buffer.push_str(&st);
+                }
+                ast::FStrSegment::Expr(expr) => {
+                    buffer.push('{');
+                    self.word(buffer.clone());
+                    buffer.clear();
+                    self.print_expr(expr);
+                    buffer.push('}');
+                }
+            }
+        }
+        buffer.push_str("\"");
+        self.word(buffer);
     }
 
     pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocConstraint) {

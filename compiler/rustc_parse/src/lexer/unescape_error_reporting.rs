@@ -133,7 +133,8 @@ pub(crate) fn emit_unescape_error(
             diag.span_label(span, label);
             if c == '{' || c == '}' && !mode.is_byte() {
                 diag.help(
-                    "if used in a formatting string, curly braces are escaped with `{{` and `}}`",
+                    // TODO: "formatting or format string" maybe? f-string?
+                    "if used in a format string, curly braces are escaped with `{{` and `}}`",
                 );
             } else if c == '\r' {
                 diag.help(
@@ -270,6 +271,16 @@ pub(crate) fn emit_unescape_error(
         }
         EscapeError::MultipleSkippedLinesWarning => {
             handler.emit_warning(UnescapeError::MultipleSkippedLinesWarning(span));
+        }
+        EscapeError::LoneBrace => {
+            // TODO: Bubble brace up, output here, to improve help message?
+            // TODO: "invalid trailing brace in literal" instead?
+            let msg = "invalid brace in format string literal";
+            handler
+                .struct_span_err(span, msg)
+                .span_label(span, msg)
+                .help("curly braces in f-strings are escaped with `{{` and `}}`")
+                .emit();
         }
     }
 }

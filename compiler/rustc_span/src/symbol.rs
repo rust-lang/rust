@@ -691,6 +691,7 @@ symbols! {
         f16c_target_feature,
         f32,
         f64,
+        f_strings,
         fabsf32,
         fabsf64,
         fadd_fast,

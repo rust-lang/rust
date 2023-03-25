@@ -54,7 +54,7 @@ impl Token {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     // Multi-char tokens:
-    /// "// comment"
+    /// `// comment`
     LineComment { doc_style: Option<DocStyle> },
 
     /// `/* block comment */`
@@ -66,7 +66,7 @@ pub enum TokenKind {
     /// Any whitespace character sequence.
     Whitespace,
 
-    /// "ident" or "continue"
+    /// `ident` or `continue`
     ///
     /// At this step, keywords are also considered identifiers.
     Ident,
@@ -74,7 +74,7 @@ pub enum TokenKind {
     /// Like the above, but containing invalid unicode codepoints.
     InvalidIdent,
 
-    /// "r#ident"
+    /// `r#ident`
     RawIdent,
 
     /// An unknown prefix, like `foo#`, `foo'`, `foo"`.
@@ -94,13 +94,13 @@ pub enum TokenKind {
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
 
-    /// "'a"
+    /// `'a`
     Lifetime { starts_with_number: bool, contains_emoji: bool },
 
     // One-char tokens:
-    /// ";"
+    /// `;`
     Semi,
-    /// ","
+    /// `,`
     Comma,
     /// "."
     Dot,
@@ -166,6 +166,15 @@ pub enum DocStyle {
     Inner,
 }
 
+/// Delimiter of an f-string.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FStrDelimiter {
+    /// `f"` or `"`
+    Quote,
+    /// `{` or `}`
+    Brace,
+}
+
 /// Enum representing the literal types supported by the lexer.
 ///
 /// Note that the suffix is *not* considered when deciding the `LiteralKind` in
@@ -174,24 +183,26 @@ pub enum DocStyle {
 /// `rustc_ast::ast::LitKind`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99", "1f32".
+    /// `12_u8`, `0o100`, `0b120i99`, `1f32`.
     Int { base: Base, empty_int: bool },
-    /// "12.34f32", "1e3", but not "1f32".
+    /// `12.34f32`, `1e3`, but not `1f32`.
     Float { base: Base, empty_exponent: bool },
-    /// "'a'", "'\\'", "'''", "';"
+    /// `'a'`, `'\\'`, `'''`, `';`
     Char { terminated: bool },
-    /// "b'a'", "b'\\'", "b'''", "b';"
+    /// `b'a'`, `b'\\'`, `b'''`, `b';`
     Byte { terminated: bool },
-    /// ""abc"", ""abc"
+    /// `"abc"`, `"abc`
     Str { terminated: bool },
-    /// "b"abc"", "b"abc"
+    /// `b"abc"`, `b"abc`
     ByteStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
+    /// `r"abc"`, `r#"abc"#`, `r####"ab"###"c"####`, `r#"a`. `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
+    /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
+    /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
+    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -248,6 +259,10 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 /// problem with a `RawStr`/`RawByteStr` with a `None` field.
 #[inline]
 pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError> {
+    // FIXME!
+    if true {
+        todo!("IMPLEMENT ME");
+    }
     debug_assert!(!input.is_empty());
     let mut cursor = Cursor::new(input);
     // Move past the leading `r` or `br`.
@@ -259,11 +274,7 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 
 /// Creates an iterator that produces tokens from the input string.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut cursor = Cursor::new(input);
-    std::iter::from_fn(move || {
-        let token = cursor.advance_token();
-        if token.kind != TokenKind::Eof { Some(token) } else { None }
-    })
+    Lexer::new(input)
 }
 
 /// True if `c` is considered a whitespace according to Rust language definition.
@@ -323,16 +334,29 @@ pub fn is_ident(string: &str) -> bool {
     }
 }
 
-impl Cursor<'_> {
+pub struct Lexer<'a> {
+    cursor: Cursor<'a>,
+    brace_count: i32,
+    brace_f_string_triggers: Vec<i32>,
+}
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Lexer<'a> {
+        Lexer {
+            cursor: Cursor::new(input),
+            brace_count: 0,
+            brace_f_string_triggers: vec![],
+        }
+    }
+
     /// Parses a token from the input string.
     pub fn advance_token(&mut self) -> Token {
-        let first_char = match self.bump() {
+        let first_char = match self.cursor.bump() {
             Some(c) => c,
             None => return Token::new(TokenKind::Eof, 0),
         };
         let token_kind = match first_char {
             // Slash, comment or block comment.
-            '/' => match self.first() {
+            '/' => match self.cursor.first() {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
                 _ => Slash,
@@ -342,11 +366,11 @@ impl Cursor<'_> {
             c if is_whitespace(c) => self.whitespace(),
 
             // Raw identifier, raw string literal or identifier.
-            'r' => match (self.first(), self.second()) {
+            'r' => match (self.cursor.first(), self.cursor.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
                     let res = self.raw_double_quoted_string(1);
-                    let suffix_start = self.pos_within_token();
+                    let suffix_start = self.cursor.pos_within_token();
                     if res.is_ok() {
                         self.eat_literal_suffix();
                     }
@@ -357,11 +381,11 @@ impl Cursor<'_> {
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
-            'b' => match (self.first(), self.second()) {
+            'b' => match (self.cursor.first(), self.cursor.second()) {
                 ('\'', _) => {
-                    self.bump();
+                    self.cursor.bump();
                     let terminated = self.single_quoted_string();
-                    let suffix_start = self.pos_within_token();
+                    let suffix_start = self.cursor.pos_within_token();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -369,9 +393,9 @@ impl Cursor<'_> {
                     Literal { kind, suffix_start }
                 }
                 ('"', _) => {
-                    self.bump();
+                    self.cursor.bump();
                     let terminated = self.double_quoted_string();
-                    let suffix_start = self.pos_within_token();
+                    let suffix_start = self.cursor.pos_within_token();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -379,9 +403,9 @@ impl Cursor<'_> {
                     Literal { kind, suffix_start }
                 }
                 ('r', '"') | ('r', '#') => {
-                    self.bump();
+                    self.cursor.bump();
                     let res = self.raw_double_quoted_string(2);
-                    let suffix_start = self.pos_within_token();
+                    let suffix_start = self.cursor.pos_within_token();
                     if res.is_ok() {
                         self.eat_literal_suffix();
                     }
@@ -391,6 +415,15 @@ impl Cursor<'_> {
                 _ => self.ident_or_unknown_prefix(),
             },
 
+            // f-string or identifier.
+            'f' => match self.cursor.first() {
+                '\"' => {
+                    self.cursor.bump();
+                    self.f_string(FStrDelimiter::Quote)
+                }
+                _ => self.ident(),
+            },
+
             // Identifier (this should be checked after other variant that can
             // start as identifier).
             c if is_id_start(c) => self.ident_or_unknown_prefix(),
@@ -398,7 +431,7 @@ impl Cursor<'_> {
             // Numeric literal.
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
-                let suffix_start = self.pos_within_token();
+                let suffix_start = self.cursor.pos_within_token();
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
@@ -409,8 +442,25 @@ impl Cursor<'_> {
             '.' => Dot,
             '(' => OpenParen,
             ')' => CloseParen,
-            '{' => OpenBrace,
-            '}' => CloseBrace,
+            '{' => {
+                self.brace_count += 1;
+                OpenBrace
+            }
+            '}' => {
+                self.brace_count -= 1;
+                if self.brace_f_string_triggers.len() > 0 {
+                    let brace_trigger =
+                        self.brace_f_string_triggers[self.brace_f_string_triggers.len() - 1];
+                    if brace_trigger == self.brace_count {
+                        self.brace_f_string_triggers.pop();
+                        self.f_string(FStrDelimiter::Brace)
+                    } else {
+                        CloseBrace
+                    }
+                } else {
+                    CloseBrace
+                }
+            }
             '[' => OpenBracket,
             ']' => CloseBracket,
             '@' => At,
@@ -437,7 +487,7 @@ impl Cursor<'_> {
             // String literal.
             '"' => {
                 let terminated = self.double_quoted_string();
-                let suffix_start = self.pos_within_token();
+                let suffix_start = self.cursor.pos_within_token();
                 if terminated {
                     self.eat_literal_suffix();
                 }
@@ -450,49 +500,49 @@ impl Cursor<'_> {
             }
             _ => Unknown,
         };
-        let res = Token::new(token_kind, self.pos_within_token());
-        self.reset_pos_within_token();
+        let res = Token::new(token_kind, self.cursor.pos_within_token());
+        self.cursor.reset_pos_within_token();
         res
     }
 
     fn line_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.first() == '/');
-        self.bump();
+        debug_assert!(self.cursor.prev() == '/' && self.cursor.first() == '/');
+        self.cursor.bump();
 
-        let doc_style = match self.first() {
+        let doc_style = match self.cursor.first() {
             // `//!` is an inner line doc comment.
             '!' => Some(DocStyle::Inner),
             // `////` (more than 3 slashes) is not considered a doc comment.
-            '/' if self.second() != '/' => Some(DocStyle::Outer),
+            '/' if self.cursor.second() != '/' => Some(DocStyle::Outer),
             _ => None,
         };
 
-        self.eat_while(|c| c != '\n');
+        self.cursor.eat_while(|c| c != '\n');
         LineComment { doc_style }
     }
 
     fn block_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.first() == '*');
-        self.bump();
+        debug_assert!(self.cursor.prev() == '/' && self.cursor.first() == '*');
+        self.cursor.bump();
 
-        let doc_style = match self.first() {
+        let doc_style = match self.cursor.first() {
             // `/*!` is an inner block doc comment.
             '!' => Some(DocStyle::Inner),
             // `/***` (more than 2 stars) is not considered a doc comment.
             // `/**/` is not considered a doc comment.
-            '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
+            '*' if !matches!(self.cursor.second(), '*' | '/') => Some(DocStyle::Outer),
             _ => None,
         };
 
         let mut depth = 1usize;
-        while let Some(c) = self.bump() {
+        while let Some(c) = self.cursor.bump() {
             match c {
-                '/' if self.first() == '*' => {
-                    self.bump();
+                '/' if self.cursor.first() == '*' => {
+                    self.cursor.bump();
                     depth += 1;
                 }
-                '*' if self.first() == '/' => {
-                    self.bump();
+                '*' if self.cursor.first() == '/' => {
+                    self.cursor.bump();
                     depth -= 1;
                     if depth == 0 {
                         // This block comment is closed, so for a construction like "/* */ */"
@@ -509,15 +559,19 @@ impl Cursor<'_> {
     }
 
     fn whitespace(&mut self) -> TokenKind {
-        debug_assert!(is_whitespace(self.prev()));
-        self.eat_while(is_whitespace);
+        debug_assert!(is_whitespace(self.cursor.prev()));
+        self.cursor.eat_while(is_whitespace);
         Whitespace
     }
 
     fn raw_ident(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
+        debug_assert!(
+            self.cursor.prev() == 'r'
+                && self.cursor.first() == '#'
+                && is_id_start(self.cursor.second())
+        );
         // Eat "#" symbol.
-        self.bump();
+        self.cursor.bump();
         // Eat the identifier part of RawIdent.
         self.eat_identifier();
         RawIdent
@@ -526,10 +580,10 @@ impl Cursor<'_> {
     fn ident_or_unknown_prefix(&mut self) -> TokenKind {
         debug_assert!(is_id_start(self.prev()));
         // Start is already eaten, eat the rest of identifier.
-        self.eat_while(is_id_continue);
+        self.cursor.eat_while(is_id_continue);
         // Known prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely an unknown prefix.
-        match self.first() {
+        match self.cursor.first() {
             '#' | '"' | '\'' => UnknownPrefix,
             c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
                 self.fake_ident_or_unknown_prefix()
@@ -540,38 +594,38 @@ impl Cursor<'_> {
 
     fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
-        self.eat_while(|c| {
+        self.cursor.eat_while(|c| {
             unicode_xid::UnicodeXID::is_xid_continue(c)
                 || (!c.is_ascii() && unic_emoji_char::is_emoji(c))
                 || c == '\u{200d}'
         });
         // Known prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely an unknown prefix.
-        match self.first() {
+        match self.cursor.first() {
             '#' | '"' | '\'' => UnknownPrefix,
             _ => InvalidIdent,
         }
     }
 
     fn number(&mut self, first_digit: char) -> LiteralKind {
-        debug_assert!('0' <= self.prev() && self.prev() <= '9');
+        debug_assert!('0' <= self.cursor.prev() && self.cursor.prev() <= '9');
         let mut base = Base::Decimal;
         if first_digit == '0' {
             // Attempt to parse encoding base.
-            let has_digits = match self.first() {
+            let has_digits = match self.cursor.first() {
                 'b' => {
                     base = Base::Binary;
-                    self.bump();
+                    self.cursor.bump();
                     self.eat_decimal_digits()
                 }
                 'o' => {
                     base = Base::Octal;
-                    self.bump();
+                    self.cursor.bump();
                     self.eat_decimal_digits()
                 }
                 'x' => {
                     base = Base::Hexadecimal;
-                    self.bump();
+                    self.cursor.bump();
                     self.eat_hexadecimal_digits()
                 }
                 // Not a base prefix.
@@ -592,20 +646,20 @@ impl Cursor<'_> {
             self.eat_decimal_digits();
         };
 
-        match self.first() {
+        match self.cursor.first() {
             // Don't be greedy if this is actually an
             // integer literal followed by field/method access or a range pattern
             // (`0..2` and `12.foo()`)
-            '.' if self.second() != '.' && !is_id_start(self.second()) => {
+            '.' if self.cursor.second() != '.' && !is_id_start(self.cursor.second()) => {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
-                self.bump();
+                self.cursor.bump();
                 let mut empty_exponent = false;
-                if self.first().is_digit(10) {
+                if self.cursor.first().is_digit(10) {
                     self.eat_decimal_digits();
-                    match self.first() {
+                    match self.cursor.first() {
                         'e' | 'E' => {
-                            self.bump();
+                            self.cursor.bump();
                             empty_exponent = !self.eat_float_exponent();
                         }
                         _ => (),
@@ -614,7 +668,7 @@ impl Cursor<'_> {
                 Float { base, empty_exponent }
             }
             'e' | 'E' => {
-                self.bump();
+                self.cursor.bump();
                 let empty_exponent = !self.eat_float_exponent();
                 Float { base, empty_exponent }
             }
@@ -623,9 +677,9 @@ impl Cursor<'_> {
     }
 
     fn lifetime_or_char(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '\'');
+        debug_assert!(self.cursor.prev() == '\'');
 
-        let can_be_a_lifetime = if self.second() == '\'' {
+        let can_be_a_lifetime = if self.cursor.second() == '\'' {
             // It's surely not a lifetime.
             false
         } else {
@@ -634,16 +688,16 @@ impl Cursor<'_> {
             // be reported as invalid lifetime and not as unterminated char literal).
             // We also have to account for potential `'🐱` emojis to avoid reporting
             // it as an unterminated char literal.
-            is_id_start(self.first())
-                || self.first().is_digit(10)
+            is_id_start(self.cursor.first())
+                || self.cursor.first().is_digit(10)
                 // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
                 // 5.0, but Unicode is already newer than this.
-                || unic_emoji_char::is_emoji(self.first())
+                || unic_emoji_char::is_emoji(self.cursor.first())
         };
 
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_string();
-            let suffix_start = self.pos_within_token();
+            let suffix_start = self.cursor.pos_within_token();
             if terminated {
                 self.eat_literal_suffix();
             }
@@ -653,20 +707,20 @@ impl Cursor<'_> {
 
         // Either a lifetime or a character literal.
 
-        let starts_with_number = self.first().is_digit(10);
+        let starts_with_number = self.cursor.first().is_digit(10);
         let mut contains_emoji = false;
 
         // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
         // 5.0, but Unicode is already newer than this.
-        if unic_emoji_char::is_emoji(self.first()) {
+        if unic_emoji_char::is_emoji(self.cursor.first()) {
             contains_emoji = true;
         } else {
             // Skip the literal contents.
             // First symbol can be a number (which isn't a valid identifier start),
             // so skip it without any checks.
-            self.bump();
+            self.cursor.bump();
         }
-        self.eat_while(|c| {
+        self.cursor.eat_while(|c| {
             if is_id_continue(c) {
                 true
             // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
@@ -682,21 +736,21 @@ impl Cursor<'_> {
         // Check if after skipping literal contents we've met a closing
         // single quote (which means that user attempted to create a
         // string with single quotes).
-        if self.first() == '\'' {
-            self.bump();
+        if self.cursor.first() == '\'' {
+            self.cursor.bump();
             let kind = Char { terminated: true };
-            Literal { kind, suffix_start: self.pos_within_token() }
+            Literal { kind, suffix_start: self.cursor.pos_within_token() }
         } else {
             Lifetime { starts_with_number, contains_emoji }
         }
     }
 
     fn single_quoted_string(&mut self) -> bool {
-        debug_assert!(self.prev() == '\'');
+        debug_assert!(self.cursor.prev() == '\'');
         // Check if it's a one-symbol literal.
-        if self.second() == '\'' && self.first() != '\\' {
-            self.bump();
-            self.bump();
+        if self.cursor.second() == '\'' && self.cursor.first() != '\\' {
+            self.cursor.bump();
+            self.cursor.bump();
             return true;
         }
 
@@ -704,27 +758,27 @@ impl Cursor<'_> {
 
         // Parse until either quotes are terminated or error is detected.
         loop {
-            match self.first() {
+            match self.cursor.first() {
                 // Quotes are terminated, finish parsing.
                 '\'' => {
-                    self.bump();
+                    self.cursor.bump();
                     return true;
                 }
                 // Probably beginning of the comment, which we don't want to include
                 // to the error report.
                 '/' => break,
                 // Newline without following '\'' means unclosed quote, stop parsing.
-                '\n' if self.second() != '\'' => break,
+                '\n' if self.cursor.second() != '\'' => break,
                 // End of file, stop parsing.
-                EOF_CHAR if self.is_eof() => break,
+                EOF_CHAR if self.cursor.is_eof() => break,
                 // Escaped slash is considered one character, so bump twice.
                 '\\' => {
-                    self.bump();
-                    self.bump();
+                    self.cursor.bump();
+                    self.cursor.bump();
                 }
                 // Skip the character.
                 _ => {
-                    self.bump();
+                    self.cursor.bump();
                 }
             }
         }
@@ -735,15 +789,15 @@ impl Cursor<'_> {
     /// Eats double-quoted string and returns true
     /// if string is terminated.
     fn double_quoted_string(&mut self) -> bool {
-        debug_assert!(self.prev() == '"');
-        while let Some(c) = self.bump() {
+        debug_assert!(self.cursor.prev() == '"');
+        while let Some(c) = self.cursor.bump() {
             match c {
                 '"' => {
                     return true;
                 }
-                '\\' if self.first() == '\\' || self.first() == '"' => {
+                '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
                     // Bump again to skip escaped character.
-                    self.bump();
+                    self.cursor.bump();
                 }
                 _ => (),
             }
@@ -766,20 +820,20 @@ impl Cursor<'_> {
 
     fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
         debug_assert!(self.prev() == 'r');
-        let start_pos = self.pos_within_token();
+        let start_pos = self.cursor.pos_within_token();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
 
         // Count opening '#' symbols.
         let mut eaten = 0;
-        while self.first() == '#' {
+        while self.cursor.first() == '#' {
             eaten += 1;
-            self.bump();
+            self.cursor.bump();
         }
         let n_start_hashes = eaten;
 
         // Check that string is started.
-        match self.bump() {
+        match self.cursor.bump() {
             Some('"') => (),
             c => {
                 let c = c.unwrap_or(EOF_CHAR);
@@ -790,9 +844,9 @@ impl Cursor<'_> {
         // Skip the string contents and on each '#' character met, check if this is
         // a raw string termination.
         loop {
-            self.eat_while(|c| c != '"');
+            self.cursor.eat_while(|c| c != '"');
 
-            if self.is_eof() {
+            if self.cursor.is_eof() {
                 return Err(RawStrError::NoTerminator {
                     expected: n_start_hashes,
                     found: max_hashes,
@@ -801,7 +855,7 @@ impl Cursor<'_> {
             }
 
             // Eat closing double quote.
-            self.bump();
+            self.cursor.bump();
 
             // Check that amount of closing '#' symbols
             // is equal to the amount of opening ones.
@@ -809,9 +863,9 @@ impl Cursor<'_> {
             // `r###"abcde"####` is lexed as a `RawStr { n_hashes: 3 }`
             // followed by a `#` token.
             let mut n_end_hashes = 0;
-            while self.first() == '#' && n_end_hashes < n_start_hashes {
+            while self.cursor.first() == '#' && n_end_hashes < n_start_hashes {
                 n_end_hashes += 1;
-                self.bump();
+                self.cursor.bump();
             }
 
             if n_end_hashes == n_start_hashes {
@@ -820,22 +874,55 @@ impl Cursor<'_> {
                 // Keep track of possible terminators to give a hint about
                 // where there might be a missing terminator
                 possible_terminator_offset =
-                    Some(self.pos_within_token() - start_pos - n_end_hashes + prefix_len);
+                    Some(self.cursor.pos_within_token() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;
             }
         }
     }
 
+    /// Eats an f-string segment and returns the delimiter that it terminates with.
+    fn f_string(&mut self, start: FStrDelimiter) -> TokenKind {
+        debug_assert!(self.cursor.prev() == '"' || self.cursor.prev() == '}');
+        while let Some(c) = self.cursor.bump() {
+            match c {
+                '"' => {
+                    let kind = FStr { start, end: Some(FStrDelimiter::Quote) };
+                    let suffix_start = self.cursor.pos_within_token();
+                    self.eat_literal_suffix();
+                    return Literal { kind, suffix_start };
+                }
+                '{' if self.cursor.first() == '{' => {
+                    // Bump again to skip escaped character.
+                    self.cursor.bump();
+                }
+                '{' => {
+                    let kind = FStr { start, end: Some(FStrDelimiter::Brace) };
+                    self.brace_f_string_triggers.push(self.brace_count);
+                    self.brace_count += 1;
+                    return Literal { kind, suffix_start: self.cursor.pos_within_token() };
+                }
+                '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
+                    // Bump again to skip escaped character.
+                    self.cursor.bump();
+                }
+                _ => (),
+            }
+        }
+        // End of file reached.
+        let kind = FStr { start, end: None };
+        Literal { kind, suffix_start: self.cursor.pos_within_token() }
+    }
+
     fn eat_decimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
-            match self.first() {
+            match self.cursor.first() {
                 '_' => {
-                    self.bump();
+                    self.cursor.bump();
                 }
                 '0'..='9' => {
                     has_digits = true;
-                    self.bump();
+                    self.cursor.bump();
                 }
                 _ => break,
             }
@@ -846,13 +933,13 @@ impl Cursor<'_> {
     fn eat_hexadecimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
-            match self.first() {
+            match self.cursor.first() {
                 '_' => {
-                    self.bump();
+                    self.cursor.bump();
                 }
                 '0'..='9' | 'a'..='f' | 'A'..='F' => {
                     has_digits = true;
-                    self.bump();
+                    self.cursor.bump();
                 }
                 _ => break,
             }
@@ -863,9 +950,9 @@ impl Cursor<'_> {
     /// Eats the float exponent. Returns true if at least one digit was met,
     /// and returns false otherwise.
     fn eat_float_exponent(&mut self) -> bool {
-        debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        if self.first() == '-' || self.first() == '+' {
-            self.bump();
+        debug_assert!(self.cursor.prev() == 'e' || self.cursor.prev() == 'E');
+        if self.cursor.first() == '-' || self.cursor.first() == '+' {
+            self.cursor.bump();
         }
         self.eat_decimal_digits()
     }
@@ -878,11 +965,18 @@ impl Cursor<'_> {
     // Eats the identifier. Note: succeeds on `_`, which isn't a valid
     // identifier.
     fn eat_identifier(&mut self) {
-        if !is_id_start(self.first()) {
+        if !is_id_start(self.cursor.first()) {
             return;
         }
-        self.bump();
+        self.cursor.bump();
 
-        self.eat_while(is_id_continue);
+        self.cursor.eat_while(is_id_continue);
+    }
+}
+impl Iterator for Lexer<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cursor.is_eof() { None } else { Some(self.advance_token()) }
     }
 }

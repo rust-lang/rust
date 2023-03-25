@@ -141,6 +141,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_span(e.span),
                     LitKind::ByteStr(bytes.clone(), StrStyle::Cooked),
                 )),
+                ExprKind::FStr(f_str) => todo!("todo: {:#?}", f_str),
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
