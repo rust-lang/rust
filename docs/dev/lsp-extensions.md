@@ -422,6 +422,16 @@ Returns internal status message, mostly for debugging purposes.
 
 Reloads project information (that is, re-executes `cargo metadata`).
 
+## Reload proc-macros
+
+**Method:** `rust-analyzer/reloadProcMacros`
+
+**Request:** `null`
+
+**Response:** `null`
+
+Rebuilds build scripts and proc-macros, and runs the build scripts to reseed the build data.
+
 ## Server Status
 
 **Experimental Client Capability:** `{ "serverStatusNotification": boolean }`

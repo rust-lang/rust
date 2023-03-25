@@ -200,6 +200,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.reloadProcMacros",
+                "title": "Reload proc macros and build scripts",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.addProject",
                 "title": "Add current file's crate to workspace",
                 "category": "rust-analyzer"
