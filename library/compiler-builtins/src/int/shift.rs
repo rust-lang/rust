@@ -12,7 +12,7 @@ trait Ashl: DInt {
         } else {
             Self::from_lo_hi(
                 self.lo().wrapping_shl(shl),
-                self.lo().logical_shr(n_h - shl) | self.hi().wrapping_shl(shl),
+                self.lo().logical_shr(n_h.wrapping_sub(shl)) | self.hi().wrapping_shl(shl),
             )
         }
     }
@@ -36,7 +36,7 @@ trait Ashr: DInt {
             self
         } else {
             Self::from_lo_hi(
-                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h - shr),
+                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h.wrapping_sub(shr)),
                 self.hi().wrapping_shr(shr),
             )
         }
@@ -57,7 +57,7 @@ trait Lshr: DInt {
             self
         } else {
             Self::from_lo_hi(
-                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h - shr),
+                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h.wrapping_sub(shr)),
                 self.hi().logical_shr(shr),
             )
         }
