@@ -535,17 +535,22 @@ impl<K: DepKind> DepGraph<K> {
             // value to an existing node.
             //
             // For sanity, we still check that the loaded stable hash and the new one match.
-            if let Some(prev_index) = data.previous.node_to_index_opt(&node)
-                && let Some(dep_node_index) = { data.current.prev_index_to_index.lock()[prev_index] }
-            {
-                crate::query::incremental_verify_ich(cx, data, result, prev_index, hash_result);
+            if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
+                let dep_node_index = data.current.prev_index_to_index.lock()[prev_index];
+                if let Some(dep_node_index) = dep_node_index {
+                    crate::query::incremental_verify_ich(cx, data, result, prev_index, hash_result);
 
-                #[cfg(debug_assertions)]
-                if hash_result.is_some() {
-                    data.current.record_edge(dep_node_index, node, data.prev_fingerprint_of(prev_index));
+                    #[cfg(debug_assertions)]
+                    if hash_result.is_some() {
+                        data.current.record_edge(
+                            dep_node_index,
+                            node,
+                            data.prev_fingerprint_of(prev_index),
+                        );
+                    }
+
+                    return dep_node_index;
                 }
-
-                return dep_node_index;
             }
 
             let mut edges = SmallVec::new();
