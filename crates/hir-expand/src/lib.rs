@@ -977,6 +977,7 @@ impl<N: AstNode> InFile<N> {
         self.value.syntax().descendants().filter_map(T::cast).map(move |n| self.with_value(n))
     }
 
+    // FIXME: this should return `Option<InFileNotHirFile<N>>`
     pub fn original_ast_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<N>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
         // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
