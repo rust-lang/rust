@@ -285,18 +285,15 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                             // The rhs of this `normalizes-to` must always be an unconstrained infer var as it is
                             // the hack used by `normalizes-to` to ensure that every `normalizes-to` behaves the same
                             // regardless of the rhs.
-                            //
-                            // However it is important not to unconditionally replace the rhs with a new infer var
-                            // as otherwise we may replace the original unconstrained infer var with a new infer var
-                            // and never propagate any constraints on the new var back to the original var.
-                            let term = this
-                                .term_is_fully_unconstrained(goal)
-                                .then_some(goal.predicate.term)
-                                .unwrap_or_else(|| {
-                                    this.next_term_infer_of_kind(goal.predicate.term)
-                                });
+
+                            // NOTE: This term should never be considered unconstrained, not least due to the fact
+                            // that the universe index has been bumped up at least once by `evaluate_goal` above.
+                            // Or if this assertion ever fails, at least we have a useful test case :^)
+                            assert!(!this.term_is_fully_unconstrained(goal));
+
+                            let fresh_term = this.next_term_infer_of_kind(goal.predicate.term);
                             let projection_pred = ty::ProjectionPredicate {
-                                term,
+                                term: fresh_term,
                                 projection_ty: goal.predicate.projection_ty,
                             };
                             new_goals.normalizes_to_hack_goal =
