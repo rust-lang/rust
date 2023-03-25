@@ -1,4 +1,3 @@
-use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::stable_hasher::Hash64;
@@ -13,8 +12,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::{QueryCache, QuerySideEffects};
+use rustc_query_system::query::QuerySideEffects;
 use rustc_serialize::{
     opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
     Decodable, Decoder, Encodable, Encoder,
@@ -123,7 +121,7 @@ struct SourceFileIndex(u32);
 pub struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
-    fn new(pos: usize) -> AbsoluteBytePos {
+    pub fn new(pos: usize) -> AbsoluteBytePos {
         AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
@@ -158,9 +156,9 @@ impl EncodedSourceFileId {
     }
 }
 
-impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
+impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
+    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -193,7 +191,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         }
     }
 
-    fn new_empty(source_map: &'sess SourceMap) -> Self {
+    pub fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
             serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
@@ -215,7 +213,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
     /// Cache promotions require invoking queries, which needs to read the serialized data.
     /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
     /// deleted, hence we won't be able to refer to its memmapped data.
-    fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
+    pub fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
         // Load everything into memory so we can write it out to the on-disk
         // cache. The vast majority of cacheable query results should already
         // be in memory, so this should be a cheap operation.
@@ -227,7 +225,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         *self.serialized_data.write() = None;
     }
 
-    fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
+    pub fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -269,7 +267,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri);
+                (tcx.query_system.fns.encode_query_results)(tcx, enc, qri);
             });
 
             // Encode side effects.
@@ -357,12 +355,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
             encoder.finish()
         })
-    }
-}
-
-impl<'sess> OnDiskCache<'sess> {
-    pub fn as_dyn(&self) -> &dyn rustc_middle::ty::OnDiskCache<'sess> {
-        self as _
     }
 
     /// Loads a `QuerySideEffects` created during the previous compilation session.
@@ -855,7 +847,7 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     /// encode the specified tag, then the given value, then the number of
     /// bytes taken up by tag and value. On decoding, we can then verify that
     /// we get the expected tag and read the expected number of bytes.
-    fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(&mut self, tag: T, value: &V) {
+    pub fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(&mut self, tag: T, value: &V) {
         let start_pos = self.position();
 
         tag.encode(self);
@@ -1031,34 +1023,4 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     fn encode(&self, e: &mut CacheEncoder<'a, 'tcx>) {
         self.encode(&mut e.encoder);
     }
-}
-
-pub(crate) fn encode_query_results<'a, 'tcx, Q>(
-    query: Q,
-    qcx: QueryCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'a, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) where
-    Q: super::QueryConfigRestored<'tcx>,
-    Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
-{
-    let _timer = qcx
-        .tcx
-        .profiler()
-        .verbose_generic_activity_with_arg("encode_query_results_for", query.name());
-
-    assert!(query.query_state(qcx).all_inactive());
-    let cache = query.query_cache(qcx);
-    cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, &key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.encoder.position())));
-
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore(*value));
-        }
-    });
 }

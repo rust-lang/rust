@@ -14,11 +14,14 @@ use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::LocalCrate;
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use crate::ty::query::QuerySystem;
+use crate::ty::query::QuerySystemFns;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
@@ -31,7 +34,6 @@ use rustc_ast::{self as ast, attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -61,7 +63,6 @@ use rustc_session::lint::Lint;
 use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
-use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
@@ -83,21 +84,6 @@ use std::ops::{Bound, Deref};
 use super::query::IntoQueryParam;
 
 const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
-
-pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
-    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    fn new(sess: &'tcx Session, data: Mmap, start_pos: usize) -> Self
-    where
-        Self: Sized;
-
-    fn new_empty(source_map: &'tcx SourceMap) -> Self
-    where
-        Self: Sized;
-
-    fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
-
-    fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: FileEncoder) -> FileEncodeResult;
-}
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
@@ -527,13 +513,6 @@ pub struct GlobalCtxt<'tcx> {
 
     untracked: Untracked,
 
-    /// This provides access to the incremental compilation on-disk cache for query results.
-    /// Do not access this directly. It is only meant to be used by
-    /// `DepGraph::try_mark_green()` and the query infrastructure.
-    /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
-
-    pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_system: query::QuerySystem<'tcx>,
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
@@ -674,9 +653,9 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
         dep_graph: DepGraph,
-        on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
-        queries: &'tcx dyn query::QueryEngine<'tcx>,
+        on_disk_cache: Option<OnDiskCache<'tcx>>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
+        query_system_fns: QuerySystemFns<'tcx>,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -698,9 +677,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            on_disk_cache,
-            queries,
-            query_system: Default::default(),
+            query_system: QuerySystem::new(query_system_fns, on_disk_cache),
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
@@ -1039,7 +1016,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
-        self.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
+        self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
 
     /// If `true`, we should use lazy normalization for constants, otherwise

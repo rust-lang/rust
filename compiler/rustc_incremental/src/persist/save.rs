@@ -48,7 +48,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_result_cache", || {
                     // Drop the memory map so that we can remove the file and write to it.
-                    if let Some(odc) = &tcx.on_disk_cache {
+                    if let Some(odc) = &tcx.query_system.on_disk_cache {
                         odc.drop_serialized_data(tcx);
                     }
 

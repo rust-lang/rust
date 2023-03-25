@@ -168,7 +168,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 ) -> R {
     use rustc_data_structures::jobserver;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::{deadlock, QueryContext, QueryCtxt};
+    use rustc_query_impl::QueryCtxt;
+    use rustc_query_system::query::{deadlock, QueryContext};
 
     let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
@@ -179,7 +180,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
             let query_map = tls::with(|tcx| {
-                QueryCtxt::from_tcx(tcx)
+                QueryCtxt::new(tcx)
                     .try_collect_active_jobs()
                     .expect("active jobs shouldn't be locked in deadlock handler")
             });
