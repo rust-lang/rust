@@ -216,6 +216,14 @@ fn show_fieldless_enum(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
+    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+    if let Some(name) = show_fieldless_enum_array(cx, span, def) {
+        return BlockOrExpr::new_expr(cx.expr_call_global(
+            span,
+            fn_path_write_str,
+            thin_vec![fmt, name],
+        ));
+    }
     let arms = def
         .variants
         .iter()
@@ -236,6 +244,47 @@ fn show_fieldless_enum(
         })
         .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
-    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
+}
+
+/// Specialer case for fieldless enums with no discriminants. Builds
+/// ```text
+/// impl ::core::fmt::Debug for A {
+///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+///          ::core::fmt::Formatter::write_str(f, ["A", "B", "C"][*self as usize])
+///     }
+/// }
+/// ```
+fn show_fieldless_enum_array(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    def: &EnumDef,
+) -> Option<ast::ptr::P<ast::Expr>> {
+    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+    let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+    // FIXME(clubby789): handle repr(xx) enums too
+    if !has_derive_copy {
+        return None;
+    }
+    if def.variants.len() >= cx.sess.target.pointer_width as usize {
+        return None;
+    }
+    // FIXME(clubby789): handle enums with discriminants matching their indexes
+    let name_array = def
+        .variants
+        .iter()
+        .map(|v| if v.disr_expr.is_none() { Some(cx.expr_str(span, v.ident.name)) } else { None })
+        .collect::<Option<ThinVec<_>>>()?;
+    let name = cx.expr(
+        span,
+        ast::ExprKind::Index(
+            cx.expr_array(span, name_array),
+            cx.expr_cast(
+                span,
+                cx.expr_deref(span, cx.expr_self(span)),
+                cx.ty_path(ast::Path::from_ident(Ident::with_dummy_span(sym::usize))),
+            ),
+        ),
+    );
+    Some(name)
 }
