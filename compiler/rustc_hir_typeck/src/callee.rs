@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
-                    && let [segment] = path.segments
+                    && let [segment] = path.segments.as_slice()
                     && let Some(mut diag) = self
                         .tcx
                         .sess

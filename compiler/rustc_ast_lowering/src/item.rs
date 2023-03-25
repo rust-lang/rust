@@ -7,6 +7,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -1172,7 +1173,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // ```
                     let body = this.block_all(
                         desugared_span,
-                        this.arena.alloc_from_iter(statements),
+                        this.arena.allocate_thin_from_iter(statements),
                         Some(user_body),
                     );
 
@@ -1366,8 +1367,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         predicates.extend(impl_trait_bounds.into_iter());
 
         let lowered_generics = self.arena.alloc(hir::Generics {
-            params: self.arena.alloc_from_iter(params),
-            predicates: self.arena.alloc_from_iter(predicates),
+            params: self.arena.allocate_thin_from_iter(params),
+            predicates: self.arena.allocate_thin_from_iter(predicates),
             has_where_clause_predicates,
             where_clause_span,
             span,
@@ -1418,7 +1419,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     res,
                     segments: self
                         .arena
-                        .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
+                        .allocate_thin_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
                 });
                 let ty_id = self.next_id();
                 let bounded_ty =
@@ -1428,7 +1429,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     bounded_ty: self.arena.alloc(bounded_ty),
                     bounds,
                     span,
-                    bound_generic_params: &[],
+                    bound_generic_params: ThinSlice::empty(),
                     origin,
                 }))
             }
@@ -1459,7 +1460,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
                 bounded_ty: self
                     .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
-                bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
+                bounds: self.arena.allocate_thin_from_iter(bounds.iter().map(|bound| {
                     self.lower_param_bound(
                         bound,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Bound),

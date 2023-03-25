@@ -977,15 +977,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                 kind:
                                                     Call(
                                                         _,
-                                                        [
-                                                            Expr {
-                                                                kind:
-                                                                    MethodCall(path_segment, _, _, span),
-                                                                hir_id,
-                                                                ..
-                                                            },
-                                                            ..,
-                                                        ],
+                                                        args,
                                                     ),
                                                 ..
                                             },
@@ -999,6 +991,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 },
                 _,
             ) = hir_map.body(fn_body_id).value.kind
+                && let [
+                    Expr {
+                        kind:
+                            MethodCall(path_segment, _, _, span),
+                        hir_id,
+                        ..
+                    },
+                    ..,
+                ] = args.as_slice()
             {
                 let opt_suggestions = self
                     .infcx

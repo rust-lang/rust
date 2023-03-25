@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::symbol::Ident;
 use rustc_span::{source_map::Spanned, Span};
+use rustc_data_structures::thin_slice::ThinSlice;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
@@ -44,7 +45,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     PatKind::Or(pats) => {
                         break hir::PatKind::Or(
-                            self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat_mut(x))),
+                            self.arena.allocate_thin_from_iter(pats.iter().map(|x| self.lower_pat_mut(x))),
                         );
                     }
                     PatKind::Path(qself, path) => {
@@ -66,7 +67,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         );
 
-                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
+                        let fs = self.arena.allocate_thin_from_iter(fields.iter().map(|f| {
                             let hir_id = self.lower_node_id(f.id);
                             self.lower_attrs(hir_id, &f.attrs);
 
@@ -116,7 +117,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         pats: &[P<Pat>],
         ctx: &str,
-    ) -> (&'hir [hir::Pat<'hir>], hir::DotDotPos) {
+    ) -> (&'hir ThinSlice<hir::Pat<'hir>>, hir::DotDotPos) {
         let mut elems = Vec::with_capacity(pats.len());
         let mut rest = None;
 
@@ -160,7 +161,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        (self.arena.alloc_from_iter(elems), hir::DotDotPos::new(rest.map(|(ddpos, _)| ddpos)))
+        (self.arena.allocate_thin_from_iter(elems), hir::DotDotPos::new(rest.map(|(ddpos, _)| ddpos)))
     }
 
     /// Lower a slice pattern of form `[pat_0, ..., pat_n]` into
@@ -226,9 +227,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         hir::PatKind::Slice(
-            self.arena.alloc_from_iter(before),
+            self.arena.allocate_thin_from_iter(before),
             slice,
-            self.arena.alloc_from_iter(after),
+            self.arena.allocate_thin_from_iter(after),
         )
     }
 
@@ -262,7 +263,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.arena.alloc(hir::Path {
                         span: self.lower_span(ident.span),
                         res,
-                        segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
+                        segments: arena_thin_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
                     }),
             ))
             }

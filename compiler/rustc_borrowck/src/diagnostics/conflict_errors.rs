@@ -2,6 +2,7 @@ use either::Either;
 use rustc_const_eval::util::CallKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
@@ -405,7 +406,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     {
                         (def_id.as_local(), args, 0)
                     } else {
-                        (None, &[][..], 0)
+                        (None, ThinSlice::empty(), 0)
                     };
                     if let Some(def_id) = def_id
                         && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
@@ -1278,8 +1279,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
                 if let hir::Expr { kind: hir::ExprKind::Path(path), .. } = e {
-                    if let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
-                        seg.ident.name == kw::SelfLower && self.in_closure {
+                    if let hir::QPath::Resolved(_, hir::Path { segments, ..}) = path
+                        && let [seg] = segments.as_slice()
+                        && seg.ident.name == kw::SelfLower && self.in_closure
+                    {
                             self.closure_change_spans.push(e.span);
                     }
                 }
@@ -1304,7 +1307,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             fn visit_stmt(&mut self, s: &'hir hir::Stmt<'hir>) {
                 if let hir::StmtKind::Semi(e) = s.kind &&
                     let hir::ExprKind::Call(hir::Expr { kind: hir::ExprKind::Path(path), ..}, args) = e.kind &&
-                    let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
+                    let hir::QPath::Resolved(_, hir::Path { segments, ..}) = path &&
+                    let [seg] = segments.as_slice() &&
                     let Res::Local(hir_id) = seg.res &&
                         Some(hir_id) == self.closure_local_id {
                         let (span, arg_str) = if args.len() > 0 {

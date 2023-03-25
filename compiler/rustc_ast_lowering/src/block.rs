@@ -1,6 +1,7 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
+use rustc_data_structures::thin_slice::ThinSlice;
 
 use smallvec::SmallVec;
 
@@ -27,7 +28,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_stmts(
         &mut self,
         mut ast_stmts: &[Stmt],
-    ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
+    ) -> (&'hir ThinSlice<hir::Stmt<'hir>>, Option<&'hir hir::Expr<'hir>>) {
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
@@ -78,7 +79,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ast_stmts = &ast_stmts[1..];
         }
-        (self.arena.alloc_from_iter(stmts), expr)
+        (self.arena.allocate_thin_from_iter(stmts), expr)
     }
 
     fn lower_local(&mut self, l: &Local) -> &'hir hir::Local<'hir> {

@@ -2399,7 +2399,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 res: rustc_hir::def::Res::Def(_, item_id),
                                 ..
                             }
-                        ] = path.segments
+                        ] = path.segments.as_slice()
                         && data.trait_ref.def_id == *trait_id
                         && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()

@@ -13,6 +13,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
@@ -188,7 +189,7 @@ pub struct Path<'hir, R = Res> {
     /// The resolution for the path.
     pub res: R,
     /// The segments in the path: the things separated by `::`.
-    pub segments: &'hir [PathSegment<'hir>],
+    pub segments: &'hir ThinSlice<PathSegment<'hir>>,
 }
 
 /// Up to three resolutions for type, value and macro namespaces.
@@ -321,10 +322,10 @@ impl GenericArg<'_> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct GenericArgs<'hir> {
     /// The generic arguments for this path segment.
-    pub args: &'hir [GenericArg<'hir>],
+    pub args: &'hir ThinSlice<GenericArg<'hir>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A = Bar>`.
-    pub bindings: &'hir [TypeBinding<'hir>],
+    pub bindings: &'hir ThinSlice<TypeBinding<'hir>>,
     /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
@@ -340,7 +341,7 @@ pub struct GenericArgs<'hir> {
 
 impl<'hir> GenericArgs<'hir> {
     pub const fn none() -> Self {
-        Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
+        Self { args: ThinSlice::const_empty(), bindings: ThinSlice::const_empty(), parenthesized: false, span_ext: DUMMY_SP }
     }
 
     pub fn inputs(&self) -> &[Ty<'hir>] {
@@ -456,7 +457,7 @@ impl GenericBound<'_> {
     }
 }
 
-pub type GenericBounds<'hir> = &'hir [GenericBound<'hir>];
+pub type GenericBounds<'hir> = &'hir ThinSlice<GenericBound<'hir>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub enum LifetimeParamKind {
@@ -543,8 +544,8 @@ pub struct GenericParamCount {
 /// of a function, enum, trait, etc.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Generics<'hir> {
-    pub params: &'hir [GenericParam<'hir>],
-    pub predicates: &'hir [WherePredicate<'hir>],
+    pub params: &'hir ThinSlice<GenericParam<'hir>>,
+    pub predicates: &'hir ThinSlice<WherePredicate<'hir>>,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
@@ -553,8 +554,8 @@ pub struct Generics<'hir> {
 impl<'hir> Generics<'hir> {
     pub const fn empty() -> &'hir Generics<'hir> {
         const NOPE: Generics<'_> = Generics {
-            params: &[],
-            predicates: &[],
+            params: ThinSlice::const_empty(),
+            predicates: ThinSlice::const_empty(),
             has_where_clause_predicates: false,
             where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
@@ -744,7 +745,7 @@ impl<'hir> WherePredicate<'hir> {
         match self {
             WherePredicate::BoundPredicate(p) => p.bounds,
             WherePredicate::RegionPredicate(p) => p.bounds,
-            WherePredicate::EqPredicate(_) => &[],
+            WherePredicate::EqPredicate(_) => ThinSlice::empty(),
         }
     }
 }
@@ -764,7 +765,7 @@ pub struct WhereBoundPredicate<'hir> {
     /// Origin of the predicate.
     pub origin: PredicateOrigin,
     /// Any generics from a `for` binding.
-    pub bound_generic_params: &'hir [GenericParam<'hir>],
+    pub bound_generic_params: &'hir ThinSlice<GenericParam<'hir>>,
     /// The type being bounded.
     pub bounded_ty: &'hir Ty<'hir>,
     /// Trait and lifetime bounds (e.g., `Clone + Send + 'static`).
@@ -949,7 +950,7 @@ pub struct Closure<'hir> {
     pub binder: ClosureBinder,
     pub constness: Constness,
     pub capture_clause: CaptureBy,
-    pub bound_generic_params: &'hir [GenericParam<'hir>],
+    pub bound_generic_params: &'hir ThinSlice<GenericParam<'hir>>,
     pub fn_decl: &'hir FnDecl<'hir>,
     pub body: BodyId,
     /// The span of the declaration block: 'move |...| -> ...'
@@ -1138,16 +1139,16 @@ pub enum PatKind<'hir> {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
+    Struct(QPath<'hir>, &'hir ThinSlice<PatField<'hir>>, bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
-    TupleStruct(QPath<'hir>, &'hir [Pat<'hir>], DotDotPos),
+    TupleStruct(QPath<'hir>, &'hir ThinSlice<Pat<'hir>>, DotDotPos),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(&'hir [Pat<'hir>]),
+    Or(&'hir ThinSlice<Pat<'hir>>),
 
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
     Path(QPath<'hir>),
@@ -1155,7 +1156,7 @@ pub enum PatKind<'hir> {
     /// A tuple pattern (e.g., `(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`
-    Tuple(&'hir [Pat<'hir>], DotDotPos),
+    Tuple(&'hir ThinSlice<Pat<'hir>>, DotDotPos),
 
     /// A `box` pattern.
     Box(&'hir Pat<'hir>),
@@ -1821,8 +1822,8 @@ impl Expr<'_> {
                 .all(|e| e.can_have_side_effects()),
 
             ExprKind::Array(args)
-            | ExprKind::Tup(args)
-            | ExprKind::Call(
+            | ExprKind::Tup(args) => args.iter().all(|arg| arg.can_have_side_effects()),
+            ExprKind::Call(
                 Expr {
                     kind:
                         ExprKind::Path(QPath::Resolved(
@@ -1916,7 +1917,7 @@ pub enum ExprKind<'hir> {
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    Call(&'hir Expr<'hir>, &'hir [Expr<'hir>]),
+    Call(&'hir Expr<'hir>, &'hir ThinSlice<Expr<'hir>>),
     /// A method call (e.g., `x.foo::<'static, Bar, Baz>(a, b, c, d)`).
     ///
     /// The `PathSegment` represents the method name and its generic arguments
@@ -1933,7 +1934,7 @@ pub enum ExprKind<'hir> {
     /// the `hir_id` of the `MethodCall` node itself.
     ///
     /// [`type_dependent_def_id`]: ../../rustc_middle/ty/struct.TypeckResults.html#method.type_dependent_def_id
-    MethodCall(&'hir PathSegment<'hir>, &'hir Expr<'hir>, &'hir [Expr<'hir>], Span),
+    MethodCall(&'hir PathSegment<'hir>, &'hir Expr<'hir>, &'hir ThinSlice<Expr<'hir>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -2487,7 +2488,7 @@ impl<'hir> Ty<'hir> {
         let TyKind::Path(QPath::Resolved(None, path)) = self.kind else {
             return None;
         };
-        let [segment] = &path.segments else {
+        let [segment] = &path.segments.as_slice() else {
             return None;
         };
         match path.res {

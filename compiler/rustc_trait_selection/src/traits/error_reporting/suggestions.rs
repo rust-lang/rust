@@ -11,6 +11,7 @@ use crate::traits::{NormalizeExt, ObligationCtxt};
 use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
     ErrorGuaranteed, MultiSpan, Style,
@@ -491,13 +492,14 @@ fn suggest_restriction<'tcx>(
             return;
         }
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, suggestion) = match (
-            hir_generics
-                .params
-                .iter()
-                .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
-            super_traits,
-        ) {
+        let type_param = hir_generics
+            .params
+            .iter()
+            .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. }));
+
+        let super_traits = super_traits.map(|(ident, bounds)| (ident, bounds.as_slice()));
+    
+        let (sp, suggestion) = match (type_param, super_traits) {
             (_, None) => predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
@@ -4082,7 +4084,7 @@ pub trait NextTypeParamName {
     fn next_type_param_name(&self, name: Option<&str>) -> String;
 }
 
-impl NextTypeParamName for &[hir::GenericParam<'_>] {
+impl NextTypeParamName for &ThinSlice<hir::GenericParam<'_>> {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
         // This is the list of possible parameter names that we might suggest.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());

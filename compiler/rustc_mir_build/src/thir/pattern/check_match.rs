@@ -394,10 +394,11 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             if let hir::PatKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path {
-                    segments: &[hir::PathSegment { args: None, res, ident, .. }],
+                    segments,
                     ..
                 },
             )) = &pat.kind
+                && let &[hir::PathSegment { args: None, res, ident, .. }] = segments.as_slice()
             {
                 (
                     None,

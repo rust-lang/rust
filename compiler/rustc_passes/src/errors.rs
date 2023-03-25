@@ -938,8 +938,8 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
             match self.break_expr_kind {
                 ExprKind::Path(hir::QPath::Resolved(
                     None,
-                    hir::Path { segments: [segment], res: hir::def::Res::Err, .. },
-                )) if label.ident.to_string() == format!("'{}", segment.ident) => {
+                    hir::Path { segments, res: hir::def::Res::Err, .. },
+                )) if let [segment] = segments.as_slice() && label.ident.to_string() == format!("'{}", segment.ident) => {
                     // This error is redundant, we will have already emitted a
                     // suggestion to use the label when `segment` wasn't found
                     // (hence the `Res::Err` check).

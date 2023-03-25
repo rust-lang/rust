@@ -1019,8 +1019,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match rcvr.kind {
                     ExprKind::Path(QPath::Resolved(
                         None,
-                        hir::Path { segments: [segment], .. },
-                    )) => format!("`{}`", segment.ident),
+                        hir::Path { segments, .. },
+                    )) if let [segment] = segments.as_slice() => format!("`{}`", segment.ident),
                     _ => "its receiver".to_string(),
                 }
             ),

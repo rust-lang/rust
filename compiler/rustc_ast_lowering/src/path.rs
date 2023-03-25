@@ -11,6 +11,7 @@ use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_data_structures::thin_slice::ThinSlice;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -36,7 +37,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let proj_start = p.segments.len() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
             res: self.lower_res(base_res),
-            segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
+            segments: self.arena.allocate_thin_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
                         (Some(j), ParamMode::Optional) if i < j => {
@@ -152,7 +153,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::UsePath<'hir> {
         self.arena.alloc(hir::UsePath {
             res,
-            segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
+            segments: self.arena.allocate_thin_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
                     p.span,
                     segment,
@@ -223,7 +224,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             (
                 GenericArgsCtor {
                     args: Default::default(),
-                    bindings: &[],
+                    bindings: ThinSlice::empty(),
                     parenthesized: false,
                     span: path_span.shrink_to_hi(),
                 },
@@ -324,7 +325,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 AngleBracketedArg::Constraint(_) => None,
             })
             .collect();
-        let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
+        let bindings = self.arena.allocate_thin_from_iter(data.args.iter().filter_map(|arg| match arg {
             AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
             AngleBracketedArg::Arg(_) => None,
         }));
@@ -375,7 +376,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (
             GenericArgsCtor {
                 args,
-                bindings: arena_vec![self; binding],
+                bindings: arena_thin_vec![self; binding],
                 parenthesized: true,
                 span: data.inputs_span,
             },
@@ -391,8 +392,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TypeBinding<'hir> {
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
         let kind = hir::TypeBindingKind::Equality { term: ty.into() };
-        let args = arena_vec![self;];
-        let bindings = arena_vec![self;];
+        let args = arena_thin_vec![self;];
+        let bindings = arena_thin_vec![self;];
         let gen_args = self.arena.alloc(hir::GenericArgs {
             args,
             bindings,

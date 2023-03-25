@@ -228,7 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let map = self.tcx.hir();
 
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
-        let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
+        let [hir::PathSegment { ident, args: None, .. }] = p.segments.as_slice() else { return false; };
         let hir::def::Res::Local(hir_id) = p.res else { return false; };
         let Some(hir::Node::Pat(pat)) = map.find(hir_id) else { return false; };
         let Some(hir::Node::Local(hir::Local {
@@ -1130,12 +1130,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         hir::Path {
                             res: hir::def::Res::Local(_),
-                            segments: [hir::PathSegment { ident, .. }],
+                            segments,
                             ..
                         },
                     )),
                 ..
-            } => Some(ident),
+            } if let [hir::PathSegment { ident, .. }] = segments.as_slice() => Some(ident),
             _ => None,
         }?;
 
@@ -1951,7 +1951,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         // Check if start has method named end.
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
-        let [hir::PathSegment { ident, .. }] = p.segments else { return; };
+        let [hir::PathSegment { ident, .. }] = p.segments.as_slice() else { return; };
         let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
         let Ok(_pick) = self.lookup_probe_for_diagnostic(
             *ident,

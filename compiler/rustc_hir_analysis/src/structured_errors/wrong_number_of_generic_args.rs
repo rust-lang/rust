@@ -803,7 +803,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             rcvr.span.find_ancestor_inside(expr.span).unwrap_or(rcvr.span)
         ) else { return; };
         let Ok(rest) =
-            (match args {
+            (match args.as_slice() {
                 [] => Ok(String::new()),
                 [arg] => sm.span_to_snippet(
                     arg.span.find_ancestor_inside(expr.span).unwrap_or(arg.span),

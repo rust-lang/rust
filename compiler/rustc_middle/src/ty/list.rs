@@ -1,4 +1,5 @@
 use crate::arena::Arena;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
 use std::cmp::Ordering;
@@ -8,7 +9,6 @@ use std::iter;
 use std::mem;
 use std::ops::Deref;
 use std::ptr;
-use std::slice;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
 /// - IMPORTANT: Every `List<T>` is *required* to have unique contents. The
@@ -26,48 +26,29 @@ use std::slice;
 /// - `T` must be `Copy`. This lets `List<T>` be stored in a dropless arena and
 ///   iterators return a `T` rather than a `&T`.
 /// - `T` must not be zero-sized.
-#[repr(C)]
+#[repr(transparent)]
 pub struct List<T> {
-    len: usize,
-
-    /// Although this claims to be a zero-length array, in practice `len`
-    /// elements are actually present.
-    data: [T; 0],
-
-    opaque: OpaqueListContents,
-}
-
-extern "C" {
-    /// A dummy type used to force `List` to be unsized while not requiring
-    /// references to it be wide pointers.
-    type OpaqueListContents;
+    inner: ThinSlice<T>,
 }
 
 impl<T> List<T> {
     /// Returns a reference to the (unique, static) empty list.
     #[inline(always)]
     pub fn empty<'a>() -> &'a List<T> {
-        #[repr(align(64))]
-        struct MaxAlign;
-
-        assert!(mem::align_of::<T>() <= mem::align_of::<MaxAlign>());
-
-        #[repr(C)]
-        struct InOrder<T, U>(T, U);
-
-        // The empty slice is static and contains a single `0` usize (for the
-        // length) that is 64-byte aligned, thus featuring the necessary
-        // trailing padding for elements with up to 64-byte alignment.
-        static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
-        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
+        Self::from_inner(ThinSlice::empty())
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.inner.len()
     }
 
     pub fn as_slice(&self) -> &[T] {
-        self
+        self.inner.as_slice()
+    }
+
+    fn from_inner(inner: &ThinSlice<T>) -> &Self {
+        // SAFETY: We are repr(transparent).
+        unsafe { &*(inner as *const ThinSlice<T> as *const Self) }
     }
 }
 
@@ -89,18 +70,9 @@ impl<T: Copy> List<T> {
 
         let (layout, _offset) =
             Layout::new::<usize>().extend(Layout::for_value::<[T]>(slice)).unwrap();
-        let mem = arena.dropless.alloc_raw(layout) as *mut List<T>;
-        unsafe {
-            // Write the length
-            ptr::addr_of_mut!((*mem).len).write(slice.len());
-
-            // Write the elements
-            ptr::addr_of_mut!((*mem).data)
-                .cast::<T>()
-                .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
-
-            &*mem
-        }
+        let mem = arena.dropless.alloc_raw(layout) as *mut ThinSlice<T>;
+        // SAFETY: We ensured that we allocated enough memory above. It includes the ptr and the slice correctly aligned.
+        unsafe { Self::from_inner(ThinSlice::initialize(mem, slice)) }
     }
 
     // If this method didn't exist, we would use `slice.iter` due to
@@ -183,7 +155,7 @@ impl<T> Deref for List<T> {
 impl<T> AsRef<[T]> for List<T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.data.as_ptr(), self.len) }
+        self.inner.as_ref()
     }
 }
 
@@ -195,8 +167,6 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
         self[..].iter().copied()
     }
 }
-
-unsafe impl<T: Sync> Sync for List<T> {}
 
 unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
     const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;

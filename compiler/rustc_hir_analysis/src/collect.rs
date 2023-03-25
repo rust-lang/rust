@@ -438,7 +438,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                         | hir::ItemKind::Struct(_, generics)
                         | hir::ItemKind::Union(_, generics) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
-                            let (lt_sp, sugg) = match generics.params {
+                            let (lt_sp, sugg) = match generics.params.as_slice() {
                                 [] => (generics.span, format!("<{}>", lt_name)),
                                 [bound, ..] => {
                                     (bound.span.shrink_to_lo(), format!("{}, ", lt_name))

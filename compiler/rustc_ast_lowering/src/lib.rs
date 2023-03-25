@@ -74,10 +74,17 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
+use rustc_data_structures::thin_slice::ThinSlice;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
         $this.arena.alloc_from_iter([$($x),*])
+    );
+}
+
+macro_rules! arena_thin_vec {
+    ($this:expr; $($x:expr),*) => (
+        $this.arena.allocate_thin_from_iter([$($x),*])
     );
 }
 
@@ -848,7 +855,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         binder: NodeId,
         generic_params: &[GenericParam],
-    ) -> &'hir [hir::GenericParam<'hir>] {
+    ) -> &'hir ThinSlice<hir::GenericParam<'hir>> {
         let mut generic_params: Vec<_> = self
             .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
             .collect();
@@ -857,7 +864,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(ident, node_id, res, hir::GenericParamSource::Binder)
         }));
-        let generic_params = self.arena.alloc_from_iter(generic_params);
+        let generic_params = self.arena.allocate_thin_from_iter(generic_params);
         debug!(?generic_params);
 
         generic_params
@@ -1304,7 +1311,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     None,
                     self.arena.alloc(hir::Path {
                         res,
-                        segments: arena_vec![self; hir::PathSegment::new(
+                        segments: arena_thin_vec![self; hir::PathSegment::new(
                             Ident::with_dummy_span(kw::SelfUpper),
                             hir_id,
                             res
@@ -1511,7 +1518,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // This creates HIR lifetime definitions as `hir::GenericParam`, in the given
                 // example `type TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection
                 // containing `&['x]`.
-                let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
+                let lifetime_defs = lctx.arena.allocate_thin_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime)| {
                         let hir_id = lctx.lower_node_id(new_node_id);
                         debug_assert_ne!(lctx.opt_local_def_id(new_node_id), None);
@@ -1547,7 +1554,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: self.arena.alloc(hir::Generics {
                         params: lifetime_defs,
-                        predicates: &[],
+                        predicates: ThinSlice::empty(),
                         has_where_clause_predicates: false,
                         where_clause_span: lctx.lower_span(span),
                         span: lctx.lower_span(span),
@@ -1969,7 +1976,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     },
                 );
 
-                let generic_params = this.arena.alloc_from_iter(collected_lifetimes.iter().map(
+                let generic_params = this.arena.allocate_thin_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime, _)| {
                         let hir_id = this.lower_node_id(new_node_id);
                         debug_assert_ne!(this.opt_local_def_id(new_node_id), None);
@@ -2000,12 +2007,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: this.arena.alloc(hir::Generics {
                         params: generic_params,
-                        predicates: &[],
+                        predicates: ThinSlice::empty(),
                         has_where_clause_predicates: false,
                         where_clause_span: this.lower_span(span),
                         span: this.lower_span(span),
                     }),
-                    bounds: arena_vec![this; future_bound],
+                    bounds: arena_thin_vec![this; future_bound],
                     origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                     in_trait,
                 };
@@ -2073,8 +2080,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // "<Output = T>"
         let future_args = self.arena.alloc(hir::GenericArgs {
-            args: &[],
-            bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
+            args: ThinSlice::empty(),
+            bindings: arena_thin_vec![self; self.output_ty_binding(span, output_ty)],
             parenthesized: false,
             span_ext: DUMMY_SP,
         });
@@ -2166,8 +2173,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         params: &[GenericParam],
         source: hir::GenericParamSource,
-    ) -> &'hir [hir::GenericParam<'hir>] {
-        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, source))
+    ) -> &'hir ThinSlice<hir::GenericParam<'hir>> {
+        self.arena.allocate_thin_from_iter(self.lower_generic_params_mut(params, source))
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -2269,7 +2276,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &[GenericBound],
         itctx: &ImplTraitContext,
     ) -> hir::GenericBounds<'hir> {
-        self.arena.alloc_from_iter(self.lower_param_bounds_mut(bounds, itctx))
+        self.arena.allocate_thin_from_iter(self.lower_param_bounds_mut(bounds, itctx))
     }
 
     fn lower_param_bounds_mut<'s>(
@@ -2323,7 +2330,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 span,
                 res,
                 segments:
-                    arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
+                    arena_thin_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
             }),
         ));
 
@@ -2421,13 +2428,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
-        self.block_all(expr.span, &[], Some(expr))
+        self.block_all(expr.span, ThinSlice::empty(), Some(expr))
     }
 
     fn block_all(
         &mut self,
         span: Span,
-        stmts: &'hir [hir::Stmt<'hir>],
+        stmts: &'hir ThinSlice<hir::Stmt<'hir>>,
         expr: Option<&'hir hir::Expr<'hir>>,
     ) -> &'hir hir::Block<'hir> {
         let blk = hir::Block {
@@ -2457,14 +2464,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat_none(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
-        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, &[], None)
+        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, ThinSlice::empty(), None)
     }
 
     fn single_pat_field(
         &mut self,
         span: Span,
         pat: &'hir hir::Pat<'hir>,
-    ) -> &'hir [hir::PatField<'hir>] {
+    ) -> &'hir ThinSlice<hir::PatField<'hir>> {
         let field = hir::PatField {
             hir_id: self.next_id(),
             ident: Ident::new(sym::integer(0), self.lower_span(span)),
@@ -2472,14 +2479,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pat,
             span: self.lower_span(span),
         };
-        arena_vec![self; field]
+        arena_thin_vec![self; field]
     }
 
     fn pat_lang_item_variant(
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        fields: &'hir [hir::PatField<'hir>],
+        fields: &'hir ThinSlice<hir::PatField<'hir>>,
         hir_id: Option<hir::HirId>,
     ) -> &'hir hir::Pat<'hir> {
         let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span), hir_id);
@@ -2594,7 +2601,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 /// Helper struct for delayed construction of GenericArgs.
 struct GenericArgsCtor<'hir> {
     args: SmallVec<[hir::GenericArg<'hir>; 4]>,
-    bindings: &'hir [hir::TypeBinding<'hir>],
+    bindings: &'hir ThinSlice<hir::TypeBinding<'hir>>,
     parenthesized: bool,
     span: Span,
 }
@@ -2606,7 +2613,7 @@ impl<'hir> GenericArgsCtor<'hir> {
 
     fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
-            args: this.arena.alloc_from_iter(self.args),
+            args: this.arena.allocate_thin_from_iter(self.args),
             bindings: self.bindings,
             parenthesized: self.parenthesized,
             span_ext: this.lower_span(self.span),

@@ -246,22 +246,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        if let hir::ExprKind::MethodCall(hir::PathSegment { ident: method, .. }, recv_expr, &[], _) = expr.kind &&
-            let Some(recv_ty) = self.typeck_results.borrow().expr_ty_opt(recv_expr) &&
-            self.can_coerce(recv_ty, expected) {
-                let span = if let Some(recv_span) = recv_expr.span.find_ancestor_inside(expr.span) {
-                    expr.span.with_lo(recv_span.hi())
-                } else {
-                    expr.span.with_lo(method.span.lo() - rustc_span::BytePos(1))
-                };
-                err.span_suggestion_verbose(
-                    span,
-                    "try removing the method call",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-                return true;
-            }
+        if let hir::ExprKind::MethodCall(hir::PathSegment { ident: method, .. }, recv_expr, args, _) = expr.kind
+            && args.is_empty()
+            && let Some(recv_ty) = self.typeck_results.borrow().expr_ty_opt(recv_expr)
+            && self.can_coerce(recv_ty, expected)
+        {
+            let span = if let Some(recv_span) = recv_expr.span.find_ancestor_inside(expr.span) {
+                expr.span.with_lo(recv_span.hi())
+            } else {
+                expr.span.with_lo(method.span.lo() - rustc_span::BytePos(1))
+            };
+            err.span_suggestion_verbose(
+                span,
+                "try removing the method call",
+                "",
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
         false
     }
 
@@ -713,8 +715,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ..
                     }) = self.tcx.hir().get(item_id.hir_id())
                     && let [hir::GenericBound::LangItemTrait(
-                        hir::LangItem::Future, _, _, generic_args)] = op_ty.bounds
-                    && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                        hir::LangItem::Future, _, _, generic_args)] = op_ty.bounds.as_slice()
+                    && let hir::GenericArgs { bindings, .. } = generic_args
+                    && let [ty_binding] = bindings.as_slice()
                     && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } = ty_binding.kind
                 {
                     // Check if async function's return type was omitted.
@@ -1328,9 +1331,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (item, segment) = match expr.kind {
             hir::ExprKind::Path(QPath::Resolved(
                 Some(ty),
-                hir::Path { segments: [segment], .. },
-            ))
-            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
+                hir::Path { segments, .. },
+            )) if let [segment] = segments.as_slice() => {
+                if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
+                    && let Ok(pick) = self.probe_for_name(
+                        Mode::Path,
+                        Ident::new(capitalized_name, segment.ident.span),
+                        Some(expected_ty),
+                        IsSuggestion(true),
+                        self_ty,
+                        expr.hir_id,
+                        ProbeScope::TraitsInScope,
+                    )
+                {
+                    (pick.item, segment)
+                } else {
+                    return false;
+                }
+            }
+            hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
                 if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
                     && let Ok(pick) = self.probe_for_name(
                         Mode::Path,
@@ -1349,8 +1368,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             hir::ExprKind::Path(QPath::Resolved(
                 None,
-                hir::Path { segments: [.., segment], .. },
-            )) => {
+                hir::Path { segments, .. },
+            )) if let [.., segment] = segments.as_slice() => {
                 // we resolved through some path that doesn't end in the item name,
                 // better not do a bad suggestion by accident.
                 if old_item_name != segment.ident.name {
@@ -1410,7 +1429,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
+        let hir::ExprKind::MethodCall(segment, callee_expr, args, _) = expr.kind else { return; };
+        if !args.is_empty() {
+            return;
+        }
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();

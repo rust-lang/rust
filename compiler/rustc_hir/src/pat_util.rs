@@ -140,7 +140,9 @@ impl hir::Pat<'_> {
     /// If the pattern is `Some(<pat>)` from a desugared for loop, returns the inner pattern
     pub fn for_loop_some(&self) -> Option<&Self> {
         if self.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
-            if let hir::PatKind::Struct(_, [pat_field], _) = self.kind {
+            if let hir::PatKind::Struct(_, fields, _) = self.kind
+                && let [pat_field] = fields.as_slice()
+            {
                 return Some(pat_field.pat);
             }
         }

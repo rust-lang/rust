@@ -11,6 +11,7 @@ use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
@@ -23,6 +24,10 @@ use thin_vec::{thin_vec, ThinVec};
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
+    }
+
+    fn lower_exprs_thin(&mut self, exprs: &[AstP<Expr>]) -> &'hir ThinSlice<hir::Expr<'hir>> {
+        self.arena.allocate_thin_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
 
     pub(super) fn lower_expr(&mut self, e: &Expr) -> &'hir hir::Expr<'hir> {
@@ -100,7 +105,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
                     } else {
                         let f = self.lower_expr(f);
-                        hir::ExprKind::Call(f, self.lower_exprs(args))
+                        hir::ExprKind::Call(f, self.lower_exprs_thin(args))
                     }
                 }
                 ExprKind::MethodCall(box MethodCall { seg, receiver, args, span }) => {
@@ -112,8 +117,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     ));
                     let receiver = self.lower_expr(receiver);
-                    let args =
-                        self.arena.alloc_from_iter(args.iter().map(|x| self.lower_expr_mut(x)));
+                    let args = self
+                        .arena
+                        .allocate_thin_from_iter(args.iter().map(|x| self.lower_expr_mut(x)));
                     hir::ExprKind::MethodCall(hir_seg, receiver, args, self.lower_span(*span))
                 }
                 ExprKind::Binary(binop, lhs, rhs) => {
@@ -407,7 +413,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Now lower everything as normal.
         let f = self.lower_expr(&f);
-        hir::ExprKind::Call(f, self.lower_exprs(&real_args))
+        hir::ExprKind::Call(f, self.lower_exprs_thin(&real_args))
     }
 
     fn lower_expr_if(
@@ -494,7 +500,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span);
         let stmt_break = self.stmt_expr(span, expr_break);
-        let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
+        let else_blk = self.block_all(span, arena_thin_vec![self; stmt_break], None);
         let else_expr = self.arena.alloc(self.expr_block(else_blk));
         let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind);
@@ -554,7 +560,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
         let constructor = self.arena.alloc(self.expr_lang_item_path(method_span, lang_item, None));
-        self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
+        self.expr_call(overall_span, constructor, arena_thin_vec![self; *expr])
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
@@ -653,7 +659,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 def_id: self.local_def_id(closure_node_id),
                 binder: hir::ClosureBinder::Default,
                 capture_clause,
-                bound_generic_params: &[],
+                bound_generic_params: ThinSlice::empty(),
                 fn_decl,
                 body,
                 fn_decl_span: self.lower_span(span),
@@ -755,19 +761,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
-                arena_vec![self; ref_mut_awaitee],
+                arena_thin_vec![self; ref_mut_awaitee],
                 Some(expr_hir_id),
             );
             let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
                 hir::LangItem::GetContext,
-                arena_vec![self; task_context],
+                arena_thin_vec![self; task_context],
                 Some(expr_hir_id),
             );
             let call = self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::FuturePoll,
-                arena_vec![self; new_unchecked, get_context],
+                arena_thin_vec![self; new_unchecked, get_context],
                 Some(expr_hir_id),
             );
             self.arena.alloc(self.expr_unsafe(call))
@@ -800,7 +806,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let pending_pat = self.pat_lang_item_variant(
                 span,
                 hir::LangItem::PollPending,
-                &[],
+                ThinSlice::empty(),
                 Some(expr_hir_id),
             );
             let empty_block = self.expr_block_empty(span);
@@ -838,7 +844,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
+        let loop_block =
+            self.block_all(span, arena_thin_vec![self; inner_match_stmt, yield_stmt], None);
 
         // loop { .. }
         let loop_expr = self.arena.alloc(hir::Expr {
@@ -864,7 +871,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let into_future_expr = self.expr_call_lang_item_fn(
             into_future_span,
             hir::LangItem::IntoFutureIntoFuture,
-            arena_vec![self; expr],
+            arena_thin_vec![self; expr],
             Some(expr_hir_id),
         );
 
@@ -1092,9 +1099,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // `a = lhs1; b = lhs2;`.
-        let stmts = self
-            .arena
-            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
+        let stmts = self.arena.allocate_thin_from_iter(
+            std::iter::once(destructure_let).chain(assignments.into_iter()),
+        );
 
         // Wrap everything in a block.
         hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
@@ -1167,7 +1174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (pats, rest) =
                     self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
                 let slice_pat = if let Some((i, span)) = rest {
-                    let (before, after) = pats.split_at(i);
+                    let (before, after): (&[hir::Pat<'_>], &[hir::Pat<'_>]) = pats.split_at(i);
                     hir::PatKind::Slice(
                         before,
                         Some(self.arena.alloc(self.pat_without_dbm(span, hir::PatKind::Wild))),
@@ -1220,7 +1227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // Structs.
             ExprKind::Struct(se) => {
-                let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
+                let field_pats = self.arena.allocate_thin_from_iter(se.fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::PatField {
                         hir_id: self.next_id(),
@@ -1260,7 +1267,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Paren(e) => {
                 // We special-case `(..)` for consistency with patterns.
                 if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
-                    let tuple_pat = hir::PatKind::Tuple(&[], hir::DotDotPos::new(Some(0)));
+                    let tuple_pat =
+                        hir::PatKind::Tuple(ThinSlice::empty(), hir::DotDotPos::new(Some(0)));
                     return self.pat_without_dbm(lhs.span, tuple_pat);
                 } else {
                     return self.destructure_assign_mut(e, eq_sign_span, assignments);
@@ -1290,10 +1298,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ctx: &str,
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
-    ) -> (&'hir [hir::Pat<'hir>], Option<(usize, Span)>) {
+    ) -> (&'hir ThinSlice<hir::Pat<'hir>>, Option<(usize, Span)>) {
         let mut rest = None;
         let elements =
-            self.arena.alloc_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
+            self.arena.allocate_thin_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
                 // Check for `..` pattern.
                 if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
                     if let Some((_, prev_span)) = rest {
@@ -1316,7 +1324,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_path =
             hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span), None);
         let fn_expr = self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path)));
-        hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
+        hir::ExprKind::Call(fn_expr, arena_thin_vec![self; e1, e2])
     }
 
     fn lower_expr_range(
@@ -1512,7 +1520,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let next_expr = self.expr_call_lang_item_fn(
                 head_span,
                 hir::LangItem::IteratorNext,
-                arena_vec![self; ref_mut_iter],
+                arena_thin_vec![self; ref_mut_iter],
                 None,
             );
             let arms = arena_vec![self; none_arm, some_arm];
@@ -1521,7 +1529,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let match_stmt = self.stmt_expr(for_span, match_expr);
 
-        let loop_block = self.block_all(for_span, arena_vec![self; match_stmt], None);
+        let loop_block = self.block_all(for_span, arena_thin_vec![self; match_stmt], None);
 
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(
@@ -1541,7 +1549,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.expr_call_lang_item_fn(
                 head_span,
                 hir::LangItem::IntoIterIntoIter,
-                arena_vec![self; head],
+                arena_thin_vec![self; head],
                 None,
             )
         };
@@ -1597,7 +1605,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.expr_call_lang_item_fn(
                 unstable_span,
                 hir::LangItem::TryTraitBranch,
-                arena_vec![self; sub_expr],
+                arena_thin_vec![self; sub_expr],
                 None,
             )
         };
@@ -1784,7 +1792,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
-        args: &'hir [hir::Expr<'hir>],
+        args: &'hir ThinSlice<hir::Expr<'hir>>,
     ) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Call(e, args))
     }
@@ -1793,7 +1801,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
-        args: &'hir [hir::Expr<'hir>],
+        args: &'hir ThinSlice<hir::Expr<'hir>>,
     ) -> &'hir hir::Expr<'hir> {
         self.arena.alloc(self.expr_call_mut(span, e, args))
     }
@@ -1802,7 +1810,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        args: &'hir [hir::Expr<'hir>],
+        args: &'hir ThinSlice<hir::Expr<'hir>>,
         hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
         let path = self.arena.alloc(self.expr_lang_item_path(span, lang_item, hir_id));
@@ -1813,7 +1821,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        args: &'hir [hir::Expr<'hir>],
+        args: &'hir ThinSlice<hir::Expr<'hir>>,
         hir_id: Option<hir::HirId>,
     ) -> &'hir hir::Expr<'hir> {
         self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args, hir_id))
@@ -1874,7 +1882,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.arena.alloc(hir::Path {
                 span: self.lower_span(span),
                 res,
-                segments: arena_vec![self; hir::PathSegment::new(ident, hir_id, res)],
+                segments: arena_thin_vec![self; hir::PathSegment::new(ident, hir_id, res)],
             }),
         ));
 
@@ -1888,7 +1896,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             hir::ExprKind::Block(
                 self.arena.alloc(hir::Block {
-                    stmts: &[],
+                    stmts: ThinSlice::empty(),
                     expr: Some(expr),
                     hir_id,
                     rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
@@ -1901,7 +1909,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn expr_block_empty(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
-        let blk = self.block_all(span, &[], None);
+        let blk = self.block_all(span, ThinSlice::empty(), None);
         let expr = self.expr_block(blk);
         self.arena.alloc(expr)
     }

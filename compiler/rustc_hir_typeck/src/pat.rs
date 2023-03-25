@@ -1873,7 +1873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let len = unmentioned_fields.len();
         let (prefix, postfix, sp) = match fields {
             [] => match &pat.kind {
-                PatKind::Struct(path, [], false) => {
+                PatKind::Struct(path, fields, false) if fields.is_empty() => {
                     (" { ", " }", path.span().shrink_to_hi().until(pat.span.shrink_to_hi()))
                 }
                 _ => return err,

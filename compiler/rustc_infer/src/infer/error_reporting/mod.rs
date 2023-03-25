@@ -2314,7 +2314,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
                     )
                 });
-                if named_lifetime_param_exist && let [param, ..] = ast_generics.params
+                if named_lifetime_param_exist && let [param, ..] = ast_generics.params.as_slice()
                 {
                     add_lt_suggs.push(Some((
                         self.tcx.def_span(param.def_id).shrink_to_lo(),

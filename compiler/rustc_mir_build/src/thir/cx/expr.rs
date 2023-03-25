@@ -334,7 +334,7 @@ impl<'tcx> Cx<'tcx> {
                                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
                                 && path.res.opt_def_id().map_or(false, |did| did == box_item)
                                 && fn_path.ident.name == sym::new
-                                && let [value] = args
+                                && let [value] = args.as_slice()
                             {
                                 return Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: ExprKind::Box { value: self.mirror_expr(value) } }
                             } else {

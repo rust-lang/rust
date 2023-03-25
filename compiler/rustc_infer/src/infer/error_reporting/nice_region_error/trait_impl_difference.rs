@@ -144,7 +144,7 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
                 hir::intravisit::walk_ty(self, mut_ty.ty);
                 return;
             }
-            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
+            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments.as_slice() {
                 [segment]
                     if matches!(
                         segment.res,

@@ -22,6 +22,7 @@
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
+#![feature(extern_types)]
 #![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
@@ -65,6 +66,7 @@ pub mod small_c_str;
 pub mod small_str;
 pub mod snapshot_map;
 pub mod svh;
+pub mod thin_slice;
 pub use ena::snapshot_vec;
 pub mod memmap;
 pub mod sorted_map;

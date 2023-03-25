@@ -51,7 +51,9 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
         // Save the span of expressions in `for _ in expr` syntax,
         // so we can give a better suggestion for those later.
         if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind {
-            if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
+            if let hir::ExprKind::Call(path, args) = &arg.kind
+                && let [arg] = args.as_slice()
+            {
                 if let hir::ExprKind::Path(hir::QPath::LangItem(
                     hir::LangItem::IntoIterIntoIter,
                     ..,

@@ -3,6 +3,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_hir as hir;
 use rustc_span::{
     sym,
@@ -212,7 +213,7 @@ fn make_argument<'hir>(
             Usize => sym::from_usize,
         },
     ));
-    ctx.expr_call_mut(sp, new_fn, std::slice::from_ref(arg))
+    ctx.expr_call_mut(sp, new_fn, arena_thin_vec![ctx; *arg])
 }
 
 /// Generate a hir expression for a format_args Count.
@@ -247,7 +248,7 @@ fn make_count<'hir>(
                 hir::LangItem::FormatCount,
                 sym::Is,
             ));
-            let value = ctx.arena.alloc_from_iter([ctx.expr_usize(sp, *n)]);
+            let value = ctx.arena.allocate_thin_from_iter([ctx.expr_usize(sp, *n)]);
             ctx.expr_call_mut(sp, count_is, value)
         }
         Some(FormatCount::Argument(arg)) => {
@@ -258,7 +259,7 @@ fn make_count<'hir>(
                     hir::LangItem::FormatCount,
                     sym::Param,
                 ));
-                let value = ctx.arena.alloc_from_iter([ctx.expr_usize(sp, i)]);
+                let value = ctx.arena.allocate_thin_from_iter([ctx.expr_usize(sp, i)]);
                 ctx.expr_call_mut(sp, count_param, value)
             } else {
                 ctx.expr(
@@ -340,7 +341,7 @@ fn make_format_spec<'hir>(
         hir::LangItem::FormatPlaceholder,
         sym::new,
     ));
-    let args = ctx.arena.alloc_from_iter([position, fill, align, flags, precision, width]);
+    let args = ctx.arena.allocate_thin_from_iter([position, fill, align, flags, precision, width]);
     ctx.expr_call_mut(sp, format_placeholder_new, args)
 }
 
@@ -426,7 +427,7 @@ fn expand_format_args<'hir>(
             hir::LangItem::FormatArguments,
             sym::new_const,
         ));
-        let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
+        let new_args = ctx.arena.allocate_thin_from_iter([lit_pieces]);
         return hir::ExprKind::Call(new, new_args);
     }
 
@@ -530,17 +531,17 @@ fn expand_format_args<'hir>(
             hir::LangItem::FormatUnsafeArg,
             sym::new,
         ));
-        let unsafe_arg_new_call = ctx.expr_call(macsp, unsafe_arg_new, &[]);
+        let unsafe_arg_new_call = ctx.expr_call(macsp, unsafe_arg_new, ThinSlice::empty());
         let hir_id = ctx.next_id();
         let unsafe_arg = ctx.expr_block(ctx.arena.alloc(hir::Block {
-            stmts: &[],
+            stmts: ThinSlice::empty(),
             expr: Some(unsafe_arg_new_call),
             hir_id,
             rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
             span: macsp,
             targeted_by_break: false,
         }));
-        let args = ctx.arena.alloc_from_iter([lit_pieces, args, format_options, unsafe_arg]);
+        let args = ctx.arena.allocate_thin_from_iter([lit_pieces, args, format_options, unsafe_arg]);
         hir::ExprKind::Call(new_v1_formatted, args)
     } else {
         // Generate:
@@ -553,7 +554,7 @@ fn expand_format_args<'hir>(
             hir::LangItem::FormatArguments,
             sym::new_v1,
         ));
-        let new_args = ctx.arena.alloc_from_iter([lit_pieces, args]);
+        let new_args = ctx.arena.allocate_thin_from_iter([lit_pieces, args]);
         hir::ExprKind::Call(new_v1, new_args)
     }
 }
