@@ -1038,6 +1038,26 @@ impl ::core::cmp::PartialOrd for Fieldless {
         let __arg1_tag = ::core::intrinsics::discriminant_value(other);
         ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag)
     }
+    #[inline]
+    fn lt(&self, other: &Fieldless) -> bool {
+        ::core::intrinsics::discriminant_value(self) <
+            ::core::intrinsics::discriminant_value(other)
+    }
+    #[inline]
+    fn gt(&self, other: &Fieldless) -> bool {
+        ::core::intrinsics::discriminant_value(self) >
+            ::core::intrinsics::discriminant_value(other)
+    }
+    #[inline]
+    fn le(&self, other: &Fieldless) -> bool {
+        ::core::intrinsics::discriminant_value(self) <=
+            ::core::intrinsics::discriminant_value(other)
+    }
+    #[inline]
+    fn ge(&self, other: &Fieldless) -> bool {
+        ::core::intrinsics::discriminant_value(self) >=
+            ::core::intrinsics::discriminant_value(other)
+    }
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Fieldless {

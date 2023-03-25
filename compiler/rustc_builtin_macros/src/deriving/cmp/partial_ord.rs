@@ -1,9 +1,9 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec_std};
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
+use crate::deriving::{path_local, path_std, pathvec_std};
+use rustc_ast::{BinOpKind, ExprKind, ItemKind, MetaItem, PatKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
@@ -20,14 +20,18 @@ pub fn expand_deriving_partial_ord(
         Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     let attrs = thin_vec![cx.attr_word(sym::inline, span)];
-
+    let mut all_dataless = false;
     // Order in which to perform matching
     let tag_then_data = if let Annotatable::Item(item) = item
         && let ItemKind::Enum(def, _) = &item.kind {
             let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
             match dataful.iter().filter(|&&b| b).count() {
                 // No data, placing the tag check first makes codegen simpler
-                0 => true,
+                0 => {
+                    // Don't use our specialization for empty or unit enums.
+                    all_dataless = def.variants.len() >= 2;
+                    true
+                },
                 1..=2 => false,
                 _ => {
                     (0..dataful.len()-1).any(|i| {
@@ -54,6 +58,32 @@ pub fn expand_deriving_partial_ord(
             cs_partial_cmp(cx, span, substr, tag_then_data)
         })),
     };
+    let mut methods = vec![partial_cmp_def];
+    // Implementing dataless enums in terms of direct `discriminant_value`
+    // comparisons generates much less code in debug builds.
+    if all_dataless {
+        let binop_method = |cx: &ExtCtxt<'_>, name: Symbol, binop: BinOpKind| -> MethodDef<'_> {
+            MethodDef {
+                name,
+                generics: Bounds::empty(),
+                explicit_self: true,
+                nonself_args: vec![(self_ref(), sym::other)],
+                ret_ty: Path(path_local!(bool)),
+                attributes: thin_vec![cx.attr_word(sym::inline, span)],
+                fieldless_variants_strategy:
+                    FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
+                combine_substructure: combine_substructure(Box::new(move |cx, span, substr| {
+                    cs_fieldless_op(cx, span, substr, binop)
+                })),
+            }
+        };
+        methods.extend([
+            binop_method(cx, sym::lt, BinOpKind::Lt),
+            binop_method(cx, sym::gt, BinOpKind::Gt),
+            binop_method(cx, sym::le, BinOpKind::Le),
+            binop_method(cx, sym::ge, BinOpKind::Ge),
+        ]);
+    }
 
     let trait_def = TraitDef {
         span,
@@ -62,7 +92,7 @@ pub fn expand_deriving_partial_ord(
         needs_copy_as_bound_if_packed: true,
         additional_bounds: vec![],
         supports_unions: false,
-        methods: vec![partial_cmp_def],
+        methods,
         associated_types: Vec::new(),
         is_const,
     };
@@ -96,8 +126,8 @@ fn cs_partial_cmp(
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
-                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
-                    };
+                    cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                };
                 let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
             }
@@ -149,5 +179,26 @@ fn cs_partial_cmp(
             CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),
         },
     );
+    BlockOrExpr::new_expr(expr)
+}
+
+/// Emit `discriminant_value(self) {binop} discriminant_value(other)`. Only
+/// used for fully fieldless enums with at least 2 variants.
+fn cs_fieldless_op(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    substr: &Substructure<'_>,
+    op: BinOpKind,
+) -> BlockOrExpr {
+    let AllFieldlessEnum(..) = substr.fields else {
+        cx.span_bug(span, "nonsensical .fields in fieldless enum handling for `PartialOrd`");
+    };
+
+    let self_expr = cx.expr_self(span);
+    let self_dv = super::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![self_expr]);
+    // Is there a better way to do this?
+    let other_expr = cx.expr_ident(span, Ident::new(sym::other, span));
+    let other_dv = super::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![other_expr]);
+    let expr = cx.expr_binary(span, op, self_dv, other_dv);
     BlockOrExpr::new_expr(expr)
 }
