@@ -24,7 +24,7 @@ use crate::{
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, notification_is, Progress},
     mem_docs::DocumentData,
-    reload::{self, BuildDataProgress, ProjectWorkspaceProgress},
+    reload::{self, BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
     Result,
 };
 
@@ -68,6 +68,7 @@ pub(crate) enum Task {
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
+    LoadProcMacros(ProcMacroProgress),
 }
 
 #[derive(Debug)]
@@ -488,6 +489,21 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
+                    self.report_progress("Building", state, msg, None, None);
+                }
+            }
+            Task::LoadProcMacros(progress) => {
+                let (state, msg) = match progress {
+                    ProcMacroProgress::Begin => (Some(Progress::Begin), None),
+                    ProcMacroProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
+                    ProcMacroProgress::End(proc_macro_load_result) => {
+                        self.set_proc_macros(proc_macro_load_result);
+
+                        (Some(Progress::End), None)
+                    }
+                };
+
+                if let Some(state) = state {
                     self.report_progress("Loading", state, msg, None, None);
                 }
             }
@@ -633,6 +649,7 @@ impl GlobalState {
 
         dispatcher
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
+            .on_sync_mut::<lsp_ext::ReloadProcMacros>(handlers::handle_proc_macros_reload)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)

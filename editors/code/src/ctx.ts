@@ -378,10 +378,13 @@ export class Ctx {
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendText("\n\n");
         }
+        statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown(
             "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)"
         );
-        statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
+        statusBar.tooltip.appendMarkdown(
+            "\n\n[Rebuild Proc Macros](command:rust-analyzer.reloadProcMacros)"
+        );
         statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
         statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";

@@ -78,25 +78,35 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     }
 
     let cfg_options = &krate.cfg_options;
-    let proc_macros = match &krate.proc_macro {
-        Ok(proc_macros) => {
-            proc_macros
-                .iter()
-                .enumerate()
-                .map(|(idx, it)| {
-                    // FIXME: a hacky way to create a Name from string.
-                    let name =
-                        tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
-                    (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
-                })
-                .collect()
-        }
-        Err(e) => {
-            def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
-            Vec::new()
-        }
-    };
+
     let is_proc_macro = krate.is_proc_macro;
+    let proc_macros = if is_proc_macro {
+        match db.proc_macros().get(&def_map.krate) {
+            Some(Ok(proc_macros)) => {
+                proc_macros
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, it)| {
+                        // FIXME: a hacky way to create a Name from string.
+                        let name =
+                            tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
+                        (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
+                    })
+                    .collect()
+            }
+            Some(Err(e)) => {
+                def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
+                Vec::new()
+            }
+            None => {
+                def_map.proc_macro_loading_error =
+                    Some("No proc-macros present for crate".to_owned().into_boxed_str());
+                Vec::new()
+            }
+        }
+    } else {
+        vec![]
+    };
 
     let mut collector = DefCollector {
         db,

@@ -6,7 +6,7 @@ use std::{fmt, sync::Arc};
 use salsa::Durability;
 use vfs::FileId;
 
-use crate::{CrateGraph, SourceDatabaseExt, SourceRoot, SourceRootId};
+use crate::{CrateGraph, ProcMacros, SourceDatabaseExt, SourceRoot, SourceRootId};
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
 #[derive(Default)]
@@ -14,6 +14,7 @@ pub struct Change {
     pub roots: Option<Vec<SourceRoot>>,
     pub files_changed: Vec<(FileId, Option<Arc<String>>)>,
     pub crate_graph: Option<CrateGraph>,
+    pub proc_macros: Option<ProcMacros>,
 }
 
 impl fmt::Debug for Change {
@@ -49,6 +50,10 @@ impl Change {
         self.crate_graph = Some(graph);
     }
 
+    pub fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
+        self.proc_macros = Some(proc_macros);
+    }
+
     pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
         let _p = profile::span("RootDatabase::apply_change");
         if let Some(roots) = self.roots {
@@ -72,6 +77,9 @@ impl Change {
         }
         if let Some(crate_graph) = self.crate_graph {
             db.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)
+        }
+        if let Some(proc_macros) = self.proc_macros {
+            db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH)
         }
     }
 }
