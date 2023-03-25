@@ -869,17 +869,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        if let Some(Finalize { path_span, report_private, .. }) = finalize {
-            // If the primary binding is unusable, search further and return the shadowed glob
-            // binding if it exists. What we really want here is having two separate scopes in
-            // a module - one for non-globs and one for globs, but until that's done use this
-            // hack to avoid inconsistent resolution ICEs during import validation.
-            let binding = [resolution.binding, resolution.shadowed_glob].into_iter().find_map(
-                |binding| match (binding, ignore_binding) {
+        // If the primary binding is unusable, search further and return the shadowed glob
+        // binding if it exists. What we really want here is having two separate scopes in
+        // a module - one for non-globs and one for globs, but until that's done use this
+        // hack to avoid inconsistent resolution ICEs during import validation.
+        let binding =
+            [resolution.binding, resolution.shadowed_glob].into_iter().find_map(|binding| {
+                match (binding, ignore_binding) {
                     (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
                     _ => binding,
-                },
-            );
+                }
+            });
+
+        if let Some(Finalize { path_span, report_private, .. }) = finalize {
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };
@@ -927,15 +929,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(ignored) = ignore_binding && ptr::eq(binding, ignored) {
-                return Err((Determined, Weak::No));
-            }
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
-        if let Some(binding) = resolution.binding {
+        if let Some(binding) = binding {
             if !binding.is_glob_import() {
                 return check_usable(self, binding);
             }
@@ -950,6 +949,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 continue;
             };
             if !self.is_accessible_from(import_vis, parent_scope.module) {
+                continue;
+            }
+            if let Some(ignored) = ignore_binding &&
+                let NameBindingKind::Import { import, .. } = ignored.kind &&
+                ptr::eq(import, &**single_import) {
+                // Ignore not just the binding itself, but if it has a shadowed_glob,
+                // ignore that, too, because this loop is supposed to only process
+                // named imports.
                 continue;
             }
             let Some(module) = single_import.imported_module.get() else {
@@ -989,7 +996,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         let unexpanded_macros = !module.unexpanded_invocations.borrow().is_empty();
-        if let Some(binding) = resolution.binding {
+        if let Some(binding) = binding {
             if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
                 return check_usable(self, binding);
             } else {
