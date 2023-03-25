@@ -15,6 +15,7 @@ use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
@@ -1508,7 +1509,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 // Otherwise, this is an inherent associated type.
                 _ => return clean_middle_ty(ty::Binder::dummy(ty), cx, None),
             };
-            let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
+            let trait_ = clean_path(&hir::Path { span, res, segments: ThinSlice::empty() }, cx);
             register_res(cx, trait_.res);
             let self_def_id = res.opt_def_id();
             let self_type = clean_ty(qself, cx);
@@ -2083,7 +2084,7 @@ fn get_path_parent_def_id(
     def_id: DefId,
     path: &hir::UsePath<'_>,
 ) -> Option<DefId> {
-    if let [.., parent_segment, _] = &path.segments {
+    if let [.., parent_segment, _] = &path.segments.as_slice() {
         match parent_segment.res {
             hir::def::Res::Def(_, parent_def_id) => Some(parent_def_id),
             _ if parent_segment.ident.name == kw::Crate => {

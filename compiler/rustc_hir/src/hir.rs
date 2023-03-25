@@ -3968,14 +3968,14 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 32);
-    static_assert_size!(Expr<'_>, 64);
-    static_assert_size!(ExprKind<'_>, 48);
+    static_assert_size!(Expr<'_>, 56);
+    static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
     static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
-    static_assert_size!(Generics<'_>, 56);
+    static_assert_size!(Generics<'_>, 40);
     static_assert_size!(Impl<'_>, 80);
     static_assert_size!(ImplItem<'_>, 80);
     static_assert_size!(ImplItemKind<'_>, 32);
@@ -3984,7 +3984,7 @@ mod size_asserts {
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(Path<'_>, 40);
+    static_assert_size!(Path<'_>, 32);
     static_assert_size!(PathSegment<'_>, 48);
     static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
