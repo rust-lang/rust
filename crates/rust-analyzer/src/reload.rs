@@ -73,8 +73,13 @@ impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
         let _p = profile::span("GlobalState::update_configuration");
         let old_config = mem::replace(&mut self.config, Arc::new(config));
-        if self.config.lru_capacity() != old_config.lru_capacity() {
-            self.analysis_host.update_lru_capacity(self.config.lru_capacity());
+        if self.config.lru_parse_query_capacity() != old_config.lru_parse_query_capacity() {
+            self.analysis_host.update_lru_capacity(self.config.lru_parse_query_capacity());
+        }
+        if self.config.lru_query_capacities() != old_config.lru_query_capacities() {
+            self.analysis_host.update_lru_capacities(
+                &self.config.lru_query_capacities().cloned().unwrap_or_default(),
+            );
         }
         if self.config.linked_projects() != old_config.linked_projects() {
             self.fetch_workspaces_queue.request_op("linked projects changed".to_string())

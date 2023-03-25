@@ -67,7 +67,7 @@ use ide_db::{
         salsa::{self, ParallelDatabase},
         CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index, LineIndexDatabase,
+    symbol_index, FxHashMap, LineIndexDatabase,
 };
 use syntax::SourceFile;
 
@@ -154,7 +154,11 @@ impl AnalysisHost {
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
-        self.db.update_lru_capacity(lru_capacity);
+        self.db.update_parse_query_lru_capacity(lru_capacity);
+    }
+
+    pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
+        self.db.update_lru_capacities(lru_capacities);
     }
 
     /// Returns a snapshot of the current state, which you can query for

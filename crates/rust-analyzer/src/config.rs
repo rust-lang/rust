@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{fmt, iter, path::PathBuf};
+use std::{fmt, iter, ops::Not, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
@@ -418,6 +418,8 @@ config_data! {
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
         lru_capacity: Option<usize>                 = "null",
+        /// Sets the LRU capacity of the specified queries.
+        lru_query_capacities: FxHashMap<Box<str>, usize> = "{}",
 
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
@@ -1085,8 +1087,12 @@ impl Config {
         extra_env
     }
 
-    pub fn lru_capacity(&self) -> Option<usize> {
+    pub fn lru_parse_query_capacity(&self) -> Option<usize> {
         self.data.lru_capacity
+    }
+
+    pub fn lru_query_capacities(&self) -> Option<&FxHashMap<Box<str>, usize>> {
+        self.data.lru_query_capacities.is_empty().not().then(|| &self.data.lru_query_capacities)
     }
 
     pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
@@ -2018,6 +2024,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "object",
         },
         "FxHashMap<String, String>" => set! {
+            "type": "object",
+        },
+        "FxHashMap<Box<str>, usize>" => set! {
             "type": "object",
         },
         "Option<usize>" => set! {
