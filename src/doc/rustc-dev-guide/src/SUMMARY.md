@@ -46,6 +46,7 @@
 - [Stabilizing Features](./stabilization_guide.md)
 - [Feature Gates](./feature-gates.md)
 - [Coding conventions](./conventions.md)
+- [Using external repositories](./external-repos.md)
 - [Fuzzing](./fuzzing.md)
 - [Notification groups](notification-groups/about.md)
     - [ARM](notification-groups/arm.md)
