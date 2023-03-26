@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 92fe1037312754df
+lsp_ext.rs hash: 7269e4cfab906e10
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -422,9 +422,9 @@ Returns internal status message, mostly for debugging purposes.
 
 Reloads project information (that is, re-executes `cargo metadata`).
 
-## Reload proc-macros
+## Rebuild proc-macros
 
-**Method:** `rust-analyzer/reloadProcMacros`
+**Method:** `rust-analyzer/rebuildProcMacros`
 
 **Request:** `null`
 

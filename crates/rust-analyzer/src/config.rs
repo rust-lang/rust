@@ -1106,6 +1106,10 @@ impl Config {
         &self.data.procMacro_ignored
     }
 
+    pub fn expand_proc_macros(&self) -> bool {
+        self.data.procMacro_enable
+    }
+
     pub fn expand_proc_attr_macros(&self) -> bool {
         self.data.procMacro_enable && self.data.procMacro_attributes_enable
     }

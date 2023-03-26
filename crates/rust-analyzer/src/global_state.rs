@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
+use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
@@ -101,11 +101,12 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<(), Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
     pub(crate) fetch_build_data_queue:
-        OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+        OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+    pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
 
-    pub(crate) prime_caches_queue: OpQueue<()>,
+    pub(crate) prime_caches_queue: OpQueue,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -117,6 +118,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    // used to signal semantic highlighting to fall back to syntax based highlighting until proc-macros have been loaded
     pub(crate) proc_macros_loaded: bool,
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
@@ -170,9 +172,10 @@ impl GlobalState {
 
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
-            prime_caches_queue: OpQueue::default(),
-
             fetch_build_data_queue: OpQueue::default(),
+            fetch_proc_macros_queue: OpQueue::default(),
+
+            prime_caches_queue: OpQueue::default(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -286,7 +289,7 @@ impl GlobalState {
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
             if let Some(path) = workspace_structure_change {
                 self.fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change: {}", path.display()));
+                    .request_op(format!("workspace vfs file change: {}", path.display()), ());
             }
             self.proc_macro_changed =
                 changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
@@ -309,7 +312,8 @@ impl GlobalState {
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
-            proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
+            proc_macros_loaded: !self.config.expand_proc_macros()
+                || *self.fetch_proc_macros_queue.last_op_result(),
             flycheck: self.flycheck.clone(),
         }
     }

@@ -101,7 +101,10 @@ pub fn load_workspace(
             .map(|(crate_id, path)| {
                 (
                     crate_id,
-                    path.and_then(|(_, path)| load_proc_macro(proc_macro_server, &path, &[])),
+                    path.map_or_else(
+                        || Err("proc macro crate is missing dylib".to_owned()),
+                        |(_, path)| load_proc_macro(proc_macro_server, &path, &[]),
+                    ),
                 )
             })
             .collect()

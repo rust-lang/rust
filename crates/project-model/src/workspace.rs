@@ -707,7 +707,7 @@ fn project_json_to_crate_graph(
             if let Some(path) = krate.proc_macro_dylib_path.clone() {
                 proc_macros.insert(
                     crate_id,
-                    Ok((
+                    Some((
                         krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
                         path,
                     )),
@@ -1185,12 +1185,14 @@ fn add_target_crate_root(
         CrateOrigin::CratesIo { repo: pkg.repository.clone(), name: Some(pkg.name.clone()) },
         target_layout,
     );
-    let proc_macro = match build_data.as_ref().map(|it| &it.proc_macro_dylib_path) {
-        Some(it) => it.clone().map(Ok),
-        None => Some(Err("crate has not (yet) been built".into())),
-    };
-    if let Some(proc_macro) = proc_macro {
-        proc_macros.insert(crate_id, proc_macro.map(|path| (Some(cargo_name.to_owned()), path)));
+    if is_proc_macro {
+        let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
+            Some(it) => it.cloned().map(|path| Some((Some(cargo_name.to_owned()), path))),
+            None => Some(None),
+        };
+        if let Some(proc_macro) = proc_macro {
+            proc_macros.insert(crate_id, proc_macro);
+        }
     }
 
     crate_id

@@ -66,6 +66,7 @@ impl GlobalState {
         !(self.last_reported_status.is_none()
             || self.fetch_workspaces_queue.op_in_progress()
             || self.fetch_build_data_queue.op_in_progress()
+            || self.fetch_proc_macros_queue.op_in_progress()
             || self.vfs_progress_config_version < self.vfs_config_version
             || self.vfs_progress_n_done < self.vfs_progress_n_total)
     }
@@ -77,7 +78,7 @@ impl GlobalState {
             self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
         if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_string())
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), ())
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -101,7 +102,7 @@ impl GlobalState {
 
         if self.proc_macro_changed {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Reload required due to source changes of a procedural macro.\n\n");
+            message.push_str("Proc-macros have changed and need to be rebuild.\n\n");
         }
         if let Err(_) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
@@ -223,8 +224,8 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn load_proc_macros(&mut self, paths: Vec<ProcMacroPaths>) {
-        tracing::info!("will load proc macros");
+    pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
+        tracing::info!(%cause, "will load proc macros");
         let dummy_replacements = self.config.dummy_replacements().clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
@@ -240,28 +241,30 @@ impl GlobalState {
             };
 
             let mut res = FxHashMap::default();
-            for (client, paths) in proc_macro_clients
+            let chain = proc_macro_clients
                 .iter()
                 .map(|res| res.as_ref().map_err(|e| &**e))
-                .chain(iter::repeat_with(|| Err("Proc macros are disabled")))
-                .zip(paths)
-            {
+                .chain(iter::repeat_with(|| Err("Proc macros servers are not running")));
+            for (client, paths) in chain.zip(paths) {
                 res.extend(paths.into_iter().map(move |(crate_id, res)| {
                     (
                         crate_id,
-                        res.and_then(|(crate_name, path)| {
-                            progress(path.display().to_string());
-                            load_proc_macro(
-                                client,
-                                &path,
-                                crate_name
-                                    .as_deref()
-                                    .and_then(|crate_name| {
-                                        dummy_replacements.get(crate_name).map(|v| &**v)
-                                    })
-                                    .unwrap_or_default(),
-                            )
-                        }),
+                        res.map_or_else(
+                            || Err("proc macro crate is missing dylib".to_owned()),
+                            |(crate_name, path)| {
+                                progress(path.display().to_string());
+                                load_proc_macro(
+                                    client,
+                                    &path,
+                                    crate_name
+                                        .as_deref()
+                                        .and_then(|crate_name| {
+                                            dummy_replacements.get(crate_name).map(|v| &**v)
+                                        })
+                                        .unwrap_or_default(),
+                                )
+                            },
+                        ),
                     )
                 }));
             }
@@ -443,13 +446,24 @@ impl GlobalState {
             (crate_graph, proc_macros)
         };
         let mut change = Change::new();
+
+        if same_workspaces {
+            if self.config.expand_proc_macros() {
+                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+            }
+        } else {
+            // Set up errors for proc-macros upfront that we haven't run build scripts yet
+            let mut proc_macros = FxHashMap::default();
+            for paths in proc_macro_paths {
+                proc_macros.extend(paths.into_iter().map(move |(crate_id, _)| {
+                    (crate_id, Err("crate has not yet been build".to_owned()))
+                }));
+            }
+            change.set_proc_macros(proc_macros);
+        }
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
         self.process_changes();
-
-        if same_workspaces && !self.fetch_workspaces_queue.op_requested() {
-            self.load_proc_macros(proc_macro_paths);
-        }
 
         self.reload_flycheck();
 
