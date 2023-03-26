@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(linked_list_cursors)]
 use std::collections::LinkedList;
 

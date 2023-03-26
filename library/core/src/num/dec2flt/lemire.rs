@@ -118,10 +118,12 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
 /// This uses a pre-computed integer approximation for
 /// log2(10), where 217706 / 2^16 is accurate for the
 /// entire range of non-finite decimal exponents.
+#[inline]
 fn power(q: i32) -> i32 {
     (q.wrapping_mul(152_170 + 65536) >> 16) + 63
 }
 
+#[inline]
 fn full_multiplication(a: u64, b: u64) -> (u64, u64) {
     let r = (a as u128) * (b as u128);
     (r as u64, (r >> 64) as u64)

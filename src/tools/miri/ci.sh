@@ -62,8 +62,8 @@ function run_tests {
   if [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
     # These act up on Windows (`which miri` produces a filename that does not exist?!?),
     # so let's do this only on Linux. Also makes sure things work without these set.
-    export RUSTC=$(which rustc)
-    export MIRI=$(which miri)
+    export RUSTC=$(which rustc) # Produces a warning unless we also set MIRI
+    export MIRI=$(rustc +miri --print sysroot)/bin/miri
   fi
   mkdir -p .cargo
   echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
@@ -104,6 +104,7 @@ run_tests
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple atomic data_race env/var
@@ -118,6 +119,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
     ;;
   i686-pc-windows-msvc)
+    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;

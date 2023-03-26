@@ -24,8 +24,8 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for deriving `Hash` but implementing `PartialEq`
-    /// explicitly or vice versa.
+    /// Lints against manual `PartialEq` implementations for types with a derived `Hash`
+    /// implementation.
     ///
     /// ### Why is this bad?
     /// The implementation of these traits must agree (for
@@ -54,8 +54,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for deriving `Ord` but implementing `PartialOrd`
-    /// explicitly or vice versa.
+    /// Lints against manual `PartialOrd` and `Ord` implementations for types with a derived `Ord`
+    /// or `PartialOrd` implementation.
     ///
     /// ### Why is this bad?
     /// The implementation of these traits must agree (for
@@ -212,7 +212,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         }) = item.kind
         {
             let ty = cx.tcx.type_of(item.owner_id).subst_identity();
-            let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
+            let is_automatically_derived = cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -514,7 +514,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     }
 
     ParamEnv::new(
-        tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
+        tcx.mk_predicates_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
                     trait_ref: tcx.mk_trait_ref(eq_trait_id, [tcx.mk_param_from_def(param)]),

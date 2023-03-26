@@ -211,13 +211,13 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn get_type_parameter_bounds(
         &self,
         _: Span,
-        def_id: DefId,
+        def_id: LocalDefId,
         _: Ident,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
+        let item_def_id = tcx.hir().ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.param_def_id_to_index[&def_id];
+        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         ty::GenericPredicates {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(

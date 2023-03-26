@@ -2,7 +2,8 @@ use crate::io::prelude::*;
 
 use crate::env;
 use crate::fs::{self, File, OpenOptions};
-use crate::io::{ErrorKind, SeekFrom};
+use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
+use crate::mem::MaybeUninit;
 use crate::path::Path;
 use crate::str;
 use crate::sync::Arc;
@@ -399,6 +400,23 @@ fn file_test_io_seek_read_write() {
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
     }
     check!(fs::remove_file(&filename));
+}
+
+#[test]
+fn file_test_read_buf() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("test");
+    check!(fs::write(filename, &[1, 2, 3, 4]));
+
+    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    let mut file = check!(File::open(filename));
+    check!(file.read_buf(buf.unfilled()));
+    assert_eq!(buf.filled(), &[1, 2, 3, 4]);
+    // File::read_buf should omit buffer initialization.
+    assert_eq!(buf.init_len(), 4);
+
+    check!(fs::remove_file(filename));
 }
 
 #[test]
@@ -1594,4 +1612,20 @@ fn test_read_dir_infinite_loop() {
 
     // Check for duplicate errors
     assert!(dir.filter(|e| e.is_err()).take(2).count() < 2);
+}
+
+#[test]
+fn rename_directory() {
+    let tmpdir = tmpdir();
+    let old_path = tmpdir.join("foo/bar/baz");
+    fs::create_dir_all(&old_path).unwrap();
+    let test_file = &old_path.join("temp.txt");
+
+    File::create(test_file).unwrap();
+
+    let new_path = tmpdir.join("quux/blat");
+    fs::create_dir_all(&new_path).unwrap();
+    fs::rename(&old_path, &new_path.join("newdir")).unwrap();
+    assert!(new_path.join("newdir").is_dir());
+    assert!(new_path.join("newdir/temp.txt").exists());
 }

@@ -83,6 +83,46 @@ async fn test() {
 }
 
 #[test]
+fn infer_async_closure() {
+    check_types(
+        r#"
+//- minicore: future, option
+async fn test() {
+    let f = async move |x: i32| x + 42;
+    f;
+//  ^ |i32| -> impl Future<Output = i32>
+    let a = f(4);
+    a;
+//  ^ impl Future<Output = i32>
+    let x = a.await;
+    x;
+//  ^ i32
+    let f = async move || 42;
+    f;
+//  ^ || -> impl Future<Output = i32>
+    let a = f();
+    a;
+//  ^ impl Future<Output = i32>
+    let x = a.await;
+    x;
+//  ^ i32
+    let b = ((async move || {})()).await;
+    b;
+//  ^ ()
+    let c = async move || {
+        let y = None;
+        y
+    //  ^ Option<u64>
+    };
+    let _: Option<u64> = c().await;
+    c;
+//  ^ || -> impl Future<Output = Option<u64>>
+}
+"#,
+    );
+}
+
+#[test]
 fn auto_sized_async_block() {
     check_no_mismatches(
         r#"
@@ -493,29 +533,30 @@ fn tuple_struct_with_fn() {
         r#"
 struct S(fn(u32) -> u64);
 fn test() -> u64 {
-    let a = S(|i| 2*i);
+    let a = S(|i| 2*i as u64);
     let b = a.0(4);
     a.0(2)
 }"#,
         expect![[r#"
-            43..101 '{     ...0(2) }': u64
+            43..108 '{     ...0(2) }': u64
             53..54 'a': S
             57..58 'S': S(fn(u32) -> u64) -> S
-            57..67 'S(|i| 2*i)': S
-            59..66 '|i| 2*i': |u32| -> u64
+            57..74 'S(|i| ...s u64)': S
+            59..73 '|i| 2*i as u64': |u32| -> u64
             60..61 'i': u32
-            63..64 '2': u32
-            63..66 '2*i': u32
+            63..64 '2': u64
+            63..73 '2*i as u64': u64
             65..66 'i': u32
-            77..78 'b': u64
-            81..82 'a': S
-            81..84 'a.0': fn(u32) -> u64
-            81..87 'a.0(4)': u64
-            85..86 '4': u32
-            93..94 'a': S
-            93..96 'a.0': fn(u32) -> u64
-            93..99 'a.0(2)': u64
-            97..98 '2': u32
+            65..73 'i as u64': u64
+            84..85 'b': u64
+            88..89 'a': S
+            88..91 'a.0': fn(u32) -> u64
+            88..94 'a.0(4)': u64
+            92..93 '4': u32
+            100..101 'a': S
+            100..103 'a.0': fn(u32) -> u64
+            100..106 'a.0(2)': u64
+            104..105 '2': u32
         "#]],
     );
 }

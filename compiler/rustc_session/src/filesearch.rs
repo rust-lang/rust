@@ -1,5 +1,6 @@
 //! A module for searching for libraries
 
+use rustc_fs_util::try_canonicalize;
 use smallvec::{smallvec, SmallVec};
 use std::env;
 use std::fs;
@@ -87,42 +88,45 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::OsString;
     use std::io;
     use std::os::windows::prelude::*;
-    use std::ptr;
 
-    use winapi::um::libloaderapi::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+    use windows::{
+        core::PCWSTR,
+        Win32::Foundation::HINSTANCE,
+        Win32::System::LibraryLoader::{
+            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        },
     };
 
+    let mut module = HINSTANCE::default();
     unsafe {
-        let mut module = ptr::null_mut();
-        let r = GetModuleHandleExW(
+        GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            current_dll_path as usize as *mut _,
+            PCWSTR(current_dll_path as *mut u16),
             &mut module,
-        );
-        if r == 0 {
-            return Err(format!("GetModuleHandleExW failed: {}", io::Error::last_os_error()));
-        }
-        let mut space = Vec::with_capacity(1024);
-        let r = GetModuleFileNameW(module, space.as_mut_ptr(), space.capacity() as u32);
-        if r == 0 {
-            return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
-        }
-        let r = r as usize;
-        if r >= space.capacity() {
-            return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
-        }
-        space.set_len(r);
-        let os = OsString::from_wide(&space);
-        Ok(PathBuf::from(os))
+        )
     }
+    .ok()
+    .map_err(|e| e.to_string())?;
+
+    let mut filename = vec![0; 1024];
+    let n = unsafe { GetModuleFileNameW(module, &mut filename) } as usize;
+    if n == 0 {
+        return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
+    }
+    if n >= filename.capacity() {
+        return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
+    }
+
+    filename.truncate(n);
+
+    Ok(OsString::from_wide(&filename).into())
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_triple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
-    let path = current_dll_path().and_then(|s| s.canonicalize().map_err(|e| e.to_string()));
+    let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
     if let Ok(dll) = path {
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll which should be either `lib` or `bin`.
@@ -157,7 +161,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
     // Follow symlinks. If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
-        let path = fs::canonicalize(&path).unwrap_or(path);
+        let path = try_canonicalize(&path).unwrap_or(path);
         // See comments on this target function, but the gist is that
         // gcc chokes on verbatim paths which fs::canonicalize generates
         // so we try to avoid those kinds of paths.
@@ -182,7 +186,17 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         if dir.ends_with(crate::config::host_triple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
-                .and_then(|p| p.parent()) // chop off `lib`
+                .and_then(|p| {
+                    // chop off `lib` (this could be also $arch dir if the host sysroot uses a
+                    // multi-arch layout like Debian or Ubuntu)
+                    match p.parent() {
+                        Some(p) => match p.file_name() {
+                            Some(f) if f == "lib" => p.parent(), // first chop went for $arch, so chop again for `lib`
+                            _ => Some(p),
+                        },
+                        None => None,
+                    }
+                })
                 .map(|s| s.to_owned())
                 .ok_or(format!(
                     "Could not move 3 levels upper using `parent()` on {}",

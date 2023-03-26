@@ -3,7 +3,8 @@ use std::iter;
 use ast::make;
 use either::Either;
 use hir::{
-    HasSource, HirDisplay, InFile, Local, ModuleDef, PathResolution, Semantics, TypeInfo, TypeParam,
+    HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef, PathResolution, Semantics,
+    TypeInfo, TypeParam,
 };
 use ide_db::{
     defs::{Definition, NameRefClass},
@@ -710,7 +711,7 @@ impl FunctionBody {
                     ) => local_ref,
                     _ => return,
                 };
-            let InFile { file_id, value } = local_ref.source(sema.db);
+            let InFile { file_id, value } = local_ref.primary_source(sema.db).source;
             // locals defined inside macros are not relevant to us
             if !file_id.is_macro() {
                 match value {
@@ -972,11 +973,11 @@ impl FunctionBody {
         locals: impl Iterator<Item = Local>,
     ) -> Vec<Param> {
         locals
-            .map(|local| (local, local.source(ctx.db())))
+            .map(|local| (local, local.primary_source(ctx.db())))
             .filter(|(_, src)| is_defined_outside_of_body(ctx, self, src))
-            .filter_map(|(local, src)| match src.value {
-                Either::Left(src) => Some((local, src)),
-                Either::Right(_) => {
+            .filter_map(|(local, src)| match src.into_ident_pat() {
+                Some(src) => Some((local, src)),
+                None => {
                     stdx::never!(false, "Local::is_self returned false, but source is SelfParam");
                     None
                 }
@@ -1238,17 +1239,9 @@ fn local_outlives_body(
 fn is_defined_outside_of_body(
     ctx: &AssistContext<'_>,
     body: &FunctionBody,
-    src: &hir::InFile<Either<ast::IdentPat, ast::SelfParam>>,
+    src: &LocalSource,
 ) -> bool {
-    src.file_id.original_file(ctx.db()) == ctx.file_id()
-        && !body.contains_node(either_syntax(&src.value))
-}
-
-fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {
-    match value {
-        Either::Left(pat) => pat.syntax(),
-        Either::Right(it) => it.syntax(),
-    }
+    src.original_file(ctx.db()) == ctx.file_id() && !body.contains_node(src.syntax())
 }
 
 /// find where to put extracted function definition

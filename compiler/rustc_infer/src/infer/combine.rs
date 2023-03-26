@@ -27,14 +27,13 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::{InferCtxt, MiscVariable, TypeTrace};
+use super::{DefineOpaqueTypes, InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -53,12 +52,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub cause: Option<ty::relate::Cause>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub obligations: PredicateObligations<'tcx>,
-    /// Whether we should define opaque types
-    /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
+    pub define_opaque_types: DefineOpaqueTypes,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -119,18 +113,28 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
+            // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
+            (
+                ty::Alias(AliasKind::Projection, _),
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+            )
+            | (
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+                ty::Alias(AliasKind::Projection, _),
+            ) if self.tcx.trait_solver_next() => {
+                bug!()
+            }
+
+            (_, ty::Alias(AliasKind::Projection, _)) | (ty::Alias(AliasKind::Projection, _), _)
+                if self.tcx.trait_solver_next() =>
+            {
+                relation.register_type_relate_obligation(a, b);
+                Ok(a)
+            }
+
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
-            }
-
-            (ty::Alias(AliasKind::Projection, _), _) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(a, b);
-                Ok(b)
-            }
-            (_, ty::Alias(AliasKind::Projection, _)) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(b, a);
-                Ok(a)
             }
 
             _ => ty::relate::super_relate_tys(relation, a, b),
@@ -161,9 +165,9 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
         // ourselves with a check to find bugs being required for code to compile because it made inference progress.
-        self.probe(|_| {
+        let compatible_types = self.probe(|_| {
             if a.ty() == b.ty() {
-                return;
+                return Ok(());
             }
 
             // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
@@ -173,14 +177,32 @@ impl<'tcx> InferCtxt<'tcx> {
                 (relation.param_env(), a.ty(), b.ty()),
                 &mut OriginalQueryValues::default(),
             );
-
-            if let Err(NoSolution) = self.tcx.check_tys_might_be_eq(canonical) {
+            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
                 self.tcx.sess.delay_span_bug(
                     DUMMY_SP,
                     &format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
-                );
-            }
+                )
+            })
         });
+
+        // If the consts have differing types, just bail with a const error with
+        // the expected const's type. Specifically, we don't want const infer vars
+        // to do any type shapeshifting before and after resolution.
+        if let Err(guar) = compatible_types {
+            // HACK: equating both sides with `[const error]` eagerly prevents us
+            // from leaving unconstrained inference vars during things like impl
+            // matching in the solver.
+            let a_error = self.tcx.const_error_with_guaranteed(a.ty(), guar);
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
+                return self.unify_const_variable(vid, a_error);
+            }
+            let b_error = self.tcx.const_error_with_guaranteed(b.ty(), guar);
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
+                return self.unify_const_variable(vid, b_error);
+            }
+
+            return Ok(if relation.a_is_expected() { a_error } else { b_error });
+        }
 
         match (a.kind(), b.kind()) {
             (
@@ -820,23 +842,25 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
         let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
 
         self.register_predicates([ty::Binder::dummy(if self.tcx().trait_solver_next() {
-            ty::PredicateKind::AliasEq(a.into(), b.into())
+            ty::PredicateKind::AliasRelate(a.into(), b.into(), ty::AliasRelationDirection::Equate)
         } else {
             ty::PredicateKind::ConstEquate(a, b)
         })]);
     }
 
-    /// Register an obligation that both types must be equal to each other.
-    ///
-    /// If they aren't equal then the relation doesn't hold.
-    fn register_type_equate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-
-        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasEq(
+    /// Register an obligation that both types must be related to each other according to
+    /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
             a.into(),
             b.into(),
+            self.alias_relate_direction(),
         ))]);
     }
+
+    /// Relation direction emitted for `AliasRelate` predicates, corresponding to the direction
+    /// of the relation.
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection;
 }
 
 fn int_unification_error<'tcx>(

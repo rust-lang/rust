@@ -2,7 +2,6 @@
 
 fn main() {
     foo(bar(;
-    //~^ ERROR cannot find function `bar` in this scope
 }
 //~^ ERROR: mismatched closing delimiter: `}`
 

@@ -175,8 +175,8 @@ class WindowsPipeline(Pipeline):
         return super().rustc_stage_2().with_suffix(".exe")
 
     def build_rustc_perf(self):
-        # rustc-perf version from 2022-07-22
-        perf_commit = "3c253134664fdcba862c539d37f0de18557a9a4c"
+        # rustc-perf version from 2023-03-15
+        perf_commit = "9dfaa35193154b690922347ee1141a06ec87a199"
         rustc_perf_zip_path = self.opt_artifacts() / "perf.zip"
 
         def download_rustc_perf():
@@ -798,14 +798,16 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
                     "--llvm-profile-use",
                     pipeline.llvm_profile_merged_file(),
                     "--llvm-bolt-profile-generate",
+                    "--rust-profile-use",
+                    pipeline.rustc_profile_merged_file()
                 ])
                 record_metrics(pipeline, rustc_build)
 
             with stage3.section("Gather profiles"):
                 gather_llvm_bolt_profiles(pipeline)
 
+        # LLVM is not being cleared here, we want to reuse the previous build
         print_free_disk_space(pipeline)
-        clear_llvm_files(pipeline)
         final_build_args += [
             "--llvm-bolt-profile-use",
             pipeline.llvm_bolt_profile_merged_file()

@@ -1,5 +1,5 @@
 // compile-flags:-g
-
+// edition:2021
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
@@ -44,7 +44,6 @@
 // lldbg-check:(captured_fields_1::main::{closure_env#5}) $5 = { my_var = { my_field1 = 11 my_field2 = 22 } }
 // lldb-command:continue
 
-#![feature(capture_disjoint_fields)]
 #![allow(unused)]
 
 struct MyStruct {

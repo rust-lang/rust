@@ -7,7 +7,7 @@
 +     scope 1 (inlined foo) {              // at $DIR/asm_unwind.rs:21:5: 21:10
 +         let _2: D;                       // in scope 1 at $DIR/asm_unwind.rs:15:9: 15:11
 +         scope 2 {
-+             debug _d => _2;              // in scope 2 at $DIR/asm_unwind.rs:15:9: 15:11
++             debug _d => const D;         // in scope 2 at $DIR/asm_unwind.rs:15:9: 15:11
 +             scope 3 {
 +             }
 +         }
@@ -19,19 +19,19 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/asm_unwind.rs:21:5: 21:8
 -                                          // + literal: Const { ty: fn() {foo}, val: Value(<ZST>) }
-+         StorageLive(_2);                 // scope 1 at $DIR/asm_unwind.rs:15:9: 15:11
-+         asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind: bb3]; // scope 3 at $DIR/asm_unwind.rs:16:14: 16:54
++         StorageLive(_2);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
++         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3]; // scope 3 at $DIR/asm_unwind.rs:16:14: 16:54
       }
   
       bb1: {
-+         drop(_2) -> bb2;                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+     }
-+ 
-+     bb2: {
-+         StorageDead(_2);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         StorageDead(_2);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
           StorageDead(_1);                 // scope 0 at $DIR/asm_unwind.rs:+1:10: +1:11
           _0 = const ();                   // scope 0 at $DIR/asm_unwind.rs:+0:15: +2:2
           return;                          // scope 0 at $DIR/asm_unwind.rs:+2:2: +2:2
++     }
++ 
++     bb2: {
++         drop(_2) -> bb1;                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
 +     }
 + 
 +     bb3 (cleanup): {

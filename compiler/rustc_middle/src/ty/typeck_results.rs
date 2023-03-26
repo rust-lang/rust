@@ -8,10 +8,9 @@ use crate::{
     },
 };
 use rustc_data_structures::{
-    fx::FxHashMap,
+    fx::{FxHashMap, FxIndexMap},
     sync::Lrc,
     unord::{UnordItems, UnordSet},
-    vec_map::VecMap,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -155,7 +154,7 @@ pub struct TypeckResults<'tcx> {
     /// by this function. We also store the
     /// type here, so that mir-borrowck can use it as a hint for figuring out hidden types,
     /// even if they are only set in dead code (which doesn't show up in MIR).
-    pub concrete_opaque_types: VecMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -569,7 +568,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.contains_key(&id.local_id)
     }
 
-    pub fn get(&self, id: hir::HirId) -> Option<&V> {
+    pub fn get(&self, id: hir::HirId) -> Option<&'a V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }

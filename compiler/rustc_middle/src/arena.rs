@@ -36,7 +36,7 @@ macro_rules! arena_types {
             )>,
             [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
             [] metadata_loader: rustc_data_structures::steal::Steal<Box<rustc_session::cstore::MetadataLoaderDyn>>,
-            [] crate_for_resolver: rustc_data_structures::steal::Steal<rustc_ast::ast::Crate>,
+            [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
@@ -94,7 +94,8 @@ macro_rules! arena_types {
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_ast::Attribute,
-            [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
+            [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
+            [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
@@ -107,6 +108,7 @@ macro_rules! arena_types {
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
+            [decode] registered_tools: rustc_middle::ty::RegisteredTools,
             [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
@@ -116,6 +118,7 @@ macro_rules! arena_types {
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
+            [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
         ]);
     )
 }

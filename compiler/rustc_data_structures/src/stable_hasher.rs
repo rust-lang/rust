@@ -617,18 +617,10 @@ where
     }
 }
 
-impl<K, R, HCX> HashStable<HCX> for ::std::collections::HashSet<K, R>
-where
-    K: ToStableHashKey<HCX> + Eq,
-    R: BuildHasher,
-{
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, key| {
-            let key = key.to_stable_hash_key(hcx);
-            key.hash_stable(hcx, hasher);
-        });
-    }
-}
+// It is not safe to implement HashStable for HashSet or any other collection type
+// with unstable but observable iteration order.
+// See https://github.com/rust-lang/compiler-team/issues/533 for further information.
+impl<V, HCX> !HashStable<HCX> for std::collections::HashSet<V> {}
 
 impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
 where

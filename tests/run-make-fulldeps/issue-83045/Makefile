@@ -29,5 +29,5 @@ all:
 				  --crate-type=rlib \
 				  --edition=2018 \
 				  c.rs 2>&1 | tee $(TMPDIR)/output.txt || exit 0
-	$(CGREP) E0463 < $(TMPDIR)/output.txt
+	$(CGREP) E0519 < $(TMPDIR)/output.txt
 	$(CGREP) -v "internal compiler error" < $(TMPDIR)/output.txt

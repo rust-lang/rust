@@ -478,10 +478,6 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    if tcx.impl_polarity(impl_def_id) != ImplPolarity::Positive {
-        return;
-    }
-
     assert_eq!(trait_ref.substs.len(), 1);
     let self_ty = trait_ref.self_ty();
     let (self_type_did, substs) = match self_ty.kind() {

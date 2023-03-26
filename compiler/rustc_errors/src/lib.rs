@@ -42,7 +42,7 @@ pub use rustc_error_messages::{
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_macros::fluent_messages;
 use rustc_span::source_map::SourceMap;
-use rustc_span::HashStableContext;
+pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
@@ -76,7 +76,7 @@ pub use snippet::Style;
 pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
@@ -331,7 +331,7 @@ impl CodeSuggestion {
                     });
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
-                    if prev_hi.line == cur_lo.line && cur_hi.line == cur_lo.line {
+                    if cur_hi.line == cur_lo.line && !part.snippet.is_empty() {
                         // Account for the difference between the width of the current code and the
                         // snippet being suggested, so that the *later* suggestions are correctly
                         // aligned on the screen.
@@ -1477,9 +1477,7 @@ impl HandlerInner {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|x| match &x {
-                    DiagnosticId::Error(s)
-                        if registry.try_find_description(s).map_or(false, |o| o.is_some()) =>
-                    {
+                    DiagnosticId::Error(s) if registry.try_find_description(s).is_ok() => {
                         Some(s.clone())
                     }
                     _ => None,
@@ -1845,18 +1843,4 @@ pub enum TerminalUrl {
     No,
     Yes,
     Auto,
-}
-
-/// Useful type to use with `Result<>` indicate that an error has already
-/// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(HashStable_Generic)]
-pub struct ErrorGuaranteed(());
-
-impl ErrorGuaranteed {
-    /// To be used only if you really know what you are doing... ideally, we would find a way to
-    /// eliminate all calls to this method.
-    pub fn unchecked_claim_error_was_emitted() -> Self {
-        ErrorGuaranteed(())
-    }
 }

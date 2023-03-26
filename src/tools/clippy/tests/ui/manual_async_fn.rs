@@ -127,4 +127,16 @@ mod issue_5765 {
     }
 }
 
+pub fn issue_10450() -> impl Future<Output = i32> {
+    async { 42 }
+}
+
+pub(crate) fn issue_10450_2() -> impl Future<Output = i32> {
+    async { 42 }
+}
+
+pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
+    async { 42 }
+}
+
 fn main() {}

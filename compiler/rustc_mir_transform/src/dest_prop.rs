@@ -583,7 +583,9 @@ impl WriteInfo {
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_) => (),
-            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
+            StatementKind::FakeRead(_)
+            | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(_) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }
         }
@@ -650,8 +652,7 @@ impl WriteInfo {
             TerminatorKind::Drop { .. } => {
                 // `Drop`s create a `&mut` and so are not considered
             }
-            TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::Yield { .. }
+            TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
@@ -787,7 +788,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
 fn is_local_required(local: Local, body: &Body<'_>) -> bool {
     match body.local_kind(local) {
         LocalKind::Arg | LocalKind::ReturnPointer => true,
-        LocalKind::Var | LocalKind::Temp => false,
+        LocalKind::Temp => false,
     }
 }
 

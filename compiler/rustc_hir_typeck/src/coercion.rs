@@ -45,8 +45,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::Obligation;
+use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
+use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -143,11 +143,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
-            let at = self.at(&self.cause, self.fcx.param_env).define_opaque_types(true);
+            let at = self.at(&self.cause, self.fcx.param_env);
             if self.use_lub {
-                at.lub(b, a)
+                at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
-                at.sup(b, a)
+                at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
             }
         })
@@ -175,7 +175,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // so this will have the side-effect of making sure we have no ambiguities
             // due to `[type error]` and `_` not coercing together.
             let _ = self.commit_if_ok(|_| {
-                self.at(&self.cause, self.param_env).define_opaque_types(true).eq(a, b)
+                self.at(&self.cause, self.param_env).eq(DefineOpaqueTypes::Yes, a, b)
             });
             return success(vec![], self.fcx.tcx.ty_error(guar), vec![]);
         }
@@ -597,13 +597,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[_; 4]> = smallvec![traits::predicate_for_trait_def(
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
             self.tcx,
-            self.fcx.param_env,
             cause,
-            coerce_unsized_did,
-            0,
-            [coerce_source, coerce_target]
+            self.fcx.param_env,
+            self.tcx.mk_trait_ref(coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -651,9 +649,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let self_ty = trait_pred.skip_binder().self_ty();
                         let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
-                        match (&self_ty.kind(), &unsize_ty.kind()) {
-                            (ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
-                                if self.type_var_is_sized(*v) =>
+                        match (self_ty.kind(), unsize_ty.kind()) {
+                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
+                                if self.type_var_is_sized(v) =>
                             {
                                 debug!("coerce_unsized: have sized infer {:?}", v);
                                 coercion.obligations.push(obligation);
@@ -1101,9 +1099,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self
-                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        {
+                        match self.commit_if_ok(|_| {
+                            self.at(cause, self.param_env).lub(
+                                DefineOpaqueTypes::No,
+                                prev_ty,
+                                new_ty,
+                            )
+                        }) {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
@@ -1153,7 +1155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
-                .lub(a_sig, b_sig)
+                .lub(DefineOpaqueTypes::No, a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 
             // Reify both sides and return the reified fn pointer type.
@@ -1237,7 +1239,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return self
-                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                    .commit_if_ok(|_| {
+                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::No, prev_ty, new_ty)
+                    })
                     .map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
@@ -1248,8 +1252,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(e) = first_error {
                     Err(e)
                 } else {
-                    self.commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        .map(|ok| self.register_infer_ok_obligations(ok))
+                    self.commit_if_ok(|_| {
+                        self.at(cause, self.param_env).lub(DefineOpaqueTypes::No, prev_ty, new_ty)
+                    })
+                    .map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
             Ok(ok) => {
@@ -1487,8 +1493,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
                 // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                .define_opaque_types(true)
-                .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
+                .eq_exp(
+                    DefineOpaqueTypes::Yes,
+                    label_expression_as_expected,
+                    expression_ty,
+                    self.merged_ty(),
+                )
                 .map(|infer_ok| {
                     fcx.register_infer_ok_obligations(infer_ok);
                     expression_ty
@@ -1710,12 +1720,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
-            fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+            fcx.get_node_fn_decl(parent)
+                .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)
         };
 
-        if let Some((fn_decl, can_suggest)) = fn_decl {
+        if let Some((fn_id, fn_decl, can_suggest)) = fn_decl {
             if blk_id.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
@@ -1723,7 +1734,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     expected,
                     found,
                     can_suggest,
-                    fcx.tcx.hir().get_parent_item(id).into(),
+                    fn_id,
                 );
             }
             if !pointing_at_return_type {
@@ -1734,17 +1745,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_item(id);
         let parent_item = fcx.tcx.hir().get_by_def_id(parent_id.def_id);
 
-        if let (Some(expr), Some(_), Some((fn_decl, _, _))) =
+        if let (Some(expr), Some(_), Some((fn_id, fn_decl, _, _))) =
             (expression, blk_id, fcx.get_node_fn_decl(parent_item))
         {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err,
-                expr,
-                fn_decl,
-                expected,
-                found,
-                id,
-                parent_id.into(),
+                &mut err, expr, fn_decl, expected, found, id, fn_id,
             );
         }
 
@@ -1870,7 +1875,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
-        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id)
+        if let Some((_, fn_decl, _)) = fcx.get_fn_decl(blk_id)
             && let hir::FnRetTy::Return(ty) = fn_decl.output
             && let ty = fcx.astconv().ast_ty_to_ty( ty)
             && let ty::Dynamic(..) = ty.kind()

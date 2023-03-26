@@ -14,7 +14,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
@@ -151,11 +151,19 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
-    /// FIXME: This method should only be used for canonical queries and therefore be private.
-    ///
-    /// As the new solver does canonicalization slightly differently, this is also used there
-    /// for now. This should hopefully change fairly soon.
-    pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+    /// Used by the new solver as that one takes the opaque types at the end of a probe
+    /// to deal with multiple candidates without having to recompute them.
+    pub fn clone_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+        self.inner
+            .borrow()
+            .opaque_type_storage
+            .opaque_types
+            .iter()
+            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
+            .collect()
+    }
+
+    fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
             .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
@@ -474,8 +482,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: self.tcx.mk_substs(query_response.variables.iter().enumerate().map(
-                |(index, info)| {
+            var_values: self.tcx.mk_substs_from_iter(
+                query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
@@ -488,8 +496,8 @@ impl<'tcx> InferCtxt<'tcx> {
                             universe_map[u.as_usize()]
                         })
                     }
-                },
-            )),
+                }),
+            ),
         };
 
         let mut obligations = vec![];
@@ -500,7 +508,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let b = substitute_value(self.tcx, &result_subst, b);
             debug!(?a, ?b, "constrain opaque type");
             obligations
-                .extend(self.at(cause, param_env).define_opaque_types(true).eq(a, b)?.obligations);
+                .extend(self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -593,8 +601,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 match (value1.unpack(), value2.unpack()) {
                     (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env)
+                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                         if re1.is_erased() && re2.is_erased() =>
@@ -602,11 +613,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         // no action needed
                     }
                     (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env)
+                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }
                     _ => {

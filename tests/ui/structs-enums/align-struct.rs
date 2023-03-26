@@ -1,5 +1,5 @@
 // run-pass
-#![allow(dead_code)]
+#![allow(dead_code, unused_allocation)]
 
 use std::mem;
 
@@ -20,7 +20,6 @@ struct AlignMany(i32);
 
 // Raising alignment may not alter size.
 #[repr(align(8))]
-#[allow(dead_code)]
 struct Align8Many {
     a: i32,
     b: i32,
@@ -29,9 +28,8 @@ struct Align8Many {
 }
 
 enum Enum {
-    #[allow(dead_code)]
     A(i32),
-    B(Align16)
+    B(Align16),
 }
 
 // Nested alignment - use `#[repr(C)]` to suppress field reordering for sizeof test
@@ -73,7 +71,7 @@ struct AlignLarge {
 
 union UnionContainsAlign {
     a: Align16,
-    b: f32
+    b: f32,
 }
 
 impl Align16 {
@@ -158,7 +156,7 @@ pub fn main() {
     // Note that the size of Nested may change if struct field re-ordering is enabled
     assert_eq!(mem::align_of::<Nested>(), 16);
     assert_eq!(mem::size_of::<Nested>(), 48);
-    let a = Nested{ a: 1, b: 2, c: Align16(3), d: 4};
+    let a = Nested { a: 1, b: 2, c: Align16(3), d: 4 };
     assert_eq!(mem::align_of_val(&a), 16);
     assert_eq!(mem::align_of_val(&a.b), 4);
     assert_eq!(mem::align_of_val(&a.c), 16);
@@ -179,8 +177,8 @@ pub fn main() {
             assert_eq!(a.0, 15);
             assert_eq!(mem::align_of_val(a), 16);
             assert_eq!(mem::size_of_val(a), 16);
-        },
-        _ => ()
+        }
+        _ => (),
     }
     assert!(is_aligned_to(&e, 16));
 
@@ -197,8 +195,8 @@ pub fn main() {
     }
 
     // arrays of aligned elements should also be aligned
-    assert_eq!(mem::align_of::<[Align16;2]>(), 16);
-    assert_eq!(mem::size_of::<[Align16;2]>(), 32);
+    assert_eq!(mem::align_of::<[Align16; 2]>(), 16);
+    assert_eq!(mem::size_of::<[Align16; 2]>(), 32);
 
     let a = [Align16(0), Align16(1)];
     assert_eq!(mem::align_of_val(&a[0]), 16);
@@ -209,7 +207,7 @@ pub fn main() {
     assert_eq!(mem::align_of_val(Box::new(Align16(0)).as_ref()), 16);
 
     // check heap array is aligned
-    let a = vec!(Align16(0), Align16(1));
+    let a = vec![Align16(0), Align16(1)];
     assert_eq!(mem::align_of_val(&a[0]), 16);
     assert_eq!(mem::align_of_val(&a[1]), 16);
 
@@ -224,16 +222,14 @@ pub fn main() {
 
     assert_eq!(mem::align_of::<AlignContainsPacked4C>(), 16);
     assert_eq!(mem::size_of::<AlignContainsPacked4C>(), 32);
-    let a = AlignContainsPacked4C { a: Packed4C{ a: 1, b: 2 }, b: 3 };
+    let a = AlignContainsPacked4C { a: Packed4C { a: 1, b: 2 }, b: 3 };
     assert_eq!(mem::align_of_val(&a), 16);
     assert_eq!(mem::align_of_val(&a.a), 4);
     assert_eq!(mem::align_of_val(&a.b), mem::align_of::<u64>());
     assert_eq!(mem::size_of_val(&a), 32);
     assert!(is_aligned_to(&a, 16));
 
-    let mut large = Box::new(AlignLarge {
-        stuff: [0; 0x10000],
-    });
+    let mut large = Box::new(AlignLarge { stuff: [0; 0x10000] });
     large.stuff[0] = 132;
     *large.stuff.last_mut().unwrap() = 102;
     assert_eq!(large.stuff[0], 132);

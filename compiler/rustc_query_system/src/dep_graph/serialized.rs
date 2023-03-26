@@ -80,11 +80,6 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     #[inline]
-    pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
-        self.index.get(dep_node).map(|&node_index| self.fingerprints[node_index])
-    }
-
-    #[inline]
     pub fn fingerprint_by_index(&self, dep_node_index: SerializedDepNodeIndex) -> Fingerprint {
         self.fingerprints[dep_node_index]
     }

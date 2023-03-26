@@ -542,7 +542,7 @@ pub trait Into<T>: Sized {
 #[const_trait]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
-    #[lang = "from"]
+    #[rustc_diagnostic_item = "from_fn"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from(value: T) -> Self;
@@ -722,6 +722,7 @@ where
     ///
     /// That is, this conversion is whatever the implementation of
     /// <code>[From]&lt;T&gt; for U</code> chooses to do.
+    #[inline]
     fn into(self) -> U {
         U::from(self)
     }

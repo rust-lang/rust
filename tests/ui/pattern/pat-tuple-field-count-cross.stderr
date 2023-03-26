@@ -113,8 +113,8 @@ LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
    |
 help: use the tuple variant pattern syntax instead
    |
-LL |         E1::Z1(/* fields */) => {}
-   |         ~~~~~~~~~~~~~~~~~~~~
+LL |         E1::Z1() => {}
+   |         ~~~~~~~~
 help: a unit variant with a similar name exists
    |
 LL |         E1::Z0 => {}

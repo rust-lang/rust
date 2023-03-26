@@ -290,7 +290,7 @@ fn data_id_for_static(
         };
 
         let data_id = match module.declare_data(
-            &*symbol_name,
+            symbol_name,
             linkage,
             is_mutable,
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
@@ -338,7 +338,7 @@ fn data_id_for_static(
     };
 
     let data_id = match module.declare_data(
-        &*symbol_name,
+        symbol_name,
         linkage,
         is_mutable,
         attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
@@ -529,6 +529,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::StorageDead(_)
                         | StatementKind::Retag(_, _)
                         | StatementKind::AscribeUserType(_, _)
+                        | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)
                         | StatementKind::ConstEvalCounter
                         | StatementKind::Nop => {}
@@ -543,8 +544,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::Unreachable
                     | TerminatorKind::Drop { .. }
                     | TerminatorKind::Assert { .. } => {}
-                    TerminatorKind::DropAndReplace { .. }
-                    | TerminatorKind::Yield { .. }
+                    TerminatorKind::Yield { .. }
                     | TerminatorKind::GeneratorDrop
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => unreachable!(),

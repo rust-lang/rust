@@ -1,0 +1,42 @@
+error: expected identifier, found `,`
+  --> $DIR/ident-recovery.rs:1:4
+   |
+LL | fn ,comma() {
+   |    ^
+   |    |
+   |    expected identifier
+   |    help: remove this comma
+
+error: expected identifier, found `,`
+  --> $DIR/ident-recovery.rs:4:16
+   |
+LL |         x: i32,,
+   |                ^
+   |                |
+   |                expected identifier
+   |                help: remove this comma
+
+error: expected identifier, found keyword `break`
+  --> $DIR/ident-recovery.rs:10:4
+   |
+LL | fn break() {
+   |    ^^^^^ expected identifier, found keyword
+   |
+help: escape `break` to use it as an identifier
+   |
+LL | fn r#break() {
+   |    ++
+
+error: expected identifier, found keyword `continue`
+  --> $DIR/ident-recovery.rs:12:9
+   |
+LL |     let continue = 5;
+   |         ^^^^^^^^ expected identifier, found keyword
+   |
+help: escape `continue` to use it as an identifier
+   |
+LL |     let r#continue = 5;
+   |         ++
+
+error: aborting due to 4 previous errors
+

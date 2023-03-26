@@ -1,3 +1,6 @@
+// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
+// revisions: current next
+
 // FIXME(compiler-errors): I'm not exactly sure if this is expected to pass or not.
 // But we fixed an ICE anyways.
 
@@ -15,6 +18,7 @@ where
 {
     fn bar(&self) -> U {
         //~^ ERROR method `bar` has an incompatible type for trait
+        //~| ERROR method with return-position `impl Trait` in trait cannot be specialized
         *self
     }
 }

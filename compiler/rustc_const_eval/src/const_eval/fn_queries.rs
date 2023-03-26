@@ -1,15 +1,22 @@
+use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 
-/// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
-pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
+/// Whether the `def_id` is an unstable const fn and what feature gate(s) are necessary to enable
+/// it.
+pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<(Symbol, Option<Symbol>)> {
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
-        if const_stab.is_const_unstable() { Some(const_stab.feature) } else { None }
+        match const_stab.level {
+            attr::StabilityLevel::Unstable { implied_by, .. } => {
+                Some((const_stab.feature, implied_by))
+            }
+            attr::StabilityLevel::Stable { .. } => None,
+        }
     } else {
         None
     }
@@ -25,8 +32,7 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// it is a trait impl/function, return if it has a `const` modifier. If it is an intrinsic,
 /// report whether said intrinsic has a `rustc_const_{un,}stable` attribute. Otherwise, return
 /// `Constness::NotConst`.
-fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let def_id = def_id.expect_local();
+fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir().get_by_def_id(def_id);
 
     match node {

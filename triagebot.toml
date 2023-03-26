@@ -185,7 +185,7 @@ trigger_files = [
     "src/tools/x",
     "configure",
     "Cargo.toml",
-    "config.toml.example",
+    "config.example.toml",
     "src/stage0.json"
 ]
 
@@ -430,7 +430,7 @@ message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rust-analyzer"]
-cc = ["@rust-lang/wg-rls-2"]
+cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
@@ -450,6 +450,10 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_smir"]
+message = "This PR changes Stable MIR"
+cc = ["@oli-obk", "@celinval"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -471,6 +475,11 @@ If this was intentional then you can ignore this comment.
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
+[mentions."src/bootstrap/defaults/config.compiler.toml"]
+message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
+[mentions."src/bootstrap/defaults/config.codegen.toml"]
+message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
@@ -482,9 +491,7 @@ compiler-team = [
     "@davidtwco",
     "@oli-obk",
     "@lcnr",
-    "@nagisa",
     "@wesleywiser",
-    "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@compiler-errors",
@@ -493,6 +500,7 @@ compiler-team-contributors = [
     "@TaKO8Ki",
     "@Nilstrieb",
     "@WaffleLapkin",
+    "@b-naber",
 ]
 compiler = [
     "compiler-team",
@@ -552,7 +560,6 @@ mir = [
     "@oli-obk",
 ]
 mir-opt = [
-    "@nagisa",
     "@oli-obk",
     "@wesleywiser",
 ]

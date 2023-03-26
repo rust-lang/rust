@@ -69,18 +69,15 @@ note: required by a bound in `Pin::<P>::new`
 error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:28:5
    |
+LL |   fn zap() -> BoxFuture<'static, i32> {
+   |               ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
 LL | /     async {
 LL | |         42
 LL | |     }
-   | |     ^
-   | |     |
-   | |_____expected `Pin<Box<...>>`, found `async` block
-   |       arguments to this function are incorrect
+   | |_____^ expected `Pin<Box<...>>`, found `async` block
    |
-   = note:     expected struct `Pin<Box<dyn Future<Output = i32> + Send>>`
+   = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
            found `async` block `[async block@$DIR/expected-boxed-future-isnt-pinned.rs:28:5: 30:6]`
-note: function defined here
-  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 help: you need to pin and box this expression
    |
 LL ~     Box::pin(async {

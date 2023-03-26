@@ -36,6 +36,7 @@ use rustc_hir_analysis::astconv::AstConv as _;
 use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability;
@@ -230,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
-                qpath @ hir::QPath::Resolved(..) | qpath @ hir::QPath::TypeRelative(..),
+                qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
             ) => self.check_expr_path(qpath, expr, args),
             _ => self.check_expr_kind(expr, expected),
         });
@@ -283,7 +284,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Box(subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
@@ -354,18 +354,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Field(base, field) => self.check_field(expr, &base, field, expected),
             ExprKind::Index(base, idx) => self.check_expr_index(base, idx, expr),
             ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
-            hir::ExprKind::Err => tcx.ty_error_misc(),
+            hir::ExprKind::Err(guar) => tcx.ty_error(guar),
         }
-    }
-
-    fn check_expr_box(&self, expr: &'tcx hir::Expr<'tcx>, expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| match ty.kind() {
-            ty::Adt(def, _) if def.is_box() => Expectation::rvalue_hint(self, ty.boxed_ty()),
-            _ => NoExpectation,
-        });
-        let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
-        self.require_type_is_sized(referent_ty, expr.span, traits::SizedBoxType);
-        self.tcx.mk_box(referent_ty)
     }
 
     fn check_expr_unary(
@@ -798,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.ret_coercion_span.set(Some(expr.span));
             }
             let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-            if let Some((fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
+            if let Some((_, fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
                 coercion.coerce_forced_unit(
                     self,
                     &cause,
@@ -1492,7 +1482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
-        let tuple = self.tcx.mk_tup(elt_ts_iter);
+        let tuple = self.tcx.mk_tup_from_iter(elt_ts_iter);
         if let Err(guar) = tuple.error_reported() {
             self.tcx.ty_error(guar)
         } else {
@@ -1683,7 +1673,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(_) = remaining_fields.remove(&ident) {
                                 let target_ty = self.field_ty(base_expr.span, f, substs);
                                 let cause = self.misc(base_expr.span);
-                                match self.at(&cause, self.param_env).sup(target_ty, fru_ty) {
+                                match self.at(&cause, self.param_env).sup(
+                                    DefineOpaqueTypes::No,
+                                    target_ty,
+                                    fru_ty,
+                                ) {
                                     Ok(InferOk { obligations, value: () }) => {
                                         self.register_predicates(obligations)
                                     }

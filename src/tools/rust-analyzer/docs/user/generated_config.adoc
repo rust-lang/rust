@@ -71,6 +71,11 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.extraArgs]]rust-analyzer.cargo.extraArgs (default: `[]`)::
++
+--
+Extra arguments that are passed to every cargo invocation.
+--
 [[rust-analyzer.cargo.extraEnv]]rust-analyzer.cargo.extraEnv (default: `{}`)::
 +
 --
@@ -537,6 +542,11 @@ Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closure
 --
 Whether to hide inlay type hints for constructors.
 --
+[[rust-analyzer.interpret.tests]]rust-analyzer.interpret.tests (default: `false`)::
++
+--
+Enables the experimental support for interpreting tests.
+--
 [[rust-analyzer.joinLines.joinAssignments]]rust-analyzer.joinLines.joinAssignments (default: `true`)::
 +
 --
@@ -699,7 +709,10 @@ Additional arguments to `rustfmt`.
 +
 --
 Advanced option, fully override the command rust-analyzer uses for
-formatting.
+formatting. This should be the equivalent of `rustfmt` here, and
+not that of `cargo fmt`. The file contents will be passed on the
+standard input and the formatted result will be read from the
+standard output.
 --
 [[rust-analyzer.rustfmt.rangeFormatting.enable]]rust-analyzer.rustfmt.rangeFormatting.enable (default: `false`)::
 +

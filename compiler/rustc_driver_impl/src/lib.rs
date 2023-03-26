@@ -20,7 +20,9 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
-use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
+use rustc_data_structures::profiling::{
+    get_resident_set_size, print_time_passes_entry, TimePassesFormat,
+};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{
@@ -64,7 +66,7 @@ use crate::session_diagnostics::{
     RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
 };
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start
@@ -161,7 +163,7 @@ pub trait Callbacks {
 
 #[derive(Default)]
 pub struct TimePassesCallbacks {
-    time_passes: bool,
+    time_passes: Option<TimePassesFormat>,
 }
 
 impl Callbacks for TimePassesCallbacks {
@@ -171,7 +173,8 @@ impl Callbacks for TimePassesCallbacks {
         // If a --print=... option has been given, we don't print the "total"
         // time because it will mess up the --print output. See #64339.
         //
-        self.time_passes = config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes;
+        self.time_passes = (config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes)
+            .then(|| config.opts.unstable_opts.time_passes_format);
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
@@ -331,6 +334,7 @@ fn run_compiler(
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
+                        tcx.ensure().early_lint_checks(());
                         pretty::print_after_hir_lowering(tcx, *ppm);
                         Ok(())
                     })?;
@@ -352,7 +356,7 @@ fn run_compiler(
 
             {
                 let plugins = queries.register_plugins()?;
-                let (_, lint_store) = &*plugins.borrow();
+                let (.., lint_store) = &*plugins.borrow();
 
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
@@ -485,7 +489,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
     match registry.try_find_description(&normalised) {
-        Ok(Some(description)) => {
+        Ok(description) => {
             let mut is_in_code_block = false;
             let mut text = String::new();
             // Slice off the leading newline and print.
@@ -508,9 +512,6 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             } else {
                 print!("{text}");
             }
-        }
-        Ok(None) => {
-            early_error(output, &format!("no extended information for {code}"));
         }
         Err(InvalidErrorCode) => {
             early_error(output, &format!("{code} is not a valid error code"));
@@ -1248,11 +1249,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
-    unsafe {
-        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-            // Trigger a debugger if we crashed during bootstrap
-            winapi::um::debugapi::DebugBreak();
-        }
+    if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+        // Trigger a debugger if we crashed during bootstrap
+        unsafe { windows::Win32::System::Diagnostics::Debug::DebugBreak() };
     }
 }
 
@@ -1358,9 +1357,9 @@ pub fn main() -> ! {
         RunCompiler::new(&args, &mut callbacks).run()
     });
 
-    if callbacks.time_passes {
+    if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();
-        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss, format);
     }
 
     process::exit(exit_code)

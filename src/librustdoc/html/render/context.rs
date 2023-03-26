@@ -17,10 +17,11 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, StylePath,
+    collect_spans_and_sources, scrape_examples_help,
+    sidebar::print_sidebar,
+    sidebar::{sidebar_module_like, Sidebar},
+    AllTypes, LinkFromSrc, StylePath,
 };
-
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
@@ -35,6 +36,7 @@ use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
+use askama::Template;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -350,7 +352,7 @@ impl<'tcx> Context<'tcx> {
                 },
             );
 
-            path = href.into_inner().to_string_lossy().to_string();
+            path = href.into_inner().to_string_lossy().into_owned();
 
             if let Some(c) = path.as_bytes().last() && *c != b'/' {
                 path.push('/');
@@ -600,17 +602,18 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
-        if shared.cache.crate_version.is_some() {
-            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
+
+        let blocks = sidebar_module_like(all.item_sections());
+        let bar = Sidebar {
+            title_prefix: "Crate ",
+            title: crate_name.as_str(),
+            is_crate: false,
+            version: "",
+            blocks: vec![blocks],
+            path: String::new(),
         };
 
-        let mut items = Buffer::html();
-        sidebar_module_like(&mut items, all.item_sections());
-        if !items.is_empty() {
-            sidebar.push_str("<div class=\"sidebar-elems\">");
-            sidebar.push_buffer(items);
-            sidebar.push_str("</div>");
-        }
+        bar.render_into(&mut sidebar).unwrap();
 
         let v = layout::render(
             &shared.layout,
@@ -649,11 +652,35 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </noscript>\
                      <link rel=\"stylesheet\" \
                          href=\"{static_root_path}{settings_css}\">\
-                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_light_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_dark_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_ayu_css}\" \
+                         as=\"style\">",
                     static_root_path = page.get_static_root_path(),
                     settings_css = static_files::STATIC_FILES.settings_css,
                     settings_js = static_files::STATIC_FILES.settings_js,
-                )
+                    theme_light_css = static_files::STATIC_FILES.theme_light_css,
+                    theme_dark_css = static_files::STATIC_FILES.theme_dark_css,
+                    theme_ayu_css = static_files::STATIC_FILES.theme_ayu_css,
+                );
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in &shared.style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        );
+                    }
+                }
             },
             &shared.style_files,
         );

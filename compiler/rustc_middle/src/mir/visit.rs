@@ -405,6 +405,13 @@ macro_rules! make_mir_visitor {
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag($(& $mutability)? *kind, place, location);
                     }
+                    StatementKind::PlaceMention(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::PlaceMention),
+                            location
+                        );
+                    }
                     StatementKind::AscribeUserType(
                         box (place, user_ty),
                         variance
@@ -493,20 +500,6 @@ macro_rules! make_mir_visitor {
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
-                    }
-
-                    TerminatorKind::DropAndReplace {
-                        place,
-                        value,
-                        target: _,
-                        unwind: _,
-                    } => {
-                        self.visit_place(
-                            place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Drop),
-                            location
-                        );
-                        self.visit_operand(value, location);
                     }
 
                     TerminatorKind::Call {
@@ -811,7 +804,6 @@ macro_rules! make_mir_visitor {
                     source_info,
                     internal: _,
                     local_info: _,
-                    is_block_tail: _,
                 } = local_decl;
 
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
@@ -1045,7 +1037,7 @@ macro_rules! visit_place_fns {
             self.visit_local(&mut place.local, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection, location) {
-                place.projection = self.tcx().intern_place_elems(&new_projection);
+                place.projection = self.tcx().mk_place_elems(&new_projection);
             }
         }
 
@@ -1302,6 +1294,8 @@ pub enum NonUseContext {
     AscribeUserTy,
     /// The data of a user variable, for debug info.
     VarDebugInfo,
+    /// PlaceMention statement.
+    PlaceMention,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

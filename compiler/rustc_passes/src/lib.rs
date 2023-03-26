@@ -42,7 +42,7 @@ pub mod stability;
 mod upvars;
 mod weak_lang_items;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);

@@ -1,11 +1,22 @@
 error[E0010]: allocations are not allowed in constants
-  --> $DIR/E0010-teach.rs:6:24
+  --> $DIR/E0010-teach.rs:5:23
    |
-LL | const CON : Box<i32> = box 0;
-   |                        ^^^^^ allocation not allowed in constants
+LL | const CON: Vec<i32> = vec![1, 2, 3];
+   |                       ^^^^^^^^^^^^^ allocation not allowed in constants
    |
    = note: The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constants
+  --> $DIR/E0010-teach.rs:5:23
+   |
+LL | const CON: Vec<i32> = vec![1, 2, 3];
+   |                       ^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0010`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0010, E0015.
+For more information about an error, try `rustc --explain E0010`.

@@ -681,6 +681,24 @@ impl<T> Rc<T> {
             Err(this)
         }
     }
+
+    /// Returns the inner value, if the `Rc` has exactly one strong reference.
+    ///
+    /// Otherwise, [`None`] is returned and the `Rc` is dropped.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// If `Rc::into_inner` is called on every clone of this `Rc`,
+    /// it is guaranteed that exactly one of the calls returns the inner value.
+    /// This means in particular that the inner value is not dropped.
+    ///
+    /// This is equivalent to `Rc::try_unwrap(this).ok()`. (Note that these are not equivalent for
+    /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`.)
+    #[inline]
+    #[stable(feature = "rc_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    pub fn into_inner(this: Self) -> Option<T> {
+        Rc::try_unwrap(this).ok()
+    }
 }
 
 impl<T> Rc<[T]> {
@@ -1720,11 +1738,11 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
 
     /// Inequality for two `Rc`s.
     ///
-    /// Two `Rc`s are unequal if their inner values are unequal.
+    /// Two `Rc`s are not equal if their inner values are not equal.
     ///
     /// If `T` also implements `Eq` (implying reflexivity of equality),
     /// two `Rc`s that point to the same allocation are
-    /// never unequal.
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -2145,7 +2163,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
                 Rc::from_iter_exact(self, low)
             }
         } else {
-            // TrustedLen contract guarantees that `upper_bound == `None` implies an iterator
+            // TrustedLen contract guarantees that `upper_bound == None` implies an iterator
             // length exceeding `usize::MAX`.
             // The default implementation would collect into a vec which would panic.
             // Thus we panic here immediately without invoking `Vec` code.

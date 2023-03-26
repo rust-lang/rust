@@ -51,7 +51,8 @@ use crate::{
     AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionId,
     FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc,
     MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId,
-    ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
+    ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    UnresolvedMacro,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -86,10 +87,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                     // FIXME: a hacky way to create a Name from string.
                     let name =
                         tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
-                    (
-                        name.as_name(),
-                        ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
-                    )
+                    (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
                 })
                 .collect()
         }
@@ -295,6 +293,11 @@ impl DefCollector<'_> {
                     if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
                         self.is_proc_macro = true;
                     }
+                    continue;
+                }
+
+                if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
+                    self.def_map.rustc_coherence_is_core = true;
                     continue;
                 }
 
@@ -580,7 +583,7 @@ impl DefCollector<'_> {
         let kind = def.kind.to_basedb_kind();
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some(&(_, expander)) => (expander, kind),
-            None => (ProcMacroExpander::dummy(self.def_map.krate), kind),
+            None => (ProcMacroExpander::dummy(), kind),
         };
 
         let proc_macro_id =
@@ -666,8 +669,10 @@ impl DefCollector<'_> {
         macro_: Macro2Id,
         vis: &RawVisibility,
     ) {
-        let vis =
-            self.def_map.resolve_visibility(self.db, module_id, vis).unwrap_or(Visibility::Public);
+        let vis = self
+            .def_map
+            .resolve_visibility(self.db, module_id, vis, false)
+            .unwrap_or(Visibility::Public);
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
@@ -831,7 +836,7 @@ impl DefCollector<'_> {
         let mut def = directive.status.namespaces();
         let vis = self
             .def_map
-            .resolve_visibility(self.db, module_id, &directive.import.visibility)
+            .resolve_visibility(self.db, module_id, &directive.import.visibility, false)
             .unwrap_or(Visibility::Public);
 
         match import.kind {
@@ -1547,7 +1552,7 @@ impl ModCollector<'_, '_> {
                 };
             let resolve_vis = |def_map: &DefMap, visibility| {
                 def_map
-                    .resolve_visibility(db, self.module_id, visibility)
+                    .resolve_visibility(db, self.module_id, visibility, false)
                     .unwrap_or(Visibility::Public)
             };
 
@@ -1707,6 +1712,20 @@ impl ModCollector<'_, '_> {
                         false,
                     );
                 }
+                ModItem::TraitAlias(id) => {
+                    let it = &self.item_tree[id];
+
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        TraitAliasLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
+                            .into(),
+                        &it.name,
+                        vis,
+                        false,
+                    );
+                }
                 ModItem::TypeAlias(id) => {
                     let it = &self.item_tree[id];
 
@@ -1823,7 +1842,7 @@ impl ModCollector<'_, '_> {
     ) -> LocalModuleId {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
-            .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+            .resolve_visibility(self.def_collector.db, self.module_id, visibility, false)
             .unwrap_or(Visibility::Public);
         let modules = &mut def_map.modules;
         let origin = match definition {

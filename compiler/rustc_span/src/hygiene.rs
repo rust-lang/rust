@@ -880,7 +880,7 @@ impl Span {
     pub fn fresh_expansion(self, expn_id: LocalExpnId) -> Span {
         HygieneData::with(|data| {
             self.with_ctxt(data.apply_mark(
-                SyntaxContext::root(),
+                self.ctxt(),
                 expn_id.to_expn_id(),
                 Transparency::Transparent,
             ))
@@ -1151,6 +1151,7 @@ pub enum DesugaringKind {
     Await,
     ForLoop,
     WhileLoop,
+    Replace,
 }
 
 impl DesugaringKind {
@@ -1166,6 +1167,7 @@ impl DesugaringKind {
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
+            DesugaringKind::Replace => "drop and replace",
         }
     }
 }

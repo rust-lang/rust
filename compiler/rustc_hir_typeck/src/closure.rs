@@ -2,13 +2,12 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use hir::def::DefKind;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::{DefineOpaqueTypes, LateBoundRegionConversionTime};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
@@ -127,7 +126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the `closures` table.
         let sig = bound_sig.map_bound(|sig| {
             self.tcx.mk_fn_sig(
-                [self.tcx.intern_tup(sig.inputs())],
+                [self.tcx.mk_tup(sig.inputs())],
                 sig.output(),
                 sig.c_variadic,
                 sig.unsafety,
@@ -398,7 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Here:
     /// - E would be `fn(&u32) -> &u32`.
-    /// - S would be `fn(&u32) ->
+    /// - S would be `fn(&u32) -> ?T`
     /// - E' is `&'!0 u32 -> &'!0 u32`
     /// - S' is `&'?0 u32 -> ?T`
     ///
@@ -563,10 +562,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check that E' = S'.
                 let cause = self.misc(hir_ty.span);
-                let InferOk { value: (), obligations } = self
-                    .at(&cause, self.param_env)
-                    .define_opaque_types(true)
-                    .eq(*expected_ty, supplied_ty)?;
+                let InferOk { value: (), obligations } = self.at(&cause, self.param_env).eq(
+                    DefineOpaqueTypes::Yes,
+                    *expected_ty,
+                    supplied_ty,
+                )?;
                 all_obligations.extend(obligations);
             }
 
@@ -576,10 +576,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_sig.output(),
             );
             let cause = &self.misc(decl.output.span());
-            let InferOk { value: (), obligations } = self
-                .at(cause, self.param_env)
-                .define_opaque_types(true)
-                .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
+            let InferOk { value: (), obligations } = self.at(cause, self.param_env).eq(
+                DefineOpaqueTypes::Yes,
+                expected_sigs.liberated_sig.output(),
+                supplied_output_ty,
+            )?;
             all_obligations.extend(obligations);
 
             let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));
@@ -713,14 +714,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .subst_iter_copied(self.tcx, substs)
                 .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
-            ty::Alias(ty::Projection, proj)
-                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
-            {
-                self.tcx
-                    .bound_explicit_item_bounds(proj.def_id)
-                    .subst_iter_copied(self.tcx, proj.substs)
-                    .find_map(|(p, s)| get_future_output(p, s))?
-            }
+            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
+                .tcx
+                .bound_explicit_item_bounds(proj.def_id)
+                .subst_iter_copied(self.tcx, proj.substs)
+                .find_map(|(p, s)| get_future_output(p, s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"

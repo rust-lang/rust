@@ -152,6 +152,21 @@ fn try_unwrap() {
 }
 
 #[test]
+fn into_inner() {
+    let x = Rc::new(3);
+    assert_eq!(Rc::into_inner(x), Some(3));
+
+    let x = Rc::new(4);
+    let y = Rc::clone(&x);
+    assert_eq!(Rc::into_inner(x), None);
+    assert_eq!(Rc::into_inner(y), Some(4));
+
+    let x = Rc::new(5);
+    let _w = Rc::downgrade(&x);
+    assert_eq!(Rc::into_inner(x), Some(5));
+}
+
+#[test]
 fn into_from_raw() {
     let x = Rc::new(Box::new("hello"));
     let y = x.clone();

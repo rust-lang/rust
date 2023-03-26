@@ -2,8 +2,9 @@ error[E0700]: hidden type for `impl Clone` captures lifetime that does not appea
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:44
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                    -----                   ^^^^
-   |                    |
+   |                    -----      ----------   ^^^^
+   |                    |          |
+   |                    |          opaque type defined here
    |                    hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
    |
 help: to declare that `impl Clone` captures `'_`, you can add an explicit `'_` lifetime bound

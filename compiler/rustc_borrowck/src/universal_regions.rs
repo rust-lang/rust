@@ -18,13 +18,11 @@ use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyOwnerKind, HirId};
+use rustc_hir::BodyOwnerKind;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{
-    self, DefIdTree, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::Symbol;
 use std::iter;
@@ -231,9 +229,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().local_def_id_to_hir_id(mir_def.did);
-        UniversalRegionsBuilder { infcx, mir_def, mir_hir_id, param_env }.build()
+        UniversalRegionsBuilder { infcx, mir_def, param_env }.build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -316,6 +312,9 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Gets an iterator over all the early-bound regions that have names.
+    /// Iteration order may be unstable, so this should only be used when
+    /// iteration order doesn't affect anything
+    #[allow(rustc::potential_query_instability)]
     pub fn named_universal_regions<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
@@ -390,7 +389,6 @@ impl<'tcx> UniversalRegions<'tcx> {
 struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
     mir_def: ty::WithOptConstParam<LocalDefId>,
-    mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -516,7 +514,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let va_list_ty =
                     self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
 
-                unnormalized_input_tys = self.infcx.tcx.mk_type_list(
+                unnormalized_input_tys = self.infcx.tcx.mk_type_list_from_iter(
                     unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),
                 );
             }
@@ -560,12 +558,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         match tcx.hir().body_owner_kind(self.mir_def.did) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
-                    tcx.type_of(typeck_root_def_id).subst_identity()
-                } else {
-                    let tables = tcx.typeck(self.mir_def.did);
-                    tables.node_type(self.mir_hir_id)
-                };
+                let defining_ty = tcx.type_of(self.mir_def.def_id_for_type_of()).subst_identity();
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
@@ -594,7 +587,18 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
                     DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
                 } else {
-                    let ty = tcx.typeck(self.mir_def.did).node_type(self.mir_hir_id);
+                    // FIXME this line creates a dependency between borrowck and typeck.
+                    //
+                    // This is required for `AscribeUserType` canonical query, which will call
+                    // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
+                    // into borrowck, which is ICE #78174.
+                    //
+                    // As a workaround, inline consts have an additional generic param (`ty`
+                    // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                    // proper type with NLL infer vars.
+                    let ty = tcx
+                        .typeck(self.mir_def.did)
+                        .node_type(tcx.local_def_id_to_hir_id(self.mir_def.did));
                     let substs = InlineConstSubsts::new(
                         tcx,
                         InlineConstSubstsParts { parent_substs: identity_substs, ty },
@@ -656,7 +660,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let closure_sig = substs.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let bound_vars = tcx.mk_bound_variable_kinds(
+                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                     inputs_and_output
                         .bound_vars()
                         .iter()
@@ -680,7 +684,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 };
 
                 ty::Binder::bind_with_vars(
-                    tcx.mk_type_list(
+                    tcx.mk_type_list_from_iter(
                         iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
                     ),
                     bound_vars,
@@ -693,7 +697,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let output = substs.as_generator().return_ty();
                 let generator_ty = tcx.mk_generator(def_id, substs, movability);
                 let inputs_and_output =
-                    self.infcx.tcx.intern_type_list(&[generator_ty, resume_ty, output]);
+                    self.infcx.tcx.mk_type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 
@@ -709,13 +713,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def.def_id_for_type_of()).subst_identity();
                 let ty = indices.fold_to_region_vids(tcx, ty);
-                ty::Binder::dummy(tcx.intern_type_list(&[ty]))
+                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
 
             DefiningTy::InlineConst(def_id, substs) => {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = substs.as_inline_const().ty();
-                ty::Binder::dummy(tcx.intern_type_list(&[ty]))
+                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
         }
     }

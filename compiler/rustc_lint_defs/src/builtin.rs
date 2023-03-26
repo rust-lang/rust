@@ -1026,12 +1026,13 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![feature(const_ptr_read)]
+    /// #![feature(const_mut_refs)]
     /// const FOO: () = unsafe {
     ///     let x = &[0_u8; 4];
     ///     let y = x.as_ptr().cast::<u32>();
-    ///     y.read(); // the address of a `u8` array is unknown and thus we don't know if
-    ///     // it is aligned enough for reading a `u32`.
+    ///     let mut z = 123;
+    ///     y.copy_to_nonoverlapping(&mut z, 1); // the address of a `u8` array is unknown
+    ///     // and thus we don't know if it is aligned enough for copying a `u32`.
     /// };
     /// ```
     ///
@@ -3229,6 +3230,45 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `ambiguous_glob_reexports` lint detects cases where names re-exported via globs
+    /// collide. Downstream users trying to use the same name re-exported from multiple globs
+    /// will receive a warning pointing out redefinition of the same name.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_glob_reexports)]
+    /// pub mod foo {
+    ///     pub type X = u8;
+    /// }
+    ///
+    /// pub mod bar {
+    ///     pub type Y = u8;
+    ///     pub type X = u8;
+    /// }
+    ///
+    /// pub use foo::*;
+    /// pub use bar::*;
+    ///
+    ///
+    /// pub fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This was previously accepted but it could silently break a crate's downstream users code.
+    /// For example, if `foo::*` and `bar::*` were re-exported before `bar::X` was added to the
+    /// re-exports, down stream users could use `this_crate::X` without problems. However, adding
+    /// `bar::X` would cause compilation errors in downstream crates because `X` is defined
+    /// multiple times in the same namespace of `this_crate`.
+    pub AMBIGUOUS_GLOB_REEXPORTS,
+    Warn,
+    "ambiguous glob re-exports",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3336,6 +3376,7 @@ declare_lint_pass! {
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         IMPLIED_BOUNDS_ENTAILMENT,
         BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
+        AMBIGUOUS_GLOB_REEXPORTS,
     ]
 }
 
@@ -3967,14 +4008,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (need FFI)
-    /// #![feature(ffi_unwind_calls)]
+    /// ```rust
     /// #![feature(c_unwind)]
-    ///
-    /// # mod impl {
-    /// #     #[no_mangle]
-    /// #     pub fn "C-unwind" fn foo() {}
-    /// # }
+    /// #![warn(ffi_unwind_calls)]
     ///
     /// extern "C-unwind" {
     ///     fn foo();
@@ -4102,4 +4138,34 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
     report_in_external_macro
+}
+
+declare_lint! {
+    /// The `invalid_macro_export_arguments` lint detects cases where `#[macro_export]` is being used with invalid arguments.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(invalid_macro_export_arguments)]
+    ///
+    /// #[macro_export(invalid_parameter)]
+    /// macro_rules! myMacro {
+    ///    () => {
+    ///         // [...]
+    ///    }
+    /// }
+    ///
+    /// #[macro_export(too, many, items)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The only valid argument is `#[macro_export(local_inner_macros)]` or no argument (`#[macro_export]`).
+    /// You can't have multiple arguments in a `#[macro_export(..)]`, or mention arguments other than `local_inner_macros`.
+    ///
+    pub INVALID_MACRO_EXPORT_ARGUMENTS,
+    Warn,
+    "\"invalid_parameter\" isn't a valid argument for `#[macro_export]`",
 }

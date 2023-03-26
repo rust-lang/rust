@@ -30,19 +30,23 @@ path = "bin/sccache-plus-cl.rs"
 test = false
 
 [dependencies]
+atty = "0.2.14"
 build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
-fd-lock = "3.0.8"
 filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
 hex = "0.4"
 object = { version = "0.29.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
-serde = { version = "1.0.8", features = ["derive"] }
+serde = "1.0.137"
+# Directly use serde_derive rather than through the derive feature of serde to allow building both
+# in parallel and to allow serde_json and toml to start building as soon as serde has been built.
+serde_derive = "1.0.137"
 serde_json = "1.0.2"
 sha2 = "0.10"
 tar = "0.4"
+termcolor = "1.2.0"
 toml = "0.5"
 ignore = "0.4.10"
 opener = "0.5"
@@ -53,18 +57,24 @@ walkdir = "2"
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.26.0", optional = true }
 
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3"
+# Solaris doesn't support flock() and thus fd-lock is not option now
+[target.'cfg(not(target_os = "solaris"))'.dependencies]
+fd-lock = "3.0.8"
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.46.0"
 features = [
-    "fileapi",
-    "ioapiset",
-    "jobapi2",
-    "handleapi",
-    "winioctl",
-    "psapi",
-    "impl-default",
-    "timezoneapi",
-    "winbase",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_System_JobObjects",
+    "Win32_System_ProcessStatus",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Time",
 ]
 
 [dev-dependencies]

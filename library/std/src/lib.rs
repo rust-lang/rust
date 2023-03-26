@@ -232,6 +232,7 @@
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
+#![cfg_attr(windows, feature(round_char_boundary))]
 //
 // Language features:
 #![feature(alloc_error_handler)]
@@ -273,7 +274,6 @@
 #![feature(utf8_chunks)]
 //
 // Library features (core):
-#![feature(atomic_mut_ptr)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(duration_constants)]
@@ -287,6 +287,8 @@
 #![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(ip)]
+#![feature(ip_in_core)]
 #![feature(is_some_and)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
@@ -301,6 +303,7 @@
 #![feature(provide_any)]
 #![feature(ptr_as_uninit)]
 #![feature(raw_os_nonzero)]
+#![feature(round_ties_even)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(std_internals)]

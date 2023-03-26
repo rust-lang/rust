@@ -429,6 +429,7 @@ symbols! {
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
         box_free,
+        box_new,
         box_patterns,
         box_syntax,
         bpf_target_feature,
@@ -740,6 +741,7 @@ symbols! {
         frem_fast,
         from,
         from_desugaring,
+        from_fn,
         from_iter,
         from_method,
         from_output,
@@ -790,7 +792,6 @@ symbols! {
         i64,
         i8,
         ident,
-        identity_future,
         if_let,
         if_let_guard,
         if_while_or_patterns,
@@ -983,6 +984,7 @@ symbols! {
         never_type_fallback,
         new,
         new_binary,
+        new_const,
         new_debug,
         new_display,
         new_lower_exp,
@@ -1042,6 +1044,7 @@ symbols! {
         optin_builtin_traits,
         option,
         option_env,
+        option_payload_ptr,
         options,
         or,
         or_patterns,
@@ -1152,6 +1155,7 @@ symbols! {
         read_enum_variant_arg,
         read_struct,
         read_struct_field,
+        read_via_copy,
         readonly,
         realloc,
         reason,
@@ -1196,6 +1200,8 @@ symbols! {
         rlib,
         rotate_left,
         rotate_right,
+        roundevenf32,
+        roundevenf64,
         roundf32,
         roundf64,
         rt,
@@ -1953,7 +1959,7 @@ impl Interner {
         let name = Symbol::new(inner.strings.len() as u32);
 
         // SAFETY: we convert from `&str` to `&[u8]`, clone it into the arena,
-        // and immediately convert the clone back to `&[u8], all because there
+        // and immediately convert the clone back to `&[u8]`, all because there
         // is no `inner.arena.alloc_str()` method. This is clearly safe.
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };

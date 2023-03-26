@@ -5,7 +5,7 @@
 // needs-unwind Asserting on contents of error message
 
 #![allow(path_statements, unused_allocation)]
-#![feature(box_syntax, core_intrinsics, generic_assert, generic_assert_internals)]
+#![feature(core_intrinsics, generic_assert, generic_assert_internals)]
 
 macro_rules! test {
   (
@@ -127,9 +127,6 @@ fn main() {
     // block
     [ { elem } == 3 ] => "Assertion failed: { elem } == 3"
 
-    // box
-    [ box elem == box 3 ] => "Assertion failed: box elem == box 3"
-
     // break
     [ loop { break elem; } ==  3 ] => "Assertion failed: loop { break elem; } == 3"
 
@@ -164,7 +161,7 @@ fn main() {
     // mac call
 
     // match
-    [ match elem { _ => elem } == 3 ] => "Assertion failed: match elem { _ => elem, } == 3"
+    [ match elem { _ => elem } == 3 ] => "Assertion failed: (match elem { _ => elem, }) == 3"
 
     // ret
     [ (|| { return elem; })() == 3 ] => "Assertion failed: (|| { return elem; })() == 3"

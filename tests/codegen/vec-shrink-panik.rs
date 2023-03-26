@@ -1,3 +1,8 @@
+// revisions: old new
+// LLVM 17 realizes double panic is not possible and doesn't generate calls
+// to panic_cannot_unwind.
+// [old]ignore-llvm-version: 17 - 99
+// [new]min-llvm-version: 17
 // compile-flags: -O
 // ignore-debug: the debug assertions get in the way
 #![crate_type = "lib"]
@@ -18,11 +23,11 @@ pub fn shrink_to_fit(vec: &mut Vec<u32>) {
 pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
     // CHECK-NOT: panic
 
-    // Call to panic_cannot_unwind in case of double-panic is expected,
-    // but other panics are not.
+    // Call to panic_cannot_unwind in case of double-panic is expected
+    // on LLVM 16 and older, but other panics are not.
     // CHECK: cleanup
-    // CHECK-NEXT: ; call core::panicking::panic_cannot_unwind
-    // CHECK-NEXT: panic_cannot_unwind
+    // old-NEXT: ; call core::panicking::panic_cannot_unwind
+    // old-NEXT: panic_cannot_unwind
 
     // CHECK-NOT: panic
     vec.into_boxed_slice()
@@ -34,14 +39,14 @@ pub fn issue75636<'a>(iter: &[&'a str]) -> Box<[&'a str]> {
     // CHECK-NOT: panic
 
     // Call to panic_cannot_unwind in case of double-panic is expected,
-    // but other panics are not.
+    // on LLVM 16 and older, but other panics are not.
     // CHECK: cleanup
-    // CHECK-NEXT: ; call core::panicking::panic_cannot_unwind
-    // CHECK-NEXT: panic_cannot_unwind
+    // old-NEXT: ; call core::panicking::panic_cannot_unwind
+    // old-NEXT: panic_cannot_unwind
 
     // CHECK-NOT: panic
     iter.iter().copied().collect()
 }
 
-// CHECK: ; core::panicking::panic_cannot_unwind
-// CHECK: declare void @{{.*}}panic_cannot_unwind
+// old: ; core::panicking::panic_cannot_unwind
+// old: declare void @{{.*}}panic_cannot_unwind

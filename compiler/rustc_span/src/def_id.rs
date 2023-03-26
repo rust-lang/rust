@@ -1,13 +1,17 @@
 use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::unhash::Unhasher;
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::borrow::Borrow;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasherDefault, Hash, Hasher};
+
+pub type StableCrateIdMap =
+    indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
 
 rustc_index::newtype_index! {
     #[custom_encodable]
@@ -235,7 +239,7 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
     // the lower bits no matter the endianness. This allows the compiler to turn that `Hash` impl
-    // into a direct call to 'u64::hash(_)`.
+    // into a direct call to `u64::hash(_)`.
     #[cfg(not(all(target_pointer_width = "64", target_endian = "big")))]
     pub index: DefIndex,
     pub krate: CrateNum,

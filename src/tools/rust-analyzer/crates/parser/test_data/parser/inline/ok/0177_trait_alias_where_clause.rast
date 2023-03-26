@@ -1,5 +1,5 @@
 SOURCE_FILE
-  TRAIT
+  TRAIT_ALIAS
     TRAIT_KW "trait"
     WHITESPACE " "
     NAME
@@ -50,7 +50,7 @@ SOURCE_FILE
                     IDENT "Copy"
     SEMICOLON ";"
   WHITESPACE "\n"
-  TRAIT
+  TRAIT_ALIAS
     TRAIT_KW "trait"
     WHITESPACE " "
     NAME

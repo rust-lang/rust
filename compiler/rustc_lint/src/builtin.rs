@@ -58,7 +58,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, PredicateOrigin};
-use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -69,7 +68,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::{Abi, VariantIdx};
+use rustc_target::abi::{Abi, FIRST_VARIANT};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 
@@ -358,29 +357,29 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::Fn(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
                 }
             }
 
             ast::ItemKind::Static(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
                 }
 
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
                 }
             }
@@ -391,10 +390,10 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         if let ast::AssocItemKind::Fn(..) = it.kind {
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+            if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                 self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
             }
-            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+            if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                 self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
             }
         }
@@ -677,21 +676,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             _ => return,
         };
@@ -1123,12 +1122,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         };
         match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
-                if let Some(no_mangle_attr) = cx.sess().find_by_name(attrs, sym::no_mangle) {
+                if let Some(no_mangle_attr) = attr::find_by_name(attrs, sym::no_mangle) {
                     check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
                 }
             }
             hir::ItemKind::Const(..) => {
-                if cx.sess().contains_name(attrs, sym::no_mangle) {
+                if attr::contains_name(attrs, sym::no_mangle) {
                     // account for "pub const" (#45562)
                     let start = cx
                         .tcx
@@ -1152,9 +1151,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
             hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
-                        if let Some(no_mangle_attr) = cx
-                            .sess()
-                            .find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                        if let Some(no_mangle_attr) =
+                            attr::find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
                         {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
@@ -1288,7 +1286,7 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Explains corresponding feature flag must be enabled for the `#[track_caller] attribute to
+    /// Explains corresponding feature flag must be enabled for the `#[track_caller]` attribute to
     /// do anything
     UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
 );
@@ -1306,7 +1304,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness() == IsAsync::Async
             && !cx.tcx.features().closure_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = cx.tcx.get_attr(def_id.to_def_id(), sym::track_caller)
+            && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
             cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
                 label: span,
@@ -1601,7 +1599,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |
-                    AliasEq(..) |
+                    AliasRelate(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
@@ -1836,7 +1834,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         }
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
-        if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
+        if let Some(attr) = attr::find_by_name(attrs, sym::rustc_test_marker) {
             cx.emit_spanned_lint(UNNAMEABLE_TEST_ITEMS, attr.span, BuiltinUnnameableTestItems);
         }
     }
@@ -2748,10 +2746,7 @@ impl ClashingExternDeclarations {
                 // information, we could have codegen_fn_attrs also give span information back for
                 // where the attribute was defined. However, until this is found to be a
                 // bottleneck, this does just fine.
-                (
-                    overridden_link_name,
-                    tcx.get_attr(fi.owner_id.to_def_id(), sym::link_name).unwrap().span,
-                )
+                (overridden_link_name, tcx.get_attr(fi.owner_id, sym::link_name).unwrap().span)
             })
         {
             SymbolName::Link(overridden_link_name, overridden_link_name_span)
@@ -2781,8 +2776,7 @@ impl ClashingExternDeclarations {
 
             // Given a transparent newtype, reach through and grab the inner
             // type unless the newtype makes the type non-null.
-            let non_transparent_ty = |ty: Ty<'tcx>| -> Ty<'tcx> {
-                let mut ty = ty;
+            let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
                 loop {
                     if let ty::Adt(def, substs) = *ty.kind() {
                         let is_transparent = def.repr().transparent();
@@ -2792,14 +2786,14 @@ impl ClashingExternDeclarations {
                             ty, is_transparent, is_non_null
                         );
                         if is_transparent && !is_non_null {
-                            debug_assert!(def.variants().len() == 1);
-                            let v = &def.variant(VariantIdx::new(0));
-                            ty = transparent_newtype_field(tcx, v)
-                                .expect(
-                                    "single-variant transparent structure with zero-sized field",
-                                )
-                                .ty(tcx, substs);
-                            continue;
+                            debug_assert_eq!(def.variants().len(), 1);
+                            let v = &def.variant(FIRST_VARIANT);
+                            // continue with `ty`'s non-ZST field,
+                            // otherwise `ty` is a ZST and we can return
+                            if let Some(field) = transparent_newtype_field(tcx, v) {
+                                ty = field.ty(tcx, substs);
+                                continue;
+                            }
                         }
                     }
                     debug!("non_transparent_ty -> {:?}", ty);
@@ -2813,10 +2807,8 @@ impl ClashingExternDeclarations {
             if !seen_types.insert((a, b)) {
                 // We've encountered a cycle. There's no point going any further -- the types are
                 // structurally the same.
-                return true;
-            }
-            let tcx = cx.tcx;
-            if a == b {
+                true
+            } else if a == b {
                 // All nominally-same types are structurally same, too.
                 true
             } else {

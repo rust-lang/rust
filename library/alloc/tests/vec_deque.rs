@@ -1046,6 +1046,20 @@ fn test_append_double_drop() {
 }
 
 #[test]
+#[should_panic]
+fn test_append_zst_capacity_overflow() {
+    let mut v = Vec::with_capacity(usize::MAX);
+    // note: using resize instead of set_len here would
+    //       be *extremely* slow in unoptimized builds.
+    // SAFETY: `v` has capacity `usize::MAX`, and no initialization
+    //         is needed for empty tuples.
+    unsafe { v.set_len(usize::MAX) };
+    let mut v = VecDeque::from(v);
+    let mut w = vec![()].into();
+    v.append(&mut w);
+}
+
+#[test]
 fn test_retain() {
     let mut buf = VecDeque::new();
     buf.extend(1..5);

@@ -76,17 +76,8 @@ pub fn layout_of_adt_query(
             |min, max| Integer::repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
-                let d = match db
-                    .const_eval_variant(EnumVariantId { parent: e, local_id: id.0 })
-                    .ok()?
-                {
-                    crate::consteval::ComputedExpr::Literal(l) => match l {
-                        hir_def::expr::Literal::Int(i, _) => i,
-                        hir_def::expr::Literal::Uint(i, _) => i as i128,
-                        _ => return None,
-                    },
-                    _ => return None,
-                };
+                let d =
+                    db.const_eval_discriminant(EnumVariantId { parent: e, local_id: id.0 }).ok()?;
                 Some((id, d))
             }),
             // FIXME: The current code for niche-filling relies on variant indices

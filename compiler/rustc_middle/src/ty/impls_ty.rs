@@ -79,7 +79,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
             // WARNING: We dedup cache the `HashStable` results for `List`
             // while ignoring types and freely transmute
             // between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
-            // See `fn intern_type_list` for more details.
+            // See `fn mk_type_list` for more details.
             //
             // We therefore hash types without adding a hash for their discriminant.
             //

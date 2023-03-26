@@ -75,10 +75,10 @@ fn test_units() {
 fn test_allowed() {
 }
 
-/// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+/// This test has [a `link_with_underscores`][chunked-example] inside it. See #823.
 /// See also [the issue tracker](https://github.com/rust-lang/rust-clippy/search?q=clippy::doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
-/// It can also be [inline_link2].
+/// It can also be [inline_link2]. A link to [StackOverflow](https://stackoverflow.com) is also acceptable.
 ///
 /// [chunked-example]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
 /// [inline_link]: https://foobar

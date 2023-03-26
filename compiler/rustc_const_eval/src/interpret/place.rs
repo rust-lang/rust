@@ -8,7 +8,7 @@ use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, VariantIdx};
+use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -353,7 +353,8 @@ where
     pub(super) fn get_place_alloc(
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
@@ -364,7 +365,8 @@ where
     pub(super) fn get_place_alloc_mut(
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
@@ -459,7 +461,7 @@ where
     ) -> InterpResult<'tcx> {
         self.write_immediate_no_validate(src, dest)?;
 
-        if M::enforce_validity(self) {
+        if M::enforce_validity(self, dest.layout) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&self.place_to_op(dest)?)?;
         }
@@ -614,7 +616,7 @@ where
     ) -> InterpResult<'tcx> {
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if M::enforce_validity(self) {
+        if M::enforce_validity(self, dest.layout) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&self.place_to_op(dest)?)?;
         }
@@ -794,7 +796,7 @@ where
                 let variant_dest = self.place_downcast(&dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
-            _ => (VariantIdx::from_u32(0), dest.clone(), None),
+            _ => (FIRST_VARIANT, dest.clone(), None),
         };
         if active_field_index.is_some() {
             assert_eq!(operands.len(), 1);

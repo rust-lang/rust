@@ -48,6 +48,8 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         $crate::__rust_force_expr!(<[_]>::into_vec(
+            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // time when constructing arrays with many elements.
             #[rustc_box]
             $crate::boxed::Box::new([$($x),+])
         ))

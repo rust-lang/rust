@@ -180,7 +180,9 @@ impl Fixture {
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
-        let mut target_data_layout = None;
+        let mut target_data_layout = Some(
+            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_string(),
+        );
         for component in components[1..].iter() {
             let (key, value) =
                 component.split_once(':').unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));

@@ -13,7 +13,6 @@ use super::{elaborate_predicates, elaborate_trait_ref};
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use hir::def::DefKind;
 use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -21,7 +20,7 @@ use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{Predicate, ToPredicate};
+use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -140,6 +139,10 @@ fn object_safety_violations_for_trait(
     if !spans.is_empty() {
         violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
     }
+    let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
+    if !spans.is_empty() {
+        violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
+    }
 
     violations.extend(
         tcx.associated_items(trait_def_id)
@@ -157,6 +160,7 @@ fn object_safety_violations_for_trait(
                 .in_definition_order()
                 .filter(|item| item.kind == ty::AssocKind::Type)
                 .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
                 .map(|item| {
                     let ident = item.ident(tcx);
                     ObjectSafetyViolation::GAT(ident.name, ident.span)
@@ -331,7 +335,7 @@ fn predicate_references_self<'tcx>(
             has_self_ty(&ty.into()).then_some(sp)
         }
 
-        ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
+        ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
 
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
@@ -346,6 +350,21 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
+}
+
+fn super_predicates_have_non_lifetime_binders(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> SmallVec<[Span; 1]> {
+    // If non_lifetime_binders is disabled, then exit early
+    if !tcx.features().non_lifetime_binders {
+        return SmallVec::new();
+    }
+    tcx.super_predicates_of(trait_def_id)
+        .predicates
+        .iter()
+        .filter_map(|(pred, span)| pred.has_non_region_late_bound().then_some(*span))
+        .collect()
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
@@ -376,7 +395,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::AliasEq(..)
+            | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
@@ -666,8 +685,9 @@ fn object_ty_for_trait<'tcx>(
     elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
     elaborated_predicates.dedup();
 
-    let existential_predicates = tcx
-        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
+    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
+        iter::once(trait_predicate).chain(elaborated_predicates),
+    );
     debug!(?existential_predicates);
 
     tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
@@ -766,11 +786,11 @@ fn receiver_is_dispatchable<'tcx>(
             ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
         };
 
-        let caller_bounds: Vec<Predicate<'tcx>> =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]).collect();
+        let caller_bounds =
+            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
         ty::ParamEnv::new(
-            tcx.intern_predicates(&caller_bounds),
+            tcx.mk_predicates_from_iter(caller_bounds),
             param_env.reveal(),
             param_env.constness(),
         )
@@ -853,7 +873,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
                     }
                 }
                 ty::Alias(ty::Projection, ref data)
-                    if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
+                    if self.tcx.is_impl_trait_in_trait(data.def_id) =>
                 {
                     // We'll deny these later in their own pass
                     ControlFlow::Continue(())
@@ -920,7 +940,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     ty.skip_binder().walk().find_map(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Alias(ty::Projection, proj) = ty.kind()
-            && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
+            && tcx.is_impl_trait_in_trait(proj.def_id)
         {
             Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.def_id)))
         } else {

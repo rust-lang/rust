@@ -1,15 +1,10 @@
-error[E0275]: overflow evaluating the requirement `K: Send`
+error[E0275]: overflow evaluating the requirement `J: Send`
   --> $DIR/recursion_limit.rs:34:5
    |
 LL |     is_send::<A>();
    |     ^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`recursion_limit`)
-note: required because it appears within the type `J`
-  --> $DIR/recursion_limit.rs:24:9
-   |
-LL | link! { J, K }
-   |         ^
 note: required because it appears within the type `I`
   --> $DIR/recursion_limit.rs:23:9
    |

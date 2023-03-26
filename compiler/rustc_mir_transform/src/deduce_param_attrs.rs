@@ -5,7 +5,7 @@
 //! purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 //! dependent crates can use them.
 
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Operand, Terminator, TerminatorKind, RETURN_PLACE};
@@ -149,7 +149,10 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
 /// body of the function instead of just the signature. These can be useful for optimization
 /// purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 /// dependent crates can use them.
-pub fn deduced_param_attrs<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [DeducedParamAttrs] {
+pub fn deduced_param_attrs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> &'tcx [DeducedParamAttrs] {
     // This computation is unfortunately rather expensive, so don't do it unless we're optimizing.
     // Also skip it in incremental mode.
     if tcx.sess.opts.optimize == OptLevel::No || tcx.sess.opts.incremental.is_some() {
@@ -181,10 +184,6 @@ pub fn deduced_param_attrs<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [Ded
     if !tcx.is_mir_available(def_id) {
         return &[];
     }
-
-    // Deduced attributes for other crates should be read from the metadata instead of via this
-    // function.
-    debug_assert!(def_id.is_local());
 
     // Grab the optimized MIR. Analyze it to determine which arguments have been mutated.
     let body: &Body<'tcx> = tcx.optimized_mir(def_id);

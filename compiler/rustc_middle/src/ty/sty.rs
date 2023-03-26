@@ -7,7 +7,7 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    self, AdtDef, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
@@ -22,8 +22,8 @@ use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -105,6 +105,15 @@ impl BoundRegionKind {
         match *self {
             BoundRegionKind::BrNamed(id, _) => return Some(id),
             _ => None,
+        }
+    }
+
+    pub fn expect_anon(&self) -> u32 {
+        match *self {
+            BoundRegionKind::BrNamed(_, _) | BoundRegionKind::BrEnv => {
+                bug!("expected anon region: {self:?}")
+            }
+            BoundRegionKind::BrAnon(idx, _) => idx,
         }
     }
 }
@@ -250,7 +259,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         parts: ClosureSubstsParts<'tcx, Ty<'tcx>>,
     ) -> ClosureSubsts<'tcx> {
         ClosureSubsts {
-            substs: tcx.mk_substs(
+            substs: tcx.mk_substs_from_iter(
                 parts.parent_substs.iter().copied().chain(
                     [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
                         .iter()
@@ -377,7 +386,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         parts: GeneratorSubstsParts<'tcx, Ty<'tcx>>,
     ) -> GeneratorSubsts<'tcx> {
         GeneratorSubsts {
-            substs: tcx.mk_substs(
+            substs: tcx.mk_substs_from_iter(
                 parts.parent_substs.iter().copied().chain(
                     [
                         parts.resume_ty,
@@ -508,8 +517,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        let num_variants = tcx.generator_layout(def_id).unwrap().variant_fields.len();
-        VariantIdx::new(0)..VariantIdx::new(num_variants)
+        FIRST_VARIANT..tcx.generator_layout(def_id).unwrap().variant_fields.next_index()
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -655,7 +663,7 @@ impl<'tcx> InlineConstSubsts<'tcx> {
         parts: InlineConstSubstsParts<'tcx, Ty<'tcx>>,
     ) -> InlineConstSubsts<'tcx> {
         InlineConstSubsts {
-            substs: tcx.mk_substs(
+            substs: tcx.mk_substs_from_iter(
                 parts.parent_substs.iter().copied().chain(std::iter::once(parts.ty.into())),
             ),
         }
@@ -853,7 +861,7 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        tcx.mk_trait_ref(trait_id, tcx.intern_substs(&substs[..defs.params.len()]))
+        tcx.mk_trait_ref(trait_id, tcx.mk_substs(&substs[..defs.params.len()]))
     }
 }
 
@@ -899,7 +907,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
 
         ty::ExistentialTraitRef {
             def_id: trait_ref.def_id,
-            substs: tcx.intern_substs(&trait_ref.substs[1..]),
+            substs: tcx.mk_substs(&trait_ref.substs[1..]),
         }
     }
 
@@ -1279,7 +1287,7 @@ impl<'tcx> AliasTy<'tcx> {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
             DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
+                tcx.parent(tcx.impl_trait_in_trait_parent_fn(self.def_id))
             }
             kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }
@@ -1393,6 +1401,18 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
+    }
+
+    pub fn is_fn_trait_compatible(&self) -> bool {
+        matches!(
+            self.skip_binder(),
+            ty::FnSig {
+                unsafety: rustc_hir::Unsafety::Normal,
+                abi: Abi::Rust,
+                c_variadic: false,
+                ..
+            }
+        )
     }
 }
 
@@ -1551,7 +1571,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.parent(self.def_id);
         let subst_count = tcx.generics_of(def_id).count() - 1;
-        let substs = tcx.intern_substs(&self.substs[..subst_count]);
+        let substs = tcx.mk_substs(&self.substs[..subst_count]);
         ty::ExistentialTraitRef { def_id, substs }
     }
 
@@ -1579,7 +1599,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
 
         Self {
             def_id: projection_predicate.projection_ty.def_id,
-            substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
+            substs: tcx.mk_substs(&projection_predicate.projection_ty.substs[1..]),
             term: projection_predicate.term,
         }
     }
@@ -1905,11 +1925,6 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_region_ptr(self) -> bool {
-        matches!(self.kind(), Ref(..))
-    }
-
-    #[inline]
     pub fn is_mutable_ptr(self) -> bool {
         matches!(
             self.kind(),
@@ -1935,7 +1950,7 @@ impl<'tcx> Ty<'tcx> {
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
     #[inline]
     pub fn is_any_ptr(self) -> bool {
-        self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
+        self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
     #[inline]
@@ -2209,7 +2224,7 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
-                tcx.mk_projection(assoc_items[0], tcx.intern_substs(&[self.into()]))
+                tcx.mk_projection(assoc_items[0], tcx.mk_substs(&[self.into()]))
             }
 
             ty::Bool

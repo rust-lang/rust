@@ -1,5 +1,6 @@
 use clean::AttributesExt;
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -28,8 +29,8 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
-    visibility_print_with_space, Buffer, Ending, PrintWithSpace,
+    display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
+    print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
@@ -367,7 +368,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         ..myitem.clone()
                     };
 
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()));
+                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()).to_string());
                     stab_tags
                 } else {
                     None
@@ -461,41 +462,62 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
 /// Render the stability, deprecation and portability tags that are displayed in the item's summary
 /// at the module level.
-fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) -> String {
-    let mut tags = String::new();
-
-    fn tag_html(class: &str, title: &str, contents: &str) -> String {
-        format!(r#"<span class="stab {}" title="{}">{}</span>"#, class, Escape(title), contents)
-    }
-
-    // The trailing space after each tag is to space it properly against the rest of the docs.
-    if let Some(depr) = &item.deprecation(tcx) {
-        let mut message = "Deprecated";
-        if !stability::deprecation_in_effect(depr) {
-            message = "Deprecation planned";
+fn extra_info_tags<'a, 'tcx: 'a>(
+    item: &'a clean::Item,
+    parent: &'a clean::Item,
+    tcx: TyCtxt<'tcx>,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    display_fn(move |f| {
+        fn tag_html<'a>(
+            class: &'a str,
+            title: &'a str,
+            contents: &'a str,
+        ) -> impl fmt::Display + 'a {
+            display_fn(move |f| {
+                write!(
+                    f,
+                    r#"<span class="stab {}" title="{}">{}</span>"#,
+                    class,
+                    Escape(title),
+                    contents
+                )
+            })
         }
-        tags += &tag_html("deprecated", "", message);
-    }
 
-    // The "rustc_private" crates are permanently unstable so it makes no sense
-    // to render "unstable" everywhere.
-    if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
-        == Some(true)
-    {
-        tags += &tag_html("unstable", "", "Experimental");
-    }
+        // The trailing space after each tag is to space it properly against the rest of the docs.
+        if let Some(depr) = &item.deprecation(tcx) {
+            let message = if stability::deprecation_in_effect(depr) {
+                "Deprecated"
+            } else {
+                "Deprecation planned"
+            };
+            write!(f, "{}", tag_html("deprecated", "", message))?;
+        }
 
-    let cfg = match (&item.cfg, parent.cfg.as_ref()) {
-        (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
-        (cfg, _) => cfg.as_deref().cloned(),
-    };
+        // The "rustc_private" crates are permanently unstable so it makes no sense
+        // to render "unstable" everywhere.
+        if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
+            == Some(true)
+        {
+            write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+        }
 
-    debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
-    if let Some(ref cfg) = cfg {
-        tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
-    }
+        let cfg = match (&item.cfg, parent.cfg.as_ref()) {
+            (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
+            (cfg, _) => cfg.as_deref().cloned(),
+        };
 
-    tags
+        debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
+        if let Some(ref cfg) = cfg {
+            write!(
+                f,
+                "{}",
+                tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html())
+            )
+        } else {
+            Ok(())
+        }
+    })
 }
 
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
@@ -858,8 +880,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             local.iter().partition(|i| i.inner_impl().kind.is_auto());
 
-        synthetic.sort_by(|a, b| compare_impl(a, b, cx));
-        concrete.sort_by(|a, b| compare_impl(a, b, cx));
+        synthetic.sort_by_cached_key(|i| ImplString::new(i, cx));
+        concrete.sort_by_cached_key(|i| ImplString::new(i, cx));
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
@@ -1212,7 +1234,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w.write_str(",\n");
             }
 
-            if variants_stripped {
+            if variants_stripped && !it.is_non_exhaustive() {
                 w.write_str("    // some variants omitted\n");
             }
             if toggle {
@@ -1575,12 +1597,25 @@ where
     w.write_str("</code></pre>");
 }
 
-fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
-    let lhss = format!("{}", lhs.inner_impl().print(false, cx));
-    let rhss = format!("{}", rhs.inner_impl().print(false, cx));
+#[derive(PartialEq, Eq)]
+struct ImplString(String);
 
-    // lhs and rhs are formatted as HTML, which may be unnecessary
-    compare_names(&lhss, &rhss)
+impl ImplString {
+    fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
+        ImplString(format!("{}", i.inner_impl().print(false, cx)))
+    }
+}
+
+impl PartialOrd for ImplString {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl Ord for ImplString {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare_names(&self.0, &other.0)
+    }
 }
 
 fn render_implementor(
@@ -1839,6 +1874,12 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         } else {
             let size = layout.size.bytes() - tag_size;
             write!(w, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" },);
+            if layout.abi.is_uninhabited() {
+                write!(
+                    w,
+                    " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
+                );
+            }
         }
     }
 

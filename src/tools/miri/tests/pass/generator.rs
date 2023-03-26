@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(generators, generator_trait, never_type)]
 
 use std::fmt::Debug;

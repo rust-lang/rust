@@ -87,7 +87,12 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             };
             let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
             let normalization_errors = ocx.select_where_possible();
-            if !normalization_errors.is_empty() {
+
+            // NOTE: The post-normalization type may also reference errors,
+            // such as when we project to a missing type or we have a mismatch
+            // between expected and found const-generic types. Don't report an
+            // additional copy error here, since it's not typically useful.
+            if !normalization_errors.is_empty() || ty.references_error() {
                 tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking Copy implementation"));
                 continue;
             }

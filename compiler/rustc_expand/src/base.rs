@@ -12,13 +12,13 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
 };
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
@@ -776,16 +776,14 @@ impl SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
-        let allow_internal_unsafe = sess.contains_name(attrs, sym::allow_internal_unsafe);
-        let local_inner_macros = sess
-            .find_by_name(attrs, sym::macro_export)
+        let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
+        let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = sess.contains_name(attrs, sym::collapse_debuginfo);
+        let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
         tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = sess
-            .find_by_name(attrs, sym::rustc_builtin_macro)
+        let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.
@@ -795,7 +793,9 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
+        let stability = attr::find_stability(&sess, attrs, span);
+        let const_stability = attr::find_const_stability(&sess, attrs, span);
+        let body_stability = attr::find_body_stability(&sess, attrs);
         if let Some((_, sp)) = const_stability {
             sess.emit_err(errors::MacroConstStability {
                 span: sp,
@@ -947,14 +947,14 @@ pub trait ResolverExpand {
     fn declare_proc_macro(&mut self, id: NodeId);
 
     /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
-    fn registered_tools(&self) -> &FxHashSet<Ident>;
+    fn registered_tools(&self) -> &RegisteredTools;
 }
 
 pub trait LintStoreExpand {
     fn pre_expansion_lint(
         &self,
         sess: &Session,
-        registered_tools: &FxHashSet<Ident>,
+        registered_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[P<Item>],
@@ -1004,6 +1004,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
+    pub num_standard_library_imports: usize,
     pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn ResolverExpand,
@@ -1032,6 +1033,7 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             sess,
             ecfg,
+            num_standard_library_imports: 0,
             reduced_recursion_limit: None,
             resolver,
             lint_store,

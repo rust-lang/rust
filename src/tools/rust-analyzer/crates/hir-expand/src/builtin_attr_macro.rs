@@ -1,6 +1,6 @@
 //! Builtin attributes.
 
-use crate::{db::AstDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
+use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
     ( $(($name:ident, $variant:ident) => $expand:ident),* ) => {
@@ -12,7 +12,7 @@ macro_rules! register_builtin {
         impl BuiltinAttrExpander {
             pub fn expand(
                 &self,
-                db: &dyn AstDatabase,
+                db: &dyn ExpandDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> ExpandResult<tt::Subtree> {
@@ -60,7 +60,7 @@ pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
 }
 
 fn dummy_attr_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -90,7 +90,7 @@ fn dummy_attr_expand(
 /// So this hacky approach is a lot more friendly for us, though it does require a bit of support in
 /// [`hir::Semantics`] to make this work.
 fn derive_attr_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {

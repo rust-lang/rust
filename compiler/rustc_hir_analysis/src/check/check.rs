@@ -1,5 +1,5 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
-use crate::errors::LinkageType;
+use crate::errors::{self, LinkageType};
 
 use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
@@ -22,8 +22,7 @@ use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtDef, DefIdTree, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
@@ -115,9 +114,11 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     allowed_union_field(*elem, tcx, param_env)
                 }
                 _ => {
-                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
+                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
+                    // also no need to report an error if the type is unresolved.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
                         || ty.is_copy_modulo_regions(tcx, param_env)
+                        || ty.references_error()
                 }
             }
         }
@@ -132,26 +133,14 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     Some(Node::Field(field)) => (field.span, field.ty.span),
                     _ => unreachable!("mir field has to correspond to hir field"),
                 };
-                struct_span_err!(
-                    tcx.sess,
+                tcx.sess.emit_err(errors::InvalidUnionField {
                     field_span,
-                    E0740,
-                    "unions cannot contain fields that may need dropping"
-                )
-                .note(
-                    "a type is guaranteed not to need dropping \
-                    when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type",
-                )
-                .multipart_suggestion_verbose(
-                    "when the type does not implement `Copy`, \
-                    wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped",
-                    vec![
-                        (ty_span.shrink_to_lo(), "std::mem::ManuallyDrop<".into()),
-                        (ty_span.shrink_to_hi(), ">".into()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                    sugg: errors::InvalidUnionFieldSuggestion {
+                        lo: ty_span.shrink_to_lo(),
+                        hi: ty_span.shrink_to_hi(),
+                    },
+                    note: (),
+                });
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {
                 // This should never happen. But we can get here e.g. in case of name resolution errors.
@@ -222,7 +211,7 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
         return;
     }
 
-    let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
+    let substs = InternalSubsts::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
     if !tcx.features().impl_trait_projections {
@@ -315,8 +304,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         ..
     }) = item.kind
     {
-        let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-        let opaque_identity_ty = if in_trait {
+        let substs = InternalSubsts::identity_for_item(tcx, def_id);
+        let opaque_identity_ty = if in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
             tcx.mk_projection(def_id.to_def_id(), substs)
         } else {
             tcx.mk_opaque(def_id.to_def_id(), substs)
@@ -455,7 +444,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
     match origin {
         // Checked when type checking the function containing them.
@@ -546,7 +535,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
                         let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, id.owner_id.to_def_id());
+                            InternalSubsts::identity_for_item(tcx, id.owner_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
@@ -565,10 +554,18 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             check_union(tcx, id.owner_id.def_id);
         }
         DefKind::OpaqueTy => {
-            check_opaque(tcx, id);
+            let opaque = tcx.hir().expect_item(id.owner_id.def_id).expect_opaque_ty();
+            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = opaque.origin
+                && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
+                && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
+            {
+                // Skip opaques from RPIT in traits with no default body.
+            } else {
+                check_opaque(tcx, id);
+            }
         }
         DefKind::ImplTraitPlaceholder => {
-            let parent = tcx.impl_trait_in_trait_parent(id.owner_id.to_def_id());
+            let parent = tcx.impl_trait_in_trait_parent_fn(id.owner_id.to_def_id());
             // Only check the validity of this opaque type if the function has a default body
             if let hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
@@ -792,8 +789,10 @@ fn check_impl_items_against_trait<'tcx>(
             trait_def.must_implement_one_of.as_deref();
 
         for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
-            let is_implemented = ancestors
-                .leaf_def(tcx, trait_item_id)
+            let leaf_def = ancestors.leaf_def(tcx, trait_item_id);
+
+            let is_implemented = leaf_def
+                .as_ref()
                 .map_or(false, |node_item| node_item.item.defaultness(tcx).has_value());
 
             if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
@@ -801,8 +800,8 @@ fn check_impl_items_against_trait<'tcx>(
             }
 
             // true if this item is specifically implemented in this impl
-            let is_implemented_here = ancestors
-                .leaf_def(tcx, trait_item_id)
+            let is_implemented_here = leaf_def
+                .as_ref()
                 .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
@@ -830,6 +829,36 @@ fn check_impl_items_against_trait<'tcx>(
                         must_implement_one_of = None;
                     }
                 }
+            }
+
+            if let Some(leaf_def) = &leaf_def
+                && !leaf_def.is_final()
+                && let def_id = leaf_def.item.def_id
+                && tcx.impl_method_has_trait_impl_trait_tys(def_id)
+            {
+                let def_kind = tcx.def_kind(def_id);
+                let descr = tcx.def_kind_descr(def_kind, def_id);
+                let (msg, feature) = if tcx.asyncness(def_id).is_async() {
+                    (
+                        format!("async {descr} in trait cannot be specialized"),
+                        sym::async_fn_in_trait,
+                    )
+                } else {
+                    (
+                        format!(
+                            "{descr} with return-position `impl Trait` in trait cannot be specialized"
+                        ),
+                        sym::return_position_impl_trait_in_trait,
+                    )
+                };
+                tcx.sess
+                    .struct_span_err(tcx.def_span(def_id), msg)
+                    .note(format!(
+                        "specialization behaves in inconsistent and \
+                        surprising ways with `#![feature({feature})]`, \
+                        and for now is disallowed"
+                    ))
+                    .emit();
             }
         }
 
@@ -1140,7 +1169,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        if let Some(attr) = tcx.get_attrs(def_id.to_def_id(), sym::repr).next() {
+        if let Some(attr) = tcx.get_attrs(def_id, sym::repr).next() {
             struct_span_err!(
                 tcx.sess,
                 attr.span,
@@ -1479,6 +1508,14 @@ fn opaque_type_cycle_error(
                     {
                         label_match(interior_ty.ty, interior_ty.span);
                     }
+                    if tcx.sess.opts.unstable_opts.drop_tracking_mir
+                        && let DefKind::Generator = tcx.def_kind(closure_def_id)
+                    {
+                        let generator_layout = tcx.mir_generator_witnesses(closure_def_id);
+                        for interior_ty in &generator_layout.field_tys {
+                            label_match(interior_ty.ty, interior_ty.source_info.span);
+                        }
+                    }
                 }
             }
         }
@@ -1516,6 +1553,6 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
 }

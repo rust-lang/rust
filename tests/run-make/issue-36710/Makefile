@@ -4,6 +4,7 @@
 # ignore-nvptx64-nvidia-cuda FIXME: can't find crate for `std`
 # ignore-musl FIXME: this makefile needs teaching how to use a musl toolchain
 #                    (see dist-i586-gnu-i586-i686-musl Dockerfile)
+# ignore-sgx
 
 include ../../run-make-fulldeps/tools.mk
 

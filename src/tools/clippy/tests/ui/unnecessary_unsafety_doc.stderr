@@ -42,7 +42,7 @@ LL | very_safe!();
    = note: this error originates in the macro `very_safe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for safe trait have unnecessary `# Safety` section
-  --> $DIR/unnecessary_unsafety_doc.rs:147:1
+  --> $DIR/unnecessary_unsafety_doc.rs:151:1
    |
 LL | pub trait DocumentedSafeTraitWithImplementationHeader {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

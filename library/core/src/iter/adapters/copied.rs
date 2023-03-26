@@ -240,3 +240,17 @@ where
         }
     }
 }
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Default> Default for Copied<I> {
+    /// Creates a `Copied` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Copied;
+    /// let iter: Copied<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}

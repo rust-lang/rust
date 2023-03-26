@@ -296,14 +296,12 @@ language_item_table! {
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
     ResumeTy,                sym::ResumeTy,            resume_ty,                  Target::Struct,         GenericRequirement::None;
-    IdentityFuture,          sym::identity_future,     identity_future_fn,         Target::Fn,             GenericRequirement::None;
     GetContext,              sym::get_context,         get_context_fn,             Target::Fn,             GenericRequirement::None;
 
     Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
-    FromFrom,                sym::from,                from_fn,                    Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-
+    Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
     OptionNone,              sym::None,                option_none_variant,        Target::Variant,        GenericRequirement::None;
 

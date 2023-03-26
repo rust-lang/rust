@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -84,9 +84,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                         _ => false,
                     };
                     let sugg = if is_new_string {
-                        snippet_with_applicability(cx, value.span, "..", &mut applicability).into_owned()
+                        snippet_with_context(cx, value.span, call_site.ctxt(), "..", &mut applicability).0.into_owned()
                     } else {
-                        let sugg = Sugg::hir_with_applicability(cx, value, "<arg>", &mut applicability);
+                        let sugg = Sugg::hir_with_context(cx, value, call_site.ctxt(), "<arg>", &mut applicability);
                         format!("{}.to_string()", sugg.maybe_par())
                     };
                     span_useless_format(cx, call_site, sugg, applicability);

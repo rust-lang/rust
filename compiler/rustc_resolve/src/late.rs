@@ -22,7 +22,6 @@ use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
@@ -591,7 +590,6 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     parent_scope: ParentScope<'a>,
 
     /// The current set of local scopes for types and values.
-    /// FIXME #4948: Reuse ribs to avoid allocation.
     ribs: PerNS<Vec<Rib<'a>>>,
 
     /// Previous poped `rib`, only used for diagnostic.
@@ -1479,8 +1477,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                     } else {
                                         LifetimeUseSet::Many
                                     }),
-                                    LifetimeRibKind::Generics { .. } => None,
-                                    LifetimeRibKind::ConstGeneric | LifetimeRibKind::AnonConst => {
+                                    LifetimeRibKind::Generics { .. }
+                                    | LifetimeRibKind::ConstGeneric => None,
+                                    LifetimeRibKind::AnonConst => {
                                         span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
                                     }
                                 })
@@ -1671,8 +1670,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // Figure out if this is a type/trait segment,
             // which may need lifetime elision performed.
             let type_def_id = match partial_res.base_res() {
-                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => self.r.parent(def_id),
-                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => self.r.parent(def_id),
+                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
+                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)
@@ -3373,7 +3376,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         participle: "defined",
                         article: res.article(),
                         shadowed_binding: res,
-                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
+                        shadowed_binding_span: self.r.def_span(def_id),
                     }
                 );
                 None
@@ -4233,7 +4236,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             {
                 return;
             }
-            ResolveDocLinks::Exported if !maybe_exported.eval(self.r) => {
+            ResolveDocLinks::Exported
+                if !maybe_exported.eval(self.r)
+                    && !rustdoc::has_primitive_or_keyword_docs(attrs) =>
+            {
                 return;
             }
             ResolveDocLinks::ExportedMetadata

@@ -10,7 +10,9 @@ error[E0700]: hidden type for `impl FnOnce()` captures lifetime that does not ap
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                            ------ hidden type `[closure@$DIR/missing-lifetimes-in-signature.rs:19:5: 19:12]` captures the anonymous lifetime defined here
+   |                            ------     ------------- opaque type defined here
+   |                            |
+   |                            hidden type `[closure@$DIR/missing-lifetimes-in-signature.rs:19:5: 19:12]` captures the anonymous lifetime defined here
 ...
 LL | /     move || {
 LL | |

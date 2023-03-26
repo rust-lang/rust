@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -147,7 +147,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     assert!(!matches!(ty, Some(ty) if ty.is_generator()));
 
     let substs = if let Some(ty) = ty {
-        tcx.intern_substs(&[ty.into()])
+        tcx.mk_substs(&[ty.into()])
     } else {
         InternalSubsts::identity_for_item(tcx, def_id)
     };
@@ -597,7 +597,7 @@ fn build_call_shim<'tcx>(
         let untuple_args = sig.inputs();
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
-        let arg_tup = tcx.intern_tup(untuple_args);
+        let arg_tup = tcx.mk_tup(untuple_args);
 
         (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
     } else {
@@ -632,7 +632,7 @@ fn build_call_shim<'tcx>(
             Adjustment::Deref => tcx.mk_imm_ptr(fnty),
             Adjustment::RefMut => tcx.mk_mut_ptr(fnty),
         };
-        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
     // FIXME(eddyb) avoid having this snippet both here and in
@@ -643,7 +643,7 @@ fn build_call_shim<'tcx>(
         let self_arg = &mut inputs_and_output[0];
         debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
         *self_arg = tcx.mk_mut_ptr(*self_arg);
-        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
     let span = tcx.def_span(def_id);
@@ -816,11 +816,8 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let source_info = SourceInfo::outermost(span);
 
-    let variant_index = if adt_def.is_enum() {
-        adt_def.variant_index_with_ctor_id(ctor_id)
-    } else {
-        VariantIdx::new(0)
-    };
+    let variant_index =
+        if adt_def.is_enum() { adt_def.variant_index_with_ctor_id(ctor_id) } else { FIRST_VARIANT };
 
     // Generate the following MIR:
     //

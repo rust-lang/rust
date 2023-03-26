@@ -369,10 +369,10 @@ impl<'hir> GenericArgs<'hir> {
 
     pub fn has_err(&self) -> bool {
         self.args.iter().any(|arg| match arg {
-            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err),
+            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         }) || self.bindings.iter().any(|arg| match arg.kind {
-            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err),
+            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         })
     }
@@ -498,6 +498,7 @@ pub struct GenericParam<'hir> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
     pub colon_span: Option<Span>,
+    pub source: GenericParamSource,
 }
 
 impl<'hir> GenericParam<'hir> {
@@ -514,6 +515,20 @@ impl<'hir> GenericParam<'hir> {
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
     }
+}
+
+/// Records where the generic parameter originated from.
+///
+/// This can either be from an item's generics, in which case it's typically
+/// early-bound (but can be a late-bound lifetime in functions, for example),
+/// or from a `for<...>` binder, in which case it's late-bound (and notably,
+/// does not show up in the parent item's generics).
+#[derive(Debug, HashStable_Generic, PartialEq, Eq, Copy, Clone)]
+pub enum GenericParamSource {
+    // Early or late-bound parameters defined on an item
+    Generics,
+    // Late-bound parameters defined via a `for<...>`
+    Binder,
 }
 
 #[derive(Default)]
@@ -800,12 +815,13 @@ pub struct ParentedNode<'tcx> {
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
     pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
-    pub hash: Fingerprint,
+    // Only present when the crate hash is needed.
+    pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> AttributeMap<'tcx> {
     pub const EMPTY: &'static AttributeMap<'static> =
-        &AttributeMap { map: SortedMap::new(), hash: Fingerprint::ZERO };
+        &AttributeMap { map: SortedMap::new(), opt_hash: Some(Fingerprint::ZERO) };
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
@@ -817,10 +833,9 @@ impl<'tcx> AttributeMap<'tcx> {
 /// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
 /// The HIR tree, including bodies, is pre-hashed.
 pub struct OwnerNodes<'tcx> {
-    /// Pre-computed hash of the full HIR.
-    pub hash_including_bodies: Fingerprint,
-    /// Pre-computed hash of the item signature, without recursing into the body.
-    pub hash_without_bodies: Fingerprint,
+    /// Pre-computed hash of the full HIR. Used in the crate hash. Only present
+    /// when incr. comp. is enabled.
+    pub opt_hash_including_bodies: Option<Fingerprint>,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
@@ -857,8 +872,7 @@ impl fmt::Debug for OwnerNodes<'_> {
                     .collect::<Vec<_>>(),
             )
             .field("bodies", &self.bodies)
-            .field("hash_without_bodies", &self.hash_without_bodies)
-            .field("hash_including_bodies", &self.hash_including_bodies)
+            .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
             .finish()
     }
 }
@@ -925,7 +939,8 @@ impl<T> MaybeOwner<T> {
 #[derive(Debug)]
 pub struct Crate<'hir> {
     pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
-    pub hir_hash: Fingerprint,
+    // Only present when incr. comp. is enabled.
+    pub opt_hir_hash: Option<Fingerprint>,
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1658,7 +1673,6 @@ pub struct Expr<'hir> {
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1688,7 +1702,7 @@ impl Expr<'_> {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
-            ExprKind::Err => ExprPrecedence::Err,
+            ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }
 
@@ -1748,13 +1762,12 @@ impl Expr<'_> {
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
             | ExprKind::Unary(..)
-            | ExprKind::Box(..)
             | ExprKind::AddrOf(..)
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => false,
+            | ExprKind::Err(_) => false,
         }
     }
 
@@ -1836,19 +1849,17 @@ impl Expr<'_> {
             | ExprKind::InlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::ConstBlock(..)
-            | ExprKind::Box(..)
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => true,
+            | ExprKind::Err(_) => true,
         }
     }
 
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.kind {
-            ExprKind::Box(_)
-            | ExprKind::Array(_)
+            ExprKind::Array(_)
             | ExprKind::Call(..)
             | ExprKind::Tup(_)
             | ExprKind::Lit(_)
@@ -1895,8 +1906,6 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 
 #[derive(Debug, HashStable_Generic)]
 pub enum ExprKind<'hir> {
-    /// A `box x` expression.
-    Box(&'hir Expr<'hir>),
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(AnonConst),
     /// An array (e.g., `[a, b, c, d]`).
@@ -2013,7 +2022,7 @@ pub enum ExprKind<'hir> {
     Yield(&'hir Expr<'hir>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
-    Err,
+    Err(rustc_span::ErrorGuaranteed),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
@@ -2676,7 +2685,7 @@ pub enum TyKind<'hir> {
     /// specified. This can appear anywhere in a type.
     Infer,
     /// Placeholder for a type that has failed to be defined.
-    Err,
+    Err(rustc_span::ErrorGuaranteed),
 }
 
 #[derive(Debug, HashStable_Generic)]

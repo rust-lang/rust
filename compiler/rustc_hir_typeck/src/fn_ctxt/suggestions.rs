@@ -16,7 +16,7 @@ use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+    self, suggest_constraining_type_params, Binder, IsSuggestable, ToPredicate, Ty,
     TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -64,8 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
-        if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
-            let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
+        if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err,
                 &fn_decl,
@@ -166,8 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
-        self.err_ctxt().extract_callable_info(body_hir_id, self.param_env, ty)
+        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
     pub fn suggest_two_fn_call(
@@ -669,6 +667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This routine checks if the return type is left as default, the method is not part of an
     /// `impl` block and that it isn't the `main` method. If so, it suggests setting the return
     /// type.
+    #[instrument(level = "trace", skip(self, err))]
     pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut Diagnostic,
@@ -705,28 +704,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true
                 }
             }
-            hir::FnRetTy::Return(ty) => {
-                let span = ty.span;
+            hir::FnRetTy::Return(hir_ty) => {
+                let span = hir_ty.span;
 
-                if let hir::TyKind::OpaqueDef(item_id, ..) = ty.kind
-                && let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(op_ty),
-                    ..
-                }) = self.tcx.hir().get(item_id.hir_id())
-                && let hir::OpaqueTy {
-                    bounds: [bound], ..
-                } = op_ty
-                && let hir::GenericBound::LangItemTrait(
-                    hir::LangItem::Future, _, _, generic_args) = bound
-                && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
-                && let hir::TypeBinding { kind, .. } = ty_binding
-                && let hir::TypeBindingKind::Equality { term } = kind
-                && let hir::Term::Ty(term_ty) = term {
+                if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
+                    && let hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(op_ty),
+                        ..
+                    }) = self.tcx.hir().get(item_id.hir_id())
+                    && let [hir::GenericBound::LangItemTrait(
+                        hir::LangItem::Future, _, _, generic_args)] = op_ty.bounds
+                    && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                    && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } = ty_binding.kind
+                {
                     // Check if async function's return type was omitted.
                     // Don't emit suggestions if the found type is `impl Future<...>`.
-                    debug!("suggest_missing_return_type: found = {:?}", found);
+                    debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
-                        if term_ty.span.is_empty() {
+                        if term.span.is_empty() {
                             err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                             return true;
                         } else {
@@ -737,11 +732,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
-                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let ty = self.astconv().ast_ty_to_ty(ty);
-                debug!("suggest_missing_return_type: return type {:?}", ty);
-                debug!("suggest_missing_return_type: expected type {:?}", ty);
-                let bound_vars = self.tcx.late_bound_vars(fn_id);
+                debug!("return type {:?}", hir_ty);
+                let ty = self.astconv().ast_ty_to_ty(hir_ty);
+                debug!("return type {:?}", ty);
+                debug!("expected type {:?}", expected);
+                let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                 let ty = Binder::bind_with_vars(ty, bound_vars);
                 let ty = self.normalize(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
@@ -988,13 +983,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
                 .must_apply_modulo_regions()
           {
-              diag.span_suggestion_verbose(
-                  expr.span.shrink_to_hi(),
-                  "consider using clone here",
-                  ".clone()",
-                  Applicability::MachineApplicable,
-              );
-              return true;
+            let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                Some(ident) => format!(": {}.clone()", ident),
+                None => ".clone()".to_string()
+            };
+
+            diag.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                "consider using clone here",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+            return true;
           }
         false
     }
@@ -1015,11 +1015,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suggest_copied_or_cloned = || {
             let expr_inner_ty = substs.type_at(0);
             let expected_inner_ty = expected_substs.type_at(0);
-            if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, *ty, expected_inner_ty)
+            if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
+                && self.can_eq(self.param_env, ty, expected_inner_ty)
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
-                if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
+                if self.type_is_copy_modulo_regions(self.param_env, ty) {
                     diag.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
@@ -1033,9 +1033,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
                         self,
                         self.param_env,
-                        *ty,
+                        ty,
                         clone_did,
-                        expr.span
                     )
                 {
                     diag.span_suggestion_verbose(
@@ -1156,13 +1155,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        diag.span_suggestion(
+        let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(ident) => format!(": {}.is_some()", ident),
+            None => ".is_some()".to_string(),
+        };
+
+        diag.span_suggestion_verbose(
             expr.span.shrink_to_hi(),
             "use `Option::is_some` to test if the `Option` has a value",
-            ".is_some()",
+            suggestion,
             Applicability::MachineApplicable,
         );
-
         true
     }
 

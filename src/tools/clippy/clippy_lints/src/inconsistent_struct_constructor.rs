@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
-use std::fmt::Write as _;
+use std::fmt::{self, Write as _};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 let mut fields_snippet = String::new();
                 let (last_ident, idents) = ordered_fields.split_last().unwrap();
                 for ident in idents {
-                    let _ = write!(fields_snippet, "{ident}, ");
+                    let _: fmt::Result = write!(fields_snippet, "{ident}, ");
                 }
                 fields_snippet.push_str(&last_ident.to_string());
 

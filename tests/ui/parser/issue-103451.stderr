@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-103451.rs:5:15
+  --> $DIR/issue-103451.rs:4:15
    |
 LL | struct S {
    |          - unclosed delimiter
@@ -8,25 +8,5 @@ LL |     x: [u8; R
    |        |
    |        unclosed delimiter
 
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-103451.rs:5:15
-   |
-LL | struct S {
-   |          - unclosed delimiter
-LL |     x: [u8; R
-   |        -      ^
-   |        |
-   |        unclosed delimiter
+error: aborting due to previous error
 
-error[E0423]: expected value, found struct `R`
-  --> $DIR/issue-103451.rs:5:13
-   |
-LL | struct R { }
-   | ------------ `R` defined here
-LL | struct S {
-LL |     x: [u8; R
-   |             ^ help: use struct literal syntax instead: `R {}`
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0423`.

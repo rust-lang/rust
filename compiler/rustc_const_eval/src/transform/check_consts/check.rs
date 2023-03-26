@@ -246,7 +246,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
-        if !tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
+        if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
             self.visit_body(&body);
         }
 
@@ -332,7 +332,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
-            self.tcx.sess.delay_span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef");
+            self.tcx.sess.delay_span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
     }
@@ -643,7 +643,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if base_ty.is_unsafe_ptr() {
                     if proj_base.is_empty() {
                         let decl = &self.body.local_decls[place_local];
-                        if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
+                        if let LocalInfo::StaticRef { def_id, .. } = *decl.local_info() {
                             let span = decl.source_info.span;
                             self.check_static(def_id, span);
                             return;
@@ -690,6 +690,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
+            | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
@@ -769,7 +770,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                         let errors = ocx.select_all_or_error();
                         if !errors.is_empty() {
-                            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors);
                         }
                     }
 
@@ -926,15 +927,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
-                if let Some(gate) = is_unstable_const_fn(tcx, callee) {
+                if let Some((gate, implied_by)) = is_unstable_const_fn(tcx, callee) {
                     trace!(?gate, "calling unstable const fn");
                     if self.span.allows_unstable(gate) {
                         return;
                     }
+                    if let Some(implied_by_gate) = implied_by && self.span.allows_unstable(implied_by_gate) {
+                        return;
+                    }
 
                     // Calling an unstable function *always* requires that the corresponding gate
-                    // be enabled, even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    if !tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate) {
+                    // (or implied gate) be enabled, even if the function has
+                    // `#[rustc_allow_const_fn_unstable(the_gate)]`.
+                    let gate_declared = |gate| {
+                        tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate)
+                    };
+                    let feature_gate_declared = gate_declared(gate);
+                    let implied_gate_declared = implied_by.map(gate_declared).unwrap_or(false);
+                    if !feature_gate_declared && !implied_gate_declared {
                         self.check_op(ops::FnCallUnstable(callee, Some(gate)));
                         return;
                     }
@@ -947,7 +957,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
-
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
                         trace!("rustc_allow_const_fn_unstable gate active");
                         return;
@@ -977,8 +986,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
             // projections that cannot be `NeedsNonConstDrop`.
-            TerminatorKind::Drop { place: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            TerminatorKind::Drop { place: dropped_place, .. } => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
                 // errors here.
                 if super::post_drop_elaboration::checking_enabled(self.ccx) {

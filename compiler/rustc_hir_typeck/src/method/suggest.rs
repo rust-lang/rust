@@ -27,7 +27,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -42,7 +42,7 @@ use rustc_trait_selection::traits::{
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -333,6 +333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty.prefix_string(self.tcx),
             ty_str_reported,
         );
+        if tcx.sess.source_map().is_multiline(sugg_span) {
+            err.span_label(sugg_span.with_hi(span.lo()), "");
+        }
         let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
             short_ty_str
         } else {
@@ -343,6 +346,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
+        }
+
+        if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
+            err.help(&format!(
+                "method `poll` found on `Pin<&mut {ty_str}>`, \
+                see documentation for `std::pin::Pin`"
+            ));
+            err.help("self type must be pinned to call `Future::poll`, \
+                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+            );
         }
 
         if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
@@ -402,6 +415,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 probe.is_ok()
             });
+
+            self.note_internal_mutation_in_method(
+                &mut err,
+                rcvr_expr,
+                expected.to_option(&self),
+                rcvr_ty,
+            );
         }
 
         let mut custom_span_label = false;
@@ -574,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
 
-                        let substs_with_infer_self = tcx.mk_substs(
+                        let substs_with_infer_self = tcx.mk_substs_from_iter(
                             iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
@@ -1161,7 +1181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .inputs()
                                 .skip_binder()
                                 .get(0)
-                                .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
+                                .filter(|ty| ty.is_ref() && !rcvr_ty.is_ref())
                                 .copied()
                                 .unwrap_or(rcvr_ty),
                         };
@@ -1244,7 +1264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
-                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer }
+                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey }
                         .types_may_unify(*rcvr_ty, impl_ty)
                 })
                 .map_or(impl_ty, |(ty, _)| ty)
@@ -1252,7 +1272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, substs) = target_ty.kind() {
                 // If there are any inferred arguments, (`{integer}`), we should replace
                 // them with underscores to allow the compiler to infer them
-                let infer_substs = self.tcx.mk_substs(substs.into_iter().map(|arg| {
+                let infer_substs = self.tcx.mk_substs_from_iter(substs.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
@@ -1503,7 +1523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
         let found_assoc = |ty: Ty<'tcx>| {
-            simplify_type(tcx, ty, TreatParams::AsInfer)
+            simplify_type(tcx, ty, TreatParams::AsCandidateKey)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
                         .iter()
@@ -2514,7 +2534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
-            candidates.sort_by(|a, b| a.cmp(b).reverse());
+            candidates.sort_by_key(|&info| cmp::Reverse(info));
             candidates.dedup();
 
             let param_type = match rcvr_ty.kind() {
@@ -2633,7 +2653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // cases where a positive bound implies a negative impl.
                 (candidates, Vec::new())
             } else if let Some(simp_rcvr_ty) =
-                simplify_type(self.tcx, rcvr_ty, TreatParams::AsPlaceholder)
+                simplify_type(self.tcx, rcvr_ty, TreatParams::ForLookup)
             {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
@@ -2648,7 +2668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .any(|imp_did| {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap().subst_identity();
                             let imp_simp =
-                                simplify_type(self.tcx, imp.self_ty(), TreatParams::AsPlaceholder);
+                                simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })
                     {

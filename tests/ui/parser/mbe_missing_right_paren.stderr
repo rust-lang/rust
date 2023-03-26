@@ -6,26 +6,5 @@ LL | macro_rules! abc(ؼ
    |                 |
    |                 unclosed delimiter
 
-error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/mbe_missing_right_paren.rs:3:17
-   |
-LL | macro_rules! abc(ؼ
-   |                 ^^
-   |
-help: change the delimiters to curly braces
-   |
-LL | macro_rules! abc { /* items */ }
-   |                  ~~~~~~~~~~~~~~~
-help: add a semicolon
-   |
-LL | macro_rules! abc(ؼ;
-   |                   +
-
-error: unexpected end of macro invocation
-  --> $DIR/mbe_missing_right_paren.rs:3:19
-   |
-LL | macro_rules! abc(ؼ
-   |                   ^ missing tokens in macro arguments
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

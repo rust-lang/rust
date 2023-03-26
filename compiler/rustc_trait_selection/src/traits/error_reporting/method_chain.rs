@@ -92,6 +92,11 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for CollectAllMismatches<'_, 'tcx> {
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        // FIXME(deferred_projection_equality): We really should get rid of this relation.
+        ty::AliasRelationDirection::Equate
+    }
+
     fn register_obligations(&mut self, _obligations: PredicateObligations<'tcx>) {
         // FIXME(deferred_projection_equality)
     }

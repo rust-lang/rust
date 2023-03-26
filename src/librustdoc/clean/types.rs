@@ -22,7 +22,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
+use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -1017,12 +1017,12 @@ pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ItemLink {
     /// The original link written in the markdown
-    pub(crate) link: String,
+    pub(crate) link: Box<str>,
     /// The link text displayed in the HTML.
     ///
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
-    pub(crate) link_text: String,
+    pub(crate) link_text: Box<str>,
     /// The `DefId` of the Item whose **HTML Page** contains the item being
     /// linked to. This will be different to `item_id` on item's that don't
     /// have their own page, such as struct fields and enum variants.
@@ -1035,9 +1035,9 @@ pub struct RenderedLink {
     /// The text the link was original written as.
     ///
     /// This could potentially include disambiguators and backticks.
-    pub(crate) original_text: String,
+    pub(crate) original_text: Box<str>,
     /// The text to display in the HTML
-    pub(crate) new_text: String,
+    pub(crate) new_text: Box<str>,
     /// The URL to put in the `href`
     pub(crate) href: String,
     /// The tooltip.
@@ -1471,27 +1471,68 @@ impl Type {
         result
     }
 
-    /// Check if two types are "potentially the same".
+    pub(crate) fn is_borrowed_ref(&self) -> bool {
+        matches!(self, Type::BorrowedRef { .. })
+    }
+
+    /// Check if two types are "the same" for documentation purposes.
+    ///
     /// This is different from `Eq`, because it knows that things like
     /// `Placeholder` are possible matches for everything.
-    pub(crate) fn is_same(&self, other: &Self, cache: &Cache) -> bool {
-        match (self, other) {
+    ///
+    /// This relation is not commutative when generics are involved:
+    ///
+    /// ```ignore(private)
+    /// # // see types/tests.rs:is_same_generic for the real test
+    /// use rustdoc::format::cache::Cache;
+    /// use rustdoc::clean::types::{Type, PrimitiveType};
+    /// let cache = Cache::new(false);
+    /// let generic = Type::Generic(rustc_span::symbol::sym::Any);
+    /// let unit = Type::Primitive(PrimitiveType::Unit);
+    /// assert!(!generic.is_same(&unit, &cache));
+    /// assert!(unit.is_same(&generic, &cache));
+    /// ```
+    ///
+    /// An owned type is also the same as its borrowed variants (this is commutative),
+    /// but `&T` is not the same as `&mut T`.
+    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
+        // Strip the references so that it can compare the actual types, unless both are references.
+        // If both are references, leave them alone and compare the mutabilities later.
+        let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
+            (self.without_borrowed_ref(), other.without_borrowed_ref())
+        } else {
+            (self, other)
+        };
+        match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(b, cache))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_doc_subtype_of(b, cache))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_same(b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_same(b_type_, cache)
+                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_same(b_type_, cache),
-            // Placeholders and generics are equal to all other types.
+            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache),
+            // Placeholders are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
-            (Type::Generic(_), _) | (_, Type::Generic(_)) => true,
+            // Generics match everything on the right, but not on the left.
+            // If both sides are generic, this returns true.
+            (_, Type::Generic(_)) => true,
+            (Type::Generic(_), _) => false,
+            // Paths account for both the path itself and its generics.
+            (Type::Path { path: a }, Type::Path { path: b }) => {
+                a.def_id() == b.def_id()
+                    && a.generics()
+                        .zip(b.generics())
+                        .map(|(ag, bg)| {
+                            ag.iter().zip(bg.iter()).all(|(at, bt)| at.is_doc_subtype_of(bt, cache))
+                        })
+                        .unwrap_or(true)
+            }
             // Other cases, such as primitives, just use recursion.
             (a, b) => a
                 .def_id(cache)

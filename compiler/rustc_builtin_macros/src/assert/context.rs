@@ -290,7 +290,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Async(_, _, _)
             | ExprKind::Await(_)
             | ExprKind::Block(_, _)
-            | ExprKind::Box(_)
             | ExprKind::Break(_, _)
             | ExprKind::Closure(_)
             | ExprKind::ConstBlock(_)

@@ -24,11 +24,11 @@ use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
+use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
@@ -36,7 +36,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
-use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -102,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs)],
+                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
             };
 
             self.check_argument_types(
@@ -302,9 +301,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
-            let supertype_error = self
-                .at(&self.misc(provided_arg.span), self.param_env)
-                .sup(formal_input_ty, coerced_ty);
+            let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
+                DefineOpaqueTypes::No,
+                formal_input_ty,
+                coerced_ty,
+            );
             let subtyping_error = match supertype_error {
                 Ok(InferOk { obligations, value: () }) => {
                     self.register_predicates(obligations);
@@ -586,7 +587,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
-                self.at(&self.misc(arg_span), self.param_env).sup(formal_input_ty, coerced_ty).err()
+                self.at(&self.misc(arg_span), self.param_env)
+                    .sup(DefineOpaqueTypes::No, formal_input_ty, coerced_ty)
+                    .err()
             });
 
             // Same as above: if either the coerce type or the checked type is an error type,
@@ -642,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = tcx.mk_tup(
+                let provided_as_tuple = tcx.mk_tup_from_iter(
                     provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
                 );
 
@@ -1507,11 +1510,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
         } else {
-            let tail_expr: &[&hir::Expr<'_>] = match tail_expr {
-                Some(e) => slice::from_ref(e),
-                None => &[],
-            };
-            CoerceMany::with_coercion_sites(coerce_to_ty, tail_expr)
+            CoerceMany::with_coercion_sites(coerce_to_ty, blk.expr.as_slice())
         };
 
         let prev_diverges = self.diverges.get();
@@ -1670,7 +1669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
         let parent = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
-        self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
+        self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// If `expr` is a `match` expression that has only one non-`!` arm, use that arm's tail

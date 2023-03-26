@@ -1,9 +1,13 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub struct AnonPipe(!);
 
 impl AnonPipe {
     pub fn read(&self, _buf: &mut [u8]) -> io::Result<usize> {
+        self.0
+    }
+
+    pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
         self.0
     }
 

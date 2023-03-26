@@ -1184,6 +1184,15 @@ impl Expr {
         expr
     }
 
+    pub fn peel_parens_and_refs(&self) -> &Expr {
+        let mut expr = self;
+        while let ExprKind::Paren(inner) | ExprKind::AddrOf(BorrowKind::Ref, _, inner) = &expr.kind
+        {
+            expr = inner;
+        }
+        expr
+    }
+
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
     pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
@@ -1230,7 +1239,6 @@ impl Expr {
 
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1291,8 +1299,7 @@ impl Expr {
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.peel_parens().kind {
-            ExprKind::Box(_)
-            | ExprKind::Array(_)
+            ExprKind::Array(_)
             | ExprKind::Call(_, _)
             | ExprKind::Tup(_)
             | ExprKind::Lit(_)
@@ -1363,8 +1370,6 @@ pub struct StructExpr {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
-    /// A `box x` expression.
-    Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
     Array(ThinVec<P<Expr>>),
     /// Allow anonymous constants from an inline `const` block

@@ -25,7 +25,7 @@ use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{self, AdtDef, ConstKind, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
 use std::cmp::Ordering;

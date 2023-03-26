@@ -1,9 +1,8 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, GenericArgPosition,
+    errors::prohibit_assoc_ty_binding, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
@@ -370,7 +369,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
         }
     }
 
-    tcx.intern_substs(&substs)
+    tcx.mk_substs(&substs)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -433,7 +432,7 @@ pub(crate) fn check_generic_arg_count(
         (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
-            prohibit_assoc_ty_binding(tcx, b.span);
+             prohibit_assoc_ty_binding(tcx, b.span, None);
         }
 
     let explicit_late_bound =
@@ -589,11 +588,6 @@ pub(crate) fn check_generic_arg_count(
     }
 }
 
-/// Emits an error regarding forbidden type binding associations
-pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
-    tcx.sess.emit_err(AssocTypeBindingNotAllowed { span });
-}
-
 /// Prohibits explicit lifetime arguments if late-bound lifetime parameters
 /// are present. This is used both for datatypes and function calls.
 pub(crate) fn prohibit_explicit_late_bound_lifetimes(
@@ -618,7 +612,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = tcx.sess.struct_span_err(span, msg);
+            let mut err = struct_span_err!(tcx.sess, span, E0794, "{}", msg);
             err.span_note(span_late, note);
             err.emit();
         } else {

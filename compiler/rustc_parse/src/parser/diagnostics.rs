@@ -6,20 +6,19 @@ use super::{
 use crate::errors::{
     AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg, InInTypo,
-    IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, ParenthesesInForHead,
-    ParenthesesInForHeadSugg, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
-    SuggEscapeToUseAsIdentifier, SuggRemoveComma, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
+    IncorrectUseOfAwait, ParenthesesInForHead, ParenthesesInForHeadSugg,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
+    StructLiteralNeedingParensSugg, SuggEscapeIdentifier, SuggRemoveComma,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
 };
 
 use crate::fluent_generated as fluent;
-use crate::lexer::UnmatchedBrace;
 use crate::parser;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -39,7 +38,7 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, Symbol, DUMMY_SP};
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
@@ -165,8 +164,6 @@ enum IsStandalone {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum IncOrDec {
     Inc,
-    // FIXME: `i--` recovery isn't implemented yet
-    #[allow(dead_code)]
     Dec,
 }
 
@@ -222,7 +219,6 @@ impl MultiSugg {
 /// is dropped.
 pub struct SnapshotParser<'a> {
     parser: Parser<'a>,
-    unclosed_delims: Vec<UnmatchedBrace>,
 }
 
 impl<'a> Deref for SnapshotParser<'a> {
@@ -257,34 +253,36 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    /// Replace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
-    /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
+    /// Replace `self` with `snapshot.parser`.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
-        self.unclosed_delims.extend(snapshot.unclosed_delims);
-    }
-
-    pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
-        &self.unclosed_delims
     }
 
     /// Create a snapshot of the `Parser`.
     pub fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
-        let mut snapshot = self.clone();
-        let unclosed_delims = self.unclosed_delims.clone();
-        // Clear `unclosed_delims` in snapshot to avoid
-        // duplicate errors being emitted when the `Parser`
-        // is dropped (which may or may not happen, depending
-        // if the parsing the snapshot is created for is successful)
-        snapshot.unclosed_delims.clear();
-        SnapshotParser { parser: snapshot, unclosed_delims }
+        let snapshot = self.clone();
+        SnapshotParser { parser: snapshot }
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
         self.sess.source_map().span_to_snippet(span)
     }
 
-    pub(super) fn expected_ident_found(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    /// Emits an error with suggestions if an identifier was expected but not found.
+    ///
+    /// Returns a possibly recovered identifier.
+    pub(super) fn expected_ident_found(
+        &mut self,
+        recover: bool,
+    ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+        if let TokenKind::DocComment(..) = self.prev_token.kind {
+            return Err(DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
+            }
+            .into_diagnostic(&self.sess.span_diagnostic));
+        }
+
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -296,38 +294,61 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
-        let suggest_raw = match self.token.ident() {
-            Some((ident, false))
-                if ident.is_raw_guess()
-                    && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
-            {
-                Some(SuggEscapeToUseAsIdentifier {
-                    span: ident.span.shrink_to_lo(),
-                    // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
-                    // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
-                    ident_name: ident.name.to_string(),
-                })
-            }
-            _ => None,
-        };
+
+        let mut recovered_ident = None;
+        // we take this here so that the correct original token is retained in
+        // the diagnostic, regardless of eager recovery.
+        let bad_token = self.token.clone();
+
+        // suggest prepending a keyword in identifier position with `r#`
+        let suggest_raw = if let Some((ident, false)) = self.token.ident()
+            && ident.is_raw_guess()
+            && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+        {
+            recovered_ident = Some((ident, true));
+
+            // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
+            // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
+            let ident_name = ident.name.to_string();
+
+            Some(SuggEscapeIdentifier {
+                span: ident.span.shrink_to_lo(),
+                ident_name
+            })
+        } else { None };
 
         let suggest_remove_comma =
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                Some(SuggRemoveComma { span: self.token.span })
+                if recover {
+                    self.bump();
+                    recovered_ident = self.ident_or_err(false).ok();
+                };
+
+                Some(SuggRemoveComma { span: bad_token.span })
             } else {
                 None
             };
 
+        let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
+            let (invalid, valid) = self.token.span.split_at(len as u32);
+
+            recovered_ident = Some((Ident::new(valid_portion, valid), false));
+
+            HelpIdentifierStartsWithNumber { num_span: invalid }
+        });
+
         let err = ExpectedIdentifier {
-            span: self.token.span,
-            token: self.token.clone(),
+            span: bad_token.span,
+            token: bad_token,
             suggest_raw,
             suggest_remove_comma,
+            help_cannot_start_number,
         };
         let mut err = err.into_diagnostic(&self.sess.span_diagnostic);
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
+        // FIXME: could we recover with this?
         if self.token == token::Lt {
             // all keywords that could have generic applied
             let valid_prev_keywords =
@@ -378,7 +399,38 @@ impl<'a> Parser<'a> {
             }
         }
 
-        err
+        if let Some(recovered_ident) = recovered_ident && recover {
+            err.emit();
+            Ok(recovered_ident)
+        } else {
+            Err(err)
+        }
+    }
+
+    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.expected_ident_found(false).unwrap_err()
+    }
+
+    /// Checks if the current token is a integer or float literal and looks like
+    /// it could be a invalid identifier with digits at the start.
+    ///
+    /// Returns the number of characters (bytes) composing the invalid portion
+    /// of the identifier and the valid portion of the identifier.
+    pub(super) fn is_lit_bad_ident(&mut self) -> Option<(usize, Symbol)> {
+        // ensure that the integer literal is followed by a *invalid*
+        // suffix: this is how we know that it is a identifier with an
+        // invalid beginning.
+        if let token::Literal(Lit {
+            kind: token::LitKind::Integer | token::LitKind::Float,
+            symbol,
+            suffix,
+        }) = self.token.kind
+            && rustc_ast::MetaItemLit::from_token(&self.token).is_none()
+        {
+            Some((symbol.as_str().len(), suffix.unwrap()))
+        } else {
+            None
+        }
     }
 
     pub(super) fn expected_one_of_not_found(
@@ -581,21 +633,6 @@ impl<'a> Parser<'a> {
         } else {
             label_sp
         };
-        match self.recover_closing_delimiter(
-            &expected
-                .iter()
-                .filter_map(|tt| match tt {
-                    TokenType::Token(t) => Some(t.clone()),
-                    _ => None,
-                })
-                .collect::<Vec<_>>(),
-            err,
-        ) {
-            Err(e) => err = e,
-            Ok(recovered) => {
-                return Ok(recovered);
-            }
-        }
 
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
@@ -693,7 +730,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span.shrink_to_lo(),
                 tokens: None,
             };
-            let struct_expr = snapshot.parse_struct_expr(None, path, false);
+            let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {
@@ -1357,6 +1394,20 @@ impl<'a> Parser<'a> {
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
 
+    pub(super) fn recover_from_postfix_decrement(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        start_stmt: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let kind = IncDecRecovery {
+            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
+            op: IncOrDec::Dec,
+            fixity: UnaryFixity::Post,
+        };
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
+
     fn recover_from_inc_dec(
         &mut self,
         base: P<Expr>,
@@ -1561,12 +1612,6 @@ impl<'a> Parser<'a> {
         );
         let mut err = self.struct_span_err(sp, &msg);
         let label_exp = format!("expected `{token_str}`");
-        match self.recover_closing_delimiter(&[t.clone()], err) {
-            Err(e) => err = e,
-            Ok(recovered) => {
-                return Ok(recovered);
-            }
-        }
         let sm = self.sess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
             // When the spans are in the same line, it means that the only content
@@ -1624,7 +1669,7 @@ impl<'a> Parser<'a> {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)
         } else {
             self.parse_expr()
         }
@@ -1780,81 +1825,6 @@ impl<'a> Parser<'a> {
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
                 self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
             }
-        }
-    }
-
-    pub(super) fn recover_closing_delimiter(
-        &mut self,
-        tokens: &[TokenKind],
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) -> PResult<'a, bool> {
-        let mut pos = None;
-        // We want to use the last closing delim that would apply.
-        for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
-            if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
-                && Some(self.token.span) > unmatched.unclosed_span
-            {
-                pos = Some(i);
-            }
-        }
-        match pos {
-            Some(pos) => {
-                // Recover and assume that the detected unclosed delimiter was meant for
-                // this location. Emit the diagnostic and act as if the delimiter was
-                // present for the parser's sake.
-
-                // Don't attempt to recover from this unclosed delimiter more than once.
-                let unmatched = self.unclosed_delims.remove(pos);
-                let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
-                if unmatched.found_delim.is_none() {
-                    // We encountered `Eof`, set this fact here to avoid complaining about missing
-                    // `fn main()` when we found place to suggest the closing brace.
-                    *self.sess.reached_eof.borrow_mut() = true;
-                }
-
-                // We want to suggest the inclusion of the closing delimiter where it makes
-                // the most sense, which is immediately after the last token:
-                //
-                //  {foo(bar {}}
-                //      ^      ^
-                //      |      |
-                //      |      help: `)` may belong here
-                //      |
-                //      unclosed delimiter
-                if let Some(sp) = unmatched.unclosed_span {
-                    let mut primary_span: Vec<Span> =
-                        err.span.primary_spans().iter().cloned().collect();
-                    primary_span.push(sp);
-                    let mut primary_span: MultiSpan = primary_span.into();
-                    for span_label in err.span.span_labels() {
-                        if let Some(label) = span_label.label {
-                            primary_span.push_span_label(span_label.span, label);
-                        }
-                    }
-                    err.set_span(primary_span);
-                    err.span_label(sp, "unclosed delimiter");
-                }
-                // Backticks should be removed to apply suggestions.
-                let mut delim = delim.to_string();
-                delim.retain(|c| c != '`');
-                err.span_suggestion_short(
-                    self.prev_token.span.shrink_to_hi(),
-                    &format!("`{delim}` may belong here"),
-                    delim,
-                    Applicability::MaybeIncorrect,
-                );
-                if unmatched.found_delim.is_none() {
-                    // Encountered `Eof` when lexing blocks. Do not recover here to avoid knockdown
-                    // errors which would be emitted elsewhere in the parser and let other error
-                    // recovery consume the rest of the file.
-                    Err(err)
-                } else {
-                    err.emit();
-                    self.expected_tokens.clear(); // Reduce the number of errors.
-                    Ok(true)
-                }
-            }
-            _ => Err(err),
         }
     }
 

@@ -35,4 +35,4 @@ pub use persist::{build_dep_graph, load_dep_graph, DepGraphFuture};
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_macros::fluent_messages;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

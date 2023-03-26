@@ -1,4 +1,4 @@
-// aux-build: proc_macro_with_span.rs
+// aux-build: proc_macros.rs
 
 #![warn(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
@@ -7,8 +7,8 @@
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
 
-extern crate proc_macro_with_span;
-use proc_macro_with_span::with_span;
+extern crate proc_macros;
+use proc_macros::with_span;
 
 struct Foo {
     a: isize,

@@ -6,13 +6,13 @@ mod tests;
 
 use std::iter;
 
-use base_db::SourceDatabaseExt;
 use hir::{
     HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
 };
 use ide_db::{
     base_db::{FilePosition, SourceDatabase},
     famous_defs::FamousDefs,
+    helpers::is_editable_crate,
     FxHashMap, FxHashSet, RootDatabase,
 };
 use syntax::{
@@ -220,6 +220,8 @@ pub(super) struct PatternContext {
     /// The record pattern this name or ref is a field of
     pub(super) record_pat: Option<ast::RecordPat>,
     pub(super) impl_: Option<ast::Impl>,
+    /// List of missing variants in a match expr
+    pub(super) missing_variants: Vec<hir::Variant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -387,8 +389,7 @@ pub(crate) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
-        // check kind of macro-expanded token, but use range of original token
-        let kind = self.token.kind();
+        let kind = self.original_token.kind();
         match kind {
             CHAR => {
                 // assume we are completing a lifetime but the user has only typed the '
@@ -416,6 +417,7 @@ impl<'a> CompletionContext<'a> {
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),
+                hir::ModuleDef::TraitAlias(it) => self.is_visible(it),
                 hir::ModuleDef::TypeAlias(it) => self.is_visible(it),
                 hir::ModuleDef::Macro(it) => self.is_visible(it),
                 hir::ModuleDef::BuiltinType(_) => Visible::Yes,
@@ -525,10 +527,11 @@ impl<'a> CompletionContext<'a> {
                 return Visible::No;
             }
             // If the definition location is editable, also show private items
-            let root_file = defining_crate.root_file(self.db);
-            let source_root_id = self.db.file_source_root(root_file);
-            let is_editable = !self.db.source_root(source_root_id).is_library;
-            return if is_editable { Visible::Editable } else { Visible::No };
+            return if is_editable_crate(defining_crate, self.db) {
+                Visible::Editable
+            } else {
+                Visible::No
+            };
         }
 
         if self.is_doc_hidden(attrs, defining_crate) {

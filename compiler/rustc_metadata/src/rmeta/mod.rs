@@ -55,13 +55,13 @@ pub(crate) fn rustc_version() -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 6;
+const METADATA_VERSION: u8 = 7;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
-/// This header is followed by the position of the `CrateRoot`,
-/// which is encoded as a 32-bit big-endian unsigned integer,
-/// and further followed by the rustc version string.
+/// This header is followed by the length of the compressed data, then
+/// the position of the `CrateRoot`, which is encoded as a 32-bit big-endian
+/// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// A value of type T referred to by its absolute position
@@ -354,7 +354,9 @@ define_tables! {
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
-    associated_items_for_impl_trait_in_trait: Table<DefIndex, LazyArray<DefId>>,
+    associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
+    opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
+    unused_generic_params: Table<DefIndex, UnusedGenericParams>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
@@ -397,7 +399,6 @@ define_tables! {
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
     trait_item_def_id: Table<DefIndex, RawDefId>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
-    unused_generic_params: Table<DefIndex, LazyValue<UnusedGenericParams>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a

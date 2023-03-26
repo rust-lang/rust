@@ -43,7 +43,7 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
    |                                            |
    |                                            required by a bound introduced by this call
    |
-   = note: multiple `impl`s satisfying `u32: From<_>` found in the following crates: `core`, `std`:
+   = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
            - impl From<Ipv4Addr> for u32;
            - impl From<NonZeroU32> for u32;
            - impl From<bool> for u32;

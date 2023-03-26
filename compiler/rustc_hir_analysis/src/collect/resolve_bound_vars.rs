@@ -17,12 +17,14 @@ use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeNa
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::fmt;
+
+use crate::errors;
 
 trait RegionExt {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
@@ -161,6 +163,15 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
+    /// Disallows capturing non-lifetime binders from parent scopes.
+    ///
+    /// This is necessary for something like `for<T> [(); { /* references T */ }]:`,
+    /// since we don't do something more correct like replacing any captured
+    /// late-bound vars with early-bound params in the const's own generics.
+    AnonConstBoundary {
+        s: ScopeRef<'a>,
+    },
+
     Root {
         opt_parent_item: Option<LocalDefId>,
     },
@@ -211,6 +222,7 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("s", &"..")
                 .finish(),
             Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
+            Scope::AnonConstBoundary { s: _ } => f.debug_struct("AnonConstBoundary").finish(),
             Scope::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
             }
@@ -312,7 +324,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     break (vec![], BinderScopeType::Normal);
                 }
 
-                Scope::Elision { s, .. } | Scope::ObjectLifetimeDefault { s, .. } => {
+                Scope::Elision { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
 
@@ -1029,50 +1043,63 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_poly_trait_ref(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) {
         self.visit_poly_trait_ref_inner(trait_ref, NonLifetimeBinderAllowed::Allow);
     }
+
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        self.with(Scope::AnonConstBoundary { s: self.scope }, |this| {
+            intravisit::walk_anon_const(this, c);
+        });
+    }
 }
 
-fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: DefId) -> ObjectLifetimeDefault {
+fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
     debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
-    let param_def_id = param_def_id.expect_local();
-    let parent_def_id = tcx.local_parent(param_def_id);
-    let generics = tcx.hir().get_generics(parent_def_id).unwrap();
-    let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
-    let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
+    let hir::Node::GenericParam(param) = tcx.hir().get_by_def_id(param_def_id) else {
+        bug!("expected GenericParam for object_lifetime_default");
+    };
+    match param.source {
+        hir::GenericParamSource::Generics => {
+            let parent_def_id = tcx.local_parent(param_def_id);
+            let generics = tcx.hir().get_generics(parent_def_id).unwrap();
+            let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
+            let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
-    // Scan the bounds and where-clauses on parameters to extract bounds
-    // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
-    // for each type parameter.
-    match param.kind {
-        GenericParamKind::Type { .. } => {
-            let mut set = Set1::Empty;
+            // Scan the bounds and where-clauses on parameters to extract bounds
+            // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
+            // for each type parameter.
+            match param.kind {
+                GenericParamKind::Type { .. } => {
+                    let mut set = Set1::Empty;
 
-            // Look for `type: ...` where clauses.
-            for bound in generics.bounds_for_param(param_def_id) {
-                // Ignore `for<'a> type: ...` as they can change what
-                // lifetimes mean (although we could "just" handle it).
-                if !bound.bound_generic_params.is_empty() {
-                    continue;
-                }
+                    // Look for `type: ...` where clauses.
+                    for bound in generics.bounds_for_param(param_def_id) {
+                        // Ignore `for<'a> type: ...` as they can change what
+                        // lifetimes mean (although we could "just" handle it).
+                        if !bound.bound_generic_params.is_empty() {
+                            continue;
+                        }
 
-                for bound in bound.bounds {
-                    if let hir::GenericBound::Outlives(lifetime) = bound {
-                        set.insert(lifetime.res);
+                        for bound in bound.bounds {
+                            if let hir::GenericBound::Outlives(lifetime) = bound {
+                                set.insert(lifetime.res);
+                            }
+                        }
+                    }
+
+                    match set {
+                        Set1::Empty => ObjectLifetimeDefault::Empty,
+                        Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
+                        Set1::One(hir::LifetimeName::Param(param_def_id)) => {
+                            ObjectLifetimeDefault::Param(param_def_id.to_def_id())
+                        }
+                        _ => ObjectLifetimeDefault::Ambiguous,
                     }
                 }
-            }
-
-            match set {
-                Set1::Empty => ObjectLifetimeDefault::Empty,
-                Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
-                Set1::One(hir::LifetimeName::Param(param_def_id)) => {
-                    ObjectLifetimeDefault::Param(param_def_id.to_def_id())
+                _ => {
+                    bug!("object_lifetime_default_raw must only be called on a type parameter")
                 }
-                _ => ObjectLifetimeDefault::Ambiguous,
             }
         }
-        _ => {
-            bug!("object_lifetime_default_raw must only be called on a type parameter")
-        }
+        hir::GenericParamSource::Binder => ObjectLifetimeDefault::Empty,
     }
 }
 
@@ -1267,7 +1294,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }
@@ -1332,7 +1360,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }
@@ -1351,6 +1380,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // search.
         let mut late_depth = 0;
         let mut scope = self.scope;
+        let mut crossed_anon_const = false;
         let result = loop {
             match *scope {
                 Scope::Body { s, .. } => {
@@ -1384,17 +1414,44 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
                 }
+
+                Scope::AnonConstBoundary { s } => {
+                    crossed_anon_const = true;
+                    scope = s;
+                }
             }
         };
 
         if let Some(def) = result {
-            self.map.defs.insert(hir_id, def);
+            if let ResolvedArg::LateBound(..) = def && crossed_anon_const {
+                let use_span = self.tcx.hir().span(hir_id);
+                let def_span = self.tcx.def_span(param_def_id);
+                let guar = match self.tcx.def_kind(param_def_id) {
+                    DefKind::ConstParam => {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Const {
+                            use_span,
+                            def_span,
+                        })
+                    }
+                    DefKind::TyParam => {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Type {
+                            use_span,
+                            def_span,
+                        })
+                    }
+                    _ => unreachable!(),
+                };
+                self.map.defs.insert(hir_id, ResolvedArg::Error(guar));
+            } else {
+                self.map.defs.insert(hir_id, def);
+            }
             return;
         }
 
-        self.tcx
-            .sess
-            .delay_span_bug(self.tcx.hir().span(hir_id), "could not resolve {param_def_id:?}");
+        self.tcx.sess.delay_span_bug(
+            self.tcx.hir().span(hir_id),
+            format!("could not resolve {param_def_id:?}"),
+        );
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1465,7 +1522,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         | Scope::Elision { s, .. }
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s, .. } => {
+                        | Scope::TraitRefBoundary { s, .. }
+                        | Scope::AnonConstBoundary { s } => {
                             scope = s;
                         }
                     }
@@ -1701,7 +1759,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
                 Scope::ObjectLifetimeDefault { lifetime: Some(l), .. } => break l,
 
-                Scope::Supertrait { s, .. } | Scope::TraitRefBoundary { s, .. } => {
+                Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }

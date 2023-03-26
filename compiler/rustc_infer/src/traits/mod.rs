@@ -8,6 +8,8 @@ mod project;
 mod structural_impls;
 pub mod util;
 
+use std::cmp;
+
 use hir::def_id::LocalDefId;
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -51,6 +53,12 @@ pub struct Obligation<'tcx, T> {
     /// in such cases, we can not say whether or not the predicate
     /// holds for certain. Stupid halting problem; such a drag.
     pub recursion_depth: usize,
+}
+
+impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
+    fn from(value: Obligation<'tcx, P>) -> Self {
+        solve::Goal { param_env: value.param_env, predicate: value.predicate }
+    }
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
@@ -131,6 +139,14 @@ impl<'tcx, O> Obligation<'tcx, O> {
         predicate: impl ToPredicate<'tcx, O>,
     ) -> Obligation<'tcx, O> {
         Self::with_depth(tcx, cause, 0, param_env, predicate)
+    }
+
+    /// We often create nested obligations without setting the correct depth.
+    ///
+    /// To deal with this evaluate and fulfill explicitly update the depth
+    /// of nested obligations using this function.
+    pub fn set_depth_from_parent(&mut self, parent_depth: usize) {
+        self.recursion_depth = cmp::max(parent_depth + 1, self.recursion_depth);
     }
 
     pub fn with_depth(

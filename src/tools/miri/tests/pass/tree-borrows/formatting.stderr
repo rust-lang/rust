@@ -1,0 +1,29 @@
+─────────────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1..  2.. 10.. 11..100..101..1000..1001..1024
+| Res| Act| Res| Act| Res| Act|  Res|  Act|  Res|    └─┬──<TAG=data>
+|----| Act|----|?Dis|----|?Dis| ----| ?Dis| ----|      ├────<TAG=data[1]>
+|----|----|----| Act|----|?Dis| ----| ?Dis| ----|      ├────<TAG=data[10]>
+|----|----|----|----|----| Frz| ----| ?Dis| ----|      ├────<TAG=data[100]>
+|----|----|----|----|----|----| ----|  Act| ----|      └────<TAG=data[1000]>
+─────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Frz|    └─┬──<TAG=x>
+| Frz|      ├─┬──<TAG=xa>
+| Frz|      │ ├────<TAG=xaa>
+| Frz|      │ └────<TAG=xab>
+| Frz|      ├─┬──<TAG=xb>
+| Frz|      │ └─┬──<TAG=xba>
+| Frz|      │   └─┬──<TAG=xbaa>
+| Frz|      │     └─┬──<TAG=xbaaa>
+| Frz|      │       └────<TAG=xbaaaa>
+| Frz|      └─┬──<TAG=xc>
+| Frz|        ├─┬──<TAG=xca>
+| Frz|        │ ├────<TAG=xcaa>
+| Frz|        │ └────<TAG=xcab>
+| Frz|        └─┬──<TAG=xcb>
+| Frz|          ├────<TAG=xcba>
+| Frz|          └────<TAG=xcbb>
+──────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 
 // Regression for #93775, needs build-pass to test it.
 
-#![recursion_limit = "1000"]
+#![recursion_limit = "1001"]
 
 use std::marker::PhantomData;
 

@@ -54,6 +54,7 @@ macro_rules! into_diagnostic_arg_using_display {
 }
 
 into_diagnostic_arg_using_display!(
+    ast::ParamKindOrd,
     i8,
     u8,
     i16,

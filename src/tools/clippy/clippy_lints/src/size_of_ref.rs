@@ -45,7 +45,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.68.0"]
     pub SIZE_OF_REF,
     suspicious,
     "Argument to `std::mem::size_of_val()` is a double-reference, which is almost certainly unintended"

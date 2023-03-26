@@ -28,7 +28,7 @@ use crate::fmt::{Debug, Display};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 #[rustc_has_incoherent_inherent_impls]
-#[cfg_attr(not(bootstrap), allow(multiple_supertrait_upcastable))]
+#[allow(multiple_supertrait_upcastable)]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
     ///
@@ -489,7 +489,7 @@ impl Error for crate::char::CharTryFromError {
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
 impl Error for crate::time::TryFromFloatSecsError {}
 
-#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
 #[unstable(feature = "get_many_mut", issue = "104642")]

@@ -162,6 +162,7 @@ fn main() -> () {
     }
 
     bb19: {
+        PlaceMention(_1);                // scope 0 at $DIR/match_false_edges.rs:+1:13: +6:6
         StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:+6:6: +6:7
         StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:+6:6: +6:7
         _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:+0:11: +7:2

@@ -1,8 +1,8 @@
 use crate::infer::canonical::query_response;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits;
 use crate::traits::query::type_op::TypeOpOutput;
 use crate::traits::query::Fallible;
+use crate::traits::ObligationCtxt;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_span::source_map::DUMMY_SP;
 
@@ -73,7 +73,9 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
-    let errors = traits::fully_solve_obligations(infcx, obligations);
+    let ocx = ObligationCtxt::new(infcx);
+    ocx.register_obligations(obligations);
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
@@ -82,9 +84,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     }
 
     let region_obligations = infcx.take_registered_region_obligations();
-
     let region_constraint_data = infcx.take_and_reset_region_constraints();
-
     let region_constraints = query_response::make_query_region_constraints(
         infcx.tcx,
         region_obligations

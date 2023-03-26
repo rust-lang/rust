@@ -2,8 +2,8 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -13,7 +13,7 @@ use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use std::mem;
@@ -45,17 +45,17 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<LocalDefId>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    live_symbols: FxHashSet<LocalDefId>,
+    live_symbols: LocalDefIdSet,
     repr_has_repr_c: bool,
     repr_has_repr_simd: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from tuple struct constructors to tuple struct items
-    struct_constructors: FxHashMap<LocalDefId, LocalDefId>,
+    struct_constructors: LocalDefIdMap<LocalDefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
     // and the span of their respective impl (i.e., part of the derive
     // macro)
-    ignored_derived_traits: FxHashMap<LocalDefId, Vec<(DefId, DefId)>>,
+    ignored_derived_traits: LocalDefIdMap<Vec<(DefId, DefId)>>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -237,9 +237,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = FxHashSet::default();
+        let mut scanned = LocalDefIdSet::default();
         while let Some(id) = self.worklist.pop() {
             if !scanned.insert(id) {
+                continue;
+            }
+
+            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
+            if self.tcx.opt_rpitit_info(id.to_def_id()).is_some() {
+                self.live_symbols.insert(id);
                 continue;
             }
 
@@ -463,9 +469,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-        tcx.has_attr(def_id.to_def_id(), sym::lang)
+        tcx.has_attr(def_id, sym::lang)
             // Stable attribute for #[lang = "panic_impl"]
-            || tcx.has_attr(def_id.to_def_id(), sym::panic_handler)
+            || tcx.has_attr(def_id, sym::panic_handler)
     }
 
     fn has_allow_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -506,7 +512,7 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool
 fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     worklist: &mut Vec<LocalDefId>,
-    struct_constructors: &mut FxHashMap<LocalDefId, LocalDefId>,
+    struct_constructors: &mut LocalDefIdMap<LocalDefId>,
     id: hir::ItemId,
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id);
@@ -583,9 +589,7 @@ fn check_foreign_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::
     }
 }
 
-fn create_and_seed_worklist(
-    tcx: TyCtxt<'_>,
-) -> (Vec<LocalDefId>, FxHashMap<LocalDefId, LocalDefId>) {
+fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> (Vec<LocalDefId>, LocalDefIdMap<LocalDefId>) {
     let effective_visibilities = &tcx.effective_visibilities(());
     // see `MarkSymbolVisitor::struct_constructors`
     let mut struct_constructors = Default::default();
@@ -617,7 +621,7 @@ fn create_and_seed_worklist(
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
-) -> (FxHashSet<LocalDefId>, FxHashMap<LocalDefId, Vec<(DefId, DefId)>>) {
+) -> (LocalDefIdSet, LocalDefIdMap<Vec<(DefId, DefId)>>) {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
@@ -629,7 +633,7 @@ fn live_symbols_and_ignored_derived_traits(
         in_pat: false,
         ignore_variant_stack: vec![],
         struct_constructors,
-        ignored_derived_traits: FxHashMap::default(),
+        ignored_derived_traits: Default::default(),
     };
     symbol_visitor.mark_live_symbols();
     (symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits)
@@ -643,8 +647,8 @@ struct DeadVariant {
 
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    live_symbols: &'tcx FxHashSet<LocalDefId>,
-    ignored_derived_traits: &'tcx FxHashMap<LocalDefId, Vec<(DefId, DefId)>>,
+    live_symbols: &'tcx LocalDefIdSet,
+    ignored_derived_traits: &'tcx LocalDefIdMap<Vec<(DefId, DefId)>>,
 }
 
 enum ShouldWarnAboutField {

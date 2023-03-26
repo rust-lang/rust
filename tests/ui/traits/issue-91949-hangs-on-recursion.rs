@@ -1,6 +1,6 @@
 // build-fail
 // compile-flags: -Zinline-mir=no
-// error-pattern: overflow evaluating the requirement `(): Sized`
+// error-pattern: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
 // error-pattern: function cannot return without recursing
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 

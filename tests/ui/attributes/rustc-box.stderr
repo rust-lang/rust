@@ -1,0 +1,34 @@
+error: `#[rustc_box]` attribute used incorrectly
+  --> $DIR/rustc-box.rs:10:5
+   |
+LL |     Box::pin(1);
+   |     ^^^^^^^^^^^
+   |
+   = note: `#[rustc_box]` may only be applied to a `Box::new()` call
+
+error: `#[rustc_box]` attribute used incorrectly
+  --> $DIR/rustc-box.rs:12:5
+   |
+LL |     foo(1, 1);
+   |     ^^^^^^^^^
+   |
+   = note: `#[rustc_box]` may only be applied to a `Box::new()` call
+
+error: `#[rustc_box]` attribute used incorrectly
+  --> $DIR/rustc-box.rs:14:5
+   |
+LL |     bar(1);
+   |     ^^^^^^
+   |
+   = note: `#[rustc_box]` may only be applied to a `Box::new()` call
+
+error: `#[rustc_box]` attribute used incorrectly
+  --> $DIR/rustc-box.rs:15:5
+   |
+LL |     #[rustc_box]
+   |     ^^^^^^^^^^^^
+   |
+   = note: no other attributes may be applied
+
+error: aborting due to 4 previous errors
+

@@ -209,6 +209,12 @@ pub use once::OnceCell;
 
 /// A mutable memory location.
 ///
+/// # Memory layout
+///
+/// `Cell<T>` has the same [memory layout and caveats as
+/// `UnsafeCell<T>`](UnsafeCell#memory-layout). In particular, this means that
+/// `Cell<T>` has the same in-memory representation as its inner type `T`.
+///
 /// # Examples
 ///
 /// In this example, you can see that `Cell<T>` enables mutation inside an
@@ -632,7 +638,7 @@ pub struct RefCell<T: ?Sized> {
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
-    // in the generated `BorrowError/`BorrowMutError`
+    // in the generated `BorrowError`/`BorrowMutError`
     #[cfg(feature = "debug_refcell")]
     borrowed_at: Cell<Option<&'static crate::panic::Location<'static>>>,
     value: UnsafeCell<T>,

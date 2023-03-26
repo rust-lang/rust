@@ -5,11 +5,17 @@
 
 #[allow(unused_macro_rules)]
 macro_rules! m {
-    ($e:expr) => { 0 }; // This fails on the input below due to `, foo`.
-    ($e:expr,) => { 1 }; // This also fails to match due to `foo`.
-    (box $e:expr, foo) => { 2 }; // Successful matcher, we should get `2`.
+    ($e:expr) => {
+        0
+    }; // This fails on the input below due to `, foo`.
+    ($e:expr,) => {
+        1
+    }; // This also fails to match due to `foo`.
+    (do yeet $e:expr, foo) => {
+        2
+    }; // Successful matcher, we should get `2`.
 }
 
 fn main() {
-    assert_eq!(2, m!(box 42, foo));
+    assert_eq!(2, m!(do yeet 42, foo));
 }

@@ -10,6 +10,10 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = Box::from_raw(ptr);
+   |     +++++++
 
 warning: 1 warning emitted
 

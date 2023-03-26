@@ -14,9 +14,9 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
@@ -563,15 +563,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow() {
-            let overflow_not_to_check = match msg {
-                AssertKind::OverflowNeg(..) => true,
-                AssertKind::Overflow(op, ..) => op.is_checkable(),
-                _ => false,
-            };
-            if overflow_not_to_check {
-                const_cond = Some(expected);
-            }
+        if !bx.cx().check_overflow() && msg.is_optional_overflow_check() {
+            const_cond = Some(expected);
         }
 
         // Don't codegen the panic block if success if known.
@@ -655,41 +648,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        #[derive(Debug, PartialEq)]
-        enum AssertIntrinsic {
-            Inhabited,
-            ZeroValid,
-            MemUninitializedValid,
-        }
-        let panic_intrinsic = intrinsic.and_then(|i| match i {
-            sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
-            sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),
-            sym::assert_mem_uninitialized_valid => Some(AssertIntrinsic::MemUninitializedValid),
-            _ => None,
-        });
-        if let Some(intrinsic) = panic_intrinsic {
-            use AssertIntrinsic::*;
-
+        let panic_intrinsic = intrinsic.and_then(|s| ValidityRequirement::from_intrinsic(s));
+        if let Some(requirement) = panic_intrinsic {
             let ty = instance.unwrap().substs.type_at(0);
+
+            let do_panic = !bx
+                .tcx()
+                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .expect("expect to have layout during codegen");
+
             let layout = bx.layout_of(ty);
-            let do_panic = match intrinsic {
-                Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !bx
-                    .tcx()
-                    .permits_zero_init(bx.param_env().and(ty))
-                    .expect("expected to have layout during codegen"),
-                MemUninitializedValid => !bx
-                    .tcx()
-                    .permits_uninit_init(bx.param_env().and(ty))
-                    .expect("expected to have layout during codegen"),
-            };
+
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
                             format!("attempted to instantiate uninhabited type `{}`", ty)
-                        } else if intrinsic == ZeroValid {
+                        } else if requirement == ValidityRequirement::Zero {
                             format!("attempted to zero-initialize type `{}`, which is invalid", ty)
                         } else {
                             format!(
@@ -783,7 +759,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
-        let extra_args = bx.tcx().mk_type_list(extra_args.iter().map(|op_arg| {
+        let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.ty(self.mir, bx.tcx());
             self.monomorphize(op_ty)
         }));
@@ -792,23 +768,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(instance) => bx.fn_abi_of_instance(instance, extra_args),
             None => bx.fn_abi_of_fn_ptr(sig, extra_args),
         };
-
-        if intrinsic == Some(sym::transmute) {
-            return if let Some(target) = target {
-                self.codegen_transmute(bx, &args[0], destination);
-                helper.funclet_br(self, bx, target, mergeable_succ)
-            } else {
-                // If we are trying to transmute to an uninhabited type,
-                // it is likely there is no allotted destination. In fact,
-                // transmuting to an uninhabited type is UB, which means
-                // we can do what we like. Here, we declare that transmuting
-                // into an uninhabited type is impossible, so anything following
-                // it must be unreachable.
-                assert_eq!(fn_abi.ret.layout.abi, abi::Abi::Uninhabited);
-                bx.unreachable();
-                MergingSucc::False
-            };
-        }
 
         if let Some(merging_succ) = self.codegen_panic_intrinsic(
             &helper,
@@ -852,7 +811,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match intrinsic {
             None | Some(sym::drop_in_place) => {}
-            Some(sym::copy_nonoverlapping) => unreachable!(),
             Some(intrinsic) => {
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -941,7 +899,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_region_ptr()
+                            && !op.layout.ty.is_ref()
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);
@@ -983,7 +941,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_region_ptr()
+                            && !op.layout.ty.is_ref()
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);
@@ -1322,10 +1280,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mergeable_succ(),
                 ),
 
-            mir::TerminatorKind::DropAndReplace { .. } => {
-                bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
-            }
-
             mir::TerminatorKind::Call {
                 ref func,
                 ref args,
@@ -1503,7 +1457,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         let tcx = bx.tcx();
 
-        let mut span_to_caller_location = |span: Span| {
+        let mut span_to_caller_location = |mut span: Span| {
+            // Remove `Inlined` marks as they pollute `expansion_cause`.
+            while span.is_inlined() {
+                span.remove_mark();
+            }
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = tcx.const_caller_location((
@@ -1547,7 +1505,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             slot
         } else {
             let layout = cx.layout_of(
-                cx.tcx().intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
+                cx.tcx().mk_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
             );
             let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
@@ -1761,71 +1719,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             ReturnDest::Store(dest)
         }
-    }
-
-    fn codegen_transmute(&mut self, bx: &mut Bx, src: &mir::Operand<'tcx>, dst: mir::Place<'tcx>) {
-        if let Some(index) = dst.as_local() {
-            match self.locals[index] {
-                LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
-                LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
-                LocalRef::Operand(None) => {
-                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst.as_ref()));
-                    assert!(!dst_layout.ty.has_erasable_regions());
-                    let place = PlaceRef::alloca(bx, dst_layout);
-                    place.storage_live(bx);
-                    self.codegen_transmute_into(bx, src, place);
-                    let op = bx.load_operand(place);
-                    place.storage_dead(bx);
-                    self.locals[index] = LocalRef::Operand(Some(op));
-                    self.debug_introduce_local(bx, index);
-                }
-                LocalRef::Operand(Some(op)) => {
-                    assert!(op.layout.is_zst(), "assigning to initialized SSAtemp");
-                }
-            }
-        } else {
-            let dst = self.codegen_place(bx, dst.as_ref());
-            self.codegen_transmute_into(bx, src, dst);
-        }
-    }
-
-    fn codegen_transmute_into(
-        &mut self,
-        bx: &mut Bx,
-        src: &mir::Operand<'tcx>,
-        dst: PlaceRef<'tcx, Bx::Value>,
-    ) {
-        let src = self.codegen_operand(bx, src);
-
-        // Special-case transmutes between scalars as simple bitcasts.
-        match (src.layout.abi, dst.layout.abi) {
-            (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
-                // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
-                let src_is_ptr = matches!(src_scalar.primitive(), abi::Pointer(_));
-                let dst_is_ptr = matches!(dst_scalar.primitive(), abi::Pointer(_));
-                if src_is_ptr == dst_is_ptr {
-                    assert_eq!(src.layout.size, dst.layout.size);
-
-                    // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`
-                    // conversions allow handling `bool`s the same as `u8`s.
-                    let src = bx.from_immediate(src.immediate());
-                    // LLVM also doesn't like `bitcast`s between pointers in different address spaces.
-                    let src_as_dst = if src_is_ptr {
-                        bx.pointercast(src, bx.backend_type(dst.layout))
-                    } else {
-                        bx.bitcast(src, bx.backend_type(dst.layout))
-                    };
-                    Immediate(bx.to_immediate_scalar(src_as_dst, dst_scalar)).store(bx, dst);
-                    return;
-                }
-            }
-            _ => {}
-        }
-
-        let llty = bx.backend_type(src.layout);
-        let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
-        let align = src.layout.align.abi.min(dst.align);
-        src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, align));
     }
 
     // Stores the return value of a function call into it's final location.

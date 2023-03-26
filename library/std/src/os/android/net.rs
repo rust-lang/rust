@@ -1,8 +1,8 @@
 //! Android-specific networking functionality.
 
-#![unstable(feature = "tcp_quickack", issue = "96256")]
+#![stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
 
-#[unstable(feature = "unix_socket_abstract", issue = "85410")]
+#[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
 pub use crate::os::net::linux_ext::addr::SocketAddrExt;
 
 #[unstable(feature = "tcp_quickack", issue = "96256")]

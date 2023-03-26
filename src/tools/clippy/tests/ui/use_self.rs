@@ -647,3 +647,13 @@ fn msrv_1_37() {
         }
     }
 }
+
+mod issue_10371 {
+    struct Val<const V: i32> {}
+
+    impl<const V: i32> From<Val<V>> for i32 {
+        fn from(_: Val<V>) -> Self {
+            todo!()
+        }
+    }
+}

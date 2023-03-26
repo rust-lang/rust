@@ -1585,9 +1585,15 @@ extern "rust-intrinsic" {
 
     /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
     pub fn rintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
     pub fn rintf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`.
@@ -1609,6 +1615,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`f64::round`](../../std/primitive.f64.html#method.round)
     pub fn roundf64(x: f64) -> f64;
+
+    /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
+    /// with an even least significant digit.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    pub fn roundevenf32(x: f32) -> f32;
+    /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
+    /// with an even least significant digit.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[cfg(not(bootstrap))]
+    pub fn roundevenf64(x: f64) -> f64;
 
     /// Float addition that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
@@ -2001,6 +2020,16 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
+    /// This is an implementation detail of [`crate::ptr::read`] and should
+    /// not be used anywhere else.  See its comments for why this exists.
+    ///
+    /// This intrinsic can *only* be called where the argument is a local without
+    /// projections (`read_via_copy(p)`, not `read_via_copy(*p)`) so that it
+    /// trivially obeys runtime-MIR rules about derefs in operands.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    pub fn read_via_copy<T>(p: *const T) -> T;
+
     /// Returns the value of the discriminant for the variant in 'v';
     /// if `T` has no discriminant, returns `0`.
     ///
@@ -2093,6 +2122,10 @@ extern "rust-intrinsic" {
     /// Above some backend-decided threshold this will emit calls to `memcmp`,
     /// like slice equality does, instead of causing massive code size.
     ///
+    /// Since this works by comparing the underlying bytes, the actual `T` is
+    /// not particularly important.  It will be used for its size and alignment,
+    /// but any validity restrictions will be ignored, not enforced.
+    ///
     /// # Safety
     ///
     /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized or carry a
@@ -2181,6 +2214,12 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+
+    #[cfg(not(bootstrap))]
+    /// This method creates a pointer to any `Some` value. If the argument is
+    /// `None`, an invalid within-bounds pointer (that is still acceptable for
+    /// constructing an empty slice) is returned.
+    pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
 // Some functions are defined here because they accidentally got made

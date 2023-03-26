@@ -177,7 +177,9 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
-            ty::PredicateKind::AliasEq(t1, t2) => write!(f, "AliasEq({t1:?}, {t2:?})"),
+            ty::PredicateKind::AliasRelate(t1, t2, dir) => {
+                write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
+            }
         }
     }
 }
@@ -250,6 +252,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::AliasKind,
+    crate::ty::AliasRelationDirection,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::Placeholder<crate::ty::BoundTyKind>,
     crate::ty::ClosureKind,
@@ -263,6 +266,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
+    ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     Field,
     interpret::Scalar,
@@ -430,7 +434,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPred
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_poly_existential_predicates(v))
     }
 }
 
@@ -439,7 +443,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_const_list(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
     }
 }
 
@@ -448,7 +452,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_projs(v))
     }
 }
 
@@ -513,7 +517,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return Ok(self),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty(kind) })
+        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty_from_kind(kind) })
     }
 }
 
@@ -636,7 +640,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_predicates(v))
     }
 }
 

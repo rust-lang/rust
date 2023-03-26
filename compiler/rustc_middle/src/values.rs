@@ -4,7 +4,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QueryInfo;
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;

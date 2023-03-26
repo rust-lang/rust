@@ -10,9 +10,7 @@ use std::arch::asm;
 pub extern "C" fn get(ptr: *const u64) -> u64 {
     let value: u64;
     unsafe {
-        asm!(".start_inline_asm:",
-            "mov {}, [{}]",
-            ".end_inline_asm:",
+        asm!("mov {}, [{}]",
             out(reg) value,
             in(reg) ptr);
     }
@@ -20,24 +18,17 @@ pub extern "C" fn get(ptr: *const u64) -> u64 {
 }
 
 // CHECK: get
-// CHECK: .start_inline_asm
-// CHECK-NEXT: movq
+// CHECK: movq
 // CHECK-NEXT: lfence
-// CHECK-NEXT: .end_inline_asm
 
 #[no_mangle]
 pub extern "C" fn myret() {
     unsafe {
-        asm!(
-            ".start_myret_inline_asm:",
-            "ret",
-            ".end_myret_inline_asm:",
-        );
+        asm!("ret");
     }
 }
 
 // CHECK: myret
-// CHECK: .start_myret_inline_asm
-// CHECK-NEXT: shlq $0, (%rsp)
+// CHECK: shlq $0, (%rsp)
 // CHECK-NEXT: lfence
 // CHECK-NEXT: retq

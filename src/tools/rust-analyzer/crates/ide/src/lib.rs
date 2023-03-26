@@ -55,6 +55,7 @@ mod syntax_tree;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
+mod view_mir;
 mod view_item_tree;
 mod shuffle_crate_graph;
 
@@ -306,6 +307,10 @@ impl Analysis {
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
         self.with_db(|db| view_hir::view_hir(db, position))
+    }
+
+    pub fn view_mir(&self, position: FilePosition) -> Cancellable<String> {
+        self.with_db(|db| view_mir::view_mir(db, position))
     }
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {

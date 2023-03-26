@@ -1,60 +1,11 @@
-error: expected parameter name, found `{`
+error: mismatched closing delimiter: `)`
   --> $DIR/issue-92481.rs:5:6
    |
 LL | fn r({) {
-   |      ^ expected parameter name
+   |     -^^ mismatched closing delimiter
+   |     ||
+   |     |unclosed delimiter
+   |     closing delimiter possibly meant for this
 
-error: expected one of `,`, `:`, or `}`, found `..`
-  --> $DIR/issue-92481.rs:5:6
-   |
-LL | fn r({) {
-   |      ^ unclosed delimiter
-LL |     Ok {
-LL |         d..||_=m
-   |          -^
-   |          |
-   |          help: `}` may belong here
+error: aborting due to previous error
 
-error[E0425]: cannot find value `d` in this scope
-  --> $DIR/issue-92481.rs:7:9
-   |
-LL |         d..||_=m
-   |         ^ not found in this scope
-
-error[E0425]: cannot find value `m` in this scope
-  --> $DIR/issue-92481.rs:7:16
-   |
-LL |         d..||_=m
-   |                ^ not found in this scope
-
-error[E0559]: variant `Result<_, _>::Ok` has no field named `d`
-  --> $DIR/issue-92481.rs:7:9
-   |
-LL |         d..||_=m
-   |         ^ field does not exist
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: `Result<_, _>::Ok` defined here
-   |
-help: `Result<_, _>::Ok` is a tuple variant, use the appropriate syntax
-   |
-LL |     Result<_, _>::Ok(/* fields */)
-   |
-
-error[E0308]: mismatched types
-  --> $DIR/issue-92481.rs:6:5
-   |
-LL |   fn r({) {
-   |           - help: a return type might be missing here: `-> _`
-LL | /     Ok {
-LL | |         d..||_=m
-LL | |     }
-   | |_____^ expected `()`, found `Result<_, _>`
-   |
-   = note: expected unit type `()`
-                   found enum `Result<_, _>`
-
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0308, E0425, E0559.
-For more information about an error, try `rustc --explain E0308`.

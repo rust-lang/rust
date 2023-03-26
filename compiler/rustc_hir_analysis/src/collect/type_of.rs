@@ -9,7 +9,8 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -62,7 +63,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
                 .unwrap()
                 .0
-                .to_def_id();
+                .def_id;
             let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
@@ -243,24 +244,46 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
-    let def_id = def_id.expect_local();
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty<'_>> {
+    // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
+    // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
+    // associated type in the impl.
+    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) =
+        tcx.opt_rpitit_info(def_id.to_def_id())
+    {
+        match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
+            Ok(map) => {
+                let assoc_item = tcx.associated_item(def_id);
+                return ty::EarlyBinder(map[&assoc_item.trait_item_def_id.unwrap()]);
+            }
+            Err(_) => {
+                return ty::EarlyBinder(tcx.ty_error_with_message(
+                    DUMMY_SP,
+                    "Could not collect return position impl trait in trait tys",
+                ));
+            }
+        }
+    }
+
     use rustc_hir::*;
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let icx = ItemCtxt::new(tcx, def_id);
 
     let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    is_suggestable_infer_ty(ty)
-                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
+                    is_suggestable_infer_ty(ty).then(|| {
+                        infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        )
+                    })
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -271,7 +294,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
 
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ImplItemKind::Const(ty, body_id) => {
@@ -316,22 +339,23 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => {
-                    match self_ty.find_self_aliases() {
-                        spans if spans.len() > 0 => {
-                            let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
-                            tcx.ty_error(guar)
-                        },
-                        _ => icx.to_ty(*self_ty),
+                ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
+                    spans if spans.len() > 0 => {
+                        let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf {
+                            span: spans.into(),
+                            note: (),
+                        });
+                        tcx.ty_error(guar)
                     }
+                    _ => icx.to_ty(*self_ty),
                 },
                 ItemKind::Fn(..) => {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id.to_def_id(), substs)
                 }
                 ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
@@ -344,8 +368,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     in_trait,
                     ..
                 }) => {
-                    if in_trait {
-                        assert!(tcx.impl_defaultness(owner).has_value());
+                    if in_trait && !tcx.impl_defaultness(owner).has_value() {
+                        span_bug!(
+                            tcx.def_span(def_id),
+                            "tried to get type of this RPITIT with no definition"
+                        );
                     }
                     find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
@@ -368,7 +395,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ForeignItemKind::Static(t, _) => icx.to_ty(t),
@@ -380,7 +407,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
         },
@@ -413,7 +440,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 Node::Expr(Expr { kind: ExprKind::ConstBlock(anon_const), .. })
                     if anon_const.hir_id == hir_id =>
                 {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     substs.as_inline_const().ty()
                 }
 
@@ -434,15 +461,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
                 }
 
-                Node::TypeBinding(
-                    TypeBinding {
-                        hir_id: binding_id,
-                        kind: TypeBindingKind::Equality { term: Term::Const(e) },
-                        ident,
-                        ..
-                    },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    kind: TypeBindingKind::Equality { term: Term::Const(e) },
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
@@ -456,7 +480,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id).subst_identity()
+                        tcx.type_of(assoc_item.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -466,10 +492,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                     }
                 }
 
-                Node::TypeBinding(
-                    TypeBinding { hir_id: binding_id, gen_args, kind, ident, .. },
-                ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(*binding_id)
+                Node::TypeBinding(TypeBinding {
+                    hir_id: binding_id,
+                    gen_args,
+                    kind,
+                    ident,
+                    ..
+                }) if let Node::TraitRef(trait_ref) = tcx.hir().get_parent(*binding_id)
                     && let Some((idx, _)) =
                         gen_args.args.iter().enumerate().find(|(_, arg)| {
                             if let GenericArg::Const(ct) = arg {
@@ -498,15 +527,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                         },
                         def_id.to_def_id(),
                     );
-                    if let Some(param)
-                        = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
+                    if let Some(assoc_item) = assoc_item
+                        && let param = &tcx.generics_of(assoc_item.def_id).params[idx]
+                        && matches!(param.kind, ty::GenericParamDefKind::Const { .. })
                     {
-                        tcx.type_of(param.def_id).subst_identity()
+                        tcx.type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic")
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
                             DUMMY_SP,
-                            "Could not find associated const on trait",
+                            "Could not find const param on associated item",
                         )
                     }
                 }
@@ -574,7 +606,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         found: Option<ty::OpaqueHiddenType<'tcx>>,
 
         /// In the presence of dead code, typeck may figure out a hidden type
-        /// while borrowck will now. We collect these cases here and check at
+        /// while borrowck will not. We collect these cases here and check at
         /// the end that we actually found a type that matches (modulo regions).
         typeck_types: Vec<ty::OpaqueHiddenType<'tcx>>,
     }
@@ -746,7 +778,7 @@ fn find_opaque_ty_constraints_for_rpit(
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            for &(def_id, concrete_type) in concrete_opaque_types {
+            for (&def_id, &concrete_type) in concrete_opaque_types {
                 if def_id != self.def_id {
                     // Ignore constraints for other opaque types.
                     continue;

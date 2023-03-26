@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.62"
 clap = { version = "4.0.15", features = ["derive"] }
 fs-err = "2.8.1"
+rustc-hash = "1.1.0"
 rustdoc-json-types = { version = "0.1.0", path = "../../rustdoc-json-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.85"

@@ -300,7 +300,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, e, e.kind, Id::Node(e.hir_id), hir, Expr, ExprKind),
             [
-                Box, ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type,
+                ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type,
                 DropTemps, Let, If, Loop, Match, Closure, Block, Assign, AssignOp, Field, Index,
                 Path, AddrOf, Break, Continue, Ret, InlineAsm, Struct, Repeat, Yield, Err
             ]
@@ -565,7 +565,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, e, e.kind, Id::None, ast, Expr, ExprKind),
             [
-                Box, Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
+                Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, IncludedBytes, Err
@@ -646,7 +646,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     // `UseTree` has one inline use (in `ast::ItemKind::Use`) and one
-    // non-inline use (in `ast::UseTreeKind::Nested). The former case is more
+    // non-inline use (in `ast::UseTreeKind::Nested`). The former case is more
     // common, so we don't implement `visit_use_tree` and tolerate the missed
     // coverage in the latter case.
 

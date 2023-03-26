@@ -16,9 +16,9 @@ pub(super) enum Semicolon {
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser<'_>) -> bool {
+pub(super) fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    expr_bp(p, None, r, 1).is_some()
+    expr_bp(p, None, r, 1).map(|(m, _)| m)
 }
 
 pub(super) fn expr_stmt(
@@ -120,16 +120,27 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
             // fn f() { let x: i32; }
             types::ascription(p);
         }
+
+        let mut expr_after_eq: Option<CompletedMarker> = None;
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            expressions::expr(p);
+            expr_after_eq = expressions::expr(p);
         }
 
         if p.at(T![else]) {
+            // test_err let_else_right_curly_brace
+            // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
+            if let Some(expr) = expr_after_eq {
+                if BlockLike::is_blocklike(expr.kind()) {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed",
+                    )
+                }
+            }
+
             // test let_else
             // fn f() { let Some(x) = opt else { return }; }
-
             let m = p.start();
             p.bump(T![else]);
             block_expr(p);
@@ -578,7 +589,14 @@ fn arg_list(p: &mut Parser<'_>) {
     // fn main() {
     //     foo(#[attr] 92)
     // }
-    delimited(p, T!['('], T![')'], T![,], EXPR_FIRST.union(ATTRIBUTE_FIRST), expr);
+    delimited(
+        p,
+        T!['('],
+        T![')'],
+        T![,],
+        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        |p: &mut Parser<'_>| expr(p).is_some(),
+    );
     m.complete(p, ARG_LIST);
 }
 

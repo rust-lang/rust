@@ -73,3 +73,24 @@ fn test(x: bool) -> &'static str {
 "#,
     );
 }
+
+#[test]
+fn non_unit_block_expr_stmt_no_semi() {
+    check(
+        r#"
+fn test(x: bool) {
+    if x {
+        "notok"
+      //^^^^^^^ expected (), got &str
+    } else {
+        "ok"
+      //^^^^ expected (), got &str
+    }
+    match x { true => true, false => 0 }
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), got bool
+                                   //^ expected bool, got i32
+    ()
+}
+"#,
+    );
+}

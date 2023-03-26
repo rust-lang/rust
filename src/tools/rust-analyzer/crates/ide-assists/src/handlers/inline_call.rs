@@ -363,10 +363,10 @@ fn inline(
         .collect();
 
     if function.self_param(sema.db).is_some() {
-        let this = || make::name_ref("this").syntax().clone_for_update();
+        let this = || make::name_ref("this").syntax().clone_for_update().first_token().unwrap();
         if let Some(self_local) = params[0].2.as_local(sema.db) {
             usages_for_locals(self_local)
-                .flat_map(|FileReference { name, range, .. }| match name {
+                .filter_map(|FileReference { name, range, .. }| match name {
                     ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
                 })
@@ -676,6 +676,42 @@ struct Foo(u32);
 
 impl Foo {
     fn add(&self, a: u32) -> Self {
+        Foo(self.0 + a)
+    }
+}
+
+fn main() {
+    let x = {
+        let ref this = Foo(3);
+        Foo(this.0 + 2)
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generic_method_by_ref() {
+        check_assist(
+            inline_call,
+            r#"
+struct Foo(u32);
+
+impl Foo {
+    fn add<T>(&self, a: u32) -> Self {
+        Foo(self.0 + a)
+    }
+}
+
+fn main() {
+    let x = Foo(3).add$0::<usize>(2);
+}
+"#,
+            r#"
+struct Foo(u32);
+
+impl Foo {
+    fn add<T>(&self, a: u32) -> Self {
         Foo(self.0 + a)
     }
 }

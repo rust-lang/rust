@@ -1,7 +1,7 @@
 // ignore-tidy-filelength
 
 use super::{
-    DefIdOrName, FindExprBySpan, Obligation, ObligationCause, ObligationCauseCode,
+    DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
 
@@ -30,7 +30,7 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
-    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
     IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, TypeckResults,
@@ -212,7 +212,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn extract_callable_info(
         &self,
-        hir_id: HirId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)>;
@@ -382,6 +382,14 @@ pub trait TypeErrCtxtExt<'tcx> {
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>>;
+
+    fn maybe_suggest_convert_to_slice(
+        &self,
+        err: &mut Diagnostic,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        candidate_impls: &[ImplCandidate<'tcx>],
+        span: Span,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
@@ -412,6 +420,7 @@ fn suggest_restriction<'tcx>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
+        || projection.map_or(false, |projection| tcx.opt_rpitit_info(projection.def_id).is_some())
     {
         return;
     }
@@ -900,9 +909,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             trait_pred.self_ty(),
         );
 
-        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
         let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(
-            body_hir_id,
+            obligation.cause.body_id,
             obligation.param_env,
             self_ty,
         ) else { return false; };
@@ -1104,10 +1112,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// Extracts information about a callable type for diagnostics. This is a
     /// heuristic -- it doesn't necessarily mean that a type is always callable,
     /// because the callable type must also be well-formed to be called.
-    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     fn extract_callable_info(
         &self,
-        hir_id: HirId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
@@ -1159,7 +1166,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     })
                 }
                 ty::Param(param) => {
-                    let generics = self.tcx.generics_of(hir_id.owner.to_def_id());
+                    let generics = self.tcx.generics_of(body_id);
                     let name = if generics.count() > param.index as usize
                         && let def = generics.param_at(param.index as usize, self.tcx)
                         && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
@@ -1349,6 +1356,31 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
+                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
+                        let sugg_prefix = format!("&{}", if is_mut { "mut " } else { "" });
+                        let sugg_msg = &format!(
+                            "consider{} borrowing here",
+                            if is_mut { " mutably" } else { "" }
+                        );
+
+                        // Issue #109436, we need to add parentheses properly for method calls
+                        // for example, `foo.into()` should be `(&foo).into()`
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(
+                            self.tcx.sess.source_map().span_look_ahead(span, Some("."), Some(50)),
+                        ) {
+                            if snippet == "." {
+                                err.multipart_suggestion_verbose(
+                                    sugg_msg,
+                                    vec![
+                                        (span.shrink_to_lo(), format!("({}", sugg_prefix)),
+                                        (span.shrink_to_hi(), ")".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
+                                return true;
+                            }
+                        }
+
                         // Issue #104961, we need to add parentheses properly for compond expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
@@ -1365,14 +1397,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             _ => false,
                         };
 
-                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
                         let span = if needs_parens { span } else { span.shrink_to_lo() };
-                        let sugg_prefix = format!("&{}", if is_mut { "mut " } else { "" });
-                        let sugg_msg = &format!(
-                            "consider{} borrowing here",
-                            if is_mut { " mutably" } else { "" }
-                        );
-
                         let suggestions = if !needs_parens {
                             vec![(span.shrink_to_lo(), format!("{}", sugg_prefix))]
                         } else {
@@ -2220,7 +2245,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // - `BuiltinDerivedObligation` with a generator witness (A)
         // - `BuiltinDerivedObligation` with a generator (A)
         // - `BuiltinDerivedObligation` with `impl std::future::Future` (A)
-        // - `BindingObligation` with `impl_send (Send requirement)
+        // - `BindingObligation` with `impl_send` (Send requirement)
         //
         // The first obligation in the chain is the most useful and has the generator that captured
         // the type. The last generator (`outer_generator` below) has information about where the
@@ -2936,9 +2961,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a generator must have a statically known size");
             }
-            ObligationCauseCode::SizedBoxType => {
-                err.note("the type of a box expression must have a statically known size");
-            }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
             }
@@ -3025,8 +3047,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 };
 
-                let identity_future = tcx.require_lang_item(LangItem::IdentityFuture, None);
-
                 // Don't print the tuple of capture types
                 'print: {
                     if !is_upvar_tys_infer_tuple {
@@ -3039,12 +3059,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 None => err.note(&msg),
                             },
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-                                // Avoid printing the future from `core::future::identity_future`, it's not helpful
-                                if tcx.parent(*def_id) == identity_future {
-                                    break 'print;
-                                }
-
-                                // If the previous type is `identity_future`, this is the future generated by the body of an async function.
+                                // If the previous type is async fn, this is the future generated by the body of an async function.
                                 // Avoid printing it twice (it was already printed in the `ty::Generator` arm below).
                                 let is_future = tcx.ty_is_opaque_future(ty);
                                 debug!(
@@ -3107,6 +3122,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 self.tcx.def_span(def_id),
                                 "required because it's used within this closure",
                             ),
+                            ty::Str => err.note("`str` is considered to contain a `[u8]` slice for auto trait purposes"),
                             _ => err.note(&msg),
                         };
                     }
@@ -3824,6 +3840,73 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
         assocs_in_this_method
+    }
+
+    /// If the type that failed selection is an array or a reference to an array,
+    /// but the trait is implemented for slices, suggest that the user converts
+    /// the array into a slice.
+    fn maybe_suggest_convert_to_slice(
+        &self,
+        err: &mut Diagnostic,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        candidate_impls: &[ImplCandidate<'tcx>],
+        span: Span,
+    ) {
+        // Three cases where we can make a suggestion:
+        // 1. `[T; _]` (array of T)
+        // 2. `&[T; _]` (reference to array of T)
+        // 3. `&mut [T; _]` (mutable reference to array of T)
+        let (element_ty, mut mutability) = match *trait_ref.skip_binder().self_ty().kind() {
+            ty::Array(element_ty, _) => (element_ty, None),
+
+            ty::Ref(_, pointee_ty, mutability) => match *pointee_ty.kind() {
+                ty::Array(element_ty, _) => (element_ty, Some(mutability)),
+                _ => return,
+            },
+
+            _ => return,
+        };
+
+        // Go through all the candidate impls to see if any of them is for
+        // slices of `element_ty` with `mutability`.
+        let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
+            ty::RawPtr(ty::TypeAndMut { ty: t, mutbl: m }) | ty::Ref(_, t, m) => {
+                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                    && m == mutability.unwrap_or(m)
+                {
+                    // Use the candidate's mutability going forward.
+                    mutability = Some(m);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        // Grab the first candidate that matches, if any, and make a suggestion.
+        if let Some(slice_ty) = candidate_impls
+            .iter()
+            .map(|trait_ref| trait_ref.trait_ref.self_ty())
+            .filter(|t| is_slice(*t))
+            .next()
+        {
+            let msg = &format!("convert the array to a `{}` slice instead", slice_ty);
+
+            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                let mut suggestions = vec![];
+                if snippet.starts_with('&') {
+                } else if let Some(hir::Mutability::Mut) = mutability {
+                    suggestions.push((span.shrink_to_lo(), "&mut ".into()));
+                } else {
+                    suggestions.push((span.shrink_to_lo(), "&".into()));
+                }
+                suggestions.push((span.shrink_to_hi(), "[..]".into()));
+                err.multipart_suggestion_verbose(msg, suggestions, Applicability::MaybeIncorrect);
+            } else {
+                err.span_help(span, msg);
+            }
+        }
     }
 }
 

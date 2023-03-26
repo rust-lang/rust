@@ -6,6 +6,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 
 pub struct LowerIntrinsics;
 
@@ -149,6 +150,35 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::read_via_copy => {
+                        let [arg] = args.as_slice() else {
+                            span_bug!(terminator.source_info.span, "Wrong number of arguments");
+                        };
+                        let derefed_place =
+                            if let Some(place) = arg.place() && let Some(local) = place.as_local() {
+                                tcx.mk_place_deref(local.into())
+                            } else {
+                                span_bug!(terminator.source_info.span, "Only passing a local is supported");
+                            };
+                        terminator.kind = match *target {
+                            None => {
+                                // No target means this read something uninhabited,
+                                // so it must be unreachable, and we don't need to
+                                // preserve the assignment either.
+                                TerminatorKind::Unreachable
+                            }
+                            Some(target) => {
+                                block.statements.push(Statement {
+                                    source_info: terminator.source_info,
+                                    kind: StatementKind::Assign(Box::new((
+                                        *destination,
+                                        Rvalue::Use(Operand::Copy(derefed_place)),
+                                    ))),
+                                });
+                                TerminatorKind::Goto { target }
+                            }
+                        }
+                    }
                     sym::discriminant_value => {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let arg = tcx.mk_place_deref(arg);
@@ -160,6 +190,61 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
+                    sym::option_payload_ptr => {
+                        if let (Some(target), Some(arg)) = (*target, args[0].place()) {
+                            let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
+                                destination.ty(local_decls, tcx).ty.kind()
+                            else { bug!(); };
+
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    *destination,
+                                    Rvalue::AddressOf(
+                                        Mutability::Not,
+                                        arg.project_deeper(
+                                            &[
+                                                PlaceElem::Deref,
+                                                PlaceElem::Downcast(
+                                                    Some(sym::Some),
+                                                    VariantIdx::from_u32(1),
+                                                ),
+                                                PlaceElem::Field(Field::from_u32(0), *dest_ty),
+                                            ],
+                                            tcx,
+                                        ),
+                                    ),
+                                ))),
+                            });
+                            terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
+                    sym::transmute => {
+                        let dst_ty = destination.ty(local_decls, tcx).ty;
+                        let Ok([arg]) = <[_; 1]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for transmute intrinsic",
+                            );
+                        };
+
+                        // Always emit the cast, even if we transmute to an uninhabited type,
+                        // because that lets CTFE and codegen generate better error messages
+                        // when such a transmute actually ends up reachable.
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Cast(CastKind::Transmute, arg, dst_ty),
+                            ))),
+                        });
+
+                        if let Some(target) = *target {
+                            terminator.kind = TerminatorKind::Goto { target };
+                        } else {
+                            terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
                     _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {

@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(strict_provenance)]
 #![feature(pointer_byte_offsets)]
 use std::{mem, ptr};

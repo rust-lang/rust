@@ -16,8 +16,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
@@ -196,7 +195,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
+        tcx.mk_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -321,7 +320,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 });
             }
             CheckImpliedWfMode::Skip => {
-                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
                 return Err(reported);
             }
         }
@@ -584,13 +583,13 @@ fn compare_asyncness<'tcx>(
 #[instrument(skip(tcx), level = "debug", ret)]
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    impl_m_def_id: LocalDefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(def_id).unwrap();
+    let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(impl_m_def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during substitution later.
@@ -600,7 +599,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let trait_to_impl_substs = impl_trait_ref.substs;
 
-    let impl_m_def_id = impl_m.def_id.expect_local();
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m_def_id);
     let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
     let cause = ObligationCause::new(
@@ -648,6 +646,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             tcx.fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
+
+    debug_assert_ne!(
+        collector.types.len(),
+        0,
+        "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+    );
+
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
     trait_sig.error_reported()?;
     let trait_return_ty = trait_sig.output();
@@ -714,7 +719,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 
@@ -824,7 +829,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Projection, proj) = ty.kind()
-            && self.interner().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
+            && self.interner().is_impl_trait_in_trait(proj.def_id)
         {
             if let Some((ty, _)) = self.types.get(&proj.def_id) {
                 return *ty;
@@ -1197,6 +1202,17 @@ fn compare_number_of_generics<'tcx>(
         == (impl_own_counts.types + impl_own_counts.consts)
     {
         return Ok(());
+    }
+
+    // We never need to emit a separate error for RPITITs, since if an RPITIT
+    // has mismatched type or const generic arguments, then the method that it's
+    // inheriting the generics from will also have mismatched arguments, and
+    // we'll report an error for that instead. Delay a bug for safety, though.
+    if tcx.opt_rpitit_info(trait_.def_id).is_some() {
+        return Err(tcx.sess.delay_span_bug(
+            rustc_span::DUMMY_SP,
+            "errors comparing numbers of generics of trait/impl functions were not emitted",
+        ));
     }
 
     let matchings = [
@@ -1725,7 +1741,7 @@ pub(super) fn compare_impl_const_raw(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors));
     }
 
     let outlives_environment = OutlivesEnvironment::new(param_env);
@@ -1795,7 +1811,7 @@ fn compare_type_predicate_entailment<'tcx>(
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
+        tcx.mk_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -1825,7 +1841,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 
@@ -1866,7 +1882,7 @@ pub(super) fn check_type_bounds<'tcx>(
     //     type Bar<C> =...
     // }
     //
-    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>
+    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
     // - `impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
     // - `rebased_substs` would be `[(A, B), u32, ^0.0]`, combining the substs from
     //    the *trait* with the generic associated type parameters (as bound vars).
@@ -1937,8 +1953,8 @@ pub(super) fn check_type_bounds<'tcx>(
             .into()
         }
     });
-    let bound_vars = tcx.intern_bound_variable_kinds(&bound_vars);
-    let impl_ty_substs = tcx.intern_substs(&substs);
+    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
+    let impl_ty_substs = tcx.mk_substs(&substs);
     let container_id = impl_ty.container_id(tcx);
 
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
@@ -1978,11 +1994,7 @@ pub(super) fn check_type_bounds<'tcx>(
                 .to_predicate(tcx),
             ),
         };
-        ty::ParamEnv::new(
-            tcx.intern_predicates(&predicates),
-            Reveal::UserFacing,
-            param_env.constness(),
-        )
+        ty::ParamEnv::new(tcx.mk_predicates(&predicates), Reveal::UserFacing, param_env.constness())
     };
     debug!(?normalize_param_env);
 
@@ -1993,13 +2005,20 @@ pub(super) fn check_type_bounds<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let impl_ty_span = match tcx.hir().get_by_def_id(impl_ty_def_id) {
-        hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Type(_, Some(ty)),
-            ..
-        }) => ty.span,
-        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
-        _ => bug!(),
+    // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
+    // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
+    // associated type.
+    let impl_ty_span = if tcx.opt_rpitit_info(impl_ty.def_id).is_some() {
+        tcx.def_span(impl_ty_def_id)
+    } else {
+        match tcx.hir().get_by_def_id(impl_ty_def_id) {
+            hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Type(_, Some(ty)),
+                ..
+            }) => ty.span,
+            hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
+            _ => bug!(),
+        }
     };
     let assumed_wf_types = ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty_def_id);
 
@@ -2042,7 +2061,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
         return Err(reported);
     }
 

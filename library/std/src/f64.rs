@@ -78,10 +78,14 @@ impl f64 {
     /// let f = 3.3_f64;
     /// let g = -3.3_f64;
     /// let h = -3.7_f64;
+    /// let i = 3.5_f64;
+    /// let j = 4.5_f64;
     ///
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
     /// assert_eq!(h.round(), -4.0);
+    /// assert_eq!(i.round(), 4.0);
+    /// assert_eq!(j.round(), 5.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -89,6 +93,32 @@ impl f64 {
     #[inline]
     pub fn round(self) -> f64 {
         unsafe { intrinsics::roundf64(self) }
+    }
+
+    /// Returns the nearest integer to a number. Rounds half-way cases to the number
+    /// with an even least significant digit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_ties_even)]
+    ///
+    /// let f = 3.3_f64;
+    /// let g = -3.3_f64;
+    /// let h = 3.5_f64;
+    /// let i = 4.5_f64;
+    ///
+    /// assert_eq!(f.round_ties_even(), 3.0);
+    /// assert_eq!(g.round_ties_even(), -3.0);
+    /// assert_eq!(h.round_ties_even(), 4.0);
+    /// assert_eq!(i.round_ties_even(), 4.0);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "round_ties_even", issue = "96710")]
+    #[inline]
+    pub fn round_ties_even(self) -> f64 {
+        unsafe { intrinsics::rintf64(self) }
     }
 
     /// Returns the integer part of `self`.

@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-ignore-leaks
 
 //! Test that leaking threads works, and that their destructors are not executed.

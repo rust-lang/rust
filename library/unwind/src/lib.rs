@@ -127,3 +127,7 @@ extern "C" {}
 #[cfg(target_os = "haiku")]
 #[link(name = "gcc_s")]
 extern "C" {}
+
+#[cfg(target_os = "nto")]
+#[link(name = "gcc_s")]
+extern "C" {}

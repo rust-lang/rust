@@ -329,7 +329,7 @@ pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
 // do so.  In 1003.1-2004 this was fixed.
 //
 // glibc's implementation did the flush, unsafely, before glibc commit
-// 91e7cf982d01 `abort: Do not flush stdio streams [BZ #15436]' by Florian
+// 91e7cf982d01 `abort: Do not flush stdio streams [BZ #15436]` by Florian
 // Weimer.  According to glibc's NEWS:
 //
 //    The abort function terminates the process immediately, without flushing

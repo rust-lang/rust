@@ -84,10 +84,16 @@ libz-sys = { version = "1.1.2" }
 # Ensure default features of regex, which are disabled in some scenarios.
 regex = { version = "1.5.6" }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
-syn = { version = "1", features = ['full', 'visit'] }
+syn = { version = "1", features = ['full', 'visit', 'visit-mut'] } # `visit-mut` required by Cargo via `gix`
 url = { version = "2.0", features = ['serde'] }
 # Ensure default features of rand, which are disabled in some scenarios.
 rand = { version = "0.8.5" }
+
+# Ensure features of `hashbrown`, `smallvec`, and `once_cell`,
+# which are used transitively by Cargo (via `gix`).
+hashbrown = { version = "0.12.3", default-features = false, features = ["inline-more"] }
+once_cell = { version = "1.16.0", default-features = false, features = ["unstable"] }
+smallvec = { version = "1.10.0", features = ["write"] }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.35", optional = true }

@@ -50,6 +50,11 @@ pub(crate) fn type_is_unit(ty: &Type) -> bool {
     if let Type::Tuple(TypeTuple { elems, .. }) = ty { elems.is_empty() } else { false }
 }
 
+/// Checks whether the type `ty` is `bool`.
+pub(crate) fn type_is_bool(ty: &Type) -> bool {
+    type_matches_path(ty, &["bool"])
+}
+
 /// Reports a type error for field with `attr`.
 pub(crate) fn report_type_error(
     attr: &Attribute,
@@ -189,6 +194,11 @@ impl<'ty> FieldInnerTy<'ty> {
             },
             FieldInnerTy::Vec(..) => quote! {
                 for #binding in #binding {
+                    #inner
+                }
+            },
+            FieldInnerTy::Plain(t) if type_is_bool(t) => quote! {
+                if #binding {
                     #inner
                 }
             },

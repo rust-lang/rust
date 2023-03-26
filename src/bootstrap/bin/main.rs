@@ -7,15 +7,18 @@
 
 use std::env;
 
-use bootstrap::{t, Build, Config, Subcommand, VERSION};
+#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+use bootstrap::t;
+use bootstrap::{Build, Config, Subcommand, VERSION};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
 
-    let mut build_lock;
-    let _build_lock_guard;
-    if cfg!(any(unix, windows)) {
+    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+    {
+        let mut build_lock;
+        let _build_lock_guard;
         let path = config.out.join("lock");
         build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(&path)));
         _build_lock_guard = match build_lock.try_write() {
@@ -30,9 +33,9 @@ fn main() {
                 t!(build_lock.write())
             }
         };
-    } else {
-        println!("warning: file locking not supported for target, not locking build directory");
     }
+    #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
+    println!("warning: file locking not supported for target, not locking build directory");
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =
@@ -44,8 +47,8 @@ fn main() {
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(
-            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
-            `cp config.toml.example config.toml`"
+            "help: consider running `./x.py setup` or copying `config.example.toml` by running \
+            `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
@@ -57,8 +60,8 @@ fn main() {
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(
-            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
-            `cp config.toml.example config.toml`"
+            "help: consider running `./x.py setup` or copying `config.example.toml` by running \
+            `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
@@ -125,7 +128,7 @@ fn get_lock_owner(f: &std::path::Path) -> Option<u64> {
     })
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "solaris")))]
 fn get_lock_owner(_: &std::path::Path) -> Option<u64> {
     // FIXME: Implement on other OS's
     None

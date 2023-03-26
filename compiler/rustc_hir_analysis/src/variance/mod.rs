@@ -8,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
-use rustc_middle::ty::{DefIdTree, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -38,7 +38,7 @@ fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
     solve::solve_constraints(constraints_cx)
 }
 
-fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
+fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     // Skip items with no generics - there's nothing to infer in them.
     if tcx.generics_of(item_def_id).count() == 0 {
         return &[];
@@ -53,7 +53,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         | DefKind::Variant
         | DefKind::Ctor(..) => {}
         DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => {
-            return variance_of_opaque(tcx, item_def_id.expect_local());
+            return variance_of_opaque(tcx, item_def_id);
         }
         _ => {
             // Variance not relevant.
@@ -64,7 +64,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
     // Everything else must be inferred.
 
     let crate_map = tcx.crate_variances(());
-    crate_map.variances.get(&item_def_id).copied().unwrap_or(&[])
+    crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -112,10 +112,14 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                    if matches!(
-                        self.tcx.def_kind(*def_id),
-                        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
-                    ) =>
+                    if matches!(self.tcx.def_kind(*def_id), DefKind::OpaqueTy) =>
+                {
+                    self.visit_opaque(*def_id, substs)
+                }
+                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) check whether this is necessary
+                // at all for RPITITs.
+                ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                    if self.tcx.is_impl_trait_in_trait(*def_id) =>
                 {
                     self.visit_opaque(*def_id, substs)
                 }
@@ -148,7 +152,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
-    let id_substs = ty::InternalSubsts::identity_for_item(tcx, item_def_id.to_def_id());
+    let id_substs = ty::InternalSubsts::identity_for_item(tcx, item_def_id);
     for pred in tcx.bound_explicit_item_bounds(item_def_id.to_def_id()).transpose_iter() {
         let pred = pred.map_bound(|(pred, _)| *pred).subst(tcx, id_substs);
         debug!(?pred);

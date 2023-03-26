@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-#![allow(rustc::potential_query_instability)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
@@ -18,9 +17,8 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -101,7 +99,7 @@ use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
 use renumber::RegionCtxt;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
@@ -142,7 +140,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
         debug!("Skipping borrowck because of injected body");
         // Let's make up a borrowck result! Fun times!
         let result = BorrowCheckResult {
-            concrete_opaque_types: VecMap::new(),
+            concrete_opaque_types: FxIndexMap::default(),
             closure_requirements: None,
             used_mut_upvars: SmallVec::new(),
             tainted_by_errors: None,
@@ -202,14 +200,14 @@ fn do_mir_borrowck<'tcx>(
     let mut errors = error::BorrowckErrors::new(infcx.tcx);
 
     // Gather the upvars of a closure, if any.
-    let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(e) = tables.tainted_by_errors {
+    if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
         errors.set_tainted_by_errors(e);
     }
-    let upvars: Vec<_> = tables
-        .closure_min_captures_flattened(def.did)
-        .map(|captured_place| {
+    let upvars: Vec<_> = tcx
+        .closure_captures(def.did)
+        .iter()
+        .map(|&captured_place| {
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -404,7 +402,7 @@ fn do_mir_borrowck<'tcx>(
     // Note that this set is expected to be small - only upvars from closures
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
-    let temporary_used_locals: FxHashSet<Local> = mbcx
+    let temporary_used_locals: FxIndexSet<Local> = mbcx
         .used_mut
         .iter()
         .filter(|&local| !mbcx.body.local_decls[*local].is_user_variable())
@@ -491,7 +489,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {
     pub(crate) infcx: &'cx InferCtxt<'tcx>,
-    pub(crate) reg_var_to_origin: RefCell<FxHashMap<ty::RegionVid, RegionCtxt>>,
+    pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }
 
 impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
@@ -512,16 +510,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
             .as_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(vid, ctxt);
-
-            // This only makes sense if not called in a canonicalization context. If this
-            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-            // or modify how we track nll region vars for that map.
-            assert!(matches!(prev, None));
+            var_to_origin.insert(vid, ctxt);
         }
 
         next_region
@@ -541,16 +534,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
             .as_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(vid, ctxt);
-
-            // This only makes sense if not called in a canonicalization context. If this
-            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-            // or modify how we track nll region vars for that map.
-            assert!(matches!(prev, None));
+            var_to_origin.insert(vid, ctxt);
         }
 
         next_region
@@ -588,7 +576,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// borrow errors that is handled by the `reservation_error_reported` field as the inclusion
     /// of the `Span` type (while required to mute some errors) stops the muting of the reservation
     /// errors.
-    access_place_error_reported: FxHashSet<(Place<'tcx>, Span)>,
+    access_place_error_reported: FxIndexSet<(Place<'tcx>, Span)>,
     /// This field keeps track of when borrow conflict errors are reported
     /// for reservations, so that we don't report seemingly duplicate
     /// errors for corresponding activations.
@@ -596,17 +584,17 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     // FIXME: ideally this would be a set of `BorrowIndex`, not `Place`s,
     // but it is currently inconvenient to track down the `BorrowIndex`
     // at the time we detect and report a reservation error.
-    reservation_error_reported: FxHashSet<Place<'tcx>>,
+    reservation_error_reported: FxIndexSet<Place<'tcx>>,
     /// This fields keeps track of the `Span`s that we have
     /// used to report extra information for `FnSelfUse`, to avoid
     /// unnecessarily verbose errors.
-    fn_self_span_reported: FxHashSet<Span>,
+    fn_self_span_reported: FxIndexSet<Span>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    uninitialized_error_reported: FxHashSet<PlaceRef<'tcx>>,
+    uninitialized_error_reported: FxIndexSet<PlaceRef<'tcx>>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
-    used_mut: FxHashSet<Local>,
+    used_mut: FxIndexSet<Local>,
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[Field; 8]>,
@@ -628,7 +616,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Record the region names generated for each region in the given
     /// MIR def so that we can reuse them later in help/error messages.
-    region_names: RefCell<FxHashMap<RegionVid, RegionName>>,
+    region_names: RefCell<FxIndexMap<RegionVid, RegionName>>,
 
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
@@ -691,6 +679,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
+            // Only relevant for unsafeck
+            | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
             // These do not actually affect borrowck
@@ -743,15 +733,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
-            }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
-                self.consume_operand(loc, (new_value, span), flow_state);
             }
             TerminatorKind::Call {
                 func,
@@ -867,7 +848,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }
@@ -1185,12 +1165,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
-                            .report_borrowed_value_does_not_live_long_enough(
-                                location,
-                                borrow,
-                                place_span,
-                                Some(kind),
-                            ),
+                            .report_storage_dead_or_drop_of_borrowed(location, place_span, borrow),
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
@@ -2334,7 +2309,7 @@ mod error {
         /// same primary span come out in a consistent order.
         buffered_move_errors:
             BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
-        buffered_mut_errors: FxHashMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
+        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
         /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck

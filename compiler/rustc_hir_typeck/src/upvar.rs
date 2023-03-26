@@ -49,8 +49,7 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::Idx;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 
 use std::iter;
 
@@ -231,7 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We now fake capture information for all variables that are mentioned within the closure
         // We do this after handling migrations so that min_captures computes before
-        if !enable_precise_capture(self.tcx, span) {
+        if !enable_precise_capture(span) {
             let mut capture_information: InferredCaptureInformation<'tcx> = Default::default();
 
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
@@ -265,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we have an origin, store it.
             if let Some(origin) = origin {
-                let origin = if enable_precise_capture(self.tcx, span) {
+                let origin = if enable_precise_capture(span) {
                     (origin.0, origin.1)
                 } else {
                     (origin.0, Place { projections: vec![], ..origin.1 })
@@ -301,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
-        let final_tupled_upvars_type = self.tcx.intern_tup(&final_upvar_tys);
+        let final_tupled_upvars_type = self.tcx.mk_tup(&final_upvar_tys);
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
         let fake_reads = delegate
@@ -315,8 +314,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {
-                    before_feature_tys: self.tcx.intern_tup(&before_feature_tys),
-                    after_feature_tys: self.tcx.intern_tup(&after_feature_tys),
+                    before_feature_tys: self.tcx.mk_tup(&before_feature_tys),
+                    after_feature_tys: self.tcx.mk_tup(&after_feature_tys),
                 },
             );
         }
@@ -424,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // closures. We want to make sure any adjustment that might make us move the place into
                 // the closure gets handled.
                 let (place, capture_kind) =
-                    restrict_precision_for_drop_types(self, place, capture_kind, usage_span);
+                    restrict_precision_for_drop_types(self, place, capture_kind);
 
                 capture_info.capture_kind = capture_kind;
                 (place, capture_info)
@@ -526,10 +525,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
             };
+            let var_ident = self.tcx.hir().ident(var_hir_id);
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
                 let min_cap_list = vec![ty::CapturedPlace {
+                    var_ident,
                     place,
                     info: capture_info,
                     mutability,
@@ -628,6 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !ancestor_found {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
                 let captured_place = ty::CapturedPlace {
+                    var_ident,
                     place,
                     info: updated_capture_info,
                     mutability,
@@ -709,10 +711,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                unreachable!(
-                    "we captured two identical projections: capture1 = {:?}, capture2 = {:?}",
-                    capture1, capture2
+                self.tcx.sess.delay_span_bug(
+                    closure_span,
+                    &format!(
+                        "two identical projections: ({:?}, {:?})",
+                        capture1.place.projections, capture2.place.projections
+                    ),
                 );
+                std::cmp::Ordering::Equal
             });
         }
 
@@ -1240,8 +1246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This will make more sense with an example:
     ///
-    /// ```rust
-    /// #![feature(capture_disjoint_fields)]
+    /// ```rust,edition2021
     ///
     /// struct FancyInteger(i32); // This implements Drop
     ///
@@ -1400,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants().get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
+                def.variants().get(FIRST_VARIANT).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
@@ -1496,7 +1501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn should_log_capture_analysis(&self, closure_def_id: LocalDefId) -> bool {
-        self.tcx.has_attr(closure_def_id.to_def_id(), sym::rustc_capture_analysis)
+        self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
     }
 
     fn log_capture_analysis_first_pass(
@@ -1820,9 +1825,8 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     mut place: Place<'tcx>,
     mut curr_mode: ty::UpvarCapture,
-    span: Span,
 ) -> (Place<'tcx>, ty::UpvarCapture) {
-    let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty(), span);
+    let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty());
 
     if let (false, UpvarCapture::ByValue) = (is_copy_type, curr_mode) {
         for i in 0..place.projections.len() {
@@ -2221,7 +2225,7 @@ fn determine_place_ancestry_relation<'tcx>(
 ///     || drop(&*m.a.field_of_a)
 ///     // Here we really do want to capture `*m.a` because that outlives `'static`
 ///
-///     // If we capture `m`, then the closure no longer outlives `'static'
+///     // If we capture `m`, then the closure no longer outlives `'static`
 ///     // it is constrained to `'a`
 /// }
 /// ```
@@ -2247,12 +2251,10 @@ fn truncate_capture_for_optimization(
     (place, curr_mode)
 }
 
-/// Precise capture is enabled if the feature gate `capture_disjoint_fields` is enabled or if
-/// user is using Rust Edition 2021 or higher.
-///
+/// Precise capture is enabled if user is using Rust Edition 2021 or higher.
 /// `span` is the span of the closure.
-fn enable_precise_capture(tcx: TyCtxt<'_>, span: Span) -> bool {
+fn enable_precise_capture(span: Span) -> bool {
     // We use span here to ensure that if the closure was generated by a macro with a different
     // edition.
-    tcx.features().capture_disjoint_fields || span.rust_2021()
+    span.rust_2021()
 }

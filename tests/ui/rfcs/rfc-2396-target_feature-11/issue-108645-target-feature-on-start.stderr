@@ -1,0 +1,11 @@
+error: `start` is not allowed to have `#[target_feature]`
+  --> $DIR/issue-108645-target-feature-on-start.rs:7:1
+   |
+LL | #[target_feature(enable = "avx2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn start(_argc: isize, _argv: *const *const u8) -> isize { 0 }
+   | -------------------------------------------------------- `start` is not allowed to have `#[target_feature]`
+
+error: aborting due to previous error
+

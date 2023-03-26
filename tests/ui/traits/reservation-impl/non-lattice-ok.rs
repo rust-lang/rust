@@ -30,6 +30,12 @@
 //
 // [ii]: https://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
 
+
+// check that reservation impls can't be used as normal impls in positive reasoning.
+
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(rustc_attrs, never_type)]
 
 trait MyTrait {}

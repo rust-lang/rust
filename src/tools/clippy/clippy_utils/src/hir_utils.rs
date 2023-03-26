@@ -249,7 +249,6 @@ impl HirEqInterExpr<'_, '_, '_> {
                 both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
-            (&ExprKind::Box(l), &ExprKind::Box(r)) => self.eq_expr(l, r),
             (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
                 self.inner.allow_side_effects && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
@@ -628,7 +627,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(j);
                 }
             },
-            ExprKind::Box(e) | ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
+            ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
                 self.hash_expr(e);
             },
             ExprKind::Call(fun, args) => {
@@ -714,7 +713,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 self.hash_pat(pat);
             },
-            ExprKind::Err => {},
+            ExprKind::Err(_) => {},
             ExprKind::Lit(ref l) => {
                 l.node.hash(&mut self.s);
             },
@@ -986,7 +985,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
-            TyKind::Err | TyKind::Infer | TyKind::Never => {},
+            TyKind::Err(_) | TyKind::Infer | TyKind::Never => {},
         }
     }
 

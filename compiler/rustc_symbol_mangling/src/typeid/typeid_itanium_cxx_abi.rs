@@ -675,7 +675,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         _ if ty.is_unit() => {}
 
         ty::Tuple(tys) => {
-            ty = tcx.mk_tup(tys.iter().map(|ty| transform_ty(tcx, ty, options)));
+            ty = tcx.mk_tup_from_iter(tys.iter().map(|ty| transform_ty(tcx, ty, options)));
         }
 
         ty::Array(ty0, len) => {
@@ -825,7 +825,7 @@ fn transform_substs<'tcx>(
             subst
         }
     });
-    tcx.mk_substs(substs)
+    tcx.mk_substs_from_iter(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

@@ -1302,8 +1302,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
             )
         });
-        let element_tys = tcx.mk_type_list(element_tys_iter);
-        let pat_ty = tcx.intern_tup(element_tys);
+        let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
+        let pat_ty = tcx.mk_tup(element_tys);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
@@ -1312,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, tcx.ty_error(reported), def_bm, ti);
             }
-            tcx.mk_tup(element_tys_iter)
+            tcx.mk_tup_from_iter(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, element_tys[i], def_bm, ti);

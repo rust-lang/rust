@@ -1,0 +1,42 @@
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/async-trait-fn.rs:6:5
+   |
+LL |     async fn foo() {}
+   |     -----^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/async-trait-fn.rs:7:5
+   |
+LL |     async fn bar(&self) {}
+   |     -----^^^^^^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/async-trait-fn.rs:8:5
+   |
+LL |     async fn baz() {
+   |     -----^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0706`.

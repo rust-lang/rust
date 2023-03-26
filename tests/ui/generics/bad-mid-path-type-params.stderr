@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 1 generic argument but 2 generic arguments were supplied
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/bad-mid-path-type-params.rs:30:16
    |
 LL |     let _ = S::new::<isize,f64>(1, 1.0);
@@ -12,7 +12,7 @@ note: associated function defined here, with 1 generic parameter: `U`
 LL |     fn new<U>(x: T, _: U) -> S<T> {
    |        ^^^ -
 
-error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/bad-mid-path-type-params.rs:33:13
    |
 LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
@@ -26,7 +26,7 @@ note: struct defined here, with 0 lifetime parameters
 LL | struct S<T> {
    |        ^
 
-error[E0107]: this associated function takes 1 generic argument but 2 generic arguments were supplied
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/bad-mid-path-type-params.rs:36:24
    |
 LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
@@ -40,7 +40,7 @@ note: associated function defined here, with 1 generic parameter: `U`
 LL |     fn new<U>(x: T, y: U) -> Self;
    |        ^^^ -
 
-error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/bad-mid-path-type-params.rs:39:17
    |
 LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
@@ -54,7 +54,7 @@ note: trait defined here, with 0 lifetime parameters
 LL | trait Trait<T> {
    |       ^^^^^
 
-error[E0107]: this associated function takes 1 generic argument but 2 generic arguments were supplied
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/bad-mid-path-type-params.rs:39:36
    |
 LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);

@@ -126,7 +126,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         BorrowedContent {
                             target_place: Place {
                                 local: place.local,
-                                projection: tcx.intern_place_elems(proj),
+                                projection: tcx.mk_place_elems(proj),
                             },
                         },
                     ));
@@ -165,7 +165,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             if union_path.is_none() {
                 base = self.add_move_path(base, elem, |tcx| Place {
                     local: place.local,
-                    projection: tcx.intern_place_elems(&place.projection[..i + 1]),
+                    projection: tcx.mk_place_elems(&place.projection[..i + 1]),
                 });
             }
         }
@@ -329,6 +329,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
@@ -390,11 +391,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
                 self.gather_operand(value);
                 self.create_move_path(place);
-                self.gather_init(place.as_ref(), InitKind::Deep);
-            }
-            TerminatorKind::DropAndReplace { place, ref value, .. } => {
-                self.create_move_path(place);
-                self.gather_operand(value);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
@@ -476,7 +472,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
             let base_place =
-                Place { local: place.local, projection: self.builder.tcx.intern_place_elems(base) };
+                Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {

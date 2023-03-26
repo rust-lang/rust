@@ -6,6 +6,7 @@
 // compile-flags: -O
 // [set] compile-flags: -Zno-jump-tables
 // only-x86_64
+// ignore-sgx
 
 #![crate_type = "lib"]
 

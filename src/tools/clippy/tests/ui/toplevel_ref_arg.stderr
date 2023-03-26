@@ -1,5 +1,5 @@
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:20:9
+  --> $DIR/toplevel_ref_arg.rs:15:9
    |
 LL |     let ref _x = 1;
    |     ----^^^^^^----- help: try: `let _x = &1;`
@@ -7,39 +7,36 @@ LL |     let ref _x = 1;
    = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:22:9
+  --> $DIR/toplevel_ref_arg.rs:17:9
    |
 LL |     let ref _y: (&_, u8) = (&1, 2);
    |     ----^^^^^^--------------------- help: try: `let _y: &(&_, u8) = &(&1, 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:24:9
+  --> $DIR/toplevel_ref_arg.rs:19:9
    |
 LL |     let ref _z = 1 + 2;
    |     ----^^^^^^--------- help: try: `let _z = &(1 + 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:26:9
+  --> $DIR/toplevel_ref_arg.rs:21:9
    |
 LL |     let ref mut _z = 1 + 2;
    |     ----^^^^^^^^^^--------- help: try: `let _z = &mut (1 + 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:31:9
+  --> $DIR/toplevel_ref_arg.rs:26:9
    |
 LL |     let ref _x = vec![1, 2, 3];
    |     ----^^^^^^----------------- help: try: `let _x = &vec![1, 2, 3];`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:11:13
+  --> $DIR/toplevel_ref_arg.rs:36:17
    |
-LL |         let ref _y = 42;
-   |         ----^^^^^^------ help: try: `let _y = &42;`
-...
-LL |         gen_binding!();
-   |         -------------- in this macro invocation
+LL |     inline!(let ref _y = 42;);
+   |             ----^^^^^^------ help: try: `let _y = &42;`
    |
-   = note: this error originates in the macro `gen_binding` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

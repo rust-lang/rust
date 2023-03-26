@@ -808,8 +808,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
-            mir::TerminatorKind::Drop { ref place, .. }
-            | mir::TerminatorKind::DropAndReplace { ref place, .. } => {
+            mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.output);
@@ -1298,7 +1297,7 @@ impl<'v> RootCollector<'_, 'v> {
             self.tcx,
             ty::ParamEnv::reveal_all(),
             start_def_id,
-            self.tcx.intern_substs(&[main_ret_ty.into()]),
+            self.tcx.mk_substs(&[main_ret_ty.into()]),
         )
         .unwrap()
         .unwrap();
@@ -1324,6 +1323,21 @@ fn create_mono_items_for_default_impls<'tcx>(
     }
 
     if tcx.generics_of(item.owner_id).own_requires_monomorphization() {
+        return;
+    }
+
+    // Unlike 'lazy' monomorphization that begins by collecting items transitively
+    // called by `main` or other global items, when eagerly monomorphizing impl
+    // items, we never actually check that the predicates of this impl are satisfied
+    // in a empty reveal-all param env (i.e. with no assumptions).
+    //
+    // Even though this impl has no substitutions, because we don't consider higher-
+    // ranked predicates such as `for<'a> &'a mut [u8]: Copy` to be trivially false,
+    // we must now check that the impl has no impossible-to-satisfy predicates.
+    if tcx.subst_and_check_impossible_predicates((
+        item.owner_id.to_def_id(),
+        &InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id()),
+    )) {
         return;
     }
 

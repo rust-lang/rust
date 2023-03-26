@@ -23,10 +23,11 @@ extern crate tracing;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
+use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, MappedReadGuard};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
@@ -34,7 +35,7 @@ use rustc_errors::{
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
@@ -44,13 +45,11 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStore;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -80,7 +79,7 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 enum Weak {
     Yes,
@@ -880,11 +879,8 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    has_self: FxHashSet<DefId>,
-
-    /// Names of fields of an item `DefId` accessible with dot syntax.
-    /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Spanned<Symbol>>>,
+    has_self: LocalDefIdSet,
+    field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -946,7 +942,6 @@ pub struct Resolver<'a, 'tcx> {
     has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
-    maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -966,7 +961,7 @@ pub struct Resolver<'a, 'tcx> {
     /// A small map keeping true kinds of built-in macros that appear to be fn-like on
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
-    registered_tools: RegisteredTools,
+    registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
@@ -1009,7 +1004,7 @@ pub struct Resolver<'a, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: DefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
+    struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
@@ -1118,13 +1113,6 @@ impl<'a, 'tcx> AsMut<Resolver<'a, 'tcx>> for Resolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> DefIdTree for &'a Resolver<'b, 'tcx> {
-    #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        self.tcx.opt_parent(id)
-    }
-}
-
 impl<'tcx> Resolver<'_, 'tcx> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
@@ -1180,7 +1168,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         if let Some(def_id) = def_id.as_local() {
             self.item_generics_num_lifetimes[&def_id]
         } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.tcx.sess)
+            self.tcx.generics_of(def_id).own_counts().lifetimes
         }
     }
 
@@ -1192,7 +1180,8 @@ impl<'tcx> Resolver<'_, 'tcx> {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        krate: &Crate,
+        attrs: &[ast::Attribute],
+        crate_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1201,8 +1190,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.spans.inner_span,
-            tcx.sess.contains_name(&krate.attrs, sym::no_implicit_prelude),
+            crate_span,
+            attr::contains_name(attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
         let empty_module = arenas.new_module(
@@ -1234,14 +1223,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !tcx.sess.contains_name(&krate.attrs, sym::no_core) {
+        if !attr::contains_name(attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !tcx.sess.contains_name(&krate.attrs, sym::no_std) {
+            if !attr::contains_name(attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
             }
         }
 
-        let registered_tools = macros::registered_tools(tcx.sess, &krate.attrs);
+        let registered_tools = tcx.registered_tools(());
 
         let features = tcx.sess.features_untracked();
 
@@ -1256,8 +1245,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            has_self: FxHashSet::default(),
-            field_names: FxHashMap::default(),
+            has_self: Default::default(),
+            field_def_ids: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -1284,7 +1273,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             has_pub_restricted: false,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
-            maybe_unused_extern_crates: Vec::new(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
@@ -1400,7 +1388,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let extern_crate_map = self.extern_crate_map;
         let reexport_map = self.reexport_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
-        let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
@@ -1414,17 +1401,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             reexport_map,
             glob_map,
             maybe_unused_trait_imports,
-            maybe_unused_extern_crates,
-            extern_prelude: self
-                .extern_prelude
-                .iter()
-                .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
-                .collect(),
             main_def,
             trait_impls: self.trait_impls,
             proc_macros,
             confused_type_with_std_module,
-            registered_tools: self.registered_tools,
             doc_link_resolutions: self.doc_link_resolutions,
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
@@ -1442,6 +1422,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
+            lint_buffer: Steal::new(self.lint_buffer),
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
@@ -1451,9 +1432,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {
-        let mut cstore = self.tcx.untracked().cstore.write();
-        let cstore = cstore.untracked_as_any().downcast_mut().unwrap();
-        f(&mut CrateLoader::new(self.tcx, &mut *cstore, &mut self.used_extern_options))
+        f(&mut CrateLoader::new(
+            self.tcx,
+            &mut CStore::from_tcx_mut(self.tcx),
+            &mut self.used_extern_options,
+        ))
     }
 
     fn cstore(&self) -> MappedReadGuard<'_, CStore> {
@@ -1492,8 +1475,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.tcx.sess.time("resolve_crate", || {
             self.tcx.sess.time("finalize_imports", || self.finalize_imports());
-            self.tcx.sess.time("compute_effective_visibilities", || {
+            let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
+            });
+            self.tcx.sess.time("check_reexport_ambiguities", || {
+                self.check_reexport_ambiguities(exported_ambiguities)
             });
             self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
@@ -1798,7 +1784,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         vis: ty::Visibility<impl Into<DefId>>,
         module: Module<'a>,
     ) -> bool {
-        vis.is_accessible_from(module.nearest_parent_mod(), self)
+        vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
     fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
@@ -1865,20 +1851,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path_str: &str,
         ns: Namespace,
-        mut parent_scope: ParentScope<'a>,
+        parent_scope: ParentScope<'a>,
     ) -> Option<Res> {
         let mut segments =
             Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));
         if let Some(segment) = segments.first_mut() {
-            if segment.ident.name == kw::Crate {
-                // FIXME: `resolve_path` always resolves `crate` to the current crate root, but
-                // rustdoc wants it to resolve to the `parent_scope`'s crate root. This trick of
-                // replacing `crate` with `self` and changing the current module should achieve
-                // the same effect.
-                segment.ident.name = kw::SelfLower;
-                parent_scope.module =
-                    self.expect_module(parent_scope.module.def_id().krate.as_def_id());
-            } else if segment.ident.name == kw::Empty {
+            if segment.ident.name == kw::Empty {
                 segment.ident.name = kw::PathRoot;
             }
         }
@@ -1893,20 +1871,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
-    #[inline]
-    fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.tcx.source_span(def_id))
+    /// Retrieves definition span of the given `DefId`.
+    fn def_span(&self, def_id: DefId) -> Span {
+        match def_id.as_local() {
+            Some(def_id) => self.tcx.source_span(def_id),
+            // Query `def_span` is not used because hashing its result span is expensive.
+            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
+        }
     }
 
-    /// Retrieves the name of the given `DefId`.
-    #[inline]
-    fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
-        let def_key = match def_id.as_local() {
-            Some(def_id) => self.tcx.definitions_untracked().def_key(def_id),
-            None => self.cstore().def_key(def_id),
-        };
-        def_key.get_opt_name()
+    fn field_def_ids(&self, def_id: DefId) -> Option<&'tcx [DefId]> {
+        match def_id.as_local() {
+            Some(def_id) => self.field_def_ids.get(&def_id).copied(),
+            None => Some(self.tcx.associated_item_def_ids(def_id)),
+        }
     }
 
     /// Checks if an expression refers to a function marked with
@@ -1933,10 +1911,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return v.clone();
                 }
 
-                let attr = self
-                    .cstore()
-                    .item_attrs_untracked(def_id, self.tcx.sess)
-                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {
@@ -2055,4 +2030,8 @@ impl Finalize {
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
         Finalize { node_id, path_span, root_span, report_private: true }
     }
+}
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    providers.registered_tools = macros::registered_tools;
 }

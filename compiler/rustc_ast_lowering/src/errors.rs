@@ -88,13 +88,6 @@ pub struct MisplacedAssocTyBinding<'a> {
 }
 
 #[derive(Diagnostic, Clone, Copy)]
-#[diag(ast_lowering_rustc_box_attribute_error)]
-pub struct RustcBoxAttributeError {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_underscore_expr_lhs_assign)]
 pub struct UnderscoreExprLhsAssign {
     #[primary_span]

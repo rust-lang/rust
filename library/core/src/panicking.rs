@@ -29,6 +29,9 @@
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
+#[cfg(feature = "panic_immediate_abort")]
+const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C panic=abort");
+
 // First we define the two main entry points that all panics go through.
 // In the end both are just convenience wrappers around `panic_impl`.
 
@@ -111,7 +114,7 @@ pub const fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
+    panic_fmt(fmt::Arguments::new_const(&[expr]));
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.
@@ -120,7 +123,7 @@ pub const fn panic(expr: &'static str) -> ! {
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
 pub fn panic_nounwind(expr: &'static str) -> ! {
-    panic_nounwind_fmt(fmt::Arguments::new_v1(&[expr], &[]));
+    panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]));
 }
 
 #[inline]

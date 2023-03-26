@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use crate::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
@@ -100,8 +100,9 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(def_id);
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
+        let impls = self.trait_impls_of(trait_def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
             f(impl_def_id);
@@ -114,27 +115,45 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Iterate over every impl that could possibly match the
-    /// self type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(
+    /// Iterate over every impl that could possibly match the self type `self_ty`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_relevant_impl(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        mut f: F,
+        f: impl FnMut(DefId),
     ) {
-        let _: Option<()> = self.find_map_relevant_impl(def_id, self_ty, |did| {
-            f(did);
-            None
-        });
+        self.for_each_relevant_impl_treating_projections(
+            trait_def_id,
+            self_ty,
+            TreatProjections::ForLookup,
+            f,
+        )
     }
 
+    pub fn for_each_relevant_impl_treating_projections(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        treat_projections: TreatProjections,
+        mut f: impl FnMut(DefId),
+    ) {
+        let _: Option<()> =
+            self.find_map_relevant_impl(trait_def_id, self_ty, treat_projections, |did| {
+                f(did);
+                None
+            });
+    }
+
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn non_blanket_impls_for_ty(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
-        let impls = self.trait_impls_of(def_id);
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsInfer) {
+        let impls = self.trait_impls_of(trait_def_id);
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsCandidateKey) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
             }
@@ -145,18 +164,21 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Applies function to every impl that could possibly match the self type `self_ty` and returns
     /// the first non-none value.
-    pub fn find_map_relevant_impl<T, F: FnMut(DefId) -> Option<T>>(
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn find_map_relevant_impl<T>(
         self,
-        def_id: DefId,
+        trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        mut f: F,
+        treat_projections: TreatProjections,
+        mut f: impl FnMut(DefId) -> Option<T>,
     ) -> Option<T> {
         // FIXME: This depends on the set of all impls for the trait. That is
         // unfortunate wrt. incremental compilation.
         //
         // If we want to be faster, we could have separate queries for
         // blanket and non-blanket impls, and compare them separately.
-        let impls = self.trait_impls_of(def_id);
+        let impls = self.trait_impls_of(trait_def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
             if let result @ Some(_) = f(impl_def_id) {
@@ -164,14 +186,17 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        // Note that we're using `TreatParams::AsPlaceholder` to query `non_blanket_impls` while using
-        // `TreatParams::AsInfer` while actually adding them.
-        //
+        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
+        // `TreatParams::AsCandidateKey` while actually adding them.
+        let treat_params = match treat_projections {
+            TreatProjections::NextSolverLookup => TreatParams::NextSolverLookup,
+            TreatProjections::ForLookup => TreatParams::ForLookup,
+        };
         // This way, when searching for some impl for `T: Trait`, we do not look at any impls
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsPlaceholder) {
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, treat_params) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
@@ -190,9 +215,11 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Returns an iterator containing all impls
-    pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
+    /// Returns an iterator containing all impls for `trait_def_id`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
@@ -231,7 +258,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
 
         if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsInfer)
+            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsCandidateKey)
         {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {

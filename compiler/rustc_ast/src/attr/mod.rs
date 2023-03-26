@@ -180,6 +180,12 @@ impl Attribute {
         self.doc_str().map_or(false, |s| comments::may_have_doc_links(s.as_str()))
     }
 
+    pub fn is_proc_macro_attr(&self) -> bool {
+        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
+            .iter()
+            .any(|kind| self.has_name(*kind))
+    }
+
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
@@ -625,6 +631,22 @@ pub fn mk_attr_name_value_str(
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Eq(span, AttrArgsEq::Ast(expr));
     mk_attr(g, style, path, args, span)
+}
+
+pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
+    attrs.iter().filter(move |attr| attr.has_name(name))
+}
+
+pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
+    filter_by_name(attrs, name).next()
+}
+
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
+    find_by_name(attrs, name).and_then(|attr| attr.value_str())
+}
+
+pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
+    find_by_name(attrs, name).is_some()
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {

@@ -326,3 +326,22 @@ fn msrv_1_50() {
         input
     };
 }
+
+const fn _const() {
+    let (input, min, max) = (0, -1, 2);
+    let _ = if input < min {
+        min
+    } else if input > max {
+        max
+    } else {
+        input
+    };
+
+    let mut x = input;
+    if max < x {
+        let x = max;
+    }
+    if min > x {
+        x = min;
+    }
+}

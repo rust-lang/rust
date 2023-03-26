@@ -189,6 +189,15 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 path.push(lib_name);
                 path
             };
+            // dlltool target architecture args from:
+            // https://github.com/llvm/llvm-project-release-prs/blob/llvmorg-15.0.6/llvm/lib/ToolDrivers/llvm-dlltool/DlltoolDriver.cpp#L69
+            let (dlltool_target_arch, dlltool_target_bitness) = match sess.target.arch.as_ref() {
+                "x86_64" => ("i386:x86-64", "--64"),
+                "x86" => ("i386", "--32"),
+                "aarch64" => ("arm64", "--64"),
+                "arm" => ("arm", "--32"),
+                _ => panic!("unsupported arch {}", sess.target.arch),
+            };
             let result = std::process::Command::new(dlltool)
                 .args([
                     "-d",
@@ -197,6 +206,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                     lib_name,
                     "-l",
                     output_path.to_str().unwrap(),
+                    "-m",
+                    dlltool_target_arch,
+                    "-f",
+                    dlltool_target_bitness,
                     "--no-leading-underscore",
                     "--temp-prefix",
                     temp_prefix.to_str().unwrap(),
@@ -422,23 +435,21 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
         return dlltool_path.clone().into_os_string();
     }
 
-    let mut tool_name: OsString = if sess.host.arch != sess.target.arch {
-        // We are cross-compiling, so we need the tool with the prefix matching our target
-        if sess.target.arch == "x86" {
-            "i686-w64-mingw32-dlltool"
-        } else {
-            "x86_64-w64-mingw32-dlltool"
-        }
+    let tool_name: OsString = if sess.host.options.is_like_windows {
+        // If we're compiling on Windows, always use "dlltool.exe".
+        "dlltool.exe"
     } else {
-        // We are not cross-compiling, so we just want `dlltool`
-        "dlltool"
+        // On other platforms, use the architecture-specific name.
+        match sess.target.arch.as_ref() {
+            "x86_64" => "x86_64-w64-mingw32-dlltool",
+            "x86" => "i686-w64-mingw32-dlltool",
+            "aarch64" => "aarch64-w64-mingw32-dlltool",
+
+            // For non-standard architectures (e.g., aarch32) fallback to "dlltool".
+            _ => "dlltool",
+        }
     }
     .into();
-
-    if sess.host.options.is_like_windows {
-        // If we're compiling on Windows, add the .exe suffix
-        tool_name.push(".exe");
-    }
 
     // NOTE: it's not clear how useful it is to explicitly search PATH.
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {

@@ -59,6 +59,7 @@ fn equate_intrinsic_type<'tcx>(
         require_same_types(
             tcx,
             &cause,
+            ty::ParamEnv::empty(), // FIXME: do all intrinsics have an empty param env?
             tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id).subst_identity()),
             fty,
         );
@@ -137,7 +138,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 
-    let bound_vars = tcx.intern_bound_variable_kinds(&[
+    let bound_vars = tcx.mk_bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BrAnon(0, None)),
         ty::BoundVariableKind::Region(ty::BrEnv),
     ]);
@@ -165,7 +166,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "cxchg" | "cxchgweak" => (
                 1,
                 vec![tcx.mk_mut_ptr(param(0)), param(0), param(0)],
-                tcx.intern_tup(&[param(0), tcx.types.bool]),
+                tcx.mk_tup(&[param(0), tcx.types.bool]),
             ),
             "load" => (1, vec![tcx.mk_imm_ptr(param(0))], param(0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
@@ -222,6 +223,21 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
+            sym::option_payload_ptr => {
+                let option_def_id = tcx.require_lang_item(hir::LangItem::Option, None);
+                let p0 = param(0);
+                (
+                    1,
+                    vec![tcx.mk_ptr(ty::TypeAndMut {
+                        ty: tcx.mk_adt(
+                            tcx.adt_def(option_def_id),
+                            tcx.mk_substs_from_iter([ty::GenericArg::from(p0)].into_iter()),
+                        ),
+                        mutbl: hir::Mutability::Not,
+                    })],
+                    tcx.mk_ptr(ty::TypeAndMut { ty: p0, mutbl: hir::Mutability::Not }),
+                )
+            }
             sym::ptr_mask => (
                 1,
                 vec![
@@ -300,6 +316,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::nearbyintf64 => (0, vec![tcx.types.f64], tcx.types.f64),
             sym::roundf32 => (0, vec![tcx.types.f32], tcx.types.f32),
             sym::roundf64 => (0, vec![tcx.types.f64], tcx.types.f64),
+            sym::roundevenf32 => (0, vec![tcx.types.f32], tcx.types.f32),
+            sym::roundevenf64 => (0, vec![tcx.types.f64], tcx.types.f64),
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 (1, vec![tcx.mk_imm_ptr(param(0))], param(0))
@@ -317,7 +335,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::bitreverse => (1, vec![param(0)], param(0)),
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types.bool]))
+                (1, vec![param(0), param(0)], tcx.mk_tup(&[param(0), tcx.types.bool]))
             }
 
             sym::ptr_guaranteed_cmp => {
@@ -361,6 +379,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::likely => (0, vec![tcx.types.bool], tcx.types.bool),
             sym::unlikely => (0, vec![tcx.types.bool], tcx.types.bool),
 
+            sym::read_via_copy => (1, vec![tcx.mk_imm_ptr(param(0))], param(0)),
+
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
@@ -372,7 +392,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     1,
                     vec![tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0))],
-                    tcx.mk_projection(discriminant_def_id, tcx.intern_substs(&[param(0).into()])),
+                    tcx.mk_projection(discriminant_def_id, tcx.mk_substs(&[param(0).into()])),
                 )
             }
 

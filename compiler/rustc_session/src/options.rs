@@ -4,6 +4,7 @@ use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
+use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
@@ -365,6 +366,7 @@ mod desc {
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
     pub const parse_threads: &str = parse_number;
+    pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
@@ -827,6 +829,21 @@ mod parse {
             _ => return false,
         });
         true
+    }
+
+    pub(crate) fn parse_time_passes_format(slot: &mut TimePassesFormat, v: Option<&str>) -> bool {
+        match v {
+            None => true,
+            Some("json") => {
+                *slot = TimePassesFormat::Json;
+                true
+            }
+            Some("text") => {
+                *slot = TimePassesFormat::Text;
+                true
+            }
+            Some(_) => false,
+        }
     }
 
     pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
@@ -1422,6 +1439,9 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
+    flatten_format_args: bool = (false, parse_bool, [TRACKED],
+        "flatten nested format_args!() and literals into a simplified format_args!() call \
+        (default: no)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
@@ -1489,6 +1509,8 @@ options! {
         "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
+    link_directives: bool = (true, parse_bool, [TRACKED],
+        "honor #[link] directives in the compiled crate (default: yes)"),
     link_native_libraries: bool = (true, parse_bool, [UNTRACKED],
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
@@ -1501,6 +1523,9 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
+    lower_impl_trait_in_trait_to_assoc_ty: bool = (false, parse_bool, [TRACKED],
+        "modify the lowering strategy for `impl Trait` in traits so that they are lowered to \
+        generic associated types"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
@@ -1701,6 +1726,8 @@ options! {
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
+    time_passes_format: TimePassesFormat = (TimePassesFormat::Text, parse_time_passes_format, [UNTRACKED],
+        "the format to use for -Z time-passes (`text` (default) or `json`)"),
     tiny_const_eval_limit: bool = (false, parse_bool, [TRACKED],
         "sets a tiny, non-configurable limit for const eval; useful for compiler tests"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]

@@ -317,7 +317,7 @@ where
     // 1. `block` - Number of elements in the block.
     // 2. `start` - Start pointer into the `offsets` array.
     // 3. `end` - End pointer into the `offsets` array.
-    // 4. `offsets - Indices of out-of-order elements within the block.
+    // 4. `offsets` - Indices of out-of-order elements within the block.
 
     // The current block on the left side (from `l` to `l.add(block_l)`).
     let mut l = v.as_mut_ptr();
@@ -327,7 +327,7 @@ where
     let mut offsets_l = [MaybeUninit::<u8>::uninit(); BLOCK];
 
     // The current block on the right side (from `r.sub(block_r)` to `r`).
-    // SAFETY: The documentation for .add() specifically mention that `vec.as_ptr().add(vec.len())` is always safe`
+    // SAFETY: The documentation for .add() specifically mention that `vec.as_ptr().add(vec.len())` is always safe
     let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
@@ -673,19 +673,23 @@ where
 fn break_patterns<T>(v: &mut [T]) {
     let len = v.len();
     if len >= 8 {
-        // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
-        let mut random = len as u32;
-        let mut gen_u32 = || {
-            random ^= random << 13;
-            random ^= random >> 17;
-            random ^= random << 5;
-            random
-        };
+        let mut seed = len;
         let mut gen_usize = || {
+            // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
             if usize::BITS <= 32 {
-                gen_u32() as usize
+                let mut r = seed as u32;
+                r ^= r << 13;
+                r ^= r >> 17;
+                r ^= r << 5;
+                seed = r as usize;
+                seed
             } else {
-                (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
+                let mut r = seed as u64;
+                r ^= r << 13;
+                r ^= r >> 7;
+                r ^= r << 17;
+                seed = r as usize;
+                seed
             }
         };
 

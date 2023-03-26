@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::vec_map::VecMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
@@ -61,11 +60,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
-    ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
-        let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+        opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+    ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
+        let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
 
-        let member_constraints: FxHashMap<_, _> = self
+        let member_constraints: FxIndexMap<_, _> = self
             .member_constraints
             .all_indices()
             .map(|ci| (self.member_constraints[ci].key, ci))
@@ -284,7 +283,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // hidden type is well formed even without those bounds.
         let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
-        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.
@@ -325,7 +324,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         if errors.is_empty() {
             definition_ty
         } else {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
             self.tcx.ty_error(reported)
         }
     }
@@ -364,7 +363,7 @@ fn check_opaque_type_parameter_valid(
         OpaqueTyOrigin::TyAlias => {}
     }
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
-    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+    let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),

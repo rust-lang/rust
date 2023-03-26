@@ -67,8 +67,6 @@ pub struct Flags {
     // true => deny, false => warn
     pub deny_warnings: Option<bool>,
 
-    pub llvm_skip_rebuild: Option<bool>,
-
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
 
@@ -249,14 +247,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
         opts.optflag("", "json-output", "use message-format=json");
         opts.optopt("", "color", "whether to use color in cargo and rustc output", "STYLE");
-        opts.optopt(
-            "",
-            "llvm-skip-rebuild",
-            "whether rebuilding llvm should be skipped \
-             a VALUE of TRUE indicates that llvm will not be rebuilt \
-             VALUE overrides the skip-rebuild option in config.toml.",
-            "VALUE",
-        );
         opts.optopt(
             "",
             "rust-profile-generate",
@@ -554,7 +544,8 @@ Arguments:
             Kind::Setup => {
                 subcommand_help.push_str(&format!(
                     "\n
-x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+x.py setup creates a `config.toml` which changes the defaults for x.py itself,
+as well as setting up a git pre-push hook, VS code config and toolchain link.
 
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
@@ -564,7 +555,13 @@ Arguments:
     The profile is optional and you will be prompted interactively if it is not given.
     The following profiles are available:
 
-{}",
+{}
+
+    To only set up the git hook, VS code or toolchain link, you may use
+        ./x.py setup hook
+        ./x.py setup vscode
+        ./x.py setup link
+",
                     Profile::all_for_help("        ").trim_end()
                 ));
             }
@@ -638,7 +635,7 @@ Arguments:
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
-                    eprintln!("\nerror: At most one profile can be passed to setup\n");
+                    eprintln!("\nerror: At most one option can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
                     let profile_string = t!(path.into_os_string().into_string().map_err(
@@ -707,9 +704,6 @@ Arguments:
                 .collect::<Vec<_>>(),
             include_default_paths: matches.opt_present("include-default-paths"),
             deny_warnings: parse_deny_warnings(&matches),
-            llvm_skip_rebuild: matches.opt_str("llvm-skip-rebuild").map(|s| s.to_lowercase()).map(
-                |s| s.parse::<bool>().expect("`llvm-skip-rebuild` should be either true or false"),
-            ),
             color: matches
                 .opt_get_default("color", Color::Auto)
                 .expect("`color` should be `always`, `never`, or `auto`"),

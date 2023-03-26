@@ -100,6 +100,9 @@ pub trait FileLoader {
 
     /// Read the contents of a UTF-8 file into memory.
     fn read_file(&self, path: &Path) -> io::Result<String>;
+
+    /// Read the contents of a potentially non-UTF-8 file into memory.
+    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -112,6 +115,10 @@ impl FileLoader for RealFileLoader {
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
         fs::read_to_string(path)
+    }
+
+    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
+        fs::read(path)
     }
 }
 
@@ -220,9 +227,7 @@ impl SourceMap {
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
     pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
-        // Ideally, this should use `self.file_loader`, but it can't
-        // deal with binary files yet.
-        let bytes = fs::read(path)?;
+        let bytes = self.file_loader.read_binary_file(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present
         // in dep-info. There's also an edge case that file might be both
@@ -443,23 +448,34 @@ impl SourceMap {
         sp: Span,
         filename_display_pref: FileNameDisplayPreference,
     ) -> String {
+        let (source_file, lo_line, lo_col, hi_line, hi_col) = self.span_to_location_info(sp);
+
+        let file_name = match source_file {
+            Some(sf) => sf.name.display(filename_display_pref).to_string(),
+            None => return "no-location".to_string(),
+        };
+
+        format!(
+            "{file_name}:{lo_line}:{lo_col}{}",
+            if let FileNameDisplayPreference::Short = filename_display_pref {
+                String::new()
+            } else {
+                format!(": {hi_line}:{hi_col}")
+            }
+        )
+    }
+
+    pub fn span_to_location_info(
+        &self,
+        sp: Span,
+    ) -> (Option<Lrc<SourceFile>>, usize, usize, usize, usize) {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
-            return "no-location".to_string();
+            return (None, 0, 0, 0, 0);
         }
 
         let lo = self.lookup_char_pos(sp.lo());
         let hi = self.lookup_char_pos(sp.hi());
-        format!(
-            "{}:{}:{}{}",
-            lo.file.name.display(filename_display_pref),
-            lo.line,
-            lo.col.to_usize() + 1,
-            if let FileNameDisplayPreference::Short = filename_display_pref {
-                String::new()
-            } else {
-                format!(": {}:{}", hi.line, hi.col.to_usize() + 1)
-            }
-        )
+        (Some(lo.file), lo.line, lo.col.to_usize() + 1, hi.line, hi.col.to_usize() + 1)
     }
 
     /// Format the span location suitable for embedding in build artifacts

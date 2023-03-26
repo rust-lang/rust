@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
+use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -72,21 +74,20 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             return;
         }
 
+        let ctxt = expr.span.ctxt();
+
         if let Some(higher::If { cond, then, r#else: Some(els) }) = higher::If::hir(expr)
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
+            && then_expr.span.ctxt() == ctxt
             && is_res_lang_ctor(cx, path_res(cx, then_call), OptionSome)
             && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
             && !stmts_contains_early_return(then_block.stmts)
         {
-            let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
-            let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {
-                format!("({cond_snip})")
-            } else {
-                cond_snip.into_owned()
-            };
-            let arg_snip = snippet_with_macro_callsite(cx, then_arg.span, "");
+            let mut app = Applicability::Unspecified;
+            let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app).maybe_par().to_string();
+            let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
             let mut method_body = if then_block.stmts.is_empty() {
                 arg_snip.into_owned()
             } else {

@@ -1,0 +1,16 @@
+warning: `#[macro_export]` can only take 1 or 0 arguments
+  --> $DIR/invalid_macro_export_argument.rs:2:1
+   |
+LL | #[macro_export(hello, world)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(invalid_macro_export_arguments)]` on by default
+
+warning: `not_local_inner_macros` isn't a valid `#[macro_export]` argument
+  --> $DIR/invalid_macro_export_argument.rs:7:16
+   |
+LL | #[macro_export(not_local_inner_macros)]
+   |                ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 use rustc_target::spec::abi::Abi;
 
 use crate::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -424,13 +424,6 @@ impl<'tcx> Inliner<'tcx> {
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
-        let diverges = matches!(
-            callee_body.basic_blocks[START_BLOCK].terminator().kind,
-            TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
-        );
-        if diverges && !matches!(callee_attrs.inline, InlineAttr::Always) {
-            return Err("callee diverges unconditionally");
-        }
 
         let mut checker = CostChecker {
             tcx: self.tcx,
@@ -453,9 +446,7 @@ impl<'tcx> Inliner<'tcx> {
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind }
-            | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } = term.kind
-            {
+            if let TerminatorKind::Drop { ref place, target, unwind } = term.kind {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
@@ -815,8 +806,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let tcx = self.tcx;
         match terminator.kind {
-            TerminatorKind::Drop { ref place, unwind, .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind, .. } => {
+            TerminatorKind::Drop { ref place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instance.subst_mir(tcx, &place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
@@ -888,7 +878,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         location: Location,
     ) {
         if let ProjectionElem::Field(f, ty) = elem {
-            let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+            let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
             let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
             let check_equal = |this: &mut Self, f_ty| {
                 if !util::is_equal_up_to_subtyping(this.tcx, this.param_env, ty, f_ty) {
@@ -914,7 +904,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     check_equal(self, *f_ty);
                 }
                 ty::Adt(adt_def, substs) => {
-                    let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
+                    let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                     let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
                         self.validation = Err("malformed MIR");
                         return;
@@ -1120,8 +1110,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *tgt = self.map_block(*tgt);
                 }
             }
-            TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
+            TerminatorKind::Drop { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
             }

@@ -35,6 +35,10 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = MustUseDeprecated::new();
+   |     +++++++
 
 warning: 5 warnings emitted
 

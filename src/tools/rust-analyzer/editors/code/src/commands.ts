@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Ctx, Cmd, CtxInit } from "./ctx";
+import { Ctx, Cmd, CtxInit, discoverWorkspace } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -90,6 +90,14 @@ export function shuffleCrateGraph(ctx: CtxInit): Cmd {
 export function triggerParameterHints(_: CtxInit): Cmd {
     return async () => {
         await vscode.commands.executeCommand("editor.action.triggerParameterHints");
+    };
+}
+
+export function openLogs(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.client.outputChannel) {
+            ctx.client.outputChannel.show();
+        }
     };
 }
 
@@ -405,12 +413,11 @@ export function syntaxTree(ctx: CtxInit): Cmd {
     };
 }
 
-// Opens the virtual file that will show the HIR of the function containing the cursor position
-//
-// The contents of the file come from the `TextDocumentContentProvider`
-export function viewHir(ctx: CtxInit): Cmd {
+function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
+    const viewXir = xir === "hir" ? "viewHir" : "viewMir";
+    const requestType = xir === "hir" ? ra.viewHir : ra.viewMir;
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.rs");
+        readonly uri = vscode.Uri.parse(`rust-analyzer-${xir}://${viewXir}/${xir}.rs`);
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -452,7 +459,7 @@ export function viewHir(ctx: CtxInit): Cmd {
                 ),
                 position: client.code2ProtocolConverter.asPosition(rustEditor.selection.active),
             };
-            return client.sendRequest(ra.viewHir, params, ct);
+            return client.sendRequest(requestType, params, ct);
         }
 
         get onDidChange(): vscode.Event<vscode.Uri> {
@@ -461,7 +468,7 @@ export function viewHir(ctx: CtxInit): Cmd {
     })();
 
     ctx.pushExtCleanup(
-        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-hir", tdcp)
+        vscode.workspace.registerTextDocumentContentProvider(`rust-analyzer-${xir}`, tdcp)
     );
 
     return async () => {
@@ -472,6 +479,20 @@ export function viewHir(ctx: CtxInit): Cmd {
             preserveFocus: true,
         }));
     };
+}
+
+// Opens the virtual file that will show the HIR of the function containing the cursor position
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function viewHir(ctx: CtxInit): Cmd {
+    return viewHirOrMir(ctx, "hir");
+}
+
+// Opens the virtual file that will show the MIR of the function containing the cursor position
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function viewMir(ctx: CtxInit): Cmd {
+    return viewHirOrMir(ctx, "mir");
 }
 
 export function viewFileText(ctx: CtxInit): Cmd {
@@ -726,6 +747,33 @@ export function expandMacro(ctx: CtxInit): Cmd {
 
 export function reloadWorkspace(ctx: CtxInit): Cmd {
     return async () => ctx.client.sendRequest(ra.reloadWorkspace);
+}
+
+export function addProject(ctx: CtxInit): Cmd {
+    return async () => {
+        const discoverProjectCommand = ctx.config.discoverProjectCommand;
+        if (!discoverProjectCommand) {
+            return;
+        }
+
+        const workspaces: JsonProject[] = await Promise.all(
+            vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
+                const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
+                return discoverWorkspace(rustDocuments, discoverProjectCommand, {
+                    cwd: folder.uri.fsPath,
+                });
+            })
+        );
+
+        ctx.addToDiscoveredWorkspaces(workspaces);
+
+        // this is a workaround to avoid needing writing the `rust-project.json` into
+        // a workspace-level VS Code-specific settings folder. We'd like to keep the
+        // `rust-project.json` entirely in-memory.
+        await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: "",
+        });
+    };
 }
 
 async function showReferencesImpl(

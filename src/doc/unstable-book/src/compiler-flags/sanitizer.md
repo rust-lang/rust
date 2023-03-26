@@ -213,7 +213,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example
 
-```text
+```rust,ignore
 #![feature(naked_functions)]
 
 use std::arch::asm;
@@ -238,7 +238,7 @@ pub extern "C" fn add_two(x: i32) {
              nop
              nop
              nop
-             lea rax, [rdi+2]
+             lea eax, [edi+2]
              ret
         ",
             options(noreturn)

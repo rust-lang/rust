@@ -22,6 +22,10 @@ pub enum TerminationInfo {
         help: Option<String>,
         history: Option<TagHistory>,
     },
+    TreeBorrowsUb {
+        msg: String,
+        // FIXME: incomplete
+    },
     Int2PtrWithStrictProvenance,
     Deadlock,
     MultipleSymbolDefinitions {
@@ -61,6 +65,7 @@ impl fmt::Display for TerminationInfo {
                     "integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`"
                 ),
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
+            TreeBorrowsUb { msg } => write!(f, "{msg}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
@@ -184,7 +189,8 @@ pub fn report_error<'tcx, 'mir>(
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
                 Some("unsupported operation"),
-            StackedBorrowsUb { .. } | DataRace { .. } => Some("Undefined Behavior"),
+            StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
+                Some("Undefined Behavior"),
             Deadlock => Some("deadlock"),
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -211,6 +217,12 @@ pub fn report_error<'tcx, 'mir>(
                         helps.push((Some(protector_span), protector_msg));
                     }
                 }
+                helps
+            },
+            TreeBorrowsUb { .. } => {
+                let helps = vec![
+                    (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")),
+                ];
                 helps
             }
             MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>

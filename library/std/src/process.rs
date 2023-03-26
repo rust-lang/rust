@@ -110,7 +110,7 @@ use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::str;
@@ -354,6 +354,10 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
 
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
@@ -417,6 +421,10 @@ pub struct ChildStderr {
 impl Read for ChildStderr {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -1416,7 +1424,7 @@ impl From<fs::File> for Stdio {
     /// use std::fs::File;
     /// use std::process::Command;
     ///
-    /// // With the `foo.txt` file containing `Hello, world!"
+    /// // With the `foo.txt` file containing "Hello, world!"
     /// let file = File::open("foo.txt").unwrap();
     ///
     /// let reverse = Command::new("rev")

@@ -106,8 +106,9 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
-            LocalKind::Temp | LocalKind::ReturnPointer => {}
-            LocalKind::Arg | LocalKind::Var => return,
+            LocalKind::Arg => return,
+            LocalKind::Temp if self.ccx.body.local_decls[index].is_user_variable() => return,
+            LocalKind::ReturnPointer | LocalKind::Temp => {}
         }
 
         // Ignore drops, if the temp gets promoted,
@@ -866,7 +867,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.intern_place_elems(&projection);
+            place.projection = tcx.mk_place_elems(&projection);
 
             // Create a temp to hold the promoted reference.
             // This is because `*r` requires `r` to be a local,

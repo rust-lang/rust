@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
-use crate::io::{self, IoSlice, IoSliceMut, Read};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::mem;
 use crate::path::Path;
 use crate::ptr;
@@ -249,6 +249,28 @@ impl AnonPipe {
             // EOF on the pipe.
             Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(0),
             _ => result,
+        }
+    }
+
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        let result = unsafe {
+            let len = crate::cmp::min(buf.capacity(), c::DWORD::MAX as usize) as c::DWORD;
+            self.alertable_io_internal(c::ReadFileEx, buf.as_mut().as_mut_ptr() as _, len)
+        };
+
+        match result {
+            // The special treatment of BrokenPipe is to deal with Windows
+            // pipe semantics, which yields this error when *reading* from
+            // a pipe after the other end has closed; we interpret that as
+            // EOF on the pipe.
+            Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(()),
+            Err(e) => Err(e),
+            Ok(n) => {
+                unsafe {
+                    buf.advance(n);
+                }
+                Ok(())
+            }
         }
     }
 

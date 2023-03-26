@@ -1,28 +1,28 @@
-<div class="main-heading"> {#- -#}
-    <h1> {#- -#}
-        {{-typ-}}
-        {#- The breadcrumbs of the item path, like std::string -#}
-        {%- for component in path_components -%}
-        <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
-        {%- endfor -%}
-        <a class="{{item_type}}" href="#">{{name}}</a> {#- -#}
-        <button id="copy-path" title="Copy item path to clipboard"> {#- -#}
-        <img src="{{static_root_path|safe}}{{clipboard_svg}}" {# -#}
-                width="19" height="18" {# -#}
-                alt="Copy item path"> {#- -#}
-        </button> {#- -#}
-    </h1> {#- -#}
-    <span class="out-of-band"> {#- -#}
+<div class="main-heading"> {# #}
+    <h1> {# #}
+        {{typ}}
+        {# The breadcrumbs of the item path, like std::string #}
+        {% for component in path_components %}
+            <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
+        {% endfor %}
+        <a class="{{item_type}}" href="#">{{name}}</a> {# #}
+        <button id="copy-path" title="Copy item path to clipboard"> {# #}
+        <img src="{{static_root_path|safe}}{{clipboard_svg}}" {#+ #}
+                width="19" height="18" {#+ #}
+                alt="Copy item path"> {# #}
+        </button> {# #}
+    </h1> {# #}
+    <span class="out-of-band"> {# #}
         {% if !stability_since_raw.is_empty() %}
-        {{- stability_since_raw|safe }} · {# -#}
+        {{ stability_since_raw|safe +}} · {#+ #}
         {% endif %}
-        {%- match src_href -%}
-            {%- when Some with (href) -%}
-                <a class="srclink" href="{{href|safe}}">source</a> · {# -#}
-            {%- else -%}
-        {%- endmatch -%}
-        <button id="toggle-all-docs" title="collapse all docs"> {#- -#}
-            [<span>&#x2212;</span>] {#- -#}
-        </button> {#- -#}
-    </span> {#- -#}
-</div> {#- -#}
+        {% match src_href %}
+            {% when Some with (href) %}
+                <a class="srclink" href="{{href|safe}}">source</a> · {#+ #}
+            {% else %}
+        {% endmatch %}
+        <button id="toggle-all-docs" title="collapse all docs"> {# #}
+            [<span>&#x2212;</span>] {# #}
+        </button> {# #}
+    </span> {# #}
+</div> {# #}

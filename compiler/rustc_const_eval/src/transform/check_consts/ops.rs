@@ -12,9 +12,7 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{
-    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, Ty,
-};
+use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
 use rustc_middle::ty::{Binder, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -706,7 +704,7 @@ pub mod ty {
 
         fn importance(&self) -> DiagnosticImportance {
             match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::Temp => DiagnosticImportance::Secondary,
                 mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
                     DiagnosticImportance::Primary
                 }

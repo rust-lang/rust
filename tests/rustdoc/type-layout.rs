@@ -83,3 +83,11 @@ pub enum WithNiche {
     None,
     Some(std::num::NonZeroU32),
 }
+
+// @hasraw type_layout/enum.Uninhabited.html 'Size: '
+// @hasraw - '0 bytes (<a href="https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited">uninhabited</a>)'
+pub enum Uninhabited {}
+
+// @hasraw type_layout/struct.Uninhabited2.html 'Size: '
+// @hasraw - '8 bytes (<a href="https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited">uninhabited</a>)'
+pub struct Uninhabited2(std::convert::Infallible, u64);

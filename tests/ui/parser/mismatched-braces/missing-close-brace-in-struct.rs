@@ -1,7 +1,7 @@
 pub(crate) struct Bar<T> {
   foo: T,
 
-trait T { //~ ERROR expected identifier, found keyword `trait`
+trait T {
     fn foo(&self);
 }
 

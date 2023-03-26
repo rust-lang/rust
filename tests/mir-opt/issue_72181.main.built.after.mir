@@ -29,6 +29,7 @@ fn main() -> () {
     }
 
     bb1: {
+        PlaceMention(_1);                // scope 0 at $DIR/issue_72181.rs:+1:13: +1:34
         StorageDead(_1);                 // scope 0 at $DIR/issue_72181.rs:+1:34: +1:35
         StorageLive(_2);                 // scope 1 at $DIR/issue_72181.rs:+3:9: +3:10
         StorageLive(_3);                 // scope 1 at $DIR/issue_72181.rs:+3:14: +3:27
@@ -49,6 +50,7 @@ fn main() -> () {
 
     bb2: {
         _5 = (_2[_6].0: u64);            // scope 4 at $DIR/issue_72181.rs:+4:22: +4:28
+        PlaceMention(_5);                // scope 2 at $DIR/issue_72181.rs:+4:13: +4:30
         StorageDead(_6);                 // scope 2 at $DIR/issue_72181.rs:+4:30: +4:31
         StorageDead(_5);                 // scope 2 at $DIR/issue_72181.rs:+4:30: +4:31
         _0 = const ();                   // scope 0 at $DIR/issue_72181.rs:+0:11: +5:2

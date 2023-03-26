@@ -64,17 +64,12 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            let from_rust_ty = if from_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
-
-            let to_rust_ty = match to_ty {
-                types::F32 => fx.tcx.types.f32,
-                types::F64 => fx.tcx.types.f64,
-                _ => unreachable!(),
-            };
-
-            return fx
-                .easy_call(&name, &[CValue::by_val(from, fx.layout_of(from_rust_ty))], to_rust_ty)
-                .load_scalar(fx);
+            return fx.lib_call(
+                &name,
+                vec![AbiParam::new(types::I128)],
+                vec![AbiParam::new(to_ty)],
+                &[from],
+            )[0];
         }
 
         // int-like -> float
@@ -101,16 +96,29 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            let from_rust_ty = match from_ty {
-                types::F32 => fx.tcx.types.f32,
-                types::F64 => fx.tcx.types.f64,
-                _ => unreachable!(),
-            };
-
-            let to_rust_ty = if to_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
-
-            fx.easy_call(&name, &[CValue::by_val(from, fx.layout_of(from_rust_ty))], to_rust_ty)
-                .load_scalar(fx)
+            if fx.tcx.sess.target.is_like_windows {
+                let ret = fx.lib_call(
+                    &name,
+                    vec![AbiParam::new(from_ty)],
+                    vec![AbiParam::new(types::I64X2)],
+                    &[from],
+                )[0];
+                // FIXME use bitcast instead of store to get from i64x2 to i128
+                let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
+                    kind: StackSlotKind::ExplicitSlot,
+                    size: 16,
+                });
+                let ret_ptr = Pointer::stack_slot(stack_slot);
+                ret_ptr.store(fx, ret, MemFlags::trusted());
+                ret_ptr.load(fx, types::I128, MemFlags::trusted())
+            } else {
+                fx.lib_call(
+                    &name,
+                    vec![AbiParam::new(from_ty)],
+                    vec![AbiParam::new(types::I128)],
+                    &[from],
+                )[0]
+            }
         } else if to_ty == types::I8 || to_ty == types::I16 {
             // FIXME implement fcvt_to_*int_sat.i8/i16
             let val = if to_signed {

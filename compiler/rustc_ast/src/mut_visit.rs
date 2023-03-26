@@ -12,7 +12,7 @@ use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
 
-use rustc_data_structures::map_in_place::MapInPlace;
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
@@ -1316,7 +1316,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
     vis: &mut T,
 ) {
     match kind {
-        ExprKind::Box(expr) => vis.visit_expr(expr),
         ExprKind::Array(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::ConstBlock(anon_const) => {
             vis.visit_anon_const(anon_const);

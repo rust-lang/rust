@@ -341,7 +341,7 @@ pub trait EarlyCheckNode<'a>: Copy {
         'a: 'b;
 }
 
-impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
+impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     fn id(self) -> ast::NodeId {
         ast::CRATE_NODE_ID
     }
@@ -349,15 +349,15 @@ impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
     where
         'a: 'b,
     {
-        &self.attrs
+        &self.1
     }
     fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
         'a: 'b,
     {
-        lint_callback!(cx, check_crate, self);
-        ast_visit::walk_crate(cx, self);
-        lint_callback!(cx, check_crate_post, self);
+        lint_callback!(cx, check_crate, self.0);
+        ast_visit::walk_crate(cx, self.0);
+        lint_callback!(cx, check_crate_post, self.0);
     }
 }
 

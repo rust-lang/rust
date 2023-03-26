@@ -70,7 +70,7 @@ pub enum RegionResolutionError<'tcx> {
     /// `o` requires that `a <= b`, but this does not hold
     ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
 
-    /// `GenericBoundFailure(p, s, a)
+    /// `GenericBoundFailure(p, s, a)`:
     ///
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).
@@ -438,7 +438,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -467,7 +471,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", b);
                     }
 

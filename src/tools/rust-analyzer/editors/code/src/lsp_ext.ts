@@ -43,6 +43,7 @@ export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, Te
     "rust-analyzer/relatedTests"
 );
 export const reloadWorkspace = new lc.RequestType0<null, void>("rust-analyzer/reloadWorkspace");
+
 export const runFlycheck = new lc.NotificationType<{
     textDocument: lc.TextDocumentIdentifier | null;
 }>("rust-analyzer/runFlycheck");
@@ -58,6 +59,9 @@ export const viewFileText = new lc.RequestType<lc.TextDocumentIdentifier, string
 );
 export const viewHir = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
     "rust-analyzer/viewHir"
+);
+export const viewMir = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
+    "rust-analyzer/viewMir"
 );
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>(
     "rust-analyzer/viewItemTree"

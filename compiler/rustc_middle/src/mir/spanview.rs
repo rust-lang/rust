@@ -11,7 +11,7 @@ use std::io::{self, Write};
 pub const TOOLTIP_INDENT: &str = "    ";
 
 const CARET: char = '\u{2038}'; // Unicode `CARET`
-const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT BINDING BRACKET
+const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT BINDING BRACKET`
 const ANNOTATION_RIGHT_BRACKET: char = '\u{2989}'; // Unicode `Z NOTATION LEFT BINDING BRACKET`
 const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
 const HEADER: &str = r#"<!DOCTYPE html>
@@ -247,6 +247,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         StorageLive(..) => "StorageLive",
         StorageDead(..) => "StorageDead",
         Retag(..) => "Retag",
+        PlaceMention(..) => "PlaceMention",
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
         Intrinsic(..) => "Intrinsic",
@@ -265,7 +266,6 @@ pub fn terminator_kind_name(term: &Terminator<'_>) -> &'static str {
         Return => "Return",
         Unreachable => "Unreachable",
         Drop { .. } => "Drop",
-        DropAndReplace { .. } => "DropAndReplace",
         Call { .. } => "Call",
         Assert { .. } => "Assert",
         Yield { .. } => "Yield",

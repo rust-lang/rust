@@ -15,7 +15,7 @@ mod assert {
         const ASSUME_VISIBILITY: bool,
     >()
     where
-        Dst: BikeshedIntrinsicFrom< //~ ERROR this trait takes at most 3 generic arguments but 6 generic arguments were supplied
+        Dst: BikeshedIntrinsicFrom< //~ ERROR trait takes at most 3 generic arguments but 6 generic arguments were supplied
             Src,
             Context,
             ASSUME_ALIGNMENT,

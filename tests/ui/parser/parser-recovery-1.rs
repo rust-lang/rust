@@ -3,11 +3,8 @@
 trait Foo {
     fn bar() {
         let x = foo();
-        //~^ ERROR cannot find function `foo` in this scope
 }
 
 fn main() {
     let x = y.;
-    //~^ ERROR unexpected token
-    //~| ERROR cannot find value `y` in this scope
 } //~ ERROR this file contains an unclosed delimiter

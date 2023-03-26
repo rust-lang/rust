@@ -1,6 +1,6 @@
 // run-rustfix
 // edition:2018
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![feature(exclusive_range_pattern)]
 #![feature(stmt_expr_attributes)]
@@ -9,33 +9,10 @@
 #![allow(clippy::needless_parens_on_range_literals)]
 #![allow(clippy::double_parens)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
-macro_rules! a {
-    () => {
-        'a'
-    };
-}
-macro_rules! A {
-    () => {
-        'A'
-    };
-}
-macro_rules! zero {
-    () => {
-        '0'
-    };
-}
-
-macro_rules! b {
-    () => {
-        let _ = 'a'..='z';
-        let _ = 'A'..='Z';
-        let _ = '0'..='9';
-    };
-}
-
+#[inline_macros]
 fn main() {
     #[rustfmt::skip]
     {
@@ -56,9 +33,9 @@ fn main() {
     let _ = b'B'..b'Z';
     let _ = b'1'..b'9';
 
-    let _ = a!()..='z';
-    let _ = A!()..='Z';
-    let _ = zero!()..='9';
+    let _ = inline!('a')..='z';
+    let _ = inline!('A')..='Z';
+    let _ = inline!('0')..='9';
 
     let _ = match 0u8 {
         b'a'..=b'z' if true => 1,
@@ -80,8 +57,16 @@ fn main() {
         _ => 7,
     };
 
-    almost_complete_range!();
-    b!();
+    external!(
+        let _ = 'a'..'z';
+        let _ = 'A'..'Z';
+        let _ = '0'..'9';
+    );
+    inline!(
+        let _ = 'a'..='z';
+        let _ = 'A'..='Z';
+        let _ = '0'..='9';
+    );
 }
 
 #[clippy::msrv = "1.25"]

@@ -711,6 +711,7 @@ impl<'a> Builder<'a> {
                 test::RustdocUi,
                 test::RustdocJson,
                 test::HtmlCheck,
+                test::RustInstaller,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
@@ -740,6 +741,7 @@ impl<'a> Builder<'a> {
                 doc::EmbeddedBook,
                 doc::EditionGuide,
                 doc::StyleGuide,
+                doc::Tidy,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -792,7 +794,7 @@ impl<'a> Builder<'a> {
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
             ),
-            Kind::Setup => describe!(setup::Profile),
+            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
             Kind::Format => vec![],
@@ -910,14 +912,16 @@ impl<'a> Builder<'a> {
     /// new artifacts, it can't be used to rely on the presence of a particular
     /// sysroot.
     ///
-    /// See `force_use_stage1` for documentation on what each argument is.
+    /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
     pub fn compiler_for(
         &self,
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage1(Compiler { stage, host }, target) {
+        if self.build.force_use_stage2(stage) {
+            self.compiler(2, self.config.build)
+        } else if self.build.force_use_stage1(stage, target) {
             self.compiler(1, self.config.build)
         } else {
             self.compiler(stage, host)
@@ -1298,6 +1302,14 @@ impl<'a> Builder<'a> {
                 }
             }
         };
+
+        // By default, windows-rs depends on a native library that doesn't get copied into the
+        // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
+        // library unnecessary. This can be removed when windows-rs enables raw-dylib
+        // unconditionally.
+        if let Mode::Rustc | Mode::ToolRustc = mode {
+            rustflags.arg("--cfg=windows_raw_dylib");
+        }
 
         if use_new_symbol_mangling {
             rustflags.arg("-Csymbol-mangling-version=v0");
@@ -1718,6 +1730,15 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
+        // Downstream forks of the Rust compiler might want to use a custom libc to add support for
+        // targets that are not yet available upstream. Adding a patch to replace libc with a
+        // custom one would cause compilation errors though, because Cargo would interpret the
+        // custom libc as part of the workspace, and apply the check-cfg lints on it.
+        //
+        // The libc build script emits check-cfg flags only when this environment variable is set,
+        // so this line allows the use of custom libcs.
+        cargo.env("LIBC_CHECK_CFG", "1");
+
         if source_type == SourceType::InTree {
             let mut lint_flags = Vec::new();
             // When extending this list, add the new lints to the RUSTFLAGS of the
@@ -1913,6 +1934,19 @@ impl<'a> Builder<'a> {
                     rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
                 }
             }
+        }
+
+        if matches!(mode, Mode::Std) {
+            if let Some(mir_opt_level) = self.config.rust_validate_mir_opts {
+                rustflags.arg("-Zvalidate-mir");
+                rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
+            }
+            // Always enable inlining MIR when building the standard library.
+            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
+            // That causes some mir-opt tests which inline functions from the standard library to
+            // break when incremental compilation is enabled. So this overrides the "no inlining
+            // during incremental builds" heuristic for the standard library.
+            rustflags.arg("-Zinline-mir");
         }
 
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }

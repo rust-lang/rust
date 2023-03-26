@@ -766,6 +766,13 @@ trait Foo$0 { }
 
         check(
             r#"
+trait Foo$0 = ;
+    //^^^
+"#,
+        );
+
+        check(
+            r#"
 mod bar$0 { }
   //^^^
 "#,
@@ -1063,6 +1070,23 @@ trait Sub: Super {}
 fn f() -> impl Sub<Item$0 = u8> {}
 "#,
         );
+    }
+
+    #[test]
+    fn goto_def_for_module_declaration_in_path_if_types_and_values_same_name() {
+        check(
+            r#"
+mod bar {
+    pub struct Foo {}
+             //^^^
+    pub fn Foo() {}
+}
+
+fn baz() {
+    let _foo_enum: bar::Foo$0 = bar::Foo {};
+}
+        "#,
+        )
     }
 
     #[test]
@@ -1406,7 +1430,6 @@ include!("included.rs$0");
         );
     }
 
-    #[cfg(test)]
     mod goto_impl_of_trait_fn {
         use super::check;
         #[test]

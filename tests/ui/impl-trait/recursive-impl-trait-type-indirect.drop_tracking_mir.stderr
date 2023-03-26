@@ -114,6 +114,9 @@ error[E0720]: cannot resolve opaque type
    |
 LL | fn generator_hold() -> impl Sized {
    |                        ^^^^^^^^^^ recursive opaque type
+...
+LL |         let x = generator_hold();
+   |             - generator captures itself here
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:90:26

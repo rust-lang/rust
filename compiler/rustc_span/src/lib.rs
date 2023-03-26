@@ -795,6 +795,18 @@ impl Span {
         })
     }
 
+    /// Splits a span into two composite spans around a certain position.
+    pub fn split_at(self, pos: u32) -> (Span, Span) {
+        let len = self.hi().0 - self.lo().0;
+        debug_assert!(pos <= len);
+
+        let split_pos = BytePos(self.lo().0 + pos);
+        (
+            Span::new(self.lo(), split_pos, self.ctxt(), self.parent()),
+            Span::new(split_pos, self.hi(), self.ctxt(), self.parent()),
+        )
+    }
+
     /// Returns a `Span` that would enclose both `self` and `end`.
     ///
     /// Note that this can also be used to extend the span "backwards":
@@ -2147,5 +2159,19 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
+    }
+}
+
+/// Useful type to use with `Result<>` indicate that an error has already
+/// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable_Generic)]
+pub struct ErrorGuaranteed(());
+
+impl ErrorGuaranteed {
+    /// To be used only if you really know what you are doing... ideally, we would find a way to
+    /// eliminate all calls to this method.
+    pub fn unchecked_claim_error_was_emitted() -> Self {
+        ErrorGuaranteed(())
     }
 }

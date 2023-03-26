@@ -32,10 +32,6 @@ pub struct MixedBinCrate;
 pub struct MixedProcMacroCrate;
 
 #[derive(Diagnostic)]
-#[diag(interface_proc_macro_doc_without_arg)]
-pub struct ProcMacroDocWithoutArg;
-
-#[derive(Diagnostic)]
 #[diag(interface_error_writing_dependencies)]
 pub struct ErrorWritingDependencies<'a> {
     pub path: &'a Path,

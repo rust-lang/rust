@@ -85,15 +85,12 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => {
-                let resolved = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .opportunistic_resolve_var(rid);
-                TypeFolder::interner(self).mk_re_var(resolved)
-            }
+            ty::ReVar(vid) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(TypeFolder::interner(self), vid),
             _ => r,
         }
     }

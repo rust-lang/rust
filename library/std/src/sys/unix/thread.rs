@@ -9,7 +9,7 @@ use crate::time::Duration;
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
 use crate::sys::weak::weak;
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -173,7 +173,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
     pub fn set_name(name: &CStr) {
         weak! {
             fn pthread_setname_np(
@@ -381,6 +381,17 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             }
 
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
+        } else if #[cfg(target_os = "nto")] {
+            unsafe {
+                use libc::_syspage_ptr;
+                if _syspage_ptr.is_null() {
+                    Err(io::const_io_error!(io::ErrorKind::NotFound, "No syspage available"))
+                } else {
+                    let cpus = (*_syspage_ptr).num_cpu;
+                    NonZeroUsize::new(cpus as usize)
+                        .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
+                }
+            }
         } else if #[cfg(target_os = "haiku")] {
             // system_info cpu_count field gets the static data set at boot time with `smp_set_num_cpus`
             // `get_system_info` calls then `smp_get_num_cpus`

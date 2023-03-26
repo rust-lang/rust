@@ -51,9 +51,7 @@ where
 // Region folder
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Folds the escaping and free regions in `value` using `f`, and
-    /// sets `skipped_regions` to true if any late-bound region was found
-    /// and skipped.
+    /// Folds the escaping and free regions in `value` using `f`.
     pub fn fold_regions<T>(
         self,
         value: T,
@@ -63,17 +61,6 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         value.fold_with(&mut RegionFolder::new(self, &mut f))
-    }
-
-    pub fn super_fold_regions<T>(
-        self,
-        value: T,
-        mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> T
-    where
-        T: TypeSuperFoldable<TyCtxt<'tcx>>,
-    {
-        value.super_fold_with(&mut RegionFolder::new(self, &mut f))
     }
 }
 
@@ -422,7 +409,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut map = Default::default();
         let delegate = Anonymize { tcx: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = self.mk_bound_variable_kinds(map.into_values());
+        let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 }

@@ -7,7 +7,7 @@ use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::def_id::LocalDefId;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
@@ -31,7 +31,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     tcx.sess
         .delay_span_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
 
-    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let icx = ItemCtxt::new(tcx, def_id);
 
     // To perform HIR-based WF checking, we iterate over all HIR types
     // that occur 'inside' the item we're checking. For example,
@@ -66,35 +66,35 @@ fn diagnostic_hir_wf_check<'tcx>(
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             let infcx = self.tcx.infer_ctxt().build();
+            let ocx = ObligationCtxt::new(&infcx);
+
             let tcx_ty = self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
             let cause = traits::ObligationCause::new(
                 ty.span,
                 self.def_id,
                 traits::ObligationCauseCode::WellFormed(None),
             );
-            let errors = traits::fully_solve_obligation(
-                &infcx,
-                traits::Obligation::new(
-                    self.tcx,
-                    cause,
-                    self.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into())),
-                ),
-            );
-            if !errors.is_empty() {
-                debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
-                for error in errors {
-                    if error.obligation.predicate == self.predicate {
-                        // Save the cause from the greatest depth - this corresponds
-                        // to picking more-specific types (e.g. `MyStruct<u8>`)
-                        // over less-specific types (e.g. `Option<MyStruct<u8>>`)
-                        if self.depth >= self.cause_depth {
-                            self.cause = Some(error.obligation.cause);
-                            self.cause_depth = self.depth
-                        }
+
+            ocx.register_obligation(traits::Obligation::new(
+                self.tcx,
+                cause,
+                self.param_env,
+                ty::PredicateKind::WellFormed(tcx_ty.into()),
+            ));
+
+            for error in ocx.select_all_or_error() {
+                debug!("Wf-check got error for {:?}: {:?}", ty, error);
+                if error.obligation.predicate == self.predicate {
+                    // Save the cause from the greatest depth - this corresponds
+                    // to picking more-specific types (e.g. `MyStruct<u8>`)
+                    // over less-specific types (e.g. `Option<MyStruct<u8>>`)
+                    if self.depth >= self.cause_depth {
+                        self.cause = Some(error.obligation.cause);
+                        self.cause_depth = self.depth
                     }
                 }
             }
+
             self.depth += 1;
             intravisit::walk_ty(self, ty);
             self.depth -= 1;

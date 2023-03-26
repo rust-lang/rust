@@ -149,9 +149,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
-        let body_hir = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
-        let mut flags =
-            vec![(sym::ItemContext, self.describe_enclosure(body_hir).map(|s| s.to_owned()))];
+        let mut flags = vec![];
+        // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
+        // but I guess we could synthesize one here. We don't see any errors that rely on
+        // that yet, though.
+        let enclosure =
+            if let Some(body_hir) = self.tcx.opt_local_def_id_to_hir_id(obligation.cause.body_id) {
+                self.describe_enclosure(body_hir).map(|s| s.to_owned())
+            } else {
+                None
+            };
+        flags.push((sym::ItemContext, enclosure));
 
         match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerivedObligation(..)

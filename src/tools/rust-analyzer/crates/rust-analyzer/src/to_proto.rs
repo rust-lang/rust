@@ -50,7 +50,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
-        SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
+        SymbolKind::Trait | SymbolKind::TraitAlias => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro
         | SymbolKind::BuiltinAttr
         | SymbolKind::Attribute
@@ -135,6 +135,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
+            SymbolKind::TraitAlias => lsp_types::CompletionItemKind::INTERFACE,
             SymbolKind::TypeAlias => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::TypeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Union => lsp_types::CompletionItemKind::STRUCT,
@@ -656,6 +657,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Union => semantic_tokens::UNION,
             SymbolKind::TypeAlias => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Trait => semantic_tokens::INTERFACE,
+            SymbolKind::TraitAlias => semantic_tokens::INTERFACE,
             SymbolKind::Macro => semantic_tokens::MACRO,
             SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,

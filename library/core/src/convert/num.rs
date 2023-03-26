@@ -172,7 +172,18 @@ impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 #[stable(feature = "float_from_bool", since = "1.68.0")]
 #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
 impl const From<bool> for f32 {
-    /// Converts `bool` to `f32` losslessly.
+    /// Converts `bool` to `f32` losslessly. The resulting value is positive
+    /// `0.0` for `false` and `1.0` for `true` values.
+    ///
+    /// # Examples
+    /// ```
+    /// let x: f32 = false.into();
+    /// assert_eq!(x, 0.0);
+    /// assert!(x.is_sign_positive());
+    ///
+    /// let y: f32 = true.into();
+    /// assert_eq!(y, 1.0);
+    /// ```
     #[inline]
     fn from(small: bool) -> Self {
         small as u8 as Self
@@ -181,7 +192,18 @@ impl const From<bool> for f32 {
 #[stable(feature = "float_from_bool", since = "1.68.0")]
 #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
 impl const From<bool> for f64 {
-    /// Converts `bool` to `f64` losslessly.
+    /// Converts `bool` to `f64` losslessly. The resulting value is positive
+    /// `0.0` for `false` and `1.0` for `true` values.
+    ///
+    /// # Examples
+    /// ```
+    /// let x: f64 = false.into();
+    /// assert_eq!(x, 0.0);
+    /// assert!(x.is_sign_positive());
+    ///
+    /// let y: f64 = true.into();
+    /// assert_eq!(y, 1.0);
+    /// ```
     #[inline]
     fn from(small: bool) -> Self {
         small as u8 as Self

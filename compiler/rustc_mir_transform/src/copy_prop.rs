@@ -124,7 +124,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
         if let Some(new_projection) = self.process_projection(&place.projection, loc) {
-            place.projection = self.tcx().intern_place_elems(&new_projection);
+            place.projection = self.tcx().mk_place_elems(&new_projection);
         }
 
         let observes_address = match ctxt {

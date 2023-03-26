@@ -2,6 +2,5 @@ CHECK: print
 CHECK:      lfence
 CHECK:      lfence
 CHECK:      lfence
-CHECK:      popq
 CHECK:      callq 0x{{[[:xdigit:]]*}} <_Unwind_Resume>
 CHECK-NEXT: ud2

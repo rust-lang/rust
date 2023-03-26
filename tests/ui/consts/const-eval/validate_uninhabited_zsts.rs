@@ -19,7 +19,7 @@ pub mod empty {
 const FOO: [empty::Empty; 3] = [foo(); 3];
 
 const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
 //~| WARN the type `empty::Empty` does not permit zero-initialization
 
 fn main() {
