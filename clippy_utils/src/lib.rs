@@ -96,6 +96,7 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::ConstantKind;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
@@ -114,7 +115,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Integer;
 
-use crate::consts::{constant, Constant};
+use crate::consts::{constant, miri_to_const, Constant};
 use crate::higher::Range;
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
@@ -1492,22 +1493,66 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     }
 }
 
-/// Checks whether the given `Range` is equivalent to a `RangeFull`.
-/// Inclusive ranges are not considered because they already constitute a lint.
-pub fn is_range_full(cx: &LateContext<'_>, container: &Expr<'_>, range: Range<'_>) -> bool {
-    range.start.map_or(true, |e| is_integer_const(cx, e, 0))
-        && range.end.map_or(true, |e| {
-            if range.limits == RangeLimits::HalfOpen
-                && let ExprKind::Path(QPath::Resolved(None, container_path)) = container.kind
-                && let ExprKind::MethodCall(name, self_arg, [], _) = e.kind
-                && name.ident.name == sym::len
-                && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
+/// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
+/// For the lower bound, this means that:
+/// - either there is none
+/// - or it is the smallest value that can be represented by the range's integer type
+/// For the upper bound, this means that:
+/// - either there is none
+/// - or it is the largest value that can be represented by the range's integer type and is
+///   inclusive
+/// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
+///   a method call on that same container (e.g. `v.drain(..v.len())`)
+/// If the given `Expr` is not some kind of range, the function returns `false`.
+pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
+    let ty = cx.typeck_results().expr_ty(expr);
+    if let Some(Range { start, end, limits }) = Range::hir(expr) {
+        let start_is_none_or_min = start.map_or(true, |start| {
+            if let rustc_ty::Adt(_, subst) = ty.kind()
+                && let bnd_ty = subst.type_at(0)
+                && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
+                && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
+                && let min_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                && let Some(min_const) = miri_to_const(cx.tcx, min_const_kind)
+                && let Some((start_const, _)) = constant(cx, cx.typeck_results(), start)
             {
-                container_path.res == path.res
+                start_const == min_const
             } else {
                 false
             }
-        })
+        });
+        let end_is_none_or_max = end.map_or(true, |end| {
+            match limits {
+                RangeLimits::Closed => {
+                    if let rustc_ty::Adt(_, subst) = ty.kind()
+                        && let bnd_ty = subst.type_at(0)
+                        && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
+                        && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
+                        && let max_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                        && let Some(max_const) = miri_to_const(cx.tcx, max_const_kind)
+                        && let Some((end_const, _)) = constant(cx, cx.typeck_results(), end)
+                    {
+                        end_const == max_const
+                    } else {
+                        false
+                    }
+                },
+                RangeLimits::HalfOpen => {
+                    if let Some(container_path) = container_path
+                        && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
+                        && name.ident.name == sym::len
+                        && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
+                    {
+                        container_path.res == path.res
+                    } else {
+                        false
+                    }
+                },
+            }
+        });
+        return start_is_none_or_min && end_is_none_or_max;
+    }
+    false
 }
 
 /// Checks whether the given expression is a constant integer of the given value.
