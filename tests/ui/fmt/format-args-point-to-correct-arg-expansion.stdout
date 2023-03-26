@@ -1,0 +1,14 @@
+#![feature(prelude_import)]
+#![no_std]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+// compile-flags: -Z unpretty=expanded
+// check-pass
+struct X;
+
+fn main() {
+    let x = X;
+    { ::std::io::_print(format_args!("test: {0} {1:?}\n", x, x)); };
+}

@@ -130,7 +130,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                     .emit();
                     continue;
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
+                args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr }, None);
             }
             _ => {
                 let expr = p.parse_expr()?;
@@ -150,7 +150,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                     }
                     err.emit();
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
+                args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr }, None);
             }
         }
     }
@@ -283,7 +283,8 @@ fn make_format_args(
     let mut lookup_arg = |arg: ArgRef<'_>,
                           span: Option<Span>,
                           used_as: PositionUsedAs,
-                          kind: FormatArgPositionKind|
+                          kind: FormatArgPositionKind,
+                          fmt_trait: Option<FormatTrait>|
      -> FormatArgPosition {
         let index = match arg {
             Index(index) => {
@@ -309,6 +310,9 @@ fn make_format_args(
                         used[index] = true;
                     }
                     Ok(index)
+                } else if let Some(tr) = fmt_trait
+                    && let Some((index, _)) = args.by_implicit_arg(name, tr) {
+                    Ok(index)
                 } else {
                     // Name not found in `args`, so we add it as an implicitly captured argument.
                     let span = span.unwrap_or(fmt_span);
@@ -324,7 +328,7 @@ fn make_format_args(
                             .emit();
                         DummyResult::raw_expr(span, true)
                     };
-                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
+                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }, fmt_trait))
                 }
             }
         };
@@ -350,33 +354,6 @@ fn make_format_args(
                 placeholder_index += 1;
 
                 let position_span = to_span(position_span);
-                let argument = match position {
-                    parse::ArgumentImplicitlyIs(i) => lookup_arg(
-                        Index(i),
-                        position_span,
-                        Placeholder(span),
-                        FormatArgPositionKind::Implicit,
-                    ),
-                    parse::ArgumentIs(i) => lookup_arg(
-                        Index(i),
-                        position_span,
-                        Placeholder(span),
-                        FormatArgPositionKind::Number,
-                    ),
-                    parse::ArgumentNamed(name) => lookup_arg(
-                        Name(name, position_span),
-                        position_span,
-                        Placeholder(span),
-                        FormatArgPositionKind::Named,
-                    ),
-                };
-
-                let alignment = match format.align {
-                    parse::AlignUnknown => None,
-                    parse::AlignLeft => Some(FormatAlignment::Left),
-                    parse::AlignRight => Some(FormatAlignment::Right),
-                    parse::AlignCenter => Some(FormatAlignment::Center),
-                };
 
                 let format_trait = match format.ty {
                     "" => FormatTrait::Display,
@@ -394,6 +371,37 @@ fn make_format_args(
                     }
                 };
 
+                let argument = match position {
+                    parse::ArgumentImplicitlyIs(i) => lookup_arg(
+                        Index(i),
+                        position_span,
+                        Placeholder(span),
+                        FormatArgPositionKind::Implicit,
+                        Some(format_trait),
+                    ),
+                    parse::ArgumentIs(i) => lookup_arg(
+                        Index(i),
+                        position_span,
+                        Placeholder(span),
+                        FormatArgPositionKind::Number,
+                        Some(format_trait),
+                    ),
+                    parse::ArgumentNamed(name) => lookup_arg(
+                        Name(name, position_span),
+                        position_span,
+                        Placeholder(span),
+                        FormatArgPositionKind::Named,
+                        Some(format_trait),
+                    ),
+                };
+
+                let alignment = match format.align {
+                    parse::AlignUnknown => None,
+                    parse::AlignLeft => Some(FormatAlignment::Left),
+                    parse::AlignRight => Some(FormatAlignment::Right),
+                    parse::AlignCenter => Some(FormatAlignment::Center),
+                };
+
                 let precision_span = format.precision_span.and_then(to_span);
                 let precision = match format.precision {
                     parse::CountIs(n) => Some(FormatCount::Literal(n)),
@@ -402,18 +410,21 @@ fn make_format_args(
                         precision_span,
                         Precision,
                         FormatArgPositionKind::Named,
+                        None,
                     ))),
                     parse::CountIsParam(i) => Some(FormatCount::Argument(lookup_arg(
                         Index(i),
                         precision_span,
                         Precision,
                         FormatArgPositionKind::Number,
+                        None,
                     ))),
                     parse::CountIsStar(i) => Some(FormatCount::Argument(lookup_arg(
                         Index(i),
                         precision_span,
                         Precision,
                         FormatArgPositionKind::Implicit,
+                        None,
                     ))),
                     parse::CountImplied => None,
                 };
@@ -426,12 +437,14 @@ fn make_format_args(
                         width_span,
                         Width,
                         FormatArgPositionKind::Named,
+                        None,
                     ))),
                     parse::CountIsParam(i) => Some(FormatCount::Argument(lookup_arg(
                         Index(i),
                         width_span,
                         Width,
                         FormatArgPositionKind::Number,
+                        None,
                     ))),
                     parse::CountIsStar(_) => unreachable!(),
                     parse::CountImplied => None,

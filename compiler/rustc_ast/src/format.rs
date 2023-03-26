@@ -65,6 +65,7 @@ pub struct FormatArguments {
     num_unnamed_args: usize,
     num_explicit_args: usize,
     names: FxHashMap<Symbol, usize>,
+    implicit_args: FxHashMap<(Symbol, FormatTrait), usize>,
 }
 
 // FIXME: Rustdoc has trouble proving Send/Sync for this. See #106930.
@@ -78,20 +79,34 @@ impl FormatArguments {
         Self {
             arguments: Vec::new(),
             names: FxHashMap::default(),
+            implicit_args: FxHashMap::default(),
             num_unnamed_args: 0,
             num_explicit_args: 0,
         }
     }
 
-    pub fn add(&mut self, arg: FormatArgument) -> usize {
+    pub fn add(
+        &mut self,
+        arg: FormatArgument,
+        implicit_arg_format_trait: Option<FormatTrait>,
+    ) -> usize {
         let index = self.arguments.len();
-        if let Some(name) = arg.kind.ident() {
-            self.names.insert(name.name, index);
-        } else if self.names.is_empty() {
-            // Only count the unnamed args before the first named arg.
-            // (Any later ones are errors.)
-            self.num_unnamed_args += 1;
+
+        match (arg.kind.ident(), implicit_arg_format_trait) {
+            (Some(ident), Some(format_trait)) => {
+                self.implicit_args.insert((ident.name, format_trait), index);
+            }
+            (Some(ident), None) => {
+                self.names.insert(ident.name, index);
+            }
+            _ if self.names.is_empty() => {
+                // Only count the unnamed args before the first named arg.
+                // (Any later ones are errors.)
+                self.num_unnamed_args += 1;
+            }
+            _ => {}
         }
+
         if !matches!(arg.kind, FormatArgumentKind::Captured(..)) {
             // This is an explicit argument.
             // Make sure that all arguments so far are explcit.
@@ -108,6 +123,15 @@ impl FormatArguments {
 
     pub fn by_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
         let i = *self.names.get(&name)?;
+        Some((i, &self.arguments[i]))
+    }
+
+    pub fn by_implicit_arg(
+        &self,
+        name: Symbol,
+        format_trait: FormatTrait,
+    ) -> Option<(usize, &FormatArgument)> {
+        let i = *self.implicit_args.get(&(name, format_trait))?;
         Some((i, &self.arguments[i]))
     }
 

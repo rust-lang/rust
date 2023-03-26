@@ -1,0 +1,17 @@
+error[E0277]: `X` doesn't implement `Debug`
+  --> $DIR/format-args-point-to-correct-arg.rs:11:26
+   |
+LL |     println!("test: {x} {x:?}");
+   |                          ^ `X` cannot be formatted using `{:?}`
+   |
+   = help: the trait `Debug` is not implemented for `X`
+   = note: add `#[derive(Debug)]` to `X` or manually `impl Debug for X`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `X` with `#[derive(Debug)]`
+   |
+LL | #[derive(Debug)]
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
