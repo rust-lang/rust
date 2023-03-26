@@ -4,16 +4,16 @@ use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::ops::RangeBounds;
-use std::slice;
 
+use crate::bit_set::dense::DenseBitSet;
 use crate::bit_set::{
-    bit_relations_inherent_impls, inclusive_start_end, sequential_update, BitRelations, Chunk,
-    ChunkedBitSet, GrowableBitSet, SparseBitSet, CHUNK_WORDS,
+    bit_relations_inherent_impls, inclusive_start_end, sequential_update, BitIter, BitRelations,
+    Chunk, ChunkedBitSet, GrowableBitSet, SparseBitSet, CHUNK_WORDS,
 };
 use crate::vec::Idx;
 
-type Word = u8; // lmao
-const WORD_BYTES: usize = 1;
+type Word = u8;
+const WORD_BYTES: usize = std::mem::size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
 /// A fixed-size bitset type with a dense representation.
@@ -33,99 +33,125 @@ pub struct BitSet<T> {
     marker: PhantomData<T>,
 }
 
-const INLINE_BITSET_BYTES: usize = 30;
-const INLINE_BITSET_BITS: usize = INLINE_BITSET_BYTES * 8;
-
 #[derive(Eq, PartialEq, Hash, Encodable, Decodable, Clone)]
 enum BitSetImpl {
-    Inline { domain_size: u8, words: [Word; INLINE_BITSET_BYTES] },
-    Heap { domain_size: usize, words: Box<[Word]> },
+    Inline(DenseBitSet),
+    Heap { domain_size: usize, wide_words: Box<[u64]> },
 }
+
+fn to_u8s(s: &[u64]) -> &[u8] {
+    unsafe { std::slice::from_raw_parts(s.as_ptr().cast(), s.len() * 8) }
+}
+
+fn to_u8s_mut(s: &mut [u64]) -> &mut [u8] {
+    unsafe { std::slice::from_raw_parts_mut(s.as_mut_ptr().cast(), s.len() * 8) }
+}
+
+const INLINE_BITSET_BYTES: usize = 31;
+const INLINE_BITSET_BITS: usize = INLINE_BITSET_BYTES * 8;
 
 impl<T: Idx> BitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let inner = if domain_size <= INLINE_BITSET_BITS {
-            BitSetImpl::Inline { domain_size: domain_size as u8, words: [0; INLINE_BITSET_BYTES] }
+            BitSetImpl::Inline(DenseBitSet::new_empty(domain_size))
         } else {
-            let num_words = num_words(domain_size);
-            BitSetImpl::Heap { domain_size, words: vec![0; num_words].into_boxed_slice() }
+            let num_words = num_words::<u64>(domain_size);
+            BitSetImpl::Heap { domain_size, wide_words: vec![0; num_words].into_boxed_slice() }
         };
-        let result = BitSet { inner, marker: PhantomData };
-        result
+        let this = BitSet { inner, marker: PhantomData };
+        debug_assert_eq!(domain_size, this.domain_size());
+        debug_assert_eq!(0, this.count());
+        debug_assert_eq!(0, this.iter().count());
+        this
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
-        let num_words = num_words(domain_size);
-        let inner = if domain_size <= INLINE_BITSET_BITS {
-            let mut words = [0; INLINE_BITSET_BYTES];
-            for i in 0..num_words {
-                words[i] = !0;
+        let this = if domain_size <= INLINE_BITSET_BITS {
+            let mut this = BitSet::new_empty(domain_size);
+            for i in 0..domain_size {
+                this.insert(T::new(i));
             }
-            BitSetImpl::Inline { domain_size: domain_size as u8, words }
+            this
         } else {
-            BitSetImpl::Heap { domain_size, words: vec![!0; num_words].into_boxed_slice() }
+            let num_words = num_words::<u64>(domain_size);
+            let mut this = BitSet {
+                inner: BitSetImpl::Heap {
+                    domain_size,
+                    wide_words: vec![!0; num_words].into_boxed_slice(),
+                },
+                marker: PhantomData,
+            };
+            this.clear_excess_bits();
+            this
         };
-        let mut result = BitSet { inner, marker: PhantomData };
-        result.clear_excess_bits();
-        result
+        debug_assert_eq!(domain_size, this.domain_size());
+        debug_assert_eq!(domain_size, this.count());
+        debug_assert_eq!(domain_size, this.iter().count());
+        this
     }
 
     /// Gets the domain size.
     #[inline]
     pub fn domain_size(&self) -> usize {
         match &self.inner {
-            BitSetImpl::Inline { domain_size, .. } => *domain_size as usize,
+            BitSetImpl::Inline(inline) => inline.domain_size(),
             BitSetImpl::Heap { domain_size, .. } => *domain_size,
         }
     }
 
     #[inline]
     fn words_mut(&mut self) -> &mut [Word] {
-        let used_words = num_words(self.domain_size());
         match &mut self.inner {
-            BitSetImpl::Inline { words, .. } => &mut words[..used_words],
-            BitSetImpl::Heap { words, .. } => &mut words[..used_words],
+            BitSetImpl::Inline(inline) => inline.words_mut(),
+            BitSetImpl::Heap { wide_words, domain_size } => {
+                let words = to_u8s_mut(wide_words);
+                let used_words = num_words::<u8>(*domain_size);
+                &mut words[..used_words]
+            }
         }
     }
 
     #[inline]
     fn raw_parts_mut(&mut self) -> (&mut [Word], usize) {
         match &mut self.inner {
-            BitSetImpl::Inline { domain_size, words } => (&mut words[..], *domain_size as usize),
-            BitSetImpl::Heap { domain_size, words } => (&mut words[..], *domain_size),
+            BitSetImpl::Inline(inline) => inline.raw_parts_mut(),
+            BitSetImpl::Heap { domain_size, wide_words } => (to_u8s_mut(wide_words), *domain_size),
         }
     }
 
     #[inline]
     fn words(&self) -> &[Word] {
-        let used_words = num_words(self.domain_size());
         match &self.inner {
-            BitSetImpl::Inline { words, .. } => &words[..used_words],
-            BitSetImpl::Heap { words, .. } => &words[..used_words],
+            BitSetImpl::Inline(inline) => inline.words(),
+            BitSetImpl::Heap { wide_words, domain_size } => {
+                let words = to_u8s(wide_words);
+                let used_words = num_words::<u8>(*domain_size);
+                &words[..used_words]
+            }
         }
     }
 
     #[inline]
     fn raw_parts(&self) -> (&[Word], usize) {
         match &self.inner {
-            BitSetImpl::Inline { domain_size, words } => (&words[..], *domain_size as usize),
-            BitSetImpl::Heap { domain_size, words } => (&words[..], *domain_size),
+            BitSetImpl::Inline(inline) => inline.raw_parts(),
+            BitSetImpl::Heap { domain_size, wide_words } => (to_u8s(&wide_words[..]), *domain_size),
         }
     }
 
     #[inline]
     pub fn words_wide(&self) -> impl Iterator<Item = u64> + '_ {
-        self.words().chunks(8).map(|chunk| {
-            let mut bytes = [0u8; 8];
-            for (i, b) in chunk.iter().enumerate() {
-                bytes[i] = *b;
+        match &self.inner {
+            BitSetImpl::Inline(inline) => EitherIter::Left(inline.iter()),
+            BitSetImpl::Heap { wide_words, domain_size } => {
+                let used_words = num_words::<u64>(*domain_size);
+                EitherIter::Right(wide_words[..used_words].iter().copied())
             }
-            u64::from_ne_bytes(bytes)
-        })
+        }
     }
 
     /// Clear all elements.
@@ -136,7 +162,27 @@ impl<T: Idx> BitSet<T> {
 
     /// Clear excess bits in the final word.
     fn clear_excess_bits(&mut self) {
-        clear_excess_bits_in_final_word(self.domain_size(), self.words_mut());
+        let domain_size = self.domain_size();
+        match &mut self.inner {
+            BitSetImpl::Inline(inline) => {
+                let words = inline.words_mut();
+                let word_bits = 8;
+                let num_bits_in_final_word = domain_size % word_bits;
+                if num_bits_in_final_word > 0 {
+                    let mask = (1 << num_bits_in_final_word) - 1;
+                    words[words.len() - 1] &= mask;
+                }
+            }
+            BitSetImpl::Heap { wide_words, .. } => {
+                let words = &mut wide_words[..];
+                let word_bits = 64;
+                let num_bits_in_final_word = domain_size % word_bits;
+                if num_bits_in_final_word > 0 {
+                    let mask = (1 << num_bits_in_final_word) - 1;
+                    words[words.len() - 1] &= mask;
+                }
+            }
+        }
     }
 
     /// Count the number of set bits in the set.
@@ -227,8 +273,8 @@ impl<T: Idx> BitSet<T> {
 
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
-    pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter::new(self.words())
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        BitIter::new(self.words_wide())
     }
 
     /*
@@ -460,63 +506,31 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for BitSet<T> {
     }
 }
 
-pub struct BitIter<'a, T: Idx> {
-    /// A copy of the current word, but with any already-visited bits cleared.
-    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
-    /// is reduced to 0, we move onto the next word.
-    word: Word,
-
-    /// The offset (measured in bits) of the current word.
-    offset: usize,
-
-    /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
-
-    marker: PhantomData<T>,
+pub enum EitherIter<L, R> {
+    Left(L),
+    Right(R),
 }
 
-impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
-        // We initialize `word` and `offset` to degenerate values. On the first
-        // call to `next()` we will fall through to getting the first word from
-        // `iter`, which sets `word` to the first word (if there is one) and
-        // `offset` to 0. Doing it this way saves us from having to maintain
-        // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, T: Idx> Iterator for BitIter<'a, T> {
+impl<T, L, R> Iterator for EitherIter<L, R>
+where
+    L: Iterator<Item = T>,
+    R: Iterator<Item = T>,
+{
     type Item = T;
-    fn next(&mut self) -> Option<T> {
-        loop {
-            if self.word != 0 {
-                // Get the position of the next set bit in the current word,
-                // then clear the bit.
-                let bit_pos = self.word.trailing_zeros() as usize;
-                let bit = 1 << bit_pos;
-                self.word ^= bit;
-                return Some(T::new(bit_pos + self.offset));
-            }
 
-            // Move onto the next word. `wrapping_add()` is needed to handle
-            // the degenerate initial value given to `offset` in `new()`.
-            let word = self.iter.next()?;
-            self.word = *word;
-            self.offset = self.offset.wrapping_add(WORD_BITS);
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        match self {
+            EitherIter::Left(left) => left.next(),
+            EitherIter::Right(right) => right.next(),
         }
     }
 }
 
 #[inline]
-fn num_words<T: Idx>(domain_size: T) -> usize {
-    (domain_size.index() + WORD_BITS - 1) / WORD_BITS
+fn num_words<T>(domain_size: usize) -> usize {
+    let word_bits = std::mem::size_of::<T>() * 8;
+    (domain_size.index() + word_bits - 1) / word_bits
 }
 
 #[inline]
@@ -525,14 +539,6 @@ fn word_index_and_mask<T: Idx>(elem: T) -> (usize, Word) {
     let word_index = elem / WORD_BITS;
     let mask = 1 << (elem % WORD_BITS);
     (word_index, mask)
-}
-
-fn clear_excess_bits_in_final_word(domain_size: usize, words: &mut [Word]) {
-    let num_bits_in_final_word = domain_size % WORD_BITS;
-    if num_bits_in_final_word > 0 {
-        let mask = (1 << num_bits_in_final_word) - 1;
-        words[words.len() - 1] &= mask;
-    }
 }
 
 #[inline]

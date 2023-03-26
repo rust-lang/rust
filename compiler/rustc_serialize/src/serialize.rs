@@ -170,6 +170,18 @@ impl<D: Decoder> Decodable<D> for ! {
     }
 }
 
+impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU8 {
+    fn encode(&self, s: &mut S) {
+        s.emit_u8(self.get());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU8 {
+    fn decode(d: &mut D) -> Self {
+        ::std::num::NonZeroU8::new(d.read_u8()).unwrap()
+    }
+}
+
 impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
     fn encode(&self, s: &mut S) {
         s.emit_u32(self.get());
@@ -283,6 +295,18 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
         let len = d.read_usize();
         assert!(len == N);
         let mut v = [0u8; N];
+        for i in 0..len {
+            v[i] = Decodable::decode(d);
+        }
+        v
+    }
+}
+
+impl<D: Decoder, const N: usize> Decodable<D> for [u64; N] {
+    fn decode(d: &mut D) -> [u64; N] {
+        let len = d.read_usize();
+        assert!(len == N);
+        let mut v = [0u64; N];
         for i in 0..len {
             v[i] = Decodable::decode(d);
         }

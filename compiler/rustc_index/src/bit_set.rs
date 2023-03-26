@@ -16,6 +16,7 @@ use Chunk::*;
 #[cfg(test)]
 mod tests;
 
+mod dense;
 mod fixed;
 pub use fixed::BitSet;
 
@@ -478,6 +479,8 @@ impl<'a, T: Idx> ChunkedBitIter<'a, T> {
 
 impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
     type Item = T;
+
+    #[inline]
     fn next(&mut self) -> Option<T> {
         while self.index < self.bitset.domain_size() {
             let elem = T::new(self.index);
@@ -531,7 +534,7 @@ impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
                     }
                 }
                 Chunk::Mixed(_, _, words) => {
-                    init = BitIter::new(&**words).fold(init, |val, mut item: T| {
+                    init = BitIter::new(words.iter().copied()).fold(init, |val, mut item: T| {
                         item.increment_by(base);
                         f(val, item)
                     });
@@ -769,7 +772,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
     }
 }
 
-pub struct BitIter<'a, T: Idx> {
+pub struct BitIter<T: Idx, I> {
     /// A copy of the current word, but with any already-visited bits cleared.
     /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
     /// is reduced to 0, we move onto the next word.
@@ -779,30 +782,30 @@ pub struct BitIter<'a, T: Idx> {
     offset: usize,
 
     /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
+    iter: I,
 
     marker: PhantomData<T>,
 }
 
-impl<'a, T: Idx> BitIter<'a, T> {
+impl<T: Idx, I> BitIter<T, I> {
     #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+    fn new(words: I) -> BitIter<T, I> {
         // We initialize `word` and `offset` to degenerate values. On the first
         // call to `next()` we will fall through to getting the first word from
         // `iter`, which sets `word` to the first word (if there is one) and
         // `offset` to 0. Doing it this way saves us from having to maintain
         // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
+        BitIter { word: 0, offset: usize::MAX - (WORD_BITS - 1), iter: words, marker: PhantomData }
     }
 }
 
-impl<'a, T: Idx> Iterator for BitIter<'a, T> {
+impl<T: Idx, I> Iterator for BitIter<T, I>
+where
+    I: Iterator<Item = Word>,
+{
     type Item = T;
+
+    #[inline]
     fn next(&mut self) -> Option<T> {
         loop {
             if self.word != 0 {
@@ -816,8 +819,7 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
 
             // Move onto the next word. `wrapping_add()` is needed to handle
             // the degenerate initial value given to `offset` in `new()`.
-            let word = self.iter.next()?;
-            self.word = *word;
+            self.word = self.iter.next()?;
             self.offset = self.offset.wrapping_add(WORD_BITS);
         }
     }
@@ -1114,7 +1116,7 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
-    pub fn iter(&self) -> HybridIter<'_, T> {
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         match self {
             HybridBitSet::Sparse(sparse) => HybridIter::Sparse(sparse.iter()),
             HybridBitSet::Dense(dense) => HybridIter::Dense(dense.iter()),
@@ -1124,14 +1126,18 @@ impl<T: Idx> HybridBitSet<T> {
     bit_relations_inherent_impls! {}
 }
 
-pub enum HybridIter<'a, T: Idx> {
+pub enum HybridIter<'a, T: Idx, I> {
     Sparse(slice::Iter<'a, T>),
-    Dense(fixed::BitIter<'a, T>),
+    Dense(I),
 }
 
-impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
+impl<'a, T: Idx, I> Iterator for HybridIter<'a, T, I>
+where
+    I: Iterator<Item = T>,
+{
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         match self {
             HybridIter::Sparse(sparse) => sparse.next().copied(),
@@ -1218,8 +1224,8 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter::new(&self.words)
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        BitIter::new(self.words.iter().copied())
     }
 
     #[inline]
@@ -1397,10 +1403,10 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter(&self, row: R) -> BitIter<'_, C> {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
-        BitIter::new(&self.words[start..end])
+        BitIter::new(self.words[start..end].iter().copied())
     }
 
     /// Returns the number of elements in `row`.

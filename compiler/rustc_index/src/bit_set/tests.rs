@@ -549,7 +549,7 @@ fn matrix_iter() {
 
     if let Some(i) = matrix.iter(7).next() {
         panic!("expected no elements in row, but contains element {:?}", i);
-    }
+    };
 }
 
 #[test]
