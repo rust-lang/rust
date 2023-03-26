@@ -94,6 +94,9 @@ pub enum TokenKind {
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
 
+    /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
+    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
+
     /// `'a`
     Lifetime { starts_with_number: bool, contains_emoji: bool },
 
@@ -201,8 +204,6 @@ pub enum LiteralKind {
     /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
-    /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
-    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -882,20 +883,17 @@ impl<'a> Lexer<'a> {
         while let Some(c) = self.cursor.bump() {
             match c {
                 '"' => {
-                    let kind = FStr { start, end: Some(FStrDelimiter::Quote) };
-                    let suffix_start = self.cursor.pos_within_token();
                     self.eat_literal_suffix();
-                    return Literal { kind, suffix_start };
+                    return FStr { start, end: Some(FStrDelimiter::Quote) };
                 }
                 '{' if self.cursor.first() == '{' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
                 }
                 '{' => {
-                    let kind = FStr { start, end: Some(FStrDelimiter::Brace) };
                     self.brace_f_string_triggers.push(self.brace_count);
                     self.brace_count += 1;
-                    return Literal { kind, suffix_start: self.cursor.pos_within_token() };
+                    return FStr { start, end: Some(FStrDelimiter::Brace) };
                 }
                 '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
                     // Bump again to skip escaped character.
@@ -905,8 +903,7 @@ impl<'a> Lexer<'a> {
             }
         }
         // End of file reached.
-        let kind = FStr { start, end: None };
-        Literal { kind, suffix_start: self.cursor.pos_within_token() }
+        FStr { start, end: None }
     }
 
     fn eat_decimal_digits(&mut self) -> bool {

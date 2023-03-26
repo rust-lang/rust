@@ -210,9 +210,6 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
-        token::FStr(start, end) => {
-            format!("{}{}{}", start.display(true), symbol, end.display(false))
-        }
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
     };
 
@@ -788,6 +785,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Literals */
             token::Literal(lit) => literal_to_string(lit).into(),
+            token::FStr(start, symbol, end) => format!("{}{}{}", start.display(true), symbol, end.display(false)).into(),
 
             /* Name components */
             token::Ident(s, is_raw) => {

@@ -158,7 +158,6 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
-            token::FStr(..) => return Err(LitError::NotLiteral),
             token::Err => LitKind::Err,
         })
     }

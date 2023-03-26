@@ -8,7 +8,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use ast::{Path, PathSegment};
+use ast::{Path, PathSegment, FStrSegment, FStr};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1440,7 +1440,7 @@ impl<'a> Parser<'a> {
                 self.maybe_recover_from_bad_qpath(expr)
             }
             None => {
-                if let Some(expr) = self.parse_opt_f_str_expr(attrs)? {
+                if let Some(expr) = self.parse_opt_f_str_expr()? {
                     Ok(expr)
                 } else {
                     self.try_macro_suggestion()
@@ -1449,23 +1449,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn unescape_f_str(&mut self, lit: token::Lit, span: Span) -> Symbol {
-        let s = lit.symbol.as_str();
+    fn unescape_f_str(&mut self, symbol: Symbol) -> Symbol {
+        let s = symbol.as_str();
         if s.contains(&['\\', '\r', '{', '}'][..]) {
             let mut buf = String::with_capacity(s.len());
-            let mut error = Ok(());
             unescape::unescape_literal(&s, unescape::Mode::FStr, &mut |_, unescaped_char| {
                 match unescaped_char {
                     Ok(c) => buf.push(c),
-                    Err(_) => error = Err(LitError::LexerError),
+                    Err(_) => { }, // TODO: CHECK! Already reported by lexer, no need to report error here
                 }
             });
-            if let Err(error) = error {
-                self.report_lit_error(error, lit, span);
-            }
             Symbol::intern(&buf)
         } else {
-            lit.symbol
+            symbol
         }
     }
 
@@ -1491,7 +1487,7 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    pub fn error_expected_f_string(&self) -> DiagnosticBuilder<'a> {
+    pub fn error_expected_f_string(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         // TODO: f-string name
         // TODO: Also, side-note - should f-string be capitalised when at the beginning of a sentence?
         //       (Not in error messages, but in comments) Like this: "F-strings are..."
@@ -1505,53 +1501,49 @@ impl<'a> Parser<'a> {
         expected_start_delimiter: token::FStrDelimiter,
     ) -> Option<(Symbol, token::FStrDelimiter)> {
         // TODO: Change span to be whole literal?
-        if let TokenKind::Literal(lit) = self.token.kind {
-            if let token::FStr(start_delimiter, end_delimiter) = lit.kind {
-                if start_delimiter != expected_start_delimiter {
-                    self.error_expected_f_string_start_delimiter(
-                        expected_start_delimiter,
-                        start_delimiter,
-                    );
-                }
-                let symbol = self.unescape_f_str(lit, self.token.span);
-                self.bump();
-                return Some((symbol, end_delimiter));
+        if let TokenKind::FStr(start_delimiter, symbol, end_delimiter) = self.token.kind {
+            if start_delimiter != expected_start_delimiter {
+                self.error_expected_f_string_start_delimiter(
+                    expected_start_delimiter,
+                    start_delimiter,
+                );
             }
+            let symbol = self.unescape_f_str(symbol);
+            self.bump();
+            return Some((symbol, end_delimiter));
         }
         None
     }
 
-    fn parse_opt_f_str_expr(&mut self, attrs: AttrVec) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let lo = self.token.span;
-        if let TokenKind::Literal(lit) = self.token.kind {
-            if let token::FStr(..) = lit.kind {
-                self.sess.gated_spans.gate(sym::f_strings, self.token.span);
+        if let TokenKind::FStr(..) = self.token.kind {
+            self.sess.gated_spans.gate(sym::f_strings, self.token.span);
 
-                let (symbol, mut end_delimiter) = self
-                    .parse_f_str_segment(token::FStrDelimiter::Quote)
+            let (symbol, mut end_delimiter) = self
+                .parse_f_str_segment(token::FStrDelimiter::Quote)
+                .ok_or_else(|| self.error_expected_f_string())?;
+            let mut segments = vec![FStrSegment::Str(symbol)];
+
+            while end_delimiter == token::FStrDelimiter::Brace {
+                let expr = self.parse_expr()?;
+                segments.push(FStrSegment::Expr(expr));
+
+                let segment = self
+                    .parse_f_str_segment(token::FStrDelimiter::Brace)
                     .ok_or_else(|| self.error_expected_f_string())?;
-                let mut segments = vec![FStrSegment::Str(symbol)];
-
-                while end_delimiter == token::FStrDelimiter::Brace {
-                    let expr = self.parse_expr()?;
-                    segments.push(FStrSegment::Expr(expr));
-
-                    let segment = self
-                        .parse_f_str_segment(token::FStrDelimiter::Brace)
-                        .ok_or_else(|| self.error_expected_f_string())?;
-                    end_delimiter = segment.1;
-                    // TODO: Add span information to `FStrSegment::Str`s?
-                    segments.push(FStrSegment::Str(segment.0));
-                }
-
-                // TODO: Check if attrs should be passed through
-                let expr = self.mk_expr(
-                    lo.to(self.prev_token.span),
-                    ExprKind::FStr(FStr { segments })
-                );
-                // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
-                return Ok(Some(expr));
+                end_delimiter = segment.1;
+                // TODO: Add span information to `FStrSegment::Str`s?
+                segments.push(FStrSegment::Str(segment.0));
             }
+
+            // TODO: Check if attrs should be passed through
+            let expr = self.mk_expr(
+                lo.to(self.prev_token.span),
+                ExprKind::FStr(FStr { segments })
+            );
+            // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
+            return Ok(Some(expr));
         }
         Ok(None)
     }
