@@ -83,30 +83,9 @@ features.](./implementing_new_features.md)
 
 ### Breaking Changes
 
-As mentioned above, Rust has strong backwards-compatibility guarantees. To this
-end, we are reluctant to make breaking changes. However, sometimes they are
-needed to correct compiler bugs (e.g. code that compiled but should not) or
-make progress on some features.
+Breaking changes have a [dedicated section][breaking-changes] in the dev-guide.
 
-Depending on the scale of the breakage, there are a few different actions that
-can be taken.  If the reviewer believes the breakage is very minimal (i.e. very
-unlikely to be actually encountered by users), they may just merge the change.
-More often, they will request a Final Comment Period (FCP), which calls for
-rough consensus among the members of a relevant team. The team members can
-discuss the issue and either accept, reject, or request changes on the PR.
-
-If the scale of breakage is large, a deprecation warning may be needed. This is
-a warning that the compiler will display to users whose code will break in the
-future. After some time, an FCP can be used to move forward with the actual
-breakage.
-
-If the scale of breakage is unknown, a team member or contributor may request a
-[crater] run. This is a bot that will compile all crates.io crates and many
-public github repos with the compiler with your changes. A report will then be
-generated with crates that ceased to compile with or began to compile with your
-changes. Crater runs can take a few days to complete.
-
-[crater]: https://github.com/rust-lang/crater
+[breaking-changes]: ./bug-fix-procedure.md
 
 ### Major Changes
 

@@ -40,7 +40,7 @@
 - [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
-- [Bug Fix Procedure](./bug-fix-procedure.md)
+- [Procedures for Breaking Changes](./bug-fix-procedure.md)
 - [Implementing new features](./implementing_new_features.md)
 - [Stability attributes](./stability.md)
 - [Stabilizing Features](./stabilization_guide.md)

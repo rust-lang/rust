@@ -1,4 +1,4 @@
-# Rustc Bug Fix Procedure
+# Procedures for Breaking Changes
 
 <!-- toc -->
 
@@ -168,6 +168,13 @@ errors are reported: then you know that your new code will only execute when
 there were no errors before.
 
 #### Crater and crates.io
+
+[Crater] is a bot that will compile all crates.io crates and many
+public github repos with the compiler with your changes. A report will then be
+generated with crates that ceased to compile with or began to compile with your
+changes. Crater runs can take a few days to complete.
+
+[Crater]: https://github.com/rust-lang/crater
 
 We should always do a crater run to assess impact. It is polite and considerate
 to at least notify the authors of affected crates the breaking change. If we can
