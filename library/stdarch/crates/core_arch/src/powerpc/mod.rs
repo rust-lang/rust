@@ -1,4 +1,8 @@
 //! PowerPC intrinsics
+
+#[macro_use]
+mod macros;
+
 #[cfg(any(target_feature = "altivec", doc))]
 mod altivec;
 #[cfg(any(target_feature = "altivec", doc))]
