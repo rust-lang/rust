@@ -51,17 +51,13 @@ fn report_atomic_type_validation_error<'tcx>(
     fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
-pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
+pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
     let (element, count) = match layout.abi {
         Abi::Vector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
-    match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
-        // Cranelift currently only implements icmp for 128bit vectors.
-        Some(vector_ty) if vector_ty.bits() == 128 => Some(vector_ty),
-        _ => None,
-    }
+    scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()).unwrap()
 }
 
 fn simd_for_each_lane<'tcx>(
