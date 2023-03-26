@@ -39,7 +39,7 @@ warning: 1 warning emitted
 As a library author, adding the lint `#![deny(missing_docs)]` is a great way to
 ensure the project does not drift away from being documented well, and
 `#![warn(missing_docs)]` is a good way to move towards comprehensive
-documentation.  In addition to docs, `#![deny(missing_doc_code_examples)]`
+documentation.  In addition to docs, `#![deny(rustdoc::missing_doc_code_examples)]`
 ensures each function contains a usage example.  In our example above, the
 warning is resolved by adding crate level documentation.
 
