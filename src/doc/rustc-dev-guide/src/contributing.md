@@ -58,28 +58,8 @@ channels: stable, beta, and nightly.
   channel where unstable, incomplete, or experimental features are usable with
   feature gates.
 
-In order to implement a new feature, usually you will need to go through [the
-RFC process][rfc] to propose a design, have discussions, etc. In some cases,
-small features can be added with only an FCP ([see below][break]). If in doubt, ask the
-compiler, language, or libs team (whichever is most relevant).
-
-[rfc]: https://github.com/rust-lang/rfcs/blob/master/README.md
-
-After a feature is approved to be added, a tracking issue is created on the
-`rust-lang/rust` repo, which tracks the progress towards the implementation of
-the feature, any bugs reported, and eventually stabilization.
-
-The feature then needs to be implemented behind a feature gate, which prevents
-it from being accidentally used.
-
-Finally, somebody may propose stabilizing the feature in an upcoming version of
-Rust. This requires a Final Comment Period ([see below][break]) to get the
-approval of the relevant teams.
-
-After that, the feature gate can be removed and the feature turned on for all users.
-
-For more details on this process, see [this chapter on implementing new
-features.](./implementing_new_features.md)
+See [this chapter on implementing new features](./implementing_new_features.md) for more
+information.
 
 ### Breaking Changes
 
