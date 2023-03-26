@@ -10,7 +10,7 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-rm -r tests/ui/{extern/,unsized-locals/,lto/,linkage*} || true
+rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
