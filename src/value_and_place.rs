@@ -165,6 +165,9 @@ impl<'tcx> CValue<'tcx> {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.abi {
                     Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
+                    Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
+                        .by(u32::try_from(count).unwrap())
+                        .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
                 let mut flags = MemFlags::new();

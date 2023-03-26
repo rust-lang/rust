@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
+#![feature(core_intrinsics, generators, generator_trait, is_sorted, repr_simd)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -153,11 +153,19 @@ fn main() {
 
         enum Never {}
     }
+
+    foo(I64X2(0, 0));
 }
 
 fn panic(_: u128) {
     panic!();
 }
+
+#[repr(simd)]
+struct I64X2(i64, i64);
+
+#[allow(improper_ctypes_definitions)]
+extern "C" fn foo(_a: I64X2) {}
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
