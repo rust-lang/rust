@@ -12,9 +12,7 @@ struct NonMaxU8 {
 
 impl NonMaxU8 {
     fn new(n: u8) -> Option<Self> {
-        Some(Self { repr: 
-            NonZeroU8::new(n.wrapping_add(1))?
-        })
+        Some(Self { repr: NonZeroU8::new(n.wrapping_add(1))? })
     }
     fn get(&self) -> u8 {
         self.repr.get().wrapping_sub(1)
@@ -35,15 +33,11 @@ const INLINE_CAPACITY_BITS: usize = INLINE_CAPACITY_BYTES * 8;
 impl DenseBitSet {
     pub fn new_empty(domain_size: usize) -> Self {
         assert!(domain_size <= INLINE_CAPACITY_BITS);
-        Self {
-            words: [0; 3],
-            tail: [0; 7],
-            domain_size: NonMaxU8::new(domain_size as u8).unwrap(),
-        }
+        Self { words: [0; 3], tail: [0; 7], domain_size: NonMaxU8::new(domain_size as u8).unwrap() }
     }
 
     pub fn domain_size(&self) -> usize {
-        self.domain_size.get() as usize 
+        self.domain_size.get() as usize
     }
 
     pub fn words(&self) -> &[u8] {
@@ -73,10 +67,7 @@ impl DenseBitSet {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
-        DenseBitSetIter {
-            state: 0,
-            set: self,
-        }
+        DenseBitSetIter { state: 0, set: self }
     }
 }
 
