@@ -24,6 +24,18 @@ LL |     drop(s2);
    |          ^^
 
 error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:35:5
+   |
+LL |     drop(s3);
+   |     ^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_forget_copy.rs:35:10
+   |
+LL |     drop(s3);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:36:5
    |
 LL |     drop(s4);
@@ -33,6 +45,18 @@ note: argument has type `SomeStruct`
   --> $DIR/drop_forget_copy.rs:36:10
    |
 LL |     drop(s4);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:37:5
+   |
+LL |     drop(s5);
+   |     ^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_forget_copy.rs:37:10
+   |
+LL |     drop(s5);
    |          ^^
 
 error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
@@ -73,6 +97,30 @@ LL |     forget(s4);
    |            ^^
 
 error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:55:5
+   |
+LL |     drop(a2);
+   |     ^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_forget_copy.rs:55:10
+   |
+LL |     drop(a2);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:57:5
+   |
+LL |     drop(a4);
+   |     ^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_forget_copy.rs:57:10
+   |
+LL |     drop(a4);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:80:13
    |
 LL |             drop(println_and(13)); // Lint, even if we only care about the side-effect, it's already in a block
@@ -108,5 +156,5 @@ note: argument has type `i32`
 LL |         4 => drop(2),                           // Lint, not a fn/method call
    |                   ^
 
-error: aborting due to 9 previous errors
+error: aborting due to 13 previous errors
 

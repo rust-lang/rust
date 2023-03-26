@@ -133,7 +133,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_COPY_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
-    crate::drop_forget_ref::DROP_REF_INFO,
     crate::drop_forget_ref::FORGET_COPY_INFO,
     crate::drop_forget_ref::FORGET_NON_DROP_INFO,
     crate::drop_forget_ref::FORGET_REF_INFO,

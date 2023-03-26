@@ -1,5 +1,5 @@
 #![warn(clippy::drop_copy, clippy::forget_copy)]
-#![allow(clippy::toplevel_ref_arg, clippy::drop_ref, clippy::forget_ref, unused_mut)]
+#![allow(clippy::toplevel_ref_arg, drop_ref, clippy::forget_ref, unused_mut)]
 
 use std::mem::{drop, forget};
 use std::vec::Vec;
