@@ -880,12 +880,11 @@ macro_rules! make_mir_visitor {
             ) {
                 let Constant {
                     span,
-                    user_ty,
+                    user_ty: _, // no visit method for this
                     literal,
                 } = constant;
 
                 self.visit_span($(& $mutability)? *span);
-                drop(user_ty); // no visit method for this
                 match literal {
                     ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),

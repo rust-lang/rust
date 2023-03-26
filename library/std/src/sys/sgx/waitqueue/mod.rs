@@ -207,7 +207,7 @@ impl WaitQueue {
                 let mut entry_guard = entry.lock();
                 let tcs = entry_guard.tcs;
                 entry_guard.wake = true;
-                drop(entry);
+                drop(entry_guard);
                 Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::Single(tcs) })
             } else {
                 Err(guard)

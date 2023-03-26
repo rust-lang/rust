@@ -375,7 +375,9 @@ fn test_scoped_threads_nll() {
     // this is mostly a *compilation test* for this exact function:
     fn foo(x: &u8) {
         thread::scope(|s| {
-            s.spawn(|| drop(x));
+            s.spawn(|| match x {
+                _ => (),
+            });
         });
     }
     // let's also run it for good measure
