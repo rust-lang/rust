@@ -244,6 +244,16 @@ extern "C" {
 
     #[link_name = "llvm.floor.v4f32"]
     fn vfloor(a: vector_float) -> vector_float;
+
+    #[link_name = "llvm.ppc.altivec.vcmpequb.p"]
+    fn vcmpequb_p(cr: i32, a: vector_unsigned_char, b: vector_unsigned_char) -> i32;
+    #[link_name = "llvm.ppc.altivec.vcmpequh.p"]
+    fn vcmpequh_p(cr: i32, a: vector_unsigned_short, b: vector_unsigned_short) -> i32;
+    #[link_name = "llvm.ppc.altivec.vcmpequw.p"]
+    fn vcmpequw_p(cr: i32, a: vector_unsigned_int, b: vector_unsigned_int) -> i32;
+
+    #[link_name = "llvm.ppc.altivec.vcmpeqfp.p"]
+    fn vcmpeqfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
 }
 
 macro_rules! s_t_l {
@@ -351,6 +361,20 @@ mod sealed {
         }
     }
 
+    macro_rules! impl_vec_any_all {
+        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
+            impl_vec_any_all! { [$Trait $m] ($b, $b, $h, $h, $w, $w) }
+        };
+        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+            impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, vector_unsigned_char) -> bool }
+            impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, vector_signed_char) -> bool }
+            impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, vector_unsigned_short) -> bool }
+            impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, vector_signed_short) -> bool }
+            impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, vector_unsigned_int) -> bool }
+            impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, vector_signed_int) -> bool }
+        }
+    }
+
     #[inline(always)]
     unsafe fn load(off: i32, p: *const i8) -> u32x4 {
         let addr = p.offset(off as isize);
@@ -429,6 +453,93 @@ mod sealed {
     impl_vec_cmp! { [VectorCmpEq vec_cmpeq] (vec_vcmpequb, vec_vcmpequh, vec_vcmpequw) }
 
     test_impl! { vec_vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int [vcmpbfp, vcmpbfp] }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequb.))]
+    unsafe fn vcmpequb_all(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpequb_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequb.))]
+    unsafe fn vcmpequb_any(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpequb_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequh.))]
+    unsafe fn vcmpequh_all(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpequh_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequh.))]
+    unsafe fn vcmpequh_any(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpequh_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequw.))]
+    unsafe fn vcmpequw_all(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpequw_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequw.))]
+    unsafe fn vcmpequw_any(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpequw_p(1, a, b) != 0
+    }
+
+    pub trait VectorAllEq<Other> {
+        type Result;
+        unsafe fn vec_all_eq(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAllEq vec_all_eq] (vcmpequb_all, vcmpequh_all, vcmpequw_all) }
+
+    // TODO: vsx encoding
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpeqfp.))]
+    unsafe fn vcmpeqfp_all(a: vector_float, b: vector_float) -> bool {
+        vcmpeqfp_p(2, a, b) != 0
+    }
+
+    impl VectorAllEq<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_all_eq(self, b: vector_float) -> Self::Result {
+            vcmpeqfp_all(self, b)
+        }
+    }
+
+    pub trait VectorAnyEq<Other> {
+        type Result;
+        unsafe fn vec_any_eq(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAnyEq vec_any_eq] (vcmpequb_any, vcmpequh_any, vcmpequw_any) }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpeqfp.))]
+    unsafe fn vcmpeqfp_any(a: vector_float, b: vector_float) -> bool {
+        vcmpeqfp_p(1, a, b) != 0
+    }
+
+    impl VectorAnyEq<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_any_eq(self, b: vector_float) -> Self::Result {
+            vcmpeqfp_any(self, b)
+        }
+    }
 
     test_impl! { vec_vceil(a: vector_float) -> vector_float [vceil, vrfip / xvrspip ] }
 
@@ -1715,6 +1826,26 @@ where
     a.vec_sum4s(b)
 }
 
+/// Vector All Elements Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_all_eq<T, U>(a: T, b: U) -> <T as sealed::VectorAllEq<U>>::Result
+where
+    T: sealed::VectorAllEq<U>,
+{
+    a.vec_all_eq(b)
+}
+
+/// Vector All Elements Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_any_eq<T, U>(a: T, b: U) -> <T as sealed::VectorAnyEq<U>>::Result
+where
+    T: sealed::VectorAnyEq<U>,
+{
+    a.vec_any_eq(b)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -1784,8 +1915,18 @@ mod tests {
                 let r : $ty_out = transmute($fn(a, b));
                 assert_eq!(d, r);
             }
+         };
+         { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], $d:expr } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
+
+                let r : $ty_out = transmute($fn(a, b));
+                assert_eq!($d, r);
+            }
          }
-    }
+   }
 
     macro_rules! test_vec_1 {
         { $name: ident, $fn:ident, f32x4, [$($a:expr),+], ~[$($d:expr),+] } => {
@@ -1925,6 +2066,150 @@ mod tests {
         [1, 255, 0, 0],
         [0, 255,  0, 1],
         [false, true, true, false]
+    }
+
+    test_vec_2! { test_vec_all_eq_i8_false, vec_all_eq, i8x16 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_u8_false, vec_all_eq, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_i16_false, vec_all_eq, i16x8 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_u16_false, vec_all_eq, u16x8 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_i32_false, vec_all_eq, i32x4 -> bool,
+        [1, -1, 0, 0],
+        [0, -1, 0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_u32_false, vec_all_eq, u32x4 -> bool,
+        [1, 255, 0, 0],
+        [0, 255,  0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_eq_i8_true, vec_all_eq, i8x16 -> bool,
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_eq_u8_true, vec_all_eq, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_eq_i16_true, vec_all_eq, i16x8 -> bool,
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_eq_u16_true, vec_all_eq, u16x8 -> bool,
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_eq_i32_true, vec_all_eq, i32x4 -> bool,
+        [1, -1, 0, 1],
+        [1, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_eq_u32_true, vec_all_eq, u32x4 -> bool,
+        [1, 255, 0, 1],
+        [1, 255, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_i8_false, vec_any_eq, i8x16 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_u8_false, vec_any_eq, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_i16_false, vec_any_eq, i16x8 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_u16_false, vec_any_eq, u16x8 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_i32_false, vec_any_eq, i32x4 -> bool,
+        [1, -1, 0, 0],
+        [0, -2, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_u32_false, vec_any_eq, u32x4 -> bool,
+        [1, 2, 1, 0],
+        [0, 255,  0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_eq_i8_true, vec_any_eq, i8x16 -> bool,
+        [1, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_u8_true, vec_any_eq, u8x16 -> bool,
+        [0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_i16_true, vec_any_eq, i16x8 -> bool,
+        [0, -1, 1, 0, 0, 0, 0, 0],
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_u16_true, vec_any_eq, u16x8 -> bool,
+        [0, 255, 1, 0, 0, 0, 0, 0],
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_i32_true, vec_any_eq, i32x4 -> bool,
+        [0, -1, 0, 1],
+        [1, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_eq_u32_true, vec_any_eq, u32x4 -> bool,
+        [0, 255, 0, 1],
+        [1, 255, 0, 1],
+        true
     }
 
     #[simd_test(enable = "altivec")]
