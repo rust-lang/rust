@@ -137,11 +137,51 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
                     hir::ExprKind::Lit(respan(self.lower_span(e.span), lit_kind))
                 }
+                ExprKind::FStr(f_str) => {
+                    // // Generate:
+                    // //     <core::fmt::Arguments>::new_const(lit_pieces)
+                    // let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+                    //     macsp,
+                    //     hir::LangItem::FormatArguments,
+                    //     sym::new_const,
+                    // ));
+                    // let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
+                    // return hir::ExprKind::Call(new, new_args);
+                    let mut arguments = FormatArguments::new();
+                    let mut template = Vec::new();
+                    for segment in &f_str.segments {
+                        match segment {
+                            FStringPiece::Literal(symbol) => template.push(FormatArgsPiece::Literal(*symbol)),
+                            FStringPiece::Expr(expr) => {
+                                template.push(FormatArgsPiece::Placeholder(FormatPlaceholder {
+                                    argument: FormatArgPosition {
+                                        index: Ok(arguments.all_args().len()),
+                                        kind: FormatArgPositionKind::Implicit,
+                                        span: None,
+                                    },
+                                    span: Some(expr.span), // TODO: Check
+                                    format_trait: FormatTrait::Display, // TODO: Implement format string options
+                                    format_options: FormatOptions::default(),
+                                }));
+                                arguments.add(FormatArgument {
+                                    kind: FormatArgumentKind::Normal,
+                                    expr: expr.clone(), // TODO: Do this without cloning
+                                });
+                            },
+                        }
+                    }
+                    let fmt = FormatArgs {
+                        span: e.span,
+                        template,
+                        arguments,
+                    };
+                    self.lower_format_args(e.span, &fmt)
+                    // todo!("todo: {:#?}", f_str);
+                }
                 ExprKind::IncludedBytes(bytes) => hir::ExprKind::Lit(respan(
                     self.lower_span(e.span),
                     LitKind::ByteStr(bytes.clone(), StrStyle::Cooked),
                 )),
-                ExprKind::FStr(f_str) => todo!("todo: {:#?}", f_str),
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =

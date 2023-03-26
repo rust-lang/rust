@@ -1350,8 +1350,8 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::FStr(fstr) => {
             for segment in &mut fstr.segments {
                 match segment {
-                    FStrSegment::Expr(ex) => vis.visit_expr(ex),
-                    FStrSegment::Str(_) => {}
+                    FStringPiece::Expr(ex) => vis.visit_expr(ex),
+                    FStringPiece::Literal(_) => {}
                 }
             }
         }

@@ -1392,7 +1392,7 @@ pub enum ExprKind {
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// An f-string (e.g. `f"foo == {1 + 1}"`)
-    FStr(FStr),
+    FStr(FString),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
@@ -1882,15 +1882,16 @@ impl LitKind {
 
 /// Segment of an f-string.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum FStrSegment {
-    Str(Symbol),
+pub enum FStringPiece {
+    Literal(Symbol),
     Expr(P<Expr>),
 }
 
-/// F-string. TODO.
+/// f-string.
+// TODO: Better to be stored as a tuple of interleaved Vecs?
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct FStr {
-    pub segments: Vec<FStrSegment>,
+pub struct FString {
+    pub segments: Vec<FStringPiece>,
 }
 
 // N.B., If you change this, you'll probably want to change the corresponding

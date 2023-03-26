@@ -983,12 +983,12 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_f_str(&mut self, f_str: &ast::FStr) {
+    fn print_f_str(&mut self, f_str: &ast::FString) {
         // TODO? self.maybe_print_comment(lit.span.lo());
         let mut buffer = "f\"".to_string();
         for segment in &f_str.segments {
             match segment {
-                ast::FStrSegment::Str(symbol) => {
+                ast::FStringPiece::Literal(symbol) => {
                     let st = symbol
                         .to_string()
                         .escape_debug()
@@ -997,7 +997,7 @@ impl<'a> State<'a> {
                         .replace("}", "}}");
                     buffer.push_str(&st);
                 }
-                ast::FStrSegment::Expr(expr) => {
+                ast::FStringPiece::Expr(expr) => {
                     buffer.push('{');
                     self.word(buffer.clone());
                     buffer.clear();
