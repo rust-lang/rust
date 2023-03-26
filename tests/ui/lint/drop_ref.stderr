@@ -1,0 +1,151 @@
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:8:5
+   |
+LL |     drop(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_ref.rs:8:10
+   |
+LL |     drop(&SomeStruct);
+   |          ^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/drop_ref.rs:3:9
+   |
+LL | #![warn(drop_ref)]
+   |         ^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:11:5
+   |
+LL |     drop(&owned1);
+   |     ^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_ref.rs:11:10
+   |
+LL |     drop(&owned1);
+   |          ^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:12:5
+   |
+LL |     drop(&&owned1);
+   |     ^^^^^^^^^^^^^^
+   |
+note: argument has type `&&SomeStruct`
+  --> $DIR/drop_ref.rs:12:10
+   |
+LL |     drop(&&owned1);
+   |          ^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:13:5
+   |
+LL |     drop(&mut owned1);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&mut SomeStruct`
+  --> $DIR/drop_ref.rs:13:10
+   |
+LL |     drop(&mut owned1);
+   |          ^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:17:5
+   |
+LL |     drop(reference1);
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_ref.rs:17:10
+   |
+LL |     drop(reference1);
+   |          ^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:20:5
+   |
+LL |     drop(reference2);
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&mut SomeStruct`
+  --> $DIR/drop_ref.rs:20:10
+   |
+LL |     drop(reference2);
+   |          ^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:23:5
+   |
+LL |     drop(reference3);
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_ref.rs:23:10
+   |
+LL |     drop(reference3);
+   |          ^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:28:5
+   |
+LL |     drop(&val);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&T`
+  --> $DIR/drop_ref.rs:28:10
+   |
+LL |     drop(&val);
+   |          ^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:36:5
+   |
+LL |     std::mem::drop(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_ref.rs:36:20
+   |
+LL |     std::mem::drop(&SomeStruct);
+   |                    ^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:91:13
+   |
+LL |             drop(println_and(&13));
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:91:18
+   |
+LL |             drop(println_and(&13));
+   |                  ^^^^^^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:94:14
+   |
+LL |         3 if drop(println_and(&14)) == () => (),
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:94:19
+   |
+LL |         3 if drop(println_and(&14)) == () => (),
+   |                   ^^^^^^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_ref.rs:96:14
+   |
+LL |         4 => drop(&2),
+   |              ^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:96:19
+   |
+LL |         4 => drop(&2),
+   |                   ^^
+
+warning: 12 warnings emitted
+
