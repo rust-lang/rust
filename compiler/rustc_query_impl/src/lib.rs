@@ -45,12 +45,11 @@ pub use on_disk_cache::OnDiskCache;
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
-trait QueryToConfig<'tcx>: 'tcx {
-    type Value;
-    type Config: QueryConfig<QueryCtxt<'tcx>>;
+/// This is implemented per query and restoring query values from their erased state.
+trait QueryConfigRestored<'tcx>: QueryConfig<QueryCtxt<'tcx>> + Default {
+    type RestoredValue;
 
-    fn config(qcx: QueryCtxt<'tcx>) -> Self::Config;
-    fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::Value;
+    fn restore(value: <Self as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue;
 }
 
 rustc_query_append! { define_queries! }

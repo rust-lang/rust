@@ -13,7 +13,6 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::QueryConfig;
 use rustc_query_system::query::{QueryCache, QuerySideEffects};
 use rustc_serialize::{
     opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
@@ -1066,13 +1065,13 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(
-    query: Q::Config,
+    query: Q,
     qcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    Q: super::QueryToConfig<'tcx>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
+    Q: super::QueryConfigRestored<'tcx>,
+    Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = qcx
         .tcx

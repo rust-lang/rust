@@ -3,6 +3,8 @@ use std::mem::{size_of, transmute_copy, MaybeUninit};
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {
+    // We use `MaybeUninit` here so we can store any value
+    // in `data` since we aren't actually storing a `T`.
     data: MaybeUninit<T>,
 }
 
@@ -12,7 +14,7 @@ pub trait EraseType: Copy {
 
 // Allow `type_alias_bounds` since compilation will fail without `EraseType`.
 #[allow(type_alias_bounds)]
-pub type Erase<T: Copy + EraseType> = Erased<impl Copy>;
+pub type Erase<T: EraseType> = Erased<impl Copy>;
 
 #[inline(always)]
 pub fn erase<T: EraseType>(src: T) -> Erase<T> {

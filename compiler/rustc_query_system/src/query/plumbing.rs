@@ -148,7 +148,7 @@ where
     match handler {
         Error => {
             error.emit();
-            query.from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
         Fatal => {
             error.emit();
@@ -157,7 +157,7 @@ where
         }
         DelayBug => {
             error.delay_as_bug();
-            query.from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
     }
 }

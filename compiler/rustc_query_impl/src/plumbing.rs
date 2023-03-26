@@ -564,7 +564,7 @@ macro_rules! define_queries {
             }
 
             #[inline]
-            fn from_cycle_error(
+            fn value_from_cycle_error(
                 self,
                 tcx: TyCtxt<'tcx>,
                 cycle: &[QueryInfo<DepKind>],
@@ -609,17 +609,11 @@ macro_rules! define_queries {
             }
         })*
 
-        $(impl<'tcx> QueryToConfig<'tcx> for queries::$name<'tcx> {
-            type Value = query_values::$name<'tcx>;
-            type Config = Self;
+        $(impl<'tcx> QueryConfigRestored<'tcx> for queries::$name<'tcx> {
+            type RestoredValue = query_values::$name<'tcx>;
 
             #[inline(always)]
-            fn config(_qcx: QueryCtxt<'tcx>) -> Self::Config {
-                Self::default()
-            }
-
-            #[inline(always)]
-            fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::Value {
+            fn restore(value: <Self as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue {
                 restore::<query_values::$name<'tcx>>(value)
             }
         })*
@@ -695,7 +689,6 @@ macro_rules! define_queries {
             use $crate::profiling_support::QueryKeyStringCache;
             use rustc_query_system::query::QueryMap;
             use rustc_middle::dep_graph::DepKind;
-            use crate::QueryToConfig;
 
             pub(super) const fn dummy_query_struct<'tcx>() -> QueryStruct<'tcx> {
                 fn noop_try_collect_active_jobs(_: QueryCtxt<'_>, _: &mut QueryMap<DepKind>) -> Option<()> {
@@ -740,7 +733,7 @@ macro_rules! define_queries {
                 },
                 encode_query_results: expand_if_cached!([$($modifiers)*], |qcx, encoder, query_result_index|
                     $crate::on_disk_cache::encode_query_results::<super::queries::$name<'tcx>>(
-                        super::queries::$name::config(qcx),
+                        super::queries::$name::default(),
                         qcx,
                         encoder,
                         query_result_index,
