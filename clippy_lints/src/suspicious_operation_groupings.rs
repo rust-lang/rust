@@ -596,8 +596,7 @@ fn ident_difference_expr_with_base_location(
         | (MethodCall(_), MethodCall(_))
         | (Call(_, _), Call(_, _))
         | (ConstBlock(_), ConstBlock(_))
-        | (Array(_), Array(_))
-        | (Box(_), Box(_)) => {
+        | (Array(_), Array(_)) => {
             // keep going
         },
         _ => {

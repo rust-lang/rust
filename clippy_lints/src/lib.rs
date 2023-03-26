@@ -302,6 +302,7 @@ mod unit_types;
 mod unnamed_address;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
+mod unnecessary_struct_initialization;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
@@ -938,6 +939,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
     store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(msrv())));
+    store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
