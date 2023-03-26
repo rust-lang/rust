@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode},
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams},
     ted,
 };
 
@@ -14,7 +14,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// fn foo<B: Bar>(bar: B) {}
+// fn foo<$0B: Bar>(bar: B) {}
 // ```
 pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
@@ -39,7 +39,15 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             let new_ty = make::ty(&type_param_name).clone_for_update();
 
             ted::replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_.get_or_create_generic_param_list().add_generic_param(type_param.into())
+            fn_.get_or_create_generic_param_list().add_generic_param(type_param.into());
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(generic_param) =
+                    fn_.generic_param_list().and_then(|it| it.generic_params().last())
+                {
+                    edit.add_tabstop_before(cap, generic_param);
+                }
+            }
         },
     )
 }
@@ -55,7 +63,7 @@ mod tests {
         check_assist(
             introduce_named_generic,
             r#"fn foo<G>(bar: $0impl Bar) {}"#,
-            r#"fn foo<G, B: Bar>(bar: B) {}"#,
+            r#"fn foo<G, $0B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -64,7 +72,7 @@ mod tests {
         check_assist(
             introduce_named_generic,
             r#"fn foo(bar: $0impl Bar) {}"#,
-            r#"fn foo<B: Bar>(bar: B) {}"#,
+            r#"fn foo<$0B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -73,7 +81,7 @@ mod tests {
         check_assist(
             introduce_named_generic,
             r#"fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}"#,
-            r#"fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}"#,
+            r#"fn foo<G, $0B: Bar>(foo: impl Foo, bar: B) {}"#,
         );
     }
 
@@ -82,7 +90,7 @@ mod tests {
         check_assist(
             introduce_named_generic,
             r#"fn foo<>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B: Bar>(bar: B) {}"#,
+            r#"fn foo<$0B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -95,7 +103,7 @@ fn foo<
 >(bar: $0impl Bar) {}
 "#,
             r#"
-fn foo<B: Bar
+fn foo<$0B: Bar
 >(bar: B) {}
 "#,
         );
@@ -108,7 +116,7 @@ fn foo<B: Bar
         check_assist(
             introduce_named_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, B: Bar>(bar: B) {}"#,
+            r#"fn foo<B, $0B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -127,7 +135,7 @@ fn foo<
 fn foo<
     G: Foo,
     F,
-    H, B: Bar,
+    H, $0B: Bar,
 >(bar: B) {}
 "#,
         );
@@ -138,7 +146,7 @@ fn foo<
         check_assist(
             introduce_named_generic,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
-            r#"fn foo<F: Foo + Bar>(bar: F) {}"#,
+            r#"fn foo<$0F: Foo + Bar>(bar: F) {}"#,
         );
     }
 }
