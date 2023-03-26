@@ -2,8 +2,9 @@ use rustc_ast::{
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID, FStringPiece,
+    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, FStringPiece, ItemKind, MacCall,
+    MacDelimiter, MethodCall, Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree,
+    UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;

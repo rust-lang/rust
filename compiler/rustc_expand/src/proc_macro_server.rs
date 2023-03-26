@@ -1,6 +1,7 @@
 use crate::base::ExtCtxt;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, FStrDelimiter, LitKind, Literal, Punct, TokenTree,
+    server, DelimSpan, Diagnostic, ExpnGlobals, FStrDelimiter, Group, Ident, LitKind, Literal,
+    Punct, TokenTree,
 };
 use pm::{Delimiter, Level, LineColumn};
 use rustc_ast as ast;
@@ -79,7 +80,10 @@ impl FromInternal<token::LitKind> for LitKind {
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
-            token::FStr(start, end) => LitKind::FStr(FStrDelimiter::from_internal(start), FStrDelimiter::from_internal(end)),
+            token::FStr(start, end) => LitKind::FStr(
+                FStrDelimiter::from_internal(start),
+                FStrDelimiter::from_internal(end),
+            ),
             token::Err => LitKind::Err,
             token::Bool => unreachable!(),
         }

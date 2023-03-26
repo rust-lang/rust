@@ -1349,7 +1349,9 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Unary(_unop, ohs) => vis.visit_expr(ohs),
         ExprKind::FStr(pieces) => {
             pieces.flat_map_in_place(|piece| match piece {
-                FStringPiece::Expr(ex) => vis.filter_map_expr(ex).map(|new_ex| FStringPiece::Expr(new_ex)),
+                FStringPiece::Expr(ex) => {
+                    vis.filter_map_expr(ex).map(|new_ex| FStringPiece::Expr(new_ex))
+                }
                 FStringPiece::Literal(_) => Some(piece),
             });
         }

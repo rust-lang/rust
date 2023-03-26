@@ -337,11 +337,7 @@ pub struct Lexer<'a> {
 }
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Lexer<'a> {
-        Lexer {
-            cursor: Cursor::new(input),
-            brace_count: 0,
-            brace_f_string_triggers: vec![],
-        }
+        Lexer { cursor: Cursor::new(input), brace_count: 0, brace_f_string_triggers: vec![] }
     }
 
     /// Parses a token from the input string.
@@ -878,7 +874,10 @@ impl<'a> Lexer<'a> {
 
     /// Eats an f-string segment and returns the delimiter that it terminates with.
     fn f_string(&mut self, start: FStrDelimiter) -> TokenKind {
-        debug_assert!(matches!((start, self.cursor.prev()), (FStrDelimiter::Quote, '"') | (FStrDelimiter::Brace, '}')));
+        debug_assert!(matches!(
+            (start, self.cursor.prev()),
+            (FStrDelimiter::Quote, '"') | (FStrDelimiter::Brace, '}')
+        ));
         while let Some(c) = self.cursor.bump() {
             match c {
                 '"' => {
@@ -897,7 +896,10 @@ impl<'a> Lexer<'a> {
                     self.brace_count += 1;
                     return Literal { kind, suffix_start: self.cursor.pos_within_token() };
                 }
-                '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' || self.cursor.first() == '{' => {
+                '\\' if self.cursor.first() == '\\'
+                    || self.cursor.first() == '"'
+                    || self.cursor.first() == '{' =>
+                {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
                 }

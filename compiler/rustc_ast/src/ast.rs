@@ -1246,7 +1246,9 @@ impl Expr {
             ExprKind::Tup(_) => ExprPrecedence::Tup,
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
-            ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::FStr(_) => ExprPrecedence::Lit,
+            ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::FStr(_) => {
+                ExprPrecedence::Lit
+            }
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,

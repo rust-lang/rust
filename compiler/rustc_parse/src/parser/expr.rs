@@ -8,7 +8,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use ast::{Path, PathSegment, FStringPiece};
+use ast::{FStringPiece, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -26,10 +26,10 @@ use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
     PResult, StashKey,
 };
+use rustc_lexer::unescape;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_lexer::unescape;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1456,7 +1456,7 @@ impl<'a> Parser<'a> {
             unescape::unescape_literal(&s, unescape::Mode::FStr, &mut |_, unescaped_char| {
                 match unescaped_char {
                     Ok(c) => buf.push(c),
-                    Err(_) => { }, // TODO: CHECK! Already reported by lexer, no need to report error here
+                    Err(_) => {} // TODO: CHECK! Already reported by lexer, no need to report error here
                 }
             });
             Symbol::intern(&buf)
@@ -1469,33 +1469,40 @@ impl<'a> Parser<'a> {
         &mut self,
         expected_start_delimiter: token::FStrDelimiter,
     ) -> PResult<'a, (Symbol, token::FStrDelimiter)> {
-        if let TokenKind::Literal(token::Lit { kind: token::FStr(start_delimiter, end_delimiter), symbol, .. }) = self.token.kind {
+        if let TokenKind::Literal(token::Lit {
+            kind: token::FStr(start_delimiter, end_delimiter),
+            symbol,
+            ..
+        }) = self.token.kind
+        {
             if expected_start_delimiter != start_delimiter {
                 let span_data = self.token.span.data();
-                let span = span_data.with_hi(span_data.lo + BytePos(start_delimiter.display(true).len() as u32));
+                let span = span_data
+                    .with_hi(span_data.lo + BytePos(start_delimiter.display(true).len() as u32));
                 let msg = format!(
                     "expected f-string to start with `{}`, found `{}`",
                     expected_start_delimiter.display(true),
                     start_delimiter.display(true)
                 );
                 Err(self.struct_span_err(span, msg))
-            }
-            else
-            {
+            } else {
                 let unescaped_symbol = self.unescape_f_str(symbol);
                 self.bump();
                 Ok((unescaped_symbol, end_delimiter))
             }
-        }
-        else
-        {
-            Err(self.struct_span_err(self.token.span, format!("expected f-string expression, found {}", super::token_descr(&self.token))))
+        } else {
+            Err(self.struct_span_err(
+                self.token.span,
+                format!("expected f-string expression, found {}", super::token_descr(&self.token)),
+            ))
         }
     }
 
     fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let start_token_span = self.token.span;
-        if let TokenKind::Literal(token::Lit { kind: token::FStr(_, end_delimiter), .. }) = self.token.kind {
+        if let TokenKind::Literal(token::Lit { kind: token::FStr(_, end_delimiter), .. }) =
+            self.token.kind
+        {
             let (symbol, _) = self.parse_f_str_piece(token::FStrDelimiter::Quote)?;
 
             let mut pieces = ThinVec::new();
@@ -1503,10 +1510,17 @@ impl<'a> Parser<'a> {
 
             let mut end_delimiter = end_delimiter;
             while end_delimiter == token::FStrDelimiter::Brace {
-                if let TokenKind::Literal(token::Lit { kind: token::FStr(token::FStrDelimiter::Brace, _), .. }) = self.token.kind {
+                if let TokenKind::Literal(token::Lit {
+                    kind: token::FStr(token::FStrDelimiter::Brace, _),
+                    ..
+                }) = self.token.kind
+                {
                     let span_data = self.token.span.data();
-                    let span = span_data.with_lo(span_data.lo - BytePos(1)).with_hi(span_data.lo + BytePos(1));
-                    let mut diag = self.struct_span_err(span, "expected expression in f-string placeholder");
+                    let span = span_data
+                        .with_lo(span_data.lo - BytePos(1))
+                        .with_hi(span_data.lo + BytePos(1));
+                    let mut diag =
+                        self.struct_span_err(span, "expected expression in f-string placeholder");
                     diag.help("f-string placeholder `{}` is empty: to fix, add expresion: `{a}`");
                     return Err(diag);
                 }
@@ -1522,10 +1536,7 @@ impl<'a> Parser<'a> {
             let full_span = start_token_span.to(self.prev_token.span);
             self.sess.gated_spans.gate(sym::f_strings, full_span);
 
-            let expr = self.mk_expr(
-                full_span,
-                ExprKind::FStr(pieces)
-            );
+            let expr = self.mk_expr(full_span, ExprKind::FStr(pieces));
             // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
             return Ok(Some(expr));
         }
@@ -2012,13 +2023,11 @@ impl<'a> Parser<'a> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         let span = token.span;
-        token::Lit::from_token(token).and_then(|token_lit| {
-            match token_lit.kind {
-                token::LitKind::FStr(..) => None,
-                _ => {
-                    self.bump();
-                    Some((token_lit, span))
-                }
+        token::Lit::from_token(token).and_then(|token_lit| match token_lit.kind {
+            token::LitKind::FStr(..) => None,
+            _ => {
+                self.bump();
+                Some((token_lit, span))
             }
         })
     }

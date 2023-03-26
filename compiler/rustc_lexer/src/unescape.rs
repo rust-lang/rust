@@ -89,12 +89,12 @@ where
             let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
         }
-        Mode::Str | Mode::ByteStr | Mode::FStr => unescape_str_or_byte_str_or_f_str(src, mode, callback),
+        Mode::Str | Mode::ByteStr | Mode::FStr => {
+            unescape_str_or_byte_str_or_f_str(src, mode, callback)
+        }
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
-        Mode::RawStr | Mode::RawByteStr => {
-            unescape_raw_str_or_raw_byte_str(src, mode, callback)
-        }
+        Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_raw_byte_str(src, mode, callback),
     }
 }
 
@@ -226,10 +226,10 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
         }
         '{' | '}' => {
             if mode != Mode::FStr {
-                return Err(EscapeError::InvalidEscape)
+                return Err(EscapeError::InvalidEscape);
             }
             second_char
-        },
+        }
         _ => return Err(EscapeError::InvalidEscape),
     };
     Ok(res)
@@ -295,7 +295,7 @@ where
                     Some(next_char) if next_char != c => Err(EscapeError::LoneBrace), // TODO: Improve error?
                     Some(_) => Ok(c),
                 }
-            },
+            }
             _ => ascii_check(c, mode.is_byte()),
         };
         let end = src.len() - chars.as_str().len();
