@@ -4,6 +4,8 @@ These are a set of steps to add support for a new target. There are
 numerous end states and paths to get there, so not all sections may be
 relevant to your desired goal.
 
+<!-- toc -->
+
 ## Specifying a new LLVM
 
 For very new targets, you may need to use a different fork of LLVM

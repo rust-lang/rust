@@ -1,8 +1,5 @@
 # Rustdoc overview
 
-`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
-will have to build the compiler and `std` once before you can build `rustdoc`.
-
 `rustdoc` lives in-tree with the
 compiler and standard library. This chapter is about how it works.
 For information about Rustdoc's features and how to use them, see
@@ -11,6 +8,11 @@ For more details about how rustdoc works, see the
 ["Rustdoc internals" chapter][Rustdoc internals].
 
 [Rustdoc internals]: ./rustdoc-internals.md
+
+<!-- toc -->
+
+`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
+will have to build the compiler and `std` once before you can build `rustdoc`.
 
 Rustdoc is implemented entirely within the crate [`librustdoc`][rd]. It runs
 the compiler up to the point where we have an internal representation of a

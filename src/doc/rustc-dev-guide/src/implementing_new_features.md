@@ -1,5 +1,7 @@
 # Implementing new features
 
+<!-- toc -->
+
 When you want to implement a new significant feature in the compiler,
 you need to go through this process to make sure everything goes
 smoothly.

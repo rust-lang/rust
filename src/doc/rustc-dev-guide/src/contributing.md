@@ -1,5 +1,7 @@
 # Contribution Procedures
 
+<!-- toc -->
+
 ## Bug Reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we

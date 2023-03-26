@@ -1,5 +1,7 @@
 # How to build and run the compiler
 
+<!-- toc -->
+
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it.
 
