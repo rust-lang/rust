@@ -49,10 +49,10 @@ To build a local static HTML site, install [`mdbook`](https://github.com/rust-la
 and execute the following command in the root of the repository:
 
 ```
-> mdbook build
+> mdbook build --open
 ```
 
-The build files are found in the `book` directory.
+The build files are found in the `book/html` directory.
 
 ### Link Validations
 
