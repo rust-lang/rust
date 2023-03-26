@@ -16,18 +16,18 @@ LL |     fn baz(&self) -> Box<usize> {
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `usize`
-  --> $DIR/unnecessary_box_returns.rs:25:21
+  --> $DIR/unnecessary_box_returns.rs:25:20
    |
-LL | fn boxed_usize() -> Box<usize> {
-   |                     ^^^^^^^^^^ help: try: `usize`
+LL | fn bxed_usize() -> Box<usize> {
+   |                    ^^^^^^^^^^ help: try: `usize`
    |
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `Foo`
-  --> $DIR/unnecessary_box_returns.rs:30:20
+  --> $DIR/unnecessary_box_returns.rs:30:19
    |
-LL | fn _boxed_foo() -> Box<Foo> {
-   |                    ^^^^^^^^ help: try: `Foo`
+LL | fn _bxed_foo() -> Box<Foo> {
+   |                   ^^^^^^^^ help: try: `Foo`
    |
    = help: changing this also requires a change to the return expressions in this function
 

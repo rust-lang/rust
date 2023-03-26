@@ -22,23 +22,28 @@ impl Foo {
 }
 
 // lint
-fn boxed_usize() -> Box<usize> {
+fn bxed_usize() -> Box<usize> {
     Box::new(5)
 }
 
 // lint
-fn _boxed_foo() -> Box<Foo> {
+fn _bxed_foo() -> Box<Foo> {
     Box::new(Foo {})
 }
 
 // don't lint: this is exported
-pub fn boxed_foo() -> Box<Foo> {
+pub fn bxed_foo() -> Box<Foo> {
     Box::new(Foo {})
 }
 
 // don't lint: str is unsized
-fn boxed_str() -> Box<str> {
+fn bxed_str() -> Box<str> {
     "Hello, world!".to_string().into_boxed_str()
+}
+
+// don't lint: function contains the word, "box"
+fn boxed_usize() -> Box<usize> {
+    Box::new(7)
 }
 
 // don't lint: this has an unspecified return type

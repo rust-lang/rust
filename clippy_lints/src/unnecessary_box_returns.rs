@@ -3,6 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{def_id::LocalDefId, FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,9 +47,14 @@ impl UnnecessaryBoxReturns {
         }
     }
 
-    fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId) {
+    fn check_fn_item(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId, name: Symbol) {
         // we don't want to tell someone to break an exported function if they ask us not to
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
+            return;
+        }
+
+        // functions which contain the word "box" are exempt from this lint
+        if name.as_str().contains("box") {
             return;
         }
 
@@ -91,7 +97,7 @@ impl UnnecessaryBoxReturns {
 impl LateLintPass<'_> for UnnecessaryBoxReturns {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
         let TraitItemKind::Fn(signature, _) = &item.kind else { return };
-        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
@@ -104,11 +110,11 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
         }
 
         let ImplItemKind::Fn(signature, ..) = &item.kind else { return };
-        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let ItemKind::Fn(signature, ..) = &item.kind else { return };
-        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 }
