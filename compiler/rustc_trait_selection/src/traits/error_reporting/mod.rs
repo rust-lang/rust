@@ -1624,8 +1624,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
-            let bound_predicate = obligation.predicate.kind();
+        for pred in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
+            let bound_predicate = pred.kind();
             if let ty::PredicateKind::Clause(ty::Clause::Trait(implication)) =
                 bound_predicate.skip_binder()
             {

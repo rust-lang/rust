@@ -1427,13 +1427,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
             assert_eq!(constness, ty::BoundConstness::NotConst);
 
-            for obligation in traits::elaborate_trait_ref(tcx, base_trait_ref) {
-                debug!(
-                    "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
-                    obligation.predicate
-                );
+            for pred in traits::elaborate_trait_ref(tcx, base_trait_ref) {
+                debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", pred);
 
-                let bound_predicate = obligation.predicate.kind();
+                let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
