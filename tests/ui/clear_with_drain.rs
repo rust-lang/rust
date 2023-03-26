@@ -10,7 +10,13 @@ fn range() {
     let n = v.drain(0..v.len()).count(); // Yay
 
     let mut v = vec![1, 2, 3];
+    let n = v.drain(usize::MIN..v.len()).count(); // Yay
+
+    let mut v = vec![1, 2, 3];
     v.drain(0..v.len()); // Nay
+
+    let mut v = vec![1, 2, 3];
+    v.drain(usize::MIN..v.len()); // Nay
 }
 
 fn range_from() {
@@ -21,7 +27,13 @@ fn range_from() {
     let next = v.drain(0..).next(); // Yay
 
     let mut v = vec![1, 2, 3];
+    let next = v.drain(usize::MIN..).next(); // Yay
+
+    let mut v = vec![1, 2, 3];
     v.drain(0..); // Nay
+
+    let mut v = vec![1, 2, 3];
+    v.drain(usize::MIN..); // Nay
 }
 
 fn range_full() {
