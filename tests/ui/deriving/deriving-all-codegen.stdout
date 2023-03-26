@@ -989,7 +989,11 @@ impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::write_str(f, ["A", "B", "C"][*self as usize])
+        ::core::fmt::Formatter::write_str(f,
+            {
+                const __NAMES: [&str; 3] = ["A", "B", "C"];
+                __NAMES[::core::intrinsics::discriminant_value(self) as usize]
+            })
     }
 }
 #[automatically_derived]

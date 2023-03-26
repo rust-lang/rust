@@ -2,8 +2,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use ast::EnumDef;
-use rustc_ast::{self as ast, MetaItem};
+use rustc_ast::{self as ast, token, EnumDef, ExprKind, MetaItem, TyKind};
+
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -152,15 +152,13 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
         let ty_dyn_debug = cx.ty(
             span,
-            ast::TyKind::TraitObject(
+            TyKind::TraitObject(
                 vec![cx.trait_bound(path_debug, false)],
                 ast::TraitObjectSyntax::Dyn,
             ),
         );
-        let ty_slice = cx.ty(
-            span,
-            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
-        );
+        let ty_slice =
+            cx.ty(span, TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)));
         let values_let = cx.stmt_let_ty(
             span,
             false,
@@ -251,7 +249,10 @@ fn show_fieldless_enum(
 /// ```text
 /// impl ::core::fmt::Debug for A {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-///          ::core::fmt::Formatter::write_str(f, ["A", "B", "C"][*self as usize])
+///         ::core::fmt::Formatter::write_str(f, {
+///             const __NAMES: [&str; 3] = ["A", "B", "C"];
+///             __NAMES[::core::intrinsics::discriminant_value(self) as usize]
+///         })
 ///     }
 /// }
 /// ```
@@ -260,31 +261,55 @@ fn show_fieldless_enum_array(
     span: Span,
     def: &EnumDef,
 ) -> Option<ast::ptr::P<ast::Expr>> {
-    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-    let has_derive_copy = cx.resolver.has_derive_copy(container_id);
-    // FIXME(clubby789): handle repr(xx) enums too
-    if !has_derive_copy {
-        return None;
-    }
     if def.variants.len() >= cx.sess.target.pointer_width as usize {
         return None;
     }
-    // FIXME(clubby789): handle enums with discriminants matching their indexes
-    let name_array = def
+    let names = def
         .variants
         .iter()
         .map(|v| if v.disr_expr.is_none() { Some(cx.expr_str(span, v.ident.name)) } else { None })
         .collect::<Option<ThinVec<_>>>()?;
-    let name = cx.expr(
+    let str_ty = cx.ty(
         span,
-        ast::ExprKind::Index(
-            cx.expr_array(span, name_array),
-            cx.expr_cast(
-                span,
-                cx.expr_deref(span, cx.expr_self(span)),
-                cx.ty_path(ast::Path::from_ident(Ident::with_dummy_span(sym::usize))),
-            ),
+        TyKind::Ref(
+            None,
+            ast::MutTy {
+                ty: cx.ty(
+                    span,
+                    TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span))),
+                ),
+                mutbl: ast::Mutability::Not,
+            },
         ),
     );
-    Some(name)
+
+    let size = cx.anon_const(
+        span,
+        ExprKind::Lit(token::Lit::new(
+            token::LitKind::Integer,
+            Symbol::intern(&def.variants.len().to_string()),
+            None,
+        )),
+    );
+    // Create a constant to prevent the array being stack-allocated
+    let arr_name = Ident::from_str_and_span("__NAMES", span);
+    let names_const = cx.item_const(
+        span,
+        arr_name,
+        cx.ty(span, TyKind::Array(str_ty, size)),
+        cx.expr_array(span, names),
+    );
+    let discrim_value = cx.std_path(&[sym::intrinsics, sym::discriminant_value]);
+
+    let index = cx.expr_cast(
+        span,
+        cx.expr_call_global(span, discrim_value, thin_vec![cx.expr_self(span)]),
+        cx.ty_path(ast::Path::from_ident(Ident::new(sym::usize, span))),
+    );
+    let name = cx.expr(span, ExprKind::Index(cx.expr_ident(span, arr_name), index));
+    Some(
+        cx.expr_block(
+            cx.block(span, thin_vec![cx.stmt_item(span, names_const), cx.stmt_expr(name)]),
+        ),
+    )
 }
