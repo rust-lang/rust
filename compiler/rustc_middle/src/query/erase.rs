@@ -1,5 +1,4 @@
 use crate::ty;
-use std::intrinsics::type_name;
 use std::mem::{size_of, transmute_copy, MaybeUninit};
 
 #[derive(Copy, Clone)]
@@ -17,13 +16,13 @@ pub type Erase<T: Copy + EraseType> = Erased<impl Copy>;
 
 #[inline(always)]
 pub fn erase<T: EraseType>(src: T) -> Erase<T> {
-    assert_eq!(
-        size_of::<T>(),
-        size_of::<T::Result>(),
-        "size of {} must match erased type {}",
-        type_name::<T>(),
-        type_name::<T::Result>()
-    );
+    // Ensure the sizes match
+    const {
+        if std::mem::size_of::<T>() != std::mem::size_of::<T::Result>() {
+            panic!("size of T must match erased type T::Result")
+        }
+    };
+
     Erased::<<T as EraseType>::Result> {
         // SAFETY: Is it safe to transmute to MaybeUninit for types with the same sizes.
         data: unsafe { transmute_copy(&src) },
