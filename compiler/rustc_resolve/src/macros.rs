@@ -544,11 +544,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if let Some((article, expected)) = unexpected_res {
             let path_str = pprust::path_to_string(path);
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
-            self.tcx
-                .sess
-                .struct_span_err(path.span, &msg)
-                .span_label(path.span, format!("not {} {}", article, expected))
-                .emit();
+            let mut err = self.tcx.sess.struct_span_err(path.span, &msg);
+
+            err.span_label(path.span, format!("not {} {}", article, expected));
+
+            if kind == MacroKind::Derive && ext.macro_kind() != MacroKind::Derive {
+                // Suggest removing the derive() as the macro isn't Derive
+                let opening_span =
+                    path.span.shrink_to_lo().with_lo(path.span.lo() - rustc_span::BytePos(7));
+                let closing_span =
+                    path.span.shrink_to_hi().with_hi(path.span.hi() + rustc_span::BytePos(1));
+                err.span_help(
+                    vec![opening_span, closing_span],
+                    "remove the surrounding \"derive()\":",
+                );
+            }
+
+            err.emit();
             return Ok((self.dummy_ext(kind), Res::Err));
         }
 

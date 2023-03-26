@@ -3,6 +3,12 @@ error: expected derive macro, found built-in attribute `inline`
    |
 LL | #[derive(inline)]
    |          ^^^^^^ not a derive macro
+   |
+help: remove the surrounding "derive()":
+  --> $DIR/macro-path-prelude-fail-4.rs:1:3
+   |
+LL | #[derive(inline)]
+   |   ^^^^^^^      ^
 
 error: aborting due to previous error
 
