@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 use rustc_target::spec::abi::Abi;
 
 use crate::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -904,7 +904,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     check_equal(self, *f_ty);
                 }
                 ty::Adt(adt_def, substs) => {
-                    let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
+                    let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                     let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
                         self.validation = Err("malformed MIR");
                         return;

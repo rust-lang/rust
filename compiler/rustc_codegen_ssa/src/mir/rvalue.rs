@@ -13,7 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_target::abi::{self, VariantIdx};
+use rustc_target::abi::{self, FIRST_VARIANT};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -118,7 +118,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let variant_dest = dest.project_downcast(bx, variant_index);
                         (variant_index, variant_dest, active_field_index)
                     }
-                    _ => (VariantIdx::from_u32(0), dest, None),
+                    _ => (FIRST_VARIANT, dest, None),
                 };
                 if active_field_index.is_some() {
                     assert_eq!(operands.len(), 1);

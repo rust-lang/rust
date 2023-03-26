@@ -86,7 +86,7 @@ mod prelude {
         self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
         TypeFoldable, TypeVisitableExt, UintTy,
     };
-    pub(crate) use rustc_target::abi::{Abi, Scalar, Size, VariantIdx};
+    pub(crate) use rustc_target::abi::{Abi, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
     pub(crate) use rustc_data_structures::fx::FxHashMap;
 

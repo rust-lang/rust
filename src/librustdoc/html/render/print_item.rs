@@ -1234,7 +1234,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w.write_str(",\n");
             }
 
-            if variants_stripped {
+            if variants_stripped && !it.is_non_exhaustive() {
                 w.write_str("    // some variants omitted\n");
             }
             if toggle {

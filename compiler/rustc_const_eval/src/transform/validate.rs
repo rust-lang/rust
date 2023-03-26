@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::{Size, FIRST_VARIANT};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -359,7 +359,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         check_equal(self, location, *f_ty);
                     }
                     ty::Adt(adt_def, substs) => {
-                        let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
+                        let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                         let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
                             return;

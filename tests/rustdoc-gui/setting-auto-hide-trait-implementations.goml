@@ -1,0 +1,47 @@
+// Checks that the setting "auto hide trait implementations" is working as expected.
+
+define-function: (
+    "check-setting",
+    (storage_value, setting_attribute_value, toggle_attribute_value),
+    block {
+        assert-local-storage: {"rustdoc-auto-hide-trait-implementations": |storage_value|}
+        click: "#settings-menu"
+        wait-for: "#settings"
+        assert-property: ("#auto-hide-trait-implementations", {"checked": |setting_attribute_value|})
+        assert-attribute: ("#trait-implementations-list > details", {"open": |toggle_attribute_value|}, ALL)
+    }
+)
+
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+
+// By default, the trait implementations are not collapsed.
+call-function: ("check-setting", {
+    "storage_value": null,
+    "setting_attribute_value": "false",
+    "toggle_attribute_value": "",
+})
+
+// Now we change its value.
+click: "#auto-hide-trait-implementations"
+assert-local-storage: {"rustdoc-auto-hide-trait-implementations": "true"}
+
+// We check that the changes were applied as expected.
+reload:
+
+call-function: ("check-setting", {
+    "storage_value": "true",
+    "setting_attribute_value": "true",
+    "toggle_attribute_value": null,
+})
+
+// And now we re-disable the setting.
+click: "#auto-hide-trait-implementations"
+assert-local-storage: {"rustdoc-auto-hide-trait-implementations": "false"}
+
+// And we check everything is back the way it was before.
+reload:
+call-function: ("check-setting", {
+    "storage_value": "false",
+    "setting_attribute_value": "false",
+    "toggle_attribute_value": "",
+})
