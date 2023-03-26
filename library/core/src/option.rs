@@ -1274,6 +1274,7 @@ impl<T> Option<T> {
     /// let x: Option<String> = None;
     /// assert_eq!(x.as_deref(), None);
     /// ```
+    #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref(&self) -> Option<&T::Target>
@@ -1300,6 +1301,7 @@ impl<T> Option<T> {
     ///     x
     /// }), Some("HEY".to_owned().as_mut_str()));
     /// ```
+    #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>

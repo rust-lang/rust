@@ -908,6 +908,7 @@ impl<T, E> Result<T, E> {
     /// let y: Result<&str, &u32> = Err(&42);
     /// assert_eq!(x.as_deref(), y);
     /// ```
+    #[inline]
     #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref(&self) -> Result<&T::Target, &E>
     where
@@ -934,6 +935,7 @@ impl<T, E> Result<T, E> {
     /// let y: Result<&mut str, &mut u32> = Err(&mut i);
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     /// ```
+    #[inline]
     #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
     where
