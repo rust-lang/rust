@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -816,11 +816,8 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let source_info = SourceInfo::outermost(span);
 
-    let variant_index = if adt_def.is_enum() {
-        adt_def.variant_index_with_ctor_id(ctor_id)
-    } else {
-        VariantIdx::new(0)
-    };
+    let variant_index =
+        if adt_def.is_enum() { adt_def.variant_index_with_ctor_id(ctor_id) } else { FIRST_VARIANT };
 
     // Generate the following MIR:
     //

@@ -59,10 +59,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::PatKind;
-use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 pub(crate) trait HirNode {
@@ -331,7 +330,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     expr,
                     base,
                     expr_ty,
-                    ProjectionKind::Field(field_idx as u32, VariantIdx::new(0)),
+                    ProjectionKind::Field(field_idx as u32, FIRST_VARIANT),
                 ))
             }
 
@@ -561,7 +560,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => {
                 // Structs and Unions have only have one variant.
-                Ok(VariantIdx::new(0))
+                Ok(FIRST_VARIANT)
             }
             _ => bug!("expected ADT path, found={:?}", res),
         }
@@ -675,7 +674,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
                     let subpat_ty = self.pat_ty_adjusted(subpat)?;
-                    let projection_kind = ProjectionKind::Field(i as u32, VariantIdx::new(0));
+                    let projection_kind = ProjectionKind::Field(i as u32, FIRST_VARIANT);
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
                     self.cat_pattern_(sub_place, subpat, op)?;

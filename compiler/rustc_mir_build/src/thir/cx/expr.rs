@@ -20,7 +20,7 @@ use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
 use rustc_span::{sym, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
@@ -357,7 +357,7 @@ impl<'tcx> Cx<'tcx> {
                                 Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_id) => {
                                     Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
                                 }
-                                Res::SelfCtor(..) => Some((adt_def, VariantIdx::new(0))),
+                                Res::SelfCtor(..) => Some((adt_def, FIRST_VARIANT)),
                                 _ => None,
                             })
                         } else {
@@ -510,7 +510,7 @@ impl<'tcx> Cx<'tcx> {
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
-                            variant_index: VariantIdx::new(0),
+                            variant_index: FIRST_VARIANT,
                             substs,
                             user_ty,
                             fields: self.field_refs(fields),
@@ -732,7 +732,7 @@ impl<'tcx> Cx<'tcx> {
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
-                variant_index: VariantIdx::new(0),
+                variant_index: FIRST_VARIANT,
                 name: Field::new(self.typeck_results.field_index(expr.hir_id)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
