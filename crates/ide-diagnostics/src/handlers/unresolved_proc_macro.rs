@@ -25,25 +25,21 @@ pub(crate) fn unresolved_proc_macro(
         _ => proc_macros_enabled,
     };
 
-    let message = match &d.macro_name {
+    let not_expanded_message = match &d.macro_name {
         Some(name) => format!("proc macro `{name}` not expanded"),
         None => "proc macro not expanded".to_string(),
     };
     let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };
     let def_map = ctx.sema.db.crate_def_map(d.krate);
-    let message = format!(
-        "{message}: {}",
-        if config_enabled {
-            def_map.proc_macro_loading_error().unwrap_or("proc macro not found in the built dylib")
-        } else {
-            match d.kind {
-                hir::MacroKind::Attr if proc_macros_enabled => {
-                    "attribute macro expansion is disabled"
-                }
-                _ => "proc-macro expansion is disabled",
-            }
-        },
-    );
+    let message = if config_enabled {
+        def_map.proc_macro_loading_error().unwrap_or("proc macro not found in the built dylib")
+    } else {
+        match d.kind {
+            hir::MacroKind::Attr if proc_macros_enabled => "attribute macro expansion is disabled",
+            _ => "proc-macro expansion is disabled",
+        }
+    };
+    let message = format!("{not_expanded_message}: {message}");
 
     Diagnostic::new("unresolved-proc-macro", message, display_range).severity(severity)
 }

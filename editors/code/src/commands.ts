@@ -749,8 +749,8 @@ export function reloadWorkspace(ctx: CtxInit): Cmd {
     return async () => ctx.client.sendRequest(ra.reloadWorkspace);
 }
 
-export function reloadProcMacros(ctx: CtxInit): Cmd {
-    return async () => ctx.client.sendRequest(ra.reloadProcMacros);
+export function rebuildProcMacros(ctx: CtxInit): Cmd {
+    return async () => ctx.client.sendRequest(ra.rebuildProcMacros);
 }
 
 export function addProject(ctx: CtxInit): Cmd {

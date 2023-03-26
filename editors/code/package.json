@@ -200,8 +200,8 @@
                 "category": "rust-analyzer"
             },
             {
-                "command": "rust-analyzer.reloadProcMacros",
-                "title": "Reload proc macros and build scripts",
+                "command": "rust-analyzer.rebuildProcMacros",
+                "title": "Rebuild proc macros and build scripts",
                 "category": "rust-analyzer"
             },
             {

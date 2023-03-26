@@ -153,7 +153,7 @@ function createCommands(): Record<string, CommandFactory> {
         memoryUsage: { enabled: commands.memoryUsage },
         shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
-        reloadProcMacros: { enabled: commands.reloadProcMacros },
+        rebuildProcMacros: { enabled: commands.rebuildProcMacros },
         addProject: { enabled: commands.addProject },
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },

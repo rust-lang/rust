@@ -15,7 +15,9 @@ use syntax::SmolStr;
 use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
-pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
+// Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
+// then the crate for the proc-macro hasn't been build yet as the build data is missing.
+pub type ProcMacroPaths = FxHashMap<CrateId, Option<(Option<String>, AbsPathBuf)>>;
 pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
 
 /// Files are grouped into source roots. A source root is a directory on the
