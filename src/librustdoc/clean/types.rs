@@ -1213,9 +1213,9 @@ impl Lifetime {
 
 #[derive(Clone, Debug)]
 pub(crate) enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<Lifetime> },
+    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Box<Type>, rhs: Box<Term>, bound_params: Vec<Lifetime> },
+    EqPredicate { lhs: Box<Type>, rhs: Box<Term>, bound_params: Vec<GenericParamDef> },
 }
 
 impl WherePredicate {
@@ -1227,7 +1227,7 @@ impl WherePredicate {
         }
     }
 
-    pub(crate) fn get_bound_params(&self) -> Option<&[Lifetime]> {
+    pub(crate) fn get_bound_params(&self) -> Option<&[GenericParamDef]> {
         match self {
             Self::BoundPredicate { bound_params, .. } | Self::EqPredicate { bound_params, .. } => {
                 Some(bound_params)
@@ -1241,7 +1241,7 @@ impl WherePredicate {
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
-    Const { did: DefId, ty: Box<Type>, default: Option<Box<String>> },
+    Const { ty: Box<Type>, default: Option<Box<String>> },
 }
 
 impl GenericParamDefKind {
