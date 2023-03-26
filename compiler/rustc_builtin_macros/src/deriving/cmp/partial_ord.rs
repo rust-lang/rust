@@ -24,14 +24,26 @@ pub fn expand_deriving_partial_ord(
     // Order in which to perform matching
     let tag_then_data = if let Annotatable::Item(item) = item
         && let ItemKind::Enum(def, _) = &item.kind {
-            let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
-            match dataful.iter().filter(|&&b| b).count() {
+            #[inline]
+            fn is_dataful(v: &rustc_ast::Variant) -> bool {
+                !v.data.fields().is_empty()
+            }
+            // The `take(3)` here is just to short-circuit, which doesn't seem to happen on its own.
+            let num_dataful = def.variants.iter().filter(|v| is_dataful(v)).take(3).count();
+            match num_dataful {
                 // No data, placing the tag check first makes codegen simpler
                 0 => true,
                 1..=2 => false,
+                // Note: if you add more arms here (or otherwise adjust them),
+                // you may need to change or remove the `take(3)` above.
                 _ => {
-                    (0..dataful.len()-1).any(|i| {
-                        if dataful[i] && let Some(idx) = dataful[i+1..].iter().position(|v| *v) {
+                    let end = def.variants.len() - 1;
+                    def.variants[..end].iter().enumerate().any(|(i, v)| {
+                        // `take(3)` here is for the same reason as above, short
+                        // circuiting once we know what we care about. That
+                        // said, the fact that it's also `3` is only a
+                        // coincidence.
+                        if is_dataful(v) && let Some(idx) = def.variants[i + 1..].iter().take(3).position(is_dataful) {
                             idx >= 2
                         } else {
                             false

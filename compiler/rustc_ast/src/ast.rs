@@ -2713,6 +2713,7 @@ pub enum VariantData {
 
 impl VariantData {
     /// Return the fields of this variant.
+    #[inline]
     pub fn fields(&self) -> &[FieldDef] {
         match self {
             VariantData::Struct(fields, ..) | VariantData::Tuple(fields, _) => fields,
