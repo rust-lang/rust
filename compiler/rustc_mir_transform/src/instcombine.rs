@@ -4,7 +4,7 @@ use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
-    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
+    SourceInfo, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
@@ -44,6 +44,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                 &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
+            ctx.combine_duplicate_switch_targets(&mut block.terminator.as_mut().unwrap());
         }
     }
 }
@@ -215,6 +216,19 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
             ))),
         });
         terminator.kind = TerminatorKind::Goto { target: destination_block };
+    }
+
+    fn combine_duplicate_switch_targets(&self, terminator: &mut Terminator<'tcx>) {
+        let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind
+        else { return };
+
+        let otherwise = targets.otherwise();
+        if targets.iter().any(|t| t.1 == otherwise) {
+            *targets = SwitchTargets::new(
+                targets.iter().filter(|t| t.1 != otherwise),
+                targets.otherwise(),
+            );
+        }
     }
 
     fn combine_intrinsic_assert(

@@ -8,7 +8,7 @@ use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, VariantIdx};
+use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -796,7 +796,7 @@ where
                 let variant_dest = self.place_downcast(&dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
-            _ => (VariantIdx::from_u32(0), dest.clone(), None),
+            _ => (FIRST_VARIANT, dest.clone(), None),
         };
         if active_field_index.is_some() {
             assert_eq!(operands.len(), 1);

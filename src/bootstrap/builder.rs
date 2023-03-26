@@ -1941,6 +1941,12 @@ impl<'a> Builder<'a> {
                 rustflags.arg("-Zvalidate-mir");
                 rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
             }
+            // Always enable inlining MIR when building the standard library.
+            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
+            // That causes some mir-opt tests which inline functions from the standard library to
+            // break when incremental compilation is enabled. So this overrides the "no inlining
+            // during incremental builds" heuristic for the standard library.
+            rustflags.arg("-Zinline-mir");
         }
 
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }

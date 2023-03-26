@@ -7,7 +7,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
 
 /// The value of an inserted drop flag.
@@ -468,7 +468,7 @@ where
             let fields = self.move_paths_for_fields(
                 self.place,
                 self.path,
-                &adt.variant(VariantIdx::new(0)),
+                &adt.variant(FIRST_VARIANT),
                 substs,
             );
             self.drop_ladder(fields, succ, unwind)
@@ -894,7 +894,7 @@ where
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
         let free_func = tcx.require_lang_item(LangItem::BoxFree, Some(self.source_info.span));
         let args = adt
-            .variant(VariantIdx::new(0))
+            .variant(FIRST_VARIANT)
             .fields
             .iter()
             .enumerate()
