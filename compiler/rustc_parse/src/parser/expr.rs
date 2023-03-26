@@ -8,7 +8,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use ast::{Path, PathSegment, FStrSegment};
+use ast::{Path, PathSegment, FStringPiece};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1526,24 +1526,24 @@ impl<'a> Parser<'a> {
                 let (symbol, mut end_delimiter) = self
                     .parse_f_str_segment(token::FStrDelimiter::Quote)
                     .ok_or_else(|| self.error_expected_f_string())?;
-                let mut segments = vec![FStrSegment::Str(symbol)];
+                let mut segments = vec![FStringPiece::Literal(symbol)];
 
                 while end_delimiter == token::FStrDelimiter::Brace {
                     let expr = self.parse_expr()?;
-                    segments.push(FStrSegment::Expr(expr));
+                    segments.push(FStringPiece::Expr(expr));
 
                     let segment = self
                         .parse_f_str_segment(token::FStrDelimiter::Brace)
                         .ok_or_else(|| self.error_expected_f_string())?;
                     end_delimiter = segment.1;
                     // TODO: Add span information to `FStrSegment::Str`s?
-                    segments.push(FStrSegment::Str(segment.0));
+                    segments.push(FStringPiece::Literal(segment.0));
                 }
 
                 // TODO: Check if attrs should be passed through
                 let expr = self.mk_expr(
                     lo.to(self.prev_token.span),
-                    ExprKind::FStr(ast::FStr { segments })
+                    ExprKind::FStr(ast::FString { segments })
                 );
                 // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
                 return Ok(Some(expr));
