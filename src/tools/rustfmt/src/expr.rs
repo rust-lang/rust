@@ -86,6 +86,8 @@ pub(crate) fn format_expr(
                 }
             }
         }
+        // TODO: Implement
+        ast::ExprKind::FStr(..) => None,
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             let callee_str = callee.rewrite(context, shape)?;

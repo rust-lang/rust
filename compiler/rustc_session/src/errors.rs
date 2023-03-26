@@ -216,6 +216,13 @@ pub enum UnleashedFeatureHelp {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_unexpected_f_string)] // TODO: Redo message
+pub(crate) struct UnexpectedFString {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_invalid_literal_suffix)]
 pub(crate) struct InvalidLiteralSuffix<'a> {
     #[primary_span]
@@ -337,6 +344,10 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
 
     let token::Lit { kind, symbol, suffix, .. } = lit;
     match err {
+        LitError::UnexpectedFString => {
+            // TODO: Check & maybe improve
+            sess.emit_err(UnexpectedFString { span });
+        }
         // `LexerError` is an error, but it was already reported
         // by lexer, so here we don't report it the second time.
         LitError::LexerError => {}

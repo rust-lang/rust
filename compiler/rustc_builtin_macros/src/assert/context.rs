@@ -3,7 +3,7 @@ use rustc_ast::{
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
     BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID, FStrSegment,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -233,6 +233,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
             }
             ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
+            }
+            ExprKind::FStr(f_str) => {
+                for segment in &mut f_str.segments {
+                    match segment {
+                        FStrSegment::Str(_) => { },
+                        FStrSegment::Expr(expr) => self.manage_cond_expr(expr),
+                    }
+                }
             }
             ExprKind::Index(prefix, suffix) => {
                 self.manage_cond_expr(prefix);

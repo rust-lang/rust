@@ -488,6 +488,8 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
         }
+        // TODO: Implement
+        ast::ExprKind::FStr(..) => false,
         ast::ExprKind::AddrOf(..)
         | ast::ExprKind::Assign(..)
         | ast::ExprKind::AssignOp(..)

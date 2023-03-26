@@ -249,13 +249,13 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
     let c = chars.next().ok_or(EscapeError::ZeroChars)?;
     let res = match c {
         '\\' => scan_escape(chars, mode),
-        '{' | '}' => match chars.next() {
+        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
+        '\r' => Err(EscapeError::BareCarriageReturn),
+        '{' | '}' if mode == Mode::FStr => match chars.next() {
             None => Err(EscapeError::LoneBrace),
             Some(next_char) if next_char != c => Err(EscapeError::LoneBrace), // TODO: Improve error?
             Some(_) => Ok(c),
         },
-        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
-        '\r' => Err(EscapeError::BareCarriageReturn),
         _ => ascii_check(c, mode.is_byte()),
     }?;
     if chars.next().is_some() {
@@ -263,7 +263,6 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
     }
     Ok(res)
 }
-
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
 fn unescape_str_or_byte_str_or_f_str<F>(src: &str, mode: Mode, callback: &mut F)

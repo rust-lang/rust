@@ -1,6 +1,6 @@
 use crate::base::ExtCtxt;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, FStrDelimiter, LitKind, Literal, Punct, TokenTree,
 };
 use pm::{Delimiter, Level, LineColumn};
 use rustc_ast as ast;
@@ -50,6 +50,24 @@ impl ToInternal<token::Delimiter> for Delimiter {
     }
 }
 
+impl FromInternal<token::FStrDelimiter> for FStrDelimiter {
+    fn from_internal(kind: token::FStrDelimiter) -> Self {
+        match kind {
+            token::FStrDelimiter::Quote => FStrDelimiter::Quote,
+            token::FStrDelimiter::Brace => FStrDelimiter::Brace,
+        }
+    }
+}
+
+impl ToInternal<token::FStrDelimiter> for FStrDelimiter {
+    fn to_internal(self) -> token::FStrDelimiter {
+        match self {
+            FStrDelimiter::Quote => token::FStrDelimiter::Quote,
+            FStrDelimiter::Brace => token::FStrDelimiter::Brace,
+        }
+    }
+}
+
 impl FromInternal<token::LitKind> for LitKind {
     fn from_internal(kind: token::LitKind) -> Self {
         match kind {
@@ -61,6 +79,7 @@ impl FromInternal<token::LitKind> for LitKind {
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            token::FStr(start, end) => LitKind::FStr(FStrDelimiter::from_internal(start), FStrDelimiter::from_internal(end)),
             token::Err => LitKind::Err,
             token::Bool => unreachable!(),
         }
@@ -78,6 +97,7 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::StrRaw(n) => token::StrRaw(n),
             LitKind::ByteStr => token::ByteStr,
             LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::FStr(start, end) => token::FStr(start.to_internal(), end.to_internal()),
             LitKind::Err => token::Err,
         }
     }
@@ -191,6 +211,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     ]);
                 }
                 Literal(token::Lit { kind, symbol, suffix }) => {
+                    // TODO!!: f-string
                     trees.push(TokenTree::Literal(self::Literal {
                         kind: FromInternal::from_internal(kind),
                         symbol,
@@ -436,6 +457,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::StrRaw(_)
                 | token::LitKind::ByteStr
                 | token::LitKind::ByteStrRaw(_)
+                | token::LitKind::FStr(_, _)
                 | token::LitKind::Err => return Err(()),
                 token::LitKind::Integer | token::LitKind::Float => {}
             }

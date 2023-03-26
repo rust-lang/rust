@@ -326,6 +326,19 @@ rpc_encode_decode!(
 );
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum FStrDelimiter {
+    Quote,
+    Brace,
+}
+
+rpc_encode_decode!(
+    enum FStrDelimiter {
+        Quote,
+        Brace,
+    }
+);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum LitKind {
     Byte,
     Char,
@@ -335,6 +348,7 @@ pub enum LitKind {
     StrRaw(u8),
     ByteStr,
     ByteStrRaw(u8),
+    FStr(FStrDelimiter, FStrDelimiter),
     Err,
 }
 
@@ -348,6 +362,7 @@ rpc_encode_decode!(
         StrRaw(n),
         ByteStr,
         ByteStrRaw(n),
+        FStr(start, end),
         Err,
     }
 );

@@ -2,10 +2,10 @@ use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind, FStrDelimiter};
+use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey, FatalError};
+use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::Lexer;
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -221,19 +221,6 @@ impl<'a> StringReader<'a> {
                     };
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
-                rustc_lexer::TokenKind::FStr { start: start_delimiter, end: end_delimiter } => {
-                    let start_delimiter = translate_f_str_delimiter(start_delimiter);
-                    let end_delimiter = if let Some(end_delimiter) = end_delimiter {
-                        translate_f_str_delimiter(end_delimiter)
-                    } else {
-                        self.sess.span_diagnostic.span_fatal_with_code(
-                            self.mk_sp(start, self.pos),
-                            "unterminated f-string",
-                            error_code!(E0795),
-                        )
-                    };
-                    self.cook_quoted_f_string(start, self.pos, start_delimiter, end_delimiter)
-                }
                 rustc_lexer::TokenKind::Lifetime { starts_with_number, contains_emoji } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
@@ -403,7 +390,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0762),
                     )
                 }
-                self.cook_quoted_literal(token::Char, Mode::Char, start, end, 1, 1) // ' '
+                self.cook_quoted(token::Char, Mode::Char, start, end, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
@@ -413,7 +400,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0763),
                     )
                 }
-                self.cook_quoted_literal(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
+                self.cook_quoted(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
@@ -423,7 +410,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0765),
                     )
                 }
-                self.cook_quoted_literal(token::Str, Mode::Str, start, end, 1, 1) // " "
+                self.cook_quoted(token::Str, Mode::Str, start, end, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
@@ -433,13 +420,13 @@ impl<'a> StringReader<'a> {
                         error_code!(E0766),
                     )
                 }
-                self.cook_quoted_literal(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
+                self.cook_quoted(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::StrRaw(n_hashes);
-                    self.cook_quoted_literal(kind, Mode::RawStr, start, end, 2 + n, 1 + n) // r##" "##
+                    self.cook_quoted(kind, Mode::RawStr, start, end, 2 + n, 1 + n) // r##" "##
                 } else {
                     self.report_raw_str_error(start, 1);
                 }
@@ -448,9 +435,25 @@ impl<'a> StringReader<'a> {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::ByteStrRaw(n_hashes);
-                    self.cook_quoted_literal(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
+                    self.cook_quoted(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
+                }
+            }
+            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter } => {
+                let start_delimiter = translate_f_str_delimiter(start_delimiter);
+                if let Some(end_delimiter) = end_delimiter {
+                    let end_delimiter = translate_f_str_delimiter(end_delimiter);
+                    let prefix_len = start_delimiter.display(true).len() as u32;
+                    let postfix_len = end_delimiter.display(false).len() as u32;
+                    let kind = token::FStr(start_delimiter, end_delimiter);
+                    self.cook_quoted(kind, Mode::FStr, start, end, prefix_len, postfix_len) // `f" "`, `f" {`, `} {`, `} "`
+                } else {
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start, end),
+                        "unterminated f-string",
+                        error_code!(E0795),
+                    )
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
@@ -668,22 +671,7 @@ impl<'a> StringReader<'a> {
         self.sess.emit_fatal(errors::TooManyHashes { span: self.mk_sp(start, self.pos), num });
     }
 
-    fn cook_quoted_f_string(
-        &self,
-        start: BytePos,
-        end: BytePos,
-        start_delimiter: FStrDelimiter,
-        end_delimiter: FStrDelimiter,
-    ) -> TokenKind {
-        let prefix_len = start_delimiter.display(true).len() as u32;
-        let postfix_len = end_delimiter.display(false).len() as u32;
-        match self.cook_quoted(Mode::FStr, start, end, prefix_len, postfix_len) {
-            Ok(symbol) => token::FStr(start_delimiter, symbol, end_delimiter),
-            Err(_) => FatalError.raise()
-        }
-    }
-
-    fn cook_quoted_literal(
+    fn cook_quoted(
         &self,
         kind: token::LitKind,
         mode: Mode,
@@ -692,20 +680,6 @@ impl<'a> StringReader<'a> {
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
-        match self.cook_quoted(mode, start, end, prefix_len, postfix_len) {
-            Ok(symbol) => (kind, symbol),
-            Err(symbol) => (token::Err, symbol)
-        }
-    }
-
-    fn cook_quoted(
-        &self,
-        mode: Mode,
-        start: BytePos,
-        end: BytePos,
-        prefix_len: u32,
-        postfix_len: u32,
-    ) -> Result<Symbol, Symbol> {
         let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
@@ -736,12 +710,11 @@ impl<'a> StringReader<'a> {
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
         if !has_fatal_err {
-            Ok(Symbol::intern(lit_content))
+            (kind, Symbol::intern(lit_content))
         } else {
-            Err(self.symbol_from_to(start, end))
+            (token::Err, self.symbol_from_to(start, end))
         }
     }
-
 }
 
 fn translate_f_str_delimiter(delimiter: rustc_lexer::FStrDelimiter) -> token::FStrDelimiter {

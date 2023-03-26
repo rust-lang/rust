@@ -58,7 +58,7 @@ macro_rules! rpc_encode_decode {
             }
         }
     };
-    (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
+    (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($($field:ident),* $(,)?))*),* $(,)? }) => {
         impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
@@ -71,9 +71,9 @@ macro_rules! rpc_encode_decode {
                 }
 
                 match self {
-                    $($name::$variant $(($field))* => {
+                    $($name::$variant $(($($field,)*))* => {
                         tag::$variant.encode(w, s);
-                        $($field.encode(w, s);)*
+                        $($($field.encode(w, s);)*)*
                     })*
                 }
             }
@@ -94,8 +94,8 @@ macro_rules! rpc_encode_decode {
 
                 match u8::decode(r, s) {
                     $(tag::$variant => {
-                        $(let $field = DecodeMut::decode(r, s);)*
-                        $name::$variant $(($field))*
+                        $($(let $field = DecodeMut::decode(r, s);)*)*
+                        $name::$variant $(($($field,)*))*
                     })*
                     _ => unreachable!(),
                 }

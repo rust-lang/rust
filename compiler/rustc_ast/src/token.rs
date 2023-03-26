@@ -92,6 +92,8 @@ pub enum LitKind {
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
+    /// F-string, delimited at the start and end by the specified delimiters.
+    FStr(FStrDelimiter, FStrDelimiter), // AST only, must never appear in a `Token`
     Err,
 }
 
@@ -160,6 +162,9 @@ impl fmt::Display for Lit {
                 string = symbol
             )?,
             Integer | Float | Bool | Err => write!(f, "{symbol}")?,
+            FStr(start, end) => {
+                write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?
+            }
         }
 
         if let Some(suffix) = suffix {
@@ -188,6 +193,7 @@ impl LitKind {
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
+            FStr(..) => "format string", // TODO: an f-string, rather than a "format string"? Will have to change `article()` as well.
             Err => "error",
         }
     }
@@ -278,9 +284,6 @@ pub enum TokenKind {
 
     /* Literals */
     Literal(Lit),
-
-    /// F-string, delimited at the start and end by the specified delimiters.
-    FStr(FStrDelimiter, Symbol, FStrDelimiter), // TODO: suffix: Option<Symbol>?
 
     /// Identifier token.
     /// Do not forget about `NtIdent` when you want to match on identifiers.
@@ -410,7 +413,7 @@ impl Token {
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | DocComment(..) | Ident(..)
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | Eof => false,
         }
     }
@@ -425,8 +428,8 @@ impl Token {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             OpenDelim(..)                     | // tuple, array or block
+            // TODO!!: handle f-string
             Literal(..)                       | // literal
-            FStr(..)                          | // f-string (TODO Check)
             Not                               | // operator not
             BinOp(Minus)                      | // unary minus
             BinOp(Star)                       | // dereference
@@ -467,7 +470,6 @@ impl Token {
                 NtPat(..)     |
                 NtBlock(..)   |
                 NtPath(..)),
-            // f-string false?
             _ => false,
         }
     }
@@ -537,7 +539,6 @@ impl Token {
 
     /// Returns `true` if the token is any literal.
     pub fn is_lit(&self) -> bool {
-        // TODO: f-string?
         matches!(self.kind, Literal(..))
     }
 
@@ -550,7 +551,6 @@ impl Token {
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
-            // TODO: f-string?
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
                 NtLiteral(_) => true,
@@ -787,7 +787,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | Ident(..)
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
 

@@ -68,6 +68,8 @@ session_octal_float_literal_not_supported = octal float literal is not supported
 session_binary_float_literal_not_supported = binary float literal is not supported
 session_not_supported = not supported
 
+session_unexpected_f_string = unexpected f-string
+
 session_invalid_literal_suffix = suffixes on {$kind} literals are invalid
     .label = invalid suffix `{$suffix}`
 

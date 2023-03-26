@@ -29,6 +29,7 @@ pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
 
 #[derive(Debug)]
 pub enum LitError {
+    UnexpectedFString,
     LexerError,
     InvalidSuffix,
     InvalidIntSuffix,
@@ -158,6 +159,7 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
+            token::FStr(_, _) => return Err(LitError::UnexpectedFString),
             token::Err => LitKind::Err,
         })
     }
