@@ -39,11 +39,7 @@ pub fn expand_deriving_partial_ord(
                 _ => {
                     let end = def.variants.len() - 1;
                     def.variants[..end].iter().enumerate().any(|(i, v)| {
-                        // `take(3)` here is for the same reason as above, short
-                        // circuiting once we know what we care about. That
-                        // said, the fact that it's also `3` is only a
-                        // coincidence.
-                        if is_dataful(v) && let Some(idx) = def.variants[i + 1..].iter().take(3).position(is_dataful) {
+                        if is_dataful(v) && let Some(idx) = def.variants[i + 1..].iter().position(is_dataful) {
                             idx >= 2
                         } else {
                             false
