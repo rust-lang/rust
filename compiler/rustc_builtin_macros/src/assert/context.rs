@@ -234,8 +234,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::FStr(f_str) => {
-                for segment in &mut f_str.segments {
+            ExprKind::FStr(pieces) => {
+                for segment in pieces {
                     match segment {
                         FStringPiece::Literal(_) => { },
                         FStringPiece::Expr(expr) => self.manage_cond_expr(expr),

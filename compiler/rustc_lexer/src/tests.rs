@@ -266,8 +266,6 @@ b"a"
 2us
 r###"raw"###suffix
 br###"raw"###suffix
-f"fstr"suffix
-f"foo{not_a_suffix + 2}bar"suffix
 "####,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
@@ -310,13 +308,13 @@ f"foo{not_a_suffix + 2}bar"suffix
 }
 
 #[test]
-fn f_strings() {
+fn f_string() {
     check_lexing(
         r#"
 f"foobar"
 f"foo{ 1 + 1 }bar"
 f"foo{ 1 + { 5 } }bar"
-f"foo{ 1 + { 5 + { 10 } } }bar"
+f"foo{ 1 + { 5 + { ident } } }bar"
 "#,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
@@ -373,6 +371,26 @@ f"foo{ 1 + { 5 + { 10 } } }bar"
 }
 
 #[test]
+fn f_string_escaped() {
+    check_lexing(
+        r#"
+f"foobar"
+f"foo\{ quux \}bar"
+f"foo{{ quux {{\{}}\}\\}}bar"
+f"foo\{"
+f"foo\}"
+f"foo\\"
+f"foo\'"
+f"foo\""
+f"this whole{{string should}}be one\\}}\{\}literal\\{{"
+f"foo{{ bar }} bax: { 1 + 1 }\}\}"
+f"foo{{ bar }} bax: { f"inner\{\}{{" }\}\}"
+"#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
 fn f_string_large() {
     check_lexing(
         r#"f"foo{ ident + f"nested { bar + "f-strings" + f"just }} a plain {{ string" }" }bar""#,
@@ -405,7 +423,7 @@ fn f_string_large() {
 #[test]
 fn f_string_unterminated() {
     check_lexing(
-        r#"f"foo"#,
+        r#"f"foo\{"#,
         expect![[r#"
             Token { kind: Literal { kind: FStr { start: Quote, end: None }, suffix_start: 5 }, len: 5 }
         "#]],
@@ -424,16 +442,6 @@ fn f_string_unterminated_with_inner_expr() {
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
             Token { kind: Literal { kind: FStr { start: Brace, end: None }, suffix_start: 1 }, len: 1 }
-        "#]],
-    )
-}
-
-#[test]
-fn f_string_escaped() {
-    check_lexing(
-        r#"f"this whole{{string should}}be one\\}}literal\\{{""#,
-        expect![[r#"
-            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Quote) }, suffix_start: 51 }, len: 51 }
         "#]],
     )
 }

@@ -983,10 +983,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_f_str(&mut self, f_str: &ast::FString) {
+    fn print_f_str(&mut self, pieces: &ThinVec<ast::FStringPiece>) {
         // TODO? self.maybe_print_comment(lit.span.lo());
         let mut buffer = "f\"".to_string();
-        for segment in &f_str.segments {
+        for segment in pieces {
             match segment {
                 ast::FStringPiece::Literal(symbol) => {
                     let st = symbol

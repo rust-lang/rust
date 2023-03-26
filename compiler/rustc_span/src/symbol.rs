@@ -717,6 +717,7 @@ symbols! {
         fmaf32,
         fmaf64,
         fmt,
+        fmt_internals,
         fmul_fast,
         fn_align,
         fn_must_use,

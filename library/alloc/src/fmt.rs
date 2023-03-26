@@ -602,6 +602,7 @@ use crate::string;
 /// [`format_args!`]: core::format_args
 /// [`format!`]: crate::format
 #[cfg(not(no_global_oom_handling))]
+#[cfg_attr(not(bootstrap), lang = "format")] // TODO: Check
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]

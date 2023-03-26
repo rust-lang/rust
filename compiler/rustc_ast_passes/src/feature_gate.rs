@@ -577,6 +577,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
+    gate_all!(f_strings, "f-strings are experimental", "consider using format!() instead");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

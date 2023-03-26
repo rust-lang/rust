@@ -154,6 +154,8 @@ declare_features! (
     (active, compiler_builtins, "1.13.0", None, None),
     /// Allows writing custom MIR
     (active, custom_mir, "1.65.0", None, None),
+    /// Allows f-strings
+    (active, f_strings, "1.69.0", None, None),
     /// Outputs useful `assert!` messages
     (active, generic_assert, "1.63.0", None, None),
     /// Allows using the `rust-intrinsic`'s "ABI".

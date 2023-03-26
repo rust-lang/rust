@@ -1518,32 +1518,33 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
-        let lo = self.token.span;
+        let start_token_span = self.token.span;
         if let TokenKind::Literal(lit) = self.token.kind {
             if let token::FStr(..) = lit.kind {
-                self.sess.gated_spans.gate(sym::f_strings, self.token.span);
-
                 let (symbol, mut end_delimiter) = self
                     .parse_f_str_segment(token::FStrDelimiter::Quote)
                     .ok_or_else(|| self.error_expected_f_string())?;
-                let mut segments = vec![FStringPiece::Literal(symbol)];
+                let mut pieces = ThinVec::new();
+                pieces.push(FStringPiece::Literal(symbol));
 
                 while end_delimiter == token::FStrDelimiter::Brace {
                     let expr = self.parse_expr()?;
-                    segments.push(FStringPiece::Expr(expr));
+                    pieces.push(FStringPiece::Expr(expr));
 
-                    let segment = self
+                    let (symbol, delimiter) = self
                         .parse_f_str_segment(token::FStrDelimiter::Brace)
                         .ok_or_else(|| self.error_expected_f_string())?;
-                    end_delimiter = segment.1;
+                    end_delimiter = delimiter;
                     // TODO: Add span information to `FStrSegment::Str`s?
-                    segments.push(FStringPiece::Literal(segment.0));
+                    pieces.push(FStringPiece::Literal(symbol));
                 }
 
-                // TODO: Check if attrs should be passed through
+                let full_span = start_token_span.to(self.prev_token.span);
+                self.sess.gated_spans.gate(sym::f_strings, full_span);
+
                 let expr = self.mk_expr(
-                    lo.to(self.prev_token.span),
-                    ExprKind::FStr(ast::FString { segments })
+                    full_span,
+                    ExprKind::FStr(pieces)
                 );
                 // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
                 return Ok(Some(expr));

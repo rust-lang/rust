@@ -252,6 +252,9 @@ language_item_table! {
     FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         Target::Struct,         GenericRequirement::None;
     FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          Target::Struct,         GenericRequirement::None;
 
+    // Lang item needed for f-strings.
+    Format,                  sym::format,              format_fn,                  Target::Fn,             GenericRequirement::Exact(1); // TODO: Check GenericRequirement here
+
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn,             GenericRequirement::Minimum(1);
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);

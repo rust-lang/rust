@@ -77,6 +77,41 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                     );
                 }
+                ExprKind::FStr(pieces) => {
+                    let expr_span = self.mark_span_with_reason(DesugaringKind::FString, e.span, self.allow_fmt_internals.clone());
+                    let mut arguments = FormatArguments::new();
+                    let mut template = Vec::new();
+                    for segment in pieces {
+                        match segment {
+                            FStringPiece::Literal(symbol) => template.push(FormatArgsPiece::Literal(*symbol)),
+                            FStringPiece::Expr(expr) => {
+                                template.push(FormatArgsPiece::Placeholder(FormatPlaceholder {
+                                    argument: FormatArgPosition {
+                                        index: Ok(arguments.all_args().len()),
+                                        kind: FormatArgPositionKind::Implicit,
+                                        span: None,
+                                    },
+                                    span: Some(expr.span), // TODO: Check
+                                    format_trait: FormatTrait::Display, // TODO: Implement format string options
+                                    format_options: FormatOptions::default(),
+                                }));
+                                arguments.add(FormatArgument {
+                                    kind: FormatArgumentKind::Normal,
+                                    expr: expr.clone(), // TODO: Do this without cloning
+                                });
+                            },
+                        }
+                    }
+                    let fmt = FormatArgs {
+                        span: expr_span,
+                        template,
+                        arguments,
+                    };
+                    let format_args_expr_kind = self.lower_format_args(expr_span, &fmt);
+                    let format_args_expr = self.expr(expr_span, format_args_expr_kind);
+                    let format_args = self.arena.alloc_from_iter([format_args_expr]);
+                    return self.expr_call_lang_item_fn_mut(expr_span, hir::LangItem::Format, format_args, None);
+                }
                 _ => (),
             }
 
@@ -136,47 +171,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                     };
                     hir::ExprKind::Lit(respan(self.lower_span(e.span), lit_kind))
-                }
-                ExprKind::FStr(f_str) => {
-                    // // Generate:
-                    // //     <core::fmt::Arguments>::new_const(lit_pieces)
-                    // let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-                    //     macsp,
-                    //     hir::LangItem::FormatArguments,
-                    //     sym::new_const,
-                    // ));
-                    // let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
-                    // return hir::ExprKind::Call(new, new_args);
-                    let mut arguments = FormatArguments::new();
-                    let mut template = Vec::new();
-                    for segment in &f_str.segments {
-                        match segment {
-                            FStringPiece::Literal(symbol) => template.push(FormatArgsPiece::Literal(*symbol)),
-                            FStringPiece::Expr(expr) => {
-                                template.push(FormatArgsPiece::Placeholder(FormatPlaceholder {
-                                    argument: FormatArgPosition {
-                                        index: Ok(arguments.all_args().len()),
-                                        kind: FormatArgPositionKind::Implicit,
-                                        span: None,
-                                    },
-                                    span: Some(expr.span), // TODO: Check
-                                    format_trait: FormatTrait::Display, // TODO: Implement format string options
-                                    format_options: FormatOptions::default(),
-                                }));
-                                arguments.add(FormatArgument {
-                                    kind: FormatArgumentKind::Normal,
-                                    expr: expr.clone(), // TODO: Do this without cloning
-                                });
-                            },
-                        }
-                    }
-                    let fmt = FormatArgs {
-                        span: e.span,
-                        template,
-                        arguments,
-                    };
-                    self.lower_format_args(e.span, &fmt)
-                    // todo!("todo: {:#?}", f_str);
                 }
                 ExprKind::IncludedBytes(bytes) => hir::ExprKind::Lit(respan(
                     self.lower_span(e.span),
@@ -361,7 +355,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop(..) | ExprKind::Async(..) => {
+                ExprKind::Paren(_) | ExprKind::FStr(_) | ExprKind::ForLoop(..) | ExprKind::Async(..) => {
                     unreachable!("already handled")
                 }
 

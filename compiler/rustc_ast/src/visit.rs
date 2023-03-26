@@ -811,8 +811,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::AddrOf(_, _, subexpression) | ExprKind::Unary(_, subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprKind::FStr(fstr) => {
-            for segment in &fstr.segments {
+        ExprKind::FStr(pieces) => {
+            for segment in pieces {
                 match segment {
                     FStringPiece::Expr(ex) => visitor.visit_expr(ex),
                     FStringPiece::Literal(_) => {}

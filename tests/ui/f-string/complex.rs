@@ -1,4 +1,5 @@
 // run-pass
+#![feature(f_strings)]
 
 pub fn main() {
     let b = 1;

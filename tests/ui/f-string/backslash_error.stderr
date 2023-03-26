@@ -1,0 +1,18 @@
+error: unknown character escape: `{`
+  --> $DIR/backslash_error.rs:2:18
+   |
+LL |     let a = "foo\{";
+   |                  ^ unknown character escape
+   |
+   = help: if used in a format string, curly braces are escaped with `{{` and `}}`
+
+error: unknown character escape: `}`
+  --> $DIR/backslash_error.rs:4:18
+   |
+LL |     let b = "bar\}";
+   |                  ^ unknown character escape
+   |
+   = help: if used in a format string, curly braces are escaped with `{{` and `}}`
+
+error: aborting due to 2 previous errors
+
