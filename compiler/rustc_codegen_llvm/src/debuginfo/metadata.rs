@@ -176,15 +176,14 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
-    let (thin_pointer_size, thin_pointer_align) =
-        cx.size_and_align_of(cx.tcx.mk_imm_ptr(cx.tcx.types.unit));
+    let data_layout = &cx.tcx.data_layout;
     let ptr_type_debuginfo_name = compute_debuginfo_type_name(cx.tcx, ptr_type, true);
 
     match fat_pointer_kind(cx, pointee_type) {
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             debug_assert_eq!(
-                (thin_pointer_size, thin_pointer_align),
+                (data_layout.pointer_size, data_layout.pointer_align.abi),
                 cx.size_and_align_of(ptr_type),
                 "ptr_type={}, pointee_type={}",
                 ptr_type,
@@ -195,8 +194,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 llvm::LLVMRustDIBuilderCreatePointerType(
                     DIB(cx),
                     pointee_type_di_node,
-                    thin_pointer_size.bits(),
-                    thin_pointer_align.bits() as u32,
+                    data_layout.pointer_size.bits(),
+                    data_layout.pointer_align.abi.bits() as u32,
                     0, // Ignore DWARF address space.
                     ptr_type_debuginfo_name.as_ptr().cast(),
                     ptr_type_debuginfo_name.len(),
