@@ -201,7 +201,7 @@ pub enum LiteralKind {
     /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
-    /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
+    /// `f"foo{`, `} bar {`, `} quux"`, `f"foo"`, or `f"unterminated`
     FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
 }
 
@@ -878,7 +878,7 @@ impl<'a> Lexer<'a> {
 
     /// Eats an f-string segment and returns the delimiter that it terminates with.
     fn f_string(&mut self, start: FStrDelimiter) -> TokenKind {
-        debug_assert!(self.cursor.prev() == '"' || self.cursor.prev() == '}');
+        debug_assert!(matches!((start, self.cursor.prev()), (FStrDelimiter::Quote, '"') | (FStrDelimiter::Brace, '}')));
         while let Some(c) = self.cursor.bump() {
             match c {
                 '"' => {
@@ -897,7 +897,7 @@ impl<'a> Lexer<'a> {
                     self.brace_count += 1;
                     return Literal { kind, suffix_start: self.cursor.pos_within_token() };
                 }
-                '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
+                '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' || self.cursor.first() == '{' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
                 }

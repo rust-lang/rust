@@ -1,0 +1,10 @@
+error: expected expression in f-string placeholder
+  --> $DIR/expected_expr.rs:4:18
+   |
+LL |     let a = f"foo{}bar";
+   |                  ^^
+   |
+   = help: f-string placeholder `{}` is empty: to fix, add expresion: `{a}`
+
+error: aborting due to previous error
+

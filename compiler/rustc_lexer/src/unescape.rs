@@ -251,11 +251,6 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
         '\\' => scan_escape(chars, mode),
         '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
         '\r' => Err(EscapeError::BareCarriageReturn),
-        '{' | '}' if mode == Mode::FStr => match chars.next() {
-            None => Err(EscapeError::LoneBrace),
-            Some(next_char) if next_char != c => Err(EscapeError::LoneBrace), // TODO: Improve error?
-            Some(_) => Ok(c),
-        },
         _ => ascii_check(c, mode.is_byte()),
     }?;
     if chars.next().is_some() {
@@ -294,6 +289,13 @@ where
             '\t' => Ok('\t'),
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
+            '{' | '}' if mode == Mode::FStr => {
+                match chars.next() {
+                    None => Err(EscapeError::LoneBrace),
+                    Some(next_char) if next_char != c => Err(EscapeError::LoneBrace), // TODO: Improve error?
+                    Some(_) => Ok(c),
+                }
+            },
             _ => ascii_check(c, mode.is_byte()),
         };
         let end = src.len() - chars.as_str().len();

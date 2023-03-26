@@ -1,6 +1,4 @@
 pub fn main() {
-    let a = "foo\{";
-    //~ ERROR invalid escape
-    let b = "bar\}";
-    //~ ERROR invalid escape
+    let a = "foo\{"; //~ ERROR unknown character escape: `{`
+    let b = "bar\}"; //~ ERROR unknown character escape: `}`
 }

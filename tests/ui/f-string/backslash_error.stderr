@@ -7,7 +7,7 @@ LL |     let a = "foo\{";
    = help: if used in a format string, curly braces are escaped with `{{` and `}}`
 
 error: unknown character escape: `}`
-  --> $DIR/backslash_error.rs:4:18
+  --> $DIR/backslash_error.rs:3:18
    |
 LL |     let b = "bar\}";
    |                  ^ unknown character escape

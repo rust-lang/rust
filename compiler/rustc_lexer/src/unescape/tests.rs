@@ -26,6 +26,8 @@ fn test_unescape_char_bad() {
     check(r"\u{0}x", EscapeError::MoreThanOneChar);
     check(r"\u{1F63b}}", EscapeError::MoreThanOneChar);
 
+    check(r"\{", EscapeError::InvalidEscape);
+    check(r"\}", EscapeError::InvalidEscape);
     check(r"\v", EscapeError::InvalidEscape);
     check(r"\💩", EscapeError::InvalidEscape);
     check(r"\●", EscapeError::InvalidEscape);

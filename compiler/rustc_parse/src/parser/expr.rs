@@ -1465,90 +1465,69 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn error_expected_f_string_start_delimiter(
-        &self,
-        expected: token::FStrDelimiter,
-        found: token::FStrDelimiter,
-    ) {
-        let span_data = self.token.span.data();
-        let span = span_data.with_hi(span_data.lo + BytePos(found.display(true).len() as u32));
-        let msg = format!(
-            "expected f-string to start with `{}`, found `{}`",
-            expected.display(true),
-            found.display(true)
-        );
-        self.struct_span_err(span, &msg)
-            .span_suggestion(
-                span,
-                "replace the delimiter with the expected one",
-                expected.display(true).to_string(),
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
-    }
-
-    pub fn error_expected_f_string(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        // TODO: f-string name
-        // TODO: Also, side-note - should f-string be capitalised when at the beginning of a sentence?
-        //       (Not in error messages, but in comments) Like this: "F-strings are..."
-        let msg =
-            format!("expected f-string expression, found {}", super::token_descr(&self.token));
-        self.struct_span_err(self.token.span, &msg)
-    }
-
-    fn parse_f_str_segment(
+    fn parse_f_str_piece(
         &mut self,
         expected_start_delimiter: token::FStrDelimiter,
-    ) -> Option<(Symbol, token::FStrDelimiter)> {
-        // TODO: Change span to be whole literal?
-        if let TokenKind::Literal(lit) = self.token.kind {
-            if let token::FStr(start_delimiter, end_delimiter) = lit.kind {
-                if start_delimiter != expected_start_delimiter {
-                    self.error_expected_f_string_start_delimiter(
-                        expected_start_delimiter,
-                        start_delimiter,
-                    );
-                }
-                let symbol = self.unescape_f_str(lit.symbol);
+    ) -> PResult<'a, (Symbol, token::FStrDelimiter)> {
+        if let TokenKind::Literal(token::Lit { kind: token::FStr(start_delimiter, end_delimiter), symbol, .. }) = self.token.kind {
+            if expected_start_delimiter != start_delimiter {
+                let span_data = self.token.span.data();
+                let span = span_data.with_hi(span_data.lo + BytePos(start_delimiter.display(true).len() as u32));
+                let msg = format!(
+                    "expected f-string to start with `{}`, found `{}`",
+                    expected_start_delimiter.display(true),
+                    start_delimiter.display(true)
+                );
+                Err(self.struct_span_err(span, msg))
+            }
+            else
+            {
+                let unescaped_symbol = self.unescape_f_str(symbol);
                 self.bump();
-                return Some((symbol, end_delimiter));
+                Ok((unescaped_symbol, end_delimiter))
             }
         }
-        None
+        else
+        {
+            Err(self.struct_span_err(self.token.span, format!("expected f-string expression, found {}", super::token_descr(&self.token))))
+        }
     }
 
     fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let start_token_span = self.token.span;
-        if let TokenKind::Literal(lit) = self.token.kind {
-            if let token::FStr(..) = lit.kind {
-                let (symbol, mut end_delimiter) = self
-                    .parse_f_str_segment(token::FStrDelimiter::Quote)
-                    .ok_or_else(|| self.error_expected_f_string())?;
-                let mut pieces = ThinVec::new();
-                pieces.push(FStringPiece::Literal(symbol));
+        if let TokenKind::Literal(token::Lit { kind: token::FStr(_, end_delimiter), .. }) = self.token.kind {
+            let (symbol, _) = self.parse_f_str_piece(token::FStrDelimiter::Quote)?;
 
-                while end_delimiter == token::FStrDelimiter::Brace {
-                    let expr = self.parse_expr()?;
-                    pieces.push(FStringPiece::Expr(expr));
+            let mut pieces = ThinVec::new();
+            pieces.push(FStringPiece::Literal(symbol));
 
-                    let (symbol, delimiter) = self
-                        .parse_f_str_segment(token::FStrDelimiter::Brace)
-                        .ok_or_else(|| self.error_expected_f_string())?;
-                    end_delimiter = delimiter;
-                    // TODO: Add span information to `FStrSegment::Str`s?
-                    pieces.push(FStringPiece::Literal(symbol));
+            let mut end_delimiter = end_delimiter;
+            while end_delimiter == token::FStrDelimiter::Brace {
+                if let TokenKind::Literal(token::Lit { kind: token::FStr(token::FStrDelimiter::Brace, _), .. }) = self.token.kind {
+                    let span_data = self.token.span.data();
+                    let span = span_data.with_lo(span_data.lo - BytePos(1)).with_hi(span_data.lo + BytePos(1));
+                    let mut diag = self.struct_span_err(span, "expected expression in f-string placeholder");
+                    diag.help("f-string placeholder `{}` is empty: to fix, add expresion: `{a}`");
+                    return Err(diag);
                 }
 
-                let full_span = start_token_span.to(self.prev_token.span);
-                self.sess.gated_spans.gate(sym::f_strings, full_span);
+                let expr = self.parse_expr()?;
+                pieces.push(FStringPiece::Expr(expr));
 
-                let expr = self.mk_expr(
-                    full_span,
-                    ExprKind::FStr(pieces)
-                );
-                // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
-                return Ok(Some(expr));
+                let (symbol, delimiter) = self.parse_f_str_piece(token::FStrDelimiter::Brace)?;
+                end_delimiter = delimiter;
+                pieces.push(FStringPiece::Literal(symbol));
             }
+
+            let full_span = start_token_span.to(self.prev_token.span);
+            self.sess.gated_spans.gate(sym::f_strings, full_span);
+
+            let expr = self.mk_expr(
+                full_span,
+                ExprKind::FStr(pieces)
+            );
+            // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
+            return Ok(Some(expr));
         }
         Ok(None)
     }

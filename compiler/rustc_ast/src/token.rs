@@ -93,7 +93,7 @@ pub enum LitKind {
     ByteStr,
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
     /// F-string, delimited at the start and end by the specified delimiters.
-    FStr(FStrDelimiter, FStrDelimiter), // AST only, must never appear in a `Token`
+    FStr(FStrDelimiter, FStrDelimiter), // `Token` only, must never appear in AST
     Err,
 }
 
