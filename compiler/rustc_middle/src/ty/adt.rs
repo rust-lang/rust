@@ -10,11 +10,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{ReprOptions, VariantIdx};
+use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -228,7 +228,7 @@ impl AdtDefData {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor.is_some() {
+        if kind == AdtKind::Struct && variants[FIRST_VARIANT].ctor.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
@@ -357,7 +357,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(self) -> &'tcx VariantDef {
         assert!(self.is_struct() || self.is_union());
-        &self.variant(VariantIdx::new(0))
+        &self.variant(FIRST_VARIANT)
     }
 
     #[inline]
@@ -493,7 +493,7 @@ impl<'tcx> AdtDef<'tcx> {
 
     #[inline]
     pub fn variant_range(self) -> Range<VariantIdx> {
-        VariantIdx::new(0)..VariantIdx::new(self.variants().len())
+        FIRST_VARIANT..self.variants().next_index()
     }
 
     /// Computes the discriminant value used by a specific variant.

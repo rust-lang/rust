@@ -60,7 +60,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Integer, Size, VariantIdx};
+use rustc_target::abi::{Integer, Size, VariantIdx, FIRST_VARIANT};
 
 use self::Constructor::*;
 use self::SliceKind::*;
@@ -706,7 +706,7 @@ impl<'tcx> Constructor<'tcx> {
             Variant(idx) => idx,
             Single => {
                 assert!(!adt.is_enum());
-                VariantIdx::new(0)
+                FIRST_VARIANT
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }

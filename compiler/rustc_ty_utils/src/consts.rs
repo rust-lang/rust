@@ -8,7 +8,7 @@ use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
 use std::iter;
 
@@ -44,7 +44,7 @@ pub(crate) fn destructure_const<'tcx>(
                 let (head, rest) = branches.split_first().unwrap();
                 (VariantIdx::from_u32(head.unwrap_leaf().try_to_u32().unwrap()), rest)
             } else {
-                (VariantIdx::from_u32(0), branches)
+                (FIRST_VARIANT, branches)
             };
             let fields = &def.variant(variant_idx).fields;
             let mut field_consts = Vec::with_capacity(fields.len());

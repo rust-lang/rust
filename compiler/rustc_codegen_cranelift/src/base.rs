@@ -785,7 +785,7 @@ fn codegen_stmt<'tcx>(
                             let variant_dest = lval.downcast_variant(fx, variant_index);
                             (variant_index, variant_dest, active_field_index)
                         }
-                        _ => (VariantIdx::from_u32(0), lval, None),
+                        _ => (FIRST_VARIANT, lval, None),
                     };
                     if active_field_index.is_some() {
                         assert_eq!(operands.len(), 1);

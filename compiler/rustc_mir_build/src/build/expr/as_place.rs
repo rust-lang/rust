@@ -13,9 +13,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::AdtDef;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
-
-use rustc_index::vec::Idx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
 use std::assert_matches::assert_matches;
 use std::iter;
@@ -91,7 +89,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
         let hir_projection = match mir_projection {
             ProjectionElem::Deref => HirProjectionKind::Deref,
             ProjectionElem::Field(field, _) => {
-                let variant = variant.unwrap_or(VariantIdx::new(0));
+                let variant = variant.unwrap_or(FIRST_VARIANT);
                 HirProjectionKind::Field(field.index() as u32, variant)
             }
             ProjectionElem::Downcast(.., idx) => {
