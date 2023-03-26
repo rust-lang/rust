@@ -1,7 +1,7 @@
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
@@ -227,7 +227,7 @@ fn layout_of_uncached<'tcx>(
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 
             tcx.mk_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
+                variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count },
                 abi,
                 largest_niche,
@@ -238,7 +238,7 @@ fn layout_of_uncached<'tcx>(
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
             tcx.mk_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
+                variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 abi: Abi::Aggregate { sized: false },
                 largest_niche: None,
@@ -247,7 +247,7 @@ fn layout_of_uncached<'tcx>(
             })
         }
         ty::Str => tcx.mk_layout(LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             abi: Abi::Aggregate { sized: false },
             largest_niche: None,
@@ -399,7 +399,7 @@ fn layout_of_uncached<'tcx>(
             };
 
             tcx.mk_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
+                variants: Variants::Single { index: FIRST_VARIANT },
                 fields,
                 abi: Abi::Vector { element: e_abi, count: e_len },
                 largest_niche: e_ly.largest_niche,

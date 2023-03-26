@@ -43,7 +43,7 @@ pub trait LayoutCalculator {
             .max_by_key(|niche| niche.available(dl));
 
         LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Arbitrary {
                 offsets: vec![Size::ZERO, b_offset],
                 memory_index: vec![0, 1],
@@ -264,7 +264,7 @@ pub trait LayoutCalculator {
             abi = Abi::Uninhabited;
         }
         Some(LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             abi,
             largest_niche,
@@ -277,7 +277,7 @@ pub trait LayoutCalculator {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
             largest_niche: None,
@@ -331,7 +331,7 @@ pub trait LayoutCalculator {
             }
             // If it's a struct, still compute a layout so that we can still compute the
             // field offsets.
-            None => VariantIdx::new(0),
+            None => FIRST_VARIANT,
         };
 
         let is_struct = !is_enum ||
@@ -467,7 +467,7 @@ pub trait LayoutCalculator {
                 .max_by_key(|(_i, layout)| layout.size.bytes())
                 .map(|(i, _layout)| i)?;
 
-            let all_indices = (0..=variants.len() - 1).map(VariantIdx::new);
+            let all_indices = variants.indices();
             let needs_disc =
                 |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
             let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap().index()
@@ -896,8 +896,8 @@ pub trait LayoutCalculator {
         let optimize = !repr.inhibit_union_abi_opt();
         let mut size = Size::ZERO;
         let mut abi = Abi::Aggregate { sized: true };
-        let index = VariantIdx::new(0);
-        for field in &variants[index] {
+        let only_variant = &variants[FIRST_VARIANT];
+        for field in only_variant {
             assert!(field.0.is_sized());
             align = align.max(field.align());
 
@@ -930,8 +930,8 @@ pub trait LayoutCalculator {
         }
 
         Some(LayoutS {
-            variants: Variants::Single { index },
-            fields: FieldsShape::Union(NonZeroUsize::new(variants[index].len())?),
+            variants: Variants::Single { index: FIRST_VARIANT },
+            fields: FieldsShape::Union(NonZeroUsize::new(only_variant.len())?),
             abi,
             largest_niche: None,
             align,

@@ -49,8 +49,7 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::Idx;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 
 use std::iter;
 
@@ -1406,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants().get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
+                def.variants().get(FIRST_VARIANT).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
