@@ -20,7 +20,7 @@ use serde_derive::Deserialize;
 
 use crate::builder::crate_description;
 use crate::builder::Cargo;
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
 use crate::cache::{Interned, INTERNER};
 use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
@@ -995,6 +995,44 @@ pub struct CodegenBackend {
     pub backend: Interned<String>,
 }
 
+fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
+    let mut needs_codegen_cfg = false;
+    for path_set in &run.paths {
+        needs_codegen_cfg = match path_set {
+            PathSet::Set(set) => set.iter().any(|p| is_codegen_cfg_needed(p, run)),
+            PathSet::Suite(suite) => is_codegen_cfg_needed(&suite, run),
+        }
+    }
+    needs_codegen_cfg
+}
+
+const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+
+fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
+    if path.path.to_str().unwrap().contains(&CODEGEN_BACKEND_PREFIX) {
+        let mut needs_codegen_backend_config = true;
+        for &backend in &run.builder.config.rust_codegen_backends {
+            if path
+                .path
+                .to_str()
+                .unwrap()
+                .ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + &backend))
+            {
+                needs_codegen_backend_config = false;
+            }
+        }
+        if needs_codegen_backend_config {
+            run.builder.info(
+                "Warning: no codegen-backends config matched the requested path to build a codegen backend. \
+                Help: add backend to codegen-backends in config.toml.",
+            );
+            return true;
+        }
+    }
+
+    return false;
+}
+
 impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
@@ -1006,6 +1044,10 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if needs_codegen_config(&run) {
+            return;
+        }
+
         for &backend in &run.builder.config.rust_codegen_backends {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
