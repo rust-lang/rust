@@ -19,7 +19,6 @@ use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
 
 use crate::{
-    common::CodegenCx,
     debuginfo::{
         metadata::{
             build_field_di_node,
@@ -30,6 +29,7 @@ use crate::{
             UNKNOWN_LINE_NUMBER,
         },
         utils::DIB,
+        DbgCodegenCx,
     },
     llvm::{
         self,
@@ -193,7 +193,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///
 /// ```
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
@@ -272,7 +272,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 ///
 /// See [build_enum_type_di_node] for more information.
 pub(super) fn build_generator_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let generator_type = unique_type_id.expect_ty();
@@ -313,13 +313,13 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
 }
 
 fn build_single_variant_union_fields<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_adt_def: AdtDef<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
 ) -> SmallVec<&'ll DIType> {
-    let variant_layout = enum_type_and_layout.for_variant(cx, variant_index);
+    let variant_layout = enum_type_and_layout.for_variant(cx.cx, variant_index);
     let variant_struct_type_di_node = super::build_enum_variant_struct_type_di_node(
         cx,
         enum_type_and_layout,
@@ -385,7 +385,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
 }
 
 fn build_union_fields_for_enum<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_adt_def: AdtDef<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
@@ -406,7 +406,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
 
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_indices
         .map(|variant_index| {
-            let variant_layout = enum_type_and_layout.for_variant(cx, variant_index);
+            let variant_layout = enum_type_and_layout.for_variant(cx.cx, variant_index);
 
             let variant_def = enum_adt_def.variant(variant_index);
 
@@ -443,7 +443,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
 // The base type of the VariantNames DW_AT_enumeration_type is always the same.
 // It has nothing to do with the tag of the enum and just has to be big enough
 // to hold all variant names.
-fn variant_names_enum_base_type<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> Ty<'tcx> {
+fn variant_names_enum_base_type<'ll, 'tcx>(cx: DbgCodegenCx<'_, 'll, 'tcx>) -> Ty<'tcx> {
     cx.tcx.types.u32
 }
 
@@ -453,7 +453,7 @@ fn variant_names_enum_base_type<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> Ty<'tcx
 /// type is only used for efficiently encoding the name of each variant in
 /// debuginfo.
 fn build_variant_names_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     containing_scope: &'ll DIType,
     variants: impl Iterator<Item = (VariantIdx, Cow<'tcx, str>)>,
 ) -> &'ll DIType {
@@ -468,7 +468,7 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
 }
 
 fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_or_generator_type_and_layout: TyAndLayout<'tcx>,
     enum_or_generator_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
@@ -663,7 +663,7 @@ fn split_128(value: u128) -> Split128 {
 }
 
 fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
@@ -750,7 +750,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
 /// This is a helper function shared between enums and generators that makes sure fields have the
 /// expect names.
 fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_field_infos: &[VariantFieldInfo<'ll>],
@@ -808,7 +808,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
     }));
 
     debug_assert_eq!(
-        cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
+        cx.size_and_align_of(enum_type_and_layout.field(cx.cx, tag_field).ty),
         cx.size_and_align_of(super::tag_base_type(cx, enum_type_and_layout))
     );
 
@@ -853,7 +853,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
             cx,
             enum_type_di_node,
             TAG_FIELD_NAME,
-            cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
+            cx.size_and_align_of(enum_type_and_layout.field(cx.cx, tag_field).ty),
             enum_type_and_layout.fields.offset(tag_field),
             DIFlags::FlagZero,
             tag_base_type_di_node,

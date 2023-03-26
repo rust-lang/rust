@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use crate::{
-    common::CodegenCx,
     debuginfo::{
         metadata::{
             enums::tag_base_type,
@@ -11,6 +10,7 @@ use crate::{
             UNKNOWN_LINE_NUMBER,
         },
         utils::{create_DIArray, get_namespace_for_item, DIB},
+        DbgCodegenCx,
     },
     llvm::{
         self,
@@ -51,7 +51,7 @@ use smallvec::smallvec;
 ///         DW_TAG_structure_type            (type of variant 3)
 /// ```
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
@@ -91,7 +91,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                         enum_type_di_node,
                         variant_index,
                         enum_adt_def.variant(variant_index),
-                        enum_type_and_layout.for_variant(cx, variant_index),
+                        enum_type_and_layout.for_variant(cx.cx, variant_index),
                     ),
                     source_info: None,
                 })
@@ -128,7 +128,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 ///
 /// ```
 pub(super) fn build_generator_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let generator_type = unique_type_id.expect_ty();
@@ -231,7 +231,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 3)
 /// ```
 fn build_enum_variant_part_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_member_infos: &[VariantMemberInfo<'_, 'll>],
@@ -304,7 +304,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
 ///
 /// ```
 fn build_discr_member_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_or_generator_type_and_layout: TyAndLayout<'tcx>,
     enum_or_generator_type_di_node: &'ll DIType,
 ) -> Option<&'ll DIType> {
@@ -389,7 +389,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 /// (including the DW_TAG_member) is built by a single call to
 /// `LLVMRustDIBuilderCreateVariantMemberType()`.
 fn build_enum_variant_member_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     variant_part_di_node: &'ll DIType,
     variant_member_info: &VariantMemberInfo<'_, 'll>,

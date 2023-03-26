@@ -12,8 +12,10 @@ use rustc_middle::{
 use rustc_target::abi::{Align, Size, VariantIdx};
 
 use crate::{
-    common::CodegenCx,
-    debuginfo::utils::{create_DIArray, debug_context, DIB},
+    debuginfo::{
+        utils::{create_DIArray, DIB},
+        DbgCodegenCx,
+    },
     llvm::{
         self,
         debuginfo::{DIFlags, DIScope, DIType},
@@ -167,9 +169,12 @@ pub struct StubInfo<'ll, 'tcx> {
 
 impl<'ll, 'tcx> StubInfo<'ll, 'tcx> {
     pub(super) fn new(
-        cx: &CodegenCx<'ll, 'tcx>,
+        cx: DbgCodegenCx<'_, 'll, 'tcx>,
         unique_type_id: UniqueTypeId<'tcx>,
-        build: impl FnOnce(&CodegenCx<'ll, 'tcx>, /* unique_type_id_str: */ &str) -> &'ll DIType,
+        build: impl FnOnce(
+            DbgCodegenCx<'_, 'll, 'tcx>,
+            /* unique_type_id_str: */ &str,
+        ) -> &'ll DIType,
     ) -> StubInfo<'ll, 'tcx> {
         let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
         let di_node = build(cx, &unique_type_id_str);
@@ -179,7 +184,7 @@ impl<'ll, 'tcx> StubInfo<'ll, 'tcx> {
 
 /// Create a stub debuginfo node onto which fields and nested types can be attached.
 pub(super) fn stub<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     kind: Stub<'ll>,
     unique_type_id: UniqueTypeId<'tcx>,
     name: &str,
@@ -244,17 +249,14 @@ pub(super) fn stub<'ll, 'tcx>(
 /// to the type currently being built, the stub will already be found in the type map,
 /// which effectively breaks the recursion cycle.
 pub(super) fn build_type_with_children<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     stub_info: StubInfo<'ll, 'tcx>,
-    members: impl FnOnce(&CodegenCx<'ll, 'tcx>, &'ll DIType) -> SmallVec<&'ll DIType>,
-    generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<&'ll DIType>,
+    members: impl FnOnce(DbgCodegenCx<'_, 'll, 'tcx>, &'ll DIType) -> SmallVec<&'ll DIType>,
+    generics: impl FnOnce(DbgCodegenCx<'_, 'll, 'tcx>) -> SmallVec<&'ll DIType>,
 ) -> DINodeCreationResult<'ll> {
-    debug_assert_eq!(
-        debug_context(cx).type_map.di_node_for_unique_id(stub_info.unique_type_id),
-        None
-    );
+    debug_assert_eq!(cx.dbg.type_map.di_node_for_unique_id(stub_info.unique_type_id), None);
 
-    debug_context(cx).type_map.insert(stub_info.unique_type_id, stub_info.metadata);
+    cx.dbg.type_map.insert(stub_info.unique_type_id, stub_info.metadata);
 
     let members: SmallVec<_> =
         members(cx, stub_info.metadata).into_iter().map(|node| Some(node)).collect();

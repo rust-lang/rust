@@ -18,7 +18,6 @@ use rustc_target::abi::{HasDataLayout, Integer, Primitive, TagEncoding, VariantI
 use std::borrow::Cow;
 
 use crate::{
-    common::CodegenCx,
     debuginfo::{
         metadata::{
             build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
@@ -26,6 +25,7 @@ use crate::{
             unknown_file_metadata, UNKNOWN_LINE_NUMBER,
         },
         utils::{create_DIArray, get_namespace_for_item, DIB},
+        DbgCodegenCx,
     },
     llvm::{
         self,
@@ -43,7 +43,7 @@ mod cpp_like;
 mod native;
 
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
@@ -65,7 +65,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 }
 
 pub(super) fn build_generator_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     if cpp_like_debuginfo(cx.tcx) {
@@ -79,7 +79,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
 ///
 /// The resulting debuginfo will be a DW_TAG_enumeration_type.
 fn build_c_style_enum_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_adt_def: AdtDef<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> DINodeCreationResult<'ll> {
@@ -101,7 +101,7 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
 
 /// Extract the type with which we want to describe the tag of the given enum or generator.
 fn tag_base_type<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Ty<'tcx> {
     debug_assert!(match enum_type_and_layout.ty.kind() {
@@ -147,7 +147,7 @@ fn tag_base_type<'ll, 'tcx>(
 ///
 /// `variants` is an iterator of (discr-value, variant-name).
 fn build_enumeration_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     type_name: &str,
     base_type: Ty<'tcx>,
     enumerators: impl Iterator<Item = (Cow<'tcx, str>, u128)>,
@@ -242,7 +242,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
 /// The type of a variant is always a struct type with the name of the variant
 /// and a DW_TAG_member for each field (but not the discriminant).
 fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
@@ -278,7 +278,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         super::tuple_field_name(field_index)
                     };
 
-                    let field_layout = variant_layout.field(cx, field_index);
+                    let field_layout = variant_layout.field(cx.cx, field_index);
 
                     build_field_di_node(
                         cx,
@@ -315,7 +315,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ///
 /// ```
 pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     variant_index: VariantIdx,
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
@@ -330,7 +330,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
         variant_index,
     );
 
-    let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
+    let variant_layout = generator_type_and_layout.for_variant(cx.cx, variant_index);
 
     let generator_substs = match generator_type_and_layout.ty.kind() {
         ty::Generator(_, substs, _) => substs.as_generator(),
@@ -360,7 +360,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                         .map(|s| Cow::from(s.as_str()))
                         .unwrap_or_else(|| super::tuple_field_name(field_index));
 
-                    let field_type = variant_layout.field(cx, field_index).ty;
+                    let field_type = variant_layout.field(cx.cx, field_index).ty;
 
                     build_field_di_node(
                         cx,
@@ -417,7 +417,7 @@ impl DiscrResult {
 /// a tag, and if this is the untagged variant of a niche-layout enum (because then there is no
 /// single discriminant value).
 fn compute_discriminant_value<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     variant_index: VariantIdx,
 ) -> DiscrResult {
@@ -433,24 +433,24 @@ fn compute_discriminant_value<'ll, 'tcx>(
         } => {
             if variant_index == untagged_variant {
                 let valid_range = enum_type_and_layout
-                    .for_variant(cx, variant_index)
+                    .for_variant(cx.cx, variant_index)
                     .largest_niche
                     .as_ref()
                     .unwrap()
                     .valid_range;
 
                 let min = valid_range.start.min(valid_range.end);
-                let min = tag.size(cx).truncate(min);
+                let min = tag.size(cx.cx).truncate(min);
 
                 let max = valid_range.start.max(valid_range.end);
-                let max = tag.size(cx).truncate(max);
+                let max = tag.size(cx.cx).truncate(max);
 
                 DiscrResult::Range(min, max)
             } else {
                 let value = (variant_index.as_u32() as u128)
                     .wrapping_sub(niche_variants.start().as_u32() as u128)
                     .wrapping_add(niche_start);
-                let value = tag.size(cx).truncate(value);
+                let value = tag.size(cx.cx).truncate(value);
                 DiscrResult::Value(value)
             }
         }

@@ -1,9 +1,9 @@
 use super::metadata::file_metadata;
 use super::utils::DIB;
+use super::DbgCodegenCx;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
 
-use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DILocation, DIScope};
 use rustc_middle::mir::{Body, SourceScope};
@@ -17,7 +17,7 @@ use rustc_index::vec::Idx;
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
 pub fn compute_mir_scopes<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
@@ -47,7 +47,7 @@ pub fn compute_mir_scopes<'ll, 'tcx>(
 }
 
 fn make_mir_scope<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     variables: &Option<BitSet<SourceScope>>,
@@ -112,7 +112,7 @@ fn make_mir_scope<'ll, 'tcx>(
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
-        let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
+        let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx.cx, callsite_span);
         cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span)
     });
 

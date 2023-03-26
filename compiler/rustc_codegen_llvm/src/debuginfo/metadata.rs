@@ -2,12 +2,9 @@ use self::type_map::DINodeCreationResult;
 use self::type_map::Stub;
 use self::type_map::UniqueTypeId;
 
-use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
-use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
-};
-use super::CodegenUnitDebugContext;
+use super::utils::{create_DIArray, get_namespace_for_item, is_node_local_to_unit, DIB};
+use super::{CodegenUnitDebugContext, DbgCodegenCx};
 
 use crate::abi;
 use crate::common::CodegenCx;
@@ -88,7 +85,8 @@ pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 const NO_SCOPE_METADATA: Option<&DIScope> = None;
 /// A function that returns an empty list of generic parameter debuginfo nodes.
-const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<&'ll DIType> = |_| SmallVec::new();
+const NO_GENERICS: for<'ll> fn(DbgCodegenCx<'_, 'll, '_>) -> SmallVec<&'ll DIType> =
+    |_| SmallVec::new();
 
 // SmallVec is used quite a bit in this module, so create a shorthand.
 // The actual number of elements is not so important.
@@ -103,7 +101,7 @@ pub(crate) use type_map::TypeMap;
 /// unique ID can be found in the type map.
 macro_rules! return_if_di_node_created_in_meantime {
     ($cx: expr, $unique_type_id: expr) => {
-        if let Some(di_node) = debug_context($cx).type_map.di_node_for_unique_id($unique_type_id) {
+        if let Some(di_node) = $cx.dbg.type_map.di_node_for_unique_id($unique_type_id) {
             return DINodeCreationResult::new(di_node, true);
         }
     };
@@ -118,7 +116,7 @@ fn size_and_align_of(ty_and_layout: TyAndLayout<'_>) -> (Size, Align) {
 /// Creates debuginfo for a fixed size array (e.g. `[u64; 123]`).
 /// For slices (that is, "arrays" of unknown size) use [build_slice_type_di_node].
 fn build_fixed_size_array_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
     array_type: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
@@ -160,7 +158,7 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 /// At some point we might want to remove the special handling of Box
 /// and treat it the same as other smart pointers (like Rc, Arc, ...).
 fn build_pointer_or_reference_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     ptr_type: Ty<'tcx>,
     pointee_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
@@ -229,8 +227,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         if ptr_type.is_box() { cx.tcx.mk_mut_ptr(pointee_type) } else { ptr_type };
 
                     let layout = cx.layout_of(layout_type);
-                    let addr_field = layout.field(cx, abi::FAT_PTR_ADDR);
-                    let extra_field = layout.field(cx, abi::FAT_PTR_EXTRA);
+                    let addr_field = layout.field(cx.cx, abi::FAT_PTR_ADDR);
+                    let extra_field = layout.field(cx.cx, abi::FAT_PTR_EXTRA);
 
                     let (addr_field_name, extra_field_name) = match fat_pointer_kind {
                         FatPtrKind::Dyn => ("pointer", "vtable"),
@@ -282,7 +280,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 }
 
 fn build_subroutine_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     // It's possible to create a self-referential
@@ -298,7 +296,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     // fn foo() -> <recursive_type>
     //
     // Once that is created, we replace the marker in the typemap with the actual type.
-    debug_context(cx)
+    cx.dbg
         .type_map
         .unique_id_to_di_node
         .borrow_mut()
@@ -325,7 +323,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     )
     .collect();
 
-    debug_context(cx).type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
+    cx.dbg.type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
 
     let fn_di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateSubroutineType(
@@ -354,7 +352,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
 /// Create debuginfo for `dyn SomeTrait` types. Currently these are empty structs
 /// we with the correct type name (e.g. "dyn SomeTrait<Foo, Item=u32> + Sync").
 fn build_dyn_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     dyn_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
@@ -400,7 +398,7 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
 /// slice is zero, then accessing `unsized_field` in the debugger would
 /// result in an out-of-bounds access.
 fn build_slice_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     slice_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
@@ -424,11 +422,10 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 ///
 /// This function will look up the debuginfo node in the TypeMap. If it can't find it, it
 /// will create the node by dispatching to the corresponding `build_*_di_node()` function.
-pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+pub fn type_di_node<'ll, 'tcx>(cx: DbgCodegenCx<'_, 'll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     let unique_type_id = UniqueTypeId::for_ty(cx.tcx, t);
 
-    if let Some(existing_di_node) = debug_context(cx).type_map.di_node_for_unique_id(unique_type_id)
-    {
+    if let Some(existing_di_node) = cx.dbg.type_map.di_node_for_unique_id(unique_type_id) {
         return existing_di_node;
     }
 
@@ -468,23 +465,22 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
     {
         if already_stored_in_typemap {
             // Make sure that we really do have a `TypeMap` entry for the unique type ID.
-            let di_node_for_uid =
-                match debug_context(cx).type_map.di_node_for_unique_id(unique_type_id) {
-                    Some(di_node) => di_node,
-                    None => {
-                        bug!(
-                            "expected type debuginfo node for unique \
+            let di_node_for_uid = match cx.dbg.type_map.di_node_for_unique_id(unique_type_id) {
+                Some(di_node) => di_node,
+                None => {
+                    bug!(
+                        "expected type debuginfo node for unique \
                                type ID '{:?}' to already be in \
                                the `debuginfo::TypeMap` but it \
                                was not.",
-                            unique_type_id,
-                        );
-                    }
-                };
+                        unique_type_id,
+                    );
+                }
+            };
 
             debug_assert_eq!(di_node_for_uid as *const _, di_node as *const _);
         } else {
-            debug_context(cx).type_map.insert(unique_type_id, di_node);
+            cx.dbg.type_map.insert(unique_type_id, di_node);
         }
     }
 
@@ -492,8 +488,8 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
 }
 
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
-fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
-    *debug_context(cx).recursion_marker_type.get_or_init(move || {
+fn recursion_marker_type_di_node<'ll, 'tcx>(cx: DbgCodegenCx<'_, 'll, 'tcx>) -> &'ll DIType {
+    *cx.dbg.recursion_marker_type.get_or_init(move || {
         unsafe {
             // The choice of type here is pretty arbitrary -
             // anything reading the debuginfo for a recursive
@@ -525,9 +521,10 @@ fn hex_encode(data: &[u8]) -> String {
     hex_string
 }
 
-pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
+pub fn file_metadata<'ll>(cx: DbgCodegenCx<'_, 'll, '_>, source_file: &SourceFile) -> &'ll DIFile {
     let cache_key = Some((source_file.name_hash, source_file.src_hash));
-    return debug_context(cx)
+    return cx
+        .dbg
         .created_files
         .borrow_mut()
         .entry(cache_key)
@@ -535,7 +532,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
 
     #[instrument(skip(cx, source_file), level = "debug")]
     fn alloc_new_file_metadata<'ll>(
-        cx: &CodegenCx<'ll, '_>,
+        cx: DbgCodegenCx<'_, 'll, '_>,
         source_file: &SourceFile,
     ) -> &'ll DIFile {
         debug!(?source_file.name);
@@ -606,8 +603,8 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     }
 }
 
-pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
+pub fn unknown_file_metadata<'ll>(cx: DbgCodegenCx<'_, 'll, '_>) -> &'ll DIFile {
+    cx.dbg.created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
         let file_name = "<unknown>";
         let directory = "";
         let hash_value = "";
@@ -665,7 +662,7 @@ impl MsvcBasicName for ty::FloatTy {
 }
 
 fn build_basic_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     t: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     debug!("build_basic_type_di_node: {:?}", t);
@@ -731,7 +728,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
 }
 
 fn build_foreign_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     t: Ty<'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
@@ -758,7 +755,7 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
 }
 
 fn build_param_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     t: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     debug!("build_param_type_di_node: {:?}", t);
@@ -939,7 +936,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
 fn build_field_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     owner: &'ll DIScope,
     name: &str,
     size_and_align: (Size, Align),
@@ -966,7 +963,7 @@ fn build_field_di_node<'ll, 'tcx>(
 
 /// Creates the debuginfo node for a Rust struct type. Maybe be a regular struct or a tuple-struct.
 fn build_struct_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let struct_type = unique_type_id.expect_ty();
@@ -1003,7 +1000,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         // This is struct with named fields
                         Cow::Borrowed(f.name.as_str())
                     };
-                    let field_layout = struct_type_and_layout.field(cx, i);
+                    let field_layout = struct_type_and_layout.field(cx.cx, i);
                     build_field_di_node(
                         cx,
                         owner,
@@ -1027,7 +1024,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 /// Builds the DW_TAG_member debuginfo nodes for the upvars of a closure or generator.
 /// For a generator, this will handle upvars shared by all states.
 fn build_upvar_field_di_nodes<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     closure_or_generator_ty: Ty<'tcx>,
     closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
@@ -1077,7 +1074,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
 
 /// Builds the DW_TAG_structure_type debuginfo node for a Rust tuple type.
 fn build_tuple_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let tuple_type = unique_type_id.expect_ty();
@@ -1123,7 +1120,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
 
 /// Builds the debuginfo node for a closure environment.
 fn build_closure_env_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
@@ -1152,7 +1149,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
 
 /// Build the debuginfo node for a Rust `union` type.
 fn build_union_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let union_type = unique_type_id.expect_ty();
@@ -1182,7 +1179,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(i, f)| {
-                    let field_layout = union_ty_and_layout.field(cx, i);
+                    let field_layout = union_ty_and_layout.field(cx.cx, i);
                     build_field_di_node(
                         cx,
                         owner,
@@ -1202,7 +1199,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
 
 /// Computes the type parameters for a type, if any, for the given metadata.
 fn build_generic_type_param_di_nodes<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     ty: Ty<'tcx>,
 ) -> SmallVec<&'ll DIType> {
     if let ty::Adt(def, substs) = *ty.kind() {
@@ -1237,7 +1234,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
 
     return smallvec![];
 
-    fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
+    fn get_parameter_names(cx: DbgCodegenCx<'_, '_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
         let mut names = generics
             .parent
             .map_or_else(Vec::new, |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
@@ -1259,6 +1256,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
         return;
     }
 
+    let cx = cx.dbg();
     let tcx = cx.tcx;
 
     // We may want to remove the namespace scope if we're in an extern block (see
@@ -1273,12 +1271,12 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
-    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    let is_local_to_unit = is_node_local_to_unit(cx.tcx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();
-    let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;
+    let linkage_name = cx.tcx.symbol_name(Instance::mono(tcx, def_id)).name;
     // When empty, linkage_name field is omitted,
     // which is what we want for no_mangle statics
     let linkage_name = if var_name == linkage_name { "" } else { linkage_name };
@@ -1314,7 +1312,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
 /// is a proper disambiguation scheme for dealing with methods from different traits that have
 /// the same name.
 fn build_vtable_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: DbgCodegenCx<'_, 'll, 'tcx>,
     ty: Ty<'tcx>,
     poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> &'ll DIType {
@@ -1499,6 +1497,8 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
         return;
     }
 
+    let cx = cx.dbg();
+
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
     // to concrete type.
@@ -1530,7 +1530,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
 
 /// Creates an "extension" of an existing `DIScope` into another file.
 pub fn extend_scope_to_file<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: DbgCodegenCx<'_, 'll, '_>,
     scope_metadata: &'ll DIScope,
     file: &SourceFile,
 ) -> &'ll DILexicalBlock {

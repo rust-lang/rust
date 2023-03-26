@@ -4,7 +4,6 @@ use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
-use self::namespace::mangled_name_of_instance;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
 use crate::abi::FnAbi;
@@ -27,7 +26,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -39,7 +38,7 @@ use smallvec::SmallVec;
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::iter;
-use std::ops::Range;
+use std::ops::{Deref, Range};
 
 mod create_scope_map;
 pub mod gdb;
@@ -196,7 +195,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         unsafe {
             // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
             llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                DIB(self.cx()),
+                DIB(self.dbg()),
                 variable_alloca,
                 dbg_var,
                 addr_ops.as_ptr(),
@@ -285,6 +284,31 @@ impl CodegenCx<'_, '_> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct DbgCodegenCx<'a, 'll, 'tcx> {
+    cx: &'a CodegenCx<'ll, 'tcx>,
+    /// The `dbg_cx` field from `cx`.
+    dbg: &'a CodegenUnitDebugContext<'ll, 'tcx>,
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    #[track_caller]
+    pub(crate) fn dbg(&self) -> DbgCodegenCx<'_, 'll, 'tcx> {
+        DbgCodegenCx {
+            cx: self,
+            dbg: self.dbg_cx.as_ref().expect("no CodegenUnitDebugContext found on LLVM context"),
+        }
+    }
+}
+
+impl<'a, 'll, 'tcx> Deref for DbgCodegenCx<'a, 'll, 'tcx> {
+    type Target = &'a CodegenCx<'ll, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cx
+    }
+}
+
 impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
@@ -308,7 +332,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
-        compute_mir_scopes(self, instance, mir, &mut fn_debug_context);
+        compute_mir_scopes(self.dbg(), instance, mir, &mut fn_debug_context);
 
         Some(fn_debug_context)
     }
@@ -321,15 +345,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &'ll DIScope {
         let tcx = self.tcx;
 
+        let dbg_cx = self.dbg();
+
         let def_id = instance.def_id();
-        let containing_scope = get_containing_scope(self, instance);
+        let containing_scope = get_containing_scope(dbg_cx, instance);
         let span = tcx.def_span(def_id);
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file);
+        let file_metadata = file_metadata(dbg_cx, &loc.file);
 
         let function_type_metadata = unsafe {
-            let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
+            let fn_signature = get_function_signature(dbg_cx, fn_abi);
+            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(dbg_cx), fn_signature)
         };
 
         let mut name = String::new();
@@ -350,9 +376,9 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             &mut name,
         );
 
-        let template_parameters = get_template_parameters(self, generics, substs);
+        let template_parameters = get_template_parameters(dbg_cx, generics, substs);
 
-        let linkage_name = &mangled_name_of_instance(self, instance).name;
+        let linkage_name = &self.tcx.symbol_name(instance).name;
         // Omit the linkage_name if it is the same as subprogram name.
         let linkage_name = if &name == linkage_name { "" } else { linkage_name };
 
@@ -366,7 +392,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         let mut spflags = DISPFlags::SPFlagDefinition;
-        if is_node_local_to_unit(self, def_id) {
+        if is_node_local_to_unit(self.tcx, def_id) {
             spflags |= DISPFlags::SPFlagLocalToUnit;
         }
         if self.sess().opts.optimize != config::OptLevel::No {
@@ -380,7 +406,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         unsafe {
             return llvm::LLVMRustDIBuilderCreateFunction(
-                DIB(self),
+                DIB(dbg_cx),
                 containing_scope,
                 name.as_ptr().cast(),
                 name.len(),
@@ -399,7 +425,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         fn get_function_signature<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
+            cx: DbgCodegenCx<'_, 'll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         ) -> &'ll DIArray {
             if cx.sess().opts.debuginfo == DebugInfo::Limited {
@@ -448,7 +474,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         fn get_template_parameters<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
+            cx: DbgCodegenCx<'_, 'll, 'tcx>,
             generics: &ty::Generics,
             substs: SubstsRef<'tcx>,
         ) -> &'ll DIArray {
@@ -458,7 +484,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
             // Again, only create type information if full debuginfo is enabled
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
-                let names = get_parameter_names(cx, generics);
+                let names = get_parameter_names(cx.tcx, generics);
                 iter::zip(substs, names)
                     .filter_map(|(kind, name)| {
                         if let GenericArgKind::Type(ty) = kind.unpack() {
@@ -487,16 +513,16 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             create_DIArray(DIB(cx), &template_params)
         }
 
-        fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
-            let mut names = generics.parent.map_or_else(Vec::new, |def_id| {
-                get_parameter_names(cx, cx.tcx.generics_of(def_id))
-            });
+        fn get_parameter_names(tcx: TyCtxt<'_>, generics: &ty::Generics) -> Vec<Symbol> {
+            let mut names = generics
+                .parent
+                .map_or_else(Vec::new, |def_id| get_parameter_names(tcx, tcx.generics_of(def_id)));
             names.extend(generics.params.iter().map(|param| param.name));
             names
         }
 
         fn get_containing_scope<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
+            cx: DbgCodegenCx<'_, 'll, 'tcx>,
             instance: Instance<'tcx>,
         ) -> &'ll DIScope {
             // First, let's see if this is a method within an inherent impl. Because
@@ -574,7 +600,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         scope_metadata: &'ll DIScope,
         file: &rustc_span::SourceFile,
     ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(self, scope_metadata, file)
+        metadata::extend_scope_to_file(self.dbg(), scope_metadata, file)
     }
 
     fn debuginfo_finalize(&self) {
@@ -591,10 +617,11 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
+        let dbg_cx = self.dbg();
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file);
+        let file_metadata = file_metadata(dbg_cx, &loc.file);
 
-        let type_metadata = type_di_node(self, variable_type);
+        let type_metadata = type_di_node(dbg_cx, variable_type);
 
         let (argument_index, dwarf_tag) = match variable_kind {
             ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
@@ -605,7 +632,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let name = variable_name.as_str();
         unsafe {
             llvm::LLVMRustDIBuilderCreateVariable(
-                DIB(self),
+                DIB(dbg_cx),
                 dwarf_tag,
                 scope_metadata,
                 name.as_ptr().cast(),
