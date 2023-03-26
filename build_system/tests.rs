@@ -186,7 +186,9 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         if runner.is_native {
             let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
-            run_cmd.args(["--workspace", "--", "-q"]);
+            // regex-capi and regex-debug don't have any tests. Nor do they contain any code
+            // that is useful to test with cg_clif. Skip building them to reduce test time.
+            run_cmd.args(["-p", "regex", "-p", "regex-syntax", "--", "-q"]);
             spawn_and_wait(run_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
