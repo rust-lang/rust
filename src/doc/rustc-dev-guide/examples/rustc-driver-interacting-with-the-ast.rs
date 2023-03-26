@@ -44,6 +44,7 @@ fn main() {
         output_dir: None,
         output_file: None,
         file_loader: None,
+        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps: rustc_hash::FxHashMap::default(),
         parse_sess_created: None,
         register_lints: None,
