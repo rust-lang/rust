@@ -1,4 +1,6 @@
-use crate::ty;
+use crate::mir;
+use crate::traits;
+use crate::ty::{self, Ty};
 use std::mem::{size_of, transmute_copy, MaybeUninit};
 
 #[derive(Copy, Clone)]
@@ -53,32 +55,128 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<*const ()>()];
 }
 
-impl<T: Copy, E: Copy> EraseType for Result<T, E> {
-    type Result = Self;
+impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
+    type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
 
-impl<T: Copy> EraseType for Option<T> {
-    type Result = Self;
+impl<T> EraseType for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl<T: Copy> EraseType for rustc_hir::MaybeOwner<T> {
-    type Result = Self;
+impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
+    type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
 
-impl<T: Copy> EraseType for ty::Visibility<T> {
-    type Result = Self;
+impl<T> EraseType for Result<&'_ T, ty::layout::FnAbiError<'_>> {
+    type Result = [u8; size_of::<Result<&'static (), ty::layout::FnAbiError<'static>>>()];
 }
 
-impl<T: Copy> EraseType for ty::Binder<'_, T> {
-    type Result = Self;
+impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<
+        Result<(&'static (), rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed>,
+    >()];
 }
 
-impl<T: Copy> EraseType for ty::EarlyBinder<T> {
-    type Result = Self;
+impl EraseType for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
+    type Result =
+        [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl<T0: Copy, T1: Copy> EraseType for (T0, T1) {
-    type Result = Self;
+impl EraseType for Result<Option<ty::Const<'_>>, rustc_errors::ErrorGuaranteed> {
+    type Result =
+        [u8; size_of::<Result<Option<ty::Const<'static>>, rustc_errors::ErrorGuaranteed>>()];
+}
+
+impl EraseType for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
+    type Result = [u8; size_of::<Result<ty::GenericArg<'static>, traits::query::NoSolution>>()];
+}
+
+impl EraseType for Result<bool, ty::layout::LayoutError<'_>> {
+    type Result = [u8; size_of::<Result<bool, ty::layout::LayoutError<'static>>>()];
+}
+
+impl EraseType for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, ty::layout::LayoutError<'_>> {
+    type Result = [u8; size_of::<
+        Result<
+            rustc_target::abi::TyAndLayout<'static, Ty<'static>>,
+            ty::layout::LayoutError<'static>,
+        >,
+    >()];
+}
+
+impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
+    type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
+}
+
+impl EraseType for Result<mir::ConstantKind<'_>, mir::interpret::LitToConstError> {
+    type Result =
+        [u8; size_of::<Result<mir::ConstantKind<'static>, mir::interpret::LitToConstError>>()];
+}
+
+impl EraseType for Result<mir::interpret::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<
+        Result<mir::interpret::ConstAlloc<'static>, mir::interpret::ErrorHandled>,
+    >()];
+}
+
+impl EraseType for Result<mir::interpret::ConstValue<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<
+        Result<mir::interpret::ConstValue<'static>, mir::interpret::ErrorHandled>,
+    >()];
+}
+
+impl EraseType for Result<Option<ty::ValTree<'_>>, mir::interpret::ErrorHandled> {
+    type Result =
+        [u8; size_of::<Result<Option<ty::ValTree<'static>>, mir::interpret::ErrorHandled>>()];
+}
+
+impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
+    type Result =
+        [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
+}
+
+impl<T> EraseType for Option<&'_ T> {
+    type Result = [u8; size_of::<Option<&'static ()>>()];
+}
+
+impl<T> EraseType for Option<&'_ [T]> {
+    type Result = [u8; size_of::<Option<&'static [()]>>()];
+}
+
+impl EraseType for Option<rustc_middle::hir::Owner<'_>> {
+    type Result = [u8; size_of::<Option<rustc_middle::hir::Owner<'static>>>()];
+}
+
+impl EraseType for Option<mir::DestructuredConstant<'_>> {
+    type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
+}
+
+impl EraseType for Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
+    type Result = [u8; size_of::<Option<ty::EarlyBinder<ty::TraitRef<'static>>>>()];
+}
+
+impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
+    type Result = [u8; size_of::<Option<ty::EarlyBinder<Ty<'static>>>>()];
+}
+
+impl<T> EraseType for rustc_hir::MaybeOwner<&'_ T> {
+    type Result = [u8; size_of::<rustc_hir::MaybeOwner<&'static ()>>()];
+}
+
+impl<T: EraseType> EraseType for ty::EarlyBinder<T> {
+    type Result = T::Result;
+}
+
+impl EraseType for ty::Binder<'_, ty::FnSig<'_>> {
+    type Result = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
+}
+
+impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
+    type Result = [u8; size_of::<(&'static (), &'static ())>()];
+}
+
+impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
+    type Result = [u8; size_of::<(&'static (), &'static [()])>()];
 }
 
 macro_rules! trivial {
@@ -94,6 +192,27 @@ macro_rules! trivial {
 trivial! {
     (),
     bool,
+    Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
+    Option<rustc_ast::expand::allocator::AllocatorKind>,
+    Option<rustc_attr::ConstStability>,
+    Option<rustc_attr::DefaultBodyStability>,
+    Option<rustc_attr::Stability>,
+    Option<rustc_data_structures::svh::Svh>,
+    Option<rustc_hir::def::DefKind>,
+    Option<rustc_hir::GeneratorKind>,
+    Option<rustc_hir::HirId>,
+    Option<rustc_middle::middle::stability::DeprecationEntry>,
+    Option<rustc_middle::ty::Destructor>,
+    Option<rustc_middle::ty::ImplTraitInTraitData>,
+    Option<rustc_span::def_id::CrateNum>,
+    Option<rustc_span::def_id::DefId>,
+    Option<rustc_span::def_id::LocalDefId>,
+    Option<rustc_span::Span>,
+    Option<rustc_target::spec::PanicStrategy>,
+    Option<usize>,
+    Result<(), rustc_errors::ErrorGuaranteed>,
+    Result<(), rustc_middle::traits::query::NoSolution>,
+    Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     rustc_ast::expand::allocator::AllocatorKind,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
@@ -144,6 +263,7 @@ trivial! {
     rustc_middle::ty::ReprOptions,
     rustc_middle::ty::UnusedGenericParams,
     rustc_middle::ty::util::AlwaysRequiresDrop,
+    rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,
     rustc_session::config::CrateType,
     rustc_session::config::EntryFnType,
     rustc_session::config::OptLevel,
