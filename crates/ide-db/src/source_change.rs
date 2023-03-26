@@ -237,27 +237,24 @@ impl SourceChangeBuilder {
     /// Adds a tabstop snippet to place the cursor before `node`
     pub fn add_tabstop_before(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
-
-        let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
-        snippet_builder.places.push(PlaceSnippet::Before(node.syntax().clone()));
-        self.source_change.is_snippet = true;
+        self.add_snippet(PlaceSnippet::Before(node.syntax().clone()));
     }
 
     /// Adds a tabstop snippet to place the cursor after `node`
     pub fn add_tabstop_after(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
-
-        let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
-        snippet_builder.places.push(PlaceSnippet::After(node.syntax().clone()));
-        self.source_change.is_snippet = true;
+        self.add_snippet(PlaceSnippet::After(node.syntax().clone()));
     }
 
     /// Adds a snippet to move the cursor selected over `node`
     pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
+        self.add_snippet(PlaceSnippet::Over(node.syntax().clone()))
+    }
 
+    fn add_snippet(&mut self, snippet: PlaceSnippet) {
         let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
-        snippet_builder.places.push(PlaceSnippet::Over(node.syntax().clone()));
+        snippet_builder.places.push(snippet);
         self.source_change.is_snippet = true;
     }
 
