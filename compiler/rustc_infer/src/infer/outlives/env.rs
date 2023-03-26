@@ -142,7 +142,10 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
                         ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
                     ) => self.region_relation.add(r_a, r_b),
                     (ty::ReError(_), _) | (_, ty::ReError(_)) => {}
-                    _ => bug!("add_outlives_bounds: unexpected regions"),
+                    // FIXME(#109628): We shouldn't have existential variables in implied bounds.
+                    // Panic here once the linked issue is resolved!
+                    (ty::ReVar(_), _) | (_, ty::ReVar(_)) => {}
+                    _ => bug!("add_outlives_bounds: unexpected regions: ({r_a:?}, {r_b:?})"),
                 },
             }
         }
