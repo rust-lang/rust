@@ -190,6 +190,7 @@ fn find_best_match_for_name_impl(
 
     let mut dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
     let mut best = None;
+    // store the candidates with the same distance, only for `use_substring_score` current.
     let mut next_candidates = vec![];
     for c in candidates {
         match if use_substring_score {
@@ -200,19 +201,25 @@ fn find_best_match_for_name_impl(
             Some(0) => return Some(*c),
             Some(d) => {
                 if use_substring_score {
-                    dist = d;
+                    if d < dist {
+                        dist = d;
+                        next_candidates.clear();
+                    } else {
+                        // `d == dist` here, we need to store the candidates with the same distance
+                        // so we won't decrease the distance in the next loop.
+                    }
                     next_candidates.push(*c);
-                    best = Some(*c);
                 } else {
                     dist = d - 1;
-                    best = Some(*c);
                 }
+                best = Some(*c);
             }
             None => {}
         }
     }
 
     if next_candidates.len() > 1 {
+        debug_assert!(use_substring_score);
         best = find_best_match_for_name_impl(
             false,
             &next_candidates,
