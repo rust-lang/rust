@@ -487,6 +487,11 @@ macro_rules! define_queries {
             }
 
             #[inline]
+            fn format_value(self) -> fn(&Self::Value) -> String {
+                |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value))
+            }
+
+            #[inline]
             fn cache_on_disk(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
                 ::rustc_middle::query::cached::$name(tcx, key)
             }
@@ -819,7 +824,7 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*
             #[inline(always)]
-            #[tracing::instrument(level = "trace", skip(self, tcx), ret)]
+            #[tracing::instrument(level = "trace", skip(self, tcx))]
             fn $name(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,

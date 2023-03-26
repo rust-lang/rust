@@ -1,19 +1,10 @@
 use crate::ty;
 use std::intrinsics::type_name;
-use std::{
-    fmt,
-    mem::{size_of, transmute_copy, MaybeUninit},
-};
+use std::mem::{size_of, transmute_copy, MaybeUninit};
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {
     data: MaybeUninit<T>,
-}
-
-impl<T: Copy> fmt::Debug for Erased<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Erased")
-    }
 }
 
 pub trait EraseType: Copy {

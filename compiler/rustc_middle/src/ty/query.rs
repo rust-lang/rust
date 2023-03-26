@@ -501,6 +501,7 @@ macro_rules! define_feedable {
 
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
+                        let old = restore::<$V>(old);
                         bug!(
                             "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                             stringify!($name),

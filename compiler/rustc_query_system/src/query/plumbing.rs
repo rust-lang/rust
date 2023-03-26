@@ -411,7 +411,8 @@ where
         // get evaluated first, and re-feed the query.
         if let Some((cached_result, _)) = cache.lookup(&key) {
             panic!(
-                "fed query later has its value computed. The already cached value: {cached_result:?}"
+                "fed query later has its value computed. The already cached value: {}",
+                (query.format_value())(&cached_result)
             );
         }
     }
@@ -582,6 +583,7 @@ where
                     &result,
                     prev_dep_node_index,
                     query.hash_result(),
+                    query.format_value(),
                 );
             }
 
@@ -627,19 +629,21 @@ where
         &result,
         prev_dep_node_index,
         query.hash_result(),
+        query.format_value(),
     );
 
     Some((result, dep_node_index))
 }
 
 #[inline]
-#[instrument(skip(tcx, dep_graph_data, result, hash_result), level = "debug")]
-pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
+#[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
+pub(crate) fn incremental_verify_ich<Tcx, V>(
     tcx: Tcx,
     dep_graph_data: &DepGraphData<Tcx::DepKind>,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    format_value: fn(&V) -> String,
 ) where
     Tcx: DepContext,
 {
@@ -654,7 +658,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, result);
+        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(&result));
     }
 }
 
@@ -678,7 +682,7 @@ where
 fn incremental_verify_ich_failed<Tcx>(
     tcx: Tcx,
     prev_index: SerializedDepNodeIndex,
-    result: &dyn Debug,
+    result: &dyn Fn() -> String,
 ) where
     Tcx: DepContext,
 {
@@ -708,7 +712,7 @@ fn incremental_verify_ich_failed<Tcx>(
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
+        panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
     }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));

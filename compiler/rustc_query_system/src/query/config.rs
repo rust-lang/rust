@@ -20,9 +20,11 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
     // but it isn't necessary.
     type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Copy + Debug;
-    type Value: Debug + Copy;
+    type Value: Copy;
 
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
+
+    fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
