@@ -41,7 +41,7 @@ use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
-use crate::visit_ast::Module as DocModule;
+use crate::visit_ast::{ItemEntry, Module as DocModule};
 
 use utils::*;
 
@@ -77,7 +77,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
+    items.extend(doc.items.values().flat_map(|ItemEntry { item, renamed, import_id }| {
         // First, lower everything other than imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
@@ -90,7 +90,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
+    items.extend(doc.items.values().flat_map(|ItemEntry { item, renamed, .. }| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
             let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
@@ -2236,16 +2236,8 @@ fn filter_tokens_from_list(
 fn add_without_unwanted_attributes<'hir>(
     attrs: &mut Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)>,
     new_attrs: &'hir [ast::Attribute],
-    is_inline: bool,
     import_parent: Option<DefId>,
 ) {
-    // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
-    if !is_inline {
-        for attr in new_attrs {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-        }
-        return;
-    }
     for attr in new_attrs {
         if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
