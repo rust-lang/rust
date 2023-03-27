@@ -409,8 +409,8 @@ impl Token {
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | DocComment(..)
+            | Ident(..) | Lifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 

@@ -1469,8 +1469,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected_start_delimiter: token::FStrDelimiter,
     ) -> PResult<'a, (Symbol, token::FStrDelimiter)> {
-        if let TokenKind::FStr(start_delimiter, symbol, end_delimiter) = self.token.kind
-        {
+        if let TokenKind::FStr(start_delimiter, symbol, end_delimiter) = self.token.kind {
             if expected_start_delimiter != start_delimiter {
                 let span_data = self.token.span.data();
                 let span = span_data
@@ -1496,9 +1495,7 @@ impl<'a> Parser<'a> {
 
     fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let start_token_span = self.token.span;
-        if let TokenKind::FStr(_, _, end_delimiter) =
-            self.token.kind
-        {
+        if let TokenKind::FStr(_, _, end_delimiter) = self.token.kind {
             let (symbol, _) = self.parse_f_str_piece(token::FStrDelimiter::Quote)?;
 
             let mut pieces = ThinVec::new();
@@ -1506,8 +1503,7 @@ impl<'a> Parser<'a> {
 
             let mut end_delimiter = end_delimiter;
             while end_delimiter == token::FStrDelimiter::Brace {
-                if let TokenKind::FStr(token::FStrDelimiter::Brace, ..) = self.token.kind
-                {
+                if let TokenKind::FStr(token::FStrDelimiter::Brace, ..) = self.token.kind {
                     let span_data = self.token.span.data();
                     let span = span_data
                         .with_lo(span_data.lo - BytePos(1))

@@ -786,7 +786,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             /* Literals */
             token::Literal(lit) => literal_to_string(lit).into(),
 
-            token::FStr(start, symbol, end) => format!("{start}{symbol}{end}", start = start.display(true), end = end.display(false)).into(),
+            token::FStr(start, symbol, end) => format!(
+                "{start}{symbol}{end}",
+                start = start.display(true),
+                end = end.display(false)
+            )
+            .into(),
 
             /* Name components */
             token::Ident(s, is_raw) => {

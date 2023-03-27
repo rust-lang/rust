@@ -1,7 +1,6 @@
 use crate::base::ExtCtxt;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal,
-    Punct, TokenTree,
+    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
 };
 use pm::{Delimiter, Level, LineColumn};
 use rustc_ast as ast;
