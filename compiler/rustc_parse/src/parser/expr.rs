@@ -1440,7 +1440,7 @@ impl<'a> Parser<'a> {
                 self.maybe_recover_from_bad_qpath(expr)
             }
             None => {
-                if let Some(expr) = self.parse_opt_f_str_expr()? {
+                if let Some(expr) = self.parse_opt_f_string_expr()? {
                     Ok(expr)
                 } else {
                     self.try_macro_suggestion()
@@ -1465,7 +1465,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_f_str_piece(
+    fn parse_f_string_piece(
         &mut self,
         expected_start_delimiter: token::FStrDelimiter,
     ) -> PResult<'a, (Symbol, token::FStrDelimiter)> {
@@ -1493,10 +1493,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_opt_f_string_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let start_token_span = self.token.span;
         if let TokenKind::FStr(_, _, end_delimiter) = self.token.kind {
-            let (symbol, _) = self.parse_f_str_piece(token::FStrDelimiter::Quote)?;
+            let (symbol, _) = self.parse_f_string_piece(token::FStrDelimiter::Quote)?;
 
             let mut pieces = ThinVec::new();
             pieces.push(FStringPiece::Literal(symbol));
@@ -1517,7 +1517,7 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expr()?;
                 pieces.push(FStringPiece::Expr(expr));
 
-                let (symbol, delimiter) = self.parse_f_str_piece(token::FStrDelimiter::Brace)?;
+                let (symbol, delimiter) = self.parse_f_string_piece(token::FStrDelimiter::Brace)?;
                 end_delimiter = delimiter;
                 pieces.push(FStringPiece::Literal(symbol));
             }
