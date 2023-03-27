@@ -56,10 +56,10 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        let rem = if self.inner.len < n {
-            let len = self.inner.len;
+        let len = self.inner.len;
+        let rem = if len < n {
             self.inner.clear();
-            len - n
+            n - len
         } else {
             self.inner.drain(..n);
             0
@@ -186,12 +186,12 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         let len = self.inner.len;
-        let rem = if len >= n {
-            self.inner.truncate(len - n);
-            0
-        } else {
+        let rem = if len < n {
             self.inner.clear();
             n - len
+        } else {
+            self.inner.truncate(len - n);
+            0
         };
         NonZeroUsize::new(rem).map_or(Ok(()), Err)
     }
