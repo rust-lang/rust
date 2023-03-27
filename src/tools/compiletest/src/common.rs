@@ -384,6 +384,8 @@ pub struct Config {
     pub only_modified: bool,
 
     pub target_cfg: LazyCell<TargetCfg>,
+
+    pub nocapture: bool,
 }
 
 impl Config {

@@ -224,8 +224,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             ast::ExprKind::Closure(box ast::Closure {
                 asyncness: ast::Async::Yes { closure_id, .. },
                 ..
-            })
-            | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
+            }) => self.check_id(closure_id),
             _ => {}
         }
     }
