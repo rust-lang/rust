@@ -221,6 +221,25 @@ impl<'a> StringReader<'a> {
                     };
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
+                rustc_lexer::TokenKind::FStr { start: start_delimiter, end: end_delimiter } => {
+                    let end = self.pos;
+                    let start_delimiter = translate_f_str_delimiter(start_delimiter);
+                    if let Some(end_delimiter) = end_delimiter {
+                        let end_delimiter = translate_f_str_delimiter(end_delimiter);
+                        let prefix_len = start_delimiter.display(true).len() as u32;
+                        let postfix_len = end_delimiter.display(false).len() as u32;
+                        match self.cook_quoted_common(Mode::FStr, start, end, prefix_len, postfix_len) { // `f" "`, `f" {`, `} {`, `} "`
+                            Ok(symbol) => token::FStr(start_delimiter, symbol, end_delimiter),
+                            Err(symbol) => token::Literal(token::Lit { kind: token::Err, symbol, suffix: None }), // TODO: Check
+                        }
+                    } else {
+                        self.sess.span_diagnostic.span_fatal_with_code(
+                            self.mk_sp(start, end),
+                            "unterminated f-string",
+                            error_code!(E0795),
+                        )
+                    }
+                }
                 rustc_lexer::TokenKind::Lifetime { starts_with_number, contains_emoji } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
@@ -438,22 +457,6 @@ impl<'a> StringReader<'a> {
                     self.cook_quoted(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
-                }
-            }
-            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter } => {
-                let start_delimiter = translate_f_str_delimiter(start_delimiter);
-                if let Some(end_delimiter) = end_delimiter {
-                    let end_delimiter = translate_f_str_delimiter(end_delimiter);
-                    let prefix_len = start_delimiter.display(true).len() as u32;
-                    let postfix_len = end_delimiter.display(false).len() as u32;
-                    let kind = token::FStr(start_delimiter, end_delimiter);
-                    self.cook_quoted(kind, Mode::FStr, start, end, prefix_len, postfix_len) // `f" "`, `f" {`, `} {`, `} "`
-                } else {
-                    self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start, end),
-                        "unterminated f-string",
-                        error_code!(E0795),
-                    )
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
@@ -680,6 +683,20 @@ impl<'a> StringReader<'a> {
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
+        match self.cook_quoted_common(mode, start, end, prefix_len, postfix_len) {
+            Ok(symbol) => (kind, symbol),
+            Err(symbol) => (token::Err, symbol),
+        }
+    }
+
+    fn cook_quoted_common(
+        &self,
+        mode: Mode,
+        start: BytePos,
+        end: BytePos,
+        prefix_len: u32,
+        postfix_len: u32,
+    ) -> Result<Symbol, Symbol> {
         let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
@@ -710,9 +727,9 @@ impl<'a> StringReader<'a> {
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
         if !has_fatal_err {
-            (kind, Symbol::intern(lit_content))
+            Ok(Symbol::intern(lit_content))
         } else {
-            (token::Err, self.symbol_from_to(start, end))
+            Err(self.symbol_from_to(start, end))
         }
     }
 }

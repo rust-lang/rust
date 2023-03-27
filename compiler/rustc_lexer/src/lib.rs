@@ -94,6 +94,9 @@ pub enum TokenKind {
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
 
+    /// `f"foo{`, `} bar {`, `} quux"`, `f"foo"`, or `f"unterminated`
+    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
+
     /// `'a`
     Lifetime { starts_with_number: bool, contains_emoji: bool },
 
@@ -201,8 +204,6 @@ pub enum LiteralKind {
     /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
-    /// `f"foo{`, `} bar {`, `} quux"`, `f"foo"`, or `f"unterminated`
-    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -873,28 +874,24 @@ impl<'a> Lexer<'a> {
     }
 
     /// Eats an f-string segment and returns the delimiter that it terminates with.
-    fn f_string(&mut self, start: FStrDelimiter) -> TokenKind {
+    fn f_string(&mut self, start_delimiter: FStrDelimiter) -> TokenKind {
         debug_assert!(matches!(
-            (start, self.cursor.prev()),
+            (start_delimiter, self.cursor.prev()),
             (FStrDelimiter::Quote, '"') | (FStrDelimiter::Brace, '}')
         ));
         while let Some(c) = self.cursor.bump() {
             match c {
                 '"' => {
-                    let kind = FStr { start, end: Some(FStrDelimiter::Quote) };
-                    let suffix_start = self.cursor.pos_within_token();
-                    self.eat_literal_suffix();
-                    return Literal { kind, suffix_start };
+                    return FStr { start: start_delimiter, end: Some(FStrDelimiter::Quote) };
                 }
                 '{' if self.cursor.first() == '{' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
                 }
                 '{' => {
-                    let kind = FStr { start, end: Some(FStrDelimiter::Brace) };
                     self.brace_f_string_triggers.push(self.brace_count);
                     self.brace_count += 1;
-                    return Literal { kind, suffix_start: self.cursor.pos_within_token() };
+                    return FStr { start: start_delimiter, end: Some(FStrDelimiter::Brace) };
                 }
                 '\\' if self.cursor.first() == '\\'
                     || self.cursor.first() == '"'
@@ -907,8 +904,7 @@ impl<'a> Lexer<'a> {
             }
         }
         // End of file reached.
-        let kind = FStr { start, end: None };
-        Literal { kind, suffix_start: self.cursor.pos_within_token() }
+        FStr { start: start_delimiter, end: None }
     }
 
     fn eat_decimal_digits(&mut self) -> bool {

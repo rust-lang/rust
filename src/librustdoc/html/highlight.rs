@@ -816,11 +816,11 @@ impl<'src> Classifier<'src> {
                 | LiteralKind::Str { .. }
                 | LiteralKind::ByteStr { .. }
                 | LiteralKind::RawStr { .. }
-                | LiteralKind::RawByteStr { .. }
-                | LiteralKind::FStr { .. } => Class::String, // TODO: Improve f-string support?
+                | LiteralKind::RawByteStr { .. } => Class::String,
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
+            TokenKind::FStr { .. } => Class::String, // TODO: Improve f-string support
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
                 sink(Highlight::EnterSpan { class: Class::Macro(self.new_span(before, text)) });

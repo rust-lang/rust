@@ -92,8 +92,6 @@ pub enum LitKind {
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
-    /// F-string, delimited at the start and end by the specified delimiters.
-    FStr(FStrDelimiter, FStrDelimiter), // `Token` only, must never appear in AST
     Err,
 }
 
@@ -162,9 +160,6 @@ impl fmt::Display for Lit {
                 string = symbol
             )?,
             Integer | Float | Bool | Err => write!(f, "{symbol}")?,
-            FStr(start, end) => {
-                write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?
-            }
         }
 
         if let Some(suffix) = suffix {
@@ -193,7 +188,6 @@ impl LitKind {
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
-            FStr(..) => "format string", // TODO: an f-string, rather than a "format string"? Will have to change `article()` as well.
             Err => "error",
         }
     }
@@ -284,6 +278,8 @@ pub enum TokenKind {
 
     /* Literals */
     Literal(Lit),
+    /// F-string, delimited at the start and end by the specified delimiters.
+    FStr(FStrDelimiter, Symbol, FStrDelimiter),
 
     /// Identifier token.
     /// Do not forget about `NtIdent` when you want to match on identifiers.
@@ -413,7 +409,7 @@ impl Token {
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | DocComment(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | Eof => false,
         }
     }
@@ -427,8 +423,8 @@ impl Token {
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
+            FStr(start_delimiter, ..) => start_delimiter == FStrDelimiter::Quote, // TODO: Check
             OpenDelim(..)                     | // tuple, array or block
-            // TODO!!: handle f-string
             Literal(..)                       | // literal
             Not                               | // operator not
             BinOp(Minus)                      | // unary minus
@@ -787,7 +783,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | FStr(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
 

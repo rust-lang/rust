@@ -1469,11 +1469,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected_start_delimiter: token::FStrDelimiter,
     ) -> PResult<'a, (Symbol, token::FStrDelimiter)> {
-        if let TokenKind::Literal(token::Lit {
-            kind: token::FStr(start_delimiter, end_delimiter),
-            symbol,
-            ..
-        }) = self.token.kind
+        if let TokenKind::FStr(start_delimiter, symbol, end_delimiter) = self.token.kind
         {
             if expected_start_delimiter != start_delimiter {
                 let span_data = self.token.span.data();
@@ -1500,7 +1496,7 @@ impl<'a> Parser<'a> {
 
     fn parse_opt_f_str_expr(&mut self) -> PResult<'a, Option<P<Expr>>> {
         let start_token_span = self.token.span;
-        if let TokenKind::Literal(token::Lit { kind: token::FStr(_, end_delimiter), .. }) =
+        if let TokenKind::FStr(_, _, end_delimiter) =
             self.token.kind
         {
             let (symbol, _) = self.parse_f_str_piece(token::FStrDelimiter::Quote)?;
@@ -1510,10 +1506,7 @@ impl<'a> Parser<'a> {
 
             let mut end_delimiter = end_delimiter;
             while end_delimiter == token::FStrDelimiter::Brace {
-                if let TokenKind::Literal(token::Lit {
-                    kind: token::FStr(token::FStrDelimiter::Brace, _),
-                    ..
-                }) = self.token.kind
+                if let TokenKind::FStr(token::FStrDelimiter::Brace, ..) = self.token.kind
                 {
                     let span_data = self.token.span.data();
                     let span = span_data
@@ -2023,12 +2016,9 @@ impl<'a> Parser<'a> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         let span = token.span;
-        token::Lit::from_token(token).and_then(|token_lit| match token_lit.kind {
-            token::LitKind::FStr(..) => None,
-            _ => {
-                self.bump();
-                Some((token_lit, span))
-            }
+        token::Lit::from_token(token).map(|token_lit| {
+            self.bump();
+            (token_lit, span)
         })
     }
 
