@@ -703,8 +703,7 @@ fn incremental_verify_ich_failed<Tcx>(
         };
 
         let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
-
-        let dep_node = tcx.sess().emit_err(crate::error::IncrementCompilation {
+        tcx.sess().emit_err(crate::error::IncrementCompilation {
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });
