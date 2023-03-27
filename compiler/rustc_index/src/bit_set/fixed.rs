@@ -72,24 +72,24 @@ impl<T: Idx> BitSet<T> {
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
-        let this = if domain_size <= INLINE_BITSET_BITS {
-            let mut this = BitSet::new_empty(domain_size);
-            for i in 0..domain_size {
-                this.insert(T::new(i));
+        let mut this = if domain_size <= INLINE_BITSET_BITS {
+            let mut inner = DenseBitSet::new_empty(domain_size);
+            inner.words_mut().fill(!0);
+            BitSet {
+                inner: BitSetImpl::Inline(inner),
+                marker: PhantomData,
             }
-            this
         } else {
             let num_words = num_words::<u64>(domain_size);
-            let mut this = BitSet {
+            BitSet {
                 inner: BitSetImpl::Heap {
                     domain_size,
                     wide_words: vec![!0; num_words].into_boxed_slice(),
                 },
                 marker: PhantomData,
-            };
-            this.clear_excess_bits();
-            this
+            }
         };
+        this.clear_excess_bits();
         debug_assert_eq!(domain_size, this.domain_size());
         debug_assert_eq!(domain_size, this.count());
         debug_assert_eq!(domain_size, this.iter().count());
