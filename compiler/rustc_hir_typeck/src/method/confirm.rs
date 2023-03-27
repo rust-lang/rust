@@ -576,17 +576,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
-            .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
+            .filter_map(|pred| match pred.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                     if trait_pred.def_id() == sized_def_id =>
                 {
                     let span = predicates
                         .iter()
-                        .find_map(
-                            |(p, span)| {
-                                if p == obligation.predicate { Some(span) } else { None }
-                            },
-                        )
+                        .find_map(|(p, span)| if p == pred { Some(span) } else { None })
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }
