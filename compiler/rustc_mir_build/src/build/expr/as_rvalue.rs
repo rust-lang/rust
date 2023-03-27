@@ -528,6 +528,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.and(Rvalue::Use(operand))
             }
+            ExprKind::DerefMutArg { .. } => bug!("encountered DerefMutArg as Rvalue"),
         }
     }
 

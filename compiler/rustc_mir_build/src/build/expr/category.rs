@@ -54,7 +54,8 @@ impl Category {
             | ExprKind::AddressOf { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. }
-            | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
+            | ExprKind::InlineAsm { .. }
+            | ExprKind::DerefMutArg { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
             | ExprKind::Tuple { .. }

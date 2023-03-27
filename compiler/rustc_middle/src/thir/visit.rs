@@ -57,6 +57,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             }
         }
         Deref { arg } => visitor.visit_expr(&visitor.thir()[arg]),
+        DerefMutArg { arg } => visitor.visit_expr(&visitor.thir()[arg]),
         Binary { lhs, rhs, op: _ } | LogicalOp { lhs, rhs, op: _ } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);

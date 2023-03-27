@@ -528,6 +528,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            DerefMutArg { arg } => {
+                print_indented!(self, "DerefMutArg {", depth_lvl);
+                print_indented!(self, "arg:", depth_lvl + 1);
+                self.print_expr(*arg, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
         }
     }
 

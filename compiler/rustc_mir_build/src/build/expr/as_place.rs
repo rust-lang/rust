@@ -408,8 +408,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
-
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
@@ -437,6 +435,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.and(place_builder.deref())
             }
+            ExprKind::DerefMutArg { .. } => {
+                bug!("encountered ExprKind::DerefMutArg in `expr_as_place`")
+            }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
                 block,
                 &this.thir[lhs],
@@ -454,9 +455,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::VarRef { id } => {
                 let place_builder = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
+                    let local_decl = &mut this.local_decls[index];
                     PlaceBuilder::from(index).deref()
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
+                    let local_decl = &mut this.local_decls[index];
                     PlaceBuilder::from(index)
                 };
                 block.and(place_builder)

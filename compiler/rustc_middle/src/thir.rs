@@ -484,6 +484,11 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+    /// The argument to a `Call` of `DerefMut::deref_mut`. This is used to allow us to
+    /// adjust the `Mutability` of local variables that are deref'd.
+    DerefMutArg {
+        arg: ExprId,
+    },
 }
 
 /// Represents the association of a field identifier and an expression.

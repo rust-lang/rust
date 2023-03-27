@@ -194,9 +194,11 @@ fn recurse_build<'tcx>(
             }
         }
         // FIXME(generic_const_exprs): We may want to support these.
-        ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => maybe_supported_error(
-            GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
-        )?,
+        ExprKind::AddressOf { .. } | ExprKind::Deref { .. } | ExprKind::DerefMutArg { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::AddressAndDerefNotSupported(
+                node.span,
+            ))?
+        }
         ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
             maybe_supported_error(GenericConstantTooComplexSub::ArrayNotSupported(node.span))?
         }
@@ -314,6 +316,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::If { .. }
             | thir::ExprKind::Call { .. }
             | thir::ExprKind::Deref { .. }
+            | thir::ExprKind::DerefMutArg { .. }
             | thir::ExprKind::Binary { .. }
             | thir::ExprKind::LogicalOp { .. }
             | thir::ExprKind::Unary { .. }
