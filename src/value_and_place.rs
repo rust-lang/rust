@@ -565,12 +565,11 @@ impl<'tcx> CPlace<'tcx> {
         }
 
         let dst_layout = self.layout();
-        let to_ptr = match self.inner {
+        match self.inner {
             CPlaceInner::Var(_local, var) => {
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 transmute_value(fx, var, data, dst_ty);
-                return;
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let (data1, data2) = if from.layout().ty == dst_layout.ty {
@@ -583,61 +582,59 @@ impl<'tcx> CPlace<'tcx> {
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
                 transmute_value(fx, var1, data1, dst_ty1);
                 transmute_value(fx, var2, data2, dst_ty2);
-                return;
             }
-            CPlaceInner::Addr(ptr, None) => {
+            CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
+            CPlaceInner::Addr(to_ptr, None) => {
                 if dst_layout.size == Size::ZERO || dst_layout.abi == Abi::Uninhabited {
                     return;
                 }
-                ptr
-            }
-            CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
-        };
 
-        let mut flags = MemFlags::new();
-        flags.set_notrap();
-        match from.layout().abi {
-            Abi::Scalar(_) => {
-                let val = from.load_scalar(fx);
-                to_ptr.store(fx, val, flags);
-                return;
-            }
-            Abi::ScalarPair(a_scalar, b_scalar) => {
-                let (value, extra) = from.load_scalar_pair(fx);
-                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                to_ptr.store(fx, value, flags);
-                to_ptr.offset(fx, b_offset).store(fx, extra, flags);
-                return;
-            }
-            _ => {}
-        }
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                match from.layout().abi {
+                    Abi::Scalar(_) => {
+                        let val = from.load_scalar(fx);
+                        to_ptr.store(fx, val, flags);
+                        return;
+                    }
+                    Abi::ScalarPair(a_scalar, b_scalar) => {
+                        let (value, extra) = from.load_scalar_pair(fx);
+                        let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                        to_ptr.store(fx, value, flags);
+                        to_ptr.offset(fx, b_offset).store(fx, extra, flags);
+                        return;
+                    }
+                    _ => {}
+                }
 
-        match from.0 {
-            CValueInner::ByVal(val) => {
-                to_ptr.store(fx, val, flags);
+                match from.0 {
+                    CValueInner::ByVal(val) => {
+                        to_ptr.store(fx, val, flags);
+                    }
+                    CValueInner::ByValPair(_, _) => {
+                        bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi);
+                    }
+                    CValueInner::ByRef(from_ptr, None) => {
+                        let from_addr = from_ptr.get_addr(fx);
+                        let to_addr = to_ptr.get_addr(fx);
+                        let src_layout = from.1;
+                        let size = dst_layout.size.bytes();
+                        let src_align = src_layout.align.abi.bytes() as u8;
+                        let dst_align = dst_layout.align.abi.bytes() as u8;
+                        fx.bcx.emit_small_memory_copy(
+                            fx.target_config,
+                            to_addr,
+                            from_addr,
+                            size,
+                            dst_align,
+                            src_align,
+                            true,
+                            flags,
+                        );
+                    }
+                    CValueInner::ByRef(_, Some(_)) => todo!(),
+                }
             }
-            CValueInner::ByValPair(_, _) => {
-                bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi);
-            }
-            CValueInner::ByRef(from_ptr, None) => {
-                let from_addr = from_ptr.get_addr(fx);
-                let to_addr = to_ptr.get_addr(fx);
-                let src_layout = from.1;
-                let size = dst_layout.size.bytes();
-                let src_align = src_layout.align.abi.bytes() as u8;
-                let dst_align = dst_layout.align.abi.bytes() as u8;
-                fx.bcx.emit_small_memory_copy(
-                    fx.target_config,
-                    to_addr,
-                    from_addr,
-                    size,
-                    dst_align,
-                    src_align,
-                    true,
-                    flags,
-                );
-            }
-            CValueInner::ByRef(_, Some(_)) => todo!(),
         }
     }
 
