@@ -226,6 +226,22 @@ fn overlap_check_considering_specialization<'tcx>(
         return Ok(OverlapResult::SpecializeAll(replace_children));
     }
 
+    if overlap_mode.use_negative_impl()
+        && tcx.impl_polarity(impl_def_id) == ty::ImplPolarity::Positive
+        && traits::negative_impl_holds(tcx, impl_def_id, overlap_mode)
+    {
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let self_ty = trait_ref.self_ty();
+
+        return Err(OverlapError {
+            with_impl: impl_def_id,
+            trait_ref,
+            self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
+            intercrate_ambiguity_causes: Default::default(),
+            involves_placeholder: false,
+        });
+    }
+
     Ok(OverlapResult::NoOverlap(last_lint))
 }
 

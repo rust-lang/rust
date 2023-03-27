@@ -120,6 +120,48 @@ pub fn overlapping_impls(
     Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
 
+/// Given an impl_def_id that "positively" implement a trait, check if the "negative" holds.
+pub fn negative_impl_holds(tcx: TyCtxt<'_>, impl_def_id: DefId, overlap_mode: OverlapMode) -> bool {
+    debug!("negative_impl_holds(impl1_header={:?}, overlap_mode={:?})", impl_def_id, overlap_mode);
+    // `for<T> (Vec<u32>, T): Trait`
+    let header = tcx.impl_trait_ref(impl_def_id).unwrap();
+
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .intercrate(true)
+        .build();
+
+    // `[?t]`
+    let infer_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+
+    // `(Vec<u32>, ?t): Trait`
+    let trait_ref = header.subst(tcx, infer_substs);
+
+    // `(Vec<u32>, ?t): !Trait`
+    let trait_pred = tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(
+        ty::Clause::Trait(ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Negative,
+        }),
+    )));
+
+    // Ideally we would use param_env(impl_def_id) but that's unsound today.
+    let param_env = ty::ParamEnv::empty();
+
+    let selcx = &mut SelectionContext::new(&infcx);
+    selcx
+        .evaluate_root_obligation(&Obligation::new(
+            tcx,
+            ObligationCause::dummy(),
+            param_env,
+            trait_pred,
+        ))
+        .expect("Overflow should be caught earlier in standard query mode")
+        .must_apply_modulo_regions()
+}
+
 fn with_fresh_ty_vars<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,

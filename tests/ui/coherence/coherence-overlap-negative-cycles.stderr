@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `Foo`
+  --> $DIR/coherence-overlap-negative-cycles.rs:14:1
+   |
+LL | impl MyTrait for Foo where Foo: MyTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | first implementation here
+   | conflicting implementation for `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

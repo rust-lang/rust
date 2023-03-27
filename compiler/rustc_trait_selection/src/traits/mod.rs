@@ -41,7 +41,9 @@ pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
 
-pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
+pub use self::coherence::{
+    add_placeholder_note, negative_impl_holds, orphan_check, overlapping_impls,
+};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
