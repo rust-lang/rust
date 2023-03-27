@@ -2,7 +2,9 @@ error[E0277]: the trait bound `str: UpperHex` is not satisfied
   --> $DIR/ifmt-unimpl.rs:2:21
    |
 LL |     format!("{:X}", "3");
-   |                     ^^^ the trait `UpperHex` is not implemented for `str`
+   |              ----   ^^^ the trait `UpperHex` is not implemented for `str`
+   |              |
+   |              required by a bound introduced by this call
    |
    = help: the following other types implement trait `UpperHex`:
              &T
