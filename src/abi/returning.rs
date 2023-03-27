@@ -63,11 +63,11 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
     let (ret_temp_place, return_ptr) = match ret_arg_abi.mode {
         PassMode::Ignore => (None, None),
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
-            if matches!(ret_place.inner(), CPlaceInner::Addr(_, None)) {
+            if let Some(ret_ptr) = ret_place.try_to_ptr() {
                 // This is an optimization to prevent unnecessary copies of the return value when
                 // the return place is already a memory place as opposed to a register.
                 // This match arm can be safely removed.
-                (None, Some(ret_place.to_ptr().get_addr(fx)))
+                (None, Some(ret_ptr.get_addr(fx)))
             } else {
                 let place = CPlace::new_stack_slot(fx, ret_arg_abi.layout);
                 (Some(place), Some(place.to_ptr().get_addr(fx)))

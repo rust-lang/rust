@@ -2,6 +2,7 @@
 
 use crate::prelude::*;
 
+use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 
 fn codegen_field<'tcx>(
@@ -325,7 +326,7 @@ pub(crate) struct CPlace<'tcx> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum CPlaceInner {
+enum CPlaceInner {
     Var(Local, Variable),
     VarPair(Local, Variable, Variable),
     Addr(Pointer, Option<Value>),
@@ -334,10 +335,6 @@ pub(crate) enum CPlaceInner {
 impl<'tcx> CPlace<'tcx> {
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
-    }
-
-    pub(crate) fn inner(&self) -> &CPlaceInner {
-        &self.inner
     }
 
     pub(crate) fn new_stack_slot(
@@ -431,6 +428,30 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
+    pub(crate) fn debug_comment(self) -> (&'static str, String) {
+        match self.inner {
+            CPlaceInner::Var(_local, var) => ("ssa", format!("var={}", var.index())),
+            CPlaceInner::VarPair(_local, var1, var2) => {
+                ("ssa", format!("var=({}, {})", var1.index(), var2.index()))
+            }
+            CPlaceInner::Addr(ptr, meta) => {
+                let meta =
+                    if let Some(meta) = meta { format!(",meta={}", meta) } else { String::new() };
+                match ptr.debug_base_and_offset() {
+                    (crate::pointer::PointerBase::Addr(addr), offset) => {
+                        ("reuse", format!("storage={}{}{}", addr, offset, meta))
+                    }
+                    (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
+                        ("stack", format!("storage={}{}{}", stack_slot, offset, meta))
+                    }
+                    (crate::pointer::PointerBase::Dangling(align), offset) => {
+                        ("zst", format!("align={},offset={}", align.bytes(), offset))
+                    }
+                }
+            }
+        }
+    }
+
     #[track_caller]
     pub(crate) fn to_ptr(self) -> Pointer {
         match self.to_ptr_maybe_unsized() {
@@ -446,6 +467,14 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => {
                 bug!("Expected CPlace::Addr, found {:?}", self)
             }
+        }
+    }
+
+    pub(crate) fn try_to_ptr(self) -> Option<Pointer> {
+        match self.inner {
+            CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => None,
+            CPlaceInner::Addr(ptr, None) => Some(ptr),
+            CPlaceInner::Addr(_, Some(_)) => bug!("Expected sized cplace, found {:?}", self),
         }
     }
 
@@ -527,7 +556,7 @@ impl<'tcx> CPlace<'tcx> {
                 format!(
                     "{}: {:?}: {:?} <- {:?}: {:?}",
                     method,
-                    self.inner(),
+                    self.inner,
                     self.layout().ty,
                     from.0,
                     from.layout().ty
