@@ -1,4 +1,4 @@
-#![warn(clippy::drop_copy, clippy::forget_copy)]
+#![warn(drop_copy, clippy::forget_copy)]
 #![allow(clippy::toplevel_ref_arg, drop_ref, clippy::forget_ref, unused_mut)]
 
 use std::mem::{drop, forget};
