@@ -254,44 +254,44 @@ impl InitMaskMaterialized {
     }
 
     fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
-        let (blocka, bita) = Self::bit_index(start);
-        let (blockb, bitb) = Self::bit_index(end);
-        if blocka == blockb {
-            // First set all bits except the first `bita`,
-            // then unset the last `64 - bitb` bits.
-            let range = if bitb == 0 {
-                u64::MAX << bita
+        let (block_a, bit_a) = Self::bit_index(start);
+        let (block_b, bit_b) = Self::bit_index(end);
+        if block_a == block_b {
+            // First set all bits except the first `bit_a`,
+            // then unset the last `64 - bit_b` bits.
+            let range = if bit_b == 0 {
+                u64::MAX << bit_a
             } else {
-                (u64::MAX << bita) & (u64::MAX >> (64 - bitb))
+                (u64::MAX << bit_a) & (u64::MAX >> (64 - bit_b))
             };
             if new_state {
-                self.blocks[blocka] |= range;
+                self.blocks[block_a] |= range;
             } else {
-                self.blocks[blocka] &= !range;
+                self.blocks[block_a] &= !range;
             }
             return;
         }
         // across block boundaries
         if new_state {
-            // Set `bita..64` to `1`.
-            self.blocks[blocka] |= u64::MAX << bita;
-            // Set `0..bitb` to `1`.
-            if bitb != 0 {
-                self.blocks[blockb] |= u64::MAX >> (64 - bitb);
+            // Set `bit_a..64` to `1`.
+            self.blocks[block_a] |= u64::MAX << bit_a;
+            // Set `0..bit_b` to `1`.
+            if bit_b != 0 {
+                self.blocks[block_b] |= u64::MAX >> (64 - bit_b);
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1)..blockb {
+            for block in (block_a + 1)..block_b {
                 self.blocks[block] = u64::MAX;
             }
         } else {
-            // Set `bita..64` to `0`.
-            self.blocks[blocka] &= !(u64::MAX << bita);
-            // Set `0..bitb` to `0`.
-            if bitb != 0 {
-                self.blocks[blockb] &= !(u64::MAX >> (64 - bitb));
+            // Set `bit_a..64` to `0`.
+            self.blocks[block_a] &= !(u64::MAX << bit_a);
+            // Set `0..bit_b` to `0`.
+            if bit_b != 0 {
+                self.blocks[block_b] &= !(u64::MAX >> (64 - bit_b));
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1)..blockb {
+            for block in (block_a + 1)..block_b {
                 self.blocks[block] = 0;
             }
         }
