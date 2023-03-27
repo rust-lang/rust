@@ -12,16 +12,14 @@ use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobI
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::HandleCycleError;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::cold_path;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lock;
-#[cfg(parallel_compiler)]
-use rustc_data_structures::{cold_path, sharded::Sharded};
-use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{Lock, LockGuard};use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
+use rustc_data_structures::sync::Lock;
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -227,7 +225,6 @@ where
 
 #[cold]
 #[inline(never)]
-#[cfg(not(parallel_compiler))]
 fn cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -298,7 +295,6 @@ where
 {
     let state = query.query_state(qcx);
     let mut state_lock = state.active.get_shard_by_value(&key).lock();
-    let mut state_lock = state.active.get_shard_by_value(&key).lock();
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
     // query is not still executing. Without checking the query cache here, we can end up
@@ -340,6 +336,14 @@ where
                 }
                 #[cfg(parallel_compiler)]
                 QueryResult::Started(job) => {
+                    if !rustc_data_structures::sync::active() {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        return cycle_error(query, qcx, id, span);
+                    }
                     // Get the latch out
                     let latch = job.latch();
                     drop(state_lock);
