@@ -470,7 +470,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_object_bound_candidate(self, goal, assumption.predicate) {
+            match G::consider_object_bound_candidate(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

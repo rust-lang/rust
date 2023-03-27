@@ -1912,14 +1912,13 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         // Check elaborated bounds.
         let implied_obligations = traits::elaborate_predicates_with_span(tcx, predicates_with_span);
 
-        for obligation in implied_obligations {
+        for (pred, obligation_span) in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking
-            if let ty::PredicateKind::WellFormed(..) = obligation.predicate.kind().skip_binder() {
+            if let ty::PredicateKind::WellFormed(..) = pred.kind().skip_binder() {
                 continue;
             }
-            let pred = obligation.predicate;
             // Match the existing behavior.
             if pred.is_global() && !pred.has_late_bound_vars() {
                 let pred = self.normalize(span, None, pred);
@@ -1930,8 +1929,6 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 if let Some(hir::Generics { predicates, .. }) =
                     hir_node.and_then(|node| node.generics())
                 {
-                    let obligation_span = obligation.cause.span();
-
                     span = predicates
                         .iter()
                         // There seems to be no better way to find out which predicate we are in
