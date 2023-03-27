@@ -1,32 +1,28 @@
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
-use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
-
 use std::ops::ControlFlow;
-
-pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 
 mod table;
 
+pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use super::InferResult;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -45,7 +41,7 @@ pub struct OpaqueTypeDecl<'tcx> {
 impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
     /// lazy TAIT around RPIT handling.
-    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
+    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         value: T,
         body_id: LocalDefId,
@@ -427,7 +423,7 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -481,9 +477,7 @@ where
                 }
             }
 
-            ty::Alias(ty::Projection, proj)
-                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
-            {
+            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(proj.def_id);
 
@@ -547,8 +541,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(prev) = prev {
             obligations = self
                 .at(&cause, param_env)
-                .define_opaque_types(true)
-                .eq_exp(a_is_expected, prev, hidden_ty)?
+                .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                 .obligations;
         }
 
@@ -563,8 +556,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && tcx.def_kind(projection_ty.def_id)
-                                != DefKind::ImplTraitPlaceholder =>
+                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id) =>
                     {
                         self.infer_projection(
                             param_env,

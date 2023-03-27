@@ -173,7 +173,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let Some(iter_item) = cx.tcx
             .associated_items(iter_trait)
             .find_by_name_and_kind(cx.tcx, Ident::with_dummy_span(Symbol::intern("Item")), AssocKind::Type, iter_trait)
-        && let substs = cx.tcx.intern_substs(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
+        && let substs = cx.tcx.mk_substs(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
         && let proj_ty = cx.tcx.mk_projection(iter_item.def_id, substs)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {

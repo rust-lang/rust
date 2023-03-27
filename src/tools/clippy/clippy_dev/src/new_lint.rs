@@ -1,5 +1,6 @@
 use crate::clippy_project_root;
 use indoc::{formatdoc, writedoc};
+use std::fmt;
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
@@ -256,7 +257,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         )
     });
 
-    let _ = write!(result, "{}", get_lint_declaration(&name_upper, category));
+    let _: fmt::Result = write!(result, "{}", get_lint_declaration(&name_upper, category));
 
     result.push_str(&if enable_msrv {
         formatdoc!(
@@ -353,7 +354,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     let mut lint_file_contents = String::new();
 
     if enable_msrv {
-        let _ = writedoc!(
+        let _: fmt::Result = writedoc!(
             lint_file_contents,
             r#"
                 use clippy_utils::msrvs::{{self, Msrv}};
@@ -373,7 +374,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
             name_upper = name_upper,
         );
     } else {
-        let _ = writedoc!(
+        let _: fmt::Result = writedoc!(
             lint_file_contents,
             r#"
                 use rustc_lint::{{{context_import}, LintContext}};
@@ -521,7 +522,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
         .chain(std::iter::once(&*lint_name_upper))
         .filter(|s| !s.is_empty())
     {
-        let _ = write!(new_arr_content, "\n    {ident},");
+        let _: fmt::Result = write!(new_arr_content, "\n    {ident},");
     }
     new_arr_content.push('\n');
 

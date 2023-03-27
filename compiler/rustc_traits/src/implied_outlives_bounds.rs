@@ -7,7 +7,7 @@ use rustc_infer::infer::outlives::components::{push_outlives_components, Compone
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -86,7 +86,7 @@ fn compute_implied_outlives_bounds<'tcx>(
             if obligation.predicate.has_non_region_infer() {
                 match obligation.predicate.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Projection(..))
-                    | ty::PredicateKind::AliasEq(..) => {
+                    | ty::PredicateKind::AliasRelate(..) => {
                         ocx.register_obligation(obligation.clone());
                     }
                     _ => {}
@@ -110,7 +110,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasEq(..)
+                | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
 
                 // We need to search through *all* WellFormed predicates

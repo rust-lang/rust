@@ -60,16 +60,6 @@ pub mod windows {}
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(target_os = "hermit")]
-#[path = "hermit/mod.rs"]
-pub mod unix;
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
 #[cfg(all(not(target_os = "hermit"), any(unix, doc)))]
 pub mod unix;
 
@@ -123,6 +113,8 @@ pub mod freebsd;
 pub mod fuchsia;
 #[cfg(target_os = "haiku")]
 pub mod haiku;
+#[cfg(target_os = "hermit")]
+pub mod hermit;
 #[cfg(target_os = "horizon")]
 pub mod horizon;
 #[cfg(target_os = "illumos")]
@@ -135,6 +127,8 @@ pub mod l4re;
 pub mod macos;
 #[cfg(target_os = "netbsd")]
 pub mod netbsd;
+#[cfg(target_os = "nto")]
+pub mod nto;
 #[cfg(target_os = "openbsd")]
 pub mod openbsd;
 #[cfg(target_os = "redox")]

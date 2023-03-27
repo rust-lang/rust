@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `[u8]: AutoTrait` is not satisfied in `str`
+  --> $DIR/str-contains-slice-conceptually.rs:11:22
+   |
+LL |   needs_auto_trait::<str>();
+   |                      ^^^ within `str`, the trait `AutoTrait` is not implemented for `[u8]`
+   |
+   = note: `str` is considered to contain a `[u8]` slice for auto trait purposes
+note: required by a bound in `needs_auto_trait`
+  --> $DIR/str-contains-slice-conceptually.rs:8:24
+   |
+LL | fn needs_auto_trait<T: AutoTrait + ?Sized>() {}
+   |                        ^^^^^^^^^ required by this bound in `needs_auto_trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

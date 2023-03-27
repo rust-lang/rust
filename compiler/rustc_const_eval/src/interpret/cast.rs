@@ -67,12 +67,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
+                // All reifications must be monomorphic, bail out otherwise.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::FnDef(def_id, substs) => {
-                        // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
                             self.param_env,
@@ -100,12 +100,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
+                // All reifications must be monomorphic, bail out otherwise.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::Closure(def_id, substs) => {
-                        // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
@@ -132,6 +132,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     bug!()
                 }
+            }
+
+            Transmute => {
+                assert!(src.layout.is_sized());
+                assert!(dest.layout.is_sized());
+                if src.layout.size != dest.layout.size {
+                    throw_ub_format!(
+                        "transmuting from {}-byte type to {}-byte type: `{}` -> `{}`",
+                        src.layout.size.bytes(),
+                        dest.layout.size.bytes(),
+                        src.layout.ty,
+                        dest.layout.ty,
+                    );
+                }
+
+                self.copy_op(src, dest, /*allow_transmute*/ true)?;
             }
         }
         Ok(())
@@ -359,8 +375,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
                 self.write_immediate(val, dest)
             }
-
             _ => {
+                // Do not ICE if we are not monomorphic enough.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(*self.tcx, cast_ty)?;
+
                 span_bug!(
                     self.cur_span(),
                     "invalid pointer unsizing {:?} -> {:?}",
@@ -404,12 +423,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 Ok(())
             }
-            _ => span_bug!(
-                self.cur_span(),
-                "unsize_into: invalid conversion: {:?} -> {:?}",
-                src.layout,
-                dest.layout
-            ),
+            _ => {
+                // Do not ICE if we are not monomorphic enough.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(*self.tcx, cast_ty.ty)?;
+
+                span_bug!(
+                    self.cur_span(),
+                    "unsize_into: invalid conversion: {:?} -> {:?}",
+                    src.layout,
+                    dest.layout
+                )
+            }
         }
     }
 }

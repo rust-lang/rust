@@ -4,6 +4,9 @@
 
 use crate::fs;
 use crate::io;
+#[cfg(target_os = "hermit")]
+use crate::os::hermit::io::OwnedFd;
+#[cfg(not(target_os = "hermit"))]
 use crate::os::raw;
 #[cfg(all(doc, not(target_arch = "wasm32")))]
 use crate::os::unix::io::AsFd;
@@ -12,11 +15,18 @@ use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
+#[cfg(target_os = "hermit")]
+use hermit_abi as libc;
 
 /// Raw file descriptors.
 #[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_os = "hermit"))]
 pub type RawFd = raw::c_int;
+#[rustc_allowed_through_unstable_modules]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(target_os = "hermit")]
+pub type RawFd = i32;
 
 /// A trait to extract the raw file descriptor from an underlying object.
 ///
@@ -244,7 +254,7 @@ impl<T: AsRawFd> AsRawFd for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "asfd_rc", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "asfd_rc", since = "1.69.0")]
 impl<T: AsRawFd> AsRawFd for crate::rc::Rc<T> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {

@@ -20,6 +20,7 @@ fn bar(_1: Box<[T]>) -> () {
 
     bb1: {
         StorageDead(_3);                 // scope 0 at $DIR/issue_91633.rs:+4:18: +4:19
+        PlaceMention((*_2));             // scope 0 at $DIR/issue_91633.rs:+4:14: +4:19
         StorageDead(_2);                 // scope 0 at $DIR/issue_91633.rs:+4:19: +4:20
         _0 = const ();                   // scope 0 at $DIR/issue_91633.rs:+3:2: +5:3
         drop(_1) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue_91633.rs:+5:2: +5:3

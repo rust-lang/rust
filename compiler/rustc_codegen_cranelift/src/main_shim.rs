@@ -28,7 +28,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
     if main_def_id.is_local() {
         let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
-        if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+        if !is_jit && module.get_name(tcx.symbol_name(instance).name).is_none() {
             return;
         }
     } else if !is_primary_cgu {
@@ -119,7 +119,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     report.def_id,
-                    tcx.intern_substs(&[GenericArg::from(main_ret_ty)]),
+                    tcx.mk_substs(&[GenericArg::from(main_ret_ty)]),
                 )
                 .unwrap()
                 .unwrap()
@@ -146,7 +146,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     start_def_id,
-                    tcx.intern_substs(&[main_ret_ty.into()]),
+                    tcx.mk_substs(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap()

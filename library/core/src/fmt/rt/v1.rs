@@ -5,7 +5,7 @@
 //! these can be statically allocated and are slightly optimized for the runtime
 #![allow(missing_debug_implementations)]
 
-#[cfg_attr(not(bootstrap), lang = "format_placeholder")]
+#[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
 // FIXME: Rename this to Placeholder
 pub struct Argument {
@@ -37,7 +37,7 @@ impl Argument {
 }
 
 /// Possible alignments that can be requested as part of a formatting directive.
-#[cfg_attr(not(bootstrap), lang = "format_alignment")]
+#[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Alignment {
     /// Indication that contents should be left-aligned.
@@ -51,7 +51,7 @@ pub enum Alignment {
 }
 
 /// Used by [width](https://doc.rust-lang.org/std/fmt/#width) and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
-#[cfg_attr(not(bootstrap), lang = "format_count")]
+#[lang = "format_count"]
 #[derive(Copy, Clone)]
 pub enum Count {
     /// Specified with a literal number, stores the value

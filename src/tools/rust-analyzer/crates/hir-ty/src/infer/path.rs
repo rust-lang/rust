@@ -3,7 +3,7 @@
 use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
-    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+    resolver::{ResolveValueResult, TypeNs, ValueNs},
     AdtId, AssocItemId, EnumVariantId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
@@ -21,55 +21,42 @@ use crate::{
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a> InferenceContext<'a> {
-    pub(super) fn infer_path(
-        &mut self,
-        resolver: &Resolver,
-        path: &Path,
-        id: ExprOrPatId,
-    ) -> Option<Ty> {
-        let ty = self.resolve_value_path(resolver, path, id)?;
+    pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
+        let ty = self.resolve_value_path(path, id)?;
         let ty = self.insert_type_vars(ty);
         let ty = self.normalize_associated_types_in(ty);
         Some(ty)
     }
 
-    fn resolve_value_path(
-        &mut self,
-        resolver: &Resolver,
-        path: &Path,
-        id: ExprOrPatId,
-    ) -> Option<Ty> {
+    fn resolve_value_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
-            if path.segments().is_empty() {
-                // This can't actually happen syntax-wise
-                return None;
-            }
+            let Some(last) = path.segments().last() else { return None };
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ctx = crate::lower::TyLoweringContext::new(self.db, resolver);
+            let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
             let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
-            self.resolve_ty_assoc_item(
-                ty,
-                path.segments().last().expect("path had at least one segment").name,
-                id,
-            )?
+            self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
+            // FIXME: report error, unresolved first path segment
             let value_or_partial =
-                resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
+                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
-                ResolveValueResult::Partial(def, remaining_index) => {
-                    self.resolve_assoc_item(def, path, remaining_index, id)?
-                }
+                ResolveValueResult::Partial(def, remaining_index) => self
+                    .resolve_assoc_item(def, path, remaining_index, id)
+                    .map(|(it, substs)| (it, Some(substs)))?,
             }
         };
 
         let typable: ValueTyDefId = match value {
-            ValueNs::LocalBinding(pat) => {
-                let ty = self.result.type_of_pat.get(pat)?.clone();
-                return Some(ty);
-            }
+            ValueNs::LocalBinding(pat) => match self.result.type_of_binding.get(pat) {
+                Some(ty) => return Some(ty.clone()),
+                None => {
+                    never!("uninferred pattern?");
+                    return None;
+                }
+            },
             ValueNs::FunctionId(it) => it.into(),
             ValueNs::ConstId(it) => it.into(),
             ValueNs::StaticId(it) => it.into(),
@@ -91,7 +78,7 @@ impl<'a> InferenceContext<'a> {
                     let ty = self.db.value_ty(struct_id.into()).substitute(Interner, &substs);
                     return Some(ty);
                 } else {
-                    // FIXME: diagnostic, invalid Self reference
+                    // FIXME: report error, invalid Self reference
                     return None;
                 }
             }
@@ -126,7 +113,7 @@ impl<'a> InferenceContext<'a> {
         path: &Path,
         remaining_index: usize,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
@@ -179,7 +166,7 @@ impl<'a> InferenceContext<'a> {
         trait_ref: TraitRef,
         segment: PathSegment<'_>,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         let trait_ = trait_ref.hir_trait_id();
         let item =
             self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
@@ -215,7 +202,7 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.write_assoc_resolution(id, item, trait_ref.substitution.clone());
-        Some((def, Some(trait_ref.substitution)))
+        Some((def, trait_ref.substitution))
     }
 
     fn resolve_ty_assoc_item(
@@ -223,7 +210,7 @@ impl<'a> InferenceContext<'a> {
         ty: Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         if let TyKind::Error = ty.kind(Interner) {
             return None;
         }
@@ -233,70 +220,66 @@ impl<'a> InferenceContext<'a> {
         }
 
         let canonical_ty = self.canonicalize(ty.clone());
-        let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
             self.table.trait_env.clone(),
-            &traits_in_scope,
+            self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             Some(name),
             method_resolution::LookupMode::Path,
             |_ty, item, visible| {
-                let (def, container) = match item {
-                    AssocItemId::FunctionId(f) => {
-                        (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
-                    }
-                    AssocItemId::ConstId(c) => {
-                        (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container)
-                    }
-                    AssocItemId::TypeAliasId(_) => unreachable!(),
-                };
-                let substs = match container {
-                    ItemContainerId::ImplId(impl_id) => {
-                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        let impl_self_ty =
-                            self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
-                        self.unify(&impl_self_ty, &ty);
-                        impl_substs
-                    }
-                    ItemContainerId::TraitId(trait_) => {
-                        // we're picking this method
-                        let trait_ref = TyBuilder::trait_ref(self.db, trait_)
-                            .push(ty.clone())
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        self.push_obligation(trait_ref.clone().cast(Interner));
-                        trait_ref.substitution
-                    }
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
-                        never!("assoc item contained in module/extern block");
-                        return None;
-                    }
-                };
-
                 if visible {
-                    Some((def, item, Some(substs), true))
+                    Some((item, true))
                 } else {
                     if not_visible.is_none() {
-                        not_visible = Some((def, item, Some(substs), false));
+                        not_visible = Some((item, false));
                     }
                     None
                 }
             },
         );
         let res = res.or(not_visible);
-        if let Some((_, item, Some(ref substs), visible)) = res {
-            self.write_assoc_resolution(id, item, substs.clone());
-            if !visible {
-                self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item })
+        let (item, visible) = res?;
+
+        let (def, container) = match item {
+            AssocItemId::FunctionId(f) => {
+                (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
             }
+            AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container),
+            AssocItemId::TypeAliasId(_) => unreachable!(),
+        };
+        let substs = match container {
+            ItemContainerId::ImplId(impl_id) => {
+                let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
+                    .fill_with_inference_vars(&mut self.table)
+                    .build();
+                let impl_self_ty = self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
+                self.unify(&impl_self_ty, &ty);
+                impl_substs
+            }
+            ItemContainerId::TraitId(trait_) => {
+                // we're picking this method
+                let trait_ref = TyBuilder::trait_ref(self.db, trait_)
+                    .push(ty.clone())
+                    .fill_with_inference_vars(&mut self.table)
+                    .build();
+                self.push_obligation(trait_ref.clone().cast(Interner));
+                trait_ref.substitution
+            }
+            ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                never!("assoc item contained in module/extern block");
+                return None;
+            }
+        };
+
+        self.write_assoc_resolution(id, item, substs.clone());
+        if !visible {
+            self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item });
         }
-        res.map(|(def, _, substs, _)| (def, substs))
+        Some((def, substs))
     }
 
     fn resolve_enum_variant_on_ty(
@@ -304,7 +287,7 @@ impl<'a> InferenceContext<'a> {
         ty: &Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substitution>)> {
+    ) -> Option<(ValueNs, Substitution)> {
         let ty = self.resolve_ty_shallow(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
@@ -314,6 +297,6 @@ impl<'a> InferenceContext<'a> {
         let local_id = enum_data.variant(name)?;
         let variant = EnumVariantId { parent: enum_id, local_id };
         self.write_variant_resolution(id, variant.into());
-        Some((ValueNs::EnumVariantId(variant), Some(subst.clone())))
+        Some((ValueNs::EnumVariantId(variant), subst.clone()))
     }
 }

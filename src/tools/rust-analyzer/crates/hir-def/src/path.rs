@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     body::LowerCtx,
-    type_ref::{ConstScalarOrPath, LifetimeRef},
+    type_ref::{ConstRefOrPath, LifetimeRef},
 };
 use hir_expand::name::Name;
 use intern::Interned;
@@ -85,7 +85,7 @@ pub struct AssociatedTypeBinding {
 pub enum GenericArg {
     Type(TypeRef),
     Lifetime(LifetimeRef),
-    Const(ConstScalarOrPath),
+    Const(ConstRefOrPath),
 }
 
 impl Path {

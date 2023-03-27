@@ -17,12 +17,12 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ir::TypeVisitor, ImplSubject, Ty, TyCtxt};
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -75,7 +75,7 @@ pub fn overlapping_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
+    let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey };
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
@@ -95,8 +95,11 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .intercrate(true)
+        .build();
     let selcx = &mut SelectionContext::new(&infcx);
     let overlaps =
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
@@ -107,8 +110,11 @@ pub fn overlapping_impls(
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .intercrate(true)
+        .build();
     let selcx = &mut SelectionContext::new(&infcx);
     selcx.enable_tracking_intercrate_ambiguity_causes();
     Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
@@ -181,7 +187,7 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    let obligations = equate_impl_headers(selcx, &impl1_header, &impl2_header)?;
+    let obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
     if overlap_mode.use_implicit_negative() {
@@ -207,20 +213,25 @@ fn overlap_within_probe<'cx, 'tcx>(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
-fn equate_impl_headers<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: &ty::ImplHeader<'tcx>,
+#[instrument(level = "debug", skip(infcx), ret)]
+fn equate_impl_headers<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    impl1: &ty::ImplHeader<'tcx>,
+    impl2: &ty::ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
-    // Do `a` and `b` unify? If not, no overlap.
-    debug!("equate_impl_headers(impl1_header={:?}, impl2_header={:?}", impl1_header, impl2_header);
-    selcx
-        .infcx
-        .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-        .define_opaque_types(true)
-        .eq_impl_headers(impl1_header, impl2_header)
-        .map(|infer_ok| infer_ok.obligations)
-        .ok()
+    let result = match (impl1.trait_ref, impl2.trait_ref) {
+        (Some(impl1_ref), Some(impl2_ref)) => infcx
+            .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+            .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
+        (None, None) => infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+            DefineOpaqueTypes::Yes,
+            impl1.self_ty,
+            impl2.self_ty,
+        ),
+        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+    };
+
+    result.map(|infer_ok| infer_ok.obligations).ok()
 }
 
 /// Given impl1 and impl2 check if both impls can be satisfied by a common type (including
@@ -325,7 +336,7 @@ fn equate<'tcx>(
 ) -> bool {
     // do the impls unify? If not, not disjoint.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), impl_env).eq(subject1, subject2)
+        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No,subject1, subject2)
     else {
         debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
         return true;
@@ -378,7 +389,10 @@ fn resolve_negative_obligation<'tcx>(
     };
 
     let param_env = o.param_env;
-    if !super::fully_solve_obligation(&infcx, o).is_empty() {
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligation(o);
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
         return false;
     }
 

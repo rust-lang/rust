@@ -7,54 +7,51 @@ LL | fn fun(x: &mut &mut u32) -> bool {
    = note: `-D clippy::mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:25:17
+  --> $DIR/mut_mut.rs:26:17
    |
 LL |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:19:9
+  --> $DIR/mut_mut.rs:41:25
    |
-LL |         &mut $p
-   |         ^^^^^^^
-...
-LL |     let mut z = mut_ptr!(&mut 3u32);
-   |                 ------------------- in this macro invocation
+LL |     let mut z = inline!(&mut $(&mut 3u32));
+   |                         ^
    |
-   = note: this error originates in the macro `mut_ptr` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this expression mutably borrows a mutable reference. Consider reborrowing
-  --> $DIR/mut_mut.rs:27:21
+  --> $DIR/mut_mut.rs:28:21
    |
 LL |         let mut y = &mut x;
    |                     ^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:32
+  --> $DIR/mut_mut.rs:32:32
    |
 LL |         let y: &mut &mut u32 = &mut &mut 2;
    |                                ^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:16
+  --> $DIR/mut_mut.rs:32:16
    |
 LL |         let y: &mut &mut u32 = &mut &mut 2;
    |                ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:36:37
+  --> $DIR/mut_mut.rs:37:37
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                                     ^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:36:16
+  --> $DIR/mut_mut.rs:37:16
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                ^^^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:36:21
+  --> $DIR/mut_mut.rs:37:21
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                     ^^^^^^^^^^^^^

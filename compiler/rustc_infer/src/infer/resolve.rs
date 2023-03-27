@@ -1,11 +1,8 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::fold::{
-    ir::{FallibleTypeFolder, TypeFolder},
-    TypeSuperFoldable,
-};
-use rustc_middle::ty::visit::{ir::TypeVisitor, TypeSuperVisitable};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 use std::ops::ControlFlow;
@@ -88,15 +85,12 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => {
-                let resolved = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .opportunistic_resolve_var(rid);
-                TypeFolder::interner(self).mk_re_var(resolved)
-            }
+            ty::ReVar(vid) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(TypeFolder::interner(self), vid),
             _ => r,
         }
     }
@@ -200,7 +194,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tc
 /// then an `Err` result is returned.
 pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<'tcx, T>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     value.try_fold_with(&mut FullTypeResolver { infcx })
 }

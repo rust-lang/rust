@@ -12,7 +12,7 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::{
     hir::map::Map,
-    ty::{ParamEnv, TyCtxt, TypeVisitable, TypeckResults},
+    ty::{ParamEnv, TyCtxt, TypeVisitableExt, TypeckResults},
 };
 use std::mem::swap;
 
@@ -190,7 +190,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             //
             // Some of these may be interesting in the future
             ExprKind::Path(..)
-            | ExprKind::Box(..)
             | ExprKind::ConstBlock(..)
             | ExprKind::Array(..)
             | ExprKind::Call(..)
@@ -219,7 +218,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
             | ExprKind::Yield(..)
-            | ExprKind::Err => (),
+            | ExprKind::Err(_) => (),
         }
     }
 
@@ -478,12 +477,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             | ExprKind::AssignOp(..)
             | ExprKind::Binary(..)
             | ExprKind::Block(..)
-            | ExprKind::Box(..)
             | ExprKind::Cast(..)
             | ExprKind::Closure { .. }
             | ExprKind::ConstBlock(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err
+            | ExprKind::Err(_)
             | ExprKind::Field(..)
             | ExprKind::Index(..)
             | ExprKind::InlineAsm(..)

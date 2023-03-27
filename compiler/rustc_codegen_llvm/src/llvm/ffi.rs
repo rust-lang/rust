@@ -641,9 +641,6 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern "C" {
-    pub type PassManagerBuilder;
-}
-extern "C" {
     pub type Pass;
 }
 extern "C" {
@@ -1072,6 +1069,7 @@ extern "C" {
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
     pub fn LLVMGetUndef(Ty: &Type) -> &Value;
+    pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
@@ -1814,8 +1812,6 @@ extern "C" {
     /// Creates a legacy pass manager -- only used for final codegen.
     pub fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
 
-    pub fn LLVMInitializePasses();
-
     pub fn LLVMTimeTraceProfilerInitialize();
 
     pub fn LLVMTimeTraceProfilerFinishThread();
@@ -2410,6 +2406,8 @@ extern "C" {
     pub fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub fn LLVMRustModuleCost(M: &Module) -> u64;
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
 
     pub fn LLVMRustThinLTOBufferCreate(M: &Module, is_thin: bool) -> &'static mut ThinLTOBuffer;
     pub fn LLVMRustThinLTOBufferFree(M: &'static mut ThinLTOBuffer);

@@ -117,8 +117,7 @@ function createSourceSidebar() {
     sidebar.appendChild(title);
     Object.keys(sourcesIndex).forEach(key => {
         sourcesIndex[key][NAME_OFFSET] = key;
-        hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "",
-            hasFoundFile);
+        hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "", hasFoundFile);
     });
 
     container.appendChild(sidebar);

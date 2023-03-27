@@ -33,6 +33,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           missing-docs-in-crate-items
            msrv
            pass-by-value-size-limit
            single-char-binding-names-threshold

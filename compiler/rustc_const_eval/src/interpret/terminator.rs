@@ -73,7 +73,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let fn_sig =
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
+                let extra_args =
+                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout.ty));
 
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
@@ -137,12 +138,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let ignored = M::ignore_checkable_overflow_assertions(self)
-                    && match msg {
-                        mir::AssertKind::OverflowNeg(..) => true,
-                        mir::AssertKind::Overflow(op, ..) => op.is_checkable(),
-                        _ => false,
-                    };
+                let ignored =
+                    M::ignore_optional_overflow_checks(self) && msg.is_optional_overflow_check();
                 let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if ignored || expected == cond_val {
                     self.go_to_block(target);
@@ -170,11 +167,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Unreachable => throw_ub!(Unreachable),
 
             // These should never occur for MIR we actually run.
-            DropAndReplace { .. }
-            | FalseEdge { .. }
-            | FalseUnwind { .. }
-            | Yield { .. }
-            | GeneratorDrop => span_bug!(
+            FalseEdge { .. } | FalseUnwind { .. } | Yield { .. } | GeneratorDrop => span_bug!(
                 terminator.source_info.span,
                 "{:#?} should have been eliminated by MIR pass",
                 terminator.kind
@@ -546,7 +539,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let mut receiver = args[0].clone();
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
-                        ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
+                        ty::Ref(..) | ty::RawPtr(..) => {
+                            // We do *not* use `deref_operand` here: we don't want to conceptually
+                            // create a place that must be dereferenceable, since the receiver might
+                            // be a raw pointer and (for `*const dyn Trait`) we don't need to
+                            // actually access memory to resolve this method.
+                            // Also see <https://github.com/rust-lang/miri/issues/2786>.
+                            let val = self.read_immediate(&receiver)?;
+                            break self.ref_to_mplace(&val)?;
+                        }
                         ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
                         ty::Dynamic(.., ty::DynStar) => {
                             // Not clear how to handle this, so far we assume the receiver is always a pointer.

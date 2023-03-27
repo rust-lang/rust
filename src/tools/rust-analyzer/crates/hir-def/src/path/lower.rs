@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use crate::type_ref::ConstScalarOrPath;
+use crate::type_ref::ConstRefOrPath;
 
 use either::Either;
 use hir_expand::name::{name, AsName};
@@ -212,7 +212,7 @@ pub(super) fn lower_generic_args(
                 }
             }
             ast::GenericArg::ConstArg(arg) => {
-                let arg = ConstScalarOrPath::from_expr_opt(arg.expr());
+                let arg = ConstRefOrPath::from_expr_opt(arg.expr());
                 args.push(GenericArg::Const(arg))
             }
         }

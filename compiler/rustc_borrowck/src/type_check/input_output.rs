@@ -19,18 +19,14 @@ use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,
-    /// e.g., `|x: FxHashMap<_, &'static u32>| ...`.
+    /// e.g., `|x: FxIndexMap<_, &'static u32>| ...`.
     #[instrument(skip(self, body), level = "debug")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
         if !self.tcx().is_closure(mir_def_id.to_def_id()) {
             return;
         }
-        let Some(user_provided_poly_sig) =
-            self.tcx().typeck(mir_def_id).user_provided_sigs.get(&mir_def_id)
-        else {
-            return;
-        };
+        let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
 
         // Instantiate the canonicalized variables from user-provided signature
         // (e.g., the `_` in the code above) with fresh variables.

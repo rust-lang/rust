@@ -14,11 +14,11 @@ note: candidate #2 is defined in the trait `B`
    |
 LL |     fn foo(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     A::foo(&a)
    |     ~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     B::foo(&a)
    |     ~~~~~~~~~~
@@ -39,11 +39,11 @@ note: candidate #2 is defined in the trait `D`
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     C::foo(&a)
    |     ~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     D::foo(&a)
    |     ~~~~~~~~~~
@@ -64,11 +64,11 @@ note: candidate #2 is defined in the trait `F`
    |
 LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     E::foo(a)
    |     ~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     F::foo(a)
    |     ~~~~~~~~~

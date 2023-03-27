@@ -53,7 +53,7 @@ impl SsaLocals {
         body: &Body<'tcx>,
         borrowed_locals: &BitSet<Local>,
     ) -> SsaLocals {
-        let assignment_order = Vec::new();
+        let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         let dominators =
@@ -179,12 +179,34 @@ struct SsaVisitor {
     assignment_order: Vec<Local>,
 }
 
+impl SsaVisitor {
+    fn check_assignment_dominates(&mut self, local: Local, loc: Location) {
+        let set = &mut self.assignments[local];
+        let assign_dominates = match *set {
+            Set1::Empty | Set1::Many => false,
+            Set1::One(LocationExtended::Arg) => true,
+            Set1::One(LocationExtended::Plain(assign)) => {
+                assign.successor_within_block().dominates(loc, &self.dominators)
+            }
+        };
+        // We are visiting a use that is not dominated by an assignment.
+        // Either there is a cycle involved, or we are reading for uninitialized local.
+        // Bail out.
+        if !assign_dominates {
+            *set = Set1::Many;
+        }
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for SsaVisitor {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Store) => {
                 self.assignments[local].insert(LocationExtended::Plain(loc));
-                self.assignment_order.push(local);
+                if let Set1::One(_) = self.assignments[local] {
+                    // Only record if SSA-like, to avoid growing the vector needlessly.
+                    self.assignment_order.push(local);
+                }
             }
             // Anything can happen with raw pointers, so remove them.
             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
@@ -192,23 +214,25 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
             // Immutable borrows are taken into account in `SsaLocals::new` by
             // removing non-freeze locals.
             PlaceContext::NonMutatingUse(_) => {
-                let set = &mut self.assignments[local];
-                let assign_dominates = match *set {
-                    Set1::Empty | Set1::Many => false,
-                    Set1::One(LocationExtended::Arg) => true,
-                    Set1::One(LocationExtended::Plain(assign)) => {
-                        assign.successor_within_block().dominates(loc, &self.dominators)
-                    }
-                };
-                // We are visiting a use that is not dominated by an assignment.
-                // Either there is a cycle involved, or we are reading for uninitialized local.
-                // Bail out.
-                if !assign_dominates {
-                    *set = Set1::Many;
-                }
+                self.check_assignment_dominates(local, loc);
             }
             PlaceContext::NonUse(_) => {}
         }
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, loc: Location) {
+        if place.projection.first() == Some(&PlaceElem::Deref) {
+            // Do not do anything for storage statements and debuginfo.
+            if ctxt.is_use() {
+                // A use through a `deref` only reads from the local, and cannot write to it.
+                let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection);
+
+                self.visit_projection(place.as_ref(), new_ctxt, loc);
+                self.check_assignment_dominates(place.local, loc);
+            }
+            return;
+        }
+        self.super_place(place, ctxt, loc);
     }
 }
 

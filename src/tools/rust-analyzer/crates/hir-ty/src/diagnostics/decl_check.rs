@@ -178,6 +178,7 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::StaticId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ConstId(cid) => Some(cid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::TraitId(tid) => Some(tid.lookup(self.db.upcast()).container.into()),
+                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ImplId(iid) => Some(iid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ExternBlockId(id) => Some(id.lookup(self.db.upcast()).container.into()),
                 // These warnings should not explore macro definitions at all
@@ -234,8 +235,8 @@ impl<'a> DeclValidator<'a> {
         let pats_replacements = body
             .pats
             .iter()
-            .filter_map(|(id, pat)| match pat {
-                Pat::Bind { name, .. } => Some((id, name)),
+            .filter_map(|(pat_id, pat)| match pat {
+                Pat::Bind { id, .. } => Some((pat_id, &body.bindings[*id].name)),
                 _ => None,
             })
             .filter_map(|(id, bind_name)| {

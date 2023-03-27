@@ -158,7 +158,7 @@ mod sip;
 ///
 /// Implementations of `hash` should ensure that the data they
 /// pass to the `Hasher` are prefix-free. That is,
-/// unequal values should cause two different sequences of values to be written,
+/// values which are not equal should cause two different sequences of values to be written,
 /// and neither of the two sequences should be a prefix of the other.
 ///
 /// For example, the standard implementation of [`Hash` for `&str`][impl] passes an extra
@@ -834,7 +834,7 @@ mod impls {
 
                 #[inline]
                 fn hash_slice<H: ~const Hasher>(data: &[$ty], state: &mut H) {
-                    let newlen = data.len() * mem::size_of::<$ty>();
+                    let newlen = mem::size_of_val(data);
                     let ptr = data.as_ptr() as *const u8;
                     // SAFETY: `ptr` is valid and aligned, as this macro is only used
                     // for numeric primitives which have no padding. The new slice only

@@ -78,7 +78,8 @@ pub enum MirPhase {
     ///    MIR, this is UB.
     ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same way
     ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
-    ///    don't document this here. Runtime MIR has all retags explicit.
+    ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
+    ///    can still occur at `Rvalue::{Ref,AddrOf}`).
     ///  - Generator bodies: In analysis MIR, locals may actually be behind a pointer that user code has
     ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
@@ -133,7 +134,6 @@ pub enum AnalysisPhase {
 pub enum RuntimePhase {
     /// In addition to the semantic changes, beginning with this phase, the following variants are
     /// disallowed:
-    /// * [`TerminatorKind::DropAndReplace`]
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::GeneratorDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
@@ -325,6 +325,15 @@ pub enum StatementKind<'tcx> {
     ///
     /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
+
+    /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
+    /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
+    /// `PlaceMention(PLACE)`.
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
+    PlaceMention(Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -596,43 +605,6 @@ pub enum TerminatorKind<'tcx> {
     /// > consider indirect assignments.
     Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
 
-    /// Drops the place and assigns a new value to it.
-    ///
-    /// This first performs the exact same operation as the pre drop-elaboration `Drop` terminator;
-    /// it then additionally assigns the `value` to the `place` as if by an assignment statement.
-    /// This assignment occurs both in the unwind and the regular code paths. The semantics are best
-    /// explained by the elaboration:
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
-    /// }
-    /// ```
-    ///
-    /// becomes
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   Drop(P, goto BB1, unwind BB2)
-    /// }
-    /// BB1 {
-    ///   // P is now uninitialized
-    ///   P <- V
-    /// }
-    /// BB2 {
-    ///   // P is now uninitialized -- its dtor panicked
-    ///   P <- V
-    /// }
-    /// ```
-    ///
-    /// Disallowed after drop elaboration.
-    DropAndReplace {
-        place: Place<'tcx>,
-        value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
-
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
     /// The return place type must match the return type. The type of the `func` operand must be
@@ -675,8 +647,7 @@ pub enum TerminatorKind<'tcx> {
     /// When overflow checking is disabled and this is run-time MIR (as opposed to compile-time MIR
     /// that is used for CTFE), the following variants of this terminator behave as `goto target`:
     /// - `OverflowNeg(..)`,
-    /// - `Overflow(op, ..)` if op is a "checkable" operation (add, sub, mul, shl, shr, but NOT
-    /// div or rem).
+    /// - `Overflow(op, ..)` if op is add, sub, mul, shl, shr, but NOT div or rem.
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
@@ -1110,11 +1081,7 @@ pub enum Rvalue<'tcx> {
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
     /// For addition, subtraction, and multiplication on integers the error condition is set when
-    /// the infinite precision result would be unequal to the actual result.
-    ///
-    /// For shift operations on integers the error condition is set when the value of right-hand
-    /// side is greater than or equal to the number of bits in the type of the left-hand side, or
-    /// when the value of right-hand side is negative.
+    /// the infinite precision result would not be equal to the actual result.
     ///
     /// Other combinations of types and operators are unsupported.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
@@ -1189,6 +1156,13 @@ pub enum CastKind {
     IntToFloat,
     PtrToPtr,
     FnPtrToPtr,
+    /// Reinterpret the bits of the input as a different type.
+    ///
+    /// MIR is well-formed if the input and output types have different sizes,
+    /// but running a transmute between differently-sized types is UB.
+    ///
+    /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
+    Transmute,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1199,7 +1173,7 @@ pub enum AggregateKind<'tcx> {
     Tuple,
 
     /// The second field is the variant index. It's equal to 0 for struct
-    /// and union expressions. The fourth field is
+    /// and union expressions. The last field is the
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`

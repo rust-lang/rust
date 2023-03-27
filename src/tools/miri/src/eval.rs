@@ -87,7 +87,7 @@ pub struct MiriConfig {
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
     pub validate: bool,
-    /// Determines if Stacked Borrows is enabled.
+    /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
@@ -134,7 +134,7 @@ pub struct MiriConfig {
     pub preemption_rate: f64,
     /// Report the current instruction being executed every N basic blocks.
     pub report_progress: Option<u32>,
-    /// Whether Stacked Borrows retagging should recurse into fields of datatypes.
+    /// Whether Stacked Borrows and Tree Borrows retagging should recurse into fields of datatypes.
     pub retag_fields: RetagFields,
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
@@ -363,7 +363,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,
-                tcx.intern_substs(&[ty::subst::GenericArg::from(main_ret_ty)]),
+                tcx.mk_substs(&[ty::subst::GenericArg::from(main_ret_ty)]),
             )
             .unwrap()
             .unwrap();

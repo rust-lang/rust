@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: d87477896dfe41d4
+lsp_ext.rs hash: 37f31ae648632897
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -525,6 +525,17 @@ Primarily for debugging, but very useful for all people working on rust-analyzer
 **Response:** `string`
 
 Returns a textual representation of the HIR of the function containing the cursor.
+For debugging or when working on rust-analyzer itself.
+
+## View Mir
+
+**Method:** `rust-analyzer/viewMir`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `string`
+
+Returns a textual representation of the MIR of the function containing the cursor.
 For debugging or when working on rust-analyzer itself.
 
 ## View File Text

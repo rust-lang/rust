@@ -33,38 +33,37 @@ pub(super) fn check_cast<'tcx>(
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner.def_id;
 
-    Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-        let fn_ctxt = FnCtxt::new(inherited, cx.param_env, local_def_id);
+    let inherited = Inherited::new(cx.tcx, local_def_id);
+    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, local_def_id);
 
-        // If we already have errors, we can't be sure we can pointer cast.
+    // If we already have errors, we can't be sure we can pointer cast.
+    assert!(
+        !fn_ctxt.errors_reported_since_creation(),
+        "Newly created FnCtxt contained errors"
+    );
+
+    if let Ok(check) = cast::CastCheck::new(
+        &fn_ctxt,
+        e,
+        from_ty,
+        to_ty,
+        // We won't show any error to the user, so we don't care what the span is here.
+        DUMMY_SP,
+        DUMMY_SP,
+        hir::Constness::NotConst,
+    ) {
+        let res = check.do_check(&fn_ctxt);
+
+        // do_check's documentation says that it might return Ok and create
+        // errors in the fcx instead of returning Err in some cases. Those cases
+        // should be filtered out before getting here.
         assert!(
             !fn_ctxt.errors_reported_since_creation(),
-            "Newly created FnCtxt contained errors"
+            "`fn_ctxt` contained errors after cast check!"
         );
 
-        if let Ok(check) = cast::CastCheck::new(
-            &fn_ctxt,
-            e,
-            from_ty,
-            to_ty,
-            // We won't show any error to the user, so we don't care what the span is here.
-            DUMMY_SP,
-            DUMMY_SP,
-            hir::Constness::NotConst,
-        ) {
-            let res = check.do_check(&fn_ctxt);
-
-            // do_check's documentation says that it might return Ok and create
-            // errors in the fcx instead of returning Err in some cases. Those cases
-            // should be filtered out before getting here.
-            assert!(
-                !fn_ctxt.errors_reported_since_creation(),
-                "`fn_ctxt` contained errors after cast check!"
-            );
-
-            res.ok()
-        } else {
-            None
-        }
-    })
+        res.ok()
+    } else {
+        None
+    }
 }

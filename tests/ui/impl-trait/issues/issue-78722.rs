@@ -12,7 +12,6 @@ struct Bug {
         }
         let f: F = async { 1 };
         //~^ ERROR `async` blocks are not allowed in constants
-        //~| ERROR destructor of
         1
     }],
 }

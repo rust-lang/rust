@@ -41,7 +41,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -96,7 +96,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t = self.resolve_vars_if_possible(t);
         t.error_reported()?;
 
-        if self.type_is_sized_modulo_regions(self.param_env, t, span) {
+        if self.type_is_sized_modulo_regions(self.param_env, t) {
             return Ok(Some(PointerKind::Thin));
         }
 
@@ -722,7 +722,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
-        if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty, self.span)
+        if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty)
             && !self.cast_ty.has_infer_types()
         {
             self.report_cast_to_unsized_type(fcx);

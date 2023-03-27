@@ -1,4 +1,4 @@
-error[E0107]: this function takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/not-enough-args.rs:4:5
    |
 LL |     f::<[u8]>("a", b"a");

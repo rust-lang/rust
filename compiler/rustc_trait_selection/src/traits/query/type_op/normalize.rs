@@ -1,7 +1,7 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::query::Fallible;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use std::fmt;
 
 pub use rustc_middle::traits::query::type_op::Normalize;
@@ -24,7 +24,7 @@ where
     }
 }
 
-pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx> + Copy {
+pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx> + Copy {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,

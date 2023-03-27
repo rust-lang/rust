@@ -14,7 +14,8 @@ impl TheTrait<TheType> for isize { }
 
 impl TheTrait<isize> for TheType { }
 
-impl !Send for Vec<isize> { }
-//~^ ERROR E0117
+impl !Send for Vec<isize> { } //~ ERROR E0117
+//~^ WARNING
+//~| WARNING this will change its meaning
 
 fn main() { }

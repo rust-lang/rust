@@ -1,24 +1,24 @@
-error[E0624]: associated function `meth_struct` is private
+error[E0624]: method `meth_struct` is private
   --> $DIR/xc-private-method2.rs:6:52
    |
 LL |     let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();
-   |                                                    ^^^^^^^^^^^ private associated function
+   |                                                    ^^^^^^^^^^^ private method
    |
   ::: $DIR/auxiliary/xc-private-method-lib.rs:12:5
    |
 LL |     fn meth_struct(&self) -> isize {
-   |     ------------------------------ private associated function defined here
+   |     ------------------------------ private method defined here
 
-error[E0624]: associated function `meth_enum` is private
+error[E0624]: method `meth_enum` is private
   --> $DIR/xc-private-method2.rs:9:55
    |
 LL |     let _ = xc_private_method_lib::Enum::Variant1(20).meth_enum();
-   |                                                       ^^^^^^^^^ private associated function
+   |                                                       ^^^^^^^^^ private method
    |
   ::: $DIR/auxiliary/xc-private-method-lib.rs:27:5
    |
 LL |     fn meth_enum(&self) -> isize {
-   |     ---------------------------- private associated function defined here
+   |     ---------------------------- private method defined here
 
 error: aborting due to 2 previous errors
 

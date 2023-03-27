@@ -22,10 +22,10 @@ use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::fold::ir::TypeFolder;
+use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::TypeVisitable;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::{self, AdtKind, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -39,6 +39,7 @@ use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
 
+use crate::clean::inline::merge_attrs;
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
@@ -77,7 +78,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.iter().flat_map(|(item, renamed, import_id)| {
+    items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
         // First, lower everything other than imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
@@ -90,7 +91,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.items.iter().flat_map(|(item, renamed, _)| {
+    items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
             let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
@@ -323,7 +324,7 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
         ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::AliasEq(..)
+        | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
@@ -426,7 +427,7 @@ fn clean_projection<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    if cx.tcx.def_kind(ty.skip_binder().def_id) == DefKind::ImplTraitPlaceholder {
+    if cx.tcx.is_impl_trait_in_trait(ty.skip_binder().def_id) {
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
@@ -1661,7 +1662,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer | TyKind::Err | TyKind::Typeof(..) => Infer,
+        TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) => Infer,
     }
 }
 
@@ -2065,23 +2066,81 @@ fn clean_bare_fn_ty<'tcx>(
     BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
-/// This visitor is used to go through only the "top level" of a item and not enter any sub
-/// item while looking for a given `Ident` which is stored into `item` if found.
-struct OneLevelVisitor<'hir> {
+/// Get DefId of of an item's user-visible parent.
+///
+/// "User-visible" should account for re-exporting and inlining, which is why this function isn't
+/// just `tcx.parent(def_id)`. If the provided `path` has more than one path element, the `DefId`
+/// of the second-to-last will be given.
+///
+/// ```text
+/// use crate::foo::Bar;
+///            ^^^ DefId of this item will be returned
+/// ```
+///
+/// If the provided path has only one item, `tcx.parent(def_id)` will be returned instead.
+fn get_path_parent_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    path: &hir::UsePath<'_>,
+) -> Option<DefId> {
+    if let [.., parent_segment, _] = &path.segments {
+        match parent_segment.res {
+            hir::def::Res::Def(_, parent_def_id) => Some(parent_def_id),
+            _ if parent_segment.ident.name == kw::Crate => {
+                // In case the "parent" is the crate, it'll give `Res::Err` so we need to
+                // circumvent it this way.
+                Some(tcx.parent(def_id))
+            }
+            _ => None,
+        }
+    } else {
+        // If the path doesn't have a parent, then the parent is the current module.
+        Some(tcx.parent(def_id))
+    }
+}
+
+/// This visitor is used to find an HIR Item based on its `use` path. This doesn't use the ordinary
+/// name resolver because it does not walk all the way through a chain of re-exports.
+pub(crate) struct OneLevelVisitor<'hir> {
     map: rustc_middle::hir::map::Map<'hir>,
-    item: Option<&'hir hir::Item<'hir>>,
+    pub(crate) item: Option<&'hir hir::Item<'hir>>,
     looking_for: Ident,
     target_def_id: LocalDefId,
 }
 
 impl<'hir> OneLevelVisitor<'hir> {
-    fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
+    pub(crate) fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
         Self { map, item: None, looking_for: Ident::empty(), target_def_id }
     }
 
-    fn reset(&mut self, looking_for: Ident) {
-        self.looking_for = looking_for;
+    pub(crate) fn find_target(
+        &mut self,
+        tcx: TyCtxt<'_>,
+        def_id: DefId,
+        path: &hir::UsePath<'_>,
+    ) -> Option<&'hir hir::Item<'hir>> {
+        let parent_def_id = get_path_parent_def_id(tcx, def_id, path)?;
+        let parent = self.map.get_if_local(parent_def_id)?;
+
+        // We get the `Ident` we will be looking for into `item`.
+        self.looking_for = path.segments[path.segments.len() - 1].ident;
+        // We reset the `item`.
         self.item = None;
+
+        match parent {
+            hir::Node::Item(parent_item) => {
+                hir::intravisit::walk_item(self, parent_item);
+            }
+            hir::Node::Crate(m) => {
+                hir::intravisit::walk_mod(
+                    self,
+                    m,
+                    tcx.local_def_id_to_hir_id(parent_def_id.as_local().unwrap()),
+                );
+            }
+            _ => return None,
+        }
+        self.item
     }
 }
 
@@ -2129,41 +2188,7 @@ fn get_all_import_attributes<'hir>(
             add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
         }
 
-        let def_id = if let [.., parent_segment, _] = &path.segments {
-            match parent_segment.res {
-                hir::def::Res::Def(_, def_id) => def_id,
-                _ if parent_segment.ident.name == kw::Crate => {
-                    // In case the "parent" is the crate, it'll give `Res::Err` so we need to
-                    // circumvent it this way.
-                    tcx.parent(item.owner_id.def_id.to_def_id())
-                }
-                _ => break,
-            }
-        } else {
-            // If the path doesn't have a parent, then the parent is the current module.
-            tcx.parent(item.owner_id.def_id.to_def_id())
-        };
-
-        let Some(parent) = hir_map.get_if_local(def_id) else { break };
-
-        // We get the `Ident` we will be looking for into `item`.
-        let looking_for = path.segments[path.segments.len() - 1].ident;
-        visitor.reset(looking_for);
-
-        match parent {
-            hir::Node::Item(parent_item) => {
-                hir::intravisit::walk_item(&mut visitor, parent_item);
-            }
-            hir::Node::Crate(m) => {
-                hir::intravisit::walk_mod(
-                    &mut visitor,
-                    m,
-                    tcx.local_def_id_to_hir_id(def_id.as_local().unwrap()),
-                );
-            }
-            _ => break,
-        }
-        if let Some(i) = visitor.item {
+        if let Some(i) = visitor.find_target(tcx, item.owner_id.def_id.to_def_id(), path) {
             item = i;
         } else {
             break;
@@ -2349,25 +2374,26 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => unreachable!("not yet converted"),
         };
 
-        let mut extra_attrs = Vec::new();
+        let mut import_attrs = Vec::new();
+        let mut target_attrs = Vec::new();
         if let Some(import_id) = import_id &&
             let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
             let is_inline = inline::load_attrs(cx, import_id.to_def_id()).lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
-            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);
+            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut import_attrs, is_inline);
+            add_without_unwanted_attributes(&mut target_attrs, inline::load_attrs(cx, def_id), is_inline);
         } else {
             // We only keep the item's attributes.
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
+            target_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
         }
 
-        let attrs = Attributes::from_ast(&extra_attrs);
-        let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+        let import_id = import_id.map(|def_id| def_id.to_def_id());
+        let (attrs, cfg) =  merge_attrs(cx, &target_attrs, Some((&import_attrs, import_id)));
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
-        item.inline_stmt_id = import_id.map(|def_id| def_id.to_def_id());
+        item.inline_stmt_id = import_id;
         vec![item]
     })
 }
@@ -2452,18 +2478,12 @@ fn clean_extern_crate<'tcx>(
 
     let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
-        let mut visited = DefIdSet::default();
-
-        let res = Res::Def(DefKind::Mod, crate_def_id);
-
         if let Some(items) = inline::try_inline(
             cx,
-            cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate_owner_def_id),
-            res,
+            Res::Def(DefKind::Mod, crate_def_id),
             name,
-            Some(attrs),
-            &mut visited,
+            Some((attrs, Some(krate_owner_def_id))),
+            &mut Default::default(),
         ) {
             return items;
         }
@@ -2587,17 +2607,13 @@ fn clean_use_statement_inner<'tcx>(
             denied = true;
         }
         if !denied {
-            let mut visited = DefIdSet::default();
             let import_def_id = import.owner_id.to_def_id();
-
             if let Some(mut items) = inline::try_inline(
                 cx,
-                cx.tcx.parent_module(import.hir_id()).to_def_id(),
-                Some(import_def_id),
                 path.res,
                 name,
-                Some(attrs),
-                &mut visited,
+                Some((attrs, Some(import_def_id))),
+                &mut Default::default(),
             ) {
                 items.push(Item::from_def_id_and_parts(
                     import_def_id,

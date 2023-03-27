@@ -1,12 +1,12 @@
 error[E0659]: `exported` is ambiguous
-  --> $DIR/local-modularized-tricky-fail-1.rs:28:1
+  --> $DIR/local-modularized-tricky-fail-1.rs:29:1
    |
 LL | exported!();
    | ^^^^^^^^ ambiguous name
    |
    = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `exported` could refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:5:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:6:5
    |
 LL | /     macro_rules! exported {
 LL | |         () => ()
@@ -16,7 +16,7 @@ LL | |     }
 LL |       define_exported!();
    |       ------------------ in this macro invocation
 note: `exported` could also refer to the macro imported here
-  --> $DIR/local-modularized-tricky-fail-1.rs:22:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:23:5
    |
 LL | use inner1::*;
    |     ^^^^^^^^^
@@ -24,7 +24,7 @@ LL | use inner1::*;
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `panic` is ambiguous
-  --> $DIR/local-modularized-tricky-fail-1.rs:35:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:36:5
    |
 LL |     panic!();
    |     ^^^^^ ambiguous name
@@ -32,7 +32,7 @@ LL |     panic!();
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:11:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:12:5
    |
 LL | /     macro_rules! panic {
 LL | |         () => ()
@@ -45,7 +45,7 @@ LL |       define_panic!();
    = note: this error originates in the macro `define_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `include` is ambiguous
-  --> $DIR/local-modularized-tricky-fail-1.rs:46:1
+  --> $DIR/local-modularized-tricky-fail-1.rs:47:1
    |
 LL | include!();
    | ^^^^^^^ ambiguous name
@@ -53,7 +53,7 @@ LL | include!();
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `include` could refer to a macro from prelude
 note: `include` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:17:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:18:5
    |
 LL | /     macro_rules! include {
 LL | |         () => ()

@@ -22,17 +22,18 @@ use log::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
-use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
+use rustc_hir::{self as hir, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
     ty::{query::ExternProviders, TyCtxt},
+    query::LocalCrate,
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
-use miri::{BacktraceStyle, ProvenanceMode, RetagFields};
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -107,13 +108,15 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
-                local_providers.exported_symbols = |tcx, cnum| {
-                    assert_eq!(cnum, LOCAL_CRATE);
+                local_providers.exported_symbols = |tcx, LocalCrate| {
+                    let reachable_set = tcx.with_stable_hashing_context(|hcx| {
+                        tcx.reachable_set(()).to_sorted(&hcx, true)
+                    });
                     tcx.arena.alloc_from_iter(
                         // This is based on:
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
-                        tcx.reachable_set(()).iter().filter_map(|&local_def_id| {
+                        reachable_set.into_iter().filter_map(|&local_def_id| {
                             // Do the same filtering that rustc does:
                             // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
                             // Otherwise it may cause unexpected behaviours and ICEs
@@ -314,6 +317,8 @@ fn main() {
             miri_config.validate = false;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
             miri_config.borrow_tracker = None;
+        } else if arg == "-Zmiri-tree-borrows" {
+            miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;

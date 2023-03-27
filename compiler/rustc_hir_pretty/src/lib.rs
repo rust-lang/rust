@@ -358,7 +358,7 @@ impl<'a> State<'a> {
                 self.print_anon_const(e);
                 self.word(")");
             }
-            hir::TyKind::Err => {
+            hir::TyKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
                 self.pclose();
@@ -1366,10 +1366,6 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
-            hir::ExprKind::Box(expr) => {
-                self.word_space("box");
-                self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
-            }
             hir::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
@@ -1559,7 +1555,7 @@ impl<'a> State<'a> {
                 self.word_space("yield");
                 self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
             }
-            hir::ExprKind::Err => {
+            hir::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
                 self.pclose();

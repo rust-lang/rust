@@ -8,7 +8,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -16,7 +16,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitable};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitableExt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
-        self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.note_internal_mutation_in_method(err, expr, Some(expected), expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
         self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
         self.check_wrong_return_type_due_to_generic_arg(err, expr, expr_ty);
@@ -113,7 +113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        match self.at(cause, self.param_env).define_opaque_types(true).sup(expected, actual) {
+        match self.at(cause, self.param_env).sup(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        match self.at(cause, self.param_env).define_opaque_types(true).eq(expected, actual) {
+        match self.at(cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe::ProbeScope::TraitsInScope,
                     None,
                 ) {
-                    Ok(pick) => pick.self_ty,
+                    Ok(pick) => eraser.fold_ty(pick.self_ty),
                     Err(_) => rcvr_ty,
                 };
                 // Remove one layer of references to account for `&mut self` and
@@ -1480,14 +1480,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // For this suggestion to make sense, the type would need to be `Copy`,
                     // or we have to be moving out of a `Box<T>`
-                    if self.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                    if self.type_is_copy_modulo_regions(self.param_env, expected)
                         // FIXME(compiler-errors): We can actually do this if the checked_ty is
                         // `steps` layers of boxes, not just one, but this is easier and most likely.
                         || (checked_ty.is_box() && steps == 1)
                     {
                         let deref_kind = if checked_ty.is_box() {
                             "unboxing the value"
-                        } else if checked_ty.is_region_ptr() {
+                        } else if checked_ty.is_ref() {
                             "dereferencing the borrow"
                         } else {
                             "dereferencing the type"

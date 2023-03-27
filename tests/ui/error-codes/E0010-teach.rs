@@ -1,8 +1,7 @@
 // compile-flags: -Z teach
 
-#![feature(box_syntax)]
 #![allow(warnings)]
 
-const CON : Box<i32> = box 0; //~ ERROR E0010
-
+const CON: Vec<i32> = vec![1, 2, 3]; //~ ERROR E0010
+//~| ERROR cannot call non-const fn
 fn main() {}

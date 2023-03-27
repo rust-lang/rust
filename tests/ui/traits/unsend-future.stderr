@@ -1,0 +1,24 @@
+error: future cannot be sent between threads safely
+  --> $DIR/unsend-future.rs:19:21
+   |
+LL |     require_handler(handler)
+   |                     ^^^^^^^ future returned by `handler` is not `Send`
+   |
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*const i32`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/unsend-future.rs:15:13
+   |
+LL |     let a = &1 as *const i32;
+   |         - has type `*const i32` which is not `Send`
+LL |     async {}.await;
+   |             ^^^^^^ await occurs here, with `a` maybe used later
+LL | }
+   | - `a` is later dropped here
+note: required by a bound in `require_handler`
+  --> $DIR/unsend-future.rs:11:23
+   |
+LL | fn require_handler<H: Handler>(h: H) {}
+   |                       ^^^^^^^ required by this bound in `require_handler`
+
+error: aborting due to previous error
+

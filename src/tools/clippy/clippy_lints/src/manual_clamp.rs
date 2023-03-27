@@ -6,7 +6,8 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::MaybePath;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, in_constant, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt,
 };
 use itertools::Itertools;
 use rustc_errors::Applicability;
@@ -117,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
         if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
-        if !expr.span.from_expansion() {
+        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -130,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) {
+        if !self.msrv.meets(msrvs::CLAMP) || in_constant(cx, block.hir_id) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {

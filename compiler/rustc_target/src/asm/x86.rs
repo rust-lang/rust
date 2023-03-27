@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -147,7 +147,7 @@ impl X86InlineAsmRegClass {
 fn x86_64_only(
     arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -161,7 +161,7 @@ fn x86_64_only(
 fn high_byte(
     arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -174,7 +174,7 @@ fn high_byte(
 fn rbx_reserved(
     arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -190,7 +190,7 @@ fn rbx_reserved(
 fn esi_reserved(
     arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {

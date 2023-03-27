@@ -14,12 +14,12 @@ union MaybeUninit<T: Copy> {
 }
 
 const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
 
 const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
 //~^ ERROR it is undefined behavior to use this value
 
 const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
 
 fn main() {}

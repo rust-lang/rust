@@ -1,0 +1,46 @@
+[0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:4:34[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mfn short(foo_bar: &Vec<&i32>) -> &i32 {
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                  [0m[0m[1m[38;5;12m----------[0m[0m     [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from[0m
+[0m[1m[38;5;14mhelp[0m[0m: consider introducing a named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m| [0m[0mfn short[0m[0m[38;5;10m<'a>[0m[0m(foo_bar: &[0m[0m[38;5;10m'a [0m[0mVec<&[0m[0m[38;5;10m'a [0m[0mi32>) -> &[0m[0m[38;5;10m'a [0m[0mi32 {
+[0m   [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[38;5;10m++++[0m[0m           [0m[0m[38;5;10m++[0m[0m      [0m[0m[38;5;10m++[0m[0m           [0m[0m[38;5;10m++[0m
+
+[0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:11:6[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    foo_bar: &Vec<&i32>,[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m             [0m[0m[1m[38;5;12m----------[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    something_very_long_so_that_the_line_will_wrap_around__________: i32,[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m) -> &i32 {[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m     [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from[0m
+[0m[1m[38;5;14mhelp[0m[0m: consider introducing a named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[38;5;10m~ [0m[0mfn long[0m[0m[38;5;10m<'a>[0m[0m(
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[38;5;10m~ [0m[0m    foo_bar: &[0m[0m[38;5;10m'a [0m[0mVec<&[0m[0m[38;5;10m'a [0m[0mi32>,[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m| [0m[0m    something_very_long_so_that_the_line_will_wrap_around__________: i32,[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[38;5;10m~ [0m[0m) -> &[0m[0m[38;5;10m'a [0m[0mi32 {[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:16:29[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    foo_bar: &Vec<&i32>) -> &i32 {[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m             [0m[0m[1m[38;5;12m----------[0m[0m     [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from[0m
+[0m[1m[38;5;14mhelp[0m[0m: consider introducing a named lifetime parameter[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[38;5;10m~ [0m[0mfn long2[0m[0m[38;5;10m<'a>[0m[0m(
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[38;5;10m~ [0m[0m    foo_bar: &[0m[0m[38;5;10m'a [0m[0mVec<&[0m[0m[38;5;10m'a [0m[0mi32>) -> &[0m[0m[38;5;10m'a [0m[0mi32 {[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[38;5;9merror[0m[0m[1m: aborting due to 3 previous errors[0m
+
+[0m[1mFor more information about this error, try `rustc --explain E0106`.[0m

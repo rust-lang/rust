@@ -7,10 +7,10 @@ use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
-#[cfg(not(bootstrap))]
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -180,8 +180,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // At this point, we already have all of the bounds we need. FulfillmentContext is used
         // to store all of the necessary region/lifetime bounds in the InferContext, as well as
         // an additional sanity check.
-        let errors =
-            super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_bound(ObligationCause::dummy(), full_env, ty, trait_did);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
         }
@@ -351,14 +352,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates(normalized_preds),
+                tcx.mk_predicates_from_iter(normalized_preds),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_predicates(user_computed_preds.into_iter()),
+            tcx.mk_predicates_from_iter(user_computed_preds.into_iter()),
             user_env.reveal(),
             user_env.constness(),
         );
@@ -815,7 +816,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
+                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(DefineOpaqueTypes::No,c1, c2)
                             {
                                 Ok(_) => (),
                                 Err(_) => return false,
@@ -831,7 +832,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // the `ParamEnv`.
                 ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
-                | ty::PredicateKind::AliasEq(..)
+                | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)

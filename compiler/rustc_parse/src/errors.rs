@@ -452,6 +452,17 @@ pub(crate) struct MissingExpressionInForLoop {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_loop_else)]
+#[note]
+pub(crate) struct LoopElseNotSupported {
+    #[primary_span]
+    pub span: Span,
+    pub loop_kind: &'static str,
+    #[label(parse_loop_keyword)]
+    pub loop_kw: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_comma_after_match_arm)]
 pub(crate) struct MissingCommaAfterMatchArm {
     #[primary_span]
@@ -877,12 +888,12 @@ pub(crate) struct InvalidMetaItem {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    parse_sugg_escape_to_use_as_identifier,
+    parse_sugg_escape_identifier,
     style = "verbose",
     applicability = "maybe-incorrect",
     code = "r#"
 )]
-pub(crate) struct SuggEscapeToUseAsIdentifier {
+pub(crate) struct SuggEscapeIdentifier {
     #[primary_span]
     pub span: Span,
     pub ident_name: String,
@@ -926,8 +937,9 @@ impl ExpectedIdentifierFound {
 pub(crate) struct ExpectedIdentifier {
     pub span: Span,
     pub token: Token,
-    pub suggest_raw: Option<SuggEscapeToUseAsIdentifier>,
+    pub suggest_raw: Option<SuggEscapeIdentifier>,
     pub suggest_remove_comma: Option<SuggRemoveComma>,
+    pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
@@ -964,8 +976,19 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
             sugg.add_to_diagnostic(&mut diag);
         }
 
+        if let Some(help) = self.help_cannot_start_number {
+            help.add_to_diagnostic(&mut diag);
+        }
+
         diag
     }
+}
+
+#[derive(Subdiagnostic)]
+#[help(parse_invalid_identifier_with_leading_number)]
+pub(crate) struct HelpIdentifierStartsWithNumber {
+    #[primary_span]
+    pub num_span: Span,
 }
 
 pub(crate) struct ExpectedSemi {
@@ -1191,14 +1214,6 @@ pub(crate) struct PatternMethodParamWithoutBody {
 #[derive(Diagnostic)]
 #[diag(parse_self_param_not_first)]
 pub(crate) struct SelfParamNotFirst {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_invalid_identifier_with_leading_number)]
-pub(crate) struct InvalidIdentiferStartsWithNumber {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -2287,4 +2302,17 @@ impl HelpUseLatestEdition {
             Self::Standalone { edition }
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_box_syntax_removed)]
+pub struct BoxSyntaxRemoved<'a> {
+    #[primary_span]
+    #[suggestion(
+        code = "Box::new({code})",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub span: Span,
+    pub code: &'a str,
 }

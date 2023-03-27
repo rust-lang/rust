@@ -156,7 +156,6 @@ impl CoverageGraph {
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
                 | TerminatorKind::Drop { .. }
-                | TerminatorKind::DropAndReplace { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Assert { .. }
@@ -538,29 +537,29 @@ impl TraverseCoverageGraphWithLoops {
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
         );
-        while let Some(next_bcb) = {
-            // Strip contexts with empty worklists from the top of the stack
-            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+
+        while let Some(context) = self.context_stack.last_mut() {
+            if let Some(next_bcb) = context.worklist.pop() {
+                if !self.visited.insert(next_bcb) {
+                    debug!("Already visited: {:?}", next_bcb);
+                    continue;
+                }
+                debug!("Visiting {:?}", next_bcb);
+                if self.backedges[next_bcb].len() > 0 {
+                    debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
+                    self.context_stack.push(TraversalContext {
+                        loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
+                        worklist: Vec::new(),
+                    });
+                }
+                self.extend_worklist(basic_coverage_blocks, next_bcb);
+                return Some(next_bcb);
+            } else {
+                // Strip contexts with empty worklists from the top of the stack
                 self.context_stack.pop();
             }
-            // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
-            self.context_stack.last_mut().map_or(None, |context| context.worklist.pop())
-        } {
-            if !self.visited.insert(next_bcb) {
-                debug!("Already visited: {:?}", next_bcb);
-                continue;
-            }
-            debug!("Visiting {:?}", next_bcb);
-            if self.backedges[next_bcb].len() > 0 {
-                debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
-                self.context_stack.push(TraversalContext {
-                    loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
-                    worklist: Vec::new(),
-                });
-            }
-            self.extend_worklist(basic_coverage_blocks, next_bcb);
-            return Some(next_bcb);
         }
+
         None
     }
 

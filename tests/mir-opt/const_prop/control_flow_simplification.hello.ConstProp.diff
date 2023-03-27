@@ -14,7 +14,6 @@
       }
   
       bb1: {
-          StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
           _2 = begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/panic.rs:LL:COL

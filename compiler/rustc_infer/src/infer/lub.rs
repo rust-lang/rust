@@ -2,12 +2,12 @@
 
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
-use super::InferCtxt;
 use super::Subtype;
+use super::{DefineOpaqueTypes, InferCtxt};
 
 use crate::traits::{ObligationCause, PredicateObligations};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx, 'tcx> {
@@ -142,20 +142,22 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 
         Ok(())
     }
 
-    fn define_opaque_types(&self) -> bool {
+    fn define_opaque_types(&self) -> DefineOpaqueTypes {
         self.fields.define_opaque_types
     }
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
-    ) {
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.fields.register_obligations(obligations)
+    }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::AliasRelationDirection::Equate
     }
 }

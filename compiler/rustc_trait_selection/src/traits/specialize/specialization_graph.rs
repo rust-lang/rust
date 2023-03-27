@@ -4,7 +4,7 @@ use crate::traits;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 
 pub use rustc_middle::traits::specialization_graph::*;
 
@@ -49,7 +49,8 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
-        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
+        if let Some(st) =
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey)
         {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
@@ -65,7 +66,8 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
         let vec: &mut Vec<DefId>;
-        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
+        if let Some(st) =
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey)
         {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
@@ -302,7 +304,8 @@ impl<'tcx> GraphExt<'tcx> for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer);
+        let simplified =
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey);
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {

@@ -587,8 +587,10 @@ mod prim_pointer {}
 /// There are two syntactic forms for creating an array:
 ///
 /// * A list with each element, i.e., `[x, y, z]`.
-/// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
-///   The type of `x` must be [`Copy`].
+/// * A repeat expression `[expr; N]` where `N` is how many times to repeat `expr` in the array. `expr` must either be:
+///
+///   * A value of a type implementing the [`Copy`] trait
+///   * A `const` value
 ///
 /// Note that `[expr; 0]` is allowed, and produces an empty array.
 /// This will still evaluate `expr`, however, and immediately drop the resulting value, so
@@ -1108,7 +1110,7 @@ impl<T: Copy> Copy for (T,) {
 /// - [NaN (not a number)](#associatedconstant.NAN): this value results from
 ///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
 ///   behavior:
-///   - It is unequal to any float, including itself! This is the reason `f32`
+///   - It is not equal to any float, including itself! This is the reason `f32`
 ///     doesn't implement the `Eq` trait.
 ///   - It is also neither smaller nor greater than any float, making it
 ///     impossible to sort by the default comparison operation, which is the

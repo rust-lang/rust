@@ -8,6 +8,7 @@ use std::hash::Hash;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
@@ -16,8 +17,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
+    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -105,10 +106,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Extra data stored in every allocation.
     type AllocExtra: Debug + Clone + 'static;
 
+    /// Type for the bytes of the allocation.
+    type Bytes: AllocBytes + 'static;
+
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra>),
+            (
+                MemoryKind<Self::MemoryKind>,
+                Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>,
+            ),
         > + Default
         + Clone;
 
@@ -139,8 +146,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         check: CheckAlignment,
     ) -> InterpResult<'tcx, ()>;
 
-    /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Whether to enforce the validity invariant for a specific layout.
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -149,7 +156,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
     /// check for overflow.
-    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    fn ignore_optional_overflow_checks(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
@@ -338,7 +345,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -459,6 +466,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
 
     type AllocExtra = ();
     type FrameExtra = ();
+    type Bytes = Box<[u8]>;
 
     #[inline(always)]
     fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
@@ -467,7 +475,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+    fn ignore_optional_overflow_checks(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         false
     }
 

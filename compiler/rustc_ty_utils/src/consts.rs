@@ -5,10 +5,10 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
-use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
 use std::iter;
 
@@ -44,7 +44,7 @@ pub(crate) fn destructure_const<'tcx>(
                 let (head, rest) = branches.split_first().unwrap();
                 (VariantIdx::from_u32(head.unwrap_leaf().try_to_u32().unwrap()), rest)
             } else {
-                (VariantIdx::from_u32(0), branches)
+                (FIRST_VARIANT, branches)
             };
             let fields = &def.variant(variant_idx).fields;
             let mut field_consts = Vec::with_capacity(fields.len());
@@ -144,7 +144,7 @@ fn recurse_build<'tcx>(
             for &id in args.iter() {
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-            let new_args = tcx.intern_const_list(&new_args);
+            let new_args = tcx.mk_const_list(&new_args);
             tcx.mk_const(Expr::FunctionCall(fun, new_args), node.ty)
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
@@ -425,7 +425,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         destructure_const,
         thir_abstract_const: |tcx, def_id| {
-            let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.thir_abstract_const_of_const_arg(def)
             } else {

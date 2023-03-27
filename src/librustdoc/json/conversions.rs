@@ -38,7 +38,7 @@ impl JsonRenderer<'_> {
                     Some(UrlFragment::UserWritten(_)) | None => *page_id,
                 };
 
-                (link.clone(), id_from_item_default(id.into(), self.tcx))
+                (String::from(&**link), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();

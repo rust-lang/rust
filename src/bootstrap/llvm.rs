@@ -16,7 +16,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::bolt::{instrument_with_bolt_inplace, optimize_library_with_bolt_inplace};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
 use crate::config::{Config, TargetSelection};
@@ -108,15 +107,6 @@ pub fn prebuilt_llvm_config(
 
     let stamp = out_dir.join("llvm-finished-building");
     let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
-
-    if builder.config.llvm_skip_rebuild && stamp.path.exists() {
-        builder.info(
-            "Warning: \
-                Using a potentially stale build of LLVM; \
-                This may not behave well.",
-        );
-        return Ok(res);
-    }
 
     if stamp.is_done() {
         if stamp.hash.is_none() {
@@ -216,21 +206,24 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         }
     }
 
-    if CiEnv::is_ci() {
+    if is_ci_llvm_modified(config) {
+        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
+        return false;
+    }
+
+    true
+}
+
+/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
+pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
+    CiEnv::is_ci() && config.rust_info.is_managed_git_subrepository() && {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
         let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
         let head_sha = head_sha.trim();
-        if llvm_sha == head_sha {
-            eprintln!(
-                "Detected LLVM as non-available: running in CI and modified LLVM in this change"
-            );
-            return false;
-        }
+        llvm_sha == head_sha
     }
-
-    true
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -293,7 +286,7 @@ impl Step for Llvm {
             (true, true) => "RelWithDebInfo",
         };
 
-        // NOTE: remember to also update `config.toml.example` when changing the
+        // NOTE: remember to also update `config.example.toml` when changing the
         // defaults!
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,
@@ -311,10 +304,12 @@ impl Step for Llvm {
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
         let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
+        let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
+            .define("LLVM_UNREACHABLE_OPTIMIZE", "OFF")
             .define("LLVM_ENABLE_PLUGINS", plugins)
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
             .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
@@ -328,7 +323,8 @@ impl Step for Llvm {
             .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
-            .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native)
+            .define("LLVM_ENABLE_WARNINGS", enable_warnings);
 
         // Parts of our test suite rely on the `FileCheck` tool, which is built by default in
         // `build/$TARGET/llvm/build/bin` is but *not* then installed to `build/$TARGET/llvm/bin`.
@@ -490,11 +486,6 @@ impl Step for Llvm {
             cfg.define(key, val);
         }
 
-        // FIXME: we don't actually need to build all LLVM tools and all LLVM
-        //        libraries here, e.g., we just want a few components and a few
-        //        tools. Figure out how to filter them down and only build the right
-        //        tools and libs on all platforms.
-
         if builder.config.dry_run() {
             return res;
         }
@@ -520,39 +511,13 @@ impl Step for Llvm {
             }
         }
 
-        // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file
-        // in place. This is fine, because currently we do not support incrementally rebuilding
-        // LLVM after a configuration change, so to rebuild it the build files have to be removed,
-        // which will also remove these modified files.
-        if builder.config.llvm_bolt_profile_generate {
-            instrument_with_bolt_inplace(&get_built_llvm_lib_path(&res.llvm_config));
-        }
-        if let Some(path) = &builder.config.llvm_bolt_profile_use {
-            optimize_library_with_bolt_inplace(
-                &get_built_llvm_lib_path(&res.llvm_config),
-                &Path::new(path),
-            );
-        }
-
         t!(stamp.write());
 
         res
     }
 }
 
-/// Returns path to a built LLVM library (libLLVM.so).
-/// Assumes that we have built LLVM into a single library file.
-fn get_built_llvm_lib_path(llvm_config_path: &Path) -> PathBuf {
-    let mut cmd = Command::new(llvm_config_path);
-    cmd.arg("--libfiles");
-    PathBuf::from(output(&mut cmd).trim())
-}
-
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
-    if !builder.config.llvm_version_check {
-        return;
-    }
-
     if builder.config.dry_run() {
         return;
     }
@@ -603,6 +568,8 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "Haiku");
         } else if target.contains("solaris") || target.contains("illumos") {
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
+        } else if target.contains("linux") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Linux");
         }
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.

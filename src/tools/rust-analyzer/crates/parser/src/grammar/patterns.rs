@@ -431,14 +431,15 @@ fn slice_pat(p: &mut Parser<'_>) -> CompletedMarker {
 
 fn pat_list(p: &mut Parser<'_>, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
-        if !p.at_ts(PAT_TOP_FIRST) {
-            p.error("expected a pattern");
-            break;
-        }
-
         pattern_top(p);
-        if !p.at(ket) {
-            p.expect(T![,]);
+        if !p.at(T![,]) {
+            if p.at_ts(PAT_TOP_FIRST) {
+                p.error(format!("expected {:?}, got {:?}", T![,], p.current()));
+            } else {
+                break;
+            }
+        } else {
+            p.bump(T![,]);
         }
     }
 }

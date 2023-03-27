@@ -60,7 +60,7 @@ impl Parker {
         if state == PARKED {
             // Loop to guard against spurious wakeups.
             while state == PARKED {
-                park(self.state.as_mut_ptr().addr());
+                park(self.state.as_ptr().addr());
                 state = self.state.load(Acquire);
             }
 
@@ -76,7 +76,7 @@ impl Parker {
 
         let state = self.state.fetch_sub(1, Acquire).wrapping_sub(1);
         if state == PARKED {
-            park_timeout(dur, self.state.as_mut_ptr().addr());
+            park_timeout(dur, self.state.as_ptr().addr());
             // Swap to ensure that we observe all state changes with acquire
             // ordering, even if the state has been changed after the timeout
             // occured.
@@ -99,7 +99,7 @@ impl Parker {
             // and terminated before this call is made. This call then returns an
             // error or wakes up an unrelated thread. The platform API and
             // environment does allow this, however.
-            unpark(tid, self.state.as_mut_ptr().addr());
+            unpark(tid, self.state.as_ptr().addr());
         }
     }
 }

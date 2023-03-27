@@ -150,18 +150,19 @@ error: expected string literal
 LL |     env!(invalid);
    |          ^^^^^^^
 
-error: expected string literal
-  --> $DIR/macros-nonfatal-errors.rs:105:10
+error: env! takes 1 or 2 arguments
+  --> $DIR/macros-nonfatal-errors.rs:105:5
    |
 LL |     env!(foo, abr, baz);
-   |          ^^^
+   |     ^^^^^^^^^^^^^^^^^^^
 
-error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
+error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined at compile time
   --> $DIR/macros-nonfatal-errors.rs:106:5
    |
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: Use `std::env::var("RUST_HOPEFULLY_THIS_DOESNT_EXIST")` to read the variable at run time
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: format argument must be a string literal

@@ -2,7 +2,7 @@ error[E0284]: type annotations needed
   --> $DIR/issue-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
+   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |                          |
    |                          type must be known at this point
    |
@@ -16,7 +16,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
+   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |                          |
    |                          required by a bound introduced by this call
    |

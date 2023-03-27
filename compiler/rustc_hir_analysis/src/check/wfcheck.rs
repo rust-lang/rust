@@ -1,7 +1,6 @@
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use hir::def::DefKind;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -16,8 +15,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable,
+    self, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
@@ -56,7 +55,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     // `ObligationCtxt::normalize`, but provides a nice `ObligationCauseCode`.
     fn normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.ocx.normalize(
             &ObligationCause::new(span, self.body_def_id, ObligationCauseCode::WellFormed(loc)),
@@ -111,7 +110,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
         return;
     }
 
@@ -493,8 +492,9 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds =
-        tcx.mk_predicates(param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()));
+    let bounds = tcx.mk_predicates_from_iter(
+        param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()),
+    );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
     ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
@@ -510,7 +510,7 @@ fn augment_param_env<'tcx>(
 ///     fn into_iter<'a>(&'a self) -> Self::Iter<'a>;
 /// }
 /// ```
-fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
+fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     item_def_id: hir::OwnerId,
@@ -708,7 +708,7 @@ struct GATSubstCollector<'tcx> {
 }
 
 impl<'tcx> GATSubstCollector<'tcx> {
-    fn visit<T: TypeFoldable<'tcx>>(
+    fn visit<T: TypeFoldable<TyCtxt<'tcx>>>(
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
@@ -1382,7 +1382,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for CountParams {
+            impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type BreakTy = ();
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1476,7 +1476,7 @@ fn check_fn_or_method<'tcx>(
         |idx| hir_decl.inputs.get(idx).map_or(hir_decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
 
     sig.inputs_and_output =
-        tcx.mk_type_list(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
+        tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
             wfcx.normalize(
                 arg_span(idx),
                 Some(WellFormedLoc::Param {
@@ -1544,31 +1544,81 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
     span: Span,
 ) {
     let tcx = wfcx.tcx();
-    if let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id())
-        && assoc_item.container == ty::AssocItemContainer::TraitContainer
-    {
-        for arg in fn_output.walk() {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                && let ty::Alias(ty::Opaque, proj) = ty.kind()
-                && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
-                && tcx.impl_trait_in_trait_parent(proj.def_id) == fn_def_id.to_def_id()
+    let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id()) else {
+        return;
+    };
+    if assoc_item.container != ty::AssocItemContainer::TraitContainer {
+        return;
+    }
+    fn_output.visit_with(&mut ImplTraitInTraitFinder {
+        wfcx,
+        fn_def_id,
+        depth: ty::INNERMOST,
+        seen: FxHashSet::default(),
+    });
+}
+
+// FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
+// strategy, we can't just call `check_associated_item` on the new RPITITs,
+// because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
+// That's because we need to check that the bounds of the RPITIT hold using
+// the special substs that we create during opaque type lowering, otherwise we're
+// getting a bunch of early bound and free regions mixed up... Haven't looked too
+// deep into this, though.
+struct ImplTraitInTraitFinder<'a, 'tcx> {
+    wfcx: &'a WfCheckingCtxt<'a, 'tcx>,
+    fn_def_id: LocalDefId,
+    depth: ty::DebruijnIndex,
+    seen: FxHashSet<DefId>,
+}
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+    type BreakTy = !;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<!> {
+        let tcx = self.wfcx.tcx();
+        if let ty::Alias(ty::Opaque, unshifted_opaque_ty) = *ty.kind()
+            && self.seen.insert(unshifted_opaque_ty.def_id)
+            && let Some(opaque_def_id) = unshifted_opaque_ty.def_id.as_local()
+            && let opaque = tcx.hir().expect_item(opaque_def_id).expect_opaque_ty()
+            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
+            && source == self.fn_def_id
+        {
+            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, depth| {
+                if let ty::ReLateBound(index, bv) = re.kind() {
+                    if depth != ty::INNERMOST {
+                        return tcx.mk_re_error_with_message(
+                            DUMMY_SP,
+                            "we shouldn't walk non-predicate binders with `impl Trait`...",
+                        );
+                    }
+                    tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                } else {
+                    re
+                }
+            });
+            for (bound, bound_span) in tcx
+                .bound_explicit_item_bounds(opaque_ty.def_id)
+                .subst_iter_copied(tcx, opaque_ty.substs)
             {
-                let span = tcx.def_span(proj.def_id);
-                let bounds = wfcx.tcx().explicit_item_bounds(proj.def_id);
-                let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
-                    let bound = ty::EarlyBinder(bound).subst(tcx, proj.substs);
-                    let normalized_bound = wfcx.normalize(span, None, bound);
-                    traits::wf::predicate_obligations(
-                        wfcx.infcx,
-                        wfcx.param_env,
-                        wfcx.body_def_id,
-                        normalized_bound,
-                        bound_span,
-                    )
-                });
-                wfcx.register_obligations(wf_obligations);
+                let bound = self.wfcx.normalize(bound_span, None, bound);
+                self.wfcx.register_obligations(traits::wf::predicate_obligations(
+                    self.wfcx.infcx,
+                    self.wfcx.param_env,
+                    self.wfcx.body_def_id,
+                    bound,
+                    bound_span,
+                ));
+                // Set the debruijn index back to innermost here, since we already eagerly
+                // shifted the substs that we use to generate these bounds. This is unfortunately
+                // subtly different behavior than the `ImplTraitInTraitFinder` we use in `param_env`,
+                // but that function doesn't actually need to normalize the bound it's visiting
+                // (whereas we have to do so here)...
+                let old_depth = std::mem::replace(&mut self.depth, ty::INNERMOST);
+                bound.visit_with(self);
+                self.depth = old_depth;
             }
         }
+        ty.super_visit_with(self)
     }
 }
 
@@ -1783,7 +1833,7 @@ fn check_variances_for_type_defn<'tcx>(
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
-        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.to_def_id());
+        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.def_id);
         hir_generics
             .predicates
             .iter()

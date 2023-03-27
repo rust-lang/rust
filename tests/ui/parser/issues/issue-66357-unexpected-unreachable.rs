@@ -9,6 +9,4 @@
 //
 // ended up bubbling up `Ok(true)` to `unexpected` which then used `unreachable!()`.
 
-fn f() { |[](* }
-//~^ ERROR expected one of `,` or `:`, found `(`
-//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
+fn f() { |[](* } //~ ERROR mismatched closing delimiter

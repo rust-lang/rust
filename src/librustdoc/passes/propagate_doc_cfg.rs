@@ -9,7 +9,6 @@ use crate::fold::DocFolder;
 use crate::passes::Pass;
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::DefIdTree;
 
 pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",
@@ -58,7 +57,8 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
             next_def_id = parent_def_id;
         }
 
-        let (_, cfg) = merge_attrs(self.cx, None, item.attrs.other_attrs.as_slice(), Some(&attrs));
+        let (_, cfg) =
+            merge_attrs(self.cx, item.attrs.other_attrs.as_slice(), Some((&attrs, None)));
         item.cfg = cfg;
     }
 }

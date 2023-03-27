@@ -248,4 +248,15 @@ fn not_fire() {
         Some(value) => value,
         _ => macro_call!(),
     };
+
+    // Issue 10296
+    // The let/else block in the else part is not divergent despite the presence of return
+    let _x = if let Some(x) = Some(1) {
+        x
+    } else {
+        let Some(_z) = Some(3) else {
+            return
+        };
+        1
+    };
 }

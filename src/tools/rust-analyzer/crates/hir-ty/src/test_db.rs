@@ -9,7 +9,7 @@ use base_db::{
     salsa, AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir_def::{db::DefDatabase, ModuleId};
-use hir_expand::db::AstDatabase;
+use hir_expand::db::ExpandDatabase;
 use stdx::hash::{NoHashHashMap, NoHashHashSet};
 use syntax::TextRange;
 use test_utils::extract_annotations;
@@ -17,7 +17,7 @@ use test_utils::extract_annotations;
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
     base_db::SourceDatabaseStorage,
-    hir_expand::db::AstDatabaseStorage,
+    hir_expand::db::ExpandDatabaseStorage,
     hir_def::db::InternDatabaseStorage,
     hir_def::db::DefDatabaseStorage,
     crate::db::HirDatabaseStorage
@@ -41,8 +41,8 @@ impl fmt::Debug for TestDB {
     }
 }
 
-impl Upcast<dyn AstDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+impl Upcast<dyn ExpandDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
         &*self
     }
 }

@@ -893,6 +893,27 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
                     db.help("consider implementing the trait by hand, or remove the `packed` attribute");
                 }
+                BuiltinLintDiagnostics::UnusedExternCrate { removal_span }=> {
+                    db.span_suggestion(
+                        removal_span,
+                        "remove it",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                }
+                BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span }=> {
+                    let suggestion_span = vis_span.between(ident_span);
+                    db.span_suggestion_verbose(
+                        suggestion_span,
+                        "convert it to a `use`",
+                        if vis_span.is_empty() { "use " } else { " use " },
+                        Applicability::MachineApplicable,
+                    );
+                }
+                BuiltinLintDiagnostics::AmbiguousGlobReexports { name, namespace, first_reexport_span, duplicate_reexport_span } => {
+                    db.span_label(first_reexport_span, format!("the name `{}` in the {} namespace is first re-exported here", name, namespace));
+                    db.span_label(duplicate_reexport_span, format!("but the name `{}` in the {} namespace is also re-exported here", name, namespace));
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)

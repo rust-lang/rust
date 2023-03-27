@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -129,6 +129,18 @@ pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+
+    #[subdiagnostic]
+    pub fn_trait_expansion: Option<ParenthesizedFnTraitExpansion>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(hir_analysis_parenthesized_fn_trait_expansion)]
+pub struct ParenthesizedFnTraitExpansion {
+    #[primary_span]
+    pub span: Span,
+
+    pub expanded_type: String,
 }
 
 #[derive(Diagnostic)]
@@ -247,26 +259,6 @@ pub struct SubstsOnOverriddenImpl {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_unused_extern_crate)]
-pub struct UnusedExternCrate {
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_extern_crate_not_idiomatic)]
-pub struct ExternCrateNotIdiomatic {
-    #[suggestion(
-        style = "short",
-        applicability = "machine-applicable",
-        code = "{suggestion_code}"
-    )]
-    pub span: Span,
-    pub msg_code: String,
-    pub suggestion_code: String,
-}
-
 #[derive(Diagnostic)]
 #[diag(hir_analysis_const_impl_for_non_const_trait)]
 pub struct ConstImplForNonConstTrait {
@@ -317,10 +309,173 @@ pub struct AutoDerefReachedRecursionLimit<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_track_caller_on_main)]
-pub(crate) struct TrackCallerOnMain {
+#[diag(hir_analysis_where_clause_on_main, code = "E0646")]
+pub(crate) struct WhereClauseOnMain {
     #[primary_span]
     pub span: Span,
     #[label]
+    pub generics_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_track_caller_on_main)]
+pub(crate) struct TrackCallerOnMain {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "")]
+    pub span: Span,
+    #[label(hir_analysis_track_caller_on_main)]
     pub annotated: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_target_feature_on_main)]
+pub(crate) struct TargetFeatureOnMain {
+    #[primary_span]
+    #[label(hir_analysis_target_feature_on_main)]
+    pub main: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_not_track_caller)]
+pub(crate) struct StartTrackCaller {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_not_target_feature)]
+pub(crate) struct StartTargetFeature {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_not_async, code = "E0752")]
+pub(crate) struct StartAsync {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_function_where, code = "E0647")]
+pub(crate) struct StartFunctionWhere {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_start_function_parameters, code = "E0132")]
+pub(crate) struct StartFunctionParameters {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_main_function_return_type_generic, code = "E0131")]
+pub(crate) struct MainFunctionReturnTypeGeneric {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_main_function_async, code = "E0752")]
+pub(crate) struct MainFunctionAsync {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub asyncness: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_main_function_generic_parameters, code = "E0131")]
+pub(crate) struct MainFunctionGenericParameters {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub label_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_variadic_function_compatible_convention, code = "E0045")]
+pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub conventions: &'a str,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum CannotCaptureLateBoundInAnonConst {
+    #[diag(hir_analysis_cannot_capture_late_bound_ty_in_anon_const)]
+    Type {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
+    #[diag(hir_analysis_cannot_capture_late_bound_const_in_anon_const)]
+    Const {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_variances_of)]
+pub(crate) struct VariancesOf {
+    #[primary_span]
+    pub span: Span,
+    pub variances_of: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pass_to_variadic_function, code = "E0617")]
+pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub cast_ty: &'a str,
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+    pub sugg_span: Option<Span>,
+    pub replace: String,
+    #[help]
+    pub help: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cast_thin_pointer_to_fat_pointer, code = "E0607")]
+pub(crate) struct CastThinPointerToFatPointer<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_union_field, code = "E0740")]
+pub(crate) struct InvalidUnionField {
+    #[primary_span]
+    pub field_span: Span,
+    #[subdiagnostic]
+    pub sugg: InvalidUnionFieldSuggestion,
+    #[note]
+    pub note: (),
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
+pub(crate) struct InvalidUnionFieldSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
 }

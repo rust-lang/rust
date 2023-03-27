@@ -395,11 +395,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 }
                 self.expr(field!(let_expr.init));
             },
-            ExprKind::Box(inner) => {
-                bind!(self, inner);
-                kind!("Box({inner})");
-                self.expr(inner);
-            },
             ExprKind::Array(elements) => {
                 bind!(self, elements);
                 kind!("Array({elements})");
@@ -588,7 +583,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     },
                 }
             },
-            ExprKind::Err => kind!("Err"),
+            ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);
                 kind!("DropTemps({expr})");

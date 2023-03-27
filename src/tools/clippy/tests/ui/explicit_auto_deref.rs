@@ -269,6 +269,9 @@ fn main() {
 
     trait WithAssoc {
         type Assoc: ?Sized;
+        fn to_assoc(&self) -> &Self::Assoc {
+            panic!()
+        }
     }
     impl WithAssoc for String {
         type Assoc = str;
@@ -281,4 +284,15 @@ fn main() {
     // Issue #9901
     fn takes_ref(_: &i32) {}
     takes_ref(*Box::new(&0i32));
+
+    // Issue #10384
+    impl<'a> WithAssoc for &'a u32 {
+        type Assoc = dyn core::fmt::Display;
+        fn to_assoc(&self) -> &Self::Assoc {
+            *self
+        }
+    }
+    fn return_dyn_assoc<'a>(x: &'a &'a u32) -> &'a <&'a u32 as WithAssoc>::Assoc {
+        *x
+    }
 }

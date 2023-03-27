@@ -122,7 +122,7 @@ fn complete_methods(
     mut f: impl FnMut(hir::Function),
 ) {
     let mut seen_methods = FxHashSet::default();
-    receiver.iterate_method_candidates(
+    receiver.iterate_method_candidates_with_traits(
         ctx.db,
         &ctx.scope,
         &ctx.traits_in_scope(),
@@ -415,7 +415,6 @@ fn foo(a: lib::A) { a.$0 }
     fn test_local_impls() {
         check(
             r#"
-//- /lib.rs crate:lib
 pub struct A {}
 mod m {
     impl super::A {
@@ -427,9 +426,8 @@ mod m {
         }
     }
 }
-//- /main.rs crate:main deps:lib
-fn foo(a: lib::A) {
-    impl lib::A {
+fn foo(a: A) {
+    impl A {
         fn local_method(&self) {}
     }
     a.$0

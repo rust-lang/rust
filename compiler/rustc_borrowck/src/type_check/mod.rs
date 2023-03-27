@@ -9,13 +9,12 @@ use either::Either;
 
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::vec_map::VecMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
@@ -30,14 +29,14 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -145,7 +144,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
-        universe_causes: FxHashMap::default(),
+        universe_causes: FxIndexMap::default(),
     };
 
     let CreateResult {
@@ -239,7 +238,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     decl.hidden_type.span,
                     &format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = infcx.tcx.ty_error_with_guaranteed(reported);
+                hidden_type.ty = infcx.tcx.ty_error(reported);
             }
 
             (opaque_type_key, (hidden_type, decl.origin))
@@ -529,9 +528,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
-                if place_ty.ty.references_error() {
+                if let Err(guar) = place_ty.ty.error_reported() {
                     assert!(self.errors_reported);
-                    return PlaceTy::from_ty(self.tcx().ty_error());
+                    return PlaceTy::from_ty(self.tcx().ty_error(guar));
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location, context);
@@ -763,7 +762,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
-        self.tcx().ty_error()
+        self.tcx().ty_error_misc()
     }
 
     fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
@@ -772,7 +771,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         match context {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | PlaceMention | VarDebugInfo) => {
+                ty::Invariant
+            }
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
                 | Projection,
@@ -811,7 +812,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
             PlaceTy { ty, variant_index: None } => match *ty.kind() {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
-                    (adt_def.variant(VariantIdx::new(0)), substs)
+                    (adt_def.variant(FIRST_VARIANT), substs)
                 }
                 ty::Closure(_, substs) => {
                     return match substs
@@ -875,7 +876,7 @@ struct TypeChecker<'a, 'tcx> {
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
-    reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
+    reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
 }
 
@@ -892,7 +893,7 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) opaque_type_values:
-        VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+        FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -925,7 +926,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 
     pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
-    pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
 }
@@ -1178,10 +1179,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     Some(l)
-                        if matches!(
-                            body.local_decls[l].local_info,
-                            Some(box LocalInfo::AggregateTemp)
-                        ) =>
+                        if matches!(body.local_decls[l].local_info(), LocalInfo::AggregateTemp) =>
                     {
                         ConstraintCategory::Usage
                     }
@@ -1282,6 +1280,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(..)
             | StatementKind::Nop => {}
             StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
@@ -1312,24 +1311,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { place, value, target: _, unwind: _ } => {
-                let place_ty = place.ty(body, tcx).ty;
-                let rv_ty = value.ty(body, tcx);
-
-                let locations = term_location.to_locations();
-                if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, locations, ConstraintCategory::Assignment)
-                {
-                    span_mirbug!(
-                        self,
-                        term,
-                        "bad DropAndReplace ({:?} = {:?}): {:?}",
-                        place_ty,
-                        rv_ty,
-                        terr
-                    );
-                }
-            }
             TerminatorKind::SwitchInt { discr, .. } => {
                 self.check_operand(discr, term_location);
 
@@ -1629,7 +1610,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::DropAndReplace { target, unwind, .. }
             | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {
@@ -1700,7 +1680,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // - maybe we should make that a warning.
                 return;
             }
-            LocalKind::Var | LocalKind::Temp => {}
+            LocalKind::Temp => {}
         }
 
         // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls
@@ -2242,6 +2222,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         }
                     }
+                    CastKind::Transmute => {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "Unexpected CastKind::Transmute, which is not permitted in Analysis MIR",
+                        );
+                    }
                 }
             }
 
@@ -2633,7 +2620,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => substs.as_inline_const().parent_substs(),
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_substs = tcx.intern_substs(parent_substs);
+        let parent_substs = tcx.mk_substs(parent_substs);
 
         assert_eq!(typeck_root_substs.len(), parent_substs.len());
         if let Err(_) = self.eq_substs(

@@ -20,6 +20,7 @@ use crate::dist;
 use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
 use crate::llvm;
+use crate::render_tests::add_flags_and_try_run_tests;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::up_to_date;
@@ -124,7 +125,7 @@ impl Step for CrateJsonDocLint {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -173,7 +174,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
 
         // Build all the default documentation.
         builder.default_doc(&[]);
@@ -334,7 +335,7 @@ impl Step for Cargo {
 
         cargo.env("PATH", &path_for_cargo(builder, compiler));
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -393,7 +394,7 @@ impl Step for RustAnalyzer {
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -446,7 +447,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -497,7 +498,7 @@ impl Step for RustDemangler {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        builder.run(&mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -638,8 +639,7 @@ impl Step for Miri {
         // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        let mut cargo = Command::from(cargo);
-        builder.run(&mut cargo);
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
 
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
@@ -712,7 +712,7 @@ impl Step for CompiletestTest {
         );
         cargo.allow_features("test");
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -1119,7 +1119,11 @@ impl Step for Tidy {
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         cmd.arg(&builder.out);
-        cmd.arg(builder.jobs().to_string());
+        // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs` hasn't been configured.
+        let jobs = builder.config.jobs.unwrap_or_else(|| {
+            8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
+        });
+        cmd.arg(jobs.to_string());
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -1190,7 +1194,7 @@ impl Step for TidySelfTest {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -1617,9 +1621,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--verbose");
         }
 
-        if !builder.config.verbose_tests {
-            cmd.arg("--quiet");
-        }
+        cmd.arg("--json");
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -1770,7 +1772,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             suite, mode, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cmd);
+        crate::render_tests::try_run_tests(builder, &mut cmd);
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -1779,7 +1781,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 suite, mode, compare_mode, &compiler.host, target
             ));
             let _time = util::timeit(&builder);
-            try_run(builder, &mut cmd);
+            crate::render_tests::try_run_tests(builder, &mut cmd);
         }
     }
 }
@@ -2181,9 +2183,8 @@ impl Step for Crate {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if !builder.config.verbose_tests {
-            cargo.arg("--quiet");
-        }
+        cargo.arg("-Z").arg("unstable-options");
+        cargo.arg("--format").arg("json");
 
         if target.contains("emscripten") {
             cargo.env(
@@ -2211,7 +2212,7 @@ impl Step for Crate {
             target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cargo.into());
+        crate::render_tests::try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2331,7 +2332,7 @@ impl Step for CrateRustdoc {
         ));
         let _time = util::timeit(&builder);
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2392,17 +2393,13 @@ impl Step for CrateRustdocJsonTypes {
             cargo.arg("'-Ctarget-feature=-crt-static'");
         }
 
-        if !builder.config.verbose_tests {
-            cargo.arg("--quiet");
-        }
-
         builder.info(&format!(
             "{} rustdoc-json-types stage{} ({} -> {})",
             test_kind, compiler.stage, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
 
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2571,7 +2568,7 @@ impl Step for Bootstrap {
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
         cmd.arg("--test-threads=1");
-        try_run(builder, &mut cmd);
+        add_flags_and_try_run_tests(builder, &mut cmd);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2652,7 +2649,7 @@ impl Step for ReplacePlaceholderTest {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2698,66 +2695,56 @@ impl Step for LintDocs {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TestHelpers {
-    pub target: TargetSelection,
-}
+pub struct RustInstaller;
 
-impl Step for TestHelpers {
+impl Step for RustInstaller {
     type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    /// Ensure the version placeholder replacement tool builds
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("test rust-installer");
+
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/rust-installer",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+
+        // We currently don't support running the test.sh script outside linux(?) environments.
+        // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
+        // set of scripts, which will likely allow dropping this if.
+        if bootstrap_host != "x86_64-unknown-linux-gnu" {
+            return;
+        }
+
+        let mut cmd =
+            std::process::Command::new(builder.src.join("src/tools/rust-installer/test.sh"));
+        let tmpdir = testdir(builder, compiler.host).join("rust-installer");
+        let _ = std::fs::remove_dir_all(&tmpdir);
+        let _ = std::fs::create_dir_all(&tmpdir);
+        cmd.current_dir(&tmpdir);
+        cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
+        cmd.env("CARGO", &builder.initial_cargo);
+        cmd.env("RUSTC", &builder.initial_rustc);
+        cmd.env("TMP_DIR", &tmpdir);
+        try_run(builder, &mut cmd);
+    }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("tests/auxiliary/rust_test_helpers.c")
+        run.path("src/tools/rust-installer")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TestHelpers { target: run.target })
-    }
-
-    /// Compiles the `rust_test_helpers.c` library which we used in various
-    /// `run-pass` tests for ABI testing.
-    fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run() {
-            return;
-        }
-        // The x86_64-fortanix-unknown-sgx target doesn't have a working C
-        // toolchain. However, some x86_64 ELF objects can be linked
-        // without issues. Use this hack to compile the test helpers.
-        let target = if self.target == "x86_64-fortanix-unknown-sgx" {
-            TargetSelection::from_user("x86_64-unknown-linux-gnu")
-        } else {
-            self.target
-        };
-        let dst = builder.test_helpers_out(target);
-        let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
-        if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
-            return;
-        }
-
-        builder.info("Building test helpers");
-        t!(fs::create_dir_all(&dst));
-        let mut cfg = cc::Build::new();
-        // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013
-        if target.contains("emscripten") {
-            cfg.pic(false);
-        }
-
-        // We may have found various cross-compilers a little differently due to our
-        // extra configuration, so inform cc of these compilers. Note, though, that
-        // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.contains("msvc") {
-            if let Some(ar) = builder.ar(target) {
-                cfg.archiver(ar);
-            }
-            cfg.compiler(builder.cc(target));
-        }
-        cfg.cargo_metadata(false)
-            .out_dir(&dst)
-            .target(&target.triple)
-            .host(&builder.config.build.triple)
-            .opt_level(0)
-            .warnings(false)
-            .debug(false)
-            .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
-            .compile("rust_test_helpers");
+        run.builder.ensure(Self);
     }
 }

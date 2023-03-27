@@ -375,3 +375,25 @@ pub struct TraceMacro {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_proc_macro_panicked)]
+pub(crate) struct ProcMacroPanicked {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub message: Option<ProcMacroPanickedHelp>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(expand_help)]
+pub(crate) struct ProcMacroPanickedHelp {
+    pub message: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_proc_macro_derive_tokens)]
+pub struct ProcMacroDeriveTokens {
+    #[primary_span]
+    pub span: Span,
+}

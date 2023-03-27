@@ -9,6 +9,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
@@ -63,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             scope,
                             &this.thir[value],
-                            None,
+                            LocalInfo::Boring,
                             NeedsTemporary::No
                         )
                     );
@@ -72,19 +73,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[lhs], None, NeedsTemporary::Maybe)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[lhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::Maybe
+                    )
                 );
                 let rhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[rhs], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[rhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[arg], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[arg],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
@@ -259,7 +275,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let ty = source.ty;
                     let source = unpack!(
-                        block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
+                        block = this.as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
                     );
                     (source, ty)
                 };
@@ -271,8 +287,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[source],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
@@ -314,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -335,7 +356,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -423,7 +444,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 block,
                                                 scope,
                                                 upvar,
-                                                None,
+                                                LocalInfo::Boring,
                                                 NeedsTemporary::Maybe
                                             )
                                         )
@@ -501,8 +522,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Category::of(&expr.kind),
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                let operand =
-                    unpack!(block = this.as_operand(block, scope, expr, None, NeedsTemporary::No));
+                let operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -519,30 +542,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
-        if self.check_overflow && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.tcx.intern_tup(&[ty, bool_ty]);
-            let result_value = self.temp(result_tup, span);
+        let rvalue = match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
+                let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
+                let result_value = self.temp(result_tup, span);
 
-            self.cfg.push_assign(
-                block,
-                source_info,
-                result_value,
-                Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
-            );
-            let val_fld = Field::new(0);
-            let of_fld = Field::new(1);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    result_value,
+                    Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
+                );
+                let val_fld = Field::new(0);
+                let of_fld = Field::new(1);
 
-            let tcx = self.tcx;
-            let val = tcx.mk_place_field(result_value, val_fld, ty);
-            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
+                let tcx = self.tcx;
+                let val = tcx.mk_place_field(result_value, val_fld, ty);
+                let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
-            let err = AssertKind::Overflow(op, lhs, rhs);
+                let err = AssertKind::Overflow(op, lhs, rhs);
+                block = self.assert(block, Operand::Move(of), false, err, span);
 
-            block = self.assert(block, Operand::Move(of), false, err, span);
+                Rvalue::Use(Operand::Move(val))
+            }
+            BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
+                // For an unsigned RHS, the shift is in-range for `rhs < bits`.
+                // For a signed RHS, `IntToInt` cast to the equivalent unsigned
+                // type and do that same comparison.  Because the type is the
+                // same size, there's no negative shift amount that ends up
+                // overlapping with valid ones, thus it catches negatives too.
+                let (lhs_size, _) = ty.int_size_and_signed(self.tcx);
+                let rhs_ty = rhs.ty(&self.local_decls, self.tcx);
+                let (rhs_size, _) = rhs_ty.int_size_and_signed(self.tcx);
 
-            block.and(Rvalue::Use(Operand::Move(val)))
-        } else {
-            if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
+                let (unsigned_rhs, unsigned_ty) = match rhs_ty.kind() {
+                    ty::Uint(_) => (rhs.to_copy(), rhs_ty),
+                    ty::Int(int_width) => {
+                        let uint_ty = self.tcx.mk_mach_uint(int_width.to_unsigned());
+                        let rhs_temp = self.temp(uint_ty, span);
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            rhs_temp,
+                            Rvalue::Cast(CastKind::IntToInt, rhs.to_copy(), uint_ty),
+                        );
+                        (Operand::Move(rhs_temp), uint_ty)
+                    }
+                    _ => unreachable!("only integers are shiftable"),
+                };
+
+                // This can't overflow because the largest shiftable types are 128-bit,
+                // which fits in `u8`, the smallest possible `unsigned_ty`.
+                // (And `from_uint` will `bug!` if that's ever no longer true.)
+                let lhs_bits = Operand::const_from_scalar(
+                    self.tcx,
+                    unsigned_ty,
+                    Scalar::from_uint(lhs_size.bits(), rhs_size),
+                    span,
+                );
+
+                let inbounds = self.temp(bool_ty, span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    inbounds,
+                    Rvalue::BinaryOp(BinOp::Lt, Box::new((unsigned_rhs, lhs_bits))),
+                );
+
+                let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
+                block = self.assert(block, Operand::Move(inbounds), true, overflow_err, span);
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            BinOp::Div | BinOp::Rem if ty.is_integral() => {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
@@ -601,10 +672,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
-            }
 
-            block.and(Rvalue::BinaryOp(op, Box::new((lhs, rhs))))
-        }
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            _ => Rvalue::BinaryOp(op, Box::new((lhs, rhs))),
+        };
+        block.and(rvalue)
     }
 
     fn build_zero_repeat(
@@ -621,8 +694,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
-            let value_operand =
-                unpack!(block = this.as_operand(block, scope, value, None, NeedsTemporary::No));
+            let value_operand = unpack!(
+                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+            );
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(

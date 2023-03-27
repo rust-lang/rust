@@ -7,9 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{
-    FnRetTy, Function, GenericBound, Generics, ItemId, Type, WherePredicate,
-};
+use crate::clean::types::{FnRetTy, Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -42,6 +40,7 @@ pub(crate) fn build_index<'tcx>(
                 parent_idx: None,
                 search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
+                deprecation: item.deprecation(tcx),
             });
         }
     }
@@ -253,7 +252,17 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "q",
-                &self.items.iter().map(|item| &item.path).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of item indices and full paths
+                    .filter_map(
+                        |(index, item)| {
+                            if item.path.is_empty() { None } else { Some((index, &item.path)) }
+                        },
+                    )
+                    .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "d",
@@ -304,6 +313,16 @@ pub(crate) fn build_index<'tcx>(
                             None => FunctionOption::None,
                         }
                     })
+                    .collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "c",
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of deprecated item indices
+                    .filter_map(|(index, item)| item.deprecation.map(|_| index))
                     .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
@@ -467,7 +486,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
     }
 
     // First, check if it's "Self".
-    let arg = if let Some(self_) = self_ {
+    let mut arg = if let Some(self_) = self_ {
         match &*arg {
             Type::BorrowedRef { type_, .. } if type_.is_self_type() => self_,
             type_ if type_.is_self_type() => self_,
@@ -477,34 +496,33 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
         arg
     };
 
+    // strip references from the argument type
+    while let Type::BorrowedRef { type_, .. } = &*arg {
+        arg = &*type_;
+    }
+
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
-        if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
+        for where_pred in generics.where_predicates.iter().filter(|g| match g {
+            WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                if let GenericBound::TraitBound(poly_trait, _) = bound {
-                    for param_def in poly_trait.generic_params.iter() {
-                        match &param_def.kind {
-                            clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
-                                add_generics_and_bounds_as_types(
-                                    self_,
-                                    generics,
-                                    ty,
-                                    tcx,
-                                    recurse + 1,
-                                    &mut ty_generics,
-                                    cache,
-                                )
-                            }
-                            _ => {}
-                        }
-                    }
+                if let Some(path) = bound.get_trait_path() {
+                    let ty = Type::Path { path };
+                    add_generics_and_bounds_as_types(
+                        self_,
+                        generics,
+                        &ty,
+                        tcx,
+                        recurse + 1,
+                        &mut ty_generics,
+                        cache,
+                    );
                 }
             }
             insert_ty(res, arg.clone(), ty_generics);

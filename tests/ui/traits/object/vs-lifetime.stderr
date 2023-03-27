@@ -4,7 +4,7 @@ error[E0224]: at least one trait is required for an object type
 LL |     let _: S<'static, dyn 'static +>;
    |                       ^^^^^^^^^^^^^
 
-error[E0107]: this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
@@ -18,7 +18,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct S<'a, T>(&'a u8, T);
    |        ^ --
 
-error[E0107]: this struct takes 1 generic argument but 0 generic arguments were supplied
+error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;

@@ -9,8 +9,8 @@ use syntax::{ast, AstNode, AstPtr};
 use crate::{
     dyn_map::{DynMap, Policy},
     ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id,
-    MacroRulesId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
-    UnionId,
+    MacroRulesId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
+    TypeOrConstParamId, UnionId,
 };
 
 pub type Key<K, V> = crate::dyn_map::Key<K, V, AstPtrPolicy<K, V>>;
@@ -21,6 +21,7 @@ pub const STATIC: Key<ast::Static, StaticId> = Key::new();
 pub const TYPE_ALIAS: Key<ast::TypeAlias, TypeAliasId> = Key::new();
 pub const IMPL: Key<ast::Impl, ImplId> = Key::new();
 pub const TRAIT: Key<ast::Trait, TraitId> = Key::new();
+pub const TRAIT_ALIAS: Key<ast::TraitAlias, TraitAliasId> = Key::new();
 pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
 pub const UNION: Key<ast::Union, UnionId> = Key::new();
 pub const ENUM: Key<ast::Enum, EnumId> = Key::new();

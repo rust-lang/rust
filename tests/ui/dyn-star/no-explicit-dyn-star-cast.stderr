@@ -1,17 +1,17 @@
-error[E0658]: dyn* trait objects are unstable
+error[E0658]: `dyn*` trait objects are experimental
   --> $DIR/no-explicit-dyn-star-cast.rs:5:16
    |
 LL |     let dyn_i: dyn* Debug = i as dyn* Debug;
-   |                ^^^^^^^^^^
+   |                ^^^^
    |
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = help: add `#![feature(dyn_star)]` to the crate attributes to enable
 
-error[E0658]: dyn* trait objects are unstable
+error[E0658]: `dyn*` trait objects are experimental
   --> $DIR/no-explicit-dyn-star-cast.rs:5:34
    |
 LL |     let dyn_i: dyn* Debug = i as dyn* Debug;
-   |                                  ^^^^^^^^^^
+   |                                  ^^^^
    |
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = help: add `#![feature(dyn_star)]` to the crate attributes to enable

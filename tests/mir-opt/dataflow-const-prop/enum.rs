@@ -46,7 +46,23 @@ fn mutate_discriminant() -> u8 {
     )
 }
 
+// EMIT_MIR enum.multiple.DataflowConstProp.diff
+fn multiple(x: bool, i: u8) {
+    let e = if x {
+        Some(i)
+    } else {
+        None
+    };
+    // The dataflow state must have:
+    //   discriminant(e) => Top
+    //   (e as Some).0 => Top
+    let x = match e { Some(i) => i, None => 0 };
+    // Therefore, `x` should be `Top` here, and no replacement shall happen.
+    let y = x;
+}
+
 fn main() {
     simple();
     mutate_discriminant();
+    multiple(false, 5);
 }

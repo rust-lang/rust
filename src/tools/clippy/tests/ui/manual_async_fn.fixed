@@ -107,4 +107,10 @@ mod issue_5765 {
     }
 }
 
+pub async fn issue_10450() -> i32 { 42 }
+
+pub(crate) async fn issue_10450_2() -> i32 { 42 }
+
+pub(self) async fn issue_10450_3() -> i32 { 42 }
+
 fn main() {}

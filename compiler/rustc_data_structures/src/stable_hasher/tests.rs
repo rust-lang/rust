@@ -150,7 +150,7 @@ fn test_isize_compression() {
         let hash_b = hash(&(b as isize, a as isize));
         assert_ne!(
             hash_a, hash_b,
-            "The hash stayed the same when permuting values `{a}` and `{b}!",
+            "The hash stayed the same when permuting values `{a}` and `{b}`!",
         );
     }
 

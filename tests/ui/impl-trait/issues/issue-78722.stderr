@@ -7,22 +7,13 @@ LL |         let f: F = async { 1 };
    = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
    = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
 
-error[E0493]: destructor of `F` cannot be evaluated at compile-time
-  --> $DIR/issue-78722.rs:13:13
-   |
-LL |         let f: F = async { 1 };
-   |             ^ the destructor for this type cannot be evaluated in constants
-...
-LL |     }],
-   |     - value is dropped here
-
 error[E0271]: expected `[async block@$DIR/issue-78722.rs:11:13: 11:21]` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722.rs:9:30
    |
 LL |         fn concrete_use() -> F {
    |                              ^ expected `()`, found `u8`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0271, E0493, E0658.
+Some errors have detailed explanations: E0271, E0658.
 For more information about an error, try `rustc --explain E0271`.

@@ -6,7 +6,7 @@ pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     for id in tcx.hir().items() {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
-        if tcx.has_attr(id.owner_id.to_def_id(), sym::rustc_outlives) {
+        if tcx.has_attr(id.owner_id, sym::rustc_outlives) {
             let inferred_outlives_of = tcx.inferred_outlives_of(id.owner_id);
             struct_span_err!(
                 tcx.sess,

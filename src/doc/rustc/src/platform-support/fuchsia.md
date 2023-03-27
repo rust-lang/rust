@@ -12,7 +12,6 @@ The [Fuchsia team]:
 - Tyler Mandry ([@tmandry](https://github.com/tmandry))
 - Dan Johnson ([@computerdruid](https://github.com/computerdruid))
 - David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Andrew Pollack ([@andrewpollack](https://github.com/andrewpollack))
 - Joseph Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
 
 As the team evolves over time, the specific members listed here may differ from
@@ -687,7 +686,9 @@ Rust compiler locally. See "[Targeting Fuchsia with a compiler built from source
 for the steps to build locally.
 
 You'll also need to download a copy of the Fuchsia SDK. The current minimum
-supported SDK version is [9.20220726.1.1](https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/version:9.20220726.1.1).
+supported SDK version is [10.20221207.2.89][minimum_supported_sdk_version].
+
+[minimum_supported_sdk_version]: https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/version:10.20221207.2.89
 
 Fuchsia's test runner interacts with the Fuchsia emulator and is located at
 `src/ci/docker/scripts/fuchsia-test-runner.py`. We can use it to start our
@@ -697,7 +698,7 @@ test environment with:
 src/ci/docker/scripts/fuchsia-test-runner.py start
     --rust ${RUST_SRC_PATH}/install
     --sdk ${SDK_PATH}
-    --target-triple {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}
+    --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}
 ```
 
 Where `${RUST_SRC_PATH}/install` is the `prefix` set in `config.toml` and
@@ -715,28 +716,30 @@ run the full `tests/ui` test suite:
     --stage=2                                                                 \
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
-    --run=always --jobs 1                                                     \
+    --run=always                                                              \
     --test-args --target-rustcflags                                           \
-    --test-args -L                                                            \
+    --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
     --test-args --target-rustcflags                                           \
-    --test-args ${SDK_PATH}/arch/{x64|arm64}/sysroot/lib                      \
+    --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/lib                     \
     --test-args --target-rustcflags                                           \
-    --test-args -L                                                            \
-    --test-args --target-rustcflags                                           \
-    --test-args ${SDK_PATH}/arch/{x64|arm64}/lib                              \
-    --test-args --target-rustcflags                                           \
-    --test-args -Cpanic=abort                                                 \
-    --test-args --target-rustcflags                                           \
-    --test-args -Zpanic_abort_tests                                           \
+    --test-args -Clink-arg=--undefined-version                                \
     --test-args --remote-test-client                                          \
     --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
 )
 ```
 
-*Note: The test suite cannot be run in parallel at the moment, so `x.py`
-must be run with `--jobs 1` to ensure only one test runs at a time.*
+By default, `x.py` compiles test binaries with `panic=unwind`. If you built your
+Rust toolchain with `-Cpanic=abort`, you need to tell `x.py` to compile test
+binaries with `panic=abort` as well:
 
-When finished, the test runner can be used to stop the test environment:
+```sh
+    --test-args --target-rustcflags                                           \
+    --test-args -Cpanic=abort                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Zpanic_abort_tests                                           \
+```
+
+When finished testing, the test runner can be used to stop the test environment:
 
 ```sh
 src/ci/docker/scripts/fuchsia-test-runner.py stop
@@ -764,8 +767,9 @@ ${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
 * `--symbol-path` gets required symbol paths, which are
 necessary for stepping through your program.
 
-The "[displaying source code in `zxdb`](#displaying-source-code-in-zxdb)" section describes how you can
-display Rust and/or Fuchsia source code in your debugging session.
+The "[displaying source code in `zxdb`](#displaying-source-code-in-zxdb)"
+section describes how you can display Rust and/or Fuchsia source code in your
+debugging session.
 
 ### Using `zxdb`
 
@@ -865,6 +869,64 @@ ${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
 
  Linking to a Fuchsia checkout can help with debugging Fuchsia libraries,
  such as [fdio].
+
+### Debugging the compiler test suite
+
+Debugging the compiler test suite requires some special configuration:
+
+First, we have to properly configure zxdb so it will be able to find debug
+symbols and source information for our test. The test runner can do this for us
+with:
+
+```sh
+src/ci/docker/scripts/fuchsia-test-runner.py debug                            \
+    --rust-src ${RUST_SRC_PATH}                                               \
+    --fuchsia-src ${FUCHSIA_SRC_PATH}                                         \
+    --test ${TEST}
+```
+
+where `${TEST}` is relative to Rust's `tests` directory (e.g. `ui/abi/...`).
+
+This will start a zxdb session that is properly configured for the specific test
+being run. All three arguments are optional, so you can omit `--fuchsia-src` if
+you don't have it downloaded. Now is a good time to set any desired breakpoints,
+like `b main`.
+
+Next, we have to tell `x.py` not to optimize or strip debug symbols from our
+test suite binaries. We can do this by passing some new arguments to `rustc`
+through our `x.py` invocation. The full invocation is:
+
+```sh
+( \
+    source config-env.sh &&                                                   \
+    ./x.py                                                                    \
+    --config config.toml                                                      \
+    --stage=2                                                                 \
+    test tests/${TEST}                                                        \
+    --target x86_64-unknown-fuchsia                                           \
+    --run=always                                                              \
+    --test-args --target-rustcflags                                           \
+    --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
+    --test-args --target-rustcflags                                           \
+    --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/lib                     \
+    --test-args --target-rustcflags                                           \
+    --test-args -Clink-arg=--undefined-version                                \
+    --test-args --target-rustcflags                                           \
+    --test-args -Cdebuginfo=2                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Copt-level=0                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Cstrip=none                                                  \
+    --test-args --remote-test-client                                          \
+    --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
+)
+```
+
+*If you built your Rust toolchain with `panic=abort`, make sure to include the
+previous flags so your test binaries are also compiled with `panic=abort`.*
+
+Upon running this command, the test suite binary will be run and zxdb will
+attach and load any relevant debug symbols.
 
 [Fuchsia team]: https://team-api.infra.rust-lang.org/v1/teams/fuchsia.json
 [Fuchsia]: https://fuchsia.dev/

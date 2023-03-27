@@ -1,3 +1,12 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/macro-mismatched-delim-paren-brace.rs:2:10
+   |
+LL |     foo! (
+   |          ^ unclosed delimiter
+LL |         bar, "baz", 1, 2.0
+LL |     }
+   |     ^ mismatched closing delimiter
+
 error: unexpected closing delimiter: `}`
   --> $DIR/macro-mismatched-delim-paren-brace.rs:5:1
    |
@@ -8,15 +17,6 @@ LL |     }
    |     - ...as it matches this but it has different indentation
 LL | }
    | ^ unexpected closing delimiter
-
-error: mismatched closing delimiter: `}`
-  --> $DIR/macro-mismatched-delim-paren-brace.rs:2:10
-   |
-LL |     foo! (
-   |          ^ unclosed delimiter
-LL |         bar, "baz", 1, 2.0
-LL |     }
-   |     ^ mismatched closing delimiter
 
 error: aborting due to 2 previous errors
 

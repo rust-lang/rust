@@ -6,12 +6,12 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{
-    adt::VariantData, attr::Attrs, type_ref::ConstScalar, visibility::Visibility, AdtId,
-    EnumVariantId, HasModule, Lookup, ModuleId, VariantId,
+    adt::VariantData, attr::Attrs, visibility::Visibility, AdtId, EnumVariantId, HasModule, Lookup,
+    ModuleId, VariantId,
 };
 
 use crate::{
-    db::HirDatabase, Binders, ConcreteConst, Const, ConstValue, Interner, Substitution, Ty, TyKind,
+    consteval::try_const_usize, db::HirDatabase, Binders, Interner, Substitution, Ty, TyKind,
 };
 
 /// Checks whether a type is visibly uninhabited from a particular module.
@@ -69,7 +69,7 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
             TyKind::Adt(adt, subst) => self.visit_adt(adt.0, subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self, outer_binder),
-            TyKind::Array(item_ty, len) => match try_usize_const(len) {
+            TyKind::Array(item_ty, len) => match try_const_usize(len) {
                 Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
                 Some(1..) => item_ty.super_visit_with(self, outer_binder),
             },
@@ -158,16 +158,5 @@ impl UninhabitedFrom<'_> {
         } else {
             CONTINUE_OPAQUELY_INHABITED
         }
-    }
-}
-
-fn try_usize_const(c: &Const) -> Option<u128> {
-    let data = &c.data(Interner);
-    if data.ty.kind(Interner) != &TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)) {
-        return None;
-    }
-    match data.value {
-        ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(value) }) => Some(value),
-        _ => None,
     }
 }

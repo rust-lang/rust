@@ -2,6 +2,7 @@
 
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::intrinsics::const_eval_select;
+use crate::intrinsics::unchecked_sub;
 use crate::ops;
 use crate::ptr;
 
@@ -371,25 +372,25 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        let this = ops::Range { start: self.start, end: self.end };
+        let this = ops::Range { ..self };
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
-        // so the call to `add` is safe.
-
+        // so the call to `add` is safe and the length calculation cannot overflow.
         unsafe {
             assert_unsafe_precondition!(
                 "slice::get_unchecked requires that the range is within the slice",
                 [T](this: ops::Range<usize>, slice: *const [T]) =>
                 this.end >= this.start && this.end <= slice.len()
             );
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len)
         }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        let this = ops::Range { start: self.start, end: self.end };
+        let this = ops::Range { ..self };
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
             assert_unsafe_precondition!(
@@ -397,7 +398,8 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
                 [T](this: ops::Range<usize>, slice: *mut [T]) =>
                 this.end >= this.start && this.end <= slice.len()
             );
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len)
         }
     }
 

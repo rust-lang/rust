@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
 use std::fmt;
@@ -64,14 +64,14 @@ impl ArmInlineAsmRegClass {
 }
 
 // This uses the same logic as useR7AsFramePointer in LLVM
-fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> bool {
+fn frame_pointer_is_r7(target_features: &FxIndexSet<Symbol>, target: &Target) -> bool {
     target.is_like_osx || (!target.is_like_windows && target_features.contains(&sym::thumb_mode))
 }
 
 fn frame_pointer_r11(
     arch: InlineAsmArch,
     reloc_model: RelocModel,
-    target_features: &FxHashSet<Symbol>,
+    target_features: &FxIndexSet<Symbol>,
     target: &Target,
     is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -87,7 +87,7 @@ fn frame_pointer_r11(
 fn frame_pointer_r7(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    target_features: &FxHashSet<Symbol>,
+    target_features: &FxIndexSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -101,7 +101,7 @@ fn frame_pointer_r7(
 fn not_thumb1(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    target_features: &FxHashSet<Symbol>,
+    target_features: &FxIndexSet<Symbol>,
     _target: &Target,
     is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -118,7 +118,7 @@ fn not_thumb1(
 fn reserved_r9(
     arch: InlineAsmArch,
     reloc_model: RelocModel,
-    target_features: &FxHashSet<Symbol>,
+    target_features: &FxIndexSet<Symbol>,
     target: &Target,
     is_clobber: bool,
 ) -> Result<(), &'static str> {

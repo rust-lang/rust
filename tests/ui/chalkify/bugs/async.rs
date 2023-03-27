@@ -4,7 +4,7 @@
 // compile-flags:-Z trait-solver=chalk
 // error-pattern:internal compiler error
 // failure-status:101
-// normalize-stderr-test "DefId([^)]*)" -> "..."
+// normalize-stderr-test "DefId\([^)]*\)" -> "..."
 // normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""
 // normalize-stderr-test "note:.*unexpectedly panicked.*\n\n" -> ""
 // normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""

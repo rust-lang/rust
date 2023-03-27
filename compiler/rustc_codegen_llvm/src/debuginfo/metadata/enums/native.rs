@@ -438,6 +438,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 1)
 ///         DW_TAG_structure_type            (type of variant 2)
 ///         DW_TAG_structure_type            (type of variant 3)
+/// ```
 struct VariantMemberInfo<'a, 'll> {
     variant_index: VariantIdx,
     variant_name: Cow<'a, str>,

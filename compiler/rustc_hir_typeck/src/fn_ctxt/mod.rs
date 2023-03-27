@@ -18,7 +18,7 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span, DUMMY_SP};
@@ -211,13 +211,13 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn get_type_parameter_bounds(
         &self,
         _: Span,
-        def_id: DefId,
+        def_id: LocalDefId,
         _: Ident,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
+        let item_def_id = tcx.hir().ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.param_def_id_to_index[&def_id];
+        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         ty::GenericPredicates {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(

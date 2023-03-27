@@ -4,7 +4,7 @@ use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::ty::abstract_const::CastKind;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
-use crate::ty::{self, List, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;

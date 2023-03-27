@@ -192,6 +192,7 @@ pub struct BiasedFp {
 }
 
 impl BiasedFp {
+    #[inline]
     pub const fn zero_pow2(e: i32) -> Self {
         Self { f: 0, e }
     }

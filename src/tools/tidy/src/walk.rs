@@ -1,9 +1,8 @@
-use std::fs::File;
-use std::io::Read;
-use walkdir::{DirEntry, WalkDir};
+use ignore::DirEntry;
 
-use std::path::Path;
+use std::{ffi::OsStr, fs::File, io::Read, path::Path};
 
+/// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "tidy-test-file",
@@ -30,40 +29,55 @@ pub fn filter_dirs(path: &Path) -> bool {
         // Filter RLS output directories
         "target/rls",
         "src/bootstrap/target",
+        "vendor",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
 
-pub fn walk_many(
-    paths: &[&Path],
-    skip: &mut dyn FnMut(&Path) -> bool,
-    f: &mut dyn FnMut(&DirEntry, &str),
-) {
-    for path in paths {
-        walk(path, skip, f);
-    }
+/// Filter for only files that end in `.rs`.
+pub fn filter_not_rust(path: &Path) -> bool {
+    path.extension() != Some(OsStr::new("rs")) && !path.is_dir()
 }
 
-pub fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)) {
-    let mut contents = String::new();
-    walk_no_read(path, skip, &mut |entry| {
+pub fn walk(
+    path: &Path,
+    skip: impl Clone + Send + Sync + 'static + Fn(&Path) -> bool,
+    f: &mut dyn FnMut(&DirEntry, &str),
+) {
+    walk_many(&[path], skip, f);
+}
+
+pub fn walk_many(
+    paths: &[&Path],
+    skip: impl Clone + Send + Sync + 'static + Fn(&Path) -> bool,
+    f: &mut dyn FnMut(&DirEntry, &str),
+) {
+    let mut contents = Vec::new();
+    walk_no_read(paths, skip, &mut |entry| {
         contents.clear();
-        if t!(File::open(entry.path()), entry.path()).read_to_string(&mut contents).is_err() {
-            contents.clear();
-        }
-        f(&entry, &contents);
+        let mut file = t!(File::open(entry.path()), entry.path());
+        t!(file.read_to_end(&mut contents), entry.path());
+        let contents_str = match std::str::from_utf8(&contents) {
+            Ok(s) => s,
+            Err(_) => return, // skip this file
+        };
+        f(&entry, &contents_str);
     });
 }
 
 pub(crate) fn walk_no_read(
-    path: &Path,
-    skip: &mut dyn FnMut(&Path) -> bool,
+    paths: &[&Path],
+    skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let walker = WalkDir::new(path).into_iter().filter_entry(|e| !skip(e.path()));
-    for entry in walker {
+    let mut walker = ignore::WalkBuilder::new(paths[0]);
+    for path in &paths[1..] {
+        walker.add(path);
+    }
+    let walker = walker.filter_entry(move |e| !skip(e.path()));
+    for entry in walker.build() {
         if let Ok(entry) = entry {
-            if entry.file_type().is_dir() {
+            if entry.file_type().map_or(true, |kind| kind.is_dir() || kind.is_symlink()) {
                 continue;
             }
             f(&entry);

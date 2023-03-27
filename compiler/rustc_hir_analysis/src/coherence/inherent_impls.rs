@@ -10,7 +10,7 @@
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -24,7 +24,7 @@ pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
     collect.impls_map
 }
 
-pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, (_, simp): (CrateNum, SimplifiedType)) -> &[DefId] {
+pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let crate_map = tcx.crate_inherent_impls(());
     tcx.arena.alloc_from_iter(
         crate_map.incoherent_impls.get(&simp).unwrap_or(&Vec::new()).iter().map(|d| d.to_def_id()),
@@ -32,9 +32,7 @@ pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, (_, simp): (CrateNum, SimplifiedT
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: DefId) -> &[DefId] {
-    let ty_def_id = ty_def_id.expect_local();
-
+pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: LocalDefId) -> &[DefId] {
     let crate_map = tcx.crate_inherent_impls(());
     match crate_map.inherent_impls.get(&ty_def_id) {
         Some(v) => &v[..],
@@ -99,7 +97,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 }
             }
 
-            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) {
+            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) {
                 self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
             } else {
                 bug!("unexpected self type: {:?}", self_ty);
@@ -159,7 +157,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         }
 
-        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsInfer) {
+        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsCandidateKey) {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);

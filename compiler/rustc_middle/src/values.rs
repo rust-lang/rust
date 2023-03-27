@@ -4,7 +4,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QueryInfo;
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
@@ -16,7 +16,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error()) }
+        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error_misc()) }
     }
 }
 
@@ -34,7 +34,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::SymbolName<'_> {
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo<DepKind>]) -> Self {
-        let err = tcx.ty_error();
+        let err = tcx.ty_error_misc();
 
         let arity = if let Some(frame) = stack.get(0)
             && frame.query.dep_kind == DepKind::fn_sig

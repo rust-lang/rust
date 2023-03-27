@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl Trait<'a, 'b>` captures lifetime that does n
   --> $DIR/ordinary-bounds-unsuited.rs:31:33
    |
 LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
-   |                     -- hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
+   |                     --                                       ------------------ opaque type defined here
+   |                     |
+   |                     hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
 ...
 LL |     if condition() { a } else { b }
    |                                 ^

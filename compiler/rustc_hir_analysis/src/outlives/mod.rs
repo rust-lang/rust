@@ -1,6 +1,6 @@
 use hir::Node;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
@@ -17,8 +17,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 
-fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Clause<'_>, Span)] {
-    let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
+fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
+    let id = tcx.hir().local_def_id_to_hir_id(item_def_id);
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
     {
@@ -45,7 +45,8 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Clause<'_
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(());
 
-                let predicates = crate_map.predicates.get(&item_def_id).copied().unwrap_or(&[]);
+                let predicates =
+                    crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
 
                 if tcx.has_attr(item_def_id, sym::rustc_outlives) {
                     let mut pred: Vec<String> = predicates

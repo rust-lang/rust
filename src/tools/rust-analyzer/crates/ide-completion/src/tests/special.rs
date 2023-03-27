@@ -608,6 +608,7 @@ fn f() {
 }
 
 //- /core.rs crate:core
+#![rustc_coherence_is_core]
 #[lang = "u8"]
 impl u8 {
     pub const MAX: Self = 255;

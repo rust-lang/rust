@@ -1,47 +1,20 @@
-error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-62895.rs:4:5
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-62895.rs:6:7
    |
 LL | mod _ {
-   |     ^ expected identifier, found reserved identifier
-
-error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-62895.rs:6:5
-   |
-LL | mod _ {
-   |     ^ expected identifier, found reserved identifier
-
-error: missing `fn` for function definition
-  --> $DIR/issue-62895.rs:7:4
-   |
+   |       ^ unclosed delimiter
 LL | pub    g() -> is
-   |    ^^^^
-   |
-help: add `fn` here to parse `g` as a public function
-   |
-LL | pub fn g() -> is
-   |     ++
-
-error: expected item, found `;`
-  --> $DIR/issue-62895.rs:10:9
-   |
 LL | (), w20);
-   |         ^ help: remove this semicolon
+   |        ^ mismatched closing delimiter
 
-error[E0412]: cannot find type `isizee` in this scope
-  --> $DIR/issue-62895.rs:5:15
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-62895.rs:4:7
    |
-LL | pub fn g() -> isizee {
-   |               ^^^^^^ help: a builtin type with a similar name exists: `isize`
+LL | mod _ {
+   |       ^ unclosed delimiter
+...
+LL | (), w20);
+   |        ^ mismatched closing delimiter
 
-error[E0308]: mismatched types
-  --> $DIR/issue-62895.rs:3:11
-   |
-LL | fn v() -> isize {
-   |    -      ^^^^^ expected `isize`, found `()`
-   |    |
-   |    implicitly returns `()` as its body has no tail or `return` expression
+error: aborting due to 2 previous errors
 
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0308, E0412.
-For more information about an error, try `rustc --explain E0308`.

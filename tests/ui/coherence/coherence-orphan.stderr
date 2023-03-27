@@ -21,6 +21,19 @@ LL | impl !Send for Vec<isize> { }
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 2 previous errors
+warning: cross-crate traits with a default impl, like `Send`, should not be specialized
+  --> $DIR/coherence-orphan.rs:17:1
+   |
+LL | impl !Send for Vec<isize> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
+   = note: `isize` is not a generic parameter
+note: try using the same sequence of generic parameters as the struct definition
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   = note: `#[warn(suspicious_auto_trait_impls)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0117`.

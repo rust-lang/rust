@@ -1,0 +1,18 @@
+error: expected expression, found `;`
+  --> $DIR/issue-109237.rs:2:12
+   |
+LL |     () => {;};
+   |            ^ expected expression
+...
+LL |     let _ = statement!();
+   |             ------------ in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+   = note: this error originates in the macro `statement` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: surround the macro invocation with `{}` to interpret the expansion as a statement
+   |
+LL |     let _ = { statement!(); };
+   |             ~~~~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+

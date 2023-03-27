@@ -12,10 +12,26 @@ LL | #![warn(rust_2018_idioms)]
    = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
 
 warning: `extern crate` is not idiomatic in the new edition
-  --> $DIR/remove-extern-crate.rs:32:5
+  --> $DIR/remove-extern-crate.rs:33:5
    |
 LL |     extern crate core;
-   |     ^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: convert it to a `use`
+   |
+LL |     use core;
+   |     ~~~
 
-warning: 2 warnings emitted
+warning: `extern crate` is not idiomatic in the new edition
+  --> $DIR/remove-extern-crate.rs:43:5
+   |
+LL |     pub extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: convert it to a `use`
+   |
+LL |     pub use core;
+   |         ~~~
+
+warning: 3 warnings emitted
 

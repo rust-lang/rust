@@ -415,7 +415,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     /// ```
     ///
-    /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
+    /// Here we would be invoked with `fr = 'a` and `outlived_fr = 'b`.
     pub(crate) fn report_region_error(
         &mut self,
         fr: RegionVid,
@@ -660,10 +660,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let (_, escapes_from) = self
-            .infcx
-            .tcx
-            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
+        let escapes_from =
+            self.infcx.tcx.def_descr(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
@@ -757,8 +755,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ..
         } = errci;
 
-        let (_, mir_def_name) =
-            self.infcx.tcx.article_and_description(self.mir_def_id().to_def_id());
+        let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
         let mut diag = self.infcx.tcx.sess.create_err(err);
@@ -952,7 +949,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement",
+                    "calling this method introduces the `impl`'s `'static` requirement",
                 );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(

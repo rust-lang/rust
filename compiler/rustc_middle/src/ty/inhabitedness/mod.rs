@@ -105,7 +105,7 @@ impl<'tcx> VariantDef {
 impl<'tcx> Ty<'tcx> {
     pub fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
         match self.kind() {
-            // For now, union`s are always considered inhabited
+            // For now, unions are always considered inhabited
             Adt(adt, _) if adt.is_union() => InhabitedPredicate::True,
             // Non-exhaustive ADTs from other crates are always considered inhabited
             Adt(adt, _) if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() => {

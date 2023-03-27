@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/invalid-const-arg-for-type-param.rs:6:23
    |
 LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
@@ -23,7 +23,7 @@ LL | struct S;
 LL |     S.f::<0>();
    |       ^ method not found in `S`
 
-error[E0107]: this struct takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/invalid-const-arg-for-type-param.rs:12:5
    |
 LL |     S::<0>;

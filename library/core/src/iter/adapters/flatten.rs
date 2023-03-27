@@ -302,6 +302,24 @@ where
 {
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I> Default for Flatten<I>
+where
+    I: Default + Iterator<Item: IntoIterator>,
+{
+    /// Creates a `Flatten` iterator from the default value of `I`.
+    ///
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Flatten;
+    /// let iter: Flatten<slice::Iter<'_, [u8; 4]>> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Flatten::new(Default::default())
+    }
+}
+
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]

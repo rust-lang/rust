@@ -186,7 +186,7 @@ impl<'a> NumericLiteral<'a> {
         // The exponent may have a sign, output it early, otherwise it will be
         // treated as a digit
         if digits.clone().next() == Some('-') {
-            let _ = digits.next();
+            let _: Option<char> = digits.next();
             output.push('-');
         }
 

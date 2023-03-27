@@ -7,7 +7,7 @@
 use std::arch::asm;
 
 #[target_feature(enable = "avx")]
-fn main() {
+fn foo() {
     unsafe {
         asm!(
             "/* {} */",
@@ -15,3 +15,5 @@ fn main() {
         );
     }
 }
+
+fn main() {}

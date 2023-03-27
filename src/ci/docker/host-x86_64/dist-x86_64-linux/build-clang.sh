@@ -4,7 +4,7 @@ set -ex
 
 source shared.sh
 
-LLVM=llvmorg-15.0.0
+LLVM=llvmorg-16.0.0-rc4
 
 mkdir llvm-project
 cd llvm-project

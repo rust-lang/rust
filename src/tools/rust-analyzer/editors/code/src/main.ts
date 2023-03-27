@@ -153,11 +153,13 @@ function createCommands(): Record<string, CommandFactory> {
         memoryUsage: { enabled: commands.memoryUsage },
         shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
+        addProject: { enabled: commands.addProject },
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },
         syntaxTree: { enabled: commands.syntaxTree },
         viewHir: { enabled: commands.viewHir },
+        viewMir: { enabled: commands.viewMir },
         viewFileText: { enabled: commands.viewFileText },
         viewItemTree: { enabled: commands.viewItemTree },
         viewCrateGraph: { enabled: commands.viewCrateGraph },
@@ -187,5 +189,6 @@ function createCommands(): Record<string, CommandFactory> {
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
         triggerParameterHints: { enabled: commands.triggerParameterHints },
+        openLogs: { enabled: commands.openLogs },
     };
 }

@@ -24,7 +24,7 @@ struct ConstMutationChecker<'a, 'tcx> {
 
 impl<'tcx> ConstMutationChecker<'_, 'tcx> {
     fn is_const_item(&self, local: Local) -> Option<DefId> {
-        if let Some(box LocalInfo::ConstRef { def_id }) = self.body.local_decls[local].local_info {
+        if let LocalInfo::ConstRef { def_id } = *self.body.local_decls[local].local_info() {
             Some(def_id)
         } else {
             None
@@ -74,7 +74,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         //
         // `unsafe { *FOO = 0; *BAR.field = 1; }`
         // `unsafe { &mut *FOO }`
-        // `unsafe { (*ARRAY)[0] = val; }
+        // `unsafe { (*ARRAY)[0] = val; }`
         if !place.projection.iter().any(|p| matches!(p, PlaceElem::Deref)) {
             let source_info = self.body.source_info(location);
             let lint_root = self.body.source_scopes[source_info.scope]

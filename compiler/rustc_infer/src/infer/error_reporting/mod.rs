@@ -49,6 +49,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
+use crate::errors;
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
@@ -72,7 +73,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -281,15 +282,13 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
-    opaque_ty: ty::OpaqueTypeKey<'tcx>,
+    opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    let opaque_ty = tcx.mk_opaque(opaque_ty.def_id.to_def_id(), opaque_ty.substs);
-    let mut err = struct_span_err!(
-        tcx.sess,
+    let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
         span,
-        E0700,
-        "hidden type for `{opaque_ty}` captures lifetime that does not appear in bounds",
-    );
+        opaque_ty: tcx.mk_opaque(opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs),
+        opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
+    });
 
     // Explain the region we are capturing.
     match *hidden_region {
@@ -360,10 +359,12 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, substs) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                if matches!(
-                    self.tcx.def_kind(def_id),
-                    DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
-                ) =>
+                if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
+            {
+                (def_id, substs)
+            }
+            ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                if self.tcx.is_impl_trait_in_trait(def_id) =>
             {
                 (def_id, substs)
             }
@@ -614,9 +615,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let report_path_match = |err: &mut Diagnostic, did1: DefId, did2: DefId| {
-            // Only external crates, if either is from a local
-            // module we could have false positives
-            if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
+            // Only report definitions from different crates. If both definitions
+            // are from a local module we could have false positives, e.g.
+            // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
+            if did1.krate != did2.krate {
                 let abs_path =
                     |def_id| AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]);
 
@@ -628,10 +630,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 };
                 if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
-                    err.note(&format!(
-                        "perhaps two different versions of crate `{}` are being used?",
-                        crate_name
-                    ));
+                    let msg = if did1.is_local() || did2.is_local() {
+                        format!(
+                            "the crate `{crate_name}` is compiled multiple times, possibly with different configurations"
+                        )
+                    } else {
+                        format!(
+                            "perhaps two different versions of crate `{crate_name}` are being used?"
+                        )
+                    };
+                    err.note(msg);
                 }
             }
         };
@@ -925,7 +933,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<()> {
         // FIXME/HACK: Go back to `SubstsRef` to use its inherent methods,
         // ideally that shouldn't be necessary.
-        let sub = self.tcx.intern_substs(sub);
+        let sub = self.tcx.mk_substs(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
@@ -1450,8 +1458,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl<'tcx> OpaqueTypesVisitor<'tcx> {
             fn visit_expected_found(
                 tcx: TyCtxt<'tcx>,
-                expected: impl TypeVisitable<'tcx>,
-                found: impl TypeVisitable<'tcx>,
+                expected: impl TypeVisitable<TyCtxt<'tcx>>,
+                found: impl TypeVisitable<TyCtxt<'tcx>>,
                 ignore_span: Span,
             ) -> Self {
                 let mut types_visitor = OpaqueTypesVisitor {
@@ -1501,7 +1509,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
@@ -1568,6 +1576,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
+                    }
+                    ValuePairs::Aliases(infer::ExpectedFound { expected, .. }) => {
+                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                 };
@@ -1690,7 +1701,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 format!("{name} is defined in the current crate")
                             } else {
                                 let crate_name = self.tcx.crate_name(defid.krate);
-                                format!("{name} is defined in crate `{crate_name}")
+                                format!("{name} is defined in crate `{crate_name}`")
                             };
                             diagnostic.span_note(def_span, msg);
                         };
@@ -1755,8 +1766,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 )
                             }
                             (true, ty::Alias(ty::Projection, proj))
-                                if self.tcx.def_kind(proj.def_id)
-                                    == DefKind::ImplTraitPlaceholder =>
+                                if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
                             {
                                 let sm = self.tcx.sess.source_map();
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
@@ -2125,6 +2135,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match values {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            infer::Aliases(exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),
@@ -2206,7 +2217,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".
-    fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>

@@ -4,11 +4,12 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{Descend, Visitable};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{Expr, ExprKind, HirId, ItemId, Local, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind, Ty};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -115,6 +116,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                     .enumerate()
                     .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
                 let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
+                // However, if it arrives in second position, its pattern may cover some cases already covered
+                // by the diverging one.
+                // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
+                if idx == 0 {
+                    return;
+                }
                 let pat_arm = &arms[1 - idx];
                 if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
                     return;
@@ -162,61 +170,102 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
     );
 }
 
-fn expr_diverges(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-    fn is_never(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-        if let Some(ty) = cx.typeck_results().expr_ty_opt(expr) {
-            return ty.is_never();
-        }
-        false
+/// Check whether an expression is divergent. May give false negatives.
+fn expr_diverges(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        res: ControlFlow<(), Descend>,
     }
-    // We can't just call is_never on expr and be done, because the type system
-    // sometimes coerces the ! type to something different before we can get
-    // our hands on it. So instead, we do a manual search. We do fall back to
-    // is_never in some places when there is no better alternative.
-    for_each_expr(expr, |ex| {
-        match ex.kind {
-            ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => ControlFlow::Break(()),
-            ExprKind::Call(call, _) => {
-                if is_never(cx, ex) || is_never(cx, call) {
-                    return ControlFlow::Break(());
+    impl<'tcx> Visitor<'tcx> for V<'_, '_> {
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+            fn is_never(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
+                if let Some(ty) = cx.typeck_results().expr_ty_opt(expr) {
+                    return ty.is_never();
                 }
-                ControlFlow::Continue(Descend::Yes)
-            },
-            ExprKind::MethodCall(..) => {
-                if is_never(cx, ex) {
-                    return ControlFlow::Break(());
-                }
-                ControlFlow::Continue(Descend::Yes)
-            },
-            ExprKind::If(if_expr, if_then, if_else) => {
-                let else_diverges = if_else.map_or(false, |ex| expr_diverges(cx, ex));
-                let diverges = expr_diverges(cx, if_expr) || (else_diverges && expr_diverges(cx, if_then));
-                if diverges {
-                    return ControlFlow::Break(());
-                }
-                ControlFlow::Continue(Descend::No)
-            },
-            ExprKind::Match(match_expr, match_arms, _) => {
-                let diverges = expr_diverges(cx, match_expr)
-                    || match_arms.iter().all(|arm| {
-                        let guard_diverges = arm.guard.as_ref().map_or(false, |g| expr_diverges(cx, g.body()));
-                        guard_diverges || expr_diverges(cx, arm.body)
-                    });
-                if diverges {
-                    return ControlFlow::Break(());
-                }
-                ControlFlow::Continue(Descend::No)
-            },
+                false
+            }
 
-            // Don't continue into loops or labeled blocks, as they are breakable,
-            // and we'd have to start checking labels.
-            ExprKind::Block(_, Some(_)) | ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
+            if self.res.is_break() {
+                return;
+            }
 
-            // Default: descend
-            _ => ControlFlow::Continue(Descend::Yes),
+            // We can't just call is_never on expr and be done, because the type system
+            // sometimes coerces the ! type to something different before we can get
+            // our hands on it. So instead, we do a manual search. We do fall back to
+            // is_never in some places when there is no better alternative.
+            self.res = match e.kind {
+                ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => ControlFlow::Break(()),
+                ExprKind::Call(call, _) => {
+                    if is_never(self.cx, e) || is_never(self.cx, call) {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::Yes)
+                    }
+                },
+                ExprKind::MethodCall(..) => {
+                    if is_never(self.cx, e) {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::Yes)
+                    }
+                },
+                ExprKind::If(if_expr, if_then, if_else) => {
+                    let else_diverges = if_else.map_or(false, |ex| expr_diverges(self.cx, ex));
+                    let diverges =
+                        expr_diverges(self.cx, if_expr) || (else_diverges && expr_diverges(self.cx, if_then));
+                    if diverges {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::No)
+                    }
+                },
+                ExprKind::Match(match_expr, match_arms, _) => {
+                    let diverges = expr_diverges(self.cx, match_expr)
+                        || match_arms.iter().all(|arm| {
+                            let guard_diverges = arm.guard.as_ref().map_or(false, |g| expr_diverges(self.cx, g.body()));
+                            guard_diverges || expr_diverges(self.cx, arm.body)
+                        });
+                    if diverges {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::No)
+                    }
+                },
+
+                // Don't continue into loops or labeled blocks, as they are breakable,
+                // and we'd have to start checking labels.
+                ExprKind::Block(_, Some(_)) | ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
+
+                // Default: descend
+                _ => ControlFlow::Continue(Descend::Yes),
+            };
+            if let ControlFlow::Continue(Descend::Yes) = self.res {
+                walk_expr(self, e);
+            }
         }
-    })
-    .is_some()
+
+        fn visit_local(&mut self, local: &'tcx Local<'_>) {
+            // Don't visit the else block of a let/else statement as it will not make
+            // the statement divergent even though the else block is divergent.
+            if let Some(init) = local.init {
+                self.visit_expr(init);
+            }
+        }
+
+        // Avoid unnecessary `walk_*` calls.
+        fn visit_ty(&mut self, _: &'tcx Ty<'tcx>) {}
+        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) {}
+        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) {}
+        // Avoid monomorphising all `visit_*` functions.
+        fn visit_nested_item(&mut self, _: ItemId) {}
+    }
+
+    let mut v = V {
+        cx,
+        res: ControlFlow::Continue(Descend::Yes),
+    };
+    expr.visit(&mut v);
+    v.res.is_break()
 }
 
 fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: bool) -> bool {

@@ -64,4 +64,4 @@ mod mut_visit {
     mod tests;
 }
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

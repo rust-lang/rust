@@ -54,14 +54,14 @@ error[E0616]: field `x` of struct `S` is private
 LL |     S::default().x;
    |                  ^ private field
 
-error[E0624]: associated function `f` is private
+error[E0624]: method `f` is private
   --> $DIR/test.rs:32:18
    |
 LL |             pub(super) fn f(&self) {}
-   |             ---------------------- private associated function defined here
+   |             ---------------------- private method defined here
 ...
 LL |     S::default().f();
-   |                  ^ private associated function
+   |                  ^ private method
 
 error[E0624]: associated function `g` is private
   --> $DIR/test.rs:33:8
@@ -84,27 +84,27 @@ error[E0616]: field `z` of struct `Universe` is private
 LL |     let _ = u.z;
    |               ^ private field
 
-error[E0624]: associated function `g` is private
+error[E0624]: method `g` is private
   --> $DIR/test.rs:45:7
    |
 LL |     u.g();
-   |       ^ private associated function
+   |       ^ private method
    |
   ::: $DIR/auxiliary/pub_restricted.rs:12:5
    |
 LL |     pub(crate) fn g(&self) {}
-   |     ---------------------- private associated function defined here
+   |     ---------------------- private method defined here
 
-error[E0624]: associated function `h` is private
+error[E0624]: method `h` is private
   --> $DIR/test.rs:46:7
    |
 LL |     u.h();
-   |       ^ private associated function
+   |       ^ private method
    |
   ::: $DIR/auxiliary/pub_restricted.rs:13:5
    |
 LL |     pub(crate) fn h(&self) {}
-   |     ---------------------- private associated function defined here
+   |     ---------------------- private method defined here
 
 error: aborting due to 12 previous errors
 

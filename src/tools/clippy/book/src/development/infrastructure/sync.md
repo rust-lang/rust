@@ -79,8 +79,7 @@ to be run inside the `rust` directory):
    `rustup check`.
 3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
     ```bash
-    # Make sure to change `your-github-name` to your github name in the following command. Also be
-    # sure to either use a net-new branch, e.g. `sync-from-rust`, or delete the branch beforehand
+    # Be sure to either use a net-new branch, e.g. `sync-from-rust`, or delete the branch beforehand
     # because changes cannot be fast forwarded and you have to run this command again.
     git subtree push -P src/tools/clippy clippy-local sync-from-rust
     ```

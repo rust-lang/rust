@@ -79,7 +79,8 @@ pub mod impl_linux {
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "openbsd",
-    target_os = "netbsd"
+    target_os = "netbsd",
+    target_os = "nto",
 ))]
 pub mod impl_bsd {
     use super::UCred;

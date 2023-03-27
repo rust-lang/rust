@@ -2,21 +2,23 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
+use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,
 };
-use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
@@ -86,7 +88,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 tcx.sess,
                 span,
                 E0204,
-                "the trait `Copy` may not be implemented for this type"
+                "the trait `Copy` cannot be implemented for this type"
             );
 
             // We'll try to suggest constraining type parameters to fulfill the requirements of
@@ -94,7 +96,14 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             let mut errors: BTreeMap<_, Vec<_>> = Default::default();
             let mut bounds = vec![];
 
+            let mut seen_tys = FxHashSet::default();
+
             for (field, ty, reason) in fields {
+                // Only report an error once per type.
+                if !seen_tys.insert(ty) {
+                    continue;
+                }
+
                 let field_span = tcx.def_span(field.did);
                 err.span_label(field_span, "this field does not implement `Copy`");
 
@@ -227,7 +236,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     use rustc_type_ir::sty::TyKind::*;
     match (source.kind(), target.kind()) {
         (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(r_a, *r_b).is_ok() && mutbl_a == *mutbl_b => {}
+            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
+                && mutbl_a == *mutbl_b => {}
         (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
         (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
             if def_a.is_struct() && def_b.is_struct() =>
@@ -270,7 +280,9 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         }
                     }
 
-                    if let Ok(ok) = infcx.at(&cause, param_env).eq(ty_a, ty_b) {
+                    if let Ok(ok) =
+                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
+                    {
                         if ok.obligations.is_empty() {
                             create_err(
                                 "the trait `DispatchFromDyn` may only be implemented \
@@ -323,21 +335,21 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     ))
                     .emit();
             } else {
-                let errors = traits::fully_solve_obligations(
-                    &infcx,
-                    coerced_fields.into_iter().map(|field| {
-                        predicate_for_trait_def(
-                            tcx,
-                            param_env,
-                            cause.clone(),
+                let ocx = ObligationCtxt::new(&infcx);
+                for field in coerced_fields {
+                    ocx.register_obligation(Obligation::new(
+                        tcx,
+                        cause.clone(),
+                        param_env,
+                        ty::Binder::dummy(tcx.mk_trait_ref(
                             dispatch_from_dyn_trait,
-                            0,
                             [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
-                        )
-                    }),
-                );
+                        )),
+                    ));
+                }
+                let errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                    infcx.err_ctxt().report_fulfillment_errors(&errors);
                 }
 
                 // Finally, resolve all regions.
@@ -357,11 +369,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
-
-    // this provider should only get invoked for local def-ids
-    let impl_did = impl_did.expect_local();
     let span = tcx.def_span(impl_did);
 
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
@@ -437,7 +446,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
 
             // Here we are considering a case of converting
-            // `S<P0...Pn>` to S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+            // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
             // which acts like a pointer to `U`, but carries along some extra data of type `T`:
             //
             //     struct Foo<T, U> {
@@ -496,7 +505,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     // we may have to evaluate constraint
                     // expressions in the course of execution.)
                     // See e.g., #41936.
-                    if let Ok(ok) = infcx.at(&cause, param_env).eq(a, b) {
+                    if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, a, b) {
                         if ok.obligations.is_empty() {
                             return None;
                         }
@@ -572,12 +581,14 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     };
 
     // Register an obligation for `A: Trait<B>`.
+    let ocx = ObligationCtxt::new(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
-    let predicate =
-        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
-    let errors = traits::fully_solve_obligation(&infcx, predicate);
+    let obligation =
+        Obligation::new(tcx, cause, param_env, tcx.mk_trait_ref(trait_def_id, [source, target]));
+    ocx.register_obligation(obligation);
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        infcx.err_ctxt().report_fulfillment_errors(&errors);
     }
 
     // Finally, resolve all regions.

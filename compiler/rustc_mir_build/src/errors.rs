@@ -888,3 +888,22 @@ pub enum MiscPatternSuggestion {
         start_span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(mir_build_rustc_box_attribute_error)]
+pub struct RustcBoxAttributeError {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub reason: RustcBoxAttrReason,
+}
+
+#[derive(Subdiagnostic)]
+pub enum RustcBoxAttrReason {
+    #[note(mir_build_attributes)]
+    Attributes,
+    #[note(mir_build_not_box)]
+    NotBoxNew,
+    #[note(mir_build_missing_box)]
+    MissingBox,
+}

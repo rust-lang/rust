@@ -944,65 +944,72 @@ impl<T, A: Allocator> VecDeque<T, A> {
             return;
         }
 
-        if target_cap < self.capacity() {
-            // There are three cases of interest:
-            //   All elements are out of desired bounds
-            //   Elements are contiguous, and head is out of desired bounds
-            //   Elements are discontiguous, and tail is out of desired bounds
-            //
-            // At all other times, element positions are unaffected.
-            //
-            // Indicates that elements at the head should be moved.
+        // There are three cases of interest:
+        //   All elements are out of desired bounds
+        //   Elements are contiguous, and tail is out of desired bounds
+        //   Elements are discontiguous
+        //
+        // At all other times, element positions are unaffected.
 
-            let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
-            // Move elements from out of desired bounds (positions after target_cap)
-            if self.len == 0 {
-                self.head = 0;
-            } else if self.head >= target_cap && tail_outside {
-                //  H := head
-                //  L := last element
-                //                    H           L
-                //   [. . . . . . . . o o o o o o o . ]
-                //    H           L
-                //   [o o o o o o o . ]
-                unsafe {
-                    // nonoverlapping because self.head >= target_cap >= self.len
-                    self.copy_nonoverlapping(self.head, 0, self.len);
-                }
-                self.head = 0;
-            } else if self.head < target_cap && tail_outside {
-                //  H := head
-                //  L := last element
-                //          H           L
-                //   [. . . o o o o o o o . . . . . . ]
-                //      L   H
-                //   [o o . o o o o o ]
-                let len = self.head + self.len - target_cap;
-                unsafe {
-                    self.copy_nonoverlapping(target_cap, 0, len);
-                }
-            } else if self.head >= target_cap {
-                //  H := head
-                //  L := last element
-                //            L                   H
-                //   [o o o o o . . . . . . . . . o o ]
-                //            L   H
-                //   [o o o o o . o o ]
-                let len = self.capacity() - self.head;
-                let new_head = target_cap - len;
-                unsafe {
-                    // can't use copy_nonoverlapping here for the same reason
-                    // as in `handle_capacity_increase()`
-                    self.copy(self.head, new_head, len);
-                }
-                self.head = new_head;
+        // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing can
+        // overflow.
+        let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
+
+        if self.len == 0 {
+            self.head = 0;
+        } else if self.head >= target_cap && tail_outside {
+            // Head and tail are both out of bounds, so copy all of them to the front.
+            //
+            //  H := head
+            //  L := last element
+            //                    H           L
+            //   [. . . . . . . . o o o o o o o . ]
+            //    H           L
+            //   [o o o o o o o . ]
+            unsafe {
+                // nonoverlapping because `self.head >= target_cap >= self.len`.
+                self.copy_nonoverlapping(self.head, 0, self.len);
             }
-
-            self.buf.shrink_to_fit(target_cap);
-
-            debug_assert!(self.head < self.capacity() || self.capacity() == 0);
-            debug_assert!(self.len <= self.capacity());
+            self.head = 0;
+        } else if self.head < target_cap && tail_outside {
+            // Head is in bounds, tail is out of bounds.
+            // Copy the overflowing part to the beginning of the
+            // buffer. This won't overlap because `target_cap >= self.len`.
+            //
+            //  H := head
+            //  L := last element
+            //          H           L
+            //   [. . . o o o o o o o . . . . . . ]
+            //      L   H
+            //   [o o . o o o o o ]
+            let len = self.head + self.len - target_cap;
+            unsafe {
+                self.copy_nonoverlapping(target_cap, 0, len);
+            }
+        } else if !self.is_contiguous() {
+            // The head slice is at least partially out of bounds, tail is in bounds.
+            // Copy the head backwards so it lines up with the target capacity.
+            // This won't overlap because `target_cap >= self.len`.
+            //
+            //  H := head
+            //  L := last element
+            //            L                   H
+            //   [o o o o o . . . . . . . . . o o ]
+            //            L   H
+            //   [o o o o o . o o ]
+            let head_len = self.capacity() - self.head;
+            let new_head = target_cap - head_len;
+            unsafe {
+                // can't use `copy_nonoverlapping()` here because the new and old
+                // regions for the head might overlap.
+                self.copy(self.head, new_head, head_len);
+            }
+            self.head = new_head;
         }
+        self.buf.shrink_to_fit(target_cap);
+
+        debug_assert!(self.head < self.capacity() || self.capacity() == 0);
+        debug_assert!(self.len <= self.capacity());
     }
 
     /// Shortens the deque, keeping the first `len` elements and dropping
@@ -1149,7 +1156,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
-        let (a_range, b_range) = self.slice_ranges(..);
+        let (a_range, b_range) = self.slice_ranges(.., self.len);
         // SAFETY: `slice_ranges` always returns valid ranges into
         // the physical buffer.
         unsafe { (&*self.buffer_range(a_range), &*self.buffer_range(b_range)) }
@@ -1183,7 +1190,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
-        let (a_range, b_range) = self.slice_ranges(..);
+        let (a_range, b_range) = self.slice_ranges(.., self.len);
         // SAFETY: `slice_ranges` always returns valid ranges into
         // the physical buffer.
         unsafe { (&mut *self.buffer_range(a_range), &mut *self.buffer_range(b_range)) }
@@ -1225,19 +1232,28 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Given a range into the logical buffer of the deque, this function
     /// return two ranges into the physical buffer that correspond to
-    /// the given range.
-    fn slice_ranges<R>(&self, range: R) -> (Range<usize>, Range<usize>)
+    /// the given range. The `len` parameter should usually just be `self.len`;
+    /// the reason it's passed explicitly is that if the deque is wrapped in
+    /// a `Drain`, then `self.len` is not actually the length of the deque.
+    ///
+    /// # Safety
+    ///
+    /// This function is always safe to call. For the resulting ranges to be valid
+    /// ranges into the physical buffer, the caller must ensure that the result of
+    /// calling `slice::range(range, ..len)` represents a valid range into the
+    /// logical buffer, and that all elements in that range are initialized.
+    fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
     where
         R: RangeBounds<usize>,
     {
-        let Range { start, end } = slice::range(range, ..self.len);
+        let Range { start, end } = slice::range(range, ..len);
         let len = end - start;
 
         if len == 0 {
             (0..0, 0..0)
         } else {
-            // `slice::range` guarantees that `start <= end <= self.len`.
-            // because `len != 0`, we know that `start < end`, so `start < self.len`
+            // `slice::range` guarantees that `start <= end <= len`.
+            // because `len != 0`, we know that `start < end`, so `start < len`
             // and the indexing is valid.
             let wrapped_start = self.to_physical_idx(start);
 
@@ -1283,7 +1299,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let (a_range, b_range) = self.slice_ranges(range);
+        let (a_range, b_range) = self.slice_ranges(range, self.len);
         // SAFETY: The ranges returned by `slice_ranges`
         // are valid ranges into the physical buffer, so
         // it's ok to pass them to `buffer_range` and
@@ -1323,7 +1339,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let (a_range, b_range) = self.slice_ranges(range);
+        let (a_range, b_range) = self.slice_ranges(range, self.len);
         // SAFETY: The ranges returned by `slice_ranges`
         // are valid ranges into the physical buffer, so
         // it's ok to pass them to `buffer_range` and
@@ -1917,7 +1933,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
         if T::IS_ZST {
-            self.len += other.len;
+            self.len = self.len.checked_add(other.len).expect("capacity overflow");
             other.len = 0;
             other.head = 0;
             return;

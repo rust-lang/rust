@@ -114,7 +114,7 @@ impl EnumSizeOpt {
             tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
             Mutability::Not,
         );
-        let alloc = tcx.create_memory_alloc(tcx.intern_const_alloc(alloc));
+        let alloc = tcx.create_memory_alloc(tcx.mk_const_alloc(alloc));
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -158,10 +158,12 @@ impl EnumSizeOpt {
                             tmp_ty,
                         ),
                     };
-                    let rval = Rvalue::Use(Operand::Constant(box (constant_vals)));
+                    let rval = Rvalue::Use(Operand::Constant(Box::new(constant_vals)));
 
-                    let const_assign =
-                        Statement { source_info, kind: StatementKind::Assign(box (place, rval)) };
+                    let const_assign = Statement {
+                        source_info,
+                        kind: StatementKind::Assign(Box::new((place, rval))),
+                    };
 
                     let discr_place = Place::from(
                         local_decls
@@ -170,7 +172,10 @@ impl EnumSizeOpt {
 
                     let store_discr = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(*rhs))),
+                        kind: StatementKind::Assign(Box::new((
+                            discr_place,
+                            Rvalue::Discriminant(*rhs),
+                        ))),
                     };
 
                     let discr_cast_place =
@@ -178,14 +183,14 @@ impl EnumSizeOpt {
 
                     let cast_discr = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             discr_cast_place,
                             Rvalue::Cast(
                                 CastKind::IntToInt,
                                 Operand::Copy(discr_place),
                                 tcx.types.usize,
                             ),
-                        )),
+                        ))),
                     };
 
                     let size_place =
@@ -193,15 +198,14 @@ impl EnumSizeOpt {
 
                     let store_size = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             size_place,
                             Rvalue::Use(Operand::Copy(Place {
                                 local: size_array_local,
-                                projection: tcx.intern_place_elems(&[PlaceElem::Index(
-                                    discr_cast_place.local,
-                                )]),
+                                projection: tcx
+                                    .mk_place_elems(&[PlaceElem::Index(discr_cast_place.local)]),
                             })),
-                        )),
+                        ))),
                     };
 
                     let dst =
@@ -209,10 +213,10 @@ impl EnumSizeOpt {
 
                     let dst_ptr = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             dst,
                             Rvalue::AddressOf(Mutability::Mut, *lhs),
-                        )),
+                        ))),
                     };
 
                     let dst_cast_ty = tcx.mk_mut_ptr(tcx.types.u8);
@@ -221,10 +225,10 @@ impl EnumSizeOpt {
 
                     let dst_cast = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             dst_cast_place,
                             Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(dst), dst_cast_ty),
-                        )),
+                        ))),
                     };
 
                     let src =
@@ -232,10 +236,10 @@ impl EnumSizeOpt {
 
                     let src_ptr = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             src,
                             Rvalue::AddressOf(Mutability::Not, *rhs),
-                        )),
+                        ))),
                     };
 
                     let src_cast_ty = tcx.mk_imm_ptr(tcx.types.u8);
@@ -244,24 +248,24 @@ impl EnumSizeOpt {
 
                     let src_cast = Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             src_cast_place,
                             Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(src), src_cast_ty),
-                        )),
+                        ))),
                     };
 
                     let deinit_old =
-                        Statement { source_info, kind: StatementKind::Deinit(box dst) };
+                        Statement { source_info, kind: StatementKind::Deinit(Box::new(dst)) };
 
                     let copy_bytes = Statement {
                         source_info,
-                        kind: StatementKind::Intrinsic(
-                            box NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                        kind: StatementKind::Intrinsic(Box::new(
+                            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                                 src: Operand::Copy(src_cast_place),
                                 dst: Operand::Copy(dst_cast_place),
                                 count: Operand::Copy(size_place),
                             }),
-                        ),
+                        )),
                     };
 
                     let store_dead = Statement {

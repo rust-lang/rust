@@ -393,6 +393,20 @@ macro_rules! iterator {
                 }
             }
         }
+
+        #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+        impl<T> Default for $name<'_, T> {
+            /// Creates an empty slice iterator.
+            ///
+            /// ```
+            #[doc = concat!("# use core::slice::", stringify!($name), ";")]
+            #[doc = concat!("let iter: ", stringify!($name<'_, u8>), " = Default::default();")]
+            /// assert_eq!(iter.len(), 0);
+            /// ```
+            fn default() -> Self {
+                (& $( $mut_ )? []).into_iter()
+            }
+        }
     }
 }
 

@@ -636,9 +636,8 @@ fn foo() {
     if {}
 }
 "#,
-            // the {} gets parsed as the condition, I think?
             expect![[r#"
-fn foo () {if {} {}}
+fn foo () {if __ra_fixup {} {}}
 "#]],
         )
     }

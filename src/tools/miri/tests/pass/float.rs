@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes)]
+#![feature(round_ties_even)]
 #![allow(arithmetic_overflow)]
 use std::fmt::Debug;
 use std::hint::black_box;
@@ -9,6 +10,7 @@ fn main() {
     more_casts();
     ops();
     nan_casts();
+    rounding();
 }
 
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
@@ -552,4 +554,32 @@ fn nan_casts() {
 
     assert!(nan1_32.is_nan());
     assert!(nan2_32.is_nan());
+}
+
+fn rounding() {
+    // Test cases taken from the library's tests for this feature
+    // f32
+    assert_eq(2.5f32.round_ties_even(), 2.0f32);
+    assert_eq(1.0f32.round_ties_even(), 1.0f32);
+    assert_eq(1.3f32.round_ties_even(), 1.0f32);
+    assert_eq(1.5f32.round_ties_even(), 2.0f32);
+    assert_eq(1.7f32.round_ties_even(), 2.0f32);
+    assert_eq(0.0f32.round_ties_even(), 0.0f32);
+    assert_eq((-0.0f32).round_ties_even(), -0.0f32);
+    assert_eq((-1.0f32).round_ties_even(), -1.0f32);
+    assert_eq((-1.3f32).round_ties_even(), -1.0f32);
+    assert_eq((-1.5f32).round_ties_even(), -2.0f32);
+    assert_eq((-1.7f32).round_ties_even(), -2.0f32);
+    // f64
+    assert_eq(2.5f64.round_ties_even(), 2.0f64);
+    assert_eq(1.0f64.round_ties_even(), 1.0f64);
+    assert_eq(1.3f64.round_ties_even(), 1.0f64);
+    assert_eq(1.5f64.round_ties_even(), 2.0f64);
+    assert_eq(1.7f64.round_ties_even(), 2.0f64);
+    assert_eq(0.0f64.round_ties_even(), 0.0f64);
+    assert_eq((-0.0f64).round_ties_even(), -0.0f64);
+    assert_eq((-1.0f64).round_ties_even(), -1.0f64);
+    assert_eq((-1.3f64).round_ties_even(), -1.0f64);
+    assert_eq((-1.5f64).round_ties_even(), -2.0f64);
+    assert_eq((-1.7f64).round_ties_even(), -2.0f64);
 }

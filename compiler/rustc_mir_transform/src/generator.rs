@@ -70,7 +70,7 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -126,7 +126,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Deref]),
+                    projection: self.tcx().mk_place_elems(&[ProjectionElem::Deref]),
                 },
                 self.tcx,
             );
@@ -162,10 +162,9 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
-                        Field::new(0),
-                        self.ref_gen_ty,
-                    )]),
+                    projection: self
+                        .tcx()
+                        .mk_place_elems(&[ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
                 },
                 self.tcx,
             );
@@ -187,7 +186,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     let mut new_projection = new_base.projection.to_vec();
     new_projection.append(&mut place.projection.to_vec());
 
-    place.projection = tcx.intern_place_elems(&new_projection);
+    place.projection = tcx.mk_place_elems(&new_projection);
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
@@ -300,7 +299,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(Field::new(idx), ty));
 
-        Place { local: base.local, projection: self.tcx.intern_place_elems(&projection) }
+        Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
 
     // Create a statement which changes the discriminant
@@ -427,7 +426,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
+    let substs = tcx.mk_substs(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
 
     // Replace the by ref generator argument
@@ -925,13 +924,19 @@ fn compute_layout<'tcx>(
         debug!(?decl);
 
         let ignore_for_traits = if tcx.sess.opts.unstable_opts.drop_tracking_mir {
+            // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+            // the information. This is alright, since `ignore_for_traits` is only relevant when
+            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+            // default.
             match decl.local_info {
                 // Do not include raw pointers created from accessing `static` items, as those could
                 // well be re-created by another access to the same static.
-                Some(box LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
+                ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
+                    !is_thread_local
+                }
                 // Fake borrows are only read by fake reads, so do not have any reality in
                 // post-analysis MIR.
-                Some(box LocalInfo::FakeBorrow) => true,
+                ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
                 _ => false,
             }
         } else {
@@ -1200,7 +1205,6 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
             // These may unwind.
             TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
@@ -1382,10 +1386,9 @@ fn create_cases<'tcx>(
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn mir_generator_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> GeneratorLayout<'tcx> {
     assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
-    let def_id = def_id.expect_local();
 
     let (body, _) = tcx.mir_promoted(ty::WithOptConstParam::unknown(def_id));
     let body = body.borrow();
@@ -1450,13 +1453,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
             let poll_adt_ref = tcx.adt_def(poll_did);
-            let poll_substs = tcx.intern_substs(&[body.return_ty().into()]);
+            let poll_substs = tcx.mk_substs(&[body.return_ty().into()]);
             (poll_adt_ref, poll_substs)
         } else {
             // Compute GeneratorState<yield_ty, return_ty>
             let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
             let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
+            let state_substs = tcx.mk_substs(&[yield_ty.into(), body.return_ty().into()]);
             (state_adt_ref, state_substs)
         };
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
@@ -1649,6 +1652,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
@@ -1692,7 +1696,6 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
@@ -1873,12 +1876,14 @@ fn check_must_not_suspend_def(
     data: SuspendCheckData<'_>,
 ) -> bool {
     if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let msg = format!(
-            "{}`{}`{} held across a suspend point, but should not be",
-            data.descr_pre,
-            tcx.def_path_str(def_id),
-            data.descr_post,
-        );
+        let msg = rustc_errors::DelayDm(|| {
+            format!(
+                "{}`{}`{} held across a suspend point, but should not be",
+                data.descr_pre,
+                tcx.def_path_str(def_id),
+                data.descr_post,
+            )
+        });
         tcx.struct_span_lint_hir(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,

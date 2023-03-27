@@ -27,7 +27,7 @@ LL |         1.query::<dyn ToString>("")
    |
    = note: expected trait object `dyn ToString`
                  found reference `&'static str`
-note: associated function defined here
+note: method defined here
   --> $DIR/issue-61525.rs:2:8
    |
 LL |     fn query<Q>(self, q: Q);

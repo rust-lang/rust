@@ -1356,6 +1356,38 @@ impl Foo {
     }
 
     #[test]
+    fn test_trait_alias() {
+        check(
+            r#"
+trait Foo {}
+trait Bar$0 = Foo where Self: ;
+fn foo<T: Bar>(_: impl Bar, _: &dyn Bar) {}
+"#,
+            expect![[r#"
+                Bar TraitAlias FileId(0) 13..42 19..22
+
+                FileId(0) 53..56
+                FileId(0) 66..69
+                FileId(0) 79..82
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_trait_alias_self() {
+        check(
+            r#"
+trait Foo = where Self$0: ;
+"#,
+            expect![[r#"
+                Self TypeParam FileId(0) 6..9 6..9
+
+                FileId(0) 18..22
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_attr_differs_from_fn_with_same_name() {
         check(
             r#"

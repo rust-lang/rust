@@ -520,14 +520,9 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    tcx.intern_substs(&[]),
-                )
-                .unwrap()
-                .unwrap(),
+                ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, ty::List::empty())
+                    .unwrap()
+                    .unwrap(),
             ),
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {
@@ -740,8 +735,12 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.copysign.f32", fn(t_f32, t_f32) -> t_f32);
         ifn!("llvm.copysign.f64", fn(t_f64, t_f64) -> t_f64);
+
         ifn!("llvm.round.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.round.f64", fn(t_f64) -> t_f64);
+
+        ifn!("llvm.roundeven.f32", fn(t_f32) -> t_f32);
+        ifn!("llvm.roundeven.f64", fn(t_f64) -> t_f64);
 
         ifn!("llvm.rint.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.rint.f64", fn(t_f64) -> t_f64);

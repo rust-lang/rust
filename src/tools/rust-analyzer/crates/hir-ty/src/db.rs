@@ -16,10 +16,12 @@ use smallvec::SmallVec;
 
 use crate::{
     chalk_db,
-    consteval::{ComputedExpr, ConstEvalError},
+    consteval::ConstEvalError,
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
-    Binders, CallableDefId, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner, PolyFnSig,
-    QuantifiedWhereClause, ReturnTypeImplTraits, Substitution, TraitRef, Ty, TyDefId, ValueTyDefId,
+    mir::{BorrowckResult, MirBody, MirLowerError},
+    Binders, CallableDefId, Const, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner,
+    PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, Substitution, TraitRef, Ty, TyDefId,
+    ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -31,6 +33,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::infer::infer_query)]
     fn infer_query(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
+
+    #[salsa::invoke(crate::mir::mir_body_query)]
+    #[salsa::cycle(crate::mir::mir_body_recover)]
+    fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
+
+    #[salsa::invoke(crate::mir::borrowck_query)]
+    fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<BorrowckResult>, MirLowerError>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
@@ -46,13 +55,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::const_param_ty_query)]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
-    #[salsa::invoke(crate::consteval::const_eval_variant_query)]
+    #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
-    fn const_eval(&self, def: ConstId) -> Result<ComputedExpr, ConstEvalError>;
+    fn const_eval(&self, def: ConstId) -> Result<Const, ConstEvalError>;
 
-    #[salsa::invoke(crate::consteval::const_eval_query_variant)]
-    #[salsa::cycle(crate::consteval::const_eval_variant_recover)]
-    fn const_eval_variant(&self, def: EnumVariantId) -> Result<ComputedExpr, ConstEvalError>;
+    #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
+    #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
+    fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;

@@ -10,6 +10,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
+use rustc_infer::infer::DefineOpaqueTypes;
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
@@ -21,7 +22,7 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
@@ -99,10 +100,10 @@ pub fn translate_substs<'tcx>(
             }
 
             fulfill_implication(infcx, param_env, source_trait_ref, target_impl).unwrap_or_else(
-                |_| {
+                |()| {
                     bug!(
-                        "When translating substitutions for specialization, the expected \
-                         specialization failed to hold"
+                        "When translating substitutions from {source_impl:?} to {target_impl:?}, \
+                        the expected specialization failed to hold"
                     )
                 },
             )
@@ -193,7 +194,7 @@ fn fulfill_implication<'tcx>(
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
+        infcx.at(&ObligationCause::dummy(), param_env, ).eq(DefineOpaqueTypes::No,source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",
@@ -349,6 +350,10 @@ fn report_conflicting_impls<'tcx>(
         impl_span: Span,
         err: &mut Diagnostic,
     ) {
+        if (overlap.trait_ref, overlap.self_ty).references_error() {
+            err.downgrade_to_delayed_bug();
+        }
+
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(span, "first implementation here");

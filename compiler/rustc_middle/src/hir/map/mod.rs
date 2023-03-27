@@ -1,12 +1,13 @@
 use crate::hir::{ModuleItems, Owner};
-use crate::ty::{DefIdTree, TyCtxt};
+use crate::query::LocalCrate;
+use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
@@ -187,7 +188,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(ref opaque) => {
-                    if opaque.in_trait {
+                    if opaque.in_trait && !self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
                         DefKind::ImplTraitPlaceholder
                     } else {
                         DefKind::OpaqueTy
@@ -316,7 +317,7 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     #[inline]
     pub fn find_by_def_id(self, id: LocalDefId) -> Option<Node<'hir>> {
-        self.find(self.local_def_id_to_hir_id(id))
+        self.find(self.tcx.opt_local_def_id_to_hir_id(id)?)
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
@@ -333,7 +334,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local().and_then(|id| self.find(self.local_def_id_to_hir_id(id)))
+        id.as_local().and_then(|id| self.find(self.tcx.opt_local_def_id_to_hir_id(id)?))
     }
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
@@ -903,6 +904,11 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
+    pub fn ident(self, id: HirId) -> Ident {
+        self.opt_ident(id).unwrap()
+    }
+
+    #[inline]
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
         self.opt_ident(id).map(|ident| ident.name)
     }
@@ -1126,10 +1132,9 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    debug_assert_eq!(crate_num, LOCAL_CRATE);
+pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.hir_hash;
+    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
 
     let upstream_crates = upstream_crates(tcx);
 

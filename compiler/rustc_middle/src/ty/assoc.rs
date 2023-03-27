@@ -1,6 +1,6 @@
 pub use self::AssocItemContainer::*;
 
-use crate::ty::{self, DefIdTree};
+use crate::ty;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
@@ -30,6 +30,11 @@ pub struct AssocItem {
     /// Whether this is a method with an explicit self
     /// as its first parameter, allowing method calls.
     pub fn_has_self_parameter: bool,
+
+    /// `Some` if the associated item (an associated type) comes from the
+    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
+    /// provides additional information about its source.
+    pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
 }
 
 impl AssocItem {

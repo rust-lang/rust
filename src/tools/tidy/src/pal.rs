@@ -59,7 +59,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
-    "library/std/src/panic.rs",   // fuchsia-specific panic backtrace handling
     "library/std/src/personality.rs",
     "library/std/src/personality/",
 ];
@@ -68,7 +67,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    walk(path, &mut filter_dirs, &mut |entry, contents| {
+    walk(path, filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {
@@ -128,6 +127,7 @@ fn check_cfgs(
             || cfg.contains("target_env")
             || cfg.contains("target_abi")
             || cfg.contains("target_vendor")
+            || cfg.contains("target_family")
             || cfg.contains("unix")
             || cfg.contains("windows");
 

@@ -4,6 +4,7 @@
 #![allow(
     clippy::disallowed_names,
     clippy::default_trait_access,
+    clippy::let_underscore_untyped,
     clippy::missing_docs_in_private_items,
     clippy::missing_safety_doc,
     clippy::non_ascii_literal,

@@ -125,16 +125,13 @@ impl<'a> Parser<'a> {
             return Ok(Some(item.into_inner()));
         };
 
-        let mut unclosed_delims = vec![];
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
                 let item =
                     this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                unclosed_delims.append(&mut this.unclosed_delims);
                 Ok((item?, TrailingToken::None))
             })?;
 
-        self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
     }
 
@@ -1184,7 +1181,7 @@ impl<'a> Parser<'a> {
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
         let impl_span = self.token.span;
-        let mut err = self.expected_ident_found();
+        let mut err = self.expected_ident_found_err();
 
         // Only try to recover if this is implementing a trait for a type
         let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
@@ -1331,7 +1328,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let disr_expr =
-                    if this.eat(&token::Eq) { Some(this.parse_anon_const_expr()?) } else { None };
+                    if this.eat(&token::Eq) { Some(this.parse_expr_anon_const()?) } else { None };
 
                 let vr = ast::Variant {
                     ident,
@@ -1722,7 +1719,7 @@ impl<'a> Parser<'a> {
         }
         if self.token.kind == token::Eq {
             self.bump();
-            let const_expr = self.parse_anon_const_expr()?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.struct_span_err(sp, "default values on `struct` fields aren't supported")
                 .span_suggestion(
@@ -1747,7 +1744,7 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err()?;
+        let (ident, is_raw) = self.ident_or_err(true)?;
         if !is_raw && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
@@ -1779,7 +1776,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
+                        self.expected_ident_found_err()
                     }
                 }
             } else if self.eat_keyword(kw::Struct) {
@@ -1795,11 +1792,11 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
+                        self.expected_ident_found_err()
                     }
                 }
             } else {
-                let mut err = self.expected_ident_found();
+                let mut err = self.expected_ident_found_err();
                 if self.eat_keyword_noexpect(kw::Let)
                     && let removal_span = self.prev_token.span.until(self.token.span)
                     && let Ok(ident) = self.parse_ident_common(false)
@@ -1960,21 +1957,12 @@ impl<'a> Parser<'a> {
         // FIXME: This will make us not emit the help even for declarative
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
-            if self.unclosed_delims.is_empty() {
-                let DelimSpan { open, close } = args.dspan;
-                err.multipart_suggestion(
-                    "change the delimiters to curly braces",
-                    vec![(open, "{".to_string()), (close, '}'.to_string())],
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.span_suggestion(
-                    span,
-                    "change the delimiters to curly braces",
-                    " { /* items */ }",
-                    Applicability::HasPlaceholders,
-                );
-            }
+            let DelimSpan { open, close } = args.dspan;
+            err.multipart_suggestion(
+                "change the delimiters to curly braces",
+                vec![(open, "{".to_string()), (close, '}'.to_string())],
+                Applicability::MaybeIncorrect,
+            );
             err.span_suggestion(
                 span.shrink_to_hi(),
                 "add a semicolon",

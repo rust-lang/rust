@@ -53,7 +53,7 @@ impl SymbolNamesTest<'_> {
         // The formatting of `tag({})` is chosen so that tests can elect
         // to test the entirety of the string, if they choose, or else just
         // some subset.
-        for attr in tcx.get_attrs(def_id.to_def_id(), SYMBOL_NAME) {
+        for attr in tcx.get_attrs(def_id, SYMBOL_NAME) {
             let def_id = def_id.to_def_id();
             let instance = Instance::new(
                 def_id,
@@ -79,7 +79,7 @@ impl SymbolNamesTest<'_> {
             }
         }
 
-        for attr in tcx.get_attrs(def_id.to_def_id(), DEF_PATH) {
+        for attr in tcx.get_attrs(def_id, DEF_PATH) {
             tcx.sess.emit_err(TestOutput {
                 span: attr.span,
                 kind: Kind::DefPath,

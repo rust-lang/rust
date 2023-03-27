@@ -6,8 +6,8 @@ use crate::diagnostics::error::{
 };
 use crate::diagnostics::utils::{
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
-    should_generate_set_arg, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy, FieldMap,
-    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_set_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo,
+    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -414,12 +414,15 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
             }
             SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
-                if type_matches_path(info.ty.inner_type(), &["rustc_span", "Span"]) {
+                let inner = info.ty.inner_type();
+                if type_matches_path(inner, &["rustc_span", "Span"]) {
                     Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
-                } else if type_is_unit(info.ty.inner_type()) {
+                } else if type_is_unit(inner)
+                    || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner))
+                {
                     Ok(self.add_subdiagnostic(&fn_ident, slug))
                 } else {
-                    report_type_error(attr, "`Span` or `()`")?
+                    report_type_error(attr, "`Span`, `bool` or `()`")?
                 }
             }
             SubdiagnosticKind::Suggestion {

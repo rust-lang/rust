@@ -1,7 +1,7 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use rustc_ast as ast;
-use rustc_ast::{walk_list, EnumDef, VariantData};
+use rustc_ast::{attr, walk_list, EnumDef, VariantData};
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
@@ -106,7 +106,7 @@ fn extract_default_variant<'a>(
     let default_variants: SmallVec<[_; 1]> = enum_def
         .variants
         .iter()
-        .filter(|variant| cx.sess.contains_name(&variant.attrs, kw::Default))
+        .filter(|variant| attr::contains_name(&variant.attrs, kw::Default))
         .collect();
 
     let variant = match default_variants.as_slice() {
@@ -116,7 +116,7 @@ fn extract_default_variant<'a>(
                 .variants
                 .iter()
                 .filter(|variant| matches!(variant.data, VariantData::Unit(..)))
-                .filter(|variant| !cx.sess.contains_name(&variant.attrs, sym::non_exhaustive));
+                .filter(|variant| !attr::contains_name(&variant.attrs, sym::non_exhaustive));
 
             let mut diag = cx.struct_span_err(trait_span, "no default declared");
             diag.help("make a unit variant default by placing `#[default]` above it");
@@ -146,7 +146,7 @@ fn extract_default_variant<'a>(
                         if v.span == variant.span {
                             None
                         } else {
-                            Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))
+                            Some((attr::find_by_name(&v.attrs, kw::Default)?.span, String::new()))
                         }
                     })
                     .collect();
@@ -174,7 +174,7 @@ fn extract_default_variant<'a>(
         return Err(());
     }
 
-    if let Some(non_exhaustive_attr) = cx.sess.find_by_name(&variant.attrs, sym::non_exhaustive) {
+    if let Some(non_exhaustive_attr) = attr::find_by_name(&variant.attrs, sym::non_exhaustive) {
         cx.struct_span_err(variant.ident.span, "default variant must be exhaustive")
             .span_label(non_exhaustive_attr.span, "declared `#[non_exhaustive]` here")
             .help("consider a manual implementation of `Default`")
@@ -191,7 +191,7 @@ fn validate_default_attribute(
     default_variant: &rustc_ast::Variant,
 ) -> Result<(), ()> {
     let attrs: SmallVec<[_; 1]> =
-        cx.sess.filter_by_name(&default_variant.attrs, kw::Default).collect();
+        attr::filter_by_name(&default_variant.attrs, kw::Default).collect();
 
     let attr = match attrs.as_slice() {
         [attr] => attr,

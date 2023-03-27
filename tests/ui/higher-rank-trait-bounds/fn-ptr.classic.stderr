@@ -1,0 +1,19 @@
+error[E0277]: expected a `Fn<(&'w (),)>` closure, found `fn(&'w ())`
+  --> $DIR/fn-ptr.rs:12:5
+   |
+LL |     ice();
+   |     ^^^ expected an `Fn<(&'w (),)>` closure, found `fn(&'w ())`
+   |
+   = help: the trait `for<'w> Fn<(&'w (),)>` is not implemented for `fn(&'w ())`
+note: required by a bound in `ice`
+  --> $DIR/fn-ptr.rs:7:25
+   |
+LL | fn ice()
+   |    --- required by a bound in this function
+LL | where
+LL |     for<'w> fn(&'w ()): Fn(&'w ()),
+   |                         ^^^^^^^^^^ required by this bound in `ice`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

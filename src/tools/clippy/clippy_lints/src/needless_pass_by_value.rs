@@ -18,7 +18,7 @@ use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, TypeVisitable};
+use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         };
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
-        let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
+        let fn_sig = cx.tcx.liberate_late_bound_regions(fn_def_id.to_def_id(), fn_sig);
 
         for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
             // All spans generated from a proc-macro invocation are the same...

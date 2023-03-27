@@ -6,9 +6,9 @@ use crate::{encode_metadata, EncodedMetadata};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, OutputType};
+use rustc_session::config::OutputType;
 use rustc_session::output::filename_for_metadata;
-use rustc_session::Session;
+use rustc_session::{MetadataKind, Session};
 use tempfile::Builder as TempFileBuilder;
 
 use std::fs;
@@ -39,27 +39,6 @@ pub fn emit_wrapper_file(
 }
 
 pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum MetadataKind {
-        None,
-        Uncompressed,
-        Compressed,
-    }
-
-    let metadata_kind = tcx
-        .sess
-        .crate_types()
-        .iter()
-        .map(|ty| match *ty {
-            CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,
-
-            CrateType::Rlib => MetadataKind::Uncompressed,
-
-            CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
-        })
-        .max()
-        .unwrap_or(MetadataKind::None);
-
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let out_filename = filename_for_metadata(tcx.sess, crate_name, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
@@ -76,6 +55,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
 
     // Always create a file at `metadata_filename`, even if we have nothing to write to it.
     // This simplifies the creation of the output `out_filename` when requested.
+    let metadata_kind = tcx.sess.metadata_kind();
     match metadata_kind {
         MetadataKind::None => {
             std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {

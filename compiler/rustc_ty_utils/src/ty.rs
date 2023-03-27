@@ -2,14 +2,13 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-#[cfg(not(bootstrap))]
-use rustc_middle::ty::ir::TypeVisitable;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
-    TypeSuperVisitable,
+    self, Binder, EarlyBinder, ImplTraitInTraitData, Predicate, PredicateKind, ToPredicate, Ty,
+    TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
-use rustc_span::def_id::{DefId, CRATE_DEF_ID};
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -78,8 +77,8 @@ fn sized_constraint_for_ty<'tcx>(
     result
 }
 
-fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    match tcx.hir().get_by_def_id(def_id.expect_local()) {
+fn impl_defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
+    match tcx.hir().get_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
@@ -100,12 +99,12 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
 fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
     if let Some(def_id) = def_id.as_local() {
         if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
-            return tcx.intern_type_list(&[tcx.ty_error()]);
+            return tcx.mk_type_list(&[tcx.ty_error_misc()]);
         }
     }
     let def = tcx.adt_def(def_id);
 
-    let result = tcx.mk_type_list(
+    let result = tcx.mk_type_list_from_iter(
         def.variants()
             .iter()
             .flat_map(|v| v.fields.last())
@@ -122,6 +121,20 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
+
+    // When computing the param_env of an RPITIT, use predicates of the containing function,
+    // *except* for the additional assumption that the RPITIT normalizes to the trait method's
+    // default opaque type. This is needed to properly check the item bounds of the assoc
+    // type hold (`check_type_bounds`), since that method already installs a similar projection
+    // bound, so they will conflict.
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): I don't like this, we should
+    // at least be making sure that the generics in RPITITs and their parent fn don't
+    // get out of alignment, or else we do actually need to substitute these predicates.
+    if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
+    | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id)
+    {
+        predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
+    }
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -144,17 +157,21 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
     {
         let sig = tcx.fn_sig(def_id).subst_identity();
-        sig.visit_with(&mut ImplTraitInTraitFinder {
+        // We accounted for the binder of the fn sig, so skip the binder.
+        sig.skip_binder().visit_with(&mut ImplTraitInTraitFinder {
             tcx,
             fn_def_id: def_id,
             bound_vars: sig.bound_vars(),
             predicates: &mut predicates,
             seen: FxHashSet::default(),
+            depth: ty::INNERMOST,
         });
     }
 
     let local_did = def_id.as_local();
-    let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
+    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): This isn't correct for
+    // RPITITs in const trait fn.
+    let hir_id = local_did.and_then(|def_id| tcx.opt_local_def_id_to_hir_id(def_id));
 
     // FIXME(consts): This is not exactly in line with the constness query.
     let constness = match hir_id {
@@ -228,11 +245,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         None => hir::Constness::NotConst,
     };
 
-    let unnormalized_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        traits::Reveal::UserFacing,
-        constness,
-    );
+    let unnormalized_env =
+        ty::ParamEnv::new(tcx.mk_predicates(&predicates), traits::Reveal::UserFacing, constness);
 
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
@@ -249,27 +263,68 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
     seen: FxHashSet<DefId>,
+    depth: ty::DebruijnIndex,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        binder: &ty::Binder<'tcx, T>,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        self.depth.shift_in(1);
+        let binder = binder.super_visit_with(self);
+        self.depth.shift_out(1);
+        binder
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            && self.tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
-            && self.tcx.impl_trait_in_trait_parent(alias_ty.def_id) == self.fn_def_id
-            && self.seen.insert(alias_ty.def_id)
+        if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
+            && self.tcx.is_impl_trait_in_trait(unshifted_alias_ty.def_id)
+            && self.tcx.impl_trait_in_trait_parent_fn(unshifted_alias_ty.def_id) == self.fn_def_id
+            && self.seen.insert(unshifted_alias_ty.def_id)
         {
+            // We have entered some binders as we've walked into the
+            // bounds of the RPITIT. Shift these binders back out when
+            // constructing the top-level projection predicate.
+            let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
+                if let ty::ReLateBound(index, bv) = re.kind() {
+                    if depth != ty::INNERMOST {
+                        return self.tcx.mk_re_error_with_message(
+                            DUMMY_SP,
+                            "we shouldn't walk non-predicate binders with `impl Trait`...",
+                        );
+                    }
+                    self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                } else {
+                    re
+                }
+            });
+
+            // If we're lowering to associated item, install the opaque type which is just
+            // the `type_of` of the trait's associated item. If we're using the old lowering
+            // strategy, then just reinterpret the associated type like an opaque :^)
+            let default_ty = if self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
+                self.tcx.type_of(shifted_alias_ty.def_id).subst(self.tcx, shifted_alias_ty.substs)
+            } else {
+                self.tcx.mk_alias(ty::Opaque, shifted_alias_ty)
+            };
+
             self.predicates.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
-                        projection_ty: alias_ty,
-                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
-                    },
+                    ty::ProjectionPredicate { projection_ty: shifted_alias_ty, term: default_ty.into() },
                     self.bound_vars,
                 )
                 .to_predicate(self.tcx),
             );
 
-            for bound in self.tcx.item_bounds(alias_ty.def_id).subst_iter(self.tcx, alias_ty.substs)
+            // We walk the *un-shifted* alias ty, because we're tracking the de bruijn
+            // binder depth, and if we were to walk `shifted_alias_ty` instead, we'd
+            // have to reset `self.depth` back to `ty::INNERMOST` or something. It's
+            // easier to just do this.
+            for bound in self
+                .tcx
+                .item_bounds(unshifted_alias_ty.def_id)
+                .subst_iter(self.tcx, unshifted_alias_ty.substs)
             {
                 bound.visit_with(self);
             }
@@ -388,7 +443,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         }
     });
 
-    tcx.mk_predicates(clauses.chain(input_clauses))
+    tcx.mk_predicates_from_iter(clauses.chain(input_clauses))
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
@@ -461,8 +516,8 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 }
 
 /// Check if a function is async.
-fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    let node = tcx.hir().get_by_def_id(def_id.expect_local());
+fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::IsAsync {
+    let node = tcx.hir().get_by_def_id(def_id);
     node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
 }
 

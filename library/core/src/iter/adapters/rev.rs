@@ -135,3 +135,17 @@ impl<I> FusedIterator for Rev<I> where I: FusedIterator + DoubleEndedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Default> Default for Rev<I> {
+    /// Creates a `Rev` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Rev;
+    /// let iter: Rev<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Rev::new(Default::default())
+    }
+}

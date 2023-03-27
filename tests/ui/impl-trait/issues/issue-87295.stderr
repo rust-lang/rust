@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
   --> $DIR/issue-87295.rs:16:31
    |
 LL |     let _do_not_waste: Struct<impl Trait<Output = i32>> = Struct::new(());

@@ -25,7 +25,7 @@ use syntax::{ted, SyntaxNode};
 
 use crate::{
     ast::{self, AstNode},
-    db::AstDatabase,
+    db::ExpandDatabase,
     hygiene::Hygiene,
     mod_path::ModPath,
     EagerCallInfo, ExpandError, ExpandResult, ExpandTo, InFile, MacroCallId, MacroCallKind,
@@ -96,7 +96,7 @@ impl ErrorSink for &'_ mut dyn FnMut(ExpandError) {
 }
 
 pub fn expand_eager_macro(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
@@ -172,7 +172,7 @@ fn to_subtree(node: &SyntaxNode) -> crate::tt::Subtree {
 }
 
 fn lazy_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
@@ -193,7 +193,7 @@ fn lazy_expand(
 }
 
 fn eager_macro_recur(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     hygiene: &Hygiene,
     curr: InFile<SyntaxNode>,
     krate: CrateId,

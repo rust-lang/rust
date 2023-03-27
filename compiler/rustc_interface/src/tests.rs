@@ -2,6 +2,7 @@
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
 use rustc_session::config::Input;
@@ -699,6 +700,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(threads, 99);
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
+    untracked!(time_passes_format, TimePassesFormat::Json);
     untracked!(trace_macros, true);
     untracked!(track_diagnostics, true);
     untracked!(trim_diagnostic_paths, false);
@@ -744,6 +746,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(emit_thin_lto, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
+    tracked!(flatten_format_args, true);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
@@ -756,6 +759,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(instrument_coverage, Some(InstrumentCoverage::All));
     tracked!(instrument_mcount, true);
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
+    tracked!(link_directives, false);
     tracked!(link_only, true);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });

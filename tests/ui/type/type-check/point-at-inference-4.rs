@@ -2,7 +2,7 @@ struct S<A, B>(Option<(A, B)>);
 
 impl<A, B> S<A, B> {
     fn infer(&self, a: A, b: B) {}
-    //~^ NOTE associated function defined here
+    //~^ NOTE method defined here
     //~| NOTE
     //~| NOTE
 }

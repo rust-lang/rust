@@ -1,5 +1,5 @@
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, DefIdTree, ParamEnv, Ty};
+use crate::ty::{self, DefId, ParamEnv, Ty};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct

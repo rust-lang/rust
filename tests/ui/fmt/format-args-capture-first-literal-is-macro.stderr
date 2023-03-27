@@ -1,0 +1,30 @@
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:16:26
+   |
+LL |     format!(identity_pm!("{a}"));
+   |                          ^^^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:8:9
+   |
+LL |         $tt
+   |         ^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:19:13
+   |
+LL |     format!(concat!("{a}"));
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

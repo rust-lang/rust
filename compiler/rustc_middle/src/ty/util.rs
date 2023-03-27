@@ -2,10 +2,11 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
+use crate::ty::fast_reject::TreatProjections;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
@@ -14,7 +15,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -59,22 +60,13 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
-fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
-    let (int, signed) = match *ty.kind() {
-        ty::Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
-        ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
-        _ => bug!("non integer discriminant"),
-    };
-    (int.size(), signed)
-}
-
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
     pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (size, signed) = int_size_and_signed(tcx, self.ty);
+        let (size, signed) = self.ty.int_size_and_signed(tcx);
         let (val, oflo) = if signed {
             let min = size.signed_int_min();
             let max = size.signed_int_max();
@@ -363,14 +355,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did).subst_identity();
-        let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
-            if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
-                if validate(self, impl_did).is_ok() {
-                    return Some((*item_id, self.constness(impl_did)));
+        let (did, constness) = self.find_map_relevant_impl(
+            drop_trait,
+            ty,
+            // FIXME: This could also be some other mode, like "unexpected"
+            TreatProjections::ForLookup,
+            |impl_did| {
+                if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
+                    if validate(self, impl_did).is_ok() {
+                        return Some((*item_id, self.constness(impl_did)));
+                    }
                 }
-            }
-            None
-        })?;
+                None
+            },
+        )?;
 
         Some(ty::Destructor { did, constness })
     }
@@ -761,6 +759,40 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         (generator_layout, generator_saved_local_names)
     }
+
+    /// Query and get an English description for the item's kind.
+    pub fn def_descr(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr(self.def_kind(def_id), def_id)
+    }
+
+    /// Get an English description for the item's kind.
+    pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "async closure",
+                rustc_hir::GeneratorKind::Gen => "generator",
+            },
+            _ => def_kind.descr(def_id),
+        }
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_descr`].
+    pub fn def_descr_article(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr_article(self.def_kind(def_id), def_id)
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_kind_descr`].
+    pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "an",
+                rustc_hir::GeneratorKind::Gen => "a",
+            },
+            _ => def_kind.article(),
+        }
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
@@ -888,12 +920,21 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
+    pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
+        let (int, signed) = match *self.kind() {
+            ty::Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
+            ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
+            _ => bug!("non integer discriminant"),
+        };
+        (int.size(), signed)
+    }
+
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = int_size_and_signed(tcx, self);
+                let (size, signed) = self.int_size_and_signed(tcx);
                 let val =
                     if signed { size.signed_int_max() as u128 } else { size.unsigned_int_max() };
                 Some(val)
@@ -914,7 +955,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = int_size_and_signed(tcx, self);
+                let (size, signed) = self.int_size_and_signed(tcx);
                 let val = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
                 Some(val)
             }
@@ -1349,8 +1390,8 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: FallibleTypeFolder<'tcx>,
-    T: TypeFoldable<'tcx> + PartialEq + Copy,
+    F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let mut iter = list.iter();
     // Look for the first element that changed
@@ -1398,8 +1439,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
 }
 
 /// Determines whether an item is annotated with `doc(hidden)`.
-fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    assert!(def_id.is_local());
+fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     tcx.get_attrs(def_id, sym::doc)
         .filter_map(|attr| attr.meta_item_list())
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
@@ -1413,7 +1453,7 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 /// Determines whether an item is an intrinsic by Abi.
-pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 

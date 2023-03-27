@@ -17,8 +17,7 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt,
-    TypeSuperVisitable,
+    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -105,7 +104,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
                 // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
-                // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
+                // The desugaring of `async fn`s causes `sup_origin` and `param` to point at the same
                 // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
                 //
                 // This avoids the following:

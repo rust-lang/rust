@@ -63,3 +63,32 @@ fn issue9428() {
         println!("foo");
     }
 }
+
+fn issue_10523() {
+    macro_rules! a {
+        ($v:expr) => {
+            $v.is_some()
+        };
+    }
+    let x: Option<u32> = None;
+    if !a!(x) {}
+}
+
+fn issue_10523_1() {
+    macro_rules! a {
+        ($v:expr) => {
+            !$v.is_some()
+        };
+    }
+    let x: Option<u32> = None;
+    if a!(x) {}
+}
+
+fn issue_10523_2() {
+    macro_rules! a {
+        () => {
+            !None::<u32>.is_some()
+        };
+    }
+    if a!() {}
+}

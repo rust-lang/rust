@@ -75,7 +75,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         ty::Adt(adt_def, _) if adt_def.repr().simd() => {
             let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
             {
-                Abi::Vector { element, count } => (element.clone(), *count),
+                Abi::Vector { element, count } => (*element, *count),
                 _ => unreachable!(),
             };
 
@@ -374,7 +374,7 @@ impl<'tcx> HasTargetSpec for FunctionCx<'_, '_, 'tcx> {
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     pub(crate) fn monomorphize<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         self.instance.subst_mir_and_normalize_erasing_regions(
             self.tcx,

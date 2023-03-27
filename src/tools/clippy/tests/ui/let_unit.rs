@@ -175,3 +175,7 @@ fn attributes() {
     #[expect(clippy::let_unit_value)]
     let _ = f();
 }
+
+async fn issue10433() {
+    let _pending: () = std::future::pending().await;
+}

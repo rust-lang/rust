@@ -641,8 +641,16 @@ pub struct MacroUse {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_macro_export)]
-pub struct MacroExport;
+pub enum MacroExport {
+    #[diag(passes_macro_export)]
+    Normal,
+
+    #[diag(passes_invalid_macro_export_arguments)]
+    UnknownItem { name: Symbol },
+
+    #[diag(passes_invalid_macro_export_arguments_too_many_items)]
+    TooManyItems,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(passes_plugin_registrar)]
@@ -802,22 +810,16 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_duplicate_diagnostic_item)]
-pub struct DuplicateDiagnosticItem {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_duplicate_diagnostic_item_in_crate)]
 pub struct DuplicateDiagnosticItemInCrate {
+    #[primary_span]
+    pub duplicate_span: Option<Span>,
     #[note(passes_diagnostic_item_first_defined)]
-    pub span: Option<Span>,
-    pub orig_crate_name: Symbol,
+    pub orig_span: Option<Span>,
     #[note]
-    pub have_orig_crate_name: Option<()>,
+    pub different_crates: Option<()>,
     pub crate_name: Symbol,
+    pub orig_crate_name: Symbol,
     pub name: Symbol,
 }
 
@@ -1544,52 +1546,11 @@ pub struct ChangeFieldsToBeOfUnitType {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_proc_macro_typeerror)]
-#[note]
-pub(crate) struct ProcMacroTypeError<'tcx> {
+#[diag(passes_proc_macro_bad_sig)]
+pub(crate) struct ProcMacroBadSig {
     #[primary_span]
-    #[label]
     pub span: Span,
-    pub found: Ty<'tcx>,
     pub kind: ProcMacroKind,
-    pub expected_signature: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_proc_macro_diff_arg_count)]
-pub(crate) struct ProcMacroDiffArguments {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub count: usize,
-    pub kind: ProcMacroKind,
-    pub expected_signature: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_proc_macro_missing_args)]
-pub(crate) struct ProcMacroMissingArguments {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub expected_input_count: usize,
-    pub kind: ProcMacroKind,
-    pub expected_signature: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_proc_macro_invalid_abi)]
-pub(crate) struct ProcMacroInvalidAbi {
-    #[primary_span]
-    pub span: Span,
-    pub abi: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_proc_macro_unsafe)]
-pub(crate) struct ProcMacroUnsafe {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

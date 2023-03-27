@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
 
-use serde::Deserialize;
+use serde_derive::Deserialize;
 
 use crate::builder::crate_description;
 use crate::builder::Cargo;
@@ -338,6 +338,12 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     } else {
         ""
     };
+
+    // `libtest` uses this to know whether or not to support
+    // `-Zunstable-options`.
+    if !builder.unstable_features() {
+        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
+    }
 
     let mut features = String::new();
 

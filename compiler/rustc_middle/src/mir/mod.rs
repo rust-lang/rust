@@ -7,10 +7,10 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{ir::TypeFoldable, FallibleTypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, ir, DefIdTree, List, Ty, TyCtxt};
+use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -401,8 +401,6 @@ impl<'tcx> Body<'tcx> {
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
-        } else if self.local_decls[local].is_user_variable() {
-            LocalKind::Var
         } else {
             LocalKind::Temp
         }
@@ -572,6 +570,13 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
+    pub fn as_mut(&mut self) -> ClearCrossCrate<&mut T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -661,9 +666,7 @@ impl Atom for Local {
 /// Classifies locals into categories. See `Body::local_kind`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
-    /// User-declared variable binding.
-    Var,
-    /// Compiler-introduced temporary.
+    /// User-declared variable binding or compiler-introduced temporary.
     Temp,
     /// Function argument.
     Arg,
@@ -760,7 +763,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: Option<Box<LocalInfo<'tcx>>>,
+    pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -777,13 +780,6 @@ pub struct LocalDecl<'tcx> {
     /// therefore don't affect the auto-trait or outlives properties of the
     /// generator.
     pub internal: bool,
-
-    /// If this local is a temporary and `is_block_tail` is `Some`,
-    /// then it is a temporary created for evaluation of some
-    /// subexpression of some block's tail expression (with no
-    /// intervening statement context).
-    // FIXME(matthewjasper) Don't store in this in `Body`
-    pub is_block_tail: Option<BlockTailInfo>,
 
     /// The type of this local.
     pub ty: Ty<'tcx>,
@@ -890,7 +886,7 @@ pub enum LocalInfo<'tcx> {
     /// The `BindingForm` is solely used for local diagnostics when generating
     /// warnings/errors when compiling the current crate, and therefore it need
     /// not be visible across crates.
-    User(ClearCrossCrate<BindingForm<'tcx>>),
+    User(BindingForm<'tcx>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
     /// A temporary created that references the const with the given `DefId`
@@ -898,13 +894,23 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during the creation of an aggregate
     /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
     AggregateTemp,
+    /// A temporary created for evaluation of some subexpression of some block's tail expression
+    /// (with no intervening statement context).
+    // FIXME(matthewjasper) Don't store in this in `Body`
+    BlockTailTemp(BlockTailInfo),
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,
+    /// A local without anything interesting about it.
+    Boring,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
+    pub fn local_info(&self) -> &LocalInfo<'tcx> {
+        &**self.local_info.as_ref().assert_crate_local()
+    }
+
     /// Returns `true` only if local is a binding that can itself be
     /// made mutable via the addition of the `mut` keyword, namely
     /// something like the occurrences of `x` in:
@@ -913,15 +919,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
-            )))
+            )
         )
     }
 
@@ -930,15 +936,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(_),
-            )))
+            )
         )
     }
 
@@ -946,38 +952,35 @@ impl<'tcx> LocalDecl<'tcx> {
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::User(_)))
+        matches!(self.local_info(), LocalInfo::User(_))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)))
-        )
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static.
     pub fn is_ref_to_static(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
+        matches!(self.local_info(), LocalInfo::StaticRef { .. })
     }
 
     /// Returns `Some` if this is a reference to a thread-local static item that is used to
     /// access that static.
     pub fn is_ref_to_thread_local(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
+        match self.local_info() {
+            LocalInfo::StaticRef { is_thread_local, .. } => *is_thread_local,
             _ => false,
         }
     }
 
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::DerefTemp) => return true,
+        match self.local_info() {
+            LocalInfo::DerefTemp => return true,
             _ => (),
         }
         return false;
@@ -1001,9 +1004,8 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
-            local_info: None,
+            local_info: ClearCrossCrate::Set(Box::new(LocalInfo::Boring)),
             internal: false,
-            is_block_tail: None,
             ty,
             user_ty: None,
             source_info,
@@ -1021,14 +1023,6 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn immutable(mut self) -> Self {
         self.mutability = Mutability::Not;
-        self
-    }
-
-    /// Converts `self` into same `LocalDecl` except tagged as internal temporary.
-    #[inline]
-    pub fn block_tail(mut self, info: BlockTailInfo) -> Self {
-        assert!(self.is_block_tail.is_none());
-        self.is_block_tail = Some(info);
         self
     }
 }
@@ -1274,6 +1268,13 @@ impl<'tcx> BasicBlockData<'tcx> {
 }
 
 impl<O> AssertKind<O> {
+    /// Returns true if this an overflow checking assertion controlled by -C overflow-checks.
+    pub fn is_optional_overflow_check(&self) -> bool {
+        use AssertKind::*;
+        use BinOp::*;
+        matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
+    }
+
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
     /// The caller is expected to handle `BoundsCheck` separately.
@@ -1453,6 +1454,9 @@ impl Debug for Statement<'_> {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
             Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
+            PlaceMention(ref place) => {
+                write!(fmt, "PlaceMention({:?})", place)
+            }
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
@@ -1620,7 +1624,7 @@ impl<'tcx> Place<'tcx> {
             &v
         };
 
-        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -1963,7 +1967,8 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::Pointer(_)
                 | CastKind::PointerFromExposedAddress
-                | CastKind::DynStar,
+                | CastKind::DynStar
+                | CastKind::Transmute,
                 _,
                 _,
             )
@@ -1992,13 +1997,6 @@ impl BorrowKind {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
             BorrowKind::Mut { .. } => "mutable",
         }
-    }
-}
-
-impl BinOp {
-    pub fn is_checkable(self) -> bool {
-        use self::BinOp::*;
-        matches!(self, Add | Sub | Mul | Shl | Shr)
     }
 }
 
@@ -2528,15 +2526,16 @@ impl<'tcx> ConstantKind<'tcx> {
         let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
-            InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
+            InternalSubsts::identity_for_item(tcx, parent_did)
         } else {
-            tcx.intern_substs(&[])
+            List::empty()
         };
         debug!(?parent_substs);
 
         let did = def.did.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs = tcx.mk_substs(parent_substs.into_iter().chain(child_substs.into_iter()));
+        let substs =
+            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
@@ -2556,7 +2555,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 Self::Unevaluated(
                     UnevaluatedConst {
                         def: def.to_global(),
-                        substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                        substs: InternalSubsts::identity_for_item(tcx, def.did),
                         promoted: None,
                     },
                     ty,
@@ -2755,7 +2754,10 @@ impl UserTypeProjection {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
             base: self.base.try_fold_with(folder)?,
             projs: self.projs.try_fold_with(folder)?,
@@ -2763,8 +2765,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }
@@ -2901,7 +2906,7 @@ fn pretty_print_const_value<'tcx>(
             // the `destructure_const` query with an empty `ty::ParamEnv` without
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
-            // to be able to destructure the tuple into `(0u8, *mut T)
+            // to be able to destructure the tuple into `(0u8, *mut T)`
             //
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.
@@ -3078,7 +3083,7 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 144);
-    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 112);

@@ -46,8 +46,8 @@ LL |     XEmpty5(),
    |
 help: use the tuple variant pattern syntax instead
    |
-LL |         XE::XEmpty5(/* fields */) => (),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         XE::XEmpty5() => (),
+   |         ~~~~~~~~~~~~~
 help: a unit variant with a similar name exists
    |
 LL |         XE::XEmpty4 => (),

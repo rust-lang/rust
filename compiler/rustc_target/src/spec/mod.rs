@@ -40,6 +40,7 @@ use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{sym, Symbol};
 use serde_json::Value;
@@ -1115,6 +1116,7 @@ supported_targets! {
     // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
     ("aarch64-fuchsia", aarch64_fuchsia),
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
+    ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     // FIXME(#106649): Remove x86_64-fuchsia in favor of x86_64-unknown-fuchsia
     ("x86_64-fuchsia", x86_64_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
@@ -2948,7 +2950,7 @@ impl TargetTriple {
 
     /// Creates a target triple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
-        let canonicalized_path = path.canonicalize()?;
+        let canonicalized_path = try_canonicalize(path)?;
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,

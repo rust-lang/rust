@@ -73,7 +73,7 @@ LL | impl<'a> Bar<'a> {
 LL |     pub fn get<'b>(&self) -> &'b usize {
    |                -- lifetime `'b` defined here
 LL |         self.x
-   |         ^^^^^^ associated function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |         ^^^^^^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -85,7 +85,7 @@ LL | impl<'a> Baz<'a> {
 LL |     fn get<'b>(&'b self) -> &'a i32 {
    |            -- lifetime `'b` defined here
 LL |         self.x
-   |         ^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |         ^^^^^^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 

@@ -8,7 +8,7 @@ LL |     b"".starts_with(stringify!(foo))
    |
    = note: expected reference `&[u8]`
               found reference `&'static str`
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
    = note: this error originates in the macro `stringify` (in Nightly builds, run with -Z macro-backtrace for more info)
 

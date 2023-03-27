@@ -14,13 +14,13 @@ help: replace the use of the deprecated function
 LL |     bar::replacement();
    |          ~~~~~~~~~~~
 
-error: use of deprecated associated function `Foo::deprecated`: replaced by `replacement`
+error: use of deprecated method `Foo::deprecated`: replaced by `replacement`
   --> $DIR/suggestion.rs:40:9
    |
 LL |     foo.deprecated();
    |         ^^^^^^^^^^
    |
-help: replace the use of the deprecated associated function
+help: replace the use of the deprecated method
    |
 LL |     foo.replacement();
    |         ~~~~~~~~~~~

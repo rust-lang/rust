@@ -97,7 +97,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
 #[rustc_deny_explicit_impl]
-#[cfg_attr(not(bootstrap), rustc_coinductive)]
+#[rustc_coinductive]
 pub trait Sized {
     // Empty.
 }
@@ -324,7 +324,7 @@ pub trait StructuralEq {
 /// attempt to derive a `Copy` implementation, we'll get an error:
 ///
 /// ```text
-/// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
+/// the trait `Copy` cannot be implemented for this type; field `points` does not implement `Copy`
 /// ```
 ///
 /// Shared references (`&T`) are also `Copy`, so a type can be `Copy`, even when it holds
@@ -877,8 +877,7 @@ pub trait Tuple {}
 /// All types that have the same size and alignment as a `usize` or
 /// `*const ()` automatically implement this trait.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
-#[cfg_attr(bootstrap, lang = "pointer_sized")]
-#[cfg_attr(not(bootstrap), lang = "pointer_like")]
+#[lang = "pointer_like"]
 #[rustc_on_unimplemented(
     message = "`{Self}` needs to have the same alignment and size as a pointer",
     label = "`{Self}` needs to be a pointer-like type"

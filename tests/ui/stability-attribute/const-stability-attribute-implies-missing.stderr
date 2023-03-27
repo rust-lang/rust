@@ -1,0 +1,8 @@
+error: feature `const_bar` implying `const_foobar` does not exist
+  --> $DIR/const-stability-attribute-implies-missing.rs:10:1
+   |
+LL | #[rustc_const_unstable(feature = "const_foobar", issue = "1", implied_by = "const_bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

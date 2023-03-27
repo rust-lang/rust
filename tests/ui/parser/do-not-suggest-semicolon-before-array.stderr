@@ -1,8 +1,8 @@
-error: expected one of `.`, `?`, `]`, or an operator, found `,`
+error: mismatched closing delimiter: `)`
   --> $DIR/do-not-suggest-semicolon-before-array.rs:5:5
    |
 LL |     [1, 3)
-   |     ^ ^ help: `]` may belong here
+   |     ^    ^ mismatched closing delimiter
    |     |
    |     unclosed delimiter
 

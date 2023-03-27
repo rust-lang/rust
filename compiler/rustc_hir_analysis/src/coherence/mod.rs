@@ -8,7 +8,7 @@
 use rustc_errors::{error_code, struct_span_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 
@@ -133,8 +133,8 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
 
-        tcx.sess.time("unsafety_checking", || unsafety::check_item(tcx, impl_def_id));
-        tcx.sess.time("orphan_checking", || tcx.ensure().orphan_check_impl(impl_def_id));
+        unsafety::check_item(tcx, impl_def_id);
+        tcx.ensure().orphan_check_impl(impl_def_id);
     }
 
     builtin::check_trait(tcx, def_id);

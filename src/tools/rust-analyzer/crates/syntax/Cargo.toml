@@ -14,6 +14,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
+either = "1.7.0"
 itertools = "0.10.5"
 rowan = "0.15.10"
 rustc_lexer = { version = "727.0.0", package = "rustc-ap-rustc_lexer" }

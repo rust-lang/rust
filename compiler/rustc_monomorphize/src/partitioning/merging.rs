@@ -24,7 +24,7 @@ pub fn merge_codegen_units<'tcx>(
     // smallest into each other) we're sure to start off with a deterministic
     // order (sorted by name). This'll mean that if two cgus have the same size
     // the stable sort below will keep everything nice and deterministic.
-    codegen_units.sort_by(|a, b| a.name().as_str().partial_cmp(b.name().as_str()).unwrap());
+    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
     // This map keeps track of what got merged into what.
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =

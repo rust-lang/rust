@@ -113,7 +113,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             if let Some(link) =
                 link_names.iter().find(|link| *link.original_text == *broken_link.reference)
             {
-                Some((link.href.as_str().into(), link.new_text.as_str().into()))
+                Some((link.href.as_str().into(), link.new_text.to_string().into()))
             } else if matches!(
                 &broken_link.link_type,
                 LinkType::Reference | LinkType::ReferenceUnknown

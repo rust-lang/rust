@@ -1,4 +1,4 @@
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Region, Ty, TyCtxt};
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
@@ -11,7 +11,20 @@ pub trait ToType {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct UnifiedRegion<'tcx>(pub Option<ty::Region<'tcx>>);
+pub struct UnifiedRegion<'tcx> {
+    value: Option<ty::Region<'tcx>>,
+}
+
+impl<'tcx> UnifiedRegion<'tcx> {
+    pub fn new(value: Option<Region<'tcx>>) -> Self {
+        Self { value }
+    }
+
+    /// The caller is responsible for checking universe compatibility before using this value.
+    pub fn get_value_ignoring_universes(self) -> Option<Region<'tcx>> {
+        self.value
+    }
+}
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RegionVidKey<'tcx> {
@@ -44,11 +57,27 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
     type Error = NoError;
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
-        Ok(match (value1.0, value2.0) {
+        // We pick the value of the least universe because it is compatible with more variables.
+        // This is *not* neccessary for soundness, but it allows more region variables to be
+        // resolved to the said value.
+        #[cold]
+        fn min_universe<'tcx>(r1: Region<'tcx>, r2: Region<'tcx>) -> Region<'tcx> {
+            cmp::min_by_key(r1, r2, |r| match r.kind() {
+                ty::ReStatic
+                | ty::ReErased
+                | ty::ReFree(..)
+                | ty::ReEarlyBound(..)
+                | ty::ReError(_) => ty::UniverseIndex::ROOT,
+                ty::RePlaceholder(placeholder) => placeholder.universe,
+                ty::ReVar(..) | ty::ReLateBound(..) => bug!("not a universal region"),
+            })
+        }
+
+        Ok(match (value1.value, value2.value) {
             // Here we can just pick one value, because the full constraints graph
             // will be handled later. Ideally, we might want a `MultipleValues`
             // variant or something. For now though, this is fine.
-            (Some(_), Some(_)) => *value1,
+            (Some(val1), Some(val2)) => Self { value: Some(min_universe(val1, val2)) },
 
             (Some(_), _) => *value1,
             (_, Some(_)) => *value2,

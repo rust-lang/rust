@@ -1,14 +1,14 @@
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::Span;
-use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligation};
+use rustc_trait_selection::traits::{self, ObligationCause};
 
 use std::cell::Cell;
 
@@ -189,17 +189,15 @@ impl<'tcx> ConstToPat<'tcx> {
         // using `PartialEq::eq` in this scenario in the past.)
         let partial_eq_trait_id =
             self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-        let obligation: PredicateObligation<'_> = predicate_for_trait_def(
+        let partial_eq_obligation = Obligation::new(
             self.tcx(),
+            ObligationCause::dummy(),
             self.param_env,
-            ObligationCause::misc(self.span, self.id.owner.def_id),
-            partial_eq_trait_id,
-            0,
-            [ty, ty],
+            self.tcx().mk_trait_ref(partial_eq_trait_id, [ty, ty]),
         );
-        // FIXME: should this call a `predicate_must_hold` variant instead?
 
-        let has_impl = self.infcx.predicate_may_hold(&obligation);
+        // FIXME: should this call a `predicate_must_hold` variant instead?
+        let has_impl = self.infcx.predicate_may_hold(&partial_eq_obligation);
 
         // Note: To fix rust-lang/rust#65466, we could just remove this type
         // walk hack for function pointers, and unconditionally error

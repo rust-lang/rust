@@ -55,6 +55,7 @@ mod format;
 mod install;
 mod llvm;
 mod metadata;
+mod render_tests;
 mod run;
 mod sanity;
 mod setup;
@@ -88,6 +89,7 @@ pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
+use termcolor::{ColorChoice, StandardStream, WriteColor};
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -144,6 +146,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by filetime, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "emulate_second_only_system", None),
     (Some(Mode::ToolRustc), "emulate_second_only_system", None),
+    // Needed to avoid the need to copy windows.lib into the sysroot.
+    (Some(Mode::Rustc), "windows_raw_dylib", None),
+    (Some(Mode::ToolRustc), "windows_raw_dylib", None),
 ];
 
 /// A structure representing a Rust compiler.
@@ -482,12 +487,7 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = [
-                "src/tools/rust-installer",
-                "src/tools/cargo",
-                "library/backtrace",
-                "library/stdarch",
-            ];
+            let rust_submodules = ["src/tools/cargo", "library/backtrace", "library/stdarch"];
             for s in rust_submodules {
                 build.update_submodule(Path::new(s));
             }
@@ -500,6 +500,7 @@ impl Build {
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
         let build_triple = build.out.join(&build.build.triple);
+        t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
             if e.kind() != ErrorKind::AlreadyExists {
@@ -1203,10 +1204,20 @@ impl Build {
     ///
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
-    fn force_use_stage1(&self, compiler: Compiler, target: TargetSelection) -> bool {
+    fn force_use_stage1(&self, stage: u32, target: TargetSelection) -> bool {
         !self.config.full_bootstrap
-            && compiler.stage >= 2
+            && !self.config.download_rustc()
+            && stage >= 2
             && (self.hosts.iter().any(|h| *h == target) || target == self.build)
+    }
+
+    /// Checks whether the `compiler` compiling for `target` should be forced to
+    /// use a stage2 compiler instead.
+    ///
+    /// When we download the pre-compiled version of rustc and compiler stage is >= 2,
+    /// it should be forced to use a stage2 compiler.
+    fn force_use_stage2(&self, stage: u32) -> bool {
+        self.config.download_rustc() && stage >= 2
     }
 
     /// Given `num` in the form "a.b.c" return a "release string" which
@@ -1573,6 +1584,31 @@ to download LLVM rather than building it.
         }
 
         self.config.ninja_in_file
+    }
+
+    pub fn colored_stdout<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+        self.colored_stream_inner(StandardStream::stdout, self.config.stdout_is_tty, f)
+    }
+
+    pub fn colored_stderr<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+        self.colored_stream_inner(StandardStream::stderr, self.config.stderr_is_tty, f)
+    }
+
+    fn colored_stream_inner<R, F, C>(&self, constructor: C, is_tty: bool, f: F) -> R
+    where
+        C: Fn(ColorChoice) -> StandardStream,
+        F: FnOnce(&mut dyn WriteColor) -> R,
+    {
+        let choice = match self.config.color {
+            flags::Color::Always => ColorChoice::Always,
+            flags::Color::Never => ColorChoice::Never,
+            flags::Color::Auto if !is_tty => ColorChoice::Never,
+            flags::Color::Auto => ColorChoice::Auto,
+        };
+        let mut stream = constructor(choice);
+        let result = f(&mut stream);
+        stream.reset().unwrap();
+        result
     }
 }
 

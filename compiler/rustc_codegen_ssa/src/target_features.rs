@@ -1,14 +1,14 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -185,14 +185,14 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),
-    ("cmpxchg16b", Some(sym::cmpxchg16b_target_feature)),
+    ("cmpxchg16b", None),
     ("ermsb", Some(sym::ermsb_target_feature)),
     ("f16c", None),
     ("fma", None),
     ("fxsr", None),
     ("gfni", Some(sym::avx512_target_feature)),
     ("lzcnt", None),
-    ("movbe", Some(sym::movbe_target_feature)),
+    ("movbe", None),
     ("pclmulqdq", None),
     ("popcnt", None),
     ("rdrand", None),
@@ -394,8 +394,6 @@ pub fn from_target_feature(
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
-                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
@@ -419,7 +417,7 @@ pub fn from_target_feature(
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxHashSet<Symbol> {
+fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
@@ -443,7 +441,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxHashSet<Symbol> {
 pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
-        if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
+        if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
             tcx.sess
                 .struct_span_err(
                     attr_span,

@@ -9,10 +9,12 @@
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
 #![feature(is_terminal)]
+#![feature(round_ties_even)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
     clippy::collapsible_if,
+    clippy::if_same_then_else,
     clippy::comparison_chain,
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
@@ -21,7 +23,7 @@
     clippy::single_match,
     clippy::useless_format,
     clippy::derive_partial_eq_without_eq,
-    clippy::derive_hash_xor_eq,
+    clippy::derived_hash_with_manual_eq,
     clippy::too_many_arguments,
     clippy::type_complexity,
     clippy::single_element_loop,
@@ -93,6 +95,7 @@ pub use crate::shims::EvalContextExt as _;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
+pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
 };

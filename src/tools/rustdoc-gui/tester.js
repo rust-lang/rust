@@ -6,8 +6,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require('os');
-const {Options, runTest} = require('browser-ui-test');
+const os = require("os");
+const {Options, runTest} = require("browser-ui-test");
 
 // If a test fails or errors, we will retry it two more times in case it was a flaky failure.
 const NB_RETRY = 3;
@@ -31,7 +31,7 @@ function isNumeric(s) {
 }
 
 function parseOptions(args) {
-    var opts = {
+    const opts = {
         "doc_folder": "",
         "tests_folder": "",
         "files": [],
@@ -42,7 +42,7 @@ function parseOptions(args) {
         "executable_path": null,
         "no_sandbox": false,
     };
-    var correspondances = {
+    const correspondances = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
         "--debug": "debug",
@@ -52,39 +52,41 @@ function parseOptions(args) {
         "--no-sandbox": "no_sandbox",
     };
 
-    for (var i = 0; i < args.length; ++i) {
-        if (args[i] === "--doc-folder"
-            || args[i] === "--tests-folder"
-            || args[i] === "--file"
-            || args[i] === "--jobs"
-            || args[i] === "--executable-path") {
+    for (let i = 0; i < args.length; ++i) {
+        const arg = args[i];
+        if (arg === "--doc-folder"
+            || arg === "--tests-folder"
+            || arg === "--file"
+            || arg === "--jobs"
+            || arg === "--executable-path") {
             i += 1;
             if (i >= args.length) {
-                console.log("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + arg + "` option.");
                 return null;
             }
-            if (args[i - 1] === "--jobs") {
-                if (!isNumeric(args[i])) {
+            const arg_value = args[i];
+            if (arg === "--jobs") {
+                if (!isNumeric(arg_value)) {
                     console.log(
-                        "`--jobs` option expects a positive number, found `" + args[i] + "`");
+                        "`--jobs` option expects a positive number, found `" + arg_value + "`");
                     return null;
                 }
-                opts["jobs"] = parseInt(args[i]);
-            } else if (args[i - 1] !== "--file") {
-                opts[correspondances[args[i - 1]]] = args[i];
+                opts["jobs"] = parseInt(arg_value);
+            } else if (arg !== "--file") {
+                opts[correspondances[arg]] = arg_value;
             } else {
-                opts["files"].push(args[i]);
+                opts["files"].push(arg_value);
             }
-        } else if (args[i] === "--help") {
+        } else if (arg === "--help") {
             showHelp();
             process.exit(0);
-        } else if (args[i] === "--no-sandbox") {
+        } else if (arg === "--no-sandbox") {
             console.log("`--no-sandbox` is being used. Be very careful!");
-            opts[correspondances[args[i]]] = true;
-        } else if (correspondances[args[i]]) {
-            opts[correspondances[args[i]]] = true;
+            opts[correspondances[arg]] = true;
+        } else if (correspondances[arg]) {
+            opts[correspondances[arg]] = true;
         } else {
-            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
             return null;
         }
@@ -186,7 +188,7 @@ function createEmptyResults() {
 }
 
 async function main(argv) {
-    let opts = parseOptions(argv.slice(2));
+    const opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
@@ -198,7 +200,7 @@ async function main(argv) {
     const framework_options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        let args = [
+        const args = [
             "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
             "--allow-file-access-from-files",
         ];
@@ -232,7 +234,7 @@ async function main(argv) {
     } else {
         files = opts["files"];
     }
-    files = files.filter(file => path.extname(file) == ".goml");
+    files = files.filter(file => path.extname(file) === ".goml");
     if (files.length === 0) {
         console.error("rustdoc-gui: No test selected");
         process.exit(2);
@@ -257,7 +259,7 @@ async function main(argv) {
 
     // We catch this "event" to display a nicer message in case of unexpected exit (because of a
     // missing `--no-sandbox`).
-    const exitHandling = (code) => {
+    const exitHandling = () => {
         if (!opts["no_sandbox"]) {
             console.log("");
             console.log(
@@ -266,10 +268,10 @@ async function main(argv) {
             console.log("");
         }
     };
-    process.on('exit', exitHandling);
+    process.on("exit", exitHandling);
 
     const originalFilesLen = files.length;
-    let results = createEmptyResults();
+    const results = createEmptyResults();
     const status_bar = char_printer(files.length);
 
     let new_results;
@@ -279,7 +281,7 @@ async function main(argv) {
         Array.prototype.push.apply(results.successful, new_results.successful);
         // We generate the new list of files with the previously failing tests.
         files = Array.prototype.concat(new_results.failed, new_results.errored).map(
-            f => f['file_name']);
+            f => f["file_name"]);
         if (files.length > originalFilesLen / 2) {
             // If we have too many failing tests, it's very likely not flaky failures anymore so
             // no need to retry.

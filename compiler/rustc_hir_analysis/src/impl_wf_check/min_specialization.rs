@@ -76,7 +76,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
@@ -168,13 +168,13 @@ fn get_impl_substs(
     let assumed_wf_types =
         ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
-    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
     let impl2_substs =
         translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors);
         return None;
     }
 
@@ -528,7 +528,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
         | ty::PredicateKind::Clause(ty::Clause::Projection(_))
         | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
-        | ty::PredicateKind::AliasEq(..)
+        | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::WellFormed(_)
         | ty::PredicateKind::Subtype(_)
         | ty::PredicateKind::Coerce(_)

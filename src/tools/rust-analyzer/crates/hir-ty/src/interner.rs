@@ -1,10 +1,10 @@
 //! Implementation of the Chalk `Interner` trait, which allows customizing the
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
-use crate::{chalk_db, tls, GenericArg};
+use crate::{chalk_db, tls, ConstScalar, GenericArg};
 use base_db::salsa::InternId;
 use chalk_ir::{Goal, GoalData};
-use hir_def::{type_ref::ConstScalar, TypeAliasId};
+use hir_def::TypeAliasId;
 use intern::{impl_internable, Interned};
 use smallvec::SmallVec;
 use std::{fmt, sync::Arc};

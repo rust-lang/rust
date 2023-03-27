@@ -1,8 +1,8 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
+use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
-use rustc_errors::{struct_span_err, Applicability, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -13,7 +13,7 @@ use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use crate::errors::ForbiddenLifetimeBound;
+use crate::errors;
 
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
@@ -164,7 +164,7 @@ impl<'a> PostExpansionVisitor<'a> {
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.emit_err(ForbiddenLifetimeBound { spans });
+                self.sess.emit_err(errors::ForbiddenLifetimeBound { spans });
             }
         }
     }
@@ -218,13 +218,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 || attr.has_name(sym::rustc_const_stable)
                 || attr.has_name(sym::rustc_default_body_unstable)
             {
-                struct_span_err!(
-                    self.sess,
-                    attr.span,
-                    E0734,
-                    "stability attributes may not be used outside of the standard library",
-                )
-                .emit();
+                self.sess.emit_err(errors::StabilityOutsideStd { span: attr.span });
             }
         }
     }
@@ -238,7 +232,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Fn(..) => {
-                if self.sess.contains_name(&i.attrs, sym::start) {
+                if attr::contains_name(&i.attrs, sym::start) {
                     gate_feature_post!(
                         &self,
                         start,
@@ -251,7 +245,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                for attr in self.sess.filter_by_name(&i.attrs, sym::repr) {
+                for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
                             gate_feature_post!(
@@ -312,7 +306,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
-                let link_name = self.sess.first_attr_value_str_by_name(&i.attrs, sym::link_name);
+                let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
                 let links_to_llvm =
                     link_name.map_or(false, |val| val.as_str().starts_with("llvm."));
                 if links_to_llvm {
@@ -342,9 +336,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
-            }
-            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
-                gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
             }
             _ => {}
         }
@@ -392,7 +383,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ).span_suggestion_verbose(
                 lhs.span.shrink_to_lo(),
                 "you might have meant to introduce a new binding",
-                "let ".to_string(),
+                "let ",
                 Applicability::MachineApplicable,
             ).emit();
         }
@@ -401,14 +392,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Box(_) => {
-                gate_feature_post!(
-                    &self,
-                    box_syntax,
-                    e.span,
-                    "box expression syntax is experimental; you can call `Box::new` instead"
-                );
-            }
             ast::ExprKind::Type(..) => {
                 if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
                     // To avoid noise about type ascription in common syntax errors,
@@ -430,14 +413,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::Closure(box ast::Closure { constness: ast::Const::Yes(_), .. }) => {
-                gate_feature_post!(
-                    &self,
-                    const_closures,
-                    e.span,
-                    "const closures are experimental"
-                );
             }
             _ => {}
         }
@@ -600,6 +575,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
+    gate_all!(dyn_star, "`dyn*` trait objects are experimental");
+    gate_all!(const_closures, "const closures are experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
@@ -619,7 +596,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
     gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);
@@ -635,13 +611,13 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
             return;
         }
         for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
-            let mut err = struct_span_err!(
-                sess.parse_sess.span_diagnostic,
-                attr.span,
-                E0554,
-                "`#![feature]` may not be used on the {} release channel",
-                option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
-            );
+            let mut err = errors::FeatureOnNonNightly {
+                span: attr.span,
+                channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
+                stable_features: vec![],
+                sugg: None,
+            };
+
             let mut all_stable = true;
             for ident in
                 attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
@@ -652,24 +628,15 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
                     .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
                     .next();
                 if let Some(since) = stable_since {
-                    err.help(&format!(
-                        "the feature `{}` has been stable since {} and no longer requires \
-                                  an attribute to enable",
-                        name, since
-                    ));
+                    err.stable_features.push(errors::StableFeature { name, since });
                 } else {
                     all_stable = false;
                 }
             }
             if all_stable {
-                err.span_suggestion(
-                    attr.span,
-                    "remove the attribute",
-                    "",
-                    Applicability::MachineApplicable,
-                );
+                err.sugg = Some(attr.span);
             }
-            err.emit();
+            sess.parse_sess.span_diagnostic.emit_err(err);
         }
     }
 }
@@ -692,16 +659,7 @@ fn check_incompatible_features(sess: &Session) {
             if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
             {
                 let spans = vec![f1_span, f2_span];
-                sess.struct_span_err(
-                    spans,
-                    &format!(
-                        "features `{}` and `{}` are incompatible, using them at the same time \
-                        is not allowed",
-                        f1_name, f2_name
-                    ),
-                )
-                .help("remove one of these features")
-                .emit();
+                sess.emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
             }
         }
     }

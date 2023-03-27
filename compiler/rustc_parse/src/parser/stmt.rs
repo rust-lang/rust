@@ -146,14 +146,14 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
-                this.parse_struct_expr(None, path, true)?
+                this.parse_expr_struct(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
                 this.mk_expr(lo.to(hi), ExprKind::Path(None, path))
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_dot_or_call_expr_with(expr, lo, attrs)
+                this.parse_expr_dot_or_call_with(expr, lo, attrs)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
             Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens_trailing_token` closure,
             // since our outer attributes do not apply to this part of the expression
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_assoc_expr_with(
+                this.parse_expr_assoc_with(
                     0,
                     LhsExpr::AlreadyParsed { expr, starts_statement: true },
                 )
@@ -199,8 +199,8 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
-            let e = self.parse_assoc_expr_with(
+            let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
+            let e = self.parse_expr_assoc_with(
                 0,
                 LhsExpr::AlreadyParsed { expr: e, starts_statement: false },
             )?;
@@ -273,7 +273,6 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        self.report_invalid_identifier_error()?;
         let (pat, colon) =
             self.parse_pat_before_ty(None, RecoverComma::Yes, PatternLocation::LetBinding)?;
 
@@ -364,17 +363,6 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
-    }
-
-    /// report error for `let 1x = 123`
-    pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
-        if let token::Literal(lit) = self.token.uninterpolate().kind &&
-            rustc_ast::MetaItemLit::from_token(&self.token).is_none() &&
-            (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
-            self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
-                return Err(self.sess.create_err(errors::InvalidIdentiferStartsWithNumber { span: self.token.span }));
-        }
-        Ok(())
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {

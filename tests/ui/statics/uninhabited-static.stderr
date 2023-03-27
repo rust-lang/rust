@@ -47,7 +47,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/uninhabited-static.rs:12:31
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type Void
 
 warning: the type `Void` does not permit zero-initialization
   --> $DIR/uninhabited-static.rs:12:31
@@ -66,7 +66,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/uninhabited-static.rs:16:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type Void
 
 warning: the type `Void` does not permit zero-initialization
   --> $DIR/uninhabited-static.rs:16:32

@@ -74,7 +74,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     };
                     layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
                 }
-                TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
+                TerminatorKind::Drop { .. } => {
                     tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
                         && layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }

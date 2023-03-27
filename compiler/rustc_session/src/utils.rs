@@ -1,5 +1,6 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_fs_util::try_canonicalize;
 use std::path::{Path, PathBuf};
 
 impl Session {
@@ -37,6 +38,10 @@ pub enum NativeLibKind {
     /// Argument which is passed to linker, relative order with libraries and other arguments
     /// is preserved
     LinkArg,
+
+    /// Module imported from WebAssembly
+    WasmImportModule,
+
     /// The library kind wasn't specified, `Dylib` is currently used as a default.
     Unspecified,
 }
@@ -50,7 +55,10 @@ impl NativeLibKind {
             NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
                 as_needed.is_some()
             }
-            NativeLibKind::RawDylib | NativeLibKind::Unspecified | NativeLibKind::LinkArg => false,
+            NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified
+            | NativeLibKind::LinkArg
+            | NativeLibKind::WasmImportModule => false,
         }
     }
 
@@ -91,7 +99,7 @@ pub struct CanonicalizedPath {
 
 impl CanonicalizedPath {
     pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: std::fs::canonicalize(path).ok() }
+        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {

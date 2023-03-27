@@ -4,11 +4,11 @@ use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
-    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
+    SourceInfo, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, ParamEnv, ParamEnvAnd, SubstsRef, Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
+use rustc_span::symbol::Symbol;
 
 pub struct InstCombine;
 
@@ -44,6 +44,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                 &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
+            ctx.combine_duplicate_switch_targets(&mut block.terminator.as_mut().unwrap());
         }
     }
 }
@@ -121,7 +122,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
                 *rvalue = Rvalue::Use(Operand::Copy(Place {
                     local: base.local,
-                    projection: self.tcx.intern_place_elems(base.projection),
+                    projection: self.tcx.mk_place_elems(base.projection),
                 }));
             }
         }
@@ -217,6 +218,19 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
 
+    fn combine_duplicate_switch_targets(&self, terminator: &mut Terminator<'tcx>) {
+        let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind
+        else { return };
+
+        let otherwise = targets.otherwise();
+        if targets.iter().any(|t| t.1 == otherwise) {
+            *targets = SwitchTargets::new(
+                targets.iter().filter(|t| t.1 != otherwise),
+                targets.otherwise(),
+            );
+        }
+    }
+
     fn combine_intrinsic_assert(
         &self,
         terminator: &mut Terminator<'tcx>,
@@ -234,16 +248,15 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         }
         let ty = substs.type_at(0);
 
-        // Check this is a foldable intrinsic before we query the layout of our generic parameter
-        let Some(assert_panics) = intrinsic_assert_panics(intrinsic_name) else { return; };
-        match assert_panics(self.tcx, self.param_env.and(ty)) {
-            // We don't know the layout, don't touch the assertion
-            Err(_) => {}
-            Ok(true) => {
+        let known_is_valid = intrinsic_assert_panics(self.tcx, self.param_env, ty, intrinsic_name);
+        match known_is_valid {
+            // We don't know the layout or it's not validity assertion at all, don't touch it
+            None => {}
+            Some(true) => {
                 // If we know the assert panics, indicate to later opts that the call diverges
                 *target = None;
             }
-            Ok(false) => {
+            Some(false) => {
                 // If we know the assert does not panic, turn the call into a Goto
                 terminator.kind = TerminatorKind::Goto { target: *target_block };
             }
@@ -252,33 +265,13 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 }
 
 fn intrinsic_assert_panics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
     intrinsic_name: Symbol,
-) -> Option<fn(TyCtxt<'tcx>, ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, LayoutError<'tcx>>> {
-    fn inhabited_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(tcx.layout_of(param_env_and_ty)?.abi.is_uninhabited())
-    }
-    fn zero_valid_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(!tcx.permits_zero_init(param_env_and_ty)?)
-    }
-    fn mem_uninitialized_valid_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(!tcx.permits_uninit_init(param_env_and_ty)?)
-    }
-
-    match intrinsic_name {
-        sym::assert_inhabited => Some(inhabited_predicate),
-        sym::assert_zero_valid => Some(zero_valid_predicate),
-        sym::assert_mem_uninitialized_valid => Some(mem_uninitialized_valid_predicate),
-        _ => None,
-    }
+) -> Option<bool> {
+    let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
+    Some(!tcx.check_validity_requirement((requirement, param_env.and(ty))).ok()?)
 }
 
 fn resolve_rust_intrinsic<'tcx>(

@@ -13,6 +13,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -23,7 +24,6 @@ use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols;
@@ -39,7 +39,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_target::abi::{Align, VariantIdx};
+use rustc_target::abi::{Align, FIRST_VARIANT};
 
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
@@ -306,7 +306,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variant(VariantIdx::new(0)).fields.len() {
+            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
                 let src_f = src.project_field(bx, i);
                 let dst_f = dst.project_field(bx, i);
 
@@ -476,7 +476,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     cx.tcx(),
                     ty::ParamEnv::reveal_all(),
                     start_def_id,
-                    cx.tcx().intern_substs(&[main_ret_ty.into()]),
+                    cx.tcx().mk_substs(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap(),
@@ -543,6 +543,23 @@ pub fn collect_debugger_visualizers_transitive(
         .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
         .cloned()
         .collect::<BTreeSet<_>>()
+}
+
+/// Decide allocator kind to codegen. If `Some(_)` this will be the same as
+/// `tcx.allocator_kind`, but it may be `None` in more cases (e.g. if using
+/// allocator definitions from a dylib dependency).
+pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
+    // If the crate doesn't have an `allocator_kind` set then there's definitely
+    // no shim to generate. Otherwise we also check our dependency graph for all
+    // our output crate types. If anything there looks like its a `Dynamic`
+    // linkage, then it's already got an allocator shim and we'll be using that
+    // one instead. If nothing exists then it's our job to generate the
+    // allocator!
+    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
+        use rustc_middle::middle::dependency_format::Linkage;
+        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+    });
+    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
 }
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
@@ -615,20 +632,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     );
 
     // Codegen an allocator shim, if necessary.
-    //
-    // If the crate doesn't have an `allocator_kind` set then there's definitely
-    // no shim to generate. Otherwise we also check our dependency graph for all
-    // our output crate types. If anything there looks like its a `Dynamic`
-    // linkage, then it's already got an allocator shim and we'll be using that
-    // one instead. If nothing exists then it's our job to generate the
-    // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
-        use rustc_middle::middle::dependency_format::Linkage;
-        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-    });
-    let allocator_module = if any_dynamic_crate {
-        None
-    } else if let Some(kind) = tcx.allocator_kind(()) {
+    if let Some(kind) = allocator_kind_for_codegen(tcx) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let module_llvm = tcx.sess.time("write_allocator_module", || {
@@ -642,13 +646,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
-    } else {
-        None
-    };
-
-    if let Some(allocator_module) = allocator_module {
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(
+            tcx,
+            ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+        );
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort
@@ -784,6 +785,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             total_codegen_time,
             start_rss.unwrap(),
             end_rss,
+            tcx.sess.opts.unstable_opts.time_passes_format,
         );
     }
 
@@ -807,7 +809,7 @@ impl CrateInfo {
             .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
                 tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });

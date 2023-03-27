@@ -71,6 +71,8 @@ fn get_simple_intrinsic<'ll>(
         sym::roundf32 => "llvm.round.f32",
         sym::roundf64 => "llvm.round.f64",
         sym::ptr_mask => "llvm.ptrmask",
+        sym::roundevenf32 => "llvm.roundeven.f32",
+        sym::roundevenf64 => "llvm.roundeven.f64",
         _ => return None,
     };
     Some(cx.get_intrinsic(llvm_name))
@@ -376,7 +378,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            _ => bug!("unknown intrinsic '{}'", name),
+            _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
         };
 
         if !fn_abi.ret.is_ignore() {

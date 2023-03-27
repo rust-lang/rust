@@ -1,11 +1,11 @@
-error[E0740]: unions cannot contain fields that may need dropping
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/issue-41073.rs:2:5
    |
 LL |     a: A,
    |     ^^^^
    |
-   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
-help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     a: std::mem::ManuallyDrop<A>,
    |        +++++++++++++++++++++++ +

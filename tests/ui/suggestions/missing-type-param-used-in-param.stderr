@@ -1,4 +1,4 @@
-error[E0107]: this function takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/missing-type-param-used-in-param.rs:6:5
    |
 LL |     two_type_params::<String>(100);

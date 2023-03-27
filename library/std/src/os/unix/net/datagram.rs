@@ -19,7 +19,8 @@ use crate::{fmt, io};
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "netbsd",
-    target_os = "haiku"
+    target_os = "haiku",
+    target_os = "nto",
 ))]
 use libc::MSG_NOSIGNAL;
 #[cfg(not(any(
@@ -29,7 +30,8 @@ use libc::MSG_NOSIGNAL;
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "netbsd",
-    target_os = "haiku"
+    target_os = "haiku",
+    target_os = "nto",
 )))]
 const MSG_NOSIGNAL: libc::c_int = 0x0;
 
@@ -100,7 +102,6 @@ impl UnixDatagram {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket_abstract)]
     /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -117,7 +118,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
         unsafe {
             let socket = UnixDatagram::unbound()?;
@@ -215,7 +216,6 @@ impl UnixDatagram {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket_abstract)]
     /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -233,7 +233,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
         unsafe {
             cvt(libc::connect(
@@ -521,7 +521,6 @@ impl UnixDatagram {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket_abstract)]
     /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -533,7 +532,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
     pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
         unsafe {
             let count = cvt(libc::sendto(

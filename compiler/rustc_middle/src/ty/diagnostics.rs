@@ -3,10 +3,9 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    ir::{FallibleTypeFolder, TypeVisitor},
-    visit::TypeVisitable,
-    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
-    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -95,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -118,7 +117,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     }
 
     let param_name = trait_pred.skip_binder().self_ty().to_string();
-    let mut constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let mut constraint = trait_pred.to_string();
 
     if let Some((name, term)) = associated_ty {
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
@@ -145,7 +144,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
              this requirement",
             if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
         ),
-        format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
+        format!("{} {constraint}", generics.add_where_or_trailing_comma()),
         Applicability::MaybeIncorrect,
     );
     true

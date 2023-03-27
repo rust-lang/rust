@@ -5,6 +5,7 @@
 #![feature(min_specialization)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(option_as_slice)]
 #![allow(rustc::potential_query_instability)]
 #![recursion_limit = "256"]
 
@@ -44,13 +45,14 @@ mod rvalue_scopes;
 mod upvar;
 mod writeback;
 
-pub use diverges::Diverges;
-pub use expectation::Expectation;
-pub use fn_ctxt::*;
-pub use inherited::{Inherited, InheritedBuilder};
+pub use fn_ctxt::FnCtxt;
+pub use inherited::Inherited;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
+use crate::diverges::Diverges;
+use crate::expectation::Expectation;
+use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
@@ -71,9 +73,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
 use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {
@@ -104,10 +106,9 @@ pub struct LocalTy<'tcx> {
 /// (notably closures), `typeck_results(def_id)` would wind up
 /// redirecting to the owning function.
 fn primary_body_of(
-    tcx: TyCtxt<'_>,
-    id: hir::HirId,
+    node: Node<'_>,
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    match tcx.hir().get(id) {
+    match node {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
                 Some((body, Some(ty), None))
@@ -141,8 +142,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 
     if let Some(def_id) = def_id.as_local() {
-        let id = tcx.hir().local_def_id_to_hir_id(def_id);
-        primary_body_of(tcx, id).is_some()
+        primary_body_of(tcx.hir().get_by_def_id(def_id)).is_some()
     } else {
         false
     }
@@ -197,138 +197,140 @@ fn typeck_with_fallback<'tcx>(
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let node = tcx.hir().get(id);
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, body_ty, fn_sig) = primary_body_of(tcx, id).unwrap_or_else(|| {
+    let (body_id, body_ty, fn_sig) = primary_body_of(node).unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
 
-    let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
-        let param_env = tcx.param_env(def_id);
-        let mut fcx = FnCtxt::new(&inh, param_env, def_id);
+    let param_env = tcx.param_env(def_id);
+    let param_env = if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+        param_env.without_const()
+    } else {
+        param_env
+    };
+    let inh = Inherited::new(tcx, def_id);
+    let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
-        if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
-            let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
-                fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
-            } else {
-                tcx.fn_sig(def_id).subst_identity()
-            };
-
-            check_abi(tcx, id, span, fn_sig.abi());
-
-            // Compute the function signature from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-            let fn_sig = fcx.normalize(body.value.span, fn_sig);
-
-            check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
+    if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
+            fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
         } else {
-            let expected_type = body_ty
-                .and_then(|ty| match ty.kind {
-                    hir::TyKind::Infer => Some(fcx.astconv().ast_ty_to_ty(ty)),
-                    _ => None,
-                })
-                .unwrap_or_else(|| match tcx.hir().get(id) {
-                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().parent_id(id)) {
-                        Node::Expr(&hir::Expr {
-                            kind: hir::ExprKind::ConstBlock(ref anon_const),
-                            ..
-                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span,
-                        }),
-                        Node::Ty(&hir::Ty {
-                            kind: hir::TyKind::Typeof(ref anon_const), ..
-                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span,
-                        }),
-                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
-                        | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
-                            let operand_ty =
-                                asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                                    hir::InlineAsmOperand::Const { anon_const }
-                                        if anon_const.hir_id == id =>
-                                    {
-                                        // Inline assembly constants must be integers.
-                                        Some(fcx.next_int_var())
-                                    }
-                                    hir::InlineAsmOperand::SymFn { anon_const }
-                                        if anon_const.hir_id == id =>
-                                    {
-                                        Some(fcx.next_ty_var(TypeVariableOrigin {
-                                            kind: TypeVariableOriginKind::MiscVariable,
-                                            span,
-                                        }))
-                                    }
-                                    _ => None,
-                                });
-                            operand_ty.unwrap_or_else(fallback)
-                        }
-                        _ => fallback(),
-                    },
-                    _ => fallback(),
-                });
-
-            let expected_type = fcx.normalize(body.value.span, expected_type);
-            fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
-
-            // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor::new(&fcx).visit_body(body);
-
-            fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
-
-            fcx.write_ty(id, expected_type);
+            tcx.fn_sig(def_id).subst_identity()
         };
 
-        fcx.type_inference_fallback();
+        check_abi(tcx, id, span, fn_sig.abi());
 
-        // Even though coercion casts provide type hints, we check casts after fallback for
-        // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        fcx.check_casts();
-        fcx.select_obligations_where_possible(|_| {});
+        // Compute the function signature from point of view of inside the fn.
+        let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
+        let fn_sig = fcx.normalize(body.value.span, fn_sig);
 
-        // Closure and generator analysis may run after fallback
-        // because they don't constrain other type variables.
-        // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
-        let prev_constness = fcx.param_env.constness();
-        fcx.param_env = fcx.param_env.without_const();
-        fcx.closure_analyze(body);
-        fcx.param_env = fcx.param_env.with_constness(prev_constness);
-        assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-        // Before the generator analysis, temporary scopes shall be marked to provide more
-        // precise information on types to be captured.
-        fcx.resolve_rvalue_scopes(def_id.to_def_id());
+        check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
+    } else {
+        let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
+            Some(fcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span,
+            }))
+        } else if let Node::AnonConst(_) = node {
+            match tcx.hir().get(tcx.hir().parent_id(id)) {
+                Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::ConstBlock(ref anon_const), ..
+                }) if anon_const.hir_id == id => Some(fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                })),
+                Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
+                    if anon_const.hir_id == id =>
+                {
+                    Some(fcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span,
+                    }))
+                }
+                Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
+                | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
+                    asm.operands.iter().find_map(|(op, _op_sp)| match op {
+                        hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
+                            // Inline assembly constants must be integers.
+                            Some(fcx.next_int_var())
+                        }
+                        hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                            Some(fcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            }))
+                        }
+                        _ => None,
+                    })
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        let expected_type = expected_type.unwrap_or_else(fallback);
 
-        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-            let ty = fcx.normalize(span, ty);
-            fcx.require_type_is_sized(ty, span, code);
-        }
+        let expected_type = fcx.normalize(body.value.span, expected_type);
+        fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
-        fcx.select_obligations_where_possible(|_| {});
+        // Gather locals in statics (because of block expressions).
+        GatherLocalsVisitor::new(&fcx).visit_body(body);
 
-        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+        fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
 
-        // This must be the last thing before `report_ambiguity_errors`.
-        fcx.resolve_generator_interiors(def_id.to_def_id());
+        fcx.write_ty(id, expected_type);
+    };
 
-        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+    fcx.type_inference_fallback();
 
-        if let None = fcx.infcx.tainted_by_errors() {
-            fcx.report_ambiguity_errors();
-        }
+    // Even though coercion casts provide type hints, we check casts after fallback for
+    // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
+    fcx.check_casts();
+    fcx.select_obligations_where_possible(|_| {});
 
-        if let None = fcx.infcx.tainted_by_errors() {
-            fcx.check_transmutes();
-        }
+    // Closure and generator analysis may run after fallback
+    // because they don't constrain other type variables.
+    // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
+    let prev_constness = fcx.param_env.constness();
+    fcx.param_env = fcx.param_env.without_const();
+    fcx.closure_analyze(body);
+    fcx.param_env = fcx.param_env.with_constness(prev_constness);
+    assert!(fcx.deferred_call_resolutions.borrow().is_empty());
+    // Before the generator analysis, temporary scopes shall be marked to provide more
+    // precise information on types to be captured.
+    fcx.resolve_rvalue_scopes(def_id.to_def_id());
 
-        fcx.check_asms();
+    for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
+        let ty = fcx.normalize(span, ty);
+        fcx.require_type_is_sized(ty, span, code);
+    }
 
-        fcx.infcx.skip_region_resolution();
+    fcx.select_obligations_where_possible(|_| {});
 
-        fcx.resolve_type_vars_in_body(body)
-    });
+    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+    // This must be the last thing before `report_ambiguity_errors`.
+    fcx.resolve_generator_interiors(def_id.to_def_id());
+
+    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+    if let None = fcx.infcx.tainted_by_errors() {
+        fcx.report_ambiguity_errors();
+    }
+
+    if let None = fcx.infcx.tainted_by_errors() {
+        fcx.check_transmutes();
+    }
+
+    fcx.check_asms();
+
+    fcx.infcx.skip_region_resolution();
+
+    let typeck_results = fcx.resolve_type_vars_in_body(body);
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.

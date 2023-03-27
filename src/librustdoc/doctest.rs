@@ -769,8 +769,8 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,
                     Err(_) => {
-                        debug!("Cannot build a parser to check mod attr so skipping...");
-                        return true;
+                        // If there is an unclosed delimiter, an error will be returned by the tokentrees.
+                        return false;
                     }
                 };
             // If a parsing error happened, it's very likely that the attribute is incomplete.
@@ -778,15 +778,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 e.cancel();
                 return false;
             }
-            // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
-            // the `unclosed_delims` and see if the opening square bracket was closed.
-            parser
-                .unclosed_delims()
-                .get(0)
-                .map(|unclosed| {
-                    unclosed.unclosed_span.map(|s| s.lo()).unwrap_or(BytePos(0)) != BytePos(2)
-                })
-                .unwrap_or(true)
+            true
         })
     })
     .unwrap_or(false)
@@ -1065,6 +1057,16 @@ impl Tester for Collector {
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
                 },
                 ignore_message: None,
+                #[cfg(not(bootstrap))]
+                source_file: "",
+                #[cfg(not(bootstrap))]
+                start_line: 0,
+                #[cfg(not(bootstrap))]
+                start_col: 0,
+                #[cfg(not(bootstrap))]
+                end_line: 0,
+                #[cfg(not(bootstrap))]
+                end_col: 0,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
                 compile_fail: config.compile_fail,

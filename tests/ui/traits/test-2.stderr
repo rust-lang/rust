@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/test-2.rs:9:8
    |
 LL |     10.dup::<i32>();
@@ -6,13 +6,13 @@ LL |     10.dup::<i32>();
    |        |
    |        expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
+note: method defined here, with 0 generic parameters
   --> $DIR/test-2.rs:4:16
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                ^^^
 
-error[E0107]: this associated function takes 1 generic argument but 2 generic arguments were supplied
+error[E0107]: method takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/test-2.rs:11:8
    |
 LL |     10.blah::<i32, i32>();
@@ -20,7 +20,7 @@ LL |     10.blah::<i32, i32>();
    |        |
    |        expected 1 generic argument
    |
-note: associated function defined here, with 1 generic parameter: `X`
+note: method defined here, with 1 generic parameter: `X`
   --> $DIR/test-2.rs:4:39
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }

@@ -37,19 +37,19 @@ thread_local! {
 
 thread_local! {
     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
-    //~^ ERROR this union takes 2 lifetime arguments but 1 lifetime argument
-    //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~^ ERROR union takes 2 lifetime arguments but 1 lifetime argument
+    //~| ERROR union takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR union takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR union takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR union takes 2 lifetime arguments but 1 lifetime argument was supplied
 }
 thread_local! {
     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-    //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~^ ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR missing lifetime
     //~| ERROR missing lifetime
 }

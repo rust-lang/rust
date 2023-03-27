@@ -11,7 +11,7 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::query::Fallible;
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
@@ -104,7 +104,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         });
     }
 
-    pub fn normalize<T: TypeFoldable<'tcx>>(
+    pub fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -128,8 +128,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(true)
-            .eq_exp(a_is_expected, a, b)
+            .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, a, b)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -142,8 +141,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(true)
-            .eq(expected, actual)
+            .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -157,8 +155,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(true)
-            .sup(expected, actual)
+            .sub(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -172,8 +169,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(true)
-            .sup(expected, actual)
+            .sup(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -220,7 +216,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         answer: T,
     ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
-        T: Debug + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         self.infcx.make_canonicalized_query_response(

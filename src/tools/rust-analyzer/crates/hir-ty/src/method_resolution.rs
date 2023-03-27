@@ -19,13 +19,13 @@ use stdx::never;
 use crate::{
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
-    from_foreign_def_id,
+    from_chalk_trait_id, from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
     primitive::{FloatTy, IntTy, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, InEnvironment,
+    Interner, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -266,11 +266,12 @@ impl TraitImpls {
 #[derive(Debug, Eq, PartialEq)]
 pub struct InherentImpls {
     map: FxHashMap<TyFingerprint, Vec<ImplId>>,
+    invalid_impls: Vec<ImplId>,
 }
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let crate_def_map = db.crate_def_map(krate);
         impls.collect_def_map(db, &crate_def_map);
@@ -283,7 +284,7 @@ impl InherentImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
         if let Some(block_def_map) = db.block_def_map(block) {
             impls.collect_def_map(db, &block_def_map);
             impls.shrink_to_fit();
@@ -306,11 +307,17 @@ impl InherentImpls {
                 }
 
                 let self_ty = db.impl_self_ty(impl_id);
-                let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
-                if let Some(fp) = fp {
-                    self.map.entry(fp).or_default().push(impl_id);
+                let self_ty = self_ty.skip_binders();
+
+                match is_inherent_impl_coherent(db, def_map, &data, self_ty) {
+                    true => {
+                        // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
+                        if let Some(fp) = TyFingerprint::for_inherent_impl(self_ty) {
+                            self.map.entry(fp).or_default().push(impl_id);
+                        }
+                    }
+                    false => self.invalid_impls.push(impl_id),
                 }
-                // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
             }
 
             // To better support custom derives, collect impls in all unnamed const items.
@@ -333,6 +340,10 @@ impl InherentImpls {
 
     pub fn all_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
         self.map.values().flat_map(|v| v.iter().copied())
+    }
+
+    pub fn invalid_impls(&self) -> &[ImplId] {
+        &self.invalid_impls
     }
 }
 
@@ -579,8 +590,8 @@ impl ReceiverAdjustments {
                     ty = new_ty.clone();
                     adjust.push(Adjustment {
                         kind: Adjust::Deref(match kind {
-                            // FIXME should we know the mutability here?
-                            AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+                            // FIXME should we know the mutability here, when autoref is `None`?
+                            AutoderefKind::Overloaded => Some(OverloadedDeref(self.autoref)),
                             AutoderefKind::Builtin => None,
                         }),
                         target: new_ty,
@@ -660,10 +671,10 @@ pub fn lookup_impl_const(
     env: Arc<TraitEnvironment>,
     const_id: ConstId,
     subs: Substitution,
-) -> ConstId {
+) -> (ConstId, Substitution) {
     let trait_id = match const_id.lookup(db.upcast()).container {
         ItemContainerId::TraitId(id) => id,
-        _ => return const_id,
+        _ => return (const_id, subs),
     };
     let substitution = Substitution::from_iter(Interner, subs.iter(Interner));
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution };
@@ -671,12 +682,14 @@ pub fn lookup_impl_const(
     let const_data = db.const_data(const_id);
     let name = match const_data.name.as_ref() {
         Some(name) => name,
-        None => return const_id,
+        None => return (const_id, subs),
     };
 
     lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| if let AssocItemId::ConstId(id) = assoc { Some(id) } else { None })
-        .unwrap_or(const_id)
+        .and_then(
+            |assoc| if let (AssocItemId::ConstId(id), s) = assoc { Some((id, s)) } else { None },
+        )
+        .unwrap_or((const_id, subs))
 }
 
 /// Looks up the impl method that actually runs for the trait method `func`.
@@ -687,10 +700,10 @@ pub fn lookup_impl_method(
     env: Arc<TraitEnvironment>,
     func: FunctionId,
     fn_subst: Substitution,
-) -> FunctionId {
+) -> (FunctionId, Substitution) {
     let trait_id = match func.lookup(db.upcast()).container {
         ItemContainerId::TraitId(id) => id,
-        _ => return func,
+        _ => return (func, fn_subst),
     };
     let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
@@ -701,8 +714,14 @@ pub fn lookup_impl_method(
 
     let name = &db.function_data(func).name;
     lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| if let AssocItemId::FunctionId(id) = assoc { Some(id) } else { None })
-        .unwrap_or(func)
+        .and_then(|assoc| {
+            if let (AssocItemId::FunctionId(id), subst) = assoc {
+                Some((id, subst))
+            } else {
+                None
+            }
+        })
+        .unwrap_or((func, fn_subst))
 }
 
 fn lookup_impl_assoc_item_for_trait_ref(
@@ -710,7 +729,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     name: &Name,
-) -> Option<AssocItemId> {
+) -> Option<(AssocItemId, Substitution)> {
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
@@ -718,8 +737,8 @@ fn lookup_impl_assoc_item_for_trait_ref(
 
     let table = InferenceTable::new(db, env);
 
-    let impl_data = find_matching_impl(impls, table, trait_ref)?;
-    impl_data.items.iter().find_map(|&it| match it {
+    let (impl_data, impl_subst) = find_matching_impl(impls, table, trait_ref)?;
+    let item = impl_data.items.iter().find_map(|&it| match it {
         AssocItemId::FunctionId(f) => {
             (db.function_data(f).name == *name).then_some(AssocItemId::FunctionId(f))
         }
@@ -730,14 +749,15 @@ fn lookup_impl_assoc_item_for_trait_ref(
             .map(|n| n == name)
             .and_then(|result| if result { Some(AssocItemId::ConstId(c)) } else { None }),
         AssocItemId::TypeAliasId(_) => None,
-    })
+    })?;
+    Some((item, impl_subst))
 }
 
 fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
     mut table: InferenceTable<'_>,
     actual_trait_ref: TraitRef,
-) -> Option<Arc<ImplData>> {
+) -> Option<(Arc<ImplData>, Substitution)> {
     let db = table.db;
     loop {
         let impl_ = impls.next()?;
@@ -758,11 +778,74 @@ fn find_matching_impl(
                 .into_iter()
                 .map(|b| b.cast(Interner));
             let goal = crate::Goal::all(Interner, wcs);
-            table.try_obligation(goal).map(|_| impl_data)
+            table.try_obligation(goal).map(|_| (impl_data, table.resolve_completely(impl_substs)))
         });
         if r.is_some() {
             break r;
         }
+    }
+}
+
+fn is_inherent_impl_coherent(
+    db: &dyn HirDatabase,
+    def_map: &DefMap,
+    impl_data: &ImplData,
+    self_ty: &Ty,
+) -> bool {
+    let self_ty = self_ty.kind(Interner);
+    let impl_allowed = match self_ty {
+        TyKind::Tuple(_, _)
+        | TyKind::FnDef(_, _)
+        | TyKind::Array(_, _)
+        | TyKind::Never
+        | TyKind::Raw(_, _)
+        | TyKind::Ref(_, _, _)
+        | TyKind::Slice(_)
+        | TyKind::Str
+        | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
+
+        &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
+        TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+            from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate() == def_map.krate()
+        }),
+
+        _ => true,
+    };
+    impl_allowed || {
+        let rustc_has_incoherent_inherent_impls = match self_ty {
+            TyKind::Tuple(_, _)
+            | TyKind::FnDef(_, _)
+            | TyKind::Array(_, _)
+            | TyKind::Never
+            | TyKind::Raw(_, _)
+            | TyKind::Ref(_, _, _)
+            | TyKind::Slice(_)
+            | TyKind::Str
+            | TyKind::Scalar(_) => true,
+
+            &TyKind::Adt(AdtId(adt), _) => match adt {
+                hir_def::AdtId::StructId(it) => {
+                    db.struct_data(it).rustc_has_incoherent_inherent_impls
+                }
+                hir_def::AdtId::UnionId(it) => {
+                    db.union_data(it).rustc_has_incoherent_inherent_impls
+                }
+                hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
+            },
+            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+                db.trait_data(from_chalk_trait_id(trait_ref.trait_id))
+                    .rustc_has_incoherent_inherent_impls
+            }),
+
+            _ => false,
+        };
+        rustc_has_incoherent_inherent_impls
+            && !impl_data.items.is_empty()
+            && impl_data.items.iter().copied().all(|assoc| match assoc {
+                AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl,
+                AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl,
+                AssocItemId::TypeAliasId(it) => db.type_alias_data(it).rustc_allow_incoherent_impl,
+            })
     }
 }
 
@@ -821,9 +904,9 @@ pub fn iterate_method_candidates_dyn(
 
             let mut table = InferenceTable::new(db, env.clone());
             let ty = table.instantiate_canonical(ty.clone());
-            let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
+            let deref_chain = autoderef_method_receiver(&mut table, ty);
 
-            let result = deref_chain.into_iter().zip(adj).try_for_each(|(receiver_ty, adj)| {
+            let result = deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
                 iterate_method_candidates_with_autoref(
                     &receiver_ty,
                     adj,
@@ -867,16 +950,20 @@ fn iterate_method_candidates_with_autoref(
         return ControlFlow::Continue(());
     }
 
-    iterate_method_candidates_by_receiver(
-        receiver_ty,
-        first_adjustment.clone(),
-        db,
-        env.clone(),
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
-    )?;
+    let mut iterate_method_candidates_by_receiver = move |receiver_ty, first_adjustment| {
+        iterate_method_candidates_by_receiver(
+            receiver_ty,
+            first_adjustment,
+            db,
+            env.clone(),
+            traits_in_scope,
+            visible_from_module,
+            name,
+            &mut callback,
+        )
+    };
+
+    iterate_method_candidates_by_receiver(receiver_ty, first_adjustment.clone())?;
 
     let refed = Canonical {
         value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
@@ -884,16 +971,7 @@ fn iterate_method_candidates_with_autoref(
         binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(
-        &refed,
-        first_adjustment.with_autoref(Mutability::Not),
-        db,
-        env.clone(),
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
-    )?;
+    iterate_method_candidates_by_receiver(&refed, first_adjustment.with_autoref(Mutability::Not))?;
 
     let ref_muted = Canonical {
         value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value.clone())
@@ -904,12 +982,6 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(
         &ref_muted,
         first_adjustment.with_autoref(Mutability::Mut),
-        db,
-        env,
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
     )
 }
 
@@ -1210,8 +1282,8 @@ pub fn resolve_indexing_op(
 ) -> Option<ReceiverAdjustments> {
     let mut table = InferenceTable::new(db, env.clone());
     let ty = table.instantiate_canonical(ty);
-    let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
-    for (ty, adj) in deref_chain.into_iter().zip(adj) {
+    let deref_chain = autoderef_method_receiver(&mut table, ty);
+    for (ty, adj) in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, &ty);
         if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
             return Some(adj);
@@ -1421,25 +1493,24 @@ fn generic_implements_goal(
 fn autoderef_method_receiver(
     table: &mut InferenceTable<'_>,
     ty: Ty,
-) -> (Vec<Canonical<Ty>>, Vec<ReceiverAdjustments>) {
-    let (mut deref_chain, mut adjustments): (Vec<_>, Vec<_>) = (Vec::new(), Vec::new());
+) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
+    let mut deref_chain: Vec<_> = Vec::new();
     let mut autoderef = autoderef::Autoderef::new(table, ty);
     while let Some((ty, derefs)) = autoderef.next() {
-        deref_chain.push(autoderef.table.canonicalize(ty).value);
-        adjustments.push(ReceiverAdjustments {
-            autoref: None,
-            autoderefs: derefs,
-            unsize_array: false,
-        });
+        deref_chain.push((
+            autoderef.table.canonicalize(ty).value,
+            ReceiverAdjustments { autoref: None, autoderefs: derefs, unsize_array: false },
+        ));
     }
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let (Some((TyKind::Array(parameters, _), binders)), Some(adj)) = (
-        deref_chain.last().map(|ty| (ty.value.kind(Interner), ty.binders.clone())),
-        adjustments.last().cloned(),
-    ) {
+    if let Some((TyKind::Array(parameters, _), binders, adj)) =
+        deref_chain.last().map(|(ty, adj)| (ty.value.kind(Interner), ty.binders.clone(), adj))
+    {
         let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
-        deref_chain.push(Canonical { value: unsized_ty, binders });
-        adjustments.push(ReceiverAdjustments { unsize_array: true, ..adj });
+        deref_chain.push((
+            Canonical { value: unsized_ty, binders },
+            ReceiverAdjustments { unsize_array: true, ..adj.clone() },
+        ));
     }
-    (deref_chain, adjustments)
+    deref_chain
 }

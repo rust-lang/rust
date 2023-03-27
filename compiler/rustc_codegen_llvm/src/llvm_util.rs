@@ -120,8 +120,6 @@ unsafe fn configure_llvm(sess: &Session) {
         llvm::LLVMTimeTraceProfilerInitialize();
     }
 
-    llvm::LLVMInitializePasses();
-
     rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
@@ -426,7 +424,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         .filter_map(|s| {
             let enable_disable = match s.chars().next() {
                 None => return None,
-                Some(c @ '+' | c @ '-') => c,
+                Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
                         sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });

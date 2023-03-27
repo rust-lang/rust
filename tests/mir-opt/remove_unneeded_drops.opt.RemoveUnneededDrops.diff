@@ -11,7 +11,7 @@
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:+1:5: +1:12
+-         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:+1:5: +1:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:+1:10: +1:11
           _3 = _1;                         // scope 0 at $DIR/remove_unneeded_drops.rs:+1:10: +1:11
 -         drop(_3) -> bb1;                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
@@ -19,7 +19,7 @@
 - 
 -     bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:+1:11: +1:12
-          StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:+1:12: +1:13
+-         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:+1:12: +1:13
 -         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:+0:17: +2:2
           return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:+2:2: +2:2
       }

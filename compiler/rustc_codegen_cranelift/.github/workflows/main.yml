@@ -22,7 +22,7 @@ jobs:
         rustfmt --check build_system/mod.rs
 
 
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
@@ -112,63 +112,6 @@ jobs:
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs test
-
-
-  abi_cafe:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-
-    defaults:
-      run:
-        shell: bash
-
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            env:
-              TARGET_TRIPLE: x86_64-apple-darwin
-          - os: windows-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-msvc
-          - os: windows-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
-
-    - name: Set MinGW as the default toolchain
-      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      run: rustup set default-host x86_64-pc-windows-gnu
-
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
-    - name: Prepare dependencies
-      run: ./y.rs prepare
-
-    - name: Build
-      run: ./y.rs build --sysroot none
-
-    - name: Test abi-cafe
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.rs abi-cafe
 
 
   bench:

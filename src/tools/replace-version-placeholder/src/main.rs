@@ -10,7 +10,7 @@ fn main() {
     let version_str = version_str.trim();
     walk::walk(
         &root_path,
-        &mut |path| {
+        |path| {
             walk::filter_dirs(path)
                 // We exempt these as they require the placeholder
                 // for their operation

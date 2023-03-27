@@ -682,7 +682,6 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
-        ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
@@ -790,7 +789,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }
-        ExprKind::Lit(_) | ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::Err(_) => {}
     }
 }
 
@@ -844,7 +843,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
             visitor.visit_lifetime(lifetime);
         }
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
-        TyKind::Infer | TyKind::Err => {}
+        TyKind::Infer | TyKind::Err(_) => {}
     }
 }
 

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-64506.rs:16:22
+   |
+LL |     let x = unsafe { Foo { b: () }.a };
+   |                      ^^^^^^^^^^^^^^^ constructing invalid value at .inner: encountered a value of uninhabited type AnonPipe
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -14,11 +14,11 @@ note: candidate #2 is defined in an impl of the trait `Bar` for the type `usize`
    |
 LL | trait Bar { fn method(&self) {} }
    |             ^^^^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     Foo::method(&1_usize);
    |     ~~~~~~~~~~~~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     Bar::method(&1_usize);
    |     ~~~~~~~~~~~~~~~~~~~~~

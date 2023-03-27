@@ -93,31 +93,6 @@ impl UniversalRegionRelations<'_> {
         res
     }
 
-    /// Returns the "postdominating" bound of the set of
-    /// `non_local_upper_bounds` for the given region.
-    pub(crate) fn non_local_upper_bound(&self, fr: RegionVid) -> RegionVid {
-        let upper_bounds = self.non_local_upper_bounds(fr);
-
-        // In case we find more than one, reduce to one for
-        // convenience. This is to prevent us from generating more
-        // complex constraints, but it will cause spurious errors.
-        let post_dom = self.inverse_outlives.mutual_immediate_postdominator(upper_bounds);
-
-        debug!("non_local_bound: post_dom={:?}", post_dom);
-
-        post_dom
-            .and_then(|post_dom| {
-                // If the mutual immediate postdom is not local, then
-                // there is no non-local result we can return.
-                if !self.universal_regions.is_local_free_region(post_dom) {
-                    Some(post_dom)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(self.universal_regions.fr_static)
-    }
-
     /// Finds a "lower bound" for `fr` that is not local. In other
     /// words, returns the largest (*) known region `fr1` that (a) is
     /// outlived by `fr` and (b) is not local.
@@ -270,12 +245,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 .and(type_op::normalize::Normalize::new(ty))
                 .fully_perform(self.infcx)
                 .unwrap_or_else(|_| {
-                    self.infcx
+                    let guar = self
+                        .infcx
                         .tcx
                         .sess
                         .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                     TypeOpOutput {
-                        output: self.infcx.tcx.ty_error(),
+                        output: self.infcx.tcx.ty_error(guar),
                         constraints: None,
                         error_info: None,
                     }

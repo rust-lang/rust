@@ -21,6 +21,7 @@ done
 
 git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 git checkout -- tests/ui/proc-macro/pretty-print-hack/
+rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 
 # missing features
 # ================
@@ -80,6 +81,7 @@ rm tests/ui/layout/valid_range_oob.rs # different ICE message
 
 rm tests/ui/consts/issue-miri-1910.rs # different error message
 rm tests/ui/consts/offset_ub.rs # same
+rm tests/ui/consts/const-eval/ub-slice-get-unchecked.rs # same
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/lint/lint-const-item-mutation.rs # same
 rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
@@ -110,11 +112,8 @@ rm tests/incremental/spike-neg2.rs # same
 
 rm tests/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
-rm tests/ui/simd/intrinsic/generic-as.rs # crash when accessing vector type filed (#1318)
+rm tests/ui/simd/intrinsic/generic-as.rs # crash when accessing vector type field (#1318)
 rm tests/ui/simd/simd-bitmask.rs # crash
-
-rm tests/ui/dyn-star/dyn-star-to-dyn.rs
-rm tests/ui/dyn-star/dispatch-on-pin-mut.rs
 
 # bugs in the test suite
 # ======================

@@ -20,7 +20,7 @@ use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::map_in_place::MapInPlace;
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -1038,6 +1038,9 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     ) -> Result<Self::OutputTy, Self> {
         Ok(noop_flat_map(node, collector))
     }
+    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, span: Span) {
+        collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+    }
 }
 
 impl InvocationCollectorNode for P<ast::Item> {
@@ -1378,6 +1381,11 @@ impl InvocationCollectorNode for ast::Crate {
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
     }
+    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, _span: Span) {
+        self.attrs.clear();
+        // Standard prelude imports are left in the crate for backward compatibility.
+        self.items.truncate(collector.cx.num_standard_library_imports);
+    }
 }
 
 impl InvocationCollectorNode for P<ast::Ty> {
@@ -1688,7 +1696,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         res
     }
 
-    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: ast::Attribute, pos: usize) {
+    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
             // Repeated `insert` calls is inefficient, but the number of
             // insertions is almost always 0 or 1 in practice.
@@ -1712,7 +1720,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         Default::default()
                     }
                     sym::cfg_attr => {
-                        self.expand_cfg_attr(&mut node, attr, pos);
+                        self.expand_cfg_attr(&mut node, &attr, pos);
                         continue;
                     }
                     _ => {
@@ -1756,11 +1764,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             continue;
                         }
 
-                        self.cx.emit_err(RemoveNodeNotSupported { span, descr: Node::descr() });
+                        node.expand_cfg_false(self, span);
                         continue;
                     }
                     sym::cfg_attr => {
-                        self.expand_cfg_attr(node, attr, pos);
+                        self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }
                     _ => visit_clobber(node, |node| {

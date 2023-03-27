@@ -16,7 +16,7 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(late_bound_lifetime_arguments)]` implied by `#[deny(warnings)]`
 
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-60622.rs:10:7
    |
 LL |     b.a::<'_, T>();
@@ -24,7 +24,7 @@ LL |     b.a::<'_, T>();
    |       |
    |       expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
+note: method defined here, with 0 generic parameters
   --> $DIR/issue-60622.rs:6:8
    |
 LL |     fn a(&self) {}

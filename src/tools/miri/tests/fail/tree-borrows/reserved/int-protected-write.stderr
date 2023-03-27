@@ -1,0 +1,28 @@
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Res|    └─┬──<TAG=n>
+| Res|      ├─┬──<TAG=x>
+| Res|      │ └─┬──<TAG=caller:x>
+| Res|      │   └────<TAG=callee:x> Strongly protected
+| Res|      └────<TAG=y,callee:y,caller:y>
+──────────────────────────────────────────────────────────────────────
+error: Undefined Behavior: write access through <TAG> (also named 'y,callee:y,caller:y') is forbidden because it is a foreign tag for <TAG> (also named 'callee:x'), which would hence change from Reserved to Disabled, but <TAG> (also named 'callee:x') is protected
+  --> $DIR/int-protected-write.rs:LL:CC
+   |
+LL |             *y = 0;
+   |             ^^^^^^ write access through <TAG> (also named 'y,callee:y,caller:y') is forbidden because it is a foreign tag for <TAG> (also named 'callee:x'), which would hence change from Reserved to Disabled, but <TAG> (also named 'callee:x') is protected
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = note: BACKTRACE:
+   = note: inside `main::write_second` at $DIR/int-protected-write.rs:LL:CC
+note: inside `main`
+  --> $DIR/int-protected-write.rs:LL:CC
+   |
+LL |         write_second(x, y);
+   |         ^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

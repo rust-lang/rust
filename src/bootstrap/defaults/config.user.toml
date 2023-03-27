@@ -11,3 +11,7 @@ extended = true
 [llvm]
 # Most users installing from source want to build all parts of the project from source, not just rustc itself.
 download-ci-llvm = false
+
+[dist]
+# Use better compression when preparing tarballs.
+compression-profile = "balanced"

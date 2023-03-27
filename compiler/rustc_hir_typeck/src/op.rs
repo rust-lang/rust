@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, ir::TypeFolder, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperFoldable, TypeVisitable,
+    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -21,7 +21,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, FulfillmentError};
+use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -148,10 +148,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rhs_ty,
                         op,
                     );
-                    self.demand_suptype(expr.span, builtin_return_ty, return_ty);
+                    self.demand_eqtype(expr.span, builtin_return_ty, return_ty);
+                    builtin_return_ty
+                } else {
+                    return_ty
                 }
-
-                return_ty
             }
         }
     }
@@ -297,7 +298,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method.sig.output()
             }
             // error types are considered "builtin"
-            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
+            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
+                self.tcx.ty_error_misc()
+            }
             Err(errors) => {
                 let (_, trait_def_id) =
                     lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
@@ -431,7 +434,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.type_is_copy_modulo_regions(
                         self.param_env,
                         *lhs_deref_ty,
-                        lhs_expr.span,
                     ) {
                         suggest_deref_binop(*lhs_deref_ty);
                     }
@@ -518,7 +520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 let reported = err.emit();
-                self.tcx.ty_error_with_guaranteed(reported)
+                self.tcx.ty_error(reported)
             }
         };
 
@@ -631,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
-                if !actual.references_error() {
+                let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         ex.span,
@@ -701,9 +703,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit();
-                }
-                self.tcx.ty_error()
+                    err.emit()
+                });
+                self.tcx.ty_error(guar)
             }
         }
     }
@@ -747,14 +749,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let opname = Ident::with_dummy_span(opname);
-        let input_types =
-            opt_rhs.as_ref().map(|(_, ty)| std::slice::from_ref(ty)).unwrap_or_default();
+        let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
+        let input_types = opt_rhs_ty.as_slice();
         let cause = self.cause(
             span,
             traits::BinOp {
-                rhs_span: opt_rhs.map(|(expr, _)| expr.span),
-                is_lit: opt_rhs
-                    .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                rhs_span: opt_rhs_expr.map(|expr| expr.span),
+                is_lit: opt_rhs_expr
+                    .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 output_ty: expected.only_has_type(self),
             },
         );
@@ -773,7 +775,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, Some(trait_did)) => {
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
-                Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
+                // FIXME: This should potentially just add the obligation to the `FnCtxt`
+                let ocx = ObligationCtxt::new(&self.infcx);
+                ocx.register_obligation(obligation);
+                Err(ocx.select_all_or_error())
             }
         }
     }

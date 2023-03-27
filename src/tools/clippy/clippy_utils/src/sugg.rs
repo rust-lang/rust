@@ -1,9 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::source::{
-    snippet, snippet_opt, snippet_with_applicability, snippet_with_context, snippet_with_macro_callsite,
-};
+use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_context};
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
@@ -20,7 +18,7 @@ use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
 use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use std::borrow::Cow;
-use std::fmt::{Display, Write as _};
+use std::fmt::{self, Display, Write as _};
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
@@ -89,12 +87,6 @@ impl<'a> Sugg<'a> {
         })
     }
 
-    /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
-    pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        let get_snippet = |span| snippet_with_macro_callsite(cx, span, default);
-        Self::hir_from_snippet(expr, get_snippet)
-    }
-
     /// Same as `hir`, but first walks the span up to the given context. This will result in the
     /// macro call, rather then the expansion, if the span is from a child context. If the span is
     /// not from a child context, it will be used directly instead.
@@ -133,7 +125,6 @@ impl<'a> Sugg<'a> {
 
         match expr.kind {
             hir::ExprKind::AddrOf(..)
-            | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
             | hir::ExprKind::Let(..)
             | hir::ExprKind::Closure { .. }
@@ -157,7 +148,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
-            | hir::ExprKind::Err => Sugg::NonParen(get_snippet(expr.span)),
+            | hir::ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
             hir::ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
@@ -188,7 +179,6 @@ impl<'a> Sugg<'a> {
         match expr.kind {
             _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::AddrOf(..)
-            | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
@@ -932,7 +922,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                let _ = write!(self.suggestion_start, "{start_snip}&{ident_str}");
+                let _: fmt::Result = write!(self.suggestion_start, "{start_snip}&{ident_str}");
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
@@ -947,7 +937,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
                         ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
-                            let _ = write!(self.suggestion_start, "{start_snip}{ident_str_with_proj}");
+                            let _: fmt::Result = write!(self.suggestion_start, "{start_snip}{ident_str_with_proj}");
                             self.next_pos = span.hi();
                             return;
                         },
@@ -1055,7 +1045,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 }
 
-                let _ = write!(self.suggestion_start, "{start_snip}{replacement_str}");
+                let _: fmt::Result = write!(self.suggestion_start, "{start_snip}{replacement_str}");
             }
             self.next_pos = span.hi();
         }

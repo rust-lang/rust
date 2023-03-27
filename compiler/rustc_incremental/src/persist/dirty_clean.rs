@@ -371,7 +371,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn check_item(&mut self, item_id: LocalDefId) {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
-        for attr in self.tcx.get_attrs(item_id.to_def_id(), sym::rustc_clean) {
+        for attr in self.tcx.get_attrs(item_id, sym::rustc_clean) {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };

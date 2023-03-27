@@ -1,9 +1,8 @@
+use rustc_infer::traits::{TraitEngine, TraitEngineExt};
 use rustc_middle::ty;
-use rustc_session::config::TraitSolver;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::solve::{Certainty, Goal, InferCtxtEvalExt, MaybeCause};
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
@@ -79,37 +78,30 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             _ => obligation.param_env.without_const(),
         };
 
-        if self.tcx.sess.opts.unstable_opts.trait_solver != TraitSolver::Next {
+        if self.tcx.trait_solver_next() {
+            self.probe(|snapshot| {
+                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
+                fulfill_cx.register_predicate_obligation(self, obligation.clone());
+                // True errors
+                // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
+                if !fulfill_cx.select_where_possible(self).is_empty() {
+                    Ok(EvaluationResult::EvaluatedToErr)
+                } else if !fulfill_cx.select_all_or_error(self).is_empty() {
+                    Ok(EvaluationResult::EvaluatedToAmbig)
+                } else if self.opaque_types_added_in_snapshot(snapshot) {
+                    Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
+                } else if self.region_constraints_added_in_snapshot(snapshot).is_some() {
+                    Ok(EvaluationResult::EvaluatedToOkModuloRegions)
+                } else {
+                    Ok(EvaluationResult::EvaluatedToOk)
+                }
+            })
+        } else {
             let c_pred = self.canonicalize_query_keep_static(
                 param_env.and(obligation.predicate),
                 &mut _orig_values,
             );
             self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
-        } else {
-            self.probe(|snapshot| {
-                if let Ok((_, certainty)) =
-                    self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
-                {
-                    match certainty {
-                        Certainty::Yes => {
-                            if self.opaque_types_added_in_snapshot(snapshot) {
-                                Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
-                            } else if self.region_constraints_added_in_snapshot(snapshot).is_some()
-                            {
-                                Ok(EvaluationResult::EvaluatedToOkModuloRegions)
-                            } else {
-                                Ok(EvaluationResult::EvaluatedToOk)
-                            }
-                        }
-                        Certainty::Maybe(MaybeCause::Ambiguity) => {
-                            Ok(EvaluationResult::EvaluatedToAmbig)
-                        }
-                        Certainty::Maybe(MaybeCause::Overflow) => Err(OverflowError::Canonical),
-                    }
-                } else {
-                    Ok(EvaluationResult::EvaluatedToErr)
-                }
-            })
         }
     }
 

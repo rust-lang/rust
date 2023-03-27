@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
@@ -115,11 +115,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                     if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
                         let did = did.expect_local();
-                        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
-
-                        if let Some((span, hir_place)) =
-                            self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                        {
+                        if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                             diag.span_note(
                                 *span,
                                 &format!(
@@ -139,11 +135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(target) = target {
             if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind() {
                 let did = did.expect_local();
-                let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
-
-                if let Some((span, hir_place)) =
-                    self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                {
+                if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                     diag.span_note(
                         *span,
                         &format!(
@@ -204,10 +196,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if self.body.local_decls[local].is_ref_for_guard() {
                             continue;
                         }
-                        if let Some(box LocalInfo::StaticRef { def_id, .. }) =
-                            &self.body.local_decls[local].local_info
+                        if let LocalInfo::StaticRef { def_id, .. } =
+                            *self.body.local_decls[local].local_info()
                         {
-                            buf.push_str(self.infcx.tcx.item_name(*def_id).as_str());
+                            buf.push_str(self.infcx.tcx.item_name(def_id).as_str());
                             ok = Ok(());
                             continue;
                         }
@@ -373,14 +365,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     //
                     // We know the field exists so it's safe to call operator[] and `unwrap` here.
                     let def_id = def_id.expect_local();
-                    let var_id = self
-                        .infcx
-                        .tcx
-                        .typeck(def_id)
-                        .closure_min_captures_flattened(def_id)
-                        .nth(field.index())
-                        .unwrap()
-                        .get_root_variable();
+                    let var_id =
+                        self.infcx.tcx.closure_captures(def_id)[field.index()].get_root_variable();
 
                     Some(self.infcx.tcx.hir().name(var_id).to_string())
                 }
@@ -939,7 +925,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return OtherUse(use_span);
         }
 
-        for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+        // drop and replace might have moved the assignment to the next block
+        let maybe_additional_statement =
+            if let TerminatorKind::Drop { target: drop_target, .. } =
+                self.body[location.block].terminator().kind
+            {
+                self.body[drop_target].statements.first()
+            } else {
+                None
+            };
+
+        let statements =
+            self.body[location.block].statements[location.statement_index + 1..].iter();
+
+        for stmt in statements.chain(maybe_additional_statement) {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
@@ -987,7 +986,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
-                self.infcx.tcx.typeck(def_id).closure_min_captures_flattened(def_id).zip(places)
+                self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
@@ -1079,7 +1078,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     self.param_env,
                                     tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
                                     def_id,
-                                    DUMMY_SP,
                                 )
                             }
                             _ => false,
