@@ -1083,9 +1083,9 @@ impl ExprCollector<'_> {
                         .collect(),
                 }
             }
-            // FIXME: rustfmt removes this label if it is a block and not a loop
-            ast::Pat::LiteralPat(lit) => 'b: loop {
-                break if let Some(ast_lit) = lit.literal() {
+            #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5676
+            ast::Pat::LiteralPat(lit) => 'b: {
+                if let Some(ast_lit) = lit.literal() {
                     let mut hir_lit: Literal = ast_lit.kind().into();
                     if lit.minus_token().is_some() {
                         let Some(h) = hir_lit.negate() else {
@@ -1099,7 +1099,7 @@ impl ExprCollector<'_> {
                     Pat::Lit(expr_id)
                 } else {
                     Pat::Missing
-                };
+                }
             },
             ast::Pat::RestPat(_) => {
                 // `RestPat` requires special handling and should not be mapped
