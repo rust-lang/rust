@@ -15,7 +15,7 @@ type SetAbortMessageType = unsafe extern "C" fn(*const libc::c_char) -> ();
 //
 // Weakly resolve the symbol for android_set_abort_message. This function is only available
 // for API >= 21.
-pub(crate) unsafe fn android_set_abort_message(payload: *mut &mut dyn BoxMeUp) {
+pub(crate) unsafe fn android_set_abort_message(payload: &mut dyn BoxMeUp) {
     let func_addr =
         libc::dlsym(libc::RTLD_DEFAULT, ANDROID_SET_ABORT_MESSAGE.as_ptr() as *const libc::c_char)
             as usize;
@@ -23,7 +23,7 @@ pub(crate) unsafe fn android_set_abort_message(payload: *mut &mut dyn BoxMeUp) {
         return;
     }
 
-    let payload = (*payload).get();
+    let payload = payload.get();
     let msg = match payload.downcast_ref::<&'static str>() {
         Some(msg) => msg.as_bytes(),
         None => match payload.downcast_ref::<String>() {
