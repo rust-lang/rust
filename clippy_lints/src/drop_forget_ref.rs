@@ -31,28 +31,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `std::mem::drop` with a value
-    /// that derives the Copy trait
-    ///
-    /// ### Why is this bad?
-    /// Calling `std::mem::drop` [does nothing for types that
-    /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
-    /// value will be copied and moved into the function on invocation.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let x: i32 = 42; // i32 implements Copy
-    /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
-    ///                   // original unaffected
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DROP_COPY,
-    correctness,
-    "calls to `std::mem::drop` with a value that implements Copy"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for calls to `std::mem::forget` with a value that
     /// derives the Copy trait
     ///
@@ -150,8 +128,6 @@ declare_clippy_lint! {
 
 const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value. \
                                   Forgetting a reference does nothing";
-const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that implements `Copy`. \
-                                 Dropping a copy leaves the original intact";
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
                                    Forgetting a copy leaves the original intact";
 const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
@@ -161,7 +137,6 @@ const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value t
 
 declare_lint_pass!(DropForgetRef => [
     FORGET_REF,
-    DROP_COPY,
     FORGET_COPY,
     DROP_NON_DROP,
     FORGET_NON_DROP,
@@ -179,10 +154,10 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             let is_copy = is_copy(cx, arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let (lint, msg) = match fn_name {
-                // early return for uplifted lints: drop_ref
+                // early return for uplifted lints: drop_ref, drop_copy
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if arg_ty.is_ref() => (FORGET_REF, FORGET_REF_SUMMARY),
-                sym::mem_drop if is_copy && !drop_is_single_call_in_arm => (DROP_COPY, DROP_COPY_SUMMARY),
+                sym::mem_drop if is_copy && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if is_copy => (FORGET_COPY, FORGET_COPY_SUMMARY),
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => {
                     span_lint_and_help(

@@ -1,40 +1,3 @@
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
-  --> $DIR/drop_forget_copy.rs:33:5
-   |
-LL |     drop(s1);
-   |     ^^^^^^^^
-   |
-note: argument has type `SomeStruct`
-  --> $DIR/drop_forget_copy.rs:33:10
-   |
-LL |     drop(s1);
-   |          ^^
-   = note: `-D clippy::drop-copy` implied by `-D warnings`
-
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
-  --> $DIR/drop_forget_copy.rs:34:5
-   |
-LL |     drop(s2);
-   |     ^^^^^^^^
-   |
-note: argument has type `SomeStruct`
-  --> $DIR/drop_forget_copy.rs:34:10
-   |
-LL |     drop(s2);
-   |          ^^
-
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
-  --> $DIR/drop_forget_copy.rs:36:5
-   |
-LL |     drop(s4);
-   |     ^^^^^^^^
-   |
-note: argument has type `SomeStruct`
-  --> $DIR/drop_forget_copy.rs:36:10
-   |
-LL |     drop(s4);
-   |          ^^
-
 error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:39:5
    |
@@ -72,7 +35,44 @@ note: argument has type `SomeStruct`
 LL |     forget(s4);
    |            ^^
 
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+error: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_forget_copy.rs:33:5
+   |
+LL |     drop(s1);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_forget_copy.rs:33:10
+   |
+LL |     drop(s1);
+   |          ^^
+   = note: `-D drop-copy` implied by `-D warnings`
+
+error: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_forget_copy.rs:34:5
+   |
+LL |     drop(s2);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_forget_copy.rs:34:10
+   |
+LL |     drop(s2);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_forget_copy.rs:36:5
+   |
+LL |     drop(s4);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_forget_copy.rs:36:10
+   |
+LL |     drop(s4);
+   |          ^^
+
+error: calls to `std::mem::drop` with a value that implements `Copy`.
   --> $DIR/drop_forget_copy.rs:80:13
    |
 LL |             drop(println_and(13)); // Lint, even if we only care about the side-effect, it's already in a block
@@ -84,7 +84,7 @@ note: argument has type `i32`
 LL |             drop(println_and(13)); // Lint, even if we only care about the side-effect, it's already in a block
    |                  ^^^^^^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+error: calls to `std::mem::drop` with a value that implements `Copy`.
   --> $DIR/drop_forget_copy.rs:82:14
    |
 LL |         3 if drop(println_and(14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
@@ -96,7 +96,7 @@ note: argument has type `i32`
 LL |         3 if drop(println_and(14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
    |                   ^^^^^^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
+error: calls to `std::mem::drop` with a value that implements `Copy`.
   --> $DIR/drop_forget_copy.rs:83:14
    |
 LL |         4 => drop(2),                           // Lint, not a fn/method call
