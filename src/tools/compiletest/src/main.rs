@@ -152,6 +152,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
+        .optflag("", "nocapture", "")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optopt("", "edition", "default Rust edition", "EDITION");
@@ -310,6 +311,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfg: LazyCell::new(),
+
+        nocapture: matches.opt_present("nocapture"),
     }
 }
 
@@ -502,6 +505,13 @@ fn configure_lldb(config: &Config) -> Option<Config> {
 }
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        eprintln!(
+            "WARNING: RUST_TEST_NOCAPTURE is no longer used. \
+                   Use the `--nocapture` flag instead."
+        );
+    }
+
     test::TestOpts {
         exclude_should_panic: false,
         filters: config.filters.clone(),
@@ -511,10 +521,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
-        nocapture: match env::var("RUST_TEST_NOCAPTURE") {
-            Ok(val) => &val != "0",
-            Err(_) => false,
-        },
+        nocapture: config.nocapture,
         color: config.color,
         shuffle: false,
         shuffle_seed: None,
