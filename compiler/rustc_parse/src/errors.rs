@@ -1923,11 +1923,16 @@ pub enum UnescapeError {
         Span,
     ),
     #[diag(parse_lone_brace)]
-    LoneBrace{
+    LoneBrace {
         #[primary_span]
         #[label]
         span: Span,
-        #[suggestion(parse_escape, applicability = "maybe-incorrect", code = "{brace}{brace}", style = "verbose")]
+        #[suggestion(
+            parse_escape,
+            applicability = "maybe-incorrect",
+            code = "{brace}{brace}",
+            style = "verbose"
+        )]
         char_span: Span,
         brace: char,
         is_open: bool,
