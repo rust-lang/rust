@@ -704,15 +704,7 @@ fn project_json_to_crate_graph(
         })
         .map(|(crate_id, krate, file_id)| {
             let env = krate.env.clone().into_iter().collect();
-            if let Some(path) = krate.proc_macro_dylib_path.clone() {
-                proc_macros.insert(
-                    crate_id,
-                    Some((
-                        krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
-                        path,
-                    )),
-                );
-            }
+
             let target_cfgs = match krate.target.as_deref() {
                 Some(target) => cfg_cache
                     .entry(target)
@@ -722,31 +714,37 @@ fn project_json_to_crate_graph(
 
             let mut cfg_options = CfgOptions::default();
             cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
-            (
-                crate_id,
-                crate_graph.add_crate_root(
-                    file_id,
-                    krate.edition,
-                    krate.display_name.clone(),
-                    krate.version.clone(),
-                    cfg_options.clone(),
-                    cfg_options,
-                    env,
-                    krate.is_proc_macro,
-                    if krate.display_name.is_some() {
-                        CrateOrigin::CratesIo {
-                            repo: krate.repository.clone(),
-                            name: krate
-                                .display_name
-                                .clone()
-                                .map(|n| n.canonical_name().to_string()),
-                        }
-                    } else {
-                        CrateOrigin::CratesIo { repo: None, name: None }
-                    },
-                    target_layout.clone(),
-                ),
-            )
+            let crate_graph_crate_id = crate_graph.add_crate_root(
+                file_id,
+                krate.edition,
+                krate.display_name.clone(),
+                krate.version.clone(),
+                cfg_options.clone(),
+                cfg_options,
+                env,
+                krate.is_proc_macro,
+                if krate.display_name.is_some() {
+                    CrateOrigin::CratesIo {
+                        repo: krate.repository.clone(),
+                        name: krate.display_name.clone().map(|n| n.canonical_name().to_string()),
+                    }
+                } else {
+                    CrateOrigin::CratesIo { repo: None, name: None }
+                },
+                target_layout.clone(),
+            );
+            if krate.is_proc_macro {
+                if let Some(path) = krate.proc_macro_dylib_path.clone() {
+                    proc_macros.insert(
+                        crate_graph_crate_id,
+                        Some((
+                            krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
+                            path,
+                        )),
+                    );
+                }
+            }
+            (crate_id, crate_graph_crate_id)
         })
         .collect();
 
