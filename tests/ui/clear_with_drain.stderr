@@ -1,5 +1,5 @@
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:16:7
+  --> $DIR/clear_with_drain.rs:17:7
    |
 LL |     v.drain(0..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
@@ -7,31 +7,31 @@ LL |     v.drain(0..v.len()); // Nay
    = note: `-D clippy::clear-with-drain` implied by `-D warnings`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:19:7
+  --> $DIR/clear_with_drain.rs:20:7
    |
 LL |     v.drain(usize::MIN..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:33:7
+  --> $DIR/clear_with_drain.rs:35:7
    |
 LL |     v.drain(0..); // Nay
    |       ^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:36:7
+  --> $DIR/clear_with_drain.rs:38:7
    |
 LL |     v.drain(usize::MIN..); // Nay
    |       ^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:50:7
+  --> $DIR/clear_with_drain.rs:52:7
    |
 LL |     v.drain(..); // Nay
    |       ^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:64:7
+  --> $DIR/clear_with_drain.rs:66:7
    |
 LL |     v.drain(..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^ help: try: `clear()`
