@@ -34,6 +34,11 @@ impl ManifestPath {
     pub fn parent(&self) -> &AbsPath {
         self.file.parent().unwrap()
     }
+
+    /// Equivalent of [`Path::canonicalize`] for `ManifestPath`.
+    pub fn canonicalize(&self) -> Result<ManifestPath, std::io::Error> {
+        Ok((&**self).canonicalize()?.try_into().unwrap())
+    }
 }
 
 impl ops::Deref for ManifestPath {
