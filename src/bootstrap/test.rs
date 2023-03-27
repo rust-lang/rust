@@ -19,11 +19,11 @@ use crate::config::TargetSelection;
 use crate::dist;
 use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
-use crate::native;
+use crate::llvm;
 use crate::render_tests::add_flags_and_try_run_tests;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
-use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
+use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
@@ -1434,11 +1434,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
         // Also provide `rust_test_helpers` for the host.
-        builder.ensure(native::TestHelpers { target: compiler.host });
+        builder.ensure(TestHelpers { target: compiler.host });
 
         // As well as the target, except for plain wasm32, which can't build it
         if !target.contains("wasm") || target.contains("emscripten") {
-            builder.ensure(native::TestHelpers { target });
+            builder.ensure(TestHelpers { target });
         }
 
         builder.ensure(RemoteCopyLibs { compiler, target });
@@ -1625,8 +1625,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled() {
-            let native::LlvmResult { llvm_config, .. } =
-                builder.ensure(native::Llvm { target: builder.config.build });
+            let llvm::LlvmResult { llvm_config, .. } =
+                builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
@@ -1664,7 +1664,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 // If LLD is available, add it to the PATH
                 if builder.config.lld_enabled {
                     let lld_install_root =
-                        builder.ensure(native::Lld { target: builder.config.build });
+                        builder.ensure(llvm::Lld { target: builder.config.build });
 
                     let lld_bin_path = lld_install_root.join("bin");
 
@@ -2745,5 +2745,70 @@ impl Step for RustInstaller {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Self);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TestHelpers {
+    pub target: TargetSelection,
+}
+
+impl Step for TestHelpers {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("tests/auxiliary/rust_test_helpers.c")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(TestHelpers { target: run.target })
+    }
+
+    /// Compiles the `rust_test_helpers.c` library which we used in various
+    /// `run-pass` tests for ABI testing.
+    fn run(self, builder: &Builder<'_>) {
+        if builder.config.dry_run() {
+            return;
+        }
+        // The x86_64-fortanix-unknown-sgx target doesn't have a working C
+        // toolchain. However, some x86_64 ELF objects can be linked
+        // without issues. Use this hack to compile the test helpers.
+        let target = if self.target == "x86_64-fortanix-unknown-sgx" {
+            TargetSelection::from_user("x86_64-unknown-linux-gnu")
+        } else {
+            self.target
+        };
+        let dst = builder.test_helpers_out(target);
+        let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
+        if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
+            return;
+        }
+
+        builder.info("Building test helpers");
+        t!(fs::create_dir_all(&dst));
+        let mut cfg = cc::Build::new();
+        // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013
+        if target.contains("emscripten") {
+            cfg.pic(false);
+        }
+
+        // We may have found various cross-compilers a little differently due to our
+        // extra configuration, so inform cc of these compilers. Note, though, that
+        // on MSVC we still need cc's detection of env vars (ugh).
+        if !target.contains("msvc") {
+            if let Some(ar) = builder.ar(target) {
+                cfg.archiver(ar);
+            }
+            cfg.compiler(builder.cc(target));
+        }
+        cfg.cargo_metadata(false)
+            .out_dir(&dst)
+            .target(&target.triple)
+            .host(&builder.config.build.triple)
+            .opt_level(0)
+            .warnings(false)
+            .debug(false)
+            .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
+            .compile("rust_test_helpers");
     }
 }
