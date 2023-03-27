@@ -266,8 +266,8 @@ b"a"
 2us
 r###"raw"###suffix
 br###"raw"###suffix
-f"fstr"suffix
-f"foo{not_a_suffix + 2}bar"suffix
+f"fstr"not_suffix
+f"foo{not_a_suffix + 2}bar"not_suffix
 "####,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
