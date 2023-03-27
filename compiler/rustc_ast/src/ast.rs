@@ -1882,7 +1882,7 @@ impl LitKind {
     }
 }
 
-/// Segment of an f-string.
+/// Piece of an f-string.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum FStringPiece {
     Literal(Symbol),
