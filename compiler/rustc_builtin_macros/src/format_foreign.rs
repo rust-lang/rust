@@ -562,15 +562,13 @@ pub(crate) mod printf {
         }
 
         if let Type = state {
-            drop(c);
             type_ = at.slice_between(next).unwrap();
 
             // Don't use `move_to!` here, as we *can* be at the end of the input.
             at = next;
         }
 
-        drop(c);
-        drop(next);
+        let _ = c; // to avoid never used value
 
         end = at;
         let position = InnerSpan::new(start.at, end.at);
