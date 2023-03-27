@@ -54,7 +54,7 @@ mod flags;
 mod format;
 mod install;
 mod metadata;
-mod native;
+mod llvm;
 mod render_tests;
 mod run;
 mod sanity;
