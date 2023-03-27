@@ -1893,14 +1893,13 @@ fn restrict_capture_precision(
 
     for (i, proj) in place.projections.iter().enumerate() {
         match proj.kind {
-            ProjectionKind::Index => {
-                // Arrays are completely captured, so we drop Index projections
+            ProjectionKind::Index | ProjectionKind::Subslice => {
+                // Arrays are completely captured, so we drop Index and Subslice projections
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i);
                 return (place, curr_mode);
             }
             ProjectionKind::Deref => {}
             ProjectionKind::Field(..) => {} // ignore
-            ProjectionKind::Subslice => {}  // We never capture this
         }
     }
 
