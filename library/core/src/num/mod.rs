@@ -414,7 +414,7 @@ impl isize {
     }
 }
 
-/// If 6th bit set ascii is upper case.
+/// If 6th bit is set ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
