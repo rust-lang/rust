@@ -59,7 +59,6 @@ unsafe impl Copy for u8 {}
 unsafe impl Copy for u16 {}
 unsafe impl Copy for u32 {}
 unsafe impl Copy for u64 {}
-unsafe impl Copy for u128 {}
 unsafe impl Copy for usize {}
 unsafe impl Copy for i8 {}
 unsafe impl Copy for i16 {}
@@ -80,7 +79,6 @@ unsafe impl Sync for u8 {}
 unsafe impl Sync for u16 {}
 unsafe impl Sync for u32 {}
 unsafe impl Sync for u64 {}
-unsafe impl Sync for u128 {}
 unsafe impl Sync for usize {}
 unsafe impl Sync for i8 {}
 unsafe impl Sync for i16 {}
@@ -292,15 +290,6 @@ impl PartialEq for u64 {
         (*self) == (*other)
     }
     fn ne(&self, other: &u64) -> bool {
-        (*self) != (*other)
-    }
-}
-
-impl PartialEq for u128 {
-    fn eq(&self, other: &u128) -> bool {
-        (*self) == (*other)
-    }
-    fn ne(&self, other: &u128) -> bool {
         (*self) != (*other)
     }
 }

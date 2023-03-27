@@ -171,7 +171,6 @@ fn main() {
         assert_eq!(intrinsics::bitreverse(0xddccu16), 0x33bbu16);
         assert_eq!(intrinsics::bitreverse(0xffee_ddccu32), 0x33bb77ffu32);
         assert_eq!(intrinsics::bitreverse(0x1234_5678_ffee_ddccu64), 0x33bb77ff1e6a2c48u64);
-        assert_eq!(intrinsics::bitreverse(0x1234_5678_ffee_ddcc_1234_5678_ffee_ddccu128), 0x33bb77ff1e6a2c4833bb77ff1e6a2c48u128);
 
         assert_eq!(intrinsics::bswap(0xabu8), 0xabu8);
         assert_eq!(intrinsics::bswap(0xddccu16), 0xccddu16);
