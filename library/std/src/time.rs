@@ -176,6 +176,14 @@ pub struct Instant(time::Instant);
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
 ///
+/// A `SystemTime` does not count leap seconds.
+/// `SystemTime::now()`'s behaviour around a leap second
+/// is the same as the operating system's wall clock.
+/// The precise behaviour near a leap second
+/// (e.g. whether the clock appears to run slow or fast, or stop, or jump)
+/// depends on platform and configuration,
+/// so should not be relied on.
+///
 /// Example:
 ///
 /// ```no_run
@@ -471,6 +479,12 @@ impl SystemTime {
     /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
     /// `SystemTime` instance to represent another fixed point in time.
     ///
+    /// `duration_since(UNIX_EPOCH).unwrap().as_secs()`
+    /// returns a POSIX `time_t` (as a `u64`):
+    /// the number of non-leap seconds since the start of 1970 UTC.
+    /// This is the same time representation as used in many Internet protocols,
+    /// for example: JWT, CBOR, TOTP, certificate transparency and DNS TSIG/DNSSEC.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -629,6 +643,12 @@ impl fmt::Debug for SystemTime {
 /// [`SystemTime`] instance can tell how far away from this point in time a
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
+///
+/// `duration_since(UNIX_EPOCH).unwrap().as_secs()`
+/// returns a POSIX `time_t` (as a `u64`):
+/// the number of non-leap seconds since the start of 1970 UTC.
+/// This is the same time representation as used in many Internet protocols,
+/// for example: JWT, CBOR, TOTP, certificate transparency and DNS TSIG/DNSSEC.
 ///
 /// # Examples
 ///
