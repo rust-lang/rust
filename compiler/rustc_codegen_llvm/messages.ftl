@@ -24,7 +24,7 @@ codegen_llvm_error_writing_def_file =
     Error writing .DEF file: {$error}
 
 codegen_llvm_error_calling_dlltool =
-    Error calling dlltool: {$error}
+    Error calling dlltool '{$dlltool_path}': {$error}
 
 codegen_llvm_dlltool_fail_import_library =
     Dlltool could not create import library: {$stdout}
