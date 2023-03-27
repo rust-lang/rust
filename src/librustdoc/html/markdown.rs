@@ -382,7 +382,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             Some(Event::Code(text)) => {
                 trace!("saw code {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
                     // NOTE: this only replaces if the code block is the *entire* text.
                     // If only part of the link has code highlighting, the disambiguator will not be removed.
                     // e.g. [fn@`f`]
@@ -391,8 +390,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     // So we could never be sure we weren't replacing too much:
                     // [fn@my_`f`unc] is treated the same as [my_func()] in that pass.
                     //
-                    // NOTE: &[1..len() - 1] is to strip the backticks
-                    if **text == link.original_text[1..link.original_text.len() - 1] {
+                    // NOTE: .get(1..len() - 1) is to strip the backticks
+                    if let Some(link) = self.links.iter().find(|l| {
+                        l.href == link.href
+                            && Some(&**text) == l.original_text.get(1..l.original_text.len() - 1)
+                    }) {
                         debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
@@ -403,9 +405,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             Some(Event::Text(text)) => {
                 trace!("saw text {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
                     // NOTE: same limitations as `Event::Code`
-                    if **text == *link.original_text {
+                    if let Some(link) =
+                        self.links.iter().find(|l| l.href == link.href && **text == l.original_text)
+                    {
                         debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
