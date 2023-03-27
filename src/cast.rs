@@ -103,7 +103,7 @@ pub(crate) fn clif_int_or_float_cast(
                     vec![AbiParam::new(types::I64X2)],
                     &[from],
                 )[0];
-                // FIXME use bitcast instead of store to get from i64x2 to i128
+                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
                 let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                     kind: StackSlotKind::ExplicitSlot,
                     size: 16,

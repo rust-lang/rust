@@ -53,7 +53,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                     vec![AbiParam::new(types::I64X2)],
                     &args,
                 )[0];
-                // FIXME use bitcast instead of store to get from i64x2 to i128
+                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
                 let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
                 ret_place.to_ptr().store(fx, ret, MemFlags::trusted());
                 Some(ret_place.to_cvalue(fx))

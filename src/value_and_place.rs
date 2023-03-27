@@ -517,7 +517,7 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F64, types::I64) => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
-                    // FIXME do something more efficient for transmutes between vectors and integers.
+                    // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
                     let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
