@@ -9,6 +9,7 @@ mod chars_last_cmp;
 mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
+mod clear_with_drain;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
@@ -110,7 +111,7 @@ use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, TraitItem, TraitItemKind};
+use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -3190,6 +3191,31 @@ declare_clippy_lint! {
     "single command line argument that looks like it should be multiple arguments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a `Vec`.
+    ///
+    /// ### Why is this bad?
+    /// This creates an unnecessary iterator that is dropped immediately.
+    ///
+    /// Calling `.clear()` also makes the intent clearer.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut v = vec![1, 2, 3];
+    /// v.drain(..);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut v = vec![1, 2, 3];
+    /// v.clear();
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub CLEAR_WITH_DRAIN,
+    nursery,
+    "calling `drain` in order to `clear` a `Vec`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3318,6 +3344,7 @@ impl_lint_pass!(Methods => [
     SEEK_TO_START_INSTEAD_OF_REWIND,
     NEEDLESS_COLLECT,
     SUSPICIOUS_COMMAND_ARG_SPACE,
+    CLEAR_WITH_DRAIN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3563,7 +3590,13 @@ impl Methods {
                     _ => {},
                 },
                 ("drain", [arg]) => {
-                    iter_with_drain::check(cx, expr, recv, span, arg);
+                if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
+                    && matches!(kind, StmtKind::Semi(_))
+                    {
+                        clear_with_drain::check(cx, expr, recv, span, arg);
+                    } else {
+                        iter_with_drain::check(cx, expr, recv, span, arg);
+                    }
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
