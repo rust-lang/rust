@@ -137,7 +137,7 @@ impl Mode {
 }
 
 fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
-    // Previous character is '\\', try to unescape it.
+    // Previous character was '\\', unescape what follows.
     let second_char = chars.next().ok_or(EscapeError::LoneSlash)?;
 
     let res = match second_char {
