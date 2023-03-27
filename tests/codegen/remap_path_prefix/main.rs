@@ -12,7 +12,7 @@ mod aux_mod;
 include!("aux_mod.rs");
 
 // Here we check that the expansion of the file!() macro is mapped.
-// CHECK: @alloc_92a59126a55aa3c0019b6c8a007fe001 = private unnamed_addr constant <{ [34 x i8] }> <{ [34 x i8] c"/the/src/remap_path_prefix/main.rs" }>
+// CHECK: @alloc_af9d0c7bc6ca3c31bb051d2862714536 = private unnamed_addr constant <{ [34 x i8] }> <{ [34 x i8] c"/the/src/remap_path_prefix/main.rs" }>
 pub static FILE_PATH: &'static str = file!();
 
 fn main() {
