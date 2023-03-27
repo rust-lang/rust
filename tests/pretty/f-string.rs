@@ -1,4 +1,4 @@
 // pp-exact
 fn main() {
-    f"123456"; // TODO
+    f"foo{1 + 1}bar{{ baz }} quux";
 }
