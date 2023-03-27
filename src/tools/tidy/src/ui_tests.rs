@@ -51,7 +51,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     check_entries(&path, bad);
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
-    crate::walk::walk_no_read(&paths, |_| false, &mut |entry| {
+    crate::walk::walk_no_read(&paths, |_, _| false, &mut |entry| {
         let file_path = entry.path();
         if let Some(ext) = file_path.extension() {
             if ext == "stderr" || ext == "stdout" {
