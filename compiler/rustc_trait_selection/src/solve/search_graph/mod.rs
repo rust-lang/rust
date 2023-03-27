@@ -78,8 +78,6 @@ impl<'tcx> SearchGraph<'tcx> {
         tcx: TyCtxt<'tcx>,
         goal: CanonicalGoal<'tcx>,
     ) -> Result<(), QueryResult<'tcx>> {
-        // FIXME: start by checking the global cache
-
         // Look at the provisional cache to check for cycles.
         let cache = &mut self.provisional_cache;
         match cache.lookup_table.entry(goal) {
