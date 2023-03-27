@@ -92,8 +92,6 @@ where
         Mode::Str | Mode::ByteStr | Mode::FStr => {
             unescape_str_or_byte_str_or_f_str(src, mode, callback)
         }
-        // NOTE: Raw strings do not perform any explicit character escaping, here we
-        // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_raw_byte_str(src, mode, callback),
     }
 }
