@@ -116,7 +116,7 @@ impl<T> Poll<T> {
     ///     let fut = Pin::new(&mut fut);
     ///
     ///     let num = fut.poll(cx).ready()?;
-    ///     # drop(num);
+    ///     # let _ = num; // to silence unused warning
     ///     // ... use num
     ///
     ///     Poll::Ready(())
