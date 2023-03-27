@@ -1065,7 +1065,7 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     /// This is used to verify that fingerprints do not change between the creation of a node
     /// and its recomputation.
     #[cfg(debug_assertions)]
-    fingerprints: Lock<FxHashMap<DepNode<K>, Fingerprint>>,
+    fingerprints: Lock<IndexVec<DepNodeIndex, Option<Fingerprint>>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
@@ -1151,7 +1151,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             #[cfg(debug_assertions)]
             forbidden_edge,
             #[cfg(debug_assertions)]
-            fingerprints: Lock::new(Default::default()),
+            fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1163,14 +1163,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
         if let Some(forbidden_edge) = &self.forbidden_edge {
             forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
         }
-        match self.fingerprints.lock().entry(key) {
-            Entry::Vacant(v) => {
-                v.insert(fingerprint);
-            }
-            Entry::Occupied(o) => {
-                assert_eq!(*o.get(), fingerprint, "Unstable fingerprints for {:?}", key);
-            }
-        }
+        let previous = *self.fingerprints.lock().get_or_insert_with(dep_node_index, || fingerprint);
+        assert_eq!(previous, fingerprint, "Unstable fingerprints for {:?}", key);
     }
 
     /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.

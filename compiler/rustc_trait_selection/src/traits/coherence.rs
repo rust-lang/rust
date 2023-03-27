@@ -367,8 +367,8 @@ fn negative_impl_exists<'tcx>(
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx.fork(), &o, body_def_id) {
+    for pred in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
             return true;
         }
     }
