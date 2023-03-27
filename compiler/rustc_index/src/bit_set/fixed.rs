@@ -39,10 +39,12 @@ enum BitSetImpl {
     Heap { domain_size: usize, wide_words: Box<[u64]> },
 }
 
+#[inline]
 fn to_u8s(s: &[u64]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(s.as_ptr().cast(), s.len() * 8) }
 }
 
+#[inline]
 fn to_u8s_mut(s: &mut [u64]) -> &mut [u8] {
     unsafe { std::slice::from_raw_parts_mut(s.as_mut_ptr().cast(), s.len() * 8) }
 }
@@ -161,6 +163,7 @@ impl<T: Idx> BitSet<T> {
     }
 
     /// Clear excess bits in the final word.
+    #[inline]
     fn clear_excess_bits(&mut self) {
         let domain_size = self.domain_size();
         match &mut self.inner {
@@ -186,6 +189,7 @@ impl<T: Idx> BitSet<T> {
     }
 
     /// Count the number of set bits in the set.
+    #[inline]
     pub fn count(&self) -> usize {
         self.words().iter().map(|e| e.count_ones() as usize).sum()
     }
@@ -253,6 +257,7 @@ impl<T: Idx> BitSet<T> {
     }
 
     /// Sets all bits to true.
+    #[inline]
     pub fn insert_all(&mut self) {
         self.words_mut().fill(!0);
         self.clear_excess_bits();
