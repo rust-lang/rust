@@ -1,0 +1,13 @@
+error: invalid brace in f-string literal
+  --> $DIR/unescaped_brace_error.rs:4:18
+   |
+LL |     let a = f"foo}";
+   |                  ^ this brace '`'}'`' must be escaped
+   |
+help: escape the character
+   |
+LL |     let a = f"foo}}";
+   |                  ~~
+
+error: aborting due to previous error
+
