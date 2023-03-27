@@ -33,22 +33,6 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);
 
-    match *module.kind {
-        ItemKind::ModuleItem(ref module) => {
-            for it in &module.items {
-                // `compiler_builtins` should be masked too, but we can't apply
-                // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
-                if it.is_extern_crate()
-                    && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.item_id.krate()))
-                {
-                    cx.cache.masked_crates.insert(it.item_id.krate());
-                }
-            }
-        }
-        _ => unreachable!(),
-    }
-
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);

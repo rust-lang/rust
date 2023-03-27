@@ -44,6 +44,7 @@ use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::iter;
+use std::mem;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
@@ -74,6 +75,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
     symbol_table: FxHashMap<Symbol, usize>,
+
+    doc_masked_crates: Vec<CrateNum>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -642,6 +645,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
 
+        let doc_masked_crates = stat!("doc-masked-crates", || self.encode_doc_masked_crates());
+
         let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
         let debugger_visualizers =
@@ -683,6 +688,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
                 has_default_lib_allocator: attr::contains_name(&attrs, sym::default_lib_allocator),
                 proc_macro_data,
+                doc_masked_crates,
                 debugger_visualizers,
                 compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
                 needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
@@ -770,6 +776,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 struct AnalyzeAttrState {
     is_exported: bool,
     is_doc_hidden: bool,
+    is_doc_masked: bool,
 }
 
 /// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
@@ -802,6 +809,10 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
                     should_encode = true;
                     if item.has_name(sym::hidden) {
                         state.is_doc_hidden = true;
+                        break;
+                    }
+                    if item.has_name(sym::masked) {
+                        state.is_doc_masked = true;
                         break;
                     }
                 }
@@ -1136,6 +1147,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
+            is_doc_masked: false,
         };
         let attr_iter = tcx
             .opt_local_def_id_to_hir_id(def_id)
@@ -1148,6 +1160,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut attr_flags = AttrFlags::empty();
         if state.is_doc_hidden {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
+        }
+        if state.is_doc_masked && let Some(krate) = tcx.extern_mod_stmt_cnum(def_id) {
+            self.doc_masked_crates.push(krate);
         }
         self.tables.attr_flags.set(def_id.local_def_index, attr_flags);
     }
@@ -1784,6 +1799,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    fn encode_doc_masked_crates(&mut self) -> LazyArray<CrateNum> {
+        empty_proc_macro!(self);
+        let masked_crates = mem::take(&mut self.doc_masked_crates);
+        self.lazy_array(masked_crates.iter())
+    }
+
     fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
         empty_proc_macro!(self);
         self.lazy_array(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
@@ -2207,6 +2228,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_table: Default::default(),
+        doc_masked_crates: Vec::new(),
     };
 
     // Encode the rustc version string in a predictable location.

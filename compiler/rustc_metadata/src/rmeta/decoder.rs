@@ -1549,6 +1549,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.is_intrinsic.get(self, index)
     }
 
+    fn get_doc_masked_crates(self) -> Vec<CrateNum> {
+        let mut v: Vec<CrateNum> = self.root.doc_masked_crates.decode(self).collect();
+        v.sort_unstable();
+        v
+    }
+
     fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {
         self.root
             .tables

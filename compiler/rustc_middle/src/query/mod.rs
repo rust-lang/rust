@@ -1215,6 +1215,19 @@ rustc_queries! {
         desc { |tcx| "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
     }
 
+    /// Determines whether a crate is [`#[doc(masked)]`][doc_masked].
+    ///
+    /// [doc_masked]: https://doc.rust-lang.org/nightly/unstable-book/language-features/doc-masked.html
+    query is_doc_masked(crate_num: CrateNum) -> bool {
+        cache_on_disk_if { false }
+        desc { |tcx| "checking whether crate is `doc(masked)`" }
+    }
+
+    query doc_masked_crates(crate_num: CrateNum) -> &'tcx [CrateNum] {
+        desc { |tcx| "list crates marked as #[doc(masked)] by given crate" }
+        separate_provide_extern
+    }
+
     /// Returns the attributes on the item at `def_id`.
     ///
     /// Do not use this directly, use `tcx.get_attrs` instead.

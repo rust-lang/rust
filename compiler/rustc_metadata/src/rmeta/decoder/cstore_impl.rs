@@ -17,10 +17,10 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::cstore::CrateStore;
+use rustc_session::cstore::{CrateStore, ExternCrateSource};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
@@ -355,6 +355,7 @@ provide! { tcx, def_id, other, cdata,
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    doc_masked_crates => { tcx.arena.alloc_from_iter(cdata.get_doc_masked_crates()) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
@@ -494,6 +495,25 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // so make sure cstore is not mutably accessed from here on.
             tcx.untracked().cstore.leak();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
+        },
+        doc_masked_crates: |tcx, LocalCrate| {
+            let mut v: Vec<CrateNum> = CStore::from_tcx(tcx)
+                .iter_crate_data()
+                .filter_map(|(cnum, cdata)| {
+                    if let Some(extern_crate) = *cdata.extern_crate.lock() &&
+                        let ExternCrateSource::Extern(did) = extern_crate.src &&
+                        tcx
+                            .get_attrs(did, sym::doc)
+                            .filter_map(|attr| attr.meta_item_list())
+                            .any(|items| items.iter().any(|item| item.has_name(sym::masked))) {
+                        Some(cnum)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            v.sort_unstable();
+            tcx.arena.alloc_from_iter(v)
         },
         ..*providers
     };

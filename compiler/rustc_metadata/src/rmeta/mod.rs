@@ -243,6 +243,7 @@ pub(crate) struct CrateRoot {
     incoherent_impls: LazyArray<IncoherentImpls>,
     interpret_alloc_index: LazyArray<u32>,
     proc_macro_data: Option<ProcMacroData>,
+    doc_masked_crates: LazyArray<CrateNum>,
 
     tables: LazyTables,
     debugger_visualizers: LazyArray<rustc_span::DebuggerVisualizerFile>,
@@ -357,6 +358,7 @@ define_tables! {
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
+    doc_masked_crates: Table<CrateNum, bool>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

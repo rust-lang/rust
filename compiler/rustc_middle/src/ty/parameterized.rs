@@ -83,6 +83,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::LangItem,
     rustc_hir::def::DefKind,
     rustc_hir::def::DocLinkResMap,
+    rustc_hir::def_id::CrateNum,
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,

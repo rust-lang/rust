@@ -87,11 +87,6 @@ pub(crate) struct Cache {
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     pub(crate) document_private: bool,
 
-    /// Crates marked with [`#[doc(masked)]`][doc_masked].
-    ///
-    /// [doc_masked]: https://doc.rust-lang.org/nightly/unstable-book/language-features/doc-masked.html
-    pub(crate) masked_crates: FxHashSet<CrateNum>,
-
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<Symbol>,
     parent_stack: Vec<ParentStackItem>,
@@ -210,13 +205,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind {
-            if self.cache.masked_crates.contains(&item.item_id.krate())
-                || i.trait_
-                    .as_ref()
-                    .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
-                || i.for_
-                    .def_id(self.cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
+            if self.tcx.is_doc_masked(item.item_id.krate())
+                || i.trait_.as_ref().map_or(false, |t| self.tcx.is_doc_masked(t.def_id().krate))
+                || i.for_.def_id(self.cache).map_or(false, |d| self.tcx.is_doc_masked(d.krate))
             {
                 return None;
             }

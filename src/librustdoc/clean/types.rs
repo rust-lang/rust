@@ -1057,22 +1057,6 @@ impl Attributes {
         self.other_attrs.lists(name)
     }
 
-    pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
-        for attr in &self.other_attrs {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-
-            if let Some(items) = attr.meta_item_list() {
-                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag)) {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-
     pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
         Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
     }

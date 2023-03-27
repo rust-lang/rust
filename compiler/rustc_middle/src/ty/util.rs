@@ -9,6 +9,7 @@ use crate::ty::{
     TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
+use hir::def_id::CrateNum;
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1452,6 +1453,23 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
 }
 
+/// Determines whether a crate is annotated with `doc(masked)`.
+pub fn is_doc_masked(tcx: TyCtxt<'_>, crate_num: CrateNum) -> bool {
+    // The current crate is never masked
+    if crate_num == rustc_span::def_id::LOCAL_CRATE {
+        return false;
+    }
+
+    // `compiler_builtins` should be masked too, but we can't apply
+    // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
+    if tcx.is_compiler_builtins(crate_num) {
+        return true;
+    }
+
+    let extern_crate = tcx.extern_crate(crate_num.as_def_id()).expect("crate root");
+    tcx.doc_masked_crates(extern_crate.dependency_of).binary_search(&crate_num).is_ok()
+}
+
 /// Determines whether an item is an intrinsic by Abi.
 pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
@@ -1462,6 +1480,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,
+        is_doc_masked,
         is_intrinsic,
         ..*providers
     }
