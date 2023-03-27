@@ -7,7 +7,8 @@
       }
   
       bb0: {
-          _0 = const -1_i8 as bool (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:30
+-         _0 = const -1_i8 as bool (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:30
++         _0 = const {transmute(0xff): bool}; // scope 1 at $DIR/transmute.rs:+1:14: +1:30
           return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
       }
   }

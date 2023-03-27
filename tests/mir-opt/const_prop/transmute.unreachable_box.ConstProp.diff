@@ -15,7 +15,11 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/transmute.rs:+0:38: +3:2
           StorageLive(_2);                 // scope 0 at $DIR/transmute.rs:+1:9: +1:10
-          _2 = const 1_usize as std::boxed::Box<Never> (Transmute); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
+-         _2 = const 1_usize as std::boxed::Box<Never> (Transmute); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
++         _2 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
++                                          // mir::Constant
++                                          // + span: no-location
++                                          // + literal: Const { ty: Box<Never>, val: Value(Scalar(0x0000000000000001)) }
           StorageLive(_3);                 // scope 1 at $DIR/transmute.rs:+2:5: +2:16
           unreachable;                     // scope 1 at $DIR/transmute.rs:+2:11: +2:13
       }

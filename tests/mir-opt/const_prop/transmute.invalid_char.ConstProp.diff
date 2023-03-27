@@ -7,7 +7,8 @@
       }
   
       bb0: {
-          _0 = const _ as char (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:33
+-         _0 = const _ as char (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:33
++         _0 = const {transmute(0x7fffffff): char}; // scope 1 at $DIR/transmute.rs:+1:14: +1:33
           return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
       }
   }
