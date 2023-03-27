@@ -4,6 +4,8 @@
 
 #![crate_name = "foo"]
 #![feature(doc_cfg)]
+#![feature(no_core)]
+#![no_core]
 
 // @has 'foo/index.html'
 
@@ -20,14 +22,13 @@ pub use Foo1 as Foo2;
 // are inlined.
 // @count - '//a[@class="struct"]' 2
 // Then we check that both `cfg` are displayed.
-// @has - '//*[@class="stab portability"]' 'foo'
-// @has - '//*[@class="stab portability"]' 'bar'
+// @matches - '//*[@class="stab portability"]' '^foo$'
 // And finally we check that the only element displayed is `Bar`.
-// @has - '//a[@class="struct"]' 'Bar'
+// @has - '//a[@href="struct.Bar.html"]' 'Bar'
 #[doc(inline)]
-pub use Foo2 as Bar;
+pub use Foo as Bar;
 
-// This one should appear but `Bar2` won't be linked because there is no
-// `#[doc(inline)]`.
-// @has - '//*[@id="reexport.Bar2"]' 'pub use Foo2 as Bar2;'
+// Re-exported `#[doc(hidden)]` items are inlined as well.
+// @has - '//a[@href="struct.Bar2.html"]' 'Bar2'
+// @matches - '//*[@class="stab portability"]' '^bar and foo$'
 pub use Foo2 as Bar2;
