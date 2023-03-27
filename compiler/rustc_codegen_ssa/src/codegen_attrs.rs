@@ -10,6 +10,7 @@ use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::{lint, parse::feature_err};
+use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 use rustc_target::spec::{abi, SanitizerSet};
 
@@ -83,336 +84,368 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
         };
 
-        if attr.has_name(sym::cold) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
-        } else if attr.has_name(sym::rustc_allocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-        } else if attr.has_name(sym::ffi_returns_twice) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
-        } else if attr.has_name(sym::ffi_pure) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
-        } else if attr.has_name(sym::ffi_const) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
-        } else if attr.has_name(sym::rustc_nounwind) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        } else if attr.has_name(sym::rustc_reallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
-        } else if attr.has_name(sym::rustc_deallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
-        } else if attr.has_name(sym::rustc_allocator_zeroed) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
-        } else if attr.has_name(sym::naked) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
-        } else if attr.has_name(sym::no_mangle) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-        } else if attr.has_name(sym::no_coverage) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
-        } else if attr.has_name(sym::rustc_std_internal_symbol) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        } else if attr.has_name(sym::used) {
-            let inner = attr.meta_item_list();
-            match inner.as_deref() {
-                Some([item]) if item.has_name(sym::linker) => {
-                    if !tcx.features().used_with_arg {
-                        feature_err(
-                            &tcx.sess.parse_sess,
-                            sym::used_with_arg,
-                            attr.span,
-                            "`#[used(linker)]` is currently unstable",
-                        )
-                        .emit();
+        let Some(Ident { name, .. }) = attr.ident() else {
+            continue;
+        };
+
+        match name {
+            sym::cold => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
+            }
+            sym::rustc_allocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
+            }
+            sym::ffi_returns_twice => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
+            }
+            sym::ffi_pure => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
+            }
+            sym::ffi_const => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
+            }
+            sym::rustc_nounwind => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
+            }
+            sym::rustc_reallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
+            }
+            sym::rustc_deallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
+            }
+            sym::rustc_allocator_zeroed => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
+            }
+            sym::naked => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
+            }
+            sym::no_mangle => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+            }
+            sym::no_coverage => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
+            }
+            sym::rustc_std_internal_symbol => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+            }
+            sym::used => {
+                let inner = attr.meta_item_list();
+                match inner.as_deref() {
+                    Some([item]) if item.has_name(sym::linker) => {
+                        if !tcx.features().used_with_arg {
+                            feature_err(
+                                &tcx.sess.parse_sess,
+                                sym::used_with_arg,
+                                attr.span,
+                                "`#[used(linker)]` is currently unstable",
+                            )
+                            .emit();
+                        }
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
                     }
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
-                }
-                Some([item]) if item.has_name(sym::compiler) => {
-                    if !tcx.features().used_with_arg {
-                        feature_err(
-                            &tcx.sess.parse_sess,
-                            sym::used_with_arg,
-                            attr.span,
-                            "`#[used(compiler)]` is currently unstable",
-                        )
-                        .emit();
+                    Some([item]) if item.has_name(sym::compiler) => {
+                        if !tcx.features().used_with_arg {
+                            feature_err(
+                                &tcx.sess.parse_sess,
+                                sym::used_with_arg,
+                                attr.span,
+                                "`#[used(compiler)]` is currently unstable",
+                            )
+                            .emit();
+                        }
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
                     }
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+                    Some(_) => {
+                        tcx.sess.emit_err(ExpectedUsedSymbol { span: attr.span });
+                    }
+                    None => {
+                        // Unfortunately, unconditionally using `llvm.used` causes
+                        // issues in handling `.init_array` with the gold linker,
+                        // but using `llvm.compiler.used` caused a nontrival amount
+                        // of unintentional ecosystem breakage -- particularly on
+                        // Mach-O targets.
+                        //
+                        // As a result, we emit `llvm.compiler.used` only on ELF
+                        // targets. This is somewhat ad-hoc, but actually follows
+                        // our pre-LLVM 13 behavior (prior to the ecosystem
+                        // breakage), and seems to match `clang`'s behavior as well
+                        // (both before and after LLVM 13), possibly because they
+                        // have similar compatibility concerns to us. See
+                        // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
+                        // and following comments for some discussion of this, as
+                        // well as the comments in `rustc_codegen_llvm` where these
+                        // flags are handled.
+                        //
+                        // Anyway, to be clear: this is still up in the air
+                        // somewhat, and is subject to change in the future (which
+                        // is a good thing, because this would ideally be a bit
+                        // more firmed up).
+                        let is_like_elf = !(tcx.sess.target.is_like_osx
+                            || tcx.sess.target.is_like_windows
+                            || tcx.sess.target.is_like_wasm);
+                        codegen_fn_attrs.flags |= if is_like_elf {
+                            CodegenFnAttrFlags::USED
+                        } else {
+                            CodegenFnAttrFlags::USED_LINKER
+                        };
+                    }
                 }
-                Some(_) => {
-                    tcx.sess.emit_err(ExpectedUsedSymbol { span: attr.span });
-                }
-                None => {
-                    // Unfortunately, unconditionally using `llvm.used` causes
-                    // issues in handling `.init_array` with the gold linker,
-                    // but using `llvm.compiler.used` caused a nontrival amount
-                    // of unintentional ecosystem breakage -- particularly on
-                    // Mach-O targets.
-                    //
-                    // As a result, we emit `llvm.compiler.used` only on ELF
-                    // targets. This is somewhat ad-hoc, but actually follows
-                    // our pre-LLVM 13 behavior (prior to the ecosystem
-                    // breakage), and seems to match `clang`'s behavior as well
-                    // (both before and after LLVM 13), possibly because they
-                    // have similar compatibility concerns to us. See
-                    // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
-                    // and following comments for some discussion of this, as
-                    // well as the comments in `rustc_codegen_llvm` where these
-                    // flags are handled.
-                    //
-                    // Anyway, to be clear: this is still up in the air
-                    // somewhat, and is subject to change in the future (which
-                    // is a good thing, because this would ideally be a bit
-                    // more firmed up).
-                    let is_like_elf = !(tcx.sess.target.is_like_osx
-                        || tcx.sess.target.is_like_windows
-                        || tcx.sess.target.is_like_wasm);
-                    codegen_fn_attrs.flags |= if is_like_elf {
-                        CodegenFnAttrFlags::USED
-                    } else {
-                        CodegenFnAttrFlags::USED_LINKER
-                    };
-                }
             }
-        } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if let Some(fn_sig) = fn_sig()
-                && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
-            {
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0776,
-                    "`#[cmse_nonsecure_entry]` requires C ABI"
-                )
-                .emit();
-            }
-            if !tcx.sess.target.llvm_target.contains("thumbv8m") {
-                struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
-                    .emit();
-            }
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
-        } else if attr.has_name(sym::thread_local) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
-        } else if attr.has_name(sym::track_caller) {
-            if !tcx.is_closure(did.to_def_id())
-                && let Some(fn_sig) = fn_sig()
-                && fn_sig.skip_binder().abi() != abi::Abi::Rust
-            {
-                struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
-                    .emit();
-            }
-            if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
-                feature_err(
-                    &tcx.sess.parse_sess,
-                    sym::closure_track_caller,
-                    attr.span,
-                    "`#[track_caller]` on closures is currently unstable",
-                )
-                .emit();
-            }
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-        } else if attr.has_name(sym::export_name) {
-            if let Some(s) = attr.value_str() {
-                if s.as_str().contains('\0') {
-                    // `#[export_name = ...]` will be converted to a null-terminated string,
-                    // so it may not contain any null characters.
+            sym::cmse_nonsecure_entry => {
+                if let Some(fn_sig) = fn_sig()
+                    && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
+                {
                     struct_span_err!(
                         tcx.sess,
                         attr.span,
-                        E0648,
-                        "`export_name` may not contain null characters"
+                        E0776,
+                        "`#[cmse_nonsecure_entry]` requires C ABI"
                     )
                     .emit();
                 }
-                codegen_fn_attrs.export_name = Some(s);
+                if !tcx.sess.target.llvm_target.contains("thumbv8m") {
+                    struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
+                    .emit();
+                }
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
             }
-        } else if attr.has_name(sym::target_feature) {
-            if !tcx.is_closure(did.to_def_id())
-                && let Some(fn_sig) = fn_sig()
-                && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
-            {
-                if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
-                    // The `#[target_feature]` attribute is allowed on
-                    // WebAssembly targets on all functions, including safe
-                    // ones. Other targets require that `#[target_feature]` is
-                    // only applied to unsafe functions (pending the
-                    // `target_feature_11` feature) because on most targets
-                    // execution of instructions that are not supported is
-                    // considered undefined behavior. For WebAssembly which is a
-                    // 100% safe target at execution time it's not possible to
-                    // execute undefined instructions, and even if a future
-                    // feature was added in some form for this it would be a
-                    // deterministic trap. There is no undefined behavior when
-                    // executing WebAssembly so `#[target_feature]` is allowed
-                    // on safe functions (but again, only for WebAssembly)
-                    //
-                    // Note that this is also allowed if `actually_rustdoc` so
-                    // if a target is documenting some wasm-specific code then
-                    // it's not spuriously denied.
-                    //
-                    // This exception needs to be kept in sync with allowing
-                    // `#[target_feature]` on `main` and `start`.
-                } else if !tcx.features().target_feature_11 {
-                    let mut err = feature_err(
+            sym::thread_local => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
+            }
+            sym::track_caller => {
+                if !tcx.is_closure(did.to_def_id())
+                    && let Some(fn_sig) = fn_sig()
+                    && fn_sig.skip_binder().abi() != abi::Abi::Rust
+                {
+                    struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
+                        .emit();
+                }
+                if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
+                    feature_err(
                         &tcx.sess.parse_sess,
-                        sym::target_feature_11,
+                        sym::closure_track_caller,
                         attr.span,
-                        "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-                    );
-                    err.span_label(tcx.def_span(did), "not an `unsafe` function");
-                    err.emit();
-                } else {
-                    check_target_feature_trait_unsafe(tcx, did, attr.span);
+                        "`#[track_caller]` on closures is currently unstable",
+                    )
+                    .emit();
+                }
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+            }
+            sym::export_name => {
+                if let Some(s) = attr.value_str() {
+                    if s.as_str().contains('\0') {
+                        // `#[export_name = ...]` will be converted to a null-terminated string,
+                        // so it may not contain any null characters.
+                        struct_span_err!(
+                            tcx.sess,
+                            attr.span,
+                            E0648,
+                            "`export_name` may not contain null characters"
+                        )
+                        .emit();
+                    }
+                    codegen_fn_attrs.export_name = Some(s);
                 }
             }
-            from_target_feature(
-                tcx,
-                attr,
-                supported_target_features,
-                &mut codegen_fn_attrs.target_features,
-            );
-        } else if attr.has_name(sym::linkage) {
-            if let Some(val) = attr.value_str() {
-                let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
-                if tcx.is_foreign_item(did) {
-                    codegen_fn_attrs.import_linkage = linkage;
-                } else {
-                    codegen_fn_attrs.linkage = linkage;
-                }
-            }
-        } else if attr.has_name(sym::link_section) {
-            if let Some(val) = attr.value_str() {
-                if val.as_str().bytes().any(|b| b == 0) {
-                    let msg = format!(
-                        "illegal null byte in link_section \
-                         value: `{}`",
-                        &val
-                    );
-                    tcx.sess.span_err(attr.span, &msg);
-                } else {
-                    codegen_fn_attrs.link_section = Some(val);
-                }
-            }
-        } else if attr.has_name(sym::link_name) {
-            codegen_fn_attrs.link_name = attr.value_str();
-        } else if attr.has_name(sym::link_ordinal) {
-            link_ordinal_span = Some(attr.span);
-            if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
-                codegen_fn_attrs.link_ordinal = ordinal;
-            }
-        } else if attr.has_name(sym::no_sanitize) {
-            no_sanitize_span = Some(attr.span);
-            if let Some(list) = attr.meta_item_list() {
-                for item in list.iter() {
-                    if item.has_name(sym::address) {
-                        codegen_fn_attrs.no_sanitize |=
-                            SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
-                    } else if item.has_name(sym::cfi) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
-                    } else if item.has_name(sym::kcfi) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI;
-                    } else if item.has_name(sym::memory) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
-                    } else if item.has_name(sym::memtag) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
-                    } else if item.has_name(sym::shadow_call_stack) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
-                    } else if item.has_name(sym::thread) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
-                    } else if item.has_name(sym::hwaddress) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
+            sym::target_feature => {
+                if !tcx.is_closure(did.to_def_id())
+                    && let Some(fn_sig) = fn_sig()
+                    && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
+                {
+                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                        // The `#[target_feature]` attribute is allowed on
+                        // WebAssembly targets on all functions, including safe
+                        // ones. Other targets require that `#[target_feature]` is
+                        // only applied to unsafe functions (pending the
+                        // `target_feature_11` feature) because on most targets
+                        // execution of instructions that are not supported is
+                        // considered undefined behavior. For WebAssembly which is a
+                        // 100% safe target at execution time it's not possible to
+                        // execute undefined instructions, and even if a future
+                        // feature was added in some form for this it would be a
+                        // deterministic trap. There is no undefined behavior when
+                        // executing WebAssembly so `#[target_feature]` is allowed
+                        // on safe functions (but again, only for WebAssembly)
+                        //
+                        // Note that this is also allowed if `actually_rustdoc` so
+                        // if a target is documenting some wasm-specific code then
+                        // it's not spuriously denied.
+                        //
+                        // This exception needs to be kept in sync with allowing
+                        // `#[target_feature]` on `main` and `start`.
+                    } else if !tcx.features().target_feature_11 {
+                        let mut err = feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::target_feature_11,
+                            attr.span,
+                            "`#[target_feature(..)]` can only be applied to `unsafe` functions",
+                        );
+                        err.span_label(tcx.def_span(did), "not an `unsafe` function");
+                        err.emit();
                     } else {
-                        tcx.sess
-                            .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                            .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
-                            .emit();
+                        check_target_feature_trait_unsafe(tcx, did, attr.span);
+                    }
+                }
+                from_target_feature(
+                    tcx,
+                    attr,
+                    supported_target_features,
+                    &mut codegen_fn_attrs.target_features,
+                );
+            }
+            sym::linkage => {
+                if let Some(val) = attr.value_str() {
+                    let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.import_linkage = linkage;
+                    } else {
+                        codegen_fn_attrs.linkage = linkage;
                     }
                 }
             }
-        } else if attr.has_name(sym::instruction_set) {
-            codegen_fn_attrs.instruction_set = attr.meta_item_list().and_then(|l| match &l[..] {
-                [NestedMetaItem::MetaItem(set)] => {
-                    let segments =
-                        set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-                    match segments.as_slice() {
-                        [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                            if !tcx.sess.target.has_thumb_interworking {
-                                struct_span_err!(
-                                    tcx.sess.diagnostic(),
-                                    attr.span,
-                                    E0779,
-                                    "target does not support `#[instruction_set]`"
-                                )
-                                .emit();
-                                None
-                            } else if segments[1] == sym::a32 {
-                                Some(InstructionSetAttr::ArmA32)
-                            } else if segments[1] == sym::t32 {
-                                Some(InstructionSetAttr::ArmT32)
-                            } else {
-                                unreachable!()
+            sym::link_section => {
+                if let Some(val) = attr.value_str() {
+                    if val.as_str().bytes().any(|b| b == 0) {
+                        let msg = format!(
+                            "illegal null byte in link_section \
+                             value: `{}`",
+                            &val
+                        );
+                        tcx.sess.span_err(attr.span, &msg);
+                    } else {
+                        codegen_fn_attrs.link_section = Some(val);
+                    }
+                }
+            }
+            sym::link_name => {
+                codegen_fn_attrs.link_name = attr.value_str();
+            }
+            sym::link_ordinal => {
+                link_ordinal_span = Some(attr.span);
+                if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
+                    codegen_fn_attrs.link_ordinal = ordinal;
+                }
+            }
+            sym::no_sanitize => {
+                no_sanitize_span = Some(attr.span);
+                if let Some(list) = attr.meta_item_list() {
+                    for item in list.iter() {
+                        match item.ident().map(|ident| ident.name) {
+                            Some(sym::address) => {
+                                codegen_fn_attrs.no_sanitize |=
+                                    SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
                             }
+                            Some(sym::cfi) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
+                            }
+                            Some(sym::kcfi) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI;
+                            }
+                            Some(sym::memory) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
+                            }
+                            Some(sym::memtag) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
+                            }
+                            Some(sym::shadow_call_stack) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
+                            }
+                            Some(sym::thread) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
+                            }
+                            Some(sym::hwaddress) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
+                            }
+                            _ => {
+                                tcx.sess
+                                .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
+                                .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
+                                .emit();
+                            }
+                        }
+                    }
+                }
+            }
+            sym::instruction_set => {
+                codegen_fn_attrs.instruction_set =
+                    attr.meta_item_list().and_then(|l| match &l[..] {
+                        [NestedMetaItem::MetaItem(set)] => {
+                            let segments =
+                                set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
+                            match segments.as_slice() {
+                                [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
+                                    if !tcx.sess.target.has_thumb_interworking {
+                                        struct_span_err!(
+                                            tcx.sess.diagnostic(),
+                                            attr.span,
+                                            E0779,
+                                            "target does not support `#[instruction_set]`"
+                                        )
+                                        .emit();
+                                        None
+                                    } else if segments[1] == sym::a32 {
+                                        Some(InstructionSetAttr::ArmA32)
+                                    } else if segments[1] == sym::t32 {
+                                        Some(InstructionSetAttr::ArmT32)
+                                    } else {
+                                        unreachable!()
+                                    }
+                                }
+                                _ => {
+                                    struct_span_err!(
+                                        tcx.sess.diagnostic(),
+                                        attr.span,
+                                        E0779,
+                                        "invalid instruction set specified",
+                                    )
+                                    .emit();
+                                    None
+                                }
+                            }
+                        }
+                        [] => {
+                            struct_span_err!(
+                                tcx.sess.diagnostic(),
+                                attr.span,
+                                E0778,
+                                "`#[instruction_set]` requires an argument"
+                            )
+                            .emit();
+                            None
                         }
                         _ => {
                             struct_span_err!(
                                 tcx.sess.diagnostic(),
                                 attr.span,
                                 E0779,
-                                "invalid instruction set specified",
+                                "cannot specify more than one instruction set"
                             )
                             .emit();
                             None
                         }
-                    }
-                }
-                [] => {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        attr.span,
-                        E0778,
-                        "`#[instruction_set]` requires an argument"
-                    )
-                    .emit();
+                    })
+            }
+            sym::repr => {
+                codegen_fn_attrs.alignment = if let Some(items) = attr.meta_item_list()
+                    && let [item] = items.as_slice()
+                    && let Some((sym::align, literal)) = item.name_value_literal()
+                {
+                    rustc_attr::parse_alignment(&literal.kind).map_err(|msg| {
+                        struct_span_err!(
+                            tcx.sess.diagnostic(),
+                            attr.span,
+                            E0589,
+                            "invalid `repr(align)` attribute: {}",
+                            msg
+                        )
+                        .emit();
+                    })
+                    .ok()
+                } else {
                     None
-                }
-                _ => {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        attr.span,
-                        E0779,
-                        "cannot specify more than one instruction set"
-                    )
-                    .emit();
-                    None
-                }
-            })
-        } else if attr.has_name(sym::repr) {
-            codegen_fn_attrs.alignment = match attr.meta_item_list() {
-                Some(items) => match items.as_slice() {
-                    [item] => match item.name_value_literal() {
-                        Some((sym::align, literal)) => {
-                            let alignment = rustc_attr::parse_alignment(&literal.kind);
-
-                            match alignment {
-                                Ok(align) => Some(align),
-                                Err(msg) => {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0589,
-                                        "invalid `repr(align)` attribute: {}",
-                                        msg
-                                    )
-                                    .emit();
-
-                                    None
-                                }
-                            }
-                        }
-                        _ => None,
-                    },
-                    [] => None,
-                    _ => None,
-                },
-                None => None,
-            };
+                };
+            }
+            _ => {}
         }
     }
 
