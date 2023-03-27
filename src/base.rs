@@ -507,7 +507,9 @@ fn codegen_stmt<'tcx>(
         _ => {
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
-                fx.add_comment(inst, format!("{:?}", stmt));
+                with_no_trimmed_paths!({
+                    fx.add_comment(inst, format!("{:?}", stmt));
+                });
             }
         }
     }
