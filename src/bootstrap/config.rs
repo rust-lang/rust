@@ -1207,11 +1207,11 @@ impl Config {
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    crate::native::is_ci_llvm_available(&config, asserts)
+                    crate::llvm::is_ci_llvm_available(&config, asserts)
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => {
-                    config.channel == "dev" && crate::native::is_ci_llvm_available(&config, asserts)
+                    config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, asserts)
                 }
             };
 
@@ -1254,7 +1254,7 @@ impl Config {
             }
         } else {
             config.llvm_from_ci =
-                config.channel == "dev" && crate::native::is_ci_llvm_available(&config, false);
+                config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, false);
         }
 
         if let Some(t) = toml.target {

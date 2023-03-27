@@ -12,7 +12,7 @@ use xz2::bufread::XzDecoder;
 
 use crate::{
     config::RustfmtMetadata,
-    native::detect_llvm_sha,
+    llvm::detect_llvm_sha,
     t,
     util::{check_run, exe, program_out_of_date, try_run},
     Config,
