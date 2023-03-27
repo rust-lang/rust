@@ -100,83 +100,6 @@ cfg_if! {
         unsafe impl<T> Send for T {}
         unsafe impl<T> Sync for T {}
 
-        use std::ops::Add;
-
-        /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
-        /// It has explicit ordering arguments and is only intended for use with
-        /// the native atomic types.
-        /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
-        /// as it's not intended to be used separately.
-        #[derive(Debug, Default)]
-        pub struct Atomic<T: Copy>(Cell<T>);
-
-        impl<T: Copy> Atomic<T> {
-            #[inline]
-            pub fn new(v: T) -> Self {
-                Atomic(Cell::new(v))
-            }
-
-            #[inline]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline]
-            pub fn load(&self, _: Ordering) -> T {
-                self.0.get()
-            }
-
-            #[inline]
-            pub fn store(&self, val: T, _: Ordering) {
-                self.0.set(val)
-            }
-
-            #[inline]
-            pub fn swap(&self, val: T, _: Ordering) -> T {
-                self.0.replace(val)
-            }
-        }
-
-        impl Atomic<bool> {
-            pub fn fetch_or(&self, val: bool, _: Ordering) -> bool {
-                let result = self.0.get() | val;
-                self.0.set(val);
-                result
-            }
-        }
-
-        impl<T: Copy + PartialEq> Atomic<T> {
-            #[inline]
-            pub fn compare_exchange(&self,
-                                    current: T,
-                                    new: T,
-                                    _: Ordering,
-                                    _: Ordering)
-                                    -> Result<T, T> {
-                let read = self.0.get();
-                if read == current {
-                    self.0.set(new);
-                    Ok(read)
-                } else {
-                    Err(read)
-                }
-            }
-        }
-
-        impl<T: Add<Output=T> + Copy> Atomic<T> {
-            #[inline]
-            pub fn fetch_add(&self, val: T, _: Ordering) -> T {
-                let old = self.0.get();
-                self.0.set(old + val);
-                old
-            }
-        }
-
-        pub type AtomicUsize = Atomic<usize>;
-        pub type AtomicBool = Atomic<bool>;
-        pub type AtomicU32 = Atomic<u32>;
-        pub type AtomicU64 = Atomic<u64>;
-
         pub fn join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
             where A: FnOnce() -> RA,
                   B: FnOnce() -> RB
@@ -245,89 +168,9 @@ cfg_if! {
         }
 
         pub type MetadataRef = OwnedSlice;
-
-        pub use std::cell::OnceCell;
-
-        pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
-
-        #[derive(Debug, Default)]
-        pub struct MTLock<T>(T);
-
-        impl<T> MTLock<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                MTLock(inner)
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> &mut T {
-                &mut self.0
-            }
-
-            #[inline(always)]
-            pub fn lock(&self) -> &T {
-                &self.0
-            }
-
-            #[inline(always)]
-            pub fn lock_mut(&mut self) -> &mut T {
-                &mut self.0
-            }
-        }
-
-        // FIXME: Probably a bad idea (in the threaded case)
-        impl<T: Clone> Clone for MTLock<T> {
-            #[inline]
-            fn clone(&self) -> Self {
-                MTLock(self.0.clone())
-            }
-        }
     } else {
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
-
-        pub use std::sync::OnceLock as OnceCell;
-
-        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
-
-        pub type MTLockRef<'a, T> = &'a MTLock<T>;
-
-        #[derive(Debug, Default)]
-        pub struct MTLock<T>(Lock<T>);
-
-        impl<T> MTLock<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                MTLock(Lock::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> &mut T {
-                self.0.get_mut()
-            }
-
-            #[inline(always)]
-            pub fn lock(&self) -> LockGuard<'_, T> {
-                self.0.lock()
-            }
-
-            #[inline(always)]
-            pub fn lock_mut(&self) -> LockGuard<'_, T> {
-                self.lock()
-            }
-        }
-
-        use std::thread;
 
         #[inline]
         pub fn join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -496,12 +339,50 @@ cfg_if! {
 
 pub use std::sync::Arc as Lrc;
 
+use std::thread;
+
 use parking_lot::RwLock as InnerRwLock;
 
 pub use parking_lot::MappedRwLockReadGuard as MappedReadGuard;
 pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 pub use parking_lot::RwLockReadGuard as ReadGuard;
 pub use parking_lot::RwLockWriteGuard as WriteGuard;
+
+pub use std::sync::OnceLock as OnceCell;
+
+pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize};
+
+pub type MTRef<'a, T> = &'a T;
+
+#[derive(Debug, Default)]
+pub struct MTLock<T>(Lock<T>);
+
+impl<T> MTLock<T> {
+    #[inline(always)]
+    pub fn new(inner: T) -> Self {
+        MTLock(Lock::new(inner))
+    }
+
+    #[inline(always)]
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+
+    #[inline(always)]
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+
+    #[inline(always)]
+    pub fn lock(&self) -> LockGuard<'_, T> {
+        self.0.lock()
+    }
+
+    #[inline(always)]
+    pub fn lock_mut(&self) -> LockGuard<'_, T> {
+        self.lock()
+    }
+}
 
 /// This makes locks panic if they are already held.
 /// It is only useful when you are running in a single thread
@@ -843,30 +724,22 @@ unsafe impl<T: Send> std::marker::Sync for WorkerLocal<T> {}
 /// It will panic if it is used on multiple threads.
 #[derive(Debug)]
 pub struct OneThread<T> {
-    #[cfg(parallel_compiler)]
     thread: thread::ThreadId,
     inner: T,
 }
 
-#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Sync for OneThread<T> {}
-#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Send for OneThread<T> {}
 
 impl<T> OneThread<T> {
     #[inline(always)]
     fn check(&self) {
-        #[cfg(parallel_compiler)]
         assert_eq!(thread::current().id(), self.thread);
     }
 
     #[inline(always)]
     pub fn new(inner: T) -> Self {
-        OneThread {
-            #[cfg(parallel_compiler)]
-            thread: thread::current().id(),
-            inner,
-        }
+        OneThread { thread: thread::current().id(), inner }
     }
 
     #[inline(always)]
