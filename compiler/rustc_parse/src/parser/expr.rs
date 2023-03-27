@@ -2911,7 +2911,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause()?;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ExprKind::Async(capture_clause, DUMMY_NODE_ID, body);
+        let kind = ExprKind::Async(capture_clause, body);
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 

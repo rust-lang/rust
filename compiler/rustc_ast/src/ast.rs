@@ -1426,13 +1426,9 @@ pub enum ExprKind {
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
     ///
-    /// The `NodeId` is the `NodeId` for the closure that results from
-    /// desugaring an async block, just like the NodeId field in the
-    /// `Async::Yes` variant. This is necessary in order to create a def for the
-    /// closure which can be used as a parent of any child defs. Defs
-    /// created during lowering cannot be made the parent of any other
-    /// preexisting defs.
-    Async(CaptureBy, NodeId, P<Block>),
+    /// The async block used to have a `NodeId`, which was removed in favor of
+    /// using the parent `NodeId` of the parent `Expr`.
+    Async(CaptureBy, P<Block>),
     /// An await expression (`my_future.await`).
     Await(P<Expr>),
 
