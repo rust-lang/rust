@@ -709,6 +709,9 @@ parse_zero_chars = empty character literal
 parse_lone_slash = invalid trailing slash in literal
     .label = {parse_lone_slash}
 
+parse_lone_brace = invalid unclosed brace `{$brace}` in f-string literal
+    .escape = escape the character
+
 parse_unskipped_whitespace = whitespace symbol '{$ch}' is not skipped
     .label = {parse_unskipped_whitespace}
 
