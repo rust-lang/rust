@@ -1,7 +1,7 @@
 //! Global Allocator for UEFI.
 //! Uses [r-efi-alloc](https://crates.io/crates/r-efi-alloc)
 
-use crate::alloc::{handle_alloc_error, GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout, System};
 
 const MEMORY_TYPE: u32 = r_efi::efi::LOADER_DATA;
 
@@ -13,11 +13,8 @@ unsafe impl GlobalAlloc for System {
             return crate::ptr::null_mut();
         }
 
-        let system_table = match crate::os::uefi::env::try_system_table() {
-            None => return crate::ptr::null_mut(),
-            Some(x) => x.as_ptr() as *mut _,
-        };
-
+        // If boot services is valid then SystemTable is not null.
+        let system_table = crate::os::uefi::env::system_table().as_ptr().cast();
         // The caller must ensure non-0 layout
         unsafe { r_efi_alloc::raw::alloc(system_table, layout, MEMORY_TYPE) }
     }
@@ -28,10 +25,8 @@ unsafe impl GlobalAlloc for System {
             return;
         }
 
-        let system_table = match crate::os::uefi::env::try_system_table() {
-            None => handle_alloc_error(layout),
-            Some(x) => x.as_ptr() as *mut _,
-        };
+        // If boot services is valid then SystemTable is not null.
+        let system_table = crate::os::uefi::env::system_table().as_ptr().cast();
         // The caller must ensure non-0 layout
         unsafe { r_efi_alloc::raw::dealloc(system_table, ptr, layout) }
     }

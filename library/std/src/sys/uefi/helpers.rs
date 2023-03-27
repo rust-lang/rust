@@ -46,7 +46,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
     let mut buf_len = 0usize;
 
     // This should always fail since the size of buffer is 0. This call should update the buf_len
@@ -82,7 +82,8 @@ pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
-    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let boot_services: NonNull<efi::BootServices> =
+        boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
     let system_handle = uefi::env::image_handle();
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
@@ -279,7 +280,8 @@ pub(crate) fn create_event(
     handler: Option<efi::EventNotify>,
     context: *mut crate::ffi::c_void,
 ) -> io::Result<NonNull<crate::ffi::c_void>> {
-    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let boot_services: NonNull<efi::BootServices> =
+        boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
     let mut exit_boot_service_event: r_efi::efi::Event = crate::ptr::null_mut();
     let r = unsafe {
         let create_event = (*boot_services.as_ptr()).create_event;
@@ -294,7 +296,8 @@ pub(crate) fn create_event(
 }
 
 pub(crate) fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result<()> {
-    let boot_services = boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?;
+    let boot_services: NonNull<efi::BootServices> =
+        boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
     let r = unsafe {
         let close_event = (*boot_services.as_ptr()).close_event;
         (close_event)(evt.as_ptr())

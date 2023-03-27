@@ -129,6 +129,7 @@ pub fn abort_internal() -> ! {
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::boot_services(), uefi::env::try_image_handle())
     {
+        let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),

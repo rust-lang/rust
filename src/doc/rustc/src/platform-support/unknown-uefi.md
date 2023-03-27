@@ -251,12 +251,6 @@ Then just build the project using the following command:
 cargo build --target x86_64-unknown-uefi -Zbuild-std=std,panic_abort
 ```
 
-### Std Requirements
-The current std has a few basic requirements to function:
-1. Memory Allocation Services (`EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`) are available. This should be true in  in the Driver Execution Environment or later.
-If the above requirement is satisfied, the Rust code will reach `main`.
-Now we will discuss what the different modules of std use in UEFI.
-
 ### Implemented features
 #### alloc
 - Implemented using `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
@@ -302,3 +296,8 @@ pub fn main() {
   assert!(!r.is_error())
 }
 ```
+
+### BootServices
+The current implementation of std make `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
+
+Note: It should be noted that it is upto the user to drop all allocated memory before `ExitBootServices` is called. 

@@ -32,39 +32,43 @@ pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void
 }
 
 /// Get the SystemTable Pointer.
+/// If you want to use `BootServices` then please use [`boot_services`] as it performs some
+/// additional checks.
+///
 /// Note: This function panics if the System Table or Image Handle is not initialized
 pub fn system_table() -> NonNull<c_void> {
     try_system_table().unwrap()
 }
 
 /// Get the ImageHandle Pointer.
+///
 /// Note: This function panics if the System Table or Image Handle is not initialized
 pub fn image_handle() -> NonNull<c_void> {
     try_image_handle().unwrap()
 }
 
+/// Get the BootServices Pointer.
+/// This function also checks if `ExitBootServices` has already been called.
+pub fn boot_services() -> Option<NonNull<c_void>> {
+    if BOOT_SERVICES_FLAG.get() {
+        let system_table: NonNull<r_efi::efi::SystemTable> = try_system_table()?.cast();
+        let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
+        NonNull::new(boot_services).map(|x| x.cast())
+    } else {
+        None
+    }
+}
+
 /// Get the SystemTable Pointer.
 /// This function is mostly intended for places where panic is not an option
-pub(crate) fn try_system_table() -> Option<NonNull<crate::ffi::c_void>> {
+pub(crate) fn try_system_table() -> Option<NonNull<c_void>> {
     GLOBALS.get().map(|x| x.0)
 }
 
 /// Get the SystemHandle Pointer.
 /// This function is mostly intended for places where panic is not an option
-pub(crate) fn try_image_handle() -> Option<NonNull<crate::ffi::c_void>> {
+pub(crate) fn try_image_handle() -> Option<NonNull<c_void>> {
     GLOBALS.get().map(|x| x.1)
-}
-
-/// Get the BootServices Pointer.
-/// This function also checks if `ExitBootServices` has already been called.
-pub(crate) fn boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
-    if BOOT_SERVICES_FLAG.get() {
-        let system_table: NonNull<r_efi::efi::SystemTable> = try_system_table()?.cast();
-        let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
-        NonNull::new(boot_services)
-    } else {
-        None
-    }
 }
 
 pub(crate) fn enable_boot_services() {
