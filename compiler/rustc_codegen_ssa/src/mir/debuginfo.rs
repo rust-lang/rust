@@ -312,7 +312,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
                     bx.set_var_name(place.llval, name);
                 }
-                LocalRef::Operand(Some(operand)) => match operand.val {
+                LocalRef::Operand(operand) => match operand.val {
                     OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, name);
                     }
@@ -323,7 +323,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.set_var_name(b, &(name.clone() + ".1"));
                     }
                 },
-                LocalRef::Operand(None) => {}
+                LocalRef::PendingOperand => {}
             }
         }
 
@@ -332,9 +332,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let base = match local_ref {
-            LocalRef::Operand(None) => return,
+            LocalRef::PendingOperand => return,
 
-            LocalRef::Operand(Some(operand)) => {
+            LocalRef::Operand(operand) => {
                 // Don't spill operands onto the stack in naked functions.
                 // See: https://github.com/rust-lang/rust/issues/42779
                 let attrs = bx.tcx().codegen_fn_attrs(self.instance.def_id());
