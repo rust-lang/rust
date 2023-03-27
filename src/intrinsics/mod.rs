@@ -1103,8 +1103,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-            let layout = ret.layout();
-            let ret_val = CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
+            let layout = fx.layout_of(fx.tcx.types.i32);
+            let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
             ret.write_cvalue(fx, ret_val);
         }
 
