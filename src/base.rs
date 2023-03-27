@@ -694,11 +694,11 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
-                    operand.unsize_value(fx, lval);
+                    crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
                 Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
                     let operand = codegen_operand(fx, operand);
-                    operand.coerce_dyn_star(fx, lval);
+                    crate::unsize::coerce_dyn_star(fx, operand, lval);
                 }
                 Rvalue::Cast(CastKind::Transmute, ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
@@ -844,9 +844,7 @@ fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx
             let len = fx.monomorphize(len).eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
-        ty::Slice(_elem_ty) => {
-            place.to_ptr_maybe_unsized().1.expect("Length metadata for slice place")
-        }
+        ty::Slice(_elem_ty) => place.to_ptr_unsized().1,
         _ => bug!("Rvalue::Len({:?})", place),
     }
 }
@@ -900,8 +898,7 @@ pub(crate) fn codegen_place<'tcx>(
                     ty::Slice(elem_ty) => {
                         assert!(from_end, "slice subslices should be `from_end`");
                         let elem_layout = fx.layout_of(*elem_ty);
-                        let (ptr, len) = cplace.to_ptr_maybe_unsized();
-                        let len = len.unwrap();
+                        let (ptr, len) = cplace.to_ptr_unsized();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
                             fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),

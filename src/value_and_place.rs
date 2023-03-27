@@ -258,14 +258,6 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub(crate) fn unsize_value(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
-        crate::unsize::coerce_unsized_into(fx, self, dest);
-    }
-
-    pub(crate) fn coerce_dyn_star(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
-        crate::unsize::coerce_dyn_star(fx, self, dest);
-    }
-
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -454,18 +446,21 @@ impl<'tcx> CPlace<'tcx> {
 
     #[track_caller]
     pub(crate) fn to_ptr(self) -> Pointer {
-        match self.to_ptr_maybe_unsized() {
-            (ptr, None) => ptr,
-            (_, Some(_)) => bug!("Expected sized cplace, found {:?}", self),
+        match self.inner {
+            CPlaceInner::Addr(ptr, None) => ptr,
+            CPlaceInner::Addr(_, Some(_)) => bug!("Expected sized cplace, found {:?}", self),
+            CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => {
+                bug!("Expected CPlace::Addr, found {:?}", self)
+            }
         }
     }
 
     #[track_caller]
-    pub(crate) fn to_ptr_maybe_unsized(self) -> (Pointer, Option<Value>) {
+    pub(crate) fn to_ptr_unsized(self) -> (Pointer, Value) {
         match self.inner {
-            CPlaceInner::Addr(ptr, extra) => (ptr, extra),
-            CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => {
-                bug!("Expected CPlace::Addr, found {:?}", self)
+            CPlaceInner::Addr(ptr, Some(extra)) => (ptr, extra),
+            CPlaceInner::Addr(_, None) | CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => {
+                bug!("Expected unsized cplace, found {:?}", self)
             }
         }
     }
@@ -498,7 +493,7 @@ impl<'tcx> CPlace<'tcx> {
         from: CValue<'tcx>,
         method: &'static str,
     ) {
-        fn transmute_value<'tcx>(
+        fn transmute_scalar<'tcx>(
             fx: &mut FunctionCx<'_, '_, 'tcx>,
             var: Variable,
             data: Value,
@@ -569,7 +564,7 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Var(_local, var) => {
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
-                transmute_value(fx, var, data, dst_ty);
+                transmute_scalar(fx, var, data, dst_ty);
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let (data1, data2) = if from.layout().ty == dst_layout.ty {
@@ -580,8 +575,8 @@ impl<'tcx> CPlace<'tcx> {
                     CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx)
                 };
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
-                transmute_value(fx, var1, data1, dst_ty1);
-                transmute_value(fx, var2, data2, dst_ty2);
+                transmute_scalar(fx, var1, data1, dst_ty1);
+                transmute_scalar(fx, var2, data2, dst_ty2);
             }
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
             CPlaceInner::Addr(to_ptr, None) => {
@@ -666,7 +661,12 @@ impl<'tcx> CPlace<'tcx> {
             _ => {}
         }
 
-        let (base, extra) = self.to_ptr_maybe_unsized();
+        let (base, extra) = match self.inner {
+            CPlaceInner::Addr(ptr, extra) => (ptr, extra),
+            CPlaceInner::Var(_, _) | CPlaceInner::VarPair(_, _, _) => {
+                bug!("Expected CPlace::Addr, found {:?}", self)
+            }
+        };
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
         if field_layout.is_unsized() {
@@ -721,7 +721,7 @@ impl<'tcx> CPlace<'tcx> {
                     | CPlaceInner::VarPair(_, _, _) => bug!("Can't index into {self:?}"),
                 }
             }
-            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_maybe_unsized().0),
+            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -746,12 +746,8 @@ impl<'tcx> CPlace<'tcx> {
         layout: TyAndLayout<'tcx>,
     ) -> CValue<'tcx> {
         if has_ptr_meta(fx.tcx, self.layout().ty) {
-            let (ptr, extra) = self.to_ptr_maybe_unsized();
-            CValue::by_val_pair(
-                ptr.get_addr(fx),
-                extra.expect("unsized type without metadata"),
-                layout,
-            )
+            let (ptr, extra) = self.to_ptr_unsized();
+            CValue::by_val_pair(ptr.get_addr(fx), extra, layout)
         } else {
             CValue::by_val(self.to_ptr().get_addr(fx), layout)
         }
