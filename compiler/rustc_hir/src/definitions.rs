@@ -404,12 +404,8 @@ impl DefPathData {
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            // We use this name when collecting `ModChild`s.
-            // FIXME this could probably be removed with some refactoring to the name resolver.
-            ImplTraitAssocTy => Some(kw::Empty),
-
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait => None,
+            | ImplTrait | ImplTraitAssocTy => None,
         }
     }
 
