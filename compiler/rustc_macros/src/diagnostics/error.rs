@@ -1,7 +1,7 @@
 use proc_macro::{Diagnostic, Level, MultiSpan};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{spanned::Spanned, Attribute, Error as SynError, Meta, NestedMeta};
+use syn::{spanned::Spanned, Attribute, Error as SynError, Meta};
 
 #[derive(Debug)]
 pub(crate) enum DiagnosticDeriveError {
@@ -53,6 +53,7 @@ fn path_to_string(path: &syn::Path) -> String {
 }
 
 /// Returns an error diagnostic on span `span` with msg `msg`.
+#[must_use]
 pub(crate) fn span_err(span: impl MultiSpan, msg: &str) -> Diagnostic {
     Diagnostic::spanned(span, Level::Error, msg)
 }
@@ -72,10 +73,10 @@ macro_rules! throw_span_err {
 pub(crate) use throw_span_err;
 
 /// Returns an error diagnostic for an invalid attribute.
-pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
+pub(crate) fn invalid_attr(attr: &Attribute) -> Diagnostic {
     let span = attr.span().unwrap();
-    let path = path_to_string(&attr.path);
-    match meta {
+    let path = path_to_string(attr.path());
+    match attr.meta {
         Meta::Path(_) => span_err(span, &format!("`#[{path}]` is not a valid attribute")),
         Meta::NameValue(_) => {
             span_err(span, &format!("`#[{path} = ...]` is not a valid attribute"))
@@ -89,51 +90,11 @@ pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
 ///
 /// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_invalid_attr {
-    ($attr:expr, $meta:expr) => {{ throw_invalid_attr!($attr, $meta, |diag| diag) }};
-    ($attr:expr, $meta:expr, $f:expr) => {{
-        let diag = crate::diagnostics::error::invalid_attr($attr, $meta);
+    ($attr:expr) => {{ throw_invalid_attr!($attr, |diag| diag) }};
+    ($attr:expr, $f:expr) => {{
+        let diag = crate::diagnostics::error::invalid_attr($attr);
         return Err(crate::diagnostics::error::_throw_err(diag, $f));
     }};
 }
 
 pub(crate) use throw_invalid_attr;
-
-/// Returns an error diagnostic for an invalid nested attribute.
-pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diagnostic {
-    let name = attr.path.segments.last().unwrap().ident.to_string();
-    let name = name.as_str();
-
-    let span = nested.span().unwrap();
-    let meta = match nested {
-        syn::NestedMeta::Meta(meta) => meta,
-        syn::NestedMeta::Lit(_) => {
-            return span_err(span, &format!("`#[{name}(\"...\")]` is not a valid attribute"));
-        }
-    };
-
-    let span = meta.span().unwrap();
-    let path = path_to_string(meta.path());
-    match meta {
-        Meta::NameValue(..) => {
-            span_err(span, &format!("`#[{name}({path} = ...)]` is not a valid attribute"))
-        }
-        Meta::Path(..) => span_err(span, &format!("`#[{name}({path})]` is not a valid attribute")),
-        Meta::List(..) => {
-            span_err(span, &format!("`#[{name}({path}(...))]` is not a valid attribute"))
-        }
-    }
-}
-
-/// Emit an error diagnostic for an invalid nested attribute (optionally performing additional
-/// decoration using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
-///
-/// For methods that return a `Result<_, DiagnosticDeriveError>`:
-macro_rules! throw_invalid_nested_attr {
-    ($attr:expr, $nested_attr:expr) => {{ throw_invalid_nested_attr!($attr, $nested_attr, |diag| diag) }};
-    ($attr:expr, $nested_attr:expr, $f:expr) => {{
-        let diag = crate::diagnostics::error::invalid_nested_attr($attr, $nested_attr);
-        return Err(crate::diagnostics::error::_throw_err(diag, $f));
-    }};
-}
-
-pub(crate) use throw_invalid_nested_attr;

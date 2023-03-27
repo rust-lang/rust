@@ -15,7 +15,7 @@ mod kw {
 /// Ensures only doc comment attributes are used
 fn check_attributes(attrs: Vec<Attribute>) -> Result<Vec<Attribute>> {
     let inner = |attr: Attribute| {
-        if !attr.path.is_ident("doc") {
+        if !attr.path().is_ident("doc") {
             Err(Error::new(attr.span(), "attributes not supported on queries"))
         } else if attr.style != AttrStyle::Outer {
             Err(Error::new(
@@ -48,7 +48,7 @@ impl Parse for Query {
         let name: Ident = input.parse()?;
         let arg_content;
         parenthesized!(arg_content in input);
-        let key = arg_content.parse()?;
+        let key = Pat::parse_single(&arg_content)?;
         arg_content.parse::<Token![:]>()?;
         let arg = arg_content.parse()?;
         let result = input.parse()?;
@@ -158,7 +158,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             } else {
                 None
             };
-            let list = attr_content.parse_terminated(Expr::parse)?;
+            let list = attr_content.parse_terminated(Expr::parse, Token![,])?;
             try_insert!(desc = (tcx, list));
         } else if modifier == "cache_on_disk_if" {
             // Parse a cache modifier like:
@@ -166,7 +166,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             let args = if input.peek(token::Paren) {
                 let args;
                 parenthesized!(args in input);
-                let tcx = args.parse()?;
+                let tcx = Pat::parse_single(&args)?;
                 Some(tcx)
             } else {
                 None

@@ -25,7 +25,7 @@ impl Parse for Newtype {
         let mut encodable = true;
         let mut ord = true;
 
-        attrs.retain(|attr| match attr.path.get_ident() {
+        attrs.retain(|attr| match attr.path().get_ident() {
             Some(ident) => match &*ident.to_string() {
                 "custom_encodable" => {
                     encodable = false;
@@ -36,22 +36,22 @@ impl Parse for Newtype {
                     false
                 }
                 "max" => {
-                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. }) = &attr.meta else {
                         panic!("#[max = NUMBER] attribute requires max value");
                     };
 
-                    if let Some(old) = max.replace(literal.lit) {
+                    if let Some(old) = max.replace(lit.lit.clone()) {
                         panic!("Specified multiple max: {old:?}");
                     }
 
                     false
                 }
                 "debug_format" => {
-                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. } ) = &attr.meta else {
                         panic!("#[debug_format = FMT] attribute requires a format");
                     };
 
-                    if let Some(old) = debug_format.replace(literal.lit) {
+                    if let Some(old) = debug_format.replace(lit.lit.clone()) {
                         panic!("Specified multiple debug format options: {old:?}");
                     }
 

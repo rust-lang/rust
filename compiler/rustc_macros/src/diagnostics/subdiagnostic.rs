@@ -1,8 +1,7 @@
 #![deny(unused_must_use)]
 
 use crate::diagnostics::error::{
-    invalid_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
-    DiagnosticDeriveError,
+    invalid_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
     build_field_mapping, is_doc_comment, new_code_ident,
@@ -11,7 +10,7 @@ use crate::diagnostics::utils::{
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Attribute, Meta, MetaList, NestedMeta, Path};
+use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::{build_suggestion_code, AllowMultipleAlternatives};
@@ -39,7 +38,8 @@ impl SubdiagnosticDeriveBuilder {
                     span_err(
                         span,
                         "`#[derive(Subdiagnostic)]` can only be used on structs and enums",
-                    );
+                    )
+                    .emit();
                 }
             }
 
@@ -192,7 +192,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             };
 
             let Some(slug) = slug else {
-                let name = attr.path.segments.last().unwrap().ident.to_string();
+                let name = attr.path().segments.last().unwrap().ident.to_string();
                 let name = name.as_str();
 
                 throw_span_err!(
@@ -265,17 +265,18 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         info: FieldInfo<'_>,
         clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let meta = attr.parse_meta()?;
-        match meta {
-            Meta::Path(path) => self.generate_field_code_inner_path(kind_stats, attr, info, path),
-            Meta::List(list @ MetaList { .. }) => self.generate_field_code_inner_list(
+        match &attr.meta {
+            Meta::Path(path) => {
+                self.generate_field_code_inner_path(kind_stats, attr, info, path.clone())
+            }
+            Meta::List(list) => self.generate_field_code_inner_list(
                 kind_stats,
                 attr,
                 info,
                 list,
                 clone_suggestion_code,
             ),
-            _ => throw_invalid_attr!(attr, &meta),
+            _ => throw_invalid_attr!(attr),
         }
     }
 
@@ -296,7 +297,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             "skip_arg" => Ok(quote! {}),
             "primary_span" => {
                 if kind_stats.has_multipart_suggestion {
-                    invalid_attr(attr, &Meta::Path(path))
+                    invalid_attr(attr)
                         .help(
                             "multipart suggestions use one or more `#[suggestion_part]`s rather \
                             than one `#[primary_span]`",
@@ -309,7 +310,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     // FIXME(#100717): support `Option<Span>` on `primary_span` like in the
                     // diagnostic derive
                     if !matches!(info.ty, FieldInnerTy::Plain(_)) {
-                        throw_invalid_attr!(attr, &Meta::Path(path), |diag| {
+                        throw_invalid_attr!(attr, |diag| {
                             let diag = diag.note("there must be exactly one primary span");
 
                             if kind_stats.has_normal_suggestion {
@@ -335,7 +336,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
                         .emit();
                 } else {
-                    invalid_attr(attr, &Meta::Path(path))
+                    invalid_attr(attr)
                         .help(
                             "`#[suggestion_part(...)]` is only valid in multipart suggestions, \
                              use `#[primary_span]` instead",
@@ -375,7 +376,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     span_attrs.push("primary_span")
                 }
 
-                invalid_attr(attr, &Meta::Path(path))
+                invalid_attr(attr)
                     .help(format!(
                         "only `{}`, `applicability` and `skip_arg` are valid field attributes",
                         span_attrs.join(", ")
@@ -394,7 +395,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         kind_stats: KindsStatistics,
         attr: &Attribute,
         info: FieldInfo<'_>,
-        list: MetaList,
+        list: &MetaList,
         clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let span = attr.span().unwrap();
@@ -405,7 +406,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         match name {
             "suggestion_part" => {
                 if !kind_stats.has_multipart_suggestion {
-                    throw_invalid_attr!(attr, &Meta::List(list), |diag| {
+                    throw_invalid_attr!(attr, |diag| {
                         diag.help(
                             "`#[suggestion_part(...)]` is only valid in multipart suggestions",
                         )
@@ -417,31 +418,26 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 report_error_if_not_applied_to_span(attr, &info)?;
 
                 let mut code = None;
-                for nested_attr in list.nested.iter() {
-                    let NestedMeta::Meta(ref meta) = nested_attr else {
-                        throw_invalid_nested_attr!(attr, nested_attr);
-                    };
 
-                    let span = meta.span().unwrap();
-                    let nested_name = meta.path().segments.last().unwrap().ident.to_string();
-                    let nested_name = nested_name.as_str();
-
-                    match nested_name {
-                        "code" => {
-                            let code_field = new_code_ident();
-                            let formatting_init = build_suggestion_code(
-                                &code_field,
-                                meta,
-                                self,
-                                AllowMultipleAlternatives::No,
-                            );
-                            code.set_once((code_field, formatting_init), span);
-                        }
-                        _ => throw_invalid_nested_attr!(attr, nested_attr, |diag| {
-                            diag.help("`code` is the only valid nested attribute")
-                        }),
+                list.parse_nested_meta(|nested| {
+                    if nested.path.is_ident("code") {
+                        let code_field = new_code_ident();
+                        let formatting_init = build_suggestion_code(
+                            &code_field,
+                            nested,
+                            self,
+                            AllowMultipleAlternatives::No,
+                        );
+                        code.set_once((code_field, formatting_init), span);
+                    } else {
+                        span_err(
+                            nested.path.span().unwrap(),
+                            "`code` is the only valid nested attribute",
+                        )
+                        .emit();
                     }
-                }
+                    Ok(())
+                })?;
 
                 let Some((code_field, formatting_init)) = code.value() else {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
@@ -458,7 +454,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 };
                 Ok(quote! { suggestions.push((#binding, #code_field)); })
             }
-            _ => throw_invalid_attr!(attr, &Meta::List(list), |diag| {
+            _ => throw_invalid_attr!(attr, |diag| {
                 let mut span_attrs = vec![];
                 if kind_stats.has_multipart_suggestion {
                     span_attrs.push("suggestion_part");

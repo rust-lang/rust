@@ -1,8 +1,7 @@
 #![deny(unused_must_use)]
 
 use crate::diagnostics::error::{
-    invalid_nested_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
-    DiagnosticDeriveError,
+    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
@@ -11,9 +10,8 @@ use crate::diagnostics::utils::{
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{
-    parse_quote, spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
-};
+use syn::Token;
+use syn::{parse_quote, spanned::Spanned, Attribute, Meta, Path, Type};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
@@ -77,7 +75,7 @@ impl DiagnosticDeriveBuilder {
         match ast.data {
             syn::Data::Struct(..) | syn::Data::Enum(..) => (),
             syn::Data::Union(..) => {
-                span_err(span, "diagnostic derives can only be used on structs and enums");
+                span_err(span, "diagnostic derives can only be used on structs and enums").emit();
             }
         }
 
@@ -160,8 +158,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         };
 
         if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag {
-            let meta = attr.parse_meta()?;
-            throw_invalid_attr!(attr, &meta, |diag| diag
+            throw_invalid_attr!(attr, |diag| diag
                 .help("consider creating a `Subdiagnostic` instead"));
         }
 
@@ -191,71 +188,39 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             return Ok(quote! {});
         }
 
-        let name = attr.path.segments.last().unwrap().ident.to_string();
+        let name = attr.path().segments.last().unwrap().ident.to_string();
         let name = name.as_str();
-        let meta = attr.parse_meta()?;
+
+        let mut first = true;
 
         if name == "diag" {
-            let Meta::List(MetaList { ref nested, .. }) = meta else {
-                throw_invalid_attr!(
-                    attr,
-                    &meta
-                );
-            };
-
-            let mut nested_iter = nested.into_iter().peekable();
-
-            match nested_iter.peek() {
-                Some(NestedMeta::Meta(Meta::Path(slug))) => {
-                    self.slug.set_once(slug.clone(), slug.span().unwrap());
-                    nested_iter.next();
-                }
-                Some(NestedMeta::Meta(Meta::NameValue { .. })) => {}
-                Some(nested_attr) => throw_invalid_nested_attr!(attr, nested_attr, |diag| diag
-                    .help("a diagnostic slug is required as the first argument")),
-                None => throw_invalid_attr!(attr, &meta, |diag| diag
-                    .help("a diagnostic slug is required as the first argument")),
-            };
-
-            // Remaining attributes are optional, only `code = ".."` at the moment.
             let mut tokens = TokenStream::new();
-            for nested_attr in nested_iter {
-                let (value, path) = match nested_attr {
-                    NestedMeta::Meta(Meta::NameValue(MetaNameValue {
-                        lit: syn::Lit::Str(value),
-                        path,
-                        ..
-                    })) => (value, path),
-                    NestedMeta::Meta(Meta::Path(_)) => {
-                        invalid_nested_attr(attr, nested_attr)
-                            .help("diagnostic slug must be the first argument")
-                            .emit();
-                        continue;
-                    }
-                    _ => {
-                        invalid_nested_attr(attr, nested_attr).emit();
-                        continue;
-                    }
+            attr.parse_nested_meta(|nested| {
+                let path = &nested.path;
+
+                if first && (nested.input.is_empty() || nested.input.peek(Token![,])) {
+                    self.slug.set_once(path.clone(), path.span().unwrap());
+                    first = false;
+                    return Ok(())
+                }
+
+                first = false;
+
+                let Ok(nested) = nested.value() else {
+                    span_err(nested.input.span().unwrap(), "diagnostic slug must be the first argument").emit();
+                    return Ok(())
                 };
 
-                let nested_name = path.segments.last().unwrap().ident.to_string();
-                // Struct attributes are only allowed to be applied once, and the diagnostic
-                // changes will be set in the initialisation code.
-                let span = value.span().unwrap();
-                match nested_name.as_str() {
-                    "code" => {
-                        self.code.set_once((), span);
+                if path.is_ident("code") {
+                    self.code.set_once((), path.span().unwrap());
 
-                        let code = value.value();
-                        tokens.extend(quote! {
-                            #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
-                        });
-                    }
-                    _ => invalid_nested_attr(attr, nested_attr)
-                        .help("only `code` is a valid nested attributes following the slug")
-                        .emit(),
+                    let code = nested.parse::<TokenStream>()?;
+                    tokens.extend(quote! {
+                        #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                    });
                 }
-            }
+                Ok(())
+            })?;
             return Ok(tokens);
         }
 
@@ -270,7 +235,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 Ok(self.add_subdiagnostic(&fn_ident, slug))
             }
             SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
-                throw_invalid_attr!(attr, &meta, |diag| diag
+                throw_invalid_attr!(attr, |diag| diag
                     .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
             }
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
@@ -309,7 +274,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     return quote! {};
                 }
 
-                let name = attr.path.segments.last().unwrap().ident.to_string();
+                let name = attr.path().segments.last().unwrap().ident.to_string();
                 let needs_clone =
                     name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
                 let (binding, needs_destructure) = if needs_clone {
@@ -343,11 +308,10 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         binding: TokenStream,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let diag = &self.parent.diag;
-        let meta = attr.parse_meta()?;
 
-        let ident = &attr.path.segments.last().unwrap().ident;
+        let ident = &attr.path().segments.last().unwrap().ident;
         let name = ident.to_string();
-        match (&meta, name.as_str()) {
+        match (&attr.meta, name.as_str()) {
             // Don't need to do anything - by virtue of the attribute existing, the
             // `set_arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
@@ -361,7 +325,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         });
                     }
                     DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, &meta, |diag| {
+                        throw_invalid_attr!(attr, |diag| {
                             diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
                         })
                     }
@@ -378,26 +342,34 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     return Ok(quote! { #diag.subdiagnostic(#binding); });
                 }
             }
-            (Meta::List(MetaList { ref nested, .. }), "subdiagnostic") => {
-                if nested.len() == 1
-                    && let Some(NestedMeta::Meta(Meta::Path(path))) = nested.first()
-                    && path.is_ident("eager") {
-                        let handler = match &self.parent.kind {
-                            DiagnosticDeriveKind::Diagnostic { handler } => handler,
-                            DiagnosticDeriveKind::LintDiagnostic => {
-                                throw_invalid_attr!(attr, &meta, |diag| {
-                                    diag.help("eager subdiagnostics are not supported on lints")
-                                })
-                            }
-                        };
-                        return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
-                } else {
-                    throw_invalid_attr!(attr, &meta, |diag| {
-                        diag.help(
-                            "`eager` is the only supported nested attribute for `subdiagnostic`",
-                        )
-                    })
+            (Meta::List(meta_list), "subdiagnostic") => {
+                let err = || {
+                    span_err(
+                        meta_list.span().unwrap(),
+                        "`eager` is the only supported nested attribute for `subdiagnostic`",
+                    )
+                    .emit();
+                };
+
+                let Ok(p): Result<Path, _> = meta_list.parse_args() else {
+                    err();
+                    return Ok(quote! {});
+                };
+
+                if !p.is_ident("eager") {
+                    err();
+                    return Ok(quote! {});
                 }
+
+                let handler = match &self.parent.kind {
+                    DiagnosticDeriveKind::Diagnostic { handler } => handler,
+                    DiagnosticDeriveKind::LintDiagnostic => {
+                        throw_invalid_attr!(attr, |diag| {
+                            diag.help("eager subdiagnostics are not supported on lints")
+                        })
+                    }
+                };
+                return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
             }
             _ => (),
         }
@@ -432,7 +404,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 code_init,
             } => {
                 if let FieldInnerTy::Vec(_) = info.ty {
-                    throw_invalid_attr!(attr, &meta, |diag| {
+                    throw_invalid_attr!(attr, |diag| {
                         diag
                         .note("`#[suggestion(...)]` applied to `Vec` field is ambiguous")
                         .help("to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`")
