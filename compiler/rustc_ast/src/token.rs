@@ -75,8 +75,8 @@ impl FStrDelimiter {
         match (self, is_start) {
             (FStrDelimiter::Quote, true) => "f\"",
             (FStrDelimiter::Quote, false) => "\"",
-            (FStrDelimiter::Brace, true) => "{",
-            (FStrDelimiter::Brace, false) => "}",
+            (FStrDelimiter::Brace, true) => "}",
+            (FStrDelimiter::Brace, false) => "{",
         }
     }
 }
