@@ -8,9 +8,11 @@ doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
 
+# Most users installing from source want to build all parts of the project from source.
 [llvm]
-# Most users installing from source want to build all parts of the project from source, not just rustc itself.
 download-ci-llvm = false
+[rust]
+download-rustc = false
 
 [dist]
 # Use better compression when preparing tarballs.
