@@ -1,5 +1,6 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use super::search_graph::OverflowHandler;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
@@ -279,25 +280,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return
         };
 
-        self.probe(|ecx| {
-            let normalized_ty = ecx.next_ty_infer();
-            let normalizes_to_goal = goal.with(
-                tcx,
-                ty::Binder::dummy(ty::ProjectionPredicate {
-                    projection_ty,
-                    term: normalized_ty.into(),
-                }),
-            );
-            ecx.add_goal(normalizes_to_goal);
-            if let Ok(_) = ecx.try_evaluate_added_goals() {
-                let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
-
-                // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
-                // This doesn't work as long as we use `CandidateSource` in winnowing.
-                let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-                candidates.extend(ecx.assemble_and_evaluate_candidates(goal));
-            }
+        let normalized_self_candidates: Result<_, NoSolution> = self.probe(|ecx| {
+            ecx.with_incremented_depth(
+                |ecx| {
+                    let result = ecx.evaluate_added_goals_and_make_canonical_response(
+                        Certainty::Maybe(MaybeCause::Overflow),
+                    )?;
+                    Ok(vec![Candidate { source: CandidateSource::BuiltinImpl, result }])
+                },
+                |ecx| {
+                    let normalized_ty = ecx.next_ty_infer();
+                    let normalizes_to_goal = goal.with(
+                        tcx,
+                        ty::Binder::dummy(ty::ProjectionPredicate {
+                            projection_ty,
+                            term: normalized_ty.into(),
+                        }),
+                    );
+                    ecx.add_goal(normalizes_to_goal);
+                    let _ = ecx.try_evaluate_added_goals()?;
+                    let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
+                    // NOTE: Alternatively we could call `evaluate_goal` here and only
+                    // have a `Normalized` candidate. This doesn't work as long as we
+                    // use `CandidateSource` in winnowing.
+                    let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
+                    Ok(ecx.assemble_and_evaluate_candidates(goal))
+                },
+            )
         });
+
+        if let Ok(normalized_self_candidates) = normalized_self_candidates {
+            candidates.extend(normalized_self_candidates);
+        }
     }
 
     fn assemble_impl_candidates<G: GoalKind<'tcx>>(
