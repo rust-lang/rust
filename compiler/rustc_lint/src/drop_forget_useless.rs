@@ -1,7 +1,7 @@
 use rustc_hir::{Arm, Expr, ExprKind, Node};
 use rustc_span::sym;
 
-use crate::{lints::DropRefDiag, LateContext, LateLintPass, LintContext};
+use crate::{lints::{DropRefDiag, DropCopyDiag}, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `drop_ref` lint checks for calls to `std::mem::drop` with a reference
@@ -31,7 +31,31 @@ declare_lint! {
     "calls to `std::mem::drop` with a reference instead of an owned value"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF]);
+declare_lint! {
+    /// The `drop_copy` lint checks for calls to `std::mem::drop` with a value
+    /// that derives the Copy trait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x: i32 = 42; // i32 implements Copy
+    /// std::mem::drop(x); // A copy of x is passed to the function, leaving the
+    ///                    // original unaffected
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Calling `std::mem::drop` [does nothing for types that
+    /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
+    /// value will be copied and moved into the function on invocation.
+    pub DROP_COPY,
+    Warn,
+    "calls to `std::mem::drop` with a value that implements Copy"
+}
+
+declare_lint_pass!(DropForgetUseless => [DROP_REF, DROP_COPY]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -41,11 +65,15 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             && let Some(fn_name) = cx.tcx.get_diagnostic_name(def_id)
         {
             let arg_ty = cx.typeck_results().expr_ty(arg);
+            let is_copy = arg_ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
                     cx.emit_spanned_lint(DROP_REF, expr.span, DropRefDiag { arg_ty, note: arg.span });
                 },
+                sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
+                    cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, note: arg.span });
+                }
                 _ => return,
             };
         }

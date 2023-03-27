@@ -1,0 +1,128 @@
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:34:5
+   |
+LL |     drop(s1);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_copy.rs:34:10
+   |
+LL |     drop(s1);
+   |          ^^
+note: the lint level is defined here
+  --> $DIR/drop_copy.rs:3:9
+   |
+LL | #![warn(drop_copy)]
+   |         ^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:35:5
+   |
+LL |     drop(s2);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_copy.rs:35:10
+   |
+LL |     drop(s2);
+   |          ^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_copy.rs:36:5
+   |
+LL |     drop(s3);
+   |     ^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_copy.rs:36:10
+   |
+LL |     drop(s3);
+   |          ^^
+   = note: `#[warn(drop_ref)]` on by default
+
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:37:5
+   |
+LL |     drop(s4);
+   |     ^^^^^^^^
+   |
+note: argument has type `SomeStruct`
+  --> $DIR/drop_copy.rs:37:10
+   |
+LL |     drop(s4);
+   |          ^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_copy.rs:38:5
+   |
+LL |     drop(s5);
+   |     ^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_copy.rs:38:10
+   |
+LL |     drop(s5);
+   |          ^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_copy.rs:50:5
+   |
+LL |     drop(a2);
+   |     ^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_copy.rs:50:10
+   |
+LL |     drop(a2);
+   |          ^^
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value
+  --> $DIR/drop_copy.rs:52:5
+   |
+LL |     drop(a4);
+   |     ^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_copy.rs:52:10
+   |
+LL |     drop(a4);
+   |          ^^
+
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:71:13
+   |
+LL |             drop(println_and(13));
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `i32`
+  --> $DIR/drop_copy.rs:71:18
+   |
+LL |             drop(println_and(13));
+   |                  ^^^^^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:74:14
+   |
+LL |         3 if drop(println_and(14)) == () => (),
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `i32`
+  --> $DIR/drop_copy.rs:74:19
+   |
+LL |         3 if drop(println_and(14)) == () => (),
+   |                   ^^^^^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a value that implements `Copy`.
+  --> $DIR/drop_copy.rs:76:14
+   |
+LL |         4 => drop(2),
+   |              ^^^^^^^
+   |
+note: argument has type `i32`
+  --> $DIR/drop_copy.rs:76:19
+   |
+LL |         4 => drop(2),
+   |                   ^
+
+warning: 10 warnings emitted
+
