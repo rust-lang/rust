@@ -4,7 +4,7 @@ use std::num::NonZeroU8;
 
 use crate::vec::Idx;
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy, Decodable, Encodable)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Decodable, Encodable, Debug)]
 #[repr(transparent)]
 struct NonMaxU8 {
     repr: NonZeroU8,
@@ -22,7 +22,7 @@ impl NonMaxU8 {
     }
 }
 
-#[derive(Eq, PartialEq, Hash, Clone, Decodable, Encodable)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Decodable, Encodable, Debug)]
 #[repr(C)]
 pub struct DenseBitSet {
     words: [u64; 3],
@@ -78,6 +78,35 @@ impl DenseBitSet {
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
         DenseBitSetIter { state: 0, set: self }
+    }
+
+    #[inline]
+    fn as_u64s(&self) -> &[u64; 4] {
+        unsafe { &*(self as *const Self as *const [u64; 4]) }
+    }
+
+    #[inline]
+    fn as_u64s_mut(&mut self) -> &mut [u64; 4] {
+        unsafe { &mut *(self as *mut Self as *mut [u64; 4]) }
+    }
+
+    #[inline]
+    pub fn union(&mut self, other: &Self) -> bool {
+        // Since domain_size of self and other must be equal, we can just or all the bits, and the
+        // domain size bits will not be changed.
+
+        let slf = self.as_u64s_mut();
+        let oth = other.as_u64s();
+
+        let mut changed = 0;
+        for i in 0..4 {
+            let old = slf[i];
+            let new = old | oth[i];
+            slf[i] = new;
+            changed |= old ^ new;
+        }
+
+        changed != 0
     }
 }
 

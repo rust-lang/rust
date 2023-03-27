@@ -75,10 +75,7 @@ impl<T: Idx> BitSet<T> {
         let mut this = if domain_size <= INLINE_BITSET_BITS {
             let mut inner = DenseBitSet::new_empty(domain_size);
             inner.words_mut().fill(!0);
-            BitSet {
-                inner: BitSetImpl::Inline(inner),
-                marker: PhantomData,
-            }
+            BitSet { inner: BitSetImpl::Inline(inner), marker: PhantomData }
         } else {
             let num_words = num_words::<u64>(domain_size);
             BitSet {
@@ -364,8 +361,20 @@ impl<T: Idx> BitSet<T> {
 // dense REL dense
 impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     fn union(&mut self, other: &BitSet<T>) -> bool {
-        assert_eq!(self.domain_size(), other.domain_size());
-        bitwise(self.words_mut(), other.words(), |a, b| a | b)
+        match (&mut self.inner, &other.inner) {
+            (BitSetImpl::Inline(s), BitSetImpl::Inline(o)) => {
+                assert_eq!(s.domain_size(), o.domain_size());
+                s.union(o)
+            }
+            (
+                BitSetImpl::Heap { wide_words: s, domain_size: s_domain_size },
+                BitSetImpl::Heap { wide_words: o, domain_size: o_domain_size },
+            ) => {
+                assert_eq!(s_domain_size, o_domain_size);
+                bitwise(&mut s[..], &o[..], |a, b| a | b)
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn subtract(&mut self, other: &BitSet<T>) -> bool {
@@ -379,13 +388,17 @@ impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     }
 }
 
+use std::ops::{BitOrAssign, BitXor};
+
 #[inline]
-fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
+fn bitwise<T, Op>(out_vec: &mut [T], in_vec: &[T], op: Op) -> bool
 where
-    Op: Fn(Word, Word) -> Word,
+    T: Copy + Default + PartialEq + BitXor + BitOrAssign<<T as BitXor>::Output>,
+    <T as BitXor>::Output: BitOrAssign,
+    Op: Fn(T, T) -> T,
 {
     assert_eq!(out_vec.len(), in_vec.len());
-    let mut changed = 0;
+    let mut changed = T::default();
     for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
         let old_val = *out_elem;
         let new_val = op(old_val, *in_elem);
@@ -396,7 +409,7 @@ where
         // compiler tries to go back to a boolean on each loop iteration.
         changed |= old_val ^ new_val;
     }
-    changed != 0
+    changed != T::default()
 }
 
 impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
@@ -410,16 +423,26 @@ impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
 }
 
 impl<T> Clone for BitSet<T> {
+    #[inline]
     fn clone(&self) -> Self {
         Self { inner: self.inner.clone(), marker: PhantomData }
     }
 
-    /*
+    #[inline]
     fn clone_from(&mut self, from: &Self) {
-        self.domain_size = from.domain_size;
-        self.words.clone_from(from.words());
+        #[cold]
+        #[inline(never)]
+        fn clone_from_heap<T>(this: &mut BitSet<T>, from: &BitSet<T>) {
+            *this = from.clone();
+        }
+
+        match &from.inner {
+            BitSetImpl::Inline(inline) => {
+                *self = BitSet { inner: BitSetImpl::Inline(*inline), marker: PhantomData };
+            }
+            BitSetImpl::Heap { .. } => clone_from_heap(self, from),
+        }
     }
-    */
 }
 
 impl<T: Idx> fmt::Debug for BitSet<T> {
@@ -549,4 +572,33 @@ fn word_index_and_mask<T: Idx>(elem: T) -> (usize, Word) {
 #[inline]
 fn max_bit(word: Word) -> usize {
     WORD_BITS - 1 - word.leading_zeros() as usize
+}
+
+#[cfg(test)]
+mod dense_tests {
+    use super::*;
+
+    #[test]
+    fn every_bit_works() {
+        for size in 0..=248 {
+            println!("size: {size}");
+            let mut set = BitSet::new_empty(size);
+            for bit in 0..size {
+                println!("bit: {bit}");
+                set.insert(bit);
+                assert!(set.contains(bit));
+                assert_eq!(set.count(), 1);
+                {
+                    let mut it = set.iter();
+                    assert_eq!(it.next(), Some(bit));
+                    assert_eq!(it.next(), None);
+                }
+
+                set.remove(bit);
+                assert!(!set.contains(bit));
+                assert_eq!(set.count(), 0);
+                assert_eq!(set.iter().next(), None);
+            }
+        }
+    }
 }
