@@ -461,6 +461,9 @@ impl fmt::Debug for Instant {
 impl SystemTime {
     /// An anchor in time which can be used to create new `SystemTime` instances or
     /// learn about where in time a `SystemTime` lies.
+    //
+    // NOTE! this documentation is duplicated, here and in std::time::UNIX_EPOCH.
+    // The two copies are not quite identical, because of the difference in naming.
     ///
     /// This constant is defined to be "1970-01-01 00:00:00 UTC" on all systems with
     /// respect to the system clock. Using `duration_since` on an existing
@@ -617,6 +620,9 @@ impl fmt::Debug for SystemTime {
 
 /// An anchor in time which can be used to create new `SystemTime` instances or
 /// learn about where in time a `SystemTime` lies.
+//
+// NOTE! this documentation is duplicated, here and in SystemTime::UNIX_EPOCH.
+// The two copies are not quite identical, because of the difference in naming.
 ///
 /// This constant is defined to be "1970-01-01 00:00:00 UTC" on all systems with
 /// respect to the system clock. Using `duration_since` on an existing
