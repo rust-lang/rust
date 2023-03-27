@@ -709,7 +709,11 @@ parse_zero_chars = empty character literal
 parse_lone_slash = invalid trailing slash in literal
     .label = {parse_lone_slash}
 
-parse_lone_brace = invalid unclosed brace `{$brace}` in f-string literal
+parse_lone_brace = invalid brace in f-string literal
+    .label = this brace '`{$brace}`' must {$is_open ->
+        [true] be closed or escaped
+        *[false] escaped
+    }
     .escape = escape the character
 
 parse_unskipped_whitespace = whitespace symbol '{$ch}' is not skipped

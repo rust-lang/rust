@@ -267,6 +267,7 @@ pub(crate) fn emit_unescape_error(
                 span,
                 char_span,
                 brace: c,
+                is_open: c == '{',
             });
         }
         EscapeError::UnskippedWhitespaceWarning => {

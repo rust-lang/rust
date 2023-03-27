@@ -1930,6 +1930,7 @@ pub enum UnescapeError {
         #[suggestion(parse_escape, applicability = "maybe-incorrect", code = "{brace}{brace}", style = "verbose")]
         char_span: Span,
         brace: char,
+        is_open: bool,
     },
     #[diag(parse_unskipped_whitespace)]
     UnskippedWhitespace {
