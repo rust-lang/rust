@@ -330,7 +330,7 @@ impl<'a> State<'a> {
                 self.print_token_literal(*token_lit, expr.span);
             }
             ast::ExprKind::FStr(ref pieces) => {
-                self.print_f_str(pieces);
+                self.print_f_string(pieces);
             }
             ast::ExprKind::IncludedBytes(bytes) => {
                 let lit = token::Lit::new(token::ByteStr, escape_byte_str_symbol(bytes), None);

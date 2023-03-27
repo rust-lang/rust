@@ -989,19 +989,20 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_f_str(&mut self, pieces: &ThinVec<ast::FStringPiece>) {
+    fn print_f_string(&mut self, pieces: &ThinVec<ast::FStringPiece>) {
         // TODO? self.maybe_print_comment(lit.span.lo());
         let mut buffer = "f\"".to_string();
-        for segment in pieces {
-            match segment {
+        for piece in pieces {
+            match piece {
                 ast::FStringPiece::Literal(symbol) => {
-                    let st = symbol
+                    // TODO: Optimize
+                    let escaped_string = symbol
                         .to_string()
                         .escape_debug()
                         .to_string()
                         .replace("{", "{{")
                         .replace("}", "}}");
-                    buffer.push_str(&st);
+                    buffer.push_str(&escaped_string);
                 }
                 ast::FStringPiece::Expr(expr) => {
                     buffer.push('{');
