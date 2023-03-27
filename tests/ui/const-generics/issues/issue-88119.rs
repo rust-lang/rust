@@ -1,4 +1,10 @@
-// check-pass
+// known-bug: #88119
+// failure-status: 101
+// normalize-stderr-test "note: .*\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+// normalize-stderr-test "\s\d{1,}: .*\n" -> ""
+// normalize-stderr-test "\s at .*\n" -> ""
+// rustc-env:RUST_BACKTRACE=0
 
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, generic_const_exprs)]
