@@ -462,8 +462,6 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(nonnull_slice_from_raw_parts)]
-    ///
     /// use std::ptr::NonNull;
     ///
     /// // create a slice pointer when starting out with a pointer to the first element
@@ -475,8 +473,8 @@ impl<T> NonNull<[T]> {
     ///
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
-    #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
-    #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
+    #[stable(feature = "nonnull_slice_from_raw_parts", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
     #[must_use]
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
@@ -494,7 +492,6 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(nonnull_slice_from_raw_parts)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -514,7 +511,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -534,7 +531,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -668,7 +665,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let x = &mut [1, 2, 4];

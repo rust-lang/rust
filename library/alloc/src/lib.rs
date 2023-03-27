@@ -135,7 +135,6 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![cfg_attr(test, feature(new_uninit))]
-#![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
 #![feature(provide_any)]
