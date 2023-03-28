@@ -22,6 +22,7 @@ use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
+use object::elf::NT_GNU_PROPERTY_TYPE_0;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -213,9 +214,46 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
       let kind = SectionKind::Note;
       let section = file.add_section(segment, name, kind);
-      let data: &[u8] = &[b'G', b'N', b'U'];
-      //sess.opts.unstable_opts.branch_protection = Some(rustc_session::config::BranchProtection{bti:true, pac_ret:None});
- 
+      
+      //Emit the note header.
+      // OutStreamer.emitValueToAlignment(Align(8).value());
+      
+      // Size of the n_name field
+      // OutStreamer.emitIntValue(4, 4);     // data size for "GNU\0"
+      let n_namsz = 4;
+      
+      //Size of the n_desc field 
+      //OutStreamer.emitIntValue(4 * 4, 4); // Elf_Prop size
+      let n_descz = 16;
+      
+      // Type of note descriptor 
+      //OutStreamer.emitIntValue(ELF::NT_GNU_PROPERTY_TYPE_0, 4);
+      let n_type = NT_GNU_PROPERTY_TYPE_0.try_into().unwrap();
+      
+      // Owner of the program property note 
+      //OutStreamer.emitBytes(StringRef("GNU", 4)); // note name
+      let _n_name: &[u8] = &[b'G', b'N', b'U'];
+     
+      // The type of program property 
+      //OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
+      // kernel_loader::elf::GNU_PROPERTY_AARCH64_FEATURE_1_AND <- out of scope
+       //pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
+      // GNU_PROPERTY_AARCH64_FEATURE_1_AND.try_into().unwrap(); <-- too bug
+      let pr_type = 5;// TODO: unknown contents;
+      
+      // The size of the pr_data field
+      //OutStreamer.emitIntValue(4, 4);     // data size
+      let pr_datasz = 4;
+      
+      // The program property descriptor
+      //OutStreamer.emitIntValue(Flags, 4); // data
+      let pr_data = 0;// TODO: unknown contents;
+      
+      // The padding if necessary 
+      //OutStreamer.emitIntValue(0, 4);     // pad
+      let pr_padding = 0; 
+      
+      let data: &[u8] = &[n_namsz, n_descz, n_type, b'G', b'N', b'U', pr_type, pr_datasz, pr_data, pr_padding];
       let _ = file.append_section_data(section, data, 1);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
