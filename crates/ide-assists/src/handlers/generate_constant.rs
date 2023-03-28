@@ -106,10 +106,10 @@ fn get_text_for_generate_constant(
     let mut text = format!("{vis}const {constant_token}: {type_name} = $0;");
     while let Some(name_ref) = not_exist_name_ref.pop() {
         let vis = if not_exist_name_ref.len() == 0 && !outer_exists { "" } else { "\npub " };
-        text = text.replace("\n", "\n    ");
+        text = text.replace('\n', "\n    ");
         text = format!("{vis}mod {name_ref} {{{text}\n}}");
     }
-    Some(text.replace("\n", &format!("\n{indent}")))
+    Some(text.replace('\n', &format!("\n{indent}")))
 }
 
 fn target_data_for_generate_constant(
@@ -131,7 +131,7 @@ fn target_data_for_generate_constant(
 
             let siblings_has_newline = l_curly_token
                 .siblings_with_tokens(Direction::Next)
-                .find(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains("\n"))
+                .find(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains('\n'))
                 .is_some();
             let post_string =
                 if siblings_has_newline { format!("{indent}") } else { format!("\n{indent}") };

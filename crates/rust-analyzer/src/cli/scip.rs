@@ -66,7 +66,6 @@ impl flags::Scip {
                     .as_os_str()
                     .to_str()
                     .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
-                    .to_string()
             ),
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
@@ -212,7 +211,7 @@ fn new_descriptor_str(
 
 fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
     let mut name = name.to_string();
-    if name.contains("'") {
+    if name.contains('\'') {
         name = format!("`{name}`");
     }
 

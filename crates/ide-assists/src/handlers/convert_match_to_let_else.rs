@@ -16,7 +16,7 @@ use crate::{
 // ```
 // # //- minicore: option
 // fn foo(opt: Option<()>) {
-//     let val = $0match opt {
+//     let val$0 = match opt {
 //         Some(it) => it,
 //         None => return,
 //     };
@@ -30,7 +30,10 @@ use crate::{
 // ```
 pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let let_stmt: ast::LetStmt = ctx.find_node_at_offset()?;
-    let binding = let_stmt.pat()?;
+    let pat = let_stmt.pat()?;
+    if ctx.offset() > pat.syntax().text_range().end() {
+        return None;
+    }
 
     let Some(ast::Expr::MatchExpr(initializer)) = let_stmt.initializer() else { return None };
     let initializer_expr = initializer.expr()?;
@@ -56,7 +59,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
         let_stmt.syntax().text_range(),
         |builder| {
             let extracting_arm_pat =
-                rename_variable(&extracting_arm_pat, &extracted_variable_positions, binding);
+                rename_variable(&extracting_arm_pat, &extracted_variable_positions, pat);
             builder.replace(
                 let_stmt.syntax().text_range(),
                 format!("let {extracting_arm_pat} = {initializer_expr} else {diverging_arm_expr};"),
@@ -161,7 +164,7 @@ mod tests {
             r#"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it,
         None => (),
     };
@@ -211,7 +214,7 @@ fn foo(opt: Option<Foo>) -> Result<u32, ()> {
             r#"
 //- minicore: option
 fn foo(opt: Option<i32>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it + 1,
         None => return,
     };
@@ -224,7 +227,7 @@ fn foo(opt: Option<i32>) {
             r#"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => {
             let _ = 1 + 1;
             it
@@ -244,7 +247,7 @@ fn foo(opt: Option<()>) {
             r#"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) if 2 > 1 => it,
         None => return,
     };
@@ -260,7 +263,7 @@ fn foo(opt: Option<()>) {
             r#"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it,
         None => return,
     };
@@ -281,7 +284,7 @@ fn foo(opt: Option<()>) {
             r#"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let ref mut val = $0match opt {
+    let ref mut val$0 = match opt {
         Some(it) => it,
         None => return,
     };
@@ -302,7 +305,7 @@ fn foo(opt: Option<()>) {
             r#"
 //- minicore: option, result
 fn foo(opt: Option<Result<()>>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(Ok(it)) => it,
         _ => return,
     };
@@ -324,7 +327,7 @@ fn foo(opt: Option<Result<()>>) {
 //- minicore: option
 fn foo(opt: Option<()>) {
     loop {
-        let val = $0match opt {
+        let val$0 = match opt {
             Some(it) => it,
             None => break,
         };
@@ -346,7 +349,7 @@ fn foo(opt: Option<()>) {
 //- minicore: option
 fn foo(opt: Option<()>) {
     loop {
-        let val = $0match opt {
+        let val$0 = match opt {
             Some(it) => it,
             None => continue,
         };
@@ -370,7 +373,7 @@ fn panic() -> ! {}
 
 fn foo(opt: Option<()>) {
     loop {
-        let val = $0match opt {
+        let val$0 = match opt {
             Some(it) => it,
             None => panic(),
         };
@@ -401,7 +404,7 @@ struct Point {
 }
 
 fn foo(opt: Option<Point>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(Point { x: 0, y }) => y,
         _ => return,
     };
@@ -427,7 +430,7 @@ fn foo(opt: Option<Point>) {
             r#"
 //- minicore: option
 fn foo(opt: Option<i32>) -> Option<i32> {
-    let val = $0match opt {
+    let val$0 = match opt {
         it @ Some(42) => it,
         _ => return None,
     };
@@ -450,7 +453,7 @@ fn foo(opt: Option<i32>) -> Option<i32> {
             r#"
 //- minicore: option
 fn f() {
-    let (x, y) = $0match Some((0, 1)) {
+    let (x, y)$0 = match Some((0, 1)) {
         Some(it) => it,
         None => return,
     };
@@ -471,7 +474,7 @@ fn f() {
             r#"
 //- minicore: option
 fn f() {
-    let x = $0match Some(()) {
+    let x$0 = match Some(()) {
         Some(it) => it,
         None => {//comment
             println!("nope");

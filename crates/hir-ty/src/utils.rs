@@ -69,9 +69,7 @@ pub(super) fn all_super_trait_refs<T>(
     cb: impl FnMut(TraitRef) -> Option<T>,
 ) -> Option<T> {
     let seen = iter::once(trait_ref.trait_id).collect();
-    let mut stack = Vec::new();
-    stack.push(trait_ref);
-    SuperTraits { db, seen, stack }.find_map(cb)
+    SuperTraits { db, seen, stack: vec![trait_ref] }.find_map(cb)
 }
 
 struct SuperTraits<'a> {
