@@ -687,6 +687,14 @@ pub struct ForgetRefDiag<'a> {
     pub note: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_forget_copy)]
+pub struct ForgetCopyDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[note]
+    pub note: Span,
+}
+
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_hidden_unicode_codepoints)]

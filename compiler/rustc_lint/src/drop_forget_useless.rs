@@ -1,7 +1,10 @@
 use rustc_hir::{Arm, Expr, ExprKind, Node};
 use rustc_span::sym;
 
-use crate::{lints::{DropRefDiag, DropCopyDiag, ForgetRefDiag}, LateContext, LateLintPass, LintContext};
+use crate::{
+    lints::{DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag},
+    LateContext, LateLintPass, LintContext,
+};
 
 declare_lint! {
     /// The `drop_ref` lint checks for calls to `std::mem::drop` with a reference
@@ -78,7 +81,35 @@ declare_lint! {
     "calls to `std::mem::drop` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROP_COPY]);
+declare_lint! {
+    /// The `forget_copy` lint checks for calls to `std::mem::forget` with a value
+    /// that derives the Copy trait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x: i32 = 42; // i32 implements Copy
+    /// std::mem::forget(x); // A copy of x is passed to the function, leaving the
+    ///                      // original unaffected
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Calling `std::mem::forget` [does nothing for types that
+    /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
+    /// value will be copied and moved into the function on invocation.
+    ///
+    /// An alternative, but also valid, explanation is that Copy types do not
+    /// implement the Drop trait, which means they have no destructors. Without a
+    /// destructor, there is nothing for `std::mem::forget` to ignore.
+    pub FORGET_COPY,
+    Warn,
+    "calls to `std::mem::forget` with a value that implements Copy"
+}
+
+declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -99,6 +130,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                 },
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
                     cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, note: arg.span });
+                }
+                sym::mem_forget if is_copy => {
+                    cx.emit_spanned_lint(FORGET_COPY, expr.span, ForgetCopyDiag { arg_ty, note: arg.span });
                 }
                 _ => return,
             };
