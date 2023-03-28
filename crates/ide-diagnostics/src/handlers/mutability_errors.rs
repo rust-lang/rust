@@ -693,6 +693,41 @@ fn f(inp: (Foo, Foo, Foo, Foo)) {
     }
 
     #[test]
+    // FIXME: We should have tests for `is_ty_uninhabited_from`
+    fn regression_14421() {
+        check_diagnostics(
+            r#"
+pub enum Tree {
+    Node(TreeNode),
+    Leaf(TreeLeaf),
+}
+
+struct Box<T>(&T);
+
+pub struct TreeNode {
+    pub depth: usize,
+    pub children: [Box<Tree>; 8]
+}
+
+pub struct TreeLeaf {
+    pub depth: usize,
+    pub data: u8
+}
+
+pub fn test() {
+    let mut tree = Tree::Leaf(
+      //^^^^^^^^ 💡 weak: variable does not need to be mutable
+        TreeLeaf {
+            depth: 0,
+            data: 0
+        }
+    );
+}
+"#,
+        );
+    }
+
+    #[test]
     fn fn_traits() {
         check_diagnostics(
             r#"
