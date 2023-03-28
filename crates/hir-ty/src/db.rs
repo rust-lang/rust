@@ -129,7 +129,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_block_query)]
-    fn trait_impls_in_block(&self, krate: BlockId) -> Option<Arc<TraitImpls>>;
+    fn trait_impls_in_block(&self, block: BlockId) -> Option<Arc<TraitImpls>>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
     fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
@@ -197,6 +197,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_solve(
         &self,
         krate: CrateId,
+        block: Option<BlockId>,
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> Option<crate::Solution>;
 
@@ -204,6 +205,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_solve_query(
         &self,
         krate: CrateId,
+        block: Option<BlockId>,
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> Option<crate::Solution>;
 
@@ -211,6 +213,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn program_clauses_for_chalk_env(
         &self,
         krate: CrateId,
+        block: Option<BlockId>,
         env: chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner>;
 }
@@ -232,10 +235,11 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
 fn trait_solve_wait(
     db: &dyn HirDatabase,
     krate: CrateId,
+    block: Option<BlockId>,
     goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
 ) -> Option<crate::Solution> {
     let _p = profile::span("trait_solve::wait");
-    db.trait_solve_query(krate, goal)
+    db.trait_solve_query(krate, block, goal)
 }
 
 #[test]

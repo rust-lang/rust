@@ -462,7 +462,8 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn try_obligation(&mut self, goal: Goal) -> Option<Solution> {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         let canonicalized = self.canonicalize(in_env);
-        let solution = self.db.trait_solve(self.trait_env.krate, canonicalized.value);
+        let solution =
+            self.db.trait_solve(self.trait_env.krate, self.trait_env.block, canonicalized.value);
         solution
     }
 
@@ -597,7 +598,11 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         canonicalized: &Canonicalized<InEnvironment<Goal>>,
     ) -> bool {
-        let solution = self.db.trait_solve(self.trait_env.krate, canonicalized.value.clone());
+        let solution = self.db.trait_solve(
+            self.trait_env.krate,
+            self.trait_env.block,
+            canonicalized.value.clone(),
+        );
 
         match solution {
             Some(Solution::Unique(canonical_subst)) => {
@@ -684,7 +689,11 @@ impl<'a> InferenceTable<'a> {
             environment: trait_env.clone(),
         };
         let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
+        if self
+            .db
+            .trait_solve(krate, self.trait_env.block, canonical.value.cast(Interner))
+            .is_some()
+        {
             self.register_obligation(obligation.goal);
             let return_ty = self.normalize_projection_ty(projection);
             for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
@@ -695,7 +704,11 @@ impl<'a> InferenceTable<'a> {
                     environment: trait_env.clone(),
                 };
                 let canonical = self.canonicalize(obligation.clone());
-                if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
+                if self
+                    .db
+                    .trait_solve(krate, self.trait_env.block, canonical.value.cast(Interner))
+                    .is_some()
+                {
                     return Some((fn_x, arg_tys, return_ty));
                 }
             }

@@ -271,6 +271,7 @@ pub struct InherentImpls {
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+        let _p = profile::span("inherent_impls_in_crate_query").detail(|| format!("{krate:?}"));
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -284,13 +285,14 @@ impl InherentImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
+        let _p = profile::span("inherent_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
-        if let Some(block_def_map) = db.block_def_map(block) {
-            impls.collect_def_map(db, &block_def_map);
-            impls.shrink_to_fit();
-            return Some(Arc::new(impls));
-        }
-        None
+
+        let block_def_map = db.block_def_map(block)?;
+        impls.collect_def_map(db, &block_def_map);
+        impls.shrink_to_fit();
+
+        Some(Arc::new(impls))
     }
 
     fn shrink_to_fit(&mut self) {
@@ -1140,7 +1142,7 @@ fn iterate_trait_method_candidates(
             };
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, &canonical_self_ty);
-                if db.trait_solve(env.krate, goal.cast(Interner)).is_none() {
+                if db.trait_solve(env.krate, env.block, goal.cast(Interner)).is_none() {
                     continue 'traits;
                 }
             }
@@ -1317,7 +1319,7 @@ pub fn resolve_indexing_op(
     let deref_chain = autoderef_method_receiver(&mut table, ty);
     for (ty, adj) in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, &ty);
-        if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
+        if db.trait_solve(env.krate, env.block, goal.cast(Interner)).is_some() {
             return Some(adj);
         }
     }
@@ -1342,14 +1344,12 @@ fn is_valid_candidate(
 ) -> IsValidCandidate {
     let db = table.db;
     match item {
-        AssocItemId::FunctionId(m) => {
-            is_valid_fn_candidate(table, m, name, receiver_ty, self_ty, visible_from_module)
+        AssocItemId::FunctionId(f) => {
+            is_valid_fn_candidate(table, f, name, receiver_ty, self_ty, visible_from_module)
         }
         AssocItemId::ConstId(c) => {
-            let data = db.const_data(c);
             check_that!(receiver_ty.is_none());
-
-            check_that!(name.map_or(true, |n| data.name.as_ref() == Some(n)));
+            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
 
             if let Some(from_module) = visible_from_module {
                 if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
@@ -1473,7 +1473,7 @@ pub fn implements_trait(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env.clone(), trait_, ty);
-    let solution = db.trait_solve(env.krate, goal.cast(Interner));
+    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
 
     solution.is_some()
 }
@@ -1485,7 +1485,7 @@ pub fn implements_trait_unique(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env.clone(), trait_, ty);
-    let solution = db.trait_solve(env.krate, goal.cast(Interner));
+    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))
 }

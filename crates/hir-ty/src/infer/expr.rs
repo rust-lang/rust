@@ -3,6 +3,7 @@
 use std::{
     iter::{repeat, repeat_with},
     mem,
+    sync::Arc,
 };
 
 use chalk_ir::{
@@ -15,7 +16,7 @@ use hir_def::{
     generics::TypeOrConstParamData,
     lang_item::LangItem,
     path::{GenericArg, GenericArgs},
-    ConstParamId, FieldId, ItemContainerId, Lookup,
+    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -147,19 +148,19 @@ impl<'a> InferenceContext<'a> {
                 self.infer_top_pat(pat, &input_ty);
                 self.result.standard_types.bool_.clone()
             }
-            Expr::Block { statements, tail, label, id: _ } => {
-                self.infer_block(tgt_expr, statements, *tail, *label, expected)
+            Expr::Block { statements, tail, label, id } => {
+                self.infer_block(tgt_expr, *id, statements, *tail, *label, expected)
             }
-            Expr::Unsafe { id: _, statements, tail } => {
-                self.infer_block(tgt_expr, statements, *tail, None, expected)
+            Expr::Unsafe { id, statements, tail } => {
+                self.infer_block(tgt_expr, *id, statements, *tail, None, expected)
             }
-            Expr::Const { id: _, statements, tail } => {
+            Expr::Const { id, statements, tail } => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                    this.infer_block(tgt_expr, statements, *tail, None, expected)
+                    this.infer_block(tgt_expr, *id, statements, *tail, None, expected)
                 })
                 .1
             }
-            Expr::Async { id: _, statements, tail } => {
+            Expr::Async { id, statements, tail } => {
                 let ret_ty = self.table.new_type_var();
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
@@ -170,6 +171,7 @@ impl<'a> InferenceContext<'a> {
                     self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
                         this.infer_block(
                             tgt_expr,
+                            *id,
                             statements,
                             *tail,
                             None,
@@ -394,7 +396,7 @@ impl<'a> InferenceContext<'a> {
                                 }
                             }
                             let trait_ = fn_x
-                                .get_id(self.db, self.trait_env.krate)
+                                .get_id(self.db, self.table.trait_env.krate)
                                 .expect("We just used it");
                             let trait_data = self.db.trait_data(trait_);
                             if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
@@ -787,7 +789,7 @@ impl<'a> InferenceContext<'a> {
                     let canonicalized = self.canonicalize(base_ty.clone());
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
-                        self.trait_env.clone(),
+                        self.table.trait_env.clone(),
                         canonicalized.value,
                         index_trait,
                     );
@@ -1205,6 +1207,7 @@ impl<'a> InferenceContext<'a> {
     fn infer_block(
         &mut self,
         expr: ExprId,
+        block_id: Option<BlockId>,
         statements: &[Statement],
         tail: Option<ExprId>,
         label: Option<LabelId>,
@@ -1212,6 +1215,11 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+        let prev_env = block_id.map(|block_id| {
+            let prev_env = self.table.trait_env.clone();
+            Arc::make_mut(&mut self.table.trait_env).block = Some(block_id);
+            prev_env
+        });
 
         let (break_ty, ty) =
             self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty.clone()), label, |this| {
@@ -1300,6 +1308,9 @@ impl<'a> InferenceContext<'a> {
                 }
             });
         self.resolver.reset_to_guard(g);
+        if let Some(prev_env) = prev_env {
+            self.table.trait_env = prev_env;
+        }
 
         break_ty.unwrap_or(ty)
     }
@@ -1398,7 +1409,7 @@ impl<'a> InferenceContext<'a> {
                     method_resolution::lookup_method(
                         self.db,
                         &canonicalized_receiver.value,
-                        self.trait_env.clone(),
+                        self.table.trait_env.clone(),
                         self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
                         VisibleFromModule::Filter(self.resolver.module()),
                         name,
@@ -1431,7 +1442,7 @@ impl<'a> InferenceContext<'a> {
         let resolved = method_resolution::lookup_method(
             self.db,
             &canonicalized_receiver.value,
-            self.trait_env.clone(),
+            self.table.trait_env.clone(),
             self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             method_name,
