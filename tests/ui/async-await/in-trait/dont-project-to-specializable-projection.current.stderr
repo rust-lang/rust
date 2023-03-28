@@ -1,5 +1,5 @@
 warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/dont-project-to-specializable-projection.rs:4:12
+  --> $DIR/dont-project-to-specializable-projection.rs:6:12
    |
 LL | #![feature(async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(async_fn_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: async associated function in trait cannot be specialized
-  --> $DIR/dont-project-to-specializable-projection.rs:14:5
+  --> $DIR/dont-project-to-specializable-projection.rs:16:5
    |
 LL |     default async fn foo(_: T) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
