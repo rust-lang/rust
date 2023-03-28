@@ -15,7 +15,6 @@ use rustc_span::Span;
 use std::hash::Hash;
 use std::num::NonZeroU64;
 
-#[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
     rayon_core,
@@ -47,17 +46,14 @@ impl QueryJobId {
         map.get(&self).unwrap().query.clone()
     }
 
-    #[cfg(parallel_compiler)]
     fn span<D: DepKind>(self, map: &QueryMap<D>) -> Span {
         map.get(&self).unwrap().job.span
     }
 
-    #[cfg(parallel_compiler)]
     fn parent<D: DepKind>(self, map: &QueryMap<D>) -> Option<QueryJobId> {
         map.get(&self).unwrap().job.parent
     }
 
-    #[cfg(parallel_compiler)]
     fn latch<D: DepKind>(self, map: &QueryMap<D>) -> Option<&QueryLatch<D>> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
@@ -81,7 +77,6 @@ pub struct QueryJob<D: DepKind> {
     pub parent: Option<QueryJobId>,
 
     /// The latch that is used to wait on this job.
-    #[cfg(parallel_compiler)]
     latch: Option<QueryLatch<D>>,
     spooky: core::marker::PhantomData<D>,
 }
@@ -90,17 +85,9 @@ impl<D: DepKind> QueryJob<D> {
     /// Creates a new query job.
     #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
-        QueryJob {
-            id,
-            span,
-            parent,
-            #[cfg(parallel_compiler)]
-            latch: None,
-            spooky: PhantomData,
-        }
+        QueryJob { id, span, parent, latch: None, spooky: PhantomData }
     }
 
-    #[cfg(parallel_compiler)]
     pub(super) fn latch(&mut self) -> QueryLatch<D> {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
@@ -114,11 +101,8 @@ impl<D: DepKind> QueryJob<D> {
     /// as there are no concurrent jobs which could be waiting on us
     #[inline]
     pub fn signal_complete(self) {
-        #[cfg(parallel_compiler)]
-        {
-            if let Some(latch) = self.latch {
-                latch.set();
-            }
+        if let Some(latch) = self.latch {
+            latch.set();
         }
     }
 }
@@ -184,7 +168,6 @@ impl QueryJobId {
     }
 }
 
-#[cfg(parallel_compiler)]
 struct QueryWaiter<D: DepKind> {
     query: Option<QueryJobId>,
     condvar: Condvar,
@@ -192,7 +175,6 @@ struct QueryWaiter<D: DepKind> {
     cycle: Lock<Option<CycleError<D>>>,
 }
 
-#[cfg(parallel_compiler)]
 impl<D: DepKind> QueryWaiter<D> {
     fn notify(&self, registry: &rayon_core::Registry) {
         rayon_core::mark_unblocked(registry);
@@ -200,19 +182,16 @@ impl<D: DepKind> QueryWaiter<D> {
     }
 }
 
-#[cfg(parallel_compiler)]
 struct QueryLatchInfo<D: DepKind> {
     complete: bool,
     waiters: Vec<Lrc<QueryWaiter<D>>>,
 }
 
-#[cfg(parallel_compiler)]
 #[derive(Clone)]
 pub(super) struct QueryLatch<D: DepKind> {
     info: Lrc<Mutex<QueryLatchInfo<D>>>,
 }
 
-#[cfg(parallel_compiler)]
 impl<D: DepKind> QueryLatch<D> {
     fn new() -> Self {
         QueryLatch {
@@ -283,7 +262,6 @@ impl<D: DepKind> QueryLatch<D> {
 }
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
-#[cfg(parallel_compiler)]
 type Waiter = (QueryJobId, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
@@ -295,7 +273,6 @@ type Waiter = (QueryJobId, usize);
 /// For visits of resumable waiters it returns Some(Some(Waiter)) which has the
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
-#[cfg(parallel_compiler)]
 fn visit_waiters<F, D>(
     query_map: &QueryMap<D>,
     query: QueryJobId,
@@ -331,7 +308,6 @@ where
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
-#[cfg(parallel_compiler)]
 fn cycle_check<D: DepKind>(
     query_map: &QueryMap<D>,
     query: QueryJobId,
@@ -372,7 +348,6 @@ fn cycle_check<D: DepKind>(
 /// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
 /// from `query` without going through any of the queries in `visited`.
 /// This is achieved with a depth first search.
-#[cfg(parallel_compiler)]
 fn connected_to_root<D: DepKind>(
     query_map: &QueryMap<D>,
     query: QueryJobId,
@@ -395,7 +370,6 @@ fn connected_to_root<D: DepKind>(
 }
 
 // Deterministically pick an query from a list
-#[cfg(parallel_compiler)]
 fn pick_query<'a, T, F, D>(query_map: &QueryMap<D>, queries: &'a [T], f: F) -> &'a T
 where
     F: Fn(&T) -> (Span, QueryJobId),
@@ -422,7 +396,6 @@ where
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
-#[cfg(parallel_compiler)]
 fn remove_cycle<D: DepKind>(
     query_map: &QueryMap<D>,
     jobs: &mut Vec<QueryJobId>,
@@ -527,7 +500,6 @@ fn remove_cycle<D: DepKind>(
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
-#[cfg(parallel_compiler)]
 pub fn deadlock<D: DepKind>(query_map: QueryMap<D>, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
