@@ -61,7 +61,7 @@ impl Resolver<'_, '_> {
         // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
         let normal_mod_id = self.nearest_normal_mod(def_id);
         if normal_mod_id == def_id {
-            self.tcx.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
+            Visibility::Restricted(self.tcx.local_parent(def_id))
         } else {
             Visibility::Restricted(normal_mod_id)
         }
@@ -80,12 +80,11 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
             r,
             def_effective_visibilities: Default::default(),
             import_effective_visibilities: Default::default(),
-            current_private_vis: Visibility::Public,
+            current_private_vis: Visibility::Restricted(CRATE_DEF_ID),
             changed: false,
         };
 
-        visitor.update(CRATE_DEF_ID, CRATE_DEF_ID);
-        visitor.current_private_vis = Visibility::Restricted(CRATE_DEF_ID);
+        visitor.def_effective_visibilities.update_root();
         visitor.set_bindings_effective_visibilities(CRATE_DEF_ID);
 
         while visitor.changed {
@@ -202,7 +201,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         );
     }
 
-    fn update(&mut self, def_id: LocalDefId, parent_id: LocalDefId) {
+    fn update_field(&mut self, def_id: LocalDefId, parent_id: LocalDefId) {
         self.update_def(def_id, self.r.visibilities[&def_id], ParentId::Def(parent_id));
     }
 }
@@ -234,14 +233,14 @@ impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 't
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
                     for field in variant.data.fields() {
-                        self.update(self.r.local_def_id(field.id), variant_def_id);
+                        self.update_field(self.r.local_def_id(field.id), variant_def_id);
                     }
                 }
             }
 
             ast::ItemKind::Struct(ref def, _) | ast::ItemKind::Union(ref def, _) => {
                 for field in def.fields() {
-                    self.update(self.r.local_def_id(field.id), def_id);
+                    self.update_field(self.r.local_def_id(field.id), def_id);
                 }
             }
 

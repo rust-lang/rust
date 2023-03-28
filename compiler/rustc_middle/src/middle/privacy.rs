@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use std::hash::Hash;
 
 /// Represents the levels of effective visibility an item can have.
@@ -105,6 +105,10 @@ impl EffectiveVisibilities {
         self.effective_vis(id).and_then(|effective_vis| {
             Level::all_levels().into_iter().find(|&level| effective_vis.is_public_at_level(level))
         })
+    }
+
+    pub fn update_root(&mut self) {
+        self.map.insert(CRATE_DEF_ID, EffectiveVisibility::from_vis(Visibility::Public));
     }
 
     // FIXME: Share code with `fn update`.
