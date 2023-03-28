@@ -27,7 +27,10 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
     ("cyclomatic_complexity", DeprecationStatus::Replaced("cognitive_complexity")),
     ("dump",                  DeprecationStatus::None),
     ("msrv",                  DeprecationStatus::None),
+    // The following attributes are for the 3rd party crate authors.
+    // See book/src/attribs.md
     ("has_significant_drop",  DeprecationStatus::None),
+    ("format_args",           DeprecationStatus::None),
 ];
 
 pub struct LimitStack {

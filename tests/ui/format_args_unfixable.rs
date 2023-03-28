@@ -119,3 +119,32 @@ fn test2() {
         format!("something failed at {}", Location::caller())
     );
 }
+
+#[clippy::format_args]
+macro_rules! usr_println {
+    ($target:expr, $($args:tt)*) => {{
+        if $target {
+            println!($($args)*)
+        }
+    }};
+}
+
+fn user_format() {
+    let error = Error::new(ErrorKind::Other, "bad thing");
+    let x = 'x';
+
+    usr_println!(true, "error: {}", format!("boom at {}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, "{}: {}", error, format!("boom at {}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, "{:?}: {}", error, format!("boom at {}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, "{{}}: {}", format!("boom at {}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, r#"error: "{}""#, format!("boom at {}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, "error: {}", format!(r#"boom at "{}""#, Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+    usr_println!(true, "error: {}", format!("boom at {} {0}", Location::caller()));
+    //~^ ERROR: `format!` in `usr_println!` args
+}
