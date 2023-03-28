@@ -296,9 +296,9 @@ impl GlobalState {
         let workspaces =
             workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
-        // `different_workspaces` is used to spawn a new proc macro server for a newly-added
-        // rust workspace (most commonly sourced from a `rust-project.json`). While the algorithm
-        // to find the new workspaces is quadratic, we generally expect that the number of total
+        // `different_workspaces` is used to determine whether to spawn a a new proc macro server for
+        // a newly-added rust workspace (most commonly sourced from a `rust-project.json`). While the
+        // algorithm to find the new workspaces is quadratic, we generally expect that the number of total
         // workspaces to remain in the low single digits. the `cloned_workspace` is needed for borrowck
         // reasons.
         let cloned_workspaces = workspaces.clone();
@@ -387,7 +387,8 @@ impl GlobalState {
         if self.proc_macro_clients.is_empty() || !different_workspaces.is_empty() {
             if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
-                self.proc_macro_clients = different_workspaces
+                self.proc_macro_clients = self
+                    .workspaces
                     .iter()
                     .map(|ws| {
                         let (path, args): (_, &[_]) = if path_manually_set {
