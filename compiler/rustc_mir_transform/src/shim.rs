@@ -77,6 +77,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -860,4 +861,40 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     body
+}
+
+/// ```ignore (pseudo-impl)
+/// impl FnPtr for fn(u32) {
+///     fn addr(self) -> usize {
+///         self as usize
+///     }
+/// }
+/// ```
+fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+    assert!(matches!(self_ty.kind(), ty::FnPtr(..)), "expected fn ptr, found {self_ty}");
+    let span = tcx.def_span(def_id);
+    let Some(sig) = tcx.fn_sig(def_id).subst(tcx, &[self_ty.into()]).no_bound_vars() else {
+        span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");
+    };
+    let locals = local_decls_for_sig(&sig, span);
+
+    let source_info = SourceInfo::outermost(span);
+    // FIXME: use `expose_addr` once we figure out whether function pointers have meaningful provenance.
+    let rvalue = Rvalue::Cast(
+        CastKind::FnPtrToPtr,
+        Operand::Move(Place::from(Local::new(1))),
+        tcx.mk_imm_ptr(tcx.types.unit),
+    );
+    let stmt = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+    };
+    let statements = vec![stmt];
+    let start_block = BasicBlockData {
+        statements,
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    };
+    let source = MirSource::from_instance(ty::InstanceDef::FnPtrAddrShim(def_id, self_ty));
+    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }

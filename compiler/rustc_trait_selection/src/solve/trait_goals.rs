@@ -222,11 +222,21 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let self_ty = tcx.erase_regions(goal.predicate.self_ty());
 
         if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
-            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
-            && layout.layout.size() == usize_layout.size()
-            && layout.layout.align().abi == usize_layout.align().abi
+            && layout.layout.size() == tcx.data_layout.pointer_size
+            && layout.layout.align().abi == tcx.data_layout.pointer_align.abi
         {
             // FIXME: We could make this faster by making a no-constraints response
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
