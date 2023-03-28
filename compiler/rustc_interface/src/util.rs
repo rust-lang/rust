@@ -34,7 +34,7 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 /// specific features (SSE, NEON etc.).
 ///
 /// This is performed by checking whether a set of permitted features
-/// is available on the target machine, by querying LLVM.
+/// is available on the target machine, by querying the codegen backend.
 pub fn add_configuration(
     cfg: &mut CrateConfig,
     sess: &mut Session,
