@@ -1,3 +1,17 @@
+error[E0277]: the trait bound `[closure@$DIR/issue-93647.rs:2:6: 2:8]: Fn<()>` is not satisfied
+  --> $DIR/issue-93647.rs:2:5
+   |
+LL |     (||1usize)()
+   |     ^^^^^^^^^^^^ expected an `Fn<()>` closure, found `[closure@$DIR/issue-93647.rs:2:6: 2:8]`
+   |
+   = help: the trait `~const Fn<()>` is not implemented for closure `[closure@$DIR/issue-93647.rs:2:6: 2:8]`
+note: the trait `Fn<()>` is implemented for `[closure@$DIR/issue-93647.rs:2:6: 2:8]`, but that implementation is not `const`
+  --> $DIR/issue-93647.rs:2:5
+   |
+LL |     (||1usize)()
+   |     ^^^^^^^^^^^^
+   = note: wrap the `[closure@$DIR/issue-93647.rs:2:6: 2:8]` in a closure with no arguments: `|| { /* code */ }`
+
 error[E0015]: cannot call non-const closure in constants
   --> $DIR/issue-93647.rs:2:5
    |
@@ -8,6 +22,7 @@ LL |     (||1usize)()
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

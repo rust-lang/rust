@@ -58,6 +58,19 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
+error[E0277]: the trait bound `RangeFrom<usize>: Iterator` is not satisfied
+  --> $DIR/issue-52443.rs:9:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}];
+   |                     ^^^^^^^^ `RangeFrom<usize>` is not an iterator
+   |
+   = help: the trait `~const Iterator` is not implemented for `RangeFrom<usize>`
+note: the trait `Iterator` is implemented for `RangeFrom<usize>`, but that implementation is not `const`
+  --> $DIR/issue-52443.rs:9:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}];
+   |                     ^^^^^^^^
+
 error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
    |
@@ -67,7 +80,7 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0015, E0308, E0658.
+Some errors have detailed explanations: E0015, E0277, E0308, E0658.
 For more information about an error, try `rustc --explain E0015`.
