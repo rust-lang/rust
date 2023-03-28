@@ -12,7 +12,9 @@ use Destination::*;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileLines, SourceFile, Span};
 
-use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
+use crate::snippet::{
+    Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
+};
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
@@ -858,7 +860,7 @@ impl EmitterWriter {
         let mut short_start = true;
         for ann in &line.annotations {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                if source_string.chars().take(ann.start_col).all(|c| c.is_whitespace()) {
+                if source_string.chars().take(ann.start_col.display).all(|c| c.is_whitespace()) {
                     let style = if ann.is_primary {
                         Style::UnderlinePrimary
                     } else {
@@ -1093,15 +1095,15 @@ impl EmitterWriter {
                         '_',
                         line_offset + pos,
                         width_offset + depth,
-                        (code_offset + annotation.start_col).saturating_sub(left),
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
                         style,
                     );
                 }
                 _ if self.teach => {
                     buffer.set_style_range(
                         line_offset,
-                        (code_offset + annotation.start_col).saturating_sub(left),
-                        (code_offset + annotation.end_col).saturating_sub(left),
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        (code_offset + annotation.end_col.display).saturating_sub(left),
                         style,
                         annotation.is_primary,
                     );
@@ -1133,7 +1135,7 @@ impl EmitterWriter {
                 for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(
                         p,
-                        (code_offset + annotation.start_col).saturating_sub(left),
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
                         '|',
                         style,
                     );
@@ -1169,9 +1171,9 @@ impl EmitterWriter {
             let style =
                 if annotation.is_primary { Style::LabelPrimary } else { Style::LabelSecondary };
             let (pos, col) = if pos == 0 {
-                (pos + 1, (annotation.end_col + 1).saturating_sub(left))
+                (pos + 1, (annotation.end_col.display + 1).saturating_sub(left))
             } else {
-                (pos + 2, annotation.start_col.saturating_sub(left))
+                (pos + 2, annotation.start_col.display.saturating_sub(left))
             };
             if let Some(ref label) = annotation.label {
                 buffer.puts(line_offset + pos, code_offset + col, label, style);
@@ -1208,7 +1210,7 @@ impl EmitterWriter {
             } else {
                 ('-', Style::UnderlineSecondary)
             };
-            for p in annotation.start_col..annotation.end_col {
+            for p in annotation.start_col.display..annotation.end_col.display {
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + p).saturating_sub(left),
@@ -1459,7 +1461,7 @@ impl EmitterWriter {
                                         &annotated_file.file.name,
                                         line.line_index
                                     ),
-                                    annotations[0].start_col + 1,
+                                    annotations[0].start_col.file + 1,
                                 ),
                                 Style::LineAndColumn,
                             );
@@ -1546,7 +1548,7 @@ impl EmitterWriter {
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
                 let loc = if let Some(first_line) = annotated_file.lines.first() {
                     let col = if let Some(first_annotation) = first_line.annotations.first() {
-                        format!(":{}", first_annotation.start_col + 1)
+                        format!(":{}", first_annotation.start_col.file + 1)
                     } else {
                         String::new()
                     };
@@ -1607,8 +1609,8 @@ impl EmitterWriter {
                 let mut span_left_margin = usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
-                        span_left_margin = min(span_left_margin, ann.start_col);
-                        span_left_margin = min(span_left_margin, ann.end_col);
+                        span_left_margin = min(span_left_margin, ann.start_col.display);
+                        span_left_margin = min(span_left_margin, ann.end_col.display);
                     }
                 }
                 if span_left_margin == usize::MAX {
@@ -1625,11 +1627,12 @@ impl EmitterWriter {
                         annotated_file.file.get_line(line.line_index - 1).map_or(0, |s| s.len()),
                     );
                     for ann in &line.annotations {
-                        span_right_margin = max(span_right_margin, ann.start_col);
-                        span_right_margin = max(span_right_margin, ann.end_col);
+                        span_right_margin = max(span_right_margin, ann.start_col.display);
+                        span_right_margin = max(span_right_margin, ann.end_col.display);
                         // FIXME: account for labels not in the same line
                         let label_right = ann.label.as_ref().map_or(0, |l| l.len() + 1);
-                        label_right_margin = max(label_right_margin, ann.end_col + label_right);
+                        label_right_margin =
+                            max(label_right_margin, ann.end_col.display + label_right);
                     }
                 }
 
@@ -2352,8 +2355,8 @@ impl FileWithAnnotatedLines {
                         depth: 1,
                         line_start: lo.line,
                         line_end: hi.line,
-                        start_col: lo.col_display,
-                        end_col: hi.col_display,
+                        start_col: AnnotationColumn::from_loc(&lo),
+                        end_col: AnnotationColumn::from_loc(&hi),
                         is_primary,
                         label,
                         overlaps_exactly: false,
@@ -2361,8 +2364,8 @@ impl FileWithAnnotatedLines {
                     multiline_annotations.push((lo.file, ml));
                 } else {
                     let ann = Annotation {
-                        start_col: lo.col_display,
-                        end_col: hi.col_display,
+                        start_col: AnnotationColumn::from_loc(&lo),
+                        end_col: AnnotationColumn::from_loc(&hi),
                         is_primary,
                         label,
                         annotation_type: AnnotationType::Singleline,
@@ -2551,7 +2554,13 @@ fn num_overlap(
     (b_start..b_end + extra).contains(&a_start) || (a_start..a_end + extra).contains(&b_start)
 }
 fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
-    num_overlap(a1.start_col, a1.end_col + padding, a2.start_col, a2.end_col, false)
+    num_overlap(
+        a1.start_col.display,
+        a1.end_col.display + padding,
+        a2.start_col.display,
+        a2.end_col.display,
+        false,
+    )
 }
 
 fn emit_to_destination(
