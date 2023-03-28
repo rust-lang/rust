@@ -516,3 +516,6 @@ lint_drop_ref = calls to `std::mem::drop` with a reference instead of an owned v
 
 lint_drop_copy = calls to `std::mem::drop` with a value that implements `Copy`.
     .note = argument has type `{$arg_ty}`
+
+lint_forget_ref = calls to `std::mem::forget` with a reference instead of an owned value
+    .note = argument has type `{$arg_ty}`

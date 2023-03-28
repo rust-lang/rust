@@ -1,7 +1,7 @@
 use rustc_hir::{Arm, Expr, ExprKind, Node};
 use rustc_span::sym;
 
-use crate::{lints::{DropRefDiag, DropCopyDiag}, LateContext, LateLintPass, LintContext};
+use crate::{lints::{DropRefDiag, DropCopyDiag, ForgetRefDiag}, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `drop_ref` lint checks for calls to `std::mem::drop` with a reference
@@ -32,6 +32,29 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `forget_ref` lint checks for calls to `std::mem::forget` with a reference
+    /// instead of an owned value.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x = Box::new(1);
+    /// std::mem::forget(&x); // Should have been forget(x), x will still be dropped
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Calling `forget` on a reference will only forget the
+    /// reference itself, which is a no-op. It will not forget the underlying
+    /// referenced value, which is likely what was intended.
+    pub FORGET_REF,
+    Warn,
+    "calls to `std::mem::forget` with a reference instead of an owned value"
+}
+
+declare_lint! {
     /// The `drop_copy` lint checks for calls to `std::mem::drop` with a value
     /// that derives the Copy trait.
     ///
@@ -55,7 +78,7 @@ declare_lint! {
     "calls to `std::mem::drop` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF, DROP_COPY]);
+declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROP_COPY]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -70,6 +93,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
                     cx.emit_spanned_lint(DROP_REF, expr.span, DropRefDiag { arg_ty, note: arg.span });
+                },
+                sym::mem_forget if arg_ty.is_ref() => {
+                    cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, note: arg.span });
                 },
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
                     cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, note: arg.span });
