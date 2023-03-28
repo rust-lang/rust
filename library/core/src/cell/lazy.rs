@@ -115,16 +115,15 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         // SAFETY:
         // If the closure accessed the cell through something like a reentrant
         // mutex, but caught the panic resulting from the state being poisoned,
-        // the mutable borrow for `state` will be invalidated, so create a new
-        // one here.
-        let state = unsafe { &mut *this.state.get() };
-        *state = State::Init(data);
+        // the mutable borrow for `state` will be invalidated, so we need to
+        // go through the `UnsafeCell` pointer here. The state can only be
+        // poisoned at this point, so using `write` to skip the destructor
+        // of `State` should help the optimizer.
+        unsafe { this.state.get().write(State::Init(data)) };
 
         // SAFETY:
-        // A reference obtained by downcasting from the mutable borrow would
-        // become stale the next time `force` is called (since there is a conflict
-        // between the mutable reference here and the shared reference there).
-        // Do a new shared borrow of the state instead.
+        // The previous references were invalidated by the `write` call above,
+        // so do a new shared borrow of the state instead.
         let state = unsafe { &*this.state.get() };
         let State::Init(data) = state else { unreachable!() };
         data
