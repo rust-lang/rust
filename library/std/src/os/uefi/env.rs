@@ -66,7 +66,7 @@ pub(crate) fn try_system_table() -> Option<NonNull<c_void>> {
 }
 
 /// Get the SystemHandle Pointer.
-/// This function is mostly intended for places where panic is not an option
+/// This function is mostly intended for places where panicking is not an option
 pub(crate) fn try_image_handle() -> Option<NonNull<c_void>> {
     GLOBALS.get().map(|x| x.1)
 }

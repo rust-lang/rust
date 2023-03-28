@@ -300,4 +300,4 @@ pub fn main() {
 ### BootServices
 The current implementation of std make `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
 
-Note: It should be noted that it is upto the user to drop all allocated memory before `ExitBootServices` is called. 
+Note: It should be noted that it is upto the user to drop all allocated memory before `ExitBootServices` is called.

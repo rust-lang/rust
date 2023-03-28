@@ -295,7 +295,9 @@ pub(crate) fn create_event(
     }
 }
 
-pub(crate) fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result<()> {
+/// # SAFETY
+/// - The supplied event must be valid
+pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result<()> {
     let boot_services: NonNull<efi::BootServices> =
         boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
     let r = unsafe {

@@ -47,7 +47,7 @@ pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-pub(crate) mod helpers;
+mod helpers;
 
 #[cfg(test)]
 mod tests;
@@ -96,7 +96,7 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 /// - must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {
     if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
-        let _ = helpers::close_event(exit_boot_service_event);
+        let _ = unsafe { helpers::close_event(exit_boot_service_event) };
     }
 }
 
@@ -123,7 +123,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
-        let _ = helpers::close_event(exit_boot_service_event);
+        let _ = unsafe { helpers::close_event(exit_boot_service_event) };
     }
 
     if let (Some(boot_services), Some(handle)) =

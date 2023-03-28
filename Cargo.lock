@@ -3008,9 +3008,9 @@ dependencies = [
 
 [[package]]
 name = "r-efi"
-version = "4.1.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e7345c622833c6745e7b027a28aa95618813dc1f3c3de396206410267dce6f3"
+checksum = "575fc2d9b3da54adbdfaddf6eca48fec256d977c8630a1750b8991347d1ac911"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
