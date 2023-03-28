@@ -119,7 +119,7 @@ fn tester(fn_arg: i32) {
     println!("Width = {local_i32}, value with width = {local_f64:local_i32$}");
     println!("{local_i32:width$.prec$}");
     println!("{width:width$.prec$}");
-    println!("{}", format!("{local_i32}"));
+    println!("{}", format!("{}", local_i32));
     my_println!("{}", local_i32);
     my_println_args!("{}", local_i32);
 

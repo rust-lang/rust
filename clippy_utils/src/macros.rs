@@ -6,7 +6,7 @@ use crate::visitors::{for_each_expr, Descend};
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
-use rustc_ast::FormatArgs;
+use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, LangItem, Node, QPath, TyKind};
@@ -391,28 +391,65 @@ pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
     });
 }
 
-/// Calls `callback` with an AST [`FormatArgs`] node if one is found
+/// Calls `callback` with an AST [`FormatArgs`] node if a `format_args` expansion is found as a
+/// descendant of `expn_id`
 pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId, callback: impl FnOnce(&FormatArgs)) {
     let format_args_expr = for_each_expr(start, |expr| {
         let ctxt = expr.span.ctxt();
-        if ctxt == start.span.ctxt() {
-            ControlFlow::Continue(Descend::Yes)
-        } else if ctxt.outer_expn().is_descendant_of(expn_id)
-            && macro_backtrace(expr.span)
+        if ctxt.outer_expn().is_descendant_of(expn_id) {
+            if macro_backtrace(expr.span)
                 .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
                 .any(|name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))
-        {
-            ControlFlow::Break(expr)
+            {
+                ControlFlow::Break(expr)
+            } else {
+                ControlFlow::Continue(Descend::Yes)
+            }
         } else {
             ControlFlow::Continue(Descend::No)
         }
     });
 
-    if let Some(format_args_expr) = format_args_expr {
+    if let Some(expr) = format_args_expr {
         AST_FORMAT_ARGS.with(|ast_format_args| {
-            ast_format_args.borrow().get(&format_args_expr.span).map(callback);
+            ast_format_args.borrow().get(&expr.span).map(callback);
         });
     }
+}
+
+/// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value, if
+/// it cannot be found it will return the [`rustc_ast::Expr`].
+pub fn find_format_arg_expr<'hir, 'ast>(
+    start: &'hir Expr<'hir>,
+    target: &'ast FormatArgument,
+) -> Result<&'hir rustc_hir::Expr<'hir>, &'ast rustc_ast::Expr> {
+    for_each_expr(start, |expr| {
+        if expr.span == target.expr.span {
+            ControlFlow::Break(expr)
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .ok_or(&target.expr)
+}
+
+/// Span of the `:` and format specifiers
+///
+/// ```ignore
+/// format!("{:.}"), format!("{foo:.}")
+///           ^^                  ^^
+/// ```
+pub fn format_placeholder_format_span(placeholder: &FormatPlaceholder) -> Option<Span> {
+    let base = placeholder.span?.data();
+
+    // `base.hi` is `{...}|`, subtract 1 byte (the length of '}') so that it points before the closing
+    // brace `{...|}`
+    Some(Span::new(
+        placeholder.argument.span?.hi(),
+        base.hi - BytePos(1),
+        base.ctxt,
+        base.parent,
+    ))
 }
 
 /// Returns the [`Span`] of the value at `index` extended to the previous comma, e.g. for the value
@@ -895,22 +932,6 @@ pub struct FormatArg<'tcx> {
     pub format: FormatSpec<'tcx>,
     /// span of the whole argument, `{..}`.
     pub span: Span,
-}
-
-impl<'tcx> FormatArg<'tcx> {
-    /// Span of the `:` and format specifiers
-    ///
-    /// ```ignore
-    /// format!("{:.}"), format!("{foo:.}")
-    ///           ^^                  ^^
-    /// ```
-    pub fn format_span(&self) -> Span {
-        let base = self.span.data();
-
-        // `base.hi` is `{...}|`, subtract 1 byte (the length of '}') so that it points before the closing
-        // brace `{...|}`
-        Span::new(self.param.span.hi(), base.hi - BytePos(1), base.ctxt, base.parent)
-    }
 }
 
 /// A parsed `format_args!` expansion.
