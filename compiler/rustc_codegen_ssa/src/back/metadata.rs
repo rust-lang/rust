@@ -24,6 +24,7 @@ use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
 use object::elf::NT_GNU_PROPERTY_TYPE_0;
 
+
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
 /// # Metadata location
@@ -216,44 +217,58 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let section = file.add_section(segment, name, kind);
       
       //Emit the note header.
+      //.balign 8;
       // OutStreamer.emitValueToAlignment(Align(8).value());
-      
-      // Size of the n_name field
-      // OutStreamer.emitIntValue(4, 4);     // data size for "GNU\0"
+
+      /* Size of the n_name field
+      .word   4;
+      OutStreamer.emitIntValue(4, 4)
+      */
       let n_namsz = 4;
       
-      //Size of the n_desc field 
-      //OutStreamer.emitIntValue(4 * 4, 4); // Elf_Prop size
+      /*Size of the n_desc field 
+      .word   16; /* n_descsz */
+      OutStreamer.emitIntValue(4 * 4, 4);
+      */
       let n_descz = 16;
       
-      // Type of note descriptor 
-      //OutStreamer.emitIntValue(ELF::NT_GNU_PROPERTY_TYPE_0, 4);
+      /*Type of note descriptor 
+      .word   5; /* n_type = NT_GNU_PROPERTY_TYPE_0 */
+      OutStreamer.emitIntValue(ELF::NT_GNU_PROPERTY_TYPE_0, 4);
+      */
       let n_type = NT_GNU_PROPERTY_TYPE_0.try_into().unwrap();
       
-      // Owner of the program property note 
-      //OutStreamer.emitBytes(StringRef("GNU", 4)); // note name
-      let _n_name: &[u8] = &[b'G', b'N', b'U'];
+      /* Owner of the program property note 
+      .asciz "GNU";  /* n_name */
+      OutStreamer.emitBytes(StringRef("GNU", 4)); // note name
+      */
+      let _n_name = &[b'G', b'N', b'U'];
      
-      // The type of program property 
-      //OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
-      // kernel_loader::elf::GNU_PROPERTY_AARCH64_FEATURE_1_AND <- out of scope
-       //pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
-      // GNU_PROPERTY_AARCH64_FEATURE_1_AND.try_into().unwrap(); <-- too bug
-      let pr_type = 5;// TODO: unknown contents;
+      /* The type of program property 
+      .word   0xc0000000; /* pr_type = GNU_PROPERTY_AARCH64_FEATURE_1_AND */
+      OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
+      pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
+      */
+      let pr_type =  0xc0000000 as u32;
       
-      // The size of the pr_data field
-      //OutStreamer.emitIntValue(4, 4);     // data size
+      /* The size of the pr_data field
+      .word   4; /* pr_datasz */ 
+      OutStreamer.emitIntValue(4, 4);     // data size
+      */
       let pr_datasz = 4;
       
-      // The program property descriptor
-      //OutStreamer.emitIntValue(Flags, 4); // data
-      let pr_data = 0;// TODO: unknown contents;
+      /* The program property descriptor
+      .word   features; /* pr_data = features */   
+      OutStreamer.emitIntValue(Flags, 4); // data
+      */
+      let pr_data = e_flags.try_into().unwrap();
       
-      // The padding if necessary 
-      //OutStreamer.emitIntValue(0, 4);     // pad
-      let pr_padding = 0; 
-      
-      let data: &[u8] = &[n_namsz, n_descz, n_type, b'G', b'N', b'U', pr_type, pr_datasz, pr_data, pr_padding];
+      /*The padding if necessary 
+      .word   0; /* pr_padding */
+      OutStreamer.emitIntValue(0, 4);     // pad
+      */
+      let pr_padding = 0;    
+      let data: &[u32] = &[n_namsz, n_descz, n_type, 'G' as u32, 'N' as u32, 'U' as u32, pr_type, pr_datasz, pr_data, pr_padding];
       let _ = file.append_section_data(section, data, 1);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
