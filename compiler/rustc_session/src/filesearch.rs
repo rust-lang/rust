@@ -89,9 +89,8 @@ fn current_dll_path() -> Result<PathBuf, String> {
         // * The address of the entry point of the function.
         // * The TOC base address for the function.
         // * The environment pointer.
-        // Deref `current_dll_path` directly so that we can get the address of `current_dll_path`'s
-        // entry point in text section.
-        let addr = *(current_dll_path as *const u64);
+        // The function descriptor is in the data section.
+        let addr = current_dll_path as u64;
         let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
         loop {
             if libc::loadquery(
@@ -110,9 +109,9 @@ fn current_dll_path() -> Result<PathBuf, String> {
         }
         let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
         loop {
-            let text_base = (*current).ldinfo_textorg as u64;
-            let text_end = text_base + (*current).ldinfo_textsize;
-            if (text_base..text_end).contains(&addr) {
+            let data_base = (*current).ldinfo_dataorg as u64;
+            let data_end = data_base + (*current).ldinfo_datasize;
+            if (data_base..data_end).contains(&addr) {
                 let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
                 let os = OsStr::from_bytes(bytes);
                 return Ok(PathBuf::from(os));
