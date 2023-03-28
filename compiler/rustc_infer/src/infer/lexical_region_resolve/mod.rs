@@ -13,7 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -132,7 +132,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
 
         let graph = self.construct_graph();
-        self.expand_givens(&graph);
         self.expansion(&mut var_data);
         self.collect_errors(&mut var_data, errors);
         self.collect_var_errors(&var_data, &graph, errors);
@@ -161,38 +160,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn dump_constraints(&self) {
         for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
-        }
-    }
-
-    fn expand_givens(&mut self, graph: &RegionGraph<'_>) {
-        // Givens are a kind of horrible hack to account for
-        // constraints like 'c <= '0 that are known to hold due to
-        // closure signatures (see the comment above on the `givens`
-        // field). They should go away. But until they do, the role
-        // of this fn is to account for the transitive nature:
-        //
-        //     Given 'c <= '0
-        //     and   '0 <= '1
-        //     then  'c <= '1
-
-        let seeds: Vec<_> = self.data.givens.iter().cloned().collect();
-        for (r, vid) in seeds {
-            // While all things transitively reachable in the graph
-            // from the variable (`'0` in the example above).
-            let seed_index = NodeIndex(vid.index() as usize);
-            for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
-                let succ_index = succ_index.0;
-
-                // The first N nodes correspond to the region
-                // variables. Other nodes correspond to constant
-                // regions.
-                if succ_index < self.num_vars() {
-                    let succ_vid = RegionVid::new(succ_index);
-
-                    // Add `'c <= '1`.
-                    self.data.givens.insert((r, succ_vid));
-                }
-            }
         }
     }
 
@@ -361,18 +328,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         b_data: &mut VarValue<'tcx>,
     ) -> bool {
         debug!("expand_node({:?}, {:?} == {:?})", a_region, b_vid, b_data);
-
-        match *a_region {
-            // Check if this relationship is implied by a given.
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                if self.data.givens.contains(&(a_region, b_vid)) {
-                    debug!("given");
-                    return false;
-                }
-            }
-
-            _ => {}
-        }
 
         match *b_data {
             VarValue::Empty(empty_ui) => {
