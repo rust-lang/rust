@@ -132,7 +132,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::doc::UNNECESSARY_SAFETY_DOC_INFO,
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
-    crate::drop_forget_ref::FORGET_COPY_INFO,
     crate::drop_forget_ref::FORGET_NON_DROP_INFO,
     crate::drop_forget_ref::UNDROPPED_MANUALLY_DROPS_INFO,
     crate::duplicate_mod::DUPLICATE_MOD_INFO,
