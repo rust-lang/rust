@@ -3,6 +3,9 @@ error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated wit
    |
 LL |         FOO => { }
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: floating-point types cannot be used in patterns
   --> $DIR/match-forbidden-without-eq.rs:18:9
