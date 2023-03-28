@@ -28,9 +28,11 @@ impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
 
 const fn check<T: ~const Destruct>(_: T) {}
 
-const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(ConstDropImplWithBounds(PhantomData));
-//~^ ERROR the trait bound
-//~| ERROR the trait bound
+const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
+    //~^ ERROR the trait bound
+    ConstDropImplWithBounds(PhantomData)
+    //~^ ERROR the trait bound
+);
 
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 
