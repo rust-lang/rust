@@ -747,7 +747,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(unused_unit::UnusedUnit));
     store.register_late_pass(|_| Box::new(returns::Return));
     store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
-    store.register_early_pass(|| Box::new(items_after_statements::ItemsAfterStatements));
+    store.register_late_pass(|_| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
     store.register_late_pass(|_| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
     store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
