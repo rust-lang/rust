@@ -508,3 +508,5 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
     .specifically = this associated type bound is unsatisfied for `{$proj_ty}`
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
+
+lint_panic_in_drop = found panic in Drop::drop call stack

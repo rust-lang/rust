@@ -71,6 +71,7 @@ mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
+mod panic_in_drop;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
@@ -109,6 +110,7 @@ use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
+use panic_in_drop::*;
 use pass_by_value::*;
 use redundant_semicolon::*;
 use traits::*;
@@ -242,6 +244,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            PanicInDrop: PanicInDrop,
         ]
     ]
 );

@@ -1171,6 +1171,11 @@ pub struct DropTraitConstraintsDiag<'a> {
     pub def_id: DefId,
 }
 
+// panic_in_drop.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_panic_in_drop)]
+pub struct PanicInDropAbortDiag {}
+
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn decorate_lint<'b>(
