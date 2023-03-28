@@ -2149,6 +2149,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
 
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };
+    check_visitor.effective_visibility_diagnostic(CRATE_DEF_ID);
     tcx.hir().visit_all_item_likes_in_crate(&mut check_visitor);
 
     tcx.arena.alloc(visitor.effective_visibilities)

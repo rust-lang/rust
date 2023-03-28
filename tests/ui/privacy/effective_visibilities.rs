@@ -1,3 +1,4 @@
+#![rustc_effective_visibility] //~ ERROR Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
 #![feature(rustc_attrs)]
 
 #[rustc_effective_visibility]
