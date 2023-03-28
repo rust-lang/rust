@@ -1,4 +1,5 @@
 use super::*;
+use crate::mir::interpret::alloc_range;
 
 #[test]
 fn uninit_mask() {

@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::hash;
 use std::iter;
 use std::ops::Range;
@@ -16,12 +19,12 @@ type Block = u64;
 /// value.
 #[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct InitMask {
-    pub(crate) blocks: InitMaskBlocks,
+    blocks: InitMaskBlocks,
     len: Size,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub(crate) enum InitMaskBlocks {
+enum InitMaskBlocks {
     Lazy {
         /// Whether the lazy init mask is fully initialized or uninitialized.
         state: bool,
@@ -180,8 +183,8 @@ impl InitMask {
 // Note: for performance reasons when interning, some of the fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, HashStable)]
-pub(crate) struct InitMaskMaterialized {
-    pub(crate) blocks: Vec<Block>,
+struct InitMaskMaterialized {
+    blocks: Vec<Block>,
 }
 
 // Const allocations are only hashed for interning. However, they can be large, making the hashing
