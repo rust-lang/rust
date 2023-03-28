@@ -83,9 +83,15 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     #[inline]
     #[unstable(feature = "lazy_cell", issue = "109736")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
+        // SAFETY:
+        // This invalidates any mutable references to the data. The resulting
+        // reference lives either until the end of the borrow of `this` (in the
+        // initialized case) or is invalidates in `really_init` (in the
+        // uninitialized case).
         let state = unsafe { &*this.state.get() };
         match state {
             State::Init(data) => data,
+            // SAFETY: The state is uninitialized.
             State::Uninit(_) => unsafe { LazyCell::really_init(this) },
             State::Poisoned => panic!("LazyCell has previously been poisoned"),
         }
@@ -95,6 +101,10 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// May only be called when the state is `Uninit`.
     #[cold]
     unsafe fn really_init(this: &LazyCell<T, F>) -> &T {
+        // SAFETY:
+        // This function is only called when the state is uninitialized,
+        // so no references to `state` can exist except for the reference
+        // in `force`, which is invalidated here and not accessed again.
         let state = unsafe { &mut *this.state.get() };
         // Temporarily mark the state as poisoned. This prevents reentrant
         // accesses and correctly poisons the cell if the closure panicked.
@@ -102,14 +112,19 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
 
         let data = f();
 
-        // If the closure accessed the cell, the mutable borrow will be
-        // invalidated, so create a new one here.
+        // SAFETY:
+        // If the closure accessed the cell through something like a reentrant
+        // mutex, but caught the panic resulting from the state being poisoned,
+        // the mutable borrow for `state` will be invalidated, so create a new
+        // one here.
         let state = unsafe { &mut *this.state.get() };
         *state = State::Init(data);
 
-        // A reference obtained by downcasting from the mutable borrow
-        // would become stale if other references are created in `force`.
-        // Borrow the state directly instead.
+        // SAFETY:
+        // A reference obtained by downcasting from the mutable borrow would
+        // become stale the next time `force` is called (since there is a conflict
+        // between the mutable reference here and the shared reference there).
+        // Do a new shared borrow of the state instead.
         let state = unsafe { &*this.state.get() };
         let State::Init(data) = state else { unreachable!() };
         data
@@ -119,6 +134,10 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
 impl<T, F> LazyCell<T, F> {
     #[inline]
     fn get(&self) -> Option<&T> {
+        // SAFETY:
+        // This is sound for the same reason as in `force`: once the state is
+        // initialized, it will not be mutably accessed again, so this reference
+        // will stay valid for the duration of the borrow to `self`.
         let state = unsafe { &*self.state.get() };
         match state {
             State::Init(data) => Some(data),
