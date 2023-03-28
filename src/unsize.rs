@@ -147,8 +147,8 @@ pub(crate) fn coerce_unsized_into<'tcx>(
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
-                let src_f = src.value_field(fx, mir::Field::new(i));
-                let dst_f = dst.place_field(fx, mir::Field::new(i));
+                let src_f = src.value_field(fx, FieldIdx::new(i));
+                let dst_f = dst.place_field(fx, FieldIdx::new(i));
 
                 if dst_f.layout().is_zst() {
                     continue;

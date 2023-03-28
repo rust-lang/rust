@@ -50,7 +50,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
         if let Abi::Scalar(_) = arg.layout().abi {
             'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
                 for i in 0..arg.layout().fields.count() {
-                    let field = arg.value_field(fx, mir::Field::new(i));
+                    let field = arg.value_field(fx, FieldIdx::new(i));
                     if !field.layout().is_zst() {
                         // we found the one non-zero-sized field that is allowed
                         // now find *its* non-zero-sized field, or stop if it's a
@@ -68,9 +68,9 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
             if ty.is_dyn_star() {
                 let inner_layout = fx.layout_of(arg.layout().ty.builtin_deref(true).unwrap().ty);
                 let dyn_star = CPlace::for_ptr(Pointer::new(arg.load_scalar(fx)), inner_layout);
-                let ptr = dyn_star.place_field(fx, mir::Field::new(0)).to_ptr();
+                let ptr = dyn_star.place_field(fx, FieldIdx::new(0)).to_ptr();
                 let vtable =
-                    dyn_star.place_field(fx, mir::Field::new(1)).to_cvalue(fx).load_scalar(fx);
+                    dyn_star.place_field(fx, FieldIdx::new(1)).to_cvalue(fx).load_scalar(fx);
                 break 'block (ptr, vtable);
             }
         }

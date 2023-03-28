@@ -797,7 +797,7 @@ fn codegen_stmt<'tcx>(
                             let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
                             variant_dest.place_index(fx, index)
                         } else {
-                            variant_dest.place_field(fx, mir::Field::new(field_index))
+                            variant_dest.place_field(fx, FieldIdx::new(field_index))
                         };
                         to.write_cvalue(fx, operand);
                     }

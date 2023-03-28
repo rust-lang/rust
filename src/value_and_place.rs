@@ -10,7 +10,7 @@ fn codegen_field<'tcx>(
     base: Pointer,
     extra: Option<Value>,
     layout: TyAndLayout<'tcx>,
-    field: mir::Field,
+    field: FieldIdx,
 ) -> (Pointer, TyAndLayout<'tcx>) {
     let field_offset = layout.fields.offset(field.index());
     let field_layout = layout.field(&*fx, field.index());
@@ -210,7 +210,7 @@ impl<'tcx> CValue<'tcx> {
     pub(crate) fn value_field(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
-        field: mir::Field,
+        field: FieldIdx,
     ) -> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
@@ -687,7 +687,7 @@ impl<'tcx> CPlace<'tcx> {
     pub(crate) fn place_field(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
-        field: mir::Field,
+        field: FieldIdx,
     ) -> CPlace<'tcx> {
         let layout = self.layout();
 
