@@ -176,11 +176,11 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+            fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.post_inc_start(advance) };
-                if advance == n { Ok(()) } else { Err(advance) }
+                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
             }
 
             #[inline]
@@ -371,11 +371,11 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+            fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.pre_dec_end(advance) };
-                if advance == n { Ok(()) } else { Err(advance) }
+                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
             }
         }
 

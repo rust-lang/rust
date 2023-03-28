@@ -2,6 +2,7 @@ use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 
 /// An iterator that yields the current count and the element during iteration.
@@ -114,17 +115,14 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        match self.iter.advance_by(n) {
-            ret @ Ok(_) => {
-                self.count += n;
-                ret
-            }
-            ret @ Err(advanced) => {
-                self.count += advanced;
-                ret
-            }
-        }
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        let remaining = self.iter.advance_by(n);
+        let advanced = match remaining {
+            Ok(()) => n,
+            Err(rem) => n - rem.get(),
+        };
+        self.count += advanced;
+        remaining
     }
 
     #[rustc_inherit_overflow_checks]
@@ -208,7 +206,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         // we do not need to update the count since that only tallies the number of items
         // consumed from the front. consuming items from the back can never reduce that.
         self.iter.advance_back_by(n)

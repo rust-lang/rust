@@ -4,6 +4,8 @@ use crate::dep_graph::TaskDepsRef;
 use crate::ty::query;
 use rustc_data_structures::sync::{self, Lock};
 use rustc_errors::Diagnostic;
+#[cfg(not(parallel_compiler))]
+use std::cell::Cell;
 use std::mem;
 use std::ptr;
 use thin_vec::ThinVec;
@@ -47,52 +49,15 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
     }
 }
 
+// Import the thread-local variable from Rayon, which is preserved for Rayon jobs.
 #[cfg(parallel_compiler)]
-mod tlv {
-    use rustc_rayon_core as rayon_core;
-    use std::ptr;
+use rayon_core::tlv::TLV;
 
-    /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
-    /// This is used to get the pointer to the current `ImplicitCtxt`.
-    #[inline]
-    pub(super) fn get_tlv() -> *const () {
-        ptr::from_exposed_addr(rayon_core::tlv::get())
-    }
-
-    /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
-    /// to `value` during the call to `f`. It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[inline]
-    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
-        rayon_core::tlv::with(value.expose_addr(), f)
-    }
-}
-
+// Otherwise define our own
 #[cfg(not(parallel_compiler))]
-mod tlv {
-    use std::cell::Cell;
-    use std::ptr;
-
-    thread_local! {
-        /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-        static TLV: Cell<*const ()> = const { Cell::new(ptr::null()) };
-    }
-
-    /// Gets the pointer to the current `ImplicitCtxt`.
-    #[inline]
-    pub(super) fn get_tlv() -> *const () {
-        TLV.with(|tlv| tlv.get())
-    }
-
-    /// Sets TLV to `value` during the call to `f`.
-    /// It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[inline]
-    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
-        let old = TLV.replace(value);
-        let _reset = rustc_data_structures::OnDrop(move || TLV.set(old));
-        f()
-    }
+thread_local! {
+    /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
+    static TLV: Cell<*const ()> = const { Cell::new(ptr::null()) };
 }
 
 #[inline]
@@ -111,7 +76,11 @@ pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> 
 where
     F: FnOnce() -> R,
 {
-    tlv::with_tlv(erase(context), f)
+    TLV.with(|tlv| {
+        let old = tlv.replace(erase(context));
+        let _reset = rustc_data_structures::OnDrop(move || tlv.set(old));
+        f()
+    })
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
@@ -120,7 +89,7 @@ pub fn with_context_opt<F, R>(f: F) -> R
 where
     F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
 {
-    let context = tlv::get_tlv();
+    let context = TLV.get();
     if context.is_null() {
         f(None)
     } else {

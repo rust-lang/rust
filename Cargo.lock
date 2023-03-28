@@ -106,11 +106,11 @@ checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.1.1"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276881980556fdadeb88aa1ffc667e4d2e8fe72531dfabcb7a82bb3c9ea9ba31"
+checksum = "b0639441fd17a3197d1cbca8dc8768cc172a63b64b4bb6c372e8f41ed0acc9bb"
 dependencies = [
- "object 0.29.0",
+ "object 0.30.1",
 ]
 
 [[package]]
@@ -2689,9 +2689,9 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
-version = "1.9.2"
+version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
@@ -4160,21 +4160,19 @@ dependencies = [
 
 [[package]]
 name = "rustc-rayon"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a79f0b0b2609e2eacf9758013f50e7176cb4b29fd6436a747b14a5362c8727a"
+checksum = "eb81aadc8837ca6ecebe0fe1353f15df83b3b3cc2cf7a8afd571bc22aa121710"
 dependencies = [
- "autocfg",
- "crossbeam-deque",
  "either",
  "rustc-rayon-core",
 ]
 
 [[package]]
 name = "rustc-rayon-core"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02269144a0db9bb55cf5d4a41a5a0e95b334b0b78b08269018ca9b0250718c30"
+checksum = "67668daaf00e359c126f6dcb40d652d89b458a008c8afa727a42a2d20fca0b7f"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",

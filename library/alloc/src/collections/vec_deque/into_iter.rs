@@ -1,4 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen};
+use core::num::NonZeroUsize;
 use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
 
 use crate::alloc::{Allocator, Global};
@@ -54,15 +55,16 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        if self.inner.len < n {
-            let len = self.inner.len;
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        let len = self.inner.len;
+        let rem = if len < n {
             self.inner.clear();
-            Err(len)
+            n - len
         } else {
             self.inner.drain(..n);
-            Ok(())
-        }
+            0
+        };
+        NonZeroUsize::new(rem).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -182,15 +184,16 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         let len = self.inner.len;
-        if len >= n {
-            self.inner.truncate(len - n);
-            Ok(())
-        } else {
+        let rem = if len < n {
             self.inner.clear();
-            Err(len)
-        }
+            n - len
+        } else {
+            self.inner.truncate(len - n);
+            0
+        };
+        NonZeroUsize::new(rem).map_or(Ok(()), Err)
     }
 
     fn try_rfold<B, F, R>(&mut self, mut init: B, mut f: F) -> R

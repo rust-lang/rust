@@ -18,11 +18,11 @@ use std::num::NonZeroU64;
 #[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
+    rayon_core,
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::sync::Lock,
     rustc_data_structures::sync::Lrc,
     rustc_data_structures::{jobserver, OnDrop},
-    rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
     std::iter,
     std::process,

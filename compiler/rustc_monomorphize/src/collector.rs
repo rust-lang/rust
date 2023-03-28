@@ -1327,26 +1327,39 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     }
 
+    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
+        return;
+    };
+
+    // Lifetimes never affect trait selection, so we are allowed to eagerly
+    // instantiate an instance of an impl method if the impl (and method,
+    // which we check below) is only parameterized over lifetime. In that case,
+    // we use the ReErased, which has no lifetime information associated with
+    // it, to validate whether or not the impl is legal to instantiate at all.
+    let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            unreachable!(
+                "`own_requires_monomorphization` check means that \
+                we should have no type/const params"
+            )
+        }
+    };
+    let impl_substs = InternalSubsts::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
+    let trait_ref = trait_ref.subst(tcx, impl_substs);
+
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
     // items, we never actually check that the predicates of this impl are satisfied
     // in a empty reveal-all param env (i.e. with no assumptions).
     //
-    // Even though this impl has no substitutions, because we don't consider higher-
-    // ranked predicates such as `for<'a> &'a mut [u8]: Copy` to be trivially false,
-    // we must now check that the impl has no impossible-to-satisfy predicates.
-    if tcx.subst_and_check_impossible_predicates((
-        item.owner_id.to_def_id(),
-        &InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id()),
-    )) {
+    // Even though this impl has no type or const substitutions, because we don't
+    // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
+    // be trivially false. We must now check that the impl has no impossible-to-satisfy
+    // predicates.
+    if tcx.subst_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_substs)) {
         return;
     }
-
-    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
-
-    let trait_ref = trait_ref.subst_identity();
 
     let param_env = ty::ParamEnv::reveal_all();
     let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
@@ -1360,12 +1373,9 @@ fn create_mono_items_for_default_impls<'tcx>(
             continue;
         }
 
-        let substs = InternalSubsts::for_item(tcx, method.def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                trait_ref.substs[param.index as usize]
-            }
-        });
+        // As mentioned above, the method is legal to eagerly instantiate if it
+        // only has lifetime substitutions. This is validated by
+        let substs = trait_ref.substs.extend_to(tcx, method.def_id, only_region_params);
         let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, substs);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);

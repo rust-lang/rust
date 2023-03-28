@@ -713,12 +713,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, false)
-    }
-
-    /// Like `freshener`, but does not replace `'static` regions.
-    pub fn freshener_keep_static<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, true)
+        freshen::TypeFreshener::new(self)
     }
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
@@ -872,10 +867,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn opaque_types_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'tcx>) -> bool {
         self.inner.borrow().undo_log.opaque_types_in_snapshot(&snapshot.undo_snapshot)
-    }
-
-    pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
-        self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
     }
 
     pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool

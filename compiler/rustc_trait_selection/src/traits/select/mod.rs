@@ -211,7 +211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener_keep_static(),
+            freshener: infcx.freshener(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
@@ -770,14 +770,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
-                    // A global type with no late-bound regions can only
-                    // contain the "'static" lifetime (any other lifetime
-                    // would either be late-bound or local), so it is guaranteed
-                    // to outlive any other lifetime
-                    if pred.0.is_global() && !pred.0.has_late_bound_vars() {
-                        Ok(EvaluatedToOk)
-                    } else {
+                    // A global type with no free lifetimes or generic parameters
+                    // outlives anything.
+                    if pred.0.has_free_regions()
+                        || pred.0.has_late_bound_regions()
+                        || pred.0.has_non_region_infer()
+                        || pred.0.has_non_region_infer()
+                    {
                         Ok(EvaluatedToOkModuloRegions)
+                    } else {
+                        Ok(EvaluatedToOk)
                     }
                 }
 
@@ -1825,6 +1827,12 @@ enum DropVictim {
     No,
 }
 
+impl DropVictim {
+    fn drop_if(should_drop: bool) -> DropVictim {
+        if should_drop { DropVictim::Yes } else { DropVictim::No }
+    }
+}
+
 /// ## Winnowing
 ///
 /// Winnowing is the process of attempting to resolve ambiguity by
@@ -1890,11 +1898,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // or the current one if tied (they should both evaluate to the same answer). This is
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
-                    if other.bound_vars().len() <= victim.bound_vars().len() {
-                        DropVictim::Yes
-                    } else {
-                        DropVictim::No
-                    }
+                    DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
                 } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
                     && victim.skip_binder().constness == ty::BoundConstness::NotConst
                     && other.skip_binder().polarity == victim.skip_binder().polarity
@@ -1924,17 +1928,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ObjectCandidate(_)
                 | ProjectionCandidate(..),
             ) => {
-                if is_global(other_cand) {
-                    DropVictim::No
-                } else {
-                    // We have a where clause so don't go around looking
-                    // for impls. Arbitrarily give param candidates priority
-                    // over projection and object candidates.
-                    //
-                    // Global bounds from the where clause should be ignored
-                    // here (see issue #50825).
-                    DropVictim::Yes
-                }
+                // We have a where clause so don't go around looking
+                // for impls. Arbitrarily give param candidates priority
+                // over projection and object candidates.
+                //
+                // Global bounds from the where clause should be ignored
+                // here (see issue #50825).
+                DropVictim::drop_if(!is_global(other_cand))
             }
             (ObjectCandidate(_) | ProjectionCandidate(..), ParamCandidate(ref victim_cand)) => {
                 // Prefer these to a global where-clause bound
@@ -1956,18 +1956,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                if is_global(victim_cand) && other.evaluation.must_apply_modulo_regions() {
-                    DropVictim::Yes
-                } else {
-                    DropVictim::No
-                }
+                DropVictim::drop_if(
+                    is_global(victim_cand) && other.evaluation.must_apply_modulo_regions(),
+                )
             }
 
             (ProjectionCandidate(i, _), ProjectionCandidate(j, _))
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                if i < j && !needs_infer { DropVictim::Yes } else { DropVictim::No }
+                DropVictim::drop_if(i < j && !needs_infer)
             }
             (ObjectCandidate(_), ProjectionCandidate(..))
             | (ProjectionCandidate(..), ObjectCandidate(_)) => {
@@ -2018,55 +2016,65 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     }
                 }
 
-                if other.evaluation.must_apply_considering_regions() {
-                    match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
-                        Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
-                            // Subtle: If the predicate we are evaluating has inference
-                            // variables, do *not* allow discarding candidates due to
-                            // marker trait impls.
-                            //
-                            // Without this restriction, we could end up accidentally
-                            // constraining inference variables based on an arbitrarily
-                            // chosen trait impl.
-                            //
-                            // Imagine we have the following code:
-                            //
-                            // ```rust
-                            // #[marker] trait MyTrait {}
-                            // impl MyTrait for u8 {}
-                            // impl MyTrait for bool {}
-                            // ```
-                            //
-                            // And we are evaluating the predicate `<_#0t as MyTrait>`.
-                            //
-                            // During selection, we will end up with one candidate for each
-                            // impl of `MyTrait`. If we were to discard one impl in favor
-                            // of the other, we would be left with one candidate, causing
-                            // us to "successfully" select the predicate, unifying
-                            // _#0t with (for example) `u8`.
-                            //
-                            // However, we have no reason to believe that this unification
-                            // is correct - we've essentially just picked an arbitrary
-                            // *possibility* for _#0t, and required that this be the *only*
-                            // possibility.
-                            //
-                            // Eventually, we will either:
-                            // 1) Unify all inference variables in the predicate through
-                            // some other means (e.g. type-checking of a function). We will
-                            // then be in a position to drop marker trait candidates
-                            // without constraining inference variables (since there are
-                            // none left to constrain)
-                            // 2) Be left with some unconstrained inference variables. We
-                            // will then correctly report an inference error, since the
-                            // existence of multiple marker trait impls tells us nothing
-                            // about which one should actually apply.
-                            if needs_infer { DropVictim::No } else { DropVictim::Yes }
-                        }
-                        Some(_) => DropVictim::Yes,
-                        None => DropVictim::No,
+                match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
+                    // For #33140 the impl headers must be exactly equal, the trait must not have
+                    // any associated items and there are no where-clauses.
+                    //
+                    // We can just arbitrarily drop one of the impls.
+                    Some(ty::ImplOverlapKind::Issue33140) => {
+                        assert_eq!(other.evaluation, victim.evaluation);
+                        DropVictim::Yes
                     }
-                } else {
-                    DropVictim::No
+                    // For candidates which already reference errors it doesn't really
+                    // matter what we do 🤷
+                    Some(ty::ImplOverlapKind::Permitted { marker: false }) => {
+                        DropVictim::drop_if(other.evaluation.must_apply_considering_regions())
+                    }
+                    Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
+                        // Subtle: If the predicate we are evaluating has inference
+                        // variables, do *not* allow discarding candidates due to
+                        // marker trait impls.
+                        //
+                        // Without this restriction, we could end up accidentally
+                        // constraining inference variables based on an arbitrarily
+                        // chosen trait impl.
+                        //
+                        // Imagine we have the following code:
+                        //
+                        // ```rust
+                        // #[marker] trait MyTrait {}
+                        // impl MyTrait for u8 {}
+                        // impl MyTrait for bool {}
+                        // ```
+                        //
+                        // And we are evaluating the predicate `<_#0t as MyTrait>`.
+                        //
+                        // During selection, we will end up with one candidate for each
+                        // impl of `MyTrait`. If we were to discard one impl in favor
+                        // of the other, we would be left with one candidate, causing
+                        // us to "successfully" select the predicate, unifying
+                        // _#0t with (for example) `u8`.
+                        //
+                        // However, we have no reason to believe that this unification
+                        // is correct - we've essentially just picked an arbitrary
+                        // *possibility* for _#0t, and required that this be the *only*
+                        // possibility.
+                        //
+                        // Eventually, we will either:
+                        // 1) Unify all inference variables in the predicate through
+                        // some other means (e.g. type-checking of a function). We will
+                        // then be in a position to drop marker trait candidates
+                        // without constraining inference variables (since there are
+                        // none left to constrain)
+                        // 2) Be left with some unconstrained inference variables. We
+                        // will then correctly report an inference error, since the
+                        // existence of multiple marker trait impls tells us nothing
+                        // about which one should actually apply.
+                        DropVictim::drop_if(
+                            !needs_infer && other.evaluation.must_apply_considering_regions(),
+                        )
+                    }
+                    None => DropVictim::No,
                 }
             }
 

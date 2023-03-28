@@ -1,5 +1,6 @@
-use core::array;
+use core::{array, assert_eq};
 use core::convert::TryFrom;
+use core::num::NonZeroUsize;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
@@ -557,7 +558,7 @@ fn array_intoiter_advance_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, Err(NonZeroUsize::new(123456 - 87).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
@@ -567,7 +568,7 @@ fn array_intoiter_advance_by() {
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, Err(NonZeroUsize::new(10).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -610,7 +611,7 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_back_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, Err(NonZeroUsize::new(123456 - 87).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
@@ -620,7 +621,7 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_back_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, Err(NonZeroUsize::new(10).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -679,8 +680,8 @@ fn array_into_iter_fold() {
 
     let a = [1, 2, 3, 4, 5, 6];
     let mut it = a.into_iter();
-    it.advance_by(1).unwrap();
-    it.advance_back_by(2).unwrap();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
     let s = it.fold(10, |a, b| 10 * a + b);
     assert_eq!(s, 10234);
 }
@@ -695,8 +696,8 @@ fn array_into_iter_rfold() {
 
     let a = [1, 2, 3, 4, 5, 6];
     let mut it = a.into_iter();
-    it.advance_by(1).unwrap();
-    it.advance_back_by(2).unwrap();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
     let s = it.rfold(10, |a, b| 10 * a + b);
     assert_eq!(s, 10432);
 }
