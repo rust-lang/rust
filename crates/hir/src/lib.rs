@@ -3331,7 +3331,7 @@ impl Type {
             binders: CanonicalVarKinds::empty(Interner),
         };
 
-        db.trait_solve(self.env.krate, goal).is_some()
+        db.trait_solve(self.env.krate, self.env.block, goal).is_some()
     }
 
     pub fn normalize_trait_assoc_type(

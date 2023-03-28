@@ -3717,7 +3717,6 @@ async fn get_accounts() -> Result<u32, ()> {
 
 #[test]
 fn local_impl_1() {
-    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3739,7 +3738,6 @@ fn test() {
 
 #[test]
 fn local_impl_2() {
-    check!(block_local_impls);
     check_types(
         r#"
 struct S;
@@ -3761,7 +3759,6 @@ fn test() {
 
 #[test]
 fn local_impl_3() {
-    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3780,6 +3777,33 @@ fn test() {
         S2.foo();
      // ^^^^^^^^ S1
     }
+}
+"#,
+    );
+}
+
+#[test]
+fn foreign_trait_with_local_trait_impl() {
+    check!(block_local_impls);
+    check(
+        r#"
+mod module {
+    pub trait T {
+        const C: usize;
+        fn f(&self);
+    }
+}
+
+fn f() {
+    use module::T;
+    impl T for usize {
+        const C: usize = 0;
+        fn f(&self) {}
+    }
+    0usize.f();
+  //^^^^^^^^^^ type: ()
+    usize::C;
+  //^^^^^^^^type: usize
 }
 "#,
     );

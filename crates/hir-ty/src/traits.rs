@@ -9,7 +9,7 @@ use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use base_db::CrateId;
 use hir_def::{
     lang_item::{LangItem, LangItemTarget},
-    TraitId,
+    BlockId, TraitId,
 };
 use hir_expand::name::{name, Name};
 use stdx::panic_context;
@@ -27,6 +27,7 @@ const CHALK_SOLVER_FUEL: i32 = 1000;
 pub(crate) struct ChalkContext<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) krate: CrateId,
+    pub(crate) block: Option<BlockId>,
 }
 
 fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
@@ -44,6 +45,7 @@ fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitEnvironment {
     pub krate: CrateId,
+    pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
     pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
     pub env: chalk_ir::Environment<Interner>,
@@ -53,6 +55,7 @@ impl TraitEnvironment {
     pub fn empty(krate: CrateId) -> Self {
         TraitEnvironment {
             krate,
+            block: None,
             traits_from_clauses: Vec::new(),
             env: chalk_ir::Environment::new(Interner),
         }
@@ -79,6 +82,7 @@ pub(crate) fn normalize_projection_query(
 pub(crate) fn trait_solve_query(
     db: &dyn HirDatabase,
     krate: CrateId,
+    block: Option<BlockId>,
     goal: Canonical<InEnvironment<Goal>>,
 ) -> Option<Solution> {
     let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(Interner) {
@@ -104,15 +108,16 @@ pub(crate) fn trait_solve_query(
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical: goal, universes: 1 };
-    solve(db, krate, &u_canonical)
+    solve(db, krate, block, &u_canonical)
 }
 
 fn solve(
     db: &dyn HirDatabase,
     krate: CrateId,
+    block: Option<BlockId>,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
-    let context = ChalkContext { db, krate };
+    let context = ChalkContext { db, krate, block };
     tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
 

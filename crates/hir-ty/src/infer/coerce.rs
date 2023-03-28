@@ -636,7 +636,7 @@ impl<'a> InferenceTable<'a> {
         // Need to find out in what cases this is necessary
         let solution = self
             .db
-            .trait_solve(krate, canonicalized.value.clone().cast(Interner))
+            .trait_solve(krate, self.trait_env.block, canonicalized.value.clone().cast(Interner))
             .ok_or(TypeError)?;
 
         match solution {

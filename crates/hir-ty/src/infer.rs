@@ -40,7 +40,7 @@ use crate::{
     db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
     lower::ImplTraitLoweringMode, static_lifetime, to_assoc_type_id, AliasEq, AliasTy, Const,
     DomainGoal, GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId,
-    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -442,7 +442,6 @@ pub(crate) struct InferenceContext<'a> {
     pub(crate) body: &'a Body,
     pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
-    trait_env: Arc<TraitEnvironment>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
@@ -516,8 +515,7 @@ impl<'a> InferenceContext<'a> {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
             result: InferenceResult::default(),
-            table: unify::InferenceTable::new(db, trait_env.clone()),
-            trait_env,
+            table: unify::InferenceTable::new(db, trait_env),
             return_ty: TyKind::Error.intern(Interner), // set in collect_* calls
             resume_yield_tys: None,
             return_coercion: None,

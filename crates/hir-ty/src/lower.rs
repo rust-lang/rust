@@ -1507,7 +1507,7 @@ pub(crate) fn trait_environment_query(
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
-    Arc::new(TraitEnvironment { krate, traits_from_clauses: traits_in_scope, env })
+    Arc::new(TraitEnvironment { krate, block: None, traits_from_clauses: traits_in_scope, env })
 }
 
 /// Resolve the where clause(s) of an item with generics.

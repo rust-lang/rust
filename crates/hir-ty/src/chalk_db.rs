@@ -1,8 +1,7 @@
 //! The implementation of `RustIrDatabase` for Chalk, which provides information
 //! about the code that Chalk needs.
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
-use cov_mark::hit;
 use tracing::debug;
 
 use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
@@ -12,17 +11,16 @@ use base_db::CrateId;
 use hir_def::{
     expr::Movability,
     lang_item::{lang_attr, LangItem, LangItemTarget},
-    AssocItemId, GenericDefId, HasModule, ItemContainerId, Lookup, ModuleId, TypeAliasId,
+    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId,
 };
 use hir_expand::name::name;
 
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, make_binders,
-    make_single_type_binders,
+    from_assoc_type_id, from_chalk_trait_id, make_binders, make_single_type_binders,
     mapping::{from_chalk, ToChalk, TypeAliasAsValue},
-    method_resolution::{TraitImpls, TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::generics,
@@ -108,53 +106,41 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
         };
 
-        fn local_impls(db: &dyn HirDatabase, module: ModuleId) -> Option<Arc<TraitImpls>> {
-            let block = module.containing_block()?;
-            hit!(block_local_impls);
-            db.trait_impls_in_block(block)
-        }
-
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. impl_datum relies on that
         // and will panic if the trait can't be resolved.
         let in_deps = self.db.trait_impls_in_deps(self.krate);
         let in_self = self.db.trait_impls_in_crate(self.krate);
-        let trait_module = trait_.module(self.db.upcast());
-        let type_module = match self_ty_fp {
-            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
-            Some(TyFingerprint::ForeignType(type_id)) => {
-                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
-            }
-            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
-            _ => None,
-        };
-        let impl_maps = [
-            Some(in_deps),
-            Some(in_self),
-            local_impls(self.db, trait_module),
-            type_module.and_then(|m| local_impls(self.db, m)),
-        ];
+
+        let impl_maps = [in_deps, in_self];
+        let block_impls = iter::successors(self.block, |&block_id| {
+            cov_mark::hit!(block_local_impls);
+            self.db
+                .block_def_map(block_id)
+                .and_then(|map| map.parent())
+                .and_then(|module| module.containing_block())
+        })
+        .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
-
-        let result: Vec<_> = if fps.is_empty() {
-            debug!("Unrestricted search for {:?} impls...", trait_);
-            impl_maps
-                .iter()
-                .filter_map(|o| o.as_ref())
-                .flat_map(|impls| impls.for_trait(trait_).map(id_to_chalk))
-                .collect()
-        } else {
-            impl_maps
-                .iter()
-                .filter_map(|o| o.as_ref())
-                .flat_map(|impls| {
-                    fps.iter().flat_map(move |fp| {
-                        impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
-                    })
-                })
-                .collect()
-        };
+        let mut result = vec![];
+        match fps {
+            [] => {
+                debug!("Unrestricted search for {:?} impls...", trait_);
+                impl_maps.into_iter().chain(block_impls).for_each(|impls| {
+                    result.extend(impls.for_trait(trait_).map(id_to_chalk));
+                });
+            }
+            fps => {
+                impl_maps.into_iter().chain(block_impls).for_each(|impls| {
+                    result.extend(
+                        fps.iter().flat_map(|fp| {
+                            impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
+                        }),
+                    );
+                });
+            }
+        }
 
         debug!("impls_for_trait returned {} impls", result.len());
         result
@@ -193,7 +179,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         &self,
         environment: &chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner> {
-        self.db.program_clauses_for_chalk_env(self.krate, environment.clone())
+        self.db.program_clauses_for_chalk_env(self.krate, self.block, environment.clone())
     }
 
     fn opaque_ty_data(&self, id: chalk_ir::OpaqueTyId<Interner>) -> Arc<OpaqueTyDatum> {
@@ -451,9 +437,10 @@ impl<'a> chalk_ir::UnificationDatabase<Interner> for &'a dyn HirDatabase {
 pub(crate) fn program_clauses_for_chalk_env_query(
     db: &dyn HirDatabase,
     krate: CrateId,
+    block: Option<BlockId>,
     environment: chalk_ir::Environment<Interner>,
 ) -> chalk_ir::ProgramClauses<Interner> {
-    chalk_solve::program_clauses_for_env(&ChalkContext { db, krate }, &environment)
+    chalk_solve::program_clauses_for_env(&ChalkContext { db, krate, block }, &environment)
 }
 
 pub(crate) fn associated_ty_data_query(
