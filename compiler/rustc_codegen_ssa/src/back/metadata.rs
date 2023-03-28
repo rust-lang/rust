@@ -23,6 +23,8 @@ use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
+//use object::elf::NT_GNU_PROPERTY_TYPE_0;
+
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
