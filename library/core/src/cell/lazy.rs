@@ -86,8 +86,8 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         // SAFETY:
         // This invalidates any mutable references to the data. The resulting
         // reference lives either until the end of the borrow of `this` (in the
-        // initialized case) or is invalidates in `really_init` (in the
-        // uninitialized case).
+        // initialized case) or is invalidated in `really_init` (in the
+        // uninitialized case; `really_init` will create and return a fresh reference).
         let state = unsafe { &*this.state.get() };
         match state {
             State::Init(data) => data,
