@@ -9,28 +9,6 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `std::mem::forget` with a reference
-    /// instead of an owned value.
-    ///
-    /// ### Why is this bad?
-    /// Calling `forget` on a reference will only forget the
-    /// reference itself, which is a no-op. It will not forget the underlying
-    /// referenced
-    /// value, which is likely what was intended.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let x = Box::new(1);
-    /// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub FORGET_REF,
-    correctness,
-    "calls to `std::mem::forget` with a reference instead of an owned value"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for calls to `std::mem::forget` with a value that
     /// derives the Copy trait
     ///
@@ -126,8 +104,6 @@ declare_clippy_lint! {
     "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value"
 }
 
-const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value. \
-                                  Forgetting a reference does nothing";
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
                                    Forgetting a copy leaves the original intact";
 const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
@@ -136,7 +112,6 @@ const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value t
                                    Forgetting such a type is the same as dropping it";
 
 declare_lint_pass!(DropForgetRef => [
-    FORGET_REF,
     FORGET_COPY,
     DROP_NON_DROP,
     FORGET_NON_DROP,
@@ -154,9 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             let is_copy = is_copy(cx, arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let (lint, msg) = match fn_name {
-                // early return for uplifted lints: drop_ref, drop_copy
+                // early return for uplifted lints: drop_ref, drop_copy, forget_ref
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => return,
-                sym::mem_forget if arg_ty.is_ref() => (FORGET_REF, FORGET_REF_SUMMARY),
+                sym::mem_forget if arg_ty.is_ref() => return,
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if is_copy => (FORGET_COPY, FORGET_COPY_SUMMARY),
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => {

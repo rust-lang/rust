@@ -36,6 +36,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::for_loop_over_option", "for_loops_over_fallibles"),
     ("clippy::for_loop_over_result", "for_loops_over_fallibles"),
     ("clippy::for_loops_over_fallibles", "for_loops_over_fallibles"),
+    ("clippy::forget_ref", "forget_ref"),
     ("clippy::into_iter_on_array", "array_into_iter"),
     ("clippy::invalid_atomic_ordering", "invalid_atomic_ordering"),
     ("clippy::invalid_ref", "invalid_value"),

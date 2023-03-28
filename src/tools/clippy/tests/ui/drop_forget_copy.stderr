@@ -85,6 +85,18 @@ LL |     forget(s2);
    |            ^^
 
 error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:41:5
+   |
+LL |     forget(s3);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_forget_copy.rs:41:12
+   |
+LL |     forget(s3);
+   |            ^^
+
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:42:5
    |
 LL |     forget(s4);
@@ -94,6 +106,18 @@ note: argument has type `SomeStruct`
   --> $DIR/drop_forget_copy.rs:42:12
    |
 LL |     forget(s4);
+   |            ^^
+
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:43:5
+   |
+LL |     forget(s5);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/drop_forget_copy.rs:43:12
+   |
+LL |     forget(s5);
    |            ^^
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
@@ -119,6 +143,42 @@ note: argument has type `&AnotherStruct`
    |
 LL |     drop(a4);
    |          ^^
+
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:60:5
+   |
+LL |     forget(a2);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_forget_copy.rs:60:12
+   |
+LL |     forget(a2);
+   |            ^^
+
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:62:5
+   |
+LL |     forget(a3);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_forget_copy.rs:62:12
+   |
+LL |     forget(a3);
+   |            ^^
+
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
+  --> $DIR/drop_forget_copy.rs:63:5
+   |
+LL |     forget(a4);
+   |     ^^^^^^^^^^
+   |
+note: argument has type `&AnotherStruct`
+  --> $DIR/drop_forget_copy.rs:63:12
+   |
+LL |     forget(a4);
+   |            ^^
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
   --> $DIR/drop_forget_copy.rs:80:13
@@ -229,5 +289,5 @@ note: argument has type `i32`
 LL |         4 => drop(2),                           // Lint, not a fn/method call
    |                   ^
 
-error: aborting due to 19 previous errors
+error: aborting due to 24 previous errors
 
