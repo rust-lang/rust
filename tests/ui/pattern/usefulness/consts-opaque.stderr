@@ -3,6 +3,9 @@ error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated wit
    |
 LL |         FOO => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:32:9
@@ -24,6 +27,9 @@ error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated wit
    |
 LL |         FOO_REF => {}
    |         ^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:39:9
@@ -42,6 +48,8 @@ LL |         FOO_REF_REF => {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
    = note: `#[warn(indirect_structural_match)]` on by default
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
@@ -49,6 +57,9 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
    |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:53:9
@@ -72,6 +83,9 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
    |
 LL |         BAR => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:63:9
@@ -96,12 +110,18 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
    |
 LL |         BAR => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:72:9
    |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:72:9
@@ -126,6 +146,9 @@ error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated wit
    |
 LL |         BAZ => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:82:9
@@ -150,6 +173,9 @@ error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated wit
    |
 LL |         BAZ => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:92:9
@@ -165,6 +191,9 @@ error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated wit
    |
 LL |         BAZ => {}
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:99:9

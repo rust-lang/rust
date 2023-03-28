@@ -6,6 +6,8 @@ LL |     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
    = note: `#[warn(nontrivial_structural_match)]` on by default
 
 warning: to use a constant of type `NoDerive` in a pattern, the constant's initializer must be trivial or `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
@@ -16,6 +18,8 @@ LL |     match None { Some(_) => panic!("whoops"), CALL => dbg!(CALL), };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: to use a constant of type `NoDerive` in a pattern, the constant's initializer must be trivial or `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/warn_corner_cases.rs:38:47
@@ -25,6 +29,8 @@ LL |     match None { Some(_) => panic!("whoops"), METHOD_CALL => dbg!(METHOD_CA
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: 3 warnings emitted
 

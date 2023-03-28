@@ -663,6 +663,8 @@ pub struct UnionPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
+#[note(mir_build_type_not_structural_tip)]
+#[note(mir_build_type_not_structural_more_info)]
 pub struct TypeNotStructural<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -695,12 +697,16 @@ pub struct PointerPattern;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_indirect_structural_match)]
+#[note(mir_build_type_not_structural_tip)]
+#[note(mir_build_type_not_structural_more_info)]
 pub struct IndirectStructuralMatch<'tcx> {
     pub non_sm_ty: Ty<'tcx>,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_nontrivial_structural_match)]
+#[note(mir_build_type_not_structural_tip)]
+#[note(mir_build_type_not_structural_more_info)]
 pub struct NontrivialStructuralMatch<'tcx> {
     pub non_sm_ty: Ty<'tcx>,
 }

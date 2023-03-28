@@ -7,7 +7,7 @@ CHECK:      lfence
 CHECK:      lfence
 CHECK-NEXT: incl
 CHECK-NEXT: jmp     0x{{[[:xdigit:]]+}} <cc_plus_one_cxx_asm+0x{{[[:xdigit:]]+}}>
-CHECK-NEXT: shlq    $0, (%rsp)
+CHECK-NEXT: shlq    $0x0, (%rsp)
 CHECK-NEXT: lfence
 CHECK-NEXT: retq
 CHECK:      popq

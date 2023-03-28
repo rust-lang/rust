@@ -331,6 +331,10 @@ mir_build_indirect_structural_match =
 mir_build_nontrivial_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
 
+mir_build_type_not_structural_tip = the traits must be derived, manual `impl`s are not sufficient
+
+mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
 mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpoints
     .range = ... with this range
     .note = you likely meant to write mutually exclusive ranges
