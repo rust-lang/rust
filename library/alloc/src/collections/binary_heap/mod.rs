@@ -837,7 +837,6 @@ impl<T: Ord> BinaryHeap<T> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_retain)]
     /// use std::collections::BinaryHeap;
     ///
     /// let mut heap = BinaryHeap::from([-10, -5, 1, 2, 4, 13]);
@@ -846,7 +845,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// assert_eq!(heap.into_sorted_vec(), [-10, 2, 4])
     /// ```
-    #[unstable(feature = "binary_heap_retain", issue = "71503")]
+    #[stable(feature = "binary_heap_retain", since = "CURRENT_RUSTC_VERSION")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
