@@ -1,3 +1,4 @@
+use core::num::NonZeroUsize;
 use super::*;
 
 #[test]
@@ -287,25 +288,25 @@ fn test_range_step() {
 #[test]
 fn test_range_advance_by() {
     let mut r = 0..usize::MAX;
-    r.advance_by(0).unwrap();
-    r.advance_back_by(0).unwrap();
+    assert_eq!(Ok(()), r.advance_by(0));
+    assert_eq!(Ok(()), r.advance_back_by(0));
 
     assert_eq!(r.len(), usize::MAX);
 
-    r.advance_by(1).unwrap();
-    r.advance_back_by(1).unwrap();
+    assert_eq!(Ok(()), r.advance_by(1));
+    assert_eq!(Ok(()), r.advance_back_by(1));
 
     assert_eq!((r.start, r.end), (1, usize::MAX - 1));
 
-    assert_eq!(r.advance_by(usize::MAX), Err(usize::MAX - 2));
+    assert_eq!(Err(NonZeroUsize::new(2).unwrap()), r.advance_by(usize::MAX));
 
-    r.advance_by(0).unwrap();
-    r.advance_back_by(0).unwrap();
+    assert_eq!(Ok(()), r.advance_by(0));
+    assert_eq!(Ok(()), r.advance_back_by(0));
 
     let mut r = 0u128..u128::MAX;
 
-    r.advance_by(usize::MAX).unwrap();
-    r.advance_back_by(usize::MAX).unwrap();
+    assert_eq!(Ok(()), r.advance_by(usize::MAX));
+    assert_eq!(Ok(()), r.advance_back_by(usize::MAX));
 
     assert_eq!((r.start, r.end), (0u128 + usize::MAX as u128, u128::MAX - usize::MAX as u128));
 }
