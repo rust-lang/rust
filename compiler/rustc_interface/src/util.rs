@@ -183,7 +183,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                     .try_collect_active_jobs()
                     .expect("active jobs shouldn't be locked in deadlock handler")
             });
-            let registry = rustc_rayon_core::Registry::current();
+            let registry = rayon_core::Registry::current();
             thread::spawn(move || deadlock(query_map, &registry));
         });
     if let Some(size) = get_stack_size() {

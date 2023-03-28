@@ -25,7 +25,7 @@ target-lexicon = "0.12.0"
 gimli = { version = "0.26.0", default-features = false, features = ["write"]}
 object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
-indexmap = "1.9.1"
+indexmap = "1.9.3"
 libloading = { version = "0.7.3", optional = true }
 once_cell = "1.10.0"
 smallvec = "1.8.1"
