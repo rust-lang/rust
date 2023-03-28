@@ -1551,6 +1551,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_doc_masked_crates(self) -> Vec<CrateNum> {
         let mut v: Vec<CrateNum> = self.root.doc_masked_crates.decode(self).collect();
+        // sort by crate num so that masked crates can use binary search
+        // see rustc_middle/ty/util.rs:is_doc_masked
+        //
+        // we need to do it now, rather than sorting at encode time, because
+        // the current crate num is based on the current crate, while encoded
+        // crate nums are based on the number when this dependency was compiled.
         v.sort_unstable();
         v
     }

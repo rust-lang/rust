@@ -497,23 +497,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         doc_masked_crates: |tcx, LocalCrate| {
-            let mut v: Vec<CrateNum> = CStore::from_tcx(tcx)
-                .iter_crate_data()
-                .filter_map(|(cnum, cdata)| {
-                    if let Some(extern_crate) = *cdata.extern_crate.lock() &&
-                        let ExternCrateSource::Extern(did) = extern_crate.src &&
-                        tcx
-                            .get_attrs(did, sym::doc)
-                            .filter_map(|attr| attr.meta_item_list())
-                            .any(|items| items.iter().any(|item| item.has_name(sym::masked))) {
-                        Some(cnum)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            v.sort_unstable();
-            tcx.arena.alloc_from_iter(v)
+            tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).get_sorted_masked_crates(tcx))
         },
         ..*providers
     };
@@ -586,6 +570,28 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
+    }
+
+    fn get_sorted_masked_crates(&self, tcx: TyCtxt<'_>) -> Vec<CrateNum> {
+        let mut v: Vec<CrateNum> = CStore::from_tcx(tcx)
+            .iter_crate_data()
+            .filter_map(|(cnum, cdata)| {
+                if let Some(extern_crate) = *cdata.extern_crate.lock() &&
+                    let ExternCrateSource::Extern(did) = extern_crate.src &&
+                    tcx
+                        .get_attrs(did, sym::doc)
+                        .filter_map(|attr| attr.meta_item_list())
+                        .any(|items| items.iter().any(|item| item.has_name(sym::masked))) {
+                    Some(cnum)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        // sort by crate num so that masked crates can use binary search
+        // see rustc_middle/ty/util.rs:is_doc_masked
+        v.sort_unstable();
+        v
     }
 }
 

@@ -2006,6 +2006,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     || !trait_pred
                         .skip_binder()
                         .is_constness_satisfied_by(self.tcx.constness(def_id))
+                    // FIXME: `#[doc(masked)]` prevents private dependencies of the standard
+                    // library from showing up in the docs. It's probably not great using `#[doc]`
+                    // attributes in the trait engine, and `masked` in particular doesn't have
+                    // a good specification for its semantics.
                     || self.tcx.is_doc_masked(def_id.krate)
                 {
                     return None;

@@ -1223,6 +1223,14 @@ rustc_queries! {
         desc { |tcx| "checking whether crate is `doc(masked)`" }
     }
 
+    /// Returns a list of crates declared [`#[doc(masked)]`][doc_masked] at import time.
+    ///
+    /// This query is used along with `ExternCrate::dependency_of` to derive the `is_doc_masked`
+    /// flag. It returns a sorted list of `CrateNum`s that can be binary searched (it doesn't use
+    /// `UnsortSet` because that would require declaring a new arena to intern the results, and
+    /// `#[doc(masked)]` is an unstable feature used by the standard library, so N=3).
+    ///
+    /// [doc_masked]: https://doc.rust-lang.org/nightly/unstable-book/language-features/doc-masked.html
     query doc_masked_crates(crate_num: CrateNum) -> &'tcx [CrateNum] {
         desc { |tcx| "list crates marked as #[doc(masked)] by given crate" }
         separate_provide_extern
