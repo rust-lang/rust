@@ -133,12 +133,8 @@ fn generate_item_with_correct_attrs(
     let def_id = local_def_id.to_def_id();
     let target_attrs = inline::load_attrs(cx, def_id);
     let attrs = if let Some(import_id) = import_id {
-        let is_inline = inline::load_attrs(cx, import_id.to_def_id())
-            .lists(sym::doc)
-            .get_word_attr(sym::inline)
-            .is_some();
-        let mut attrs = get_all_import_attributes(cx, import_id, local_def_id, is_inline);
-        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        let mut attrs = get_all_import_attributes(cx, import_id, local_def_id);
+        add_without_unwanted_attributes(&mut attrs, target_attrs, None);
         attrs
     } else {
         // We only keep the item's attributes.
@@ -2170,7 +2166,6 @@ fn get_all_import_attributes<'hir>(
     cx: &mut DocContext<'hir>,
     import_def_id: LocalDefId,
     target_def_id: LocalDefId,
-    is_inline: bool,
 ) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
     let mut first = true;
@@ -2184,7 +2179,7 @@ fn get_all_import_attributes<'hir>(
             attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
         } else {
-            add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
+            add_without_unwanted_attributes(&mut attrs, import_attrs, Some(def_id));
         }
     }
     attrs
@@ -2584,7 +2579,8 @@ fn clean_use_statement_inner<'tcx>(
     } else {
         if inline_attr.is_none()
             && let Res::Def(DefKind::Mod, did) = path.res
-            && !did.is_local() && did.is_crate_root()
+            && !did.is_local()
+            && did.is_crate_root()
         {
             // if we're `pub use`ing an extern crate root, don't inline it unless we
             // were specifically asked for it
