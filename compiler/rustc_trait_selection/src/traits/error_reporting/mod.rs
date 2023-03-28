@@ -2006,6 +2006,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     || !trait_pred
                         .skip_binder()
                         .is_constness_satisfied_by(self.tcx.constness(def_id))
+                    || self.tcx.is_doc_masked(def_id.krate)
                 {
                     return None;
                 }
