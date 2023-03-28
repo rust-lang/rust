@@ -182,6 +182,11 @@ def err(msg):
     print("configure: error: " + msg)
     sys.exit(1)
 
+def is_value_list(key):
+    for option in options:
+        if option.name == key and option.desc.startswith('List of'):
+            return True
+    return False
 
 if '--help' in sys.argv or '-h' in sys.argv:
     print('Usage: ./configure [options]')
@@ -295,6 +300,8 @@ def set(key, value, config):
     parts = key.split('.')
     for i, part in enumerate(parts):
         if i == len(parts) - 1:
+            if is_value_list(part):
+                value = value.split(',')
             arr[part] = value
         else:
             if part not in arr:
