@@ -33,7 +33,6 @@ extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_mir_dataflow;
-extern crate rustc_parse_format;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;

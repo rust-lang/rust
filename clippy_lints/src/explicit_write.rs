@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::FormatArgsExpn;
+use clippy_utils::macros::{find_format_args, format_args_inputs_span};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
@@ -8,7 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::{sym, ExpnId};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,23 +43,22 @@ declare_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
 impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, write_call, [], _) = expr.kind;
-            if unwrap_fun.ident.name == sym::unwrap;
+        // match call to unwrap
+        if let ExprKind::MethodCall(unwrap_fun, write_call, [], _) = expr.kind
+            && unwrap_fun.ident.name == sym::unwrap
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = look_in_block(cx, &write_call.kind);
-            if write_fun.ident.name == sym!(write_fmt);
+            && let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = look_in_block(cx, &write_call.kind)
+            && write_fun.ident.name == sym!(write_fmt)
             // match calls to std::io::stdout() / std::io::stderr ()
-            if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
+            && let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
                 Some("stdout")
             } else if match_function_call(cx, write_recv, &paths::STDERR).is_some() {
                 Some("stderr")
             } else {
                 None
-            };
-            if let Some(format_args) = FormatArgsExpn::parse(cx, write_arg);
-            then {
+            }
+        {
+            find_format_args(cx, write_arg, ExpnId::root(), |format_args| {
                 let calling_macro =
                     // ordering is important here, since `writeln!` uses `write!` internally
                     if is_expn_of(write_call.span, "writeln").is_some() {
@@ -92,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 let mut applicability = Applicability::MachineApplicable;
                 let inputs_snippet = snippet_with_applicability(
                     cx,
-                    format_args.inputs_span(),
+                    format_args_inputs_span(format_args),
                     "..",
                     &mut applicability,
                 );
@@ -104,8 +103,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     "try this",
                     format!("{prefix}{sugg_mac}!({inputs_snippet})"),
                     applicability,
-                )
-            }
+                );
+            });
         }
     }
 }
