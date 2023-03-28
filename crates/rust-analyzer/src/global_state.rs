@@ -93,7 +93,7 @@ pub(crate) struct GlobalState {
     /// first phase is much faster, and is much less likely to fail.
     ///
     /// This creates a complication -- by the time the second phase completes,
-    /// the results of the fist phase could be invalid. That is, while we run
+    /// the results of the first phase could be invalid. That is, while we run
     /// `cargo check`, the user edits `Cargo.toml`, we notice this, and the new
     /// `cargo metadata` completes before `cargo check`.
     ///
