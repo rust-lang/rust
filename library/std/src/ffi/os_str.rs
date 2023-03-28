@@ -667,6 +667,45 @@ impl OsStr {
         s.as_ref()
     }
 
+    /// Converts a slice of bytes to an OS string slice without checking that the string contains
+    /// valid `OsStr`-encoded data.
+    ///
+    /// See the [module's toplevel documentation about conversions][conversions] for safe,
+    /// cross-platform [conversions] from/to native representations.
+    ///
+    /// # Safety
+    ///
+    /// `OsStr`'s encoding is an unspecified superset of UTF-8 and callers must
+    /// pass in bytes that originated as a mixture of validated UTF-8 and bytes from
+    /// [`OsStr::as_os_str_bytes`] from within the same rust version built for the same target
+    /// platform.  The bytes from `OsStr::as_os_str_bytes` may be split either
+    /// immediately before or immediately after some valid non-empty UTF-8 substring
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(os_str_bytes)]
+    ///
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("Mary had a little lamb");
+    /// let bytes = os_str.as_os_str_bytes();
+    /// let words = bytes.split(|b| *b == b' ');
+    /// let words: Vec<&OsStr> = words.map(|word| {
+    ///     // SAFETY:
+    ///     // - Each `word` only contains content that originated from `OsStr::as_os_str_bytes`
+    ///     // - Only split with ASCII whitespace which is a non-empty UTF-8 substring
+    ///     unsafe { OsStr::from_os_str_bytes_unchecked(word) }
+    /// }).collect();
+    /// ```
+    ///
+    /// [conversions]: super#conversions
+    #[inline]
+    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    pub fn from_os_str_bytes_unchecked(bytes: &[u8]) -> &Self {
+        Self::from_inner(Slice::from_os_str_bytes_unchecked(bytes))
+    }
+
     #[inline]
     fn from_inner(inner: &Slice) -> &OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
@@ -837,13 +876,28 @@ impl OsStr {
         OsString { inner: Buf::from_box(boxed) }
     }
 
+    /// Converts an OS string slice to a byte slice.  To convert the byte slice back into an OS
+    /// string slice, use the [`OsStr::from_os_str_bytes_unchecked`] function.
+    ///
+    /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
+    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// target platform.  See [`OsString`] for more encoding details and [`std::ffi`] for
+    /// platform-specific, specified conversions.
+    ///
+    /// [`std::ffi`]: crate::ffi
+    #[inline]
+    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    pub fn as_os_str_bytes(&self) -> &[u8] {
+        self.inner.as_os_str_bytes()
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is not externally public, to avoid
     /// revealing the internal, platform-specific encodings.
     #[inline]
     pub(crate) fn bytes(&self) -> &[u8] {
-        unsafe { &*(&self.inner as *const _ as *const [u8]) }
+        self.as_os_str_bytes()
     }
 
     /// Converts this string to its ASCII lower case equivalent in-place.

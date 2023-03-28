@@ -570,7 +570,7 @@ impl Wtf8 {
     /// Since the byte slice is not checked for valid WTF-8, this functions is
     /// marked unsafe.
     #[inline]
-    unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+    pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         mem::transmute(value)
     }
 
@@ -612,6 +612,12 @@ impl Wtf8 {
     #[inline]
     pub fn code_points(&self) -> Wtf8CodePoints<'_> {
         Wtf8CodePoints { bytes: self.bytes.iter() }
+    }
+
+    /// Access raw bytes of WTF-8 data
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     /// Tries to convert the string to UTF-8 and return a `&str` slice.
