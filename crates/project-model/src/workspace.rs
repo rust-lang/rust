@@ -672,6 +672,14 @@ impl ProjectWorkspace {
             _ => false,
         }
     }
+
+    /// Returns `true` if the project workspace is [`Json`].
+    ///
+    /// [`Json`]: ProjectWorkspace::Json
+    #[must_use]
+    pub fn is_json(&self) -> bool {
+        matches!(self, Self::Json { .. })
+    }
 }
 
 fn project_json_to_crate_graph(
