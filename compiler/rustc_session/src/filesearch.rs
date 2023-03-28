@@ -84,7 +84,14 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
     #[cfg(target_os = "aix")]
     unsafe {
-        let addr = current_dll_path as u64;
+        // On AIX, the symbol `current_dll_path` references a function descriptor.
+        // A function descriptor is consisted of (See https://reviews.llvm.org/D62532)
+        // * The address of the entry point of the function.
+        // * The TOC base address for the function.
+        // * The environment pointer.
+        // Deref `current_dll_path` directly so that we can get the address of `current_dll_path`'s
+        // entry point in text section.
+        let addr = *(current_dll_path as *const u64);
         let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
         loop {
             if libc::loadquery(
@@ -103,11 +110,9 @@ fn current_dll_path() -> Result<PathBuf, String> {
         }
         let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
         loop {
-            let data_base = (*current).ldinfo_dataorg as u64;
-            let data_end = data_base + (*current).ldinfo_datasize;
             let text_base = (*current).ldinfo_textorg as u64;
             let text_end = text_base + (*current).ldinfo_textsize;
-            if (data_base <= addr && addr < data_end) || (text_base <= addr && addr < text_end) {
+            if (text_base..text_end).contains(&addr) {
                 let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
                 let os = OsStr::from_bytes(bytes);
                 return Ok(PathBuf::from(os));
@@ -115,7 +120,8 @@ fn current_dll_path() -> Result<PathBuf, String> {
             if (*current).ldinfo_next == 0 {
                 break;
             }
-            current = ((current as u64) + ((*current).ldinfo_next) as u64) as *mut libc::ld_info;
+            current =
+                (current as *mut i8).offset((*current).ldinfo_next as isize) as *mut libc::ld_info;
         }
         return Err(format!("current dll's address {} is not in the load map", addr));
     }
