@@ -13,8 +13,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, State, TrackElem, ValueAnalysis, ValueOrPlace};
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::Align;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
 use crate::MirPass;
 
@@ -148,7 +147,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         for (field_index, operand) in operands.iter().enumerate() {
                             if let Some(field) = self.map().apply(
                                 variant_target_idx,
-                                TrackElem::Field(Field::from_usize(field_index)),
+                                TrackElem::Field(FieldIdx::from_usize(field_index)),
                             ) {
                                 let result = self.handle_operand(operand, state);
                                 state.insert_idx(field, result, self.map());

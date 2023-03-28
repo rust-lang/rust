@@ -33,12 +33,13 @@ use rustc_middle::mir::{
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
+use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
+use rustc_target::abi::FieldIdx;
 
 use either::Either;
 use smallvec::SmallVec;
@@ -597,7 +598,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     used_mut: FxIndexSet<Local>,
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
-    used_mut_upvars: SmallVec<[Field; 8]>,
+    used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     regioncx: Rc<RegionInferenceContext<'tcx>>,
@@ -2277,7 +2278,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// then returns the index of the field being projected. Note that this closure will always
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
-    fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
+    fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<FieldIdx> {
         path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
     }
 

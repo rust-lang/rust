@@ -327,7 +327,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
             ArgKind::Spread(params) => {
                 for (i, param) in params.into_iter().enumerate() {
                     if let Some(param) = param {
-                        place.place_field(fx, mir::Field::new(i)).write_cvalue(fx, param);
+                        place.place_field(fx, FieldIdx::new(i)).write_cvalue(fx, param);
                     }
                 }
             }
@@ -460,7 +460,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         args.push(self_arg);
         for i in 0..tupled_arguments.len() {
             args.push(CallArgument {
-                value: pack_arg.value.value_field(fx, mir::Field::new(i)),
+                value: pack_arg.value.value_field(fx, FieldIdx::new(i)),
                 is_owned: pack_arg.is_owned,
             });
         }

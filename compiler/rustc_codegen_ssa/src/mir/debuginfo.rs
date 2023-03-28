@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::{Abi, Size, VariantIdx};
+use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -79,7 +79,7 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
 trait DebugInfoOffsetLocation<'tcx, Bx> {
     fn deref(&self, bx: &mut Bx) -> Self;
     fn layout(&self) -> TyAndLayout<'tcx>;
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self;
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self;
     fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self;
 }
 
@@ -94,7 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
         self.layout
     }
 
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         PlaceRef::project_field(*self, bx, field.index())
     }
 
@@ -116,7 +116,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
         *self
     }
 
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         self.field(bx.cx(), field.index())
     }
 

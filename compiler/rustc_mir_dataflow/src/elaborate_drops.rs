@@ -7,7 +7,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
 
 /// The value of an inserted drop flag.
@@ -129,7 +129,7 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// Returns the subpath of a field of `path` (or `None` if there is no dedicated subpath).
     ///
     /// If this returns `None`, `field` will not get a dedicated drop flag.
-    fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
+    fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path>;
 
     /// Returns the subpath of a dereference of `path` (or `None` if there is no dedicated subpath).
     ///
@@ -269,7 +269,7 @@ where
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                let field = Field::new(i);
+                let field = FieldIdx::new(i);
                 let subpath = self.elaborator.field_subpath(variant_path, field);
                 let tcx = self.tcx();
 
@@ -397,8 +397,8 @@ where
             .enumerate()
             .map(|(i, &ty)| {
                 (
-                    self.tcx().mk_place_field(self.place, Field::new(i), ty),
-                    self.elaborator.field_subpath(self.path, Field::new(i)),
+                    self.tcx().mk_place_field(self.place, FieldIdx::new(i), ty),
+                    self.elaborator.field_subpath(self.path, FieldIdx::new(i)),
                 )
             })
             .collect();
@@ -416,9 +416,9 @@ where
             unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
         let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
 
-        let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
-        let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
+        let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::new(0), unique_ty);
+        let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::new(0), nonnull_ty);
+        let ptr_place = self.tcx().mk_place_field(nonnull_place, FieldIdx::new(0), ptr_ty);
         let interior = self.tcx().mk_place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);
@@ -899,7 +899,7 @@ where
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                let field = Field::new(i);
+                let field = FieldIdx::new(i);
                 let field_ty = f.ty(tcx, substs);
                 Operand::Move(tcx.mk_place_field(self.place, field, field_ty))
             })

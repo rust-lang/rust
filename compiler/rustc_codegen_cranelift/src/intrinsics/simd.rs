@@ -253,7 +253,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             ret.write_cvalue(fx, base);
-            let ret_lane = ret.place_field(fx, mir::Field::new(idx.try_into().unwrap()));
+            let ret_lane = ret.place_field(fx, FieldIdx::new(idx.try_into().unwrap()));
             ret_lane.write_cvalue(fx, val);
         }
 

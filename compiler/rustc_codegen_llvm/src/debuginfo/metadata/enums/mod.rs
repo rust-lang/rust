@@ -6,7 +6,7 @@ use rustc_hir::def::CtorKind;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
     bug,
-    mir::{Field, GeneratorLayout, GeneratorSavedLocal},
+    mir::{GeneratorLayout, GeneratorSavedLocal},
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
@@ -14,7 +14,9 @@ use rustc_middle::{
     },
 };
 use rustc_span::Symbol;
-use rustc_target::abi::{HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{
+    FieldIdx, HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants,
+};
 use std::borrow::Cow;
 
 use crate::{
@@ -353,7 +355,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
                 .map(|field_index| {
                     let generator_saved_local = generator_layout.variant_fields[variant_index]
-                        [Field::from_usize(field_index)];
+                        [FieldIdx::from_usize(field_index)];
                     let field_name_maybe = state_specific_upvar_names[generator_saved_local];
                     let field_name = field_name_maybe
                         .as_ref()

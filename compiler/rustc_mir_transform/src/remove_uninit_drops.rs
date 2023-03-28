@@ -1,10 +1,11 @@
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_middle::mir::{Body, Field, TerminatorKind};
+use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{self, move_path_children_matching, Analysis, MoveDataParamEnv};
+use rustc_target::abi::FieldIdx;
 
 use crate::MirPass;
 
@@ -130,7 +131,7 @@ fn is_needs_drop_and_init<'tcx>(
                     .fields
                     .iter()
                     .enumerate()
-                    .map(|(f, field)| (Field::from_usize(f), field.ty(tcx, substs), mpi))
+                    .map(|(f, field)| (FieldIdx::from_usize(f), field.ty(tcx, substs), mpi))
                     .any(field_needs_drop_and_init)
             })
         }
@@ -138,7 +139,7 @@ fn is_needs_drop_and_init<'tcx>(
         ty::Tuple(fields) => fields
             .iter()
             .enumerate()
-            .map(|(f, f_ty)| (Field::from_usize(f), f_ty, mpi))
+            .map(|(f, f_ty)| (FieldIdx::from_usize(f), f_ty, mpi))
             .any(field_needs_drop_and_init),
 
         _ => true,

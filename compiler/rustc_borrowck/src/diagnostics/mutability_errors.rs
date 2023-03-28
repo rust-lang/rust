@@ -12,6 +12,7 @@ use rustc_middle::{
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span};
+use rustc_target::abi::FieldIdx;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::MirBorrowckCtxt;
@@ -1275,7 +1276,7 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    field: mir::Field,
+    field: FieldIdx,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
     if let ty::Ref(_, ty, _) = ty.kind()

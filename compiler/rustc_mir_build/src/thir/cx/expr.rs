@@ -10,7 +10,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -20,7 +20,7 @@ use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
 use rustc_span::{sym, Span};
-use rustc_target::abi::FIRST_VARIANT;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
@@ -379,7 +379,7 @@ impl<'tcx> Cx<'tcx> {
                             .iter()
                             .enumerate()
                             .map(|(idx, e)| FieldExpr {
-                                name: Field::new(idx),
+                                name: FieldIdx::new(idx),
                                 expr: self.mirror_expr(e),
                             })
                             .collect();
@@ -733,7 +733,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
                 variant_index: FIRST_VARIANT,
-                name: Field::new(self.typeck_results.field_index(expr.hir_id)),
+                name: FieldIdx::new(self.typeck_results.field_index(expr.hir_id)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -1053,7 +1053,7 @@ impl<'tcx> Cx<'tcx> {
                 HirProjectionKind::Field(field, variant_index) => ExprKind::Field {
                     lhs: self.thir.exprs.push(captured_place_expr),
                     variant_index,
-                    name: Field::new(field as usize),
+                    name: FieldIdx::new(field as usize),
                 },
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
@@ -1107,7 +1107,7 @@ impl<'tcx> Cx<'tcx> {
         fields
             .iter()
             .map(|field| FieldExpr {
-                name: Field::new(self.typeck_results.field_index(field.hir_id)),
+                name: FieldIdx::new(self.typeck_results.field_index(field.hir_id)),
                 expr: self.mirror_expr(field.expr),
             })
             .collect()
