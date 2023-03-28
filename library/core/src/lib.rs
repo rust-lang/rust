@@ -123,7 +123,6 @@
 #![feature(const_index_range_slice_index)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
-#![feature(const_intoiterator_identity)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]

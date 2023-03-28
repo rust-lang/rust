@@ -228,4 +228,5 @@ fn evens_squared(n: usize) -> _ {
 
 const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
 //~^ ERROR the trait bound
+//~| ERROR the trait bound
 //~| ERROR the placeholder
