@@ -551,9 +551,12 @@ use crate::marker::Destruct;
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
-    cmp, convert, hint, mem,
+    cmp, convert,
+    future::Future,
+    hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
+    task::Poll,
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -2290,6 +2293,19 @@ impl SpecOptionPartialEq for cmp::Ordering {
     #[inline]
     fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
         l.map_or(2, |x| x as i8) == r.map_or(2, |x| x as i8)
+    }
+}
+
+#[stable(feature = "option_future", since = "CURRENT_RUSTC_VERSION")]
+impl<F: Future> Future for Option<F> {
+    type Output = Option<F::Output>;
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut crate::task::Context<'_>) -> Poll<Self::Output> {
+        match self.as_pin_mut() {
+            Some(f) => f.poll(cx).map(Some),
+            None => Poll::Ready(None),
+        }
     }
 }
 
