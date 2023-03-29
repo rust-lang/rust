@@ -63,23 +63,6 @@ impl RawWaker {
 }
 
 const RAW_WAKER_VTABLE_V1_PADDING: usize = 0;
-
-/// A virtual function pointer table (vtable) that specifies the behavior
-/// of a [`RawWaker`].
-///
-/// The pointer passed to all functions inside the vtable is the `data` pointer
-/// from the enclosing [`RawWaker`] object.
-///
-/// The functions inside this struct are only intended to be called on the `data`
-/// pointer of a properly constructed [`RawWaker`] object from inside the
-/// [`RawWaker`] implementation. Calling one of the contained functions using
-/// any other `data` pointer will cause undefined behavior.
-///
-/// These functions must all be thread-safe (even though [`RawWaker`] is
-/// <code>\![Send] + \![Sync]</code>)
-/// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
-/// arbitrary threads or invoked by `&` reference. For example, this means that if the
-/// `clone` and `drop` functions manage a reference count, they must do so atomically.
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
 #[repr(C)]
@@ -159,18 +142,42 @@ struct RawWakerVTableV2 {
     padding: [*const (); 2 + RAW_WAKER_VTABLE_V1_PADDING], // Reserved space for future changes to the v-table, the need for it and amount are debatable.
 }
 
+/// A virtual function pointer table (vtable) that specifies the behavior
+/// of a [`RawWaker`].
+///
+/// The pointer passed to all functions inside the vtable is the `data` pointer
+/// from the enclosing [`RawWaker`] object.
+///
+/// The functions inside this struct are only intended to be called on the `data`
+/// pointer of a properly constructed [`RawWaker`] object from inside the
+/// [`RawWaker`] implementation. Calling one of the contained functions using
+/// any other `data` pointer will cause undefined behavior.
+///
+/// These functions must all be thread-safe (even though [`RawWaker`] is
+/// <code>\![Send] + \![Sync]</code>)
+/// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
+/// arbitrary threads or invoked by `&` reference. For example, this means that if the
+/// `clone` and `drop` functions manage a reference count, they must do so atomically.
 #[repr(C)]
 #[derive(Clone, Copy)]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub union RawWakerVTable {
     v1: RawWakerVTableV1,
     v2: RawWakerVTableV2,
 }
+#[stable(feature = "futures_api", since = "1.36.0")]
+unsafe impl Send for RawWakerVTable {}
+#[stable(feature = "futures_api", since = "1.36.0")]
+unsafe impl Sync for RawWakerVTable {}
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl PartialEq for RawWakerVTable {
     fn eq(&self, other: &Self) -> bool {
         unsafe { self.v2 == other.v2 }
     }
 }
+
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for RawWakerVTable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         unsafe {
@@ -182,6 +189,21 @@ impl fmt::Debug for RawWakerVTable {
     }
 }
 
+#[allow(improper_ctypes_definitions)]
+/// # Safety
+/// This function must only be called with function pointers sourced from the same shared object
+unsafe extern "C" fn clone_adapter(
+    clone: unsafe fn(*const ()) -> RawWaker,
+    data: *const (),
+) -> RawWaker {
+    unsafe { (clone)(data) }
+}
+#[allow(improper_ctypes_definitions)]
+/// # Safety
+/// This function must only be called with function pointers sourced from the same shared object
+unsafe extern "C" fn other_adapter(other: unsafe fn(*const ()), data: *const ()) {
+    unsafe { (other)(data) }
+}
 impl RawWakerVTable {
     /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`,
     /// `wake_by_ref`, and `drop` functions.
@@ -192,7 +214,7 @@ impl RawWakerVTable {
     /// arbitrary threads or invoked by `&` reference. For example, this means that if the
     /// `clone` and `drop` functions manage a reference count, they must do so atomically.
     ///
-    /# `clone`
+    /// # `clone`
     ///
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
     /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
@@ -202,7 +224,7 @@ impl RawWakerVTable {
     /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
     /// of the same task that would have been awoken by the original [`RawWaker`].
     ///
-    /# `wake`
+    /// # `wake`
     ///
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
@@ -211,7 +233,7 @@ impl RawWakerVTable {
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
     ///
-    /# `wake_by_ref`
+    /// # `wake_by_ref`
     ///
     /// This function will be called when `wake_by_ref` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
@@ -219,7 +241,7 @@ impl RawWakerVTable {
     /// This function is similar to `wake`, but must not consume the provided data
     /// pointer.
     ///
-    /# `drop`
+    /// # `drop`
     ///
     /// This function gets called when a [`Waker`] gets dropped.
     ///
@@ -229,22 +251,17 @@ impl RawWakerVTable {
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
-    #[deprecated = "This constructor makes slower wakers, use new_with_c_abi instead"]
+    #[deprecated(
+        since = "TBD",
+        note = "This constructor makes slower wakers",
+        suggestion = "new_with_c_abi"
+    )]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
         wake_by_ref: unsafe fn(*const ()),
         drop: unsafe fn(*const ()),
     ) -> Self {
-        unsafe extern "C" fn clone_adapter(
-            clone: unsafe fn(*const ()) -> RawWaker,
-            data: *const (),
-        ) -> RawWaker {
-            clone(data)
-        }
-        unsafe extern "C" fn other_adapter(other: unsafe fn(*const ()), data: *const ()) {
-            other(data)
-        }
         Self {
             v1: RawWakerVTableV1 {
                 clone,
@@ -267,7 +284,7 @@ impl RawWakerVTable {
     /// arbitrary threads or invoked by `&` reference. For example, this means that if the
     /// `clone` and `drop` functions manage a reference count, they must do so atomically.
     ///
-    /# `clone`
+    /// # `clone`
     ///
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
     /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
@@ -277,7 +294,7 @@ impl RawWakerVTable {
     /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
     /// of the same task that would have been awoken by the original [`RawWaker`].
     ///
-    /# `wake`
+    /// # `wake`
     ///
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
@@ -286,7 +303,7 @@ impl RawWakerVTable {
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
     ///
-    /# `wake_by_ref`
+    /// # `wake_by_ref`
     ///
     /// This function will be called when `wake_by_ref` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
@@ -294,7 +311,7 @@ impl RawWakerVTable {
     /// This function is similar to `wake`, but must not consume the provided data
     /// pointer.
     ///
-    /# `drop`
+    /// # `drop`
     ///
     /// This function gets called when a [`Waker`] gets dropped.
     ///
@@ -302,6 +319,8 @@ impl RawWakerVTable {
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
     #[rustc_promotable]
+    #[unstable(feature = "stable_wakers", issue = "109706")]
+    #[rustc_const_unstable(feature = "stable_wakers", issue = "109706")]
     pub const fn new_with_c_abi(
         clone: unsafe extern "C" fn(*const ()) -> RawWaker,
         wake: unsafe extern "C" fn(*const ()),
@@ -345,11 +364,7 @@ impl<'a> Context<'a> {
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
-        Context {
-            waker,
-            _marker: PhantomData,
-            _marker2: PhantomData,
-        }
+        Context { waker, _marker: PhantomData, _marker2: PhantomData }
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
@@ -365,9 +380,7 @@ impl<'a> Context<'a> {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for Context<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Context")
-            .field("waker", &self.waker)
-            .finish()
+        f.debug_struct("Context").field("waker", &self.waker).finish()
     }
 }
 
@@ -437,16 +450,9 @@ impl Waker {
         unsafe {
             match *vtable {
                 RawWakerVTable {
-                    v1:
-                        RawWakerVTableV1 {
-                            wake,
-                            other_adapter: Some(other_adapter),
-                            ..
-                        },
+                    v1: RawWakerVTableV1 { wake, other_adapter: Some(other_adapter), .. },
                 } => (other_adapter)(wake, data),
-                RawWakerVTable {
-                    v2: RawWakerVTableV2 { wake, .. },
-                } => (wake)(data),
+                RawWakerVTable { v2: RawWakerVTableV2 { wake, .. } } => (wake)(data),
             }
         };
     }
@@ -467,16 +473,9 @@ impl Waker {
         unsafe {
             match *vtable {
                 RawWakerVTable {
-                    v1:
-                        RawWakerVTableV1 {
-                            wake_by_ref,
-                            other_adapter: Some(other_adapter),
-                            ..
-                        },
+                    v1: RawWakerVTableV1 { wake_by_ref, other_adapter: Some(other_adapter), .. },
                 } => (other_adapter)(wake_by_ref, data),
-                RawWakerVTable {
-                    v2: RawWakerVTableV2 { wake_by_ref, .. },
-                } => (wake_by_ref)(data),
+                RawWakerVTable { v2: RawWakerVTableV2 { wake_by_ref, .. } } => (wake_by_ref)(data),
             }
         }
     }
@@ -529,16 +528,9 @@ impl Clone for Waker {
             waker: unsafe {
                 match *vtable {
                     RawWakerVTable {
-                        v1:
-                            RawWakerVTableV1 {
-                                clone,
-                                clone_adapter: Some(clone_adapter),
-                                ..
-                            },
+                        v1: RawWakerVTableV1 { clone, clone_adapter: Some(clone_adapter), .. },
                     } => (clone_adapter)(clone, data),
-                    RawWakerVTable {
-                        v2: RawWakerVTableV2 { clone, .. },
-                    } => (clone)(data),
+                    RawWakerVTable { v2: RawWakerVTableV2 { clone, .. } } => (clone)(data),
                 }
             },
         }
@@ -556,16 +548,9 @@ impl Drop for Waker {
         unsafe {
             match *vtable {
                 RawWakerVTable {
-                    v1:
-                        RawWakerVTableV1 {
-                            drop,
-                            other_adapter: Some(other_adapter),
-                            ..
-                        },
+                    v1: RawWakerVTableV1 { drop, other_adapter: Some(other_adapter), .. },
                 } => (other_adapter)(drop, data),
-                RawWakerVTable {
-                    v2: RawWakerVTableV2 { drop, .. },
-                } => (drop)(data),
+                RawWakerVTable { v2: RawWakerVTableV2 { drop, .. } } => (drop)(data),
             }
         }
     }

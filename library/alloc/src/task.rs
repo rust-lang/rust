@@ -121,33 +121,45 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 #[inline(always)]
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
-    unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
+    unsafe extern "C" fn clone_waker<W: Wake + Send + Sync + 'static>(
+        waker: *const (),
+    ) -> RawWaker {
         unsafe { Arc::increment_strong_count(waker as *const W) };
         RawWaker::new(
             waker as *const (),
-            &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
+            &RawWakerVTable::new_with_c_abi(
+                clone_waker::<W>,
+                wake::<W>,
+                wake_by_ref::<W>,
+                drop_waker::<W>,
+            ),
         )
     }
 
     // Wake by value, moving the Arc into the Wake::wake function
-    unsafe fn wake<W: Wake + Send + Sync + 'static>(waker: *const ()) {
+    unsafe extern "C" fn wake<W: Wake + Send + Sync + 'static>(waker: *const ()) {
         let waker = unsafe { Arc::from_raw(waker as *const W) };
         <W as Wake>::wake(waker);
     }
 
     // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
-    unsafe fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
+    unsafe extern "C" fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
         let waker = unsafe { ManuallyDrop::new(Arc::from_raw(waker as *const W)) };
         <W as Wake>::wake_by_ref(&waker);
     }
 
     // Decrement the reference count of the Arc on drop
-    unsafe fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
+    unsafe extern "C" fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
         unsafe { Arc::decrement_strong_count(waker as *const W) };
     }
 
     RawWaker::new(
         Arc::into_raw(waker) as *const (),
-        &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
+        &RawWakerVTable::new_with_c_abi(
+            clone_waker::<W>,
+            wake::<W>,
+            wake_by_ref::<W>,
+            drop_waker::<W>,
+        ),
     )
 }
