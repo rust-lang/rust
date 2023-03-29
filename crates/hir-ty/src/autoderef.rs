@@ -6,7 +6,10 @@
 use std::sync::Arc;
 
 use chalk_ir::cast::Cast;
-use hir_def::lang_item::LangItem;
+use hir_def::{
+    lang_item::{LangItem, LangItemTarget},
+    AdtId,
+};
 use hir_expand::name::name;
 use limit::Limit;
 
@@ -76,7 +79,7 @@ pub(crate) fn autoderef_step(
     table: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> Option<(AutoderefKind, Ty)> {
-    if let Some(derefed) = builtin_deref(&ty) {
+    if let Some(derefed) = builtin_deref(table, &ty, false) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
@@ -99,26 +102,41 @@ pub fn autoderef(
     v.into_iter()
 }
 
-pub(crate) fn deref(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
-    let _p = profile::span("deref");
-    autoderef_step(table, ty).map(|(_, ty)| ty)
-}
-
-fn builtin_deref(ty: &Ty) -> Option<&Ty> {
+pub(crate) fn builtin_deref<'ty>(
+    table: &mut InferenceTable<'_>,
+    ty: &'ty Ty,
+    explicit: bool,
+) -> Option<&'ty Ty> {
     match ty.kind(Interner) {
-        TyKind::Ref(.., ty) | TyKind::Raw(.., ty) => Some(ty),
+        TyKind::Ref(.., ty) => Some(ty),
+        // FIXME: Maybe accept this but diagnose if its not explicit?
+        TyKind::Raw(.., ty) if explicit => Some(ty),
+        &TyKind::Adt(chalk_ir::AdtId(AdtId::StructId(strukt)), ref substs) => {
+            if Some(strukt)
+                == table
+                    .db
+                    .lang_item(table.trait_env.krate, LangItem::OwnedBox)
+                    .and_then(LangItemTarget::as_struct)
+            {
+                substs.at(Interner, 0).ty(Interner)
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
 
-fn deref_by_trait(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
+pub(crate) fn deref_by_trait(
+    table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
+    ty: Ty,
+) -> Option<Ty> {
     let _p = profile::span("deref_by_trait");
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;
     }
 
-    let db = table.db;
     let deref_trait =
         db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
     let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;

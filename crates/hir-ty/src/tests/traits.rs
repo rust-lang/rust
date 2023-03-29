@@ -3051,7 +3051,7 @@ impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.inner
+        unsafe { &*self.inner }
     }
 }
 
@@ -3062,23 +3062,25 @@ fn foo() {
 }"#,
         expect![[r#"
             154..158 'self': &Box<T>
-            166..193 '{     ...     }': &T
-            176..187 '&self.inner': &*mut T
-            177..181 'self': &Box<T>
-            177..187 'self.inner': *mut T
-            206..296 '{     ...&s); }': ()
-            216..217 's': Option<i32>
-            220..224 'None': Option<i32>
-            234..235 'f': Box<dyn FnOnce(&Option<i32>)>
-            269..282 'box (|ps| {})': Box<|&Option<i32>| -> ()>
-            274..281 '|ps| {}': |&Option<i32>| -> ()
-            275..277 'ps': &Option<i32>
-            279..281 '{}': ()
-            288..289 'f': Box<dyn FnOnce(&Option<i32>)>
-            288..293 'f(&s)': ()
-            290..292 '&s': &Option<i32>
-            291..292 's': Option<i32>
-            269..282: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|&Option<i32>| -> ()>
+            166..205 '{     ...     }': &T
+            176..199 'unsafe...nner }': &T
+            185..197 '&*self.inner': &T
+            186..197 '*self.inner': T
+            187..191 'self': &Box<T>
+            187..197 'self.inner': *mut T
+            218..308 '{     ...&s); }': ()
+            228..229 's': Option<i32>
+            232..236 'None': Option<i32>
+            246..247 'f': Box<dyn FnOnce(&Option<i32>)>
+            281..294 'box (|ps| {})': Box<|&Option<i32>| -> ()>
+            286..293 '|ps| {}': |&Option<i32>| -> ()
+            287..289 'ps': &Option<i32>
+            291..293 '{}': ()
+            300..301 'f': Box<dyn FnOnce(&Option<i32>)>
+            300..305 'f(&s)': ()
+            302..304 '&s': &Option<i32>
+            303..304 's': Option<i32>
+            281..294: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|&Option<i32>| -> ()>
         "#]],
     );
 }

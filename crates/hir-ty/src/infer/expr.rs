@@ -661,11 +661,7 @@ impl<'a> InferenceContext<'a> {
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
-                        if let Some(deref_trait) = self
-                            .db
-                            .lang_item(self.table.trait_env.krate, LangItem::Deref)
-                            .and_then(|l| l.as_trait())
-                        {
+                        if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
                             if let Some(deref_fn) =
                                 self.db.trait_data(deref_trait).method_by_name(&name![deref])
                             {
@@ -678,7 +674,14 @@ impl<'a> InferenceContext<'a> {
                                 );
                             }
                         }
-                        autoderef::deref(&mut self.table, inner_ty).unwrap_or_else(|| self.err_ty())
+                        if let Some(derefed) =
+                            autoderef::builtin_deref(&mut self.table, &inner_ty, true)
+                        {
+                            self.resolve_ty_shallow(derefed)
+                        } else {
+                            autoderef::deref_by_trait(&mut self.table, inner_ty)
+                                .unwrap_or_else(|| self.err_ty())
+                        }
                     }
                     UnaryOp::Neg => {
                         match inner_ty.kind(Interner) {
