@@ -166,6 +166,11 @@ impl AbsPath {
         AbsPathBuf::try_from(self.0.to_path_buf()).unwrap()
     }
 
+    /// Equivalent of [`Path::canonicalize`] for `AbsPath`.
+    pub fn canonicalize(&self) -> Result<AbsPathBuf, std::io::Error> {
+        Ok(self.as_ref().canonicalize()?.try_into().unwrap())
+    }
+
     /// Equivalent of [`Path::strip_prefix`] for `AbsPath`.
     ///
     /// Returns a relative path.

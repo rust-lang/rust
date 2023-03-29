@@ -4,7 +4,7 @@
 
 use std::{collections::VecDeque, fmt, fs, process::Command, sync::Arc};
 
-use anyhow::{bail, format_err, Context, Result};
+use anyhow::{format_err, Context, Result};
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
     FileId, LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
@@ -154,12 +154,7 @@ impl ProjectWorkspace {
     ) -> Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let metadata = fs::symlink_metadata(&project_json).with_context(|| {
-                    format!("Failed to read json file {}", project_json.display())
-                })?;
-                if metadata.is_symlink() {
-                    bail!("The project-json may not currently point to a symlink");
-                }
+                let project_json = project_json.canonicalize()?;
                 let file = fs::read_to_string(&project_json).with_context(|| {
                     format!("Failed to read json file {}", project_json.display())
                 })?;
