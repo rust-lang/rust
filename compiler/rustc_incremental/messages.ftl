@@ -24,7 +24,7 @@ incremental_field_associated_value_expected = associated value expected for `{$n
 incremental_no_field = no field `{$name}`
 
 incremental_assertion_auto =
-    `except` specified DepNodes that can not be affected for \"{$name}\": \"{$e}\"
+    `except` specified DepNodes that can not be affected for "{$name}": "{$e}"
 
 incremental_undefined_clean_dirty_assertions_item =
     clean/dirty auto-assertions not yet defined for Node::Item.node={$kind}

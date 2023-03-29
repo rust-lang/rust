@@ -92,3 +92,12 @@ mod missing_message_ref {
     fluent_messages! { "./missing-message-ref.ftl" }
     //~^ ERROR referenced message `message` does not exist
 }
+
+mod bad_escape {
+    use super::fluent_messages;
+
+    fluent_messages! { "./invalid-escape.ftl" }
+    //~^ ERROR invalid escape `\n`
+    //~| ERROR invalid escape `\"`
+    //~| ERROR invalid escape `\'`
+}
