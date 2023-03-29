@@ -643,7 +643,7 @@ impl<'a> InferenceContext<'a> {
                         // FIXME: record type error - expected reference but found ptr,
                         // which cannot be coerced
                     }
-                    Expectation::rvalue_hint(&mut self.table, Ty::clone(exp_inner))
+                    Expectation::rvalue_hint(self, Ty::clone(exp_inner))
                 } else {
                     Expectation::none()
                 };
@@ -998,7 +998,7 @@ impl<'a> InferenceContext<'a> {
                 .filter(|(e_adt, _)| e_adt == &box_id)
                 .map(|(_, subts)| {
                     let g = subts.at(Interner, 0);
-                    Expectation::rvalue_hint(table, Ty::clone(g.assert_ty_ref(Interner)))
+                    Expectation::rvalue_hint(self, Ty::clone(g.assert_ty_ref(Interner)))
                 })
                 .unwrap_or_else(Expectation::none);
 
@@ -1593,7 +1593,7 @@ impl<'a> InferenceContext<'a> {
                 // the parameter to coerce to the expected type (for example in
                 // `coerce_unsize_expected_type_4`).
                 let param_ty = self.normalize_associated_types_in(param_ty);
-                let expected = Expectation::rvalue_hint(&mut self.table, expected_ty);
+                let expected = Expectation::rvalue_hint(self, expected_ty);
                 // infer with the expected type we have...
                 let ty = self.infer_expr_inner(arg, &expected);
 

@@ -13,8 +13,8 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
-use std::ops::Index;
 use std::sync::Arc;
+use std::{convert::identity, ops::Index};
 
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use either::Either;
@@ -791,6 +791,65 @@ impl<'a> InferenceContext<'a> {
         self.table.unify(ty1, ty2)
     }
 
+    /// Attempts to returns the deeply last field of nested structures, but
+    /// does not apply any normalization in its search. Returns the same type
+    /// if input `ty` is not a structure at all.
+    fn struct_tail_without_normalization(&mut self, ty: Ty) -> Ty {
+        self.struct_tail_with_normalize(ty, identity)
+    }
+
+    /// Returns the deeply last field of nested structures, or the same type if
+    /// not a structure at all. Corresponds to the only possible unsized field,
+    /// and its type can be used to determine unsizing strategy.
+    ///
+    /// This is parameterized over the normalization strategy (i.e. how to
+    /// handle `<T as Trait>::Assoc` and `impl Trait`); pass the identity
+    /// function to indicate no normalization should take place.
+    fn struct_tail_with_normalize(
+        &mut self,
+        mut ty: Ty,
+        mut normalize: impl FnMut(Ty) -> Ty,
+    ) -> Ty {
+        // FIXME: fetch the limit properly
+        let recursion_limit = 10;
+        for iteration in 0.. {
+            if iteration > recursion_limit {
+                return self.err_ty();
+            }
+            match ty.kind(Interner) {
+                TyKind::Adt(chalk_ir::AdtId(hir_def::AdtId::StructId(struct_id)), substs) => {
+                    match self.db.field_types((*struct_id).into()).values().next_back().cloned() {
+                        Some(field) => {
+                            ty = field.substitute(Interner, substs);
+                        }
+                        None => break,
+                    }
+                }
+                TyKind::Adt(..) => break,
+                TyKind::Tuple(_, substs) => {
+                    match substs
+                        .as_slice(Interner)
+                        .split_last()
+                        .and_then(|(last_ty, _)| last_ty.ty(Interner))
+                    {
+                        Some(last_ty) => ty = last_ty.clone(),
+                        None => break,
+                    }
+                }
+                TyKind::Alias(..) => {
+                    let normalized = normalize(ty.clone());
+                    if ty == normalized {
+                        return ty;
+                    } else {
+                        ty = normalized;
+                    }
+                }
+                _ => break,
+            }
+        }
+        ty
+    }
+
     /// Recurses through the given type, normalizing associated types mentioned
     /// in it by replacing them by type variables and registering obligations to
     /// resolve later. This should be done once for every type we get from some
@@ -1138,9 +1197,8 @@ impl Expectation {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(table: &mut unify::InferenceTable<'_>, ty: Ty) -> Self {
-        // FIXME: do struct_tail_without_normalization
-        match table.resolve_ty_shallow(&ty).kind(Interner) {
+    fn rvalue_hint(ctx: &mut InferenceContext<'_>, ty: Ty) -> Self {
+        match ctx.struct_tail_without_normalization(ty.clone()).kind(Interner) {
             TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => Expectation::RValueLikeUnsized(ty),
             _ => Expectation::has_type(ty),
         }
