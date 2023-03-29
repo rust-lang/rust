@@ -27,7 +27,8 @@ codegen_llvm_error_calling_dlltool =
     Error calling dlltool: {$error}
 
 codegen_llvm_dlltool_fail_import_library =
-    Dlltool could not create import library: {$stdout}\n{$stderr}
+    Dlltool could not create import library: {$stdout}
+    {$stderr}
 
 codegen_llvm_target_feature_disable_or_enable =
     the target features {$features} must all be either enabled or disabled together

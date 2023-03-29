@@ -111,6 +111,18 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             .emit();
         return failed(&crate_name);
     }
+    let mut bad = false;
+    for esc in ["\\n", "\\\"", "\\'"] {
+        for _ in resource_contents.matches(esc) {
+            bad = true;
+            Diagnostic::spanned(resource_span, Level::Error, format!("invalid escape `{esc}` in Fluent resource"))
+                .note("Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)")
+                .emit();
+        }
+    }
+    if bad {
+        return failed(&crate_name);
+    }
 
     let resource = match FluentResource::try_new(resource_contents) {
         Ok(resource) => resource,
