@@ -3,7 +3,6 @@
 #![feature(assert_matches)]
 #![feature(btree_drain_filter)]
 #![feature(cow_is_borrowed)]
-#![feature(const_box)]
 #![feature(const_convert)]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_heap)]

@@ -159,7 +159,7 @@ use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::iter::{FusedIterator, Iterator};
 use core::marker::Tuple;
-use core::marker::{Destruct, Unpin, Unsize};
+use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
@@ -376,12 +376,11 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline]
-    pub const fn new_in(x: T, alloc: A) -> Self
+    pub fn new_in(x: T, alloc: A) -> Self
     where
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let mut boxed = Self::new_uninit_in(alloc);
         unsafe {
@@ -406,12 +405,10 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
+    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
     where
-        T: ~const Destruct,
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
         unsafe {
@@ -441,13 +438,12 @@ impl<T, A: Allocator> Box<T, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub const fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
+    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -482,10 +478,9 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    pub const fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
+    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate(layout)?.cast();
@@ -513,13 +508,12 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[cfg(not(no_global_oom_handling))]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub const fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
+    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -554,10 +548,9 @@ impl<T, A: Allocator> Box<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    pub const fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
+    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Destruct,
+        A: Allocator,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate_zeroed(layout)?.cast();
@@ -573,12 +566,11 @@ impl<T, A: Allocator> Box<T, A> {
     /// construct a (pinned) `Box` in a different way than with [`Box::new_in`].
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline(always)]
-    pub const fn pin_in(x: T, alloc: A) -> Pin<Self>
+    pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: 'static + ~const Allocator + ~const Destruct,
+        A: 'static + Allocator,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }
@@ -605,12 +597,8 @@ impl<T, A: Allocator> Box<T, A> {
     /// assert_eq!(Box::into_inner(c), 5);
     /// ```
     #[unstable(feature = "box_into_inner", issue = "80437")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn into_inner(boxed: Self) -> T
-    where
-        Self: ~const Destruct,
-    {
+    pub fn into_inner(boxed: Self) -> T {
         *boxed
     }
 }
