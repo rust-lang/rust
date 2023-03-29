@@ -3,8 +3,6 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
-use std::sync::Arc;
-
 use chalk_ir::cast::Cast;
 use hir_def::{
     lang_item::{LangItem, LangItemTarget},
@@ -13,10 +11,7 @@ use hir_def::{
 use hir_expand::name::name;
 use limit::Limit;
 
-use crate::{
-    db::HirDatabase, infer::unify::InferenceTable, Canonical, Goal, Interner, ProjectionTyExt,
-    TraitEnvironment, Ty, TyBuilder, TyKind,
-};
+use crate::{infer::unify::InferenceTable, Goal, Interner, ProjectionTyExt, Ty, TyBuilder, TyKind};
 
 static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 
@@ -27,15 +22,15 @@ pub(crate) enum AutoderefKind {
 }
 
 #[derive(Debug)]
-pub(crate) struct Autoderef<'a, 'db> {
-    pub(crate) table: &'a mut InferenceTable<'db>,
+pub struct Autoderef<'a, 'db> {
+    pub table: &'a mut InferenceTable<'db>,
     ty: Ty,
     at_start: bool,
     steps: Vec<(AutoderefKind, Ty)>,
 }
 
 impl<'a, 'db> Autoderef<'a, 'db> {
-    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty) -> Self {
+    pub fn new(table: &'a mut InferenceTable<'db>, ty: Ty) -> Self {
         let ty = table.resolve_ty_shallow(&ty);
         Autoderef { table, ty, at_start: true, steps: Vec::new() }
     }
@@ -84,22 +79,6 @@ pub(crate) fn autoderef_step(
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
     }
-}
-
-// FIXME: replace uses of this with Autoderef above
-pub fn autoderef(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
-    ty: Canonical<Ty>,
-) -> impl Iterator<Item = Canonical<Ty>> + '_ {
-    let mut table = InferenceTable::new(db, env);
-    let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new(&mut table, ty);
-    let mut v = Vec::new();
-    while let Some((ty, _steps)) = autoderef.next() {
-        v.push(autoderef.table.canonicalize(ty).value);
-    }
-    v.into_iter()
 }
 
 pub(crate) fn builtin_deref<'ty>(

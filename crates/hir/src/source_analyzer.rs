@@ -39,7 +39,8 @@ use hir_ty::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
         UnsafeExpr,
     },
-    method_resolution::{self, lang_items_for_bin_op},
+    lang_items::lang_items_for_bin_op,
+    method_resolution::{self},
     Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind, TyLoweringContext,
 };
 use itertools::Itertools;

@@ -32,11 +32,11 @@ impl<'a> InferenceContext<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Canonicalized<T>
+pub struct Canonicalized<T>
 where
     T: HasInterner<Interner = Interner>,
 {
-    pub(crate) value: Canonical<T>,
+    pub value: Canonical<T>,
     free_vars: Vec<GenericArg>,
 }
 
@@ -140,7 +140,7 @@ bitflags::bitflags! {
 type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 
 #[derive(Clone)]
-pub(crate) struct InferenceTable<'a> {
+pub struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
     var_unification_table: ChalkInferenceTable,
@@ -155,7 +155,7 @@ pub(crate) struct InferenceTableSnapshot {
 }
 
 impl<'a> InferenceTable<'a> {
-    pub(crate) fn new(db: &'a dyn HirDatabase, trait_env: Arc<TraitEnvironment>) -> Self {
+    pub fn new(db: &'a dyn HirDatabase, trait_env: Arc<TraitEnvironment>) -> Self {
         InferenceTable {
             db,
             trait_env,
@@ -204,7 +204,7 @@ impl<'a> InferenceTable<'a> {
         .intern(Interner)
     }
 
-    pub(crate) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
+    pub fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
         &mut self,
         t: T,
     ) -> Canonicalized<T>
@@ -320,7 +320,7 @@ impl<'a> InferenceTable<'a> {
         )
     }
 
-    pub(crate) fn instantiate_canonical<T>(&mut self, canonical: Canonical<T>) -> T
+    pub fn instantiate_canonical<T>(&mut self, canonical: Canonical<T>) -> T
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + std::fmt::Debug,
     {

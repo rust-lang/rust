@@ -28,11 +28,12 @@ use crate::{
     infer::{
         coerce::CoerceMany, find_continuable, pat::contains_explicit_ref_binding, BreakableKind,
     },
+    lang_items::lang_items_for_bin_op,
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
     mapping::{from_chalk, ToChalk},
-    method_resolution::{self, lang_items_for_bin_op, VisibleFromModule},
+    method_resolution::{self, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
@@ -792,7 +793,7 @@ impl<'a> InferenceContext<'a> {
                     let canonicalized = self.canonicalize(base_ty.clone());
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
-                        self.table.trait_env.clone(),
+                        &mut self.table,
                         canonicalized.value,
                         index_trait,
                     );
