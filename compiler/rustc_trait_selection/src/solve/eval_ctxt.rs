@@ -6,9 +6,9 @@ use rustc_infer::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -16,13 +16,32 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
+use crate::traits::specialization_graph;
+
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 
+mod canonical;
+
 pub struct EvalCtxt<'a, 'tcx> {
-    // FIXME: should be private.
-    pub(super) infcx: &'a InferCtxt<'tcx>,
+    /// The inference context that backs (mostly) inference and placeholder terms
+    /// instantiated while solving goals.
+    ///
+    /// NOTE: The `InferCtxt` that backs the `EvalCtxt` is intentionally private,
+    /// because the `InferCtxt` is much more general than `EvalCtxt`. Methods such
+    /// as  `take_registered_region_obligations` can mess up query responses,
+    /// using `At::normalize` is totally wrong, calling `evaluate_root_goal` can
+    /// cause coinductive unsoundness, etc.
+    ///
+    /// Methods that are generally of use for trait solving are *intentionally*
+    /// re-declared through the `EvalCtxt` below, often with cleaner signatures
+    /// since we don't care about things like `ObligationCause`s and `Span`s here.
+    /// If some `InferCtxt` method is missing, please first think defensively about
+    /// the method's compatibility with this solver, or if an existing one does
+    /// the job already.
+    infcx: &'a InferCtxt<'tcx>,
+
     pub(super) var_values: CanonicalVarValues<'tcx>,
     /// The highest universe index nameable by the caller.
     ///
@@ -393,7 +412,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
                     match self.infcx.probe_ty_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -403,7 +422,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
                     match self.infcx.probe_const_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -545,7 +564,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.fresh_substs_for_item(DUMMY_SP, def_id)
     }
 
-    pub(super) fn universe(&self) -> ty::UniverseIndex {
-        self.infcx.universe()
+    pub(super) fn translate_substs(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        source_impl: DefId,
+        source_substs: ty::SubstsRef<'tcx>,
+        target_node: specialization_graph::Node,
+    ) -> ty::SubstsRef<'tcx> {
+        crate::traits::translate_substs(
+            self.infcx,
+            param_env,
+            source_impl,
+            source_substs,
+            target_node,
+        )
+    }
+
+    pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
+        self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
+    }
+
+    pub(super) fn register_region_outlives(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+        // `b : a` ==> `a <= b`
+        // (inlined from `InferCtxt::region_outlives_predicate`)
+        self.infcx.sub_regions(
+            rustc_infer::infer::SubregionOrigin::RelateRegionParamBound(DUMMY_SP),
+            b,
+            a,
+        );
+    }
+
+    /// Computes the list of goals required for `arg` to be well-formed
+    pub(super) fn well_formed_goals(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        arg: ty::GenericArg<'tcx>,
+    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
+        crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
+            .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
     }
 }

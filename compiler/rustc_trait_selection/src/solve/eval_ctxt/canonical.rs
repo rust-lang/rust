@@ -8,21 +8,18 @@
 /// section of the [rustc-dev-guide][c].
 ///
 /// [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
-use self::canonicalize::{CanonicalizeMode, Canonicalizer};
 use super::{CanonicalGoal, Certainty, EvalCtxt, Goal};
-use super::{CanonicalResponse, ExternalConstraints, QueryResult, Response};
+use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
+use crate::solve::{CanonicalResponse, QueryResult, Response};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::ExternalConstraintsData;
-use rustc_infer::traits::ObligationCause;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
 use rustc_middle::ty::{self, GenericArgKind};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
-
-mod canonicalize;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
@@ -48,7 +45,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// - `external_constraints`: additional constraints which aren't expressable
     ///   using simple unification of inference variables.
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn evaluate_added_goals_and_make_canonical_response(
+    pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
@@ -219,15 +216,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn register_region_constraints(&mut self, region_constraints: &QueryRegionConstraints<'tcx>) {
         for &(ty::OutlivesPredicate(lhs, rhs), _) in &region_constraints.outlives {
             match lhs.unpack() {
-                GenericArgKind::Lifetime(lhs) => self.infcx.region_outlives_predicate(
-                    &ObligationCause::dummy(),
-                    ty::Binder::dummy(ty::OutlivesPredicate(lhs, rhs)),
-                ),
-                GenericArgKind::Type(lhs) => self.infcx.register_region_obligation_with_cause(
-                    lhs,
-                    rhs,
-                    &ObligationCause::dummy(),
-                ),
+                GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
+                GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
                 GenericArgKind::Const(_) => bug!("const outlives: {lhs:?}: {rhs:?}"),
             }
         }
