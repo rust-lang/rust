@@ -441,7 +441,7 @@ fn clean_projection<'tcx>(
         assoc: projection_to_path_segment(ty, cx),
         should_show_cast,
         self_type,
-        trait_,
+        trait_: Some(trait_),
     }))
 }
 
@@ -1330,7 +1330,13 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 let mut bounds: Vec<GenericBound> = Vec::new();
                 generics.where_predicates.retain_mut(|pred| match *pred {
                     WherePredicate::BoundPredicate {
-                        ty: QPath(box QPathData { ref assoc, ref self_type, ref trait_, .. }),
+                        ty:
+                            QPath(box QPathData {
+                                ref assoc,
+                                ref self_type,
+                                trait_: Some(ref trait_),
+                                ..
+                            }),
                         bounds: ref mut pred_bounds,
                         ..
                     } => {
@@ -1492,25 +1498,30 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 assoc: clean_path_segment(p.segments.last().expect("segments were empty"), cx),
                 should_show_cast,
                 self_type,
-                trait_,
+                trait_: Some(trait_),
             }))
         }
         hir::QPath::TypeRelative(qself, segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            let res = match ty.kind() {
+            let self_type = clean_ty(qself, cx);
+
+            let (trait_, should_show_cast) = match ty.kind() {
                 ty::Alias(ty::Projection, proj) => {
-                    Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id)
+                    let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
+                    let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
+                    register_res(cx, trait_.res);
+                    let self_def_id = res.opt_def_id();
+                    let should_show_cast =
+                        compute_should_show_cast(self_def_id, &trait_, &self_type);
+
+                    (Some(trait_), should_show_cast)
                 }
+                ty::Alias(ty::Inherent, _) => (None, false),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
-                // Otherwise, this is an inherent associated type.
-                _ => return clean_middle_ty(ty::Binder::dummy(ty), cx, None),
+                _ => bug!("clean: expected associated type, found `{ty:?}`"),
             };
-            let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
-            register_res(cx, trait_.res);
-            let self_def_id = res.opt_def_id();
-            let self_type = clean_ty(qself, cx);
-            let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
+
             Type::QPath(Box::new(QPathData {
                 assoc: clean_path_segment(segment, cx),
                 should_show_cast,
@@ -1836,9 +1847,28 @@ pub(crate) fn clean_middle_ty<'tcx>(
             clean_projection(bound_ty.rebind(*data), cx, parent_def_id)
         }
 
-        // FIXME(fmease): Clean inherent projections properly. This requires making the trait ref in
-        // `QPathData` optional or alternatively adding a new `clean::Type` variant.
-        ty::Alias(ty::Inherent, _data) => Type::Infer,
+        ty::Alias(ty::Inherent, alias_ty) => {
+            let alias_ty = bound_ty.rebind(alias_ty);
+            let self_type = clean_middle_ty(alias_ty.map_bound(|ty| ty.self_ty()), cx, None);
+
+            Type::QPath(Box::new(QPathData {
+                assoc: PathSegment {
+                    name: cx.tcx.associated_item(alias_ty.skip_binder().def_id).name,
+                    args: GenericArgs::AngleBracketed {
+                        args: substs_to_args(
+                            cx,
+                            alias_ty.map_bound(|ty| ty.substs.as_slice()),
+                            true,
+                        )
+                        .into(),
+                        bindings: Default::default(),
+                    },
+                },
+                should_show_cast: false,
+                self_type,
+                trait_: None,
+            }))
+        }
 
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
