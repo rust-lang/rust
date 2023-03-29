@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![warn(clippy::large_futures)]
 
 fn main() {}

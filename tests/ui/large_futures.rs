@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![feature(generators)]
 #![warn(clippy::large_futures)]
 #![allow(clippy::future_not_send)]
@@ -36,6 +34,28 @@ pub fn foo() -> impl std::future::Future<Output = ()> {
         async {}.await;
         dbg!(x);
     }
+}
+
+pub async fn lines() {
+    async {
+        let x = [0i32; 1024 * 16];
+        async {}.await;
+        println!("{:?}", x);
+    }
+    .await;
+}
+
+pub async fn macro_expn() {
+    macro_rules! macro_ {
+        () => {
+            async {
+                let x = [0i32; 1024 * 16];
+                async {}.await;
+                println!("macro: {:?}", x);
+            }
+        };
+    }
+    macro_!().await
 }
 
 fn main() {}
