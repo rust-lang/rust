@@ -8,7 +8,7 @@ use hir_def::{
 };
 use hir_expand::name;
 
-use crate::{lower::lower_to_chalk_mutability, Adjust, AutoBorrow, OverloadedDeref};
+use crate::{lower::lower_to_chalk_mutability, Adjust, Adjustment, AutoBorrow, OverloadedDeref};
 
 use super::InferenceContext;
 
@@ -18,15 +18,15 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn infer_mut_expr(&mut self, tgt_expr: ExprId, mut mutability: Mutability) {
-        let mut v = vec![];
-        let adjustments = self.result.expr_adjustments.get_mut(&tgt_expr).unwrap_or(&mut v);
-        for adj in adjustments.iter_mut().rev() {
-            match &mut adj.kind {
-                Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => (),
-                Adjust::Deref(Some(d)) => *d = OverloadedDeref(Some(mutability)),
-                Adjust::Borrow(b) => match b {
-                    AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m) => mutability = *m,
-                },
+        if let Some(adjustments) = self.result.expr_adjustments.get_mut(&tgt_expr) {
+            for adj in adjustments.iter_mut().rev() {
+                match &mut adj.kind {
+                    Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => (),
+                    Adjust::Deref(Some(d)) => *d = OverloadedDeref(Some(mutability)),
+                    Adjust::Borrow(b) => match b {
+                        AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m) => mutability = *m,
+                    },
+                }
             }
         }
         self.infer_mut_expr_without_adjust(tgt_expr, mutability);
@@ -94,8 +94,8 @@ impl<'a> InferenceContext<'a> {
                 self.infer_mut_not_expr_iter(fields.iter().map(|x| x.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {
-                if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
-                    if mutability == Mutability::Mut {
+                if mutability == Mutability::Mut {
+                    if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                         if let Some(index_trait) = self
                             .db
                             .lang_item(self.table.trait_env.krate, LangItem::IndexMut)
@@ -105,6 +105,18 @@ impl<'a> InferenceContext<'a> {
                                 self.db.trait_data(index_trait).method_by_name(&name![index_mut])
                             {
                                 *f = index_fn;
+                                let base_adjustments = self
+                                    .result
+                                    .expr_adjustments
+                                    .get_mut(&base)
+                                    .and_then(|it| it.last_mut());
+                                if let Some(Adjustment {
+                                    kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
+                                    ..
+                                }) = base_adjustments
+                                {
+                                    *mutability = Mutability::Mut;
+                                }
                             }
                         }
                     }

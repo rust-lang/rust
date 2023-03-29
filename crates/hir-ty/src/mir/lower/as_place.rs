@@ -192,7 +192,10 @@ impl MirLowerCtx<'_> {
                 let base_ty = self.expr_ty_after_adjustments(*base);
                 let index_ty = self.expr_ty_after_adjustments(*index);
                 if index_ty != TyBuilder::usize()
-                    || !matches!(base_ty.kind(Interner), TyKind::Array(..) | TyKind::Slice(..))
+                    || !matches!(
+                        base_ty.strip_reference().kind(Interner),
+                        TyKind::Array(..) | TyKind::Slice(..)
+                    )
                 {
                     let Some(index_fn) = self.infer.method_resolution(expr_id) else {
                         return Err(MirLowerError::UnresolvedMethod);
@@ -206,7 +209,7 @@ impl MirLowerCtx<'_> {
                     return self.lower_overloaded_index(
                         current,
                         base_place,
-                        self.expr_ty_after_adjustments(*base),
+                        base_ty,
                         self.expr_ty(expr_id),
                         index_operand,
                         expr_id.into(),
@@ -214,7 +217,8 @@ impl MirLowerCtx<'_> {
                     );
                 }
                 let Some((mut p_base, current)) =
-                    self.lower_expr_as_place(current, *base, true)? else {
+                    self.lower_expr_as_place_without_adjust(current, *base, true)?
+                else {
                     return Ok(None);
                 };
                 let l_index = self.temp(self.expr_ty_after_adjustments(*index))?;
@@ -238,23 +242,14 @@ impl MirLowerCtx<'_> {
         span: MirSpan,
         index_fn: (FunctionId, Substitution),
     ) -> Result<Option<(Place, BasicBlockId)>> {
-        let is_mutable = 'b: {
-            if let Some(index_mut_trait) = self.resolve_lang_item(LangItem::IndexMut)?.as_trait() {
-                if let Some(index_mut_fn) =
-                    self.db.trait_data(index_mut_trait).method_by_name(&name![index_mut])
-                {
-                    break 'b index_mut_fn == index_fn.0;
-                }
+        let (mutability, borrow_kind) = match base_ty.as_reference() {
+            Some((_, _, mutability)) => {
+                (mutability, BorrowKind::Mut { allow_two_phase_borrow: false })
             }
-            false
+            None => (Mutability::Not, BorrowKind::Shared),
         };
-        let (mutability, borrow_kind) = match is_mutable {
-            true => (Mutability::Mut, BorrowKind::Mut { allow_two_phase_borrow: false }),
-            false => (Mutability::Not, BorrowKind::Shared),
-        };
-        let base_ref = TyKind::Ref(mutability, static_lifetime(), base_ty).intern(Interner);
         let result_ref = TyKind::Ref(mutability, static_lifetime(), result_ty).intern(Interner);
-        let ref_place: Place = self.temp(base_ref)?.into();
+        let ref_place: Place = self.temp(base_ty)?.into();
         self.push_assignment(current, ref_place.clone(), Rvalue::Ref(borrow_kind, place), span);
         let mut result: Place = self.temp(result_ref)?.into();
         let index_fn_op = Operand::const_zst(

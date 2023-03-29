@@ -793,10 +793,12 @@ impl<'a> InferenceContext<'a> {
                         canonicalized.value,
                         index_trait,
                     );
-                    let (self_ty, adj) = receiver_adjustments
+                    let (self_ty, mut adj) = receiver_adjustments
                         .map_or((self.err_ty(), Vec::new()), |adj| {
                             adj.apply(&mut self.table, base_ty)
                         });
+                    // mutability will be fixed up in `InferenceContext::infer_mut`;
+                    adj.push(Adjustment::borrow(Mutability::Not, self_ty.clone()));
                     self.write_expr_adj(*base, adj);
                     if let Some(func) =
                         self.db.trait_data(index_trait).method_by_name(&name!(index))

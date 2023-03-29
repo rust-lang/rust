@@ -589,17 +589,17 @@ fn f() {
     let y = &x[2];
     let x = Foo;
     let y = &mut x[2];
-               //^^^^ 💡 error: cannot mutate immutable variable `x`
+               //^💡 error: cannot mutate immutable variable `x`
     let mut x = &mut Foo;
       //^^^^^ 💡 weak: variable does not need to be mutable
     let y: &mut (i32, u8) = &mut x[2];
     let x = Foo;
     let ref mut y = x[7];
-                  //^^^^ 💡 error: cannot mutate immutable variable `x`
+                  //^ 💡 error: cannot mutate immutable variable `x`
     let (ref mut y, _) = x[3];
-                       //^^^^ 💡 error: cannot mutate immutable variable `x`
+                       //^ 💡 error: cannot mutate immutable variable `x`
     match x[10] {
-        //^^^^^ 💡 error: cannot mutate immutable variable `x`
+        //^ 💡 error: cannot mutate immutable variable `x`
         (ref y, _) => (),
         (_, ref mut y) => (),
     }

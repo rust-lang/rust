@@ -870,3 +870,35 @@ fn test() {
 }",
     );
 }
+
+#[test]
+fn adjust_index() {
+    check_no_mismatches(
+        r"
+//- minicore: index
+struct Struct;
+impl core::ops::Index<usize> for Struct {
+    type Output = ();
+
+    fn index(&self, index: usize) -> &Self::Output { &() }
+}
+struct StructMut;
+
+impl core::ops::Index<usize> for StructMut {
+    type Output = ();
+
+    fn index(&self, index: usize) -> &Self::Output { &() }
+}
+impl core::ops::IndexMut for StructMut {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut () }
+}
+fn test() {
+    Struct[0];
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
+    StructMut[0];
+ // ^^^^^^^^^ adjustments: Borrow(Ref(Not))
+    &mut StructMut[0];
+      // ^^^^^^^^^ adjustments: Borrow(Ref(Mut))
+}",
+    );
+}
