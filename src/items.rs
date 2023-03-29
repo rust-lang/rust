@@ -1808,7 +1808,7 @@ impl<'a> StaticParts<'a> {
             ast::ItemKind::Static(ast::Static { ref ty, mutability, ref expr}) => {
                 (None, "static", ty, mutability, expr)
             }
-            ast::ItemKind::Const(defaultness, ref ty, ref expr) => {
+            ast::ItemKind::Const(ast::ConstItem { defaultness, ref ty, ref expr}) => {
                 (Some(defaultness), "const", ty, ast::Mutability::Not, expr)
             }
             _ => unreachable!(),
@@ -1827,8 +1827,8 @@ impl<'a> StaticParts<'a> {
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
         let (defaultness, ty, expr_opt) = match ti.kind {
-            ast::AssocItemKind::Const(defaultness, ref ty, ref expr_opt) => {
-                (defaultness, ty, expr_opt)
+            ast::AssocItemKind::Const(ast::ConstItem {defaultness, ref ty, ref expr}) => {
+                (defaultness, ty, expr)
             }
             _ => unreachable!(),
         };
@@ -1846,7 +1846,7 @@ impl<'a> StaticParts<'a> {
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
         let (defaultness, ty, expr) = match ii.kind {
-            ast::AssocItemKind::Const(defaultness, ref ty, ref expr) => (defaultness, ty, expr),
+            ast::AssocItemKind::Const(ast::ConstItem { defaultness, ref ty, ref expr}) => (defaultness, ty, expr),
             _ => unreachable!(),
         };
         StaticParts {
