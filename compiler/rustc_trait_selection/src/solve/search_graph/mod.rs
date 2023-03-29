@@ -47,6 +47,22 @@ impl<'tcx> SearchGraph<'tcx> {
         self.mode
     }
 
+    /// We do not use the global cache during coherence.
+    ///
+    /// The trait solver behavior is different for coherence
+    /// so we would have to add the solver mode to the cache key.
+    /// This is probably not worth it as trait solving during
+    /// coherence tends to already be incredibly fast.
+    ///
+    /// We could add another global cache for coherence instead,
+    /// but that's effort so let's only do it if necessary.
+    pub(super) fn should_use_global_cache(&self) -> bool {
+        match self.mode {
+            SolverMode::Normal => true,
+            SolverMode::Coherence => false,
+        }
+    }
+
     pub(super) fn is_empty(&self) -> bool {
         self.stack.is_empty() && self.provisional_cache.is_empty()
     }
@@ -191,8 +207,10 @@ impl<'tcx> SearchGraph<'tcx> {
         canonical_goal: CanonicalGoal<'tcx>,
         mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_goal, tcx) {
-            return result;
+        if self.should_use_global_cache() {
+            if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_goal, tcx) {
+                return result;
+            }
         }
 
         match self.try_push_stack(tcx, canonical_goal) {
@@ -252,9 +270,8 @@ impl<'tcx> SearchGraph<'tcx> {
             // dependencies, our non-root goal may no longer appear as child of the root goal.
             //
             // See https://github.com/rust-lang/rust/pull/108071 for some additional context.
-            let should_cache_globally = matches!(self.solver_mode(), SolverMode::Normal)
-                && (!self.overflow_data.did_overflow() || self.stack.is_empty());
-            if should_cache_globally {
+            let can_cache = !self.overflow_data.did_overflow() || self.stack.is_empty();
+            if self.should_use_global_cache() && can_cache {
                 tcx.new_solver_evaluation_cache.insert(
                     current_goal.goal,
                     dep_node,
