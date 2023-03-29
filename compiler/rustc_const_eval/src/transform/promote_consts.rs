@@ -707,7 +707,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks.last().unwrap();
+        let last = self.promoted.basic_blocks.last_index().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo::outermost(span),
@@ -800,7 +800,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted.basic_blocks.last().unwrap();
+                    let last = self.promoted.basic_blocks.last_index().unwrap();
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {
