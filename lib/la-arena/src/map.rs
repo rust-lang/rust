@@ -72,17 +72,17 @@ impl<T, V> ArenaMap<Idx<T>, V> {
     }
 
     /// Returns an iterator over the values in the map.
-    pub fn values(&self) -> impl Iterator<Item = &V> {
+    pub fn values(&self) -> impl Iterator<Item = &V> + DoubleEndedIterator {
         self.v.iter().filter_map(|o| o.as_ref())
     }
 
     /// Returns an iterator over mutable references to the values in the map.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> + DoubleEndedIterator {
         self.v.iter_mut().filter_map(|o| o.as_mut())
     }
 
     /// Returns an iterator over the arena indexes and values in the map.
-    pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> + DoubleEndedIterator {
         self.v.iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_ref()?)))
     }
 
@@ -96,7 +96,7 @@ impl<T, V> ArenaMap<Idx<T>, V> {
 
     /// Returns an iterator over the arena indexes and values in the map.
     // FIXME: Implement `IntoIterator` trait.
-    pub fn into_iter(self) -> impl Iterator<Item = (Idx<T>, V)> {
+    pub fn into_iter(self) -> impl Iterator<Item = (Idx<T>, V)> + DoubleEndedIterator {
         self.v.into_iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o?)))
     }
 
